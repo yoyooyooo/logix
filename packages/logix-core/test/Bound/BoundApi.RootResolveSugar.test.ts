@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { Context, Effect, Schema } from 'effect'
+import { Context, Effect, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('BoundApi $.root.resolve', () => {
@@ -21,12 +21,9 @@ describe('BoundApi $.root.resolve', () => {
     }).impl
 
     const runtimeB = Logix.Runtime.make(AppBImpl)
-    const globalB = runtimeB.runSync(Global.tag) as Logix.ModuleRuntime<any, any>
+    const globalB = runtimeB.runSync(Effect.service(Global.tag).pipe(Effect.orDie)) as Logix.ModuleRuntime<any, any>
 
-    class MissingTag extends Context.Tag('@test/BoundApiRootResolveSugar/MissingTag')<
-      MissingTag,
-      { readonly ok: boolean }
-    >() {}
+    class MissingTag extends ServiceMap.Service<MissingTag, { readonly ok: boolean }>()('@test/BoundApiRootResolveSugar/MissingTag') {}
 
     type Result = {
       readonly strictPretty: string
@@ -91,7 +88,7 @@ describe('BoundApi $.root.resolve', () => {
     }).impl
 
     const runtimeA = Logix.Runtime.make(AppAImpl)
-    const globalA = runtimeA.runSync(Global.tag) as Logix.ModuleRuntime<any, any>
+    const globalA = runtimeA.runSync(Effect.service(Global.tag).pipe(Effect.orDie)) as Logix.ModuleRuntime<any, any>
 
     try {
       const result = await resultP

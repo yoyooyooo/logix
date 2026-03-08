@@ -89,11 +89,10 @@
     "prepack": "node scripts/bundle-kernel.mjs && tsup"
   },
   "dependencies": {
-    "effect": "^3.19.13",
+    "effect": "4.0.0-beta.28",
     "esbuild-wasm": "^0.27.1"
   },
   "devDependencies": {
-    "@effect/platform": "0.94.0",
     "esbuild": "^0.27.1",
     "msw": "^2.4.9",
     "tsup": "^8.5.1",
@@ -101,6 +100,6 @@
     "vitest": "^4.0.15"
   },
   "peerDependencies": {
-    "effect": "^3.19.13"
+    "effect": "4.0.0-beta.28"
   }
 }

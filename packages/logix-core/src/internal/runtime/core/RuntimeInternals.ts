@@ -1,4 +1,4 @@
-import { Cause, Context, Effect } from 'effect'
+import { Cause, Effect, ServiceMap } from 'effect'
 import type { ModuleRuntime as PublicModuleRuntime } from './module.js'
 import type * as Lifecycle from './Lifecycle.js'
 import type * as StateTransaction from './StateTransaction.js'
@@ -21,7 +21,7 @@ export type RuntimeInternalsEffects = {
 
 export type ImportsScope = {
   readonly kind: 'imports-scope'
-  readonly get: (module: Context.Tag<any, PublicModuleRuntime<any, any>>) => PublicModuleRuntime<any, any> | undefined
+  readonly get: (module: ServiceMap.Key<any, PublicModuleRuntime<any, any>>) => PublicModuleRuntime<any, any> | undefined
 }
 
 export type RuntimeInternalsLifecycle = {

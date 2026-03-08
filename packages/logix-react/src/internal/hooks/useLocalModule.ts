@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from 'react'
 import * as Logix from '@logixjs/core'
-import { Context, Effect, Layer, Scope } from 'effect'
+import { Effect, Layer, Scope, ServiceMap } from 'effect'
 import { useRuntime } from './useRuntime.js'
 import { getModuleCache, type ModuleCacheFactory, stableHash } from '../store/ModuleCache.js'
 import { RuntimeContext } from '../provider/ReactContext.js'
@@ -102,7 +102,7 @@ export function useLocalModule(source: unknown, second?: unknown): ModuleRef<unk
       return createModuleTagFactory(moduleTag as Logix.ModuleTagType<string, Logix.AnyModuleShape>, moduleOptions)
     }
     const factoryFn = source as unknown as LocalModuleFactory<unknown, unknown>
-    return (scope: Scope.Scope) => factoryFn().pipe(Scope.extend(scope))
+    return (scope: Scope.Scope) => Scope.provide(scope)(factoryFn())
   }, [isModule, moduleTag, source, moduleOptions])
 
   const moduleRuntime = cache.readSync(key, factory, undefined, ownerId, {
@@ -180,7 +180,7 @@ function createModuleTagFactory<Sh extends Logix.AnyModuleShape>(
   return (scope: Scope.Scope) =>
     Layer.buildWithScope(module.live(options.initial, ...logics), scope).pipe(
       Effect.map((context) => {
-        const runtime = Context.get(context, module)
+        const runtime = ServiceMap.get(context, module)
         return runtime
       }),
     )

@@ -1,6 +1,6 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Chunk, Effect, Stream } from 'effect'
+import { Effect, Stream } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('FlowRuntime.fromState(ReadQuery)', () => {
@@ -36,7 +36,7 @@ describe('FlowRuntime.fromState(ReadQuery)', () => {
       const query = Logix.ReadQuery.compile((s: S) => s.count)
 
       const values = yield* Stream.runCollect(flow.fromState(query as any)).pipe(
-        Effect.map(Chunk.toReadonlyArray),
+        Effect.map((items) => Array.from(items as Iterable<any>)),
       )
 
       expect(receivedReadQuery).toBe(query)
@@ -97,7 +97,7 @@ describe('FlowRuntime.fromState(ReadQuery)', () => {
       const flow = Logix.Flow.make(runtime as any)
       const selector = (s: S) => s.count
       const values = yield* Stream.runCollect(flow.fromState(selector as any)).pipe(
-        Effect.map(Chunk.toReadonlyArray),
+        Effect.map((items) => Array.from(items as Iterable<any>)),
       )
 
       expect(fallbackSelector).toBeUndefined()

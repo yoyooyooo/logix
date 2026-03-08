@@ -1,4 +1,4 @@
-import { Effect, Schema, Stream } from 'effect'
+import { Effect, Exit, Schema, Stream } from 'effect'
 import * as Logix from '@logixjs/core'
 import { galaxyApi } from '../galaxy-api/client'
 import { AuthDef, AuthImpl } from './auth.module'
@@ -51,19 +51,19 @@ export const ProjectMembersLogic = ProjectMembersDef.logic(($) => {
       yield* $.dispatchers.setLoading(true)
       yield* $.dispatchers.setError(null)
 
-      const listEither = yield* Effect.tryPromise({
+      const listEither = yield* Effect.exit(Effect.tryPromise({
         try: () => galaxyApi.projectMemberList(token, projectId),
         catch: (e) => e,
-      }).pipe(Effect.either)
+      }))
 
-      if (listEither._tag === 'Left') {
+      if (Exit.isFailure(listEither)) {
         yield* $.dispatchers.setMembers([])
-        yield* $.dispatchers.setError(galaxyApi.toMessage(listEither.left))
+        yield* $.dispatchers.setError(galaxyApi.toMessage(listEither.cause))
         yield* $.dispatchers.setLoading(false)
         return
       }
 
-      yield* $.dispatchers.setMembers(listEither.right as any)
+      yield* $.dispatchers.setMembers(listEither.value as any)
       yield* $.dispatchers.setLoading(false)
     })
 
@@ -102,13 +102,13 @@ export const ProjectMembersLogic = ProjectMembersDef.logic(($) => {
             yield* $.dispatchers.setLoading(true)
             yield* $.dispatchers.setError(null)
 
-            const addEither = yield* Effect.tryPromise({
+            const addEither = yield* Effect.exit(Effect.tryPromise({
               try: () => galaxyApi.projectMemberAdd(token, projectId, action.payload),
               catch: (e) => e,
-            }).pipe(Effect.either)
+            }))
 
-            if (addEither._tag === 'Left') {
-              yield* $.dispatchers.setError(galaxyApi.toMessage(addEither.left))
+            if (Exit.isFailure(addEither)) {
+              yield* $.dispatchers.setError(galaxyApi.toMessage(addEither.cause))
               yield* $.dispatchers.setLoading(false)
               return
             }
@@ -128,16 +128,16 @@ export const ProjectMembersLogic = ProjectMembersDef.logic(($) => {
             yield* $.dispatchers.setLoading(true)
             yield* $.dispatchers.setError(null)
 
-            const updateEither = yield* Effect.tryPromise({
+            const updateEither = yield* Effect.exit(Effect.tryPromise({
               try: () =>
                 galaxyApi.projectMemberUpdateRole(token, projectId, action.payload.userId, {
                   roleKey: action.payload.roleKey,
                 }),
               catch: (e) => e,
-            }).pipe(Effect.either)
+            }))
 
-            if (updateEither._tag === 'Left') {
-              yield* $.dispatchers.setError(galaxyApi.toMessage(updateEither.left))
+            if (Exit.isFailure(updateEither)) {
+              yield* $.dispatchers.setError(galaxyApi.toMessage(updateEither.cause))
               yield* $.dispatchers.setLoading(false)
               return
             }
@@ -157,13 +157,13 @@ export const ProjectMembersLogic = ProjectMembersDef.logic(($) => {
             yield* $.dispatchers.setLoading(true)
             yield* $.dispatchers.setError(null)
 
-            const removeEither = yield* Effect.tryPromise({
+            const removeEither = yield* Effect.exit(Effect.tryPromise({
               try: () => galaxyApi.projectMemberRemove(token, projectId, action.payload),
               catch: (e) => e,
-            }).pipe(Effect.either)
+            }))
 
-            if (removeEither._tag === 'Left') {
-              yield* $.dispatchers.setError(galaxyApi.toMessage(removeEither.left))
+            if (Exit.isFailure(removeEither)) {
+              yield* $.dispatchers.setError(galaxyApi.toMessage(removeEither.cause))
               yield* $.dispatchers.setLoading(false)
               return
             }

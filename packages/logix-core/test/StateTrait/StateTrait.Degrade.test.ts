@@ -3,7 +3,7 @@ import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('StateTrait degrade', () => {
-  it.scoped('runtime error should degrade (commit base, freeze derived)', () =>
+  it.effect('runtime error should degrade (commit base, freeze derived)', () =>
     Effect.gen(function* () {
       const events: Array<Logix.Debug.Event> = []
       const sink: Logix.Debug.Sink = {
@@ -50,7 +50,7 @@ describe('StateTrait degrade', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* M.tag
+        const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
         yield* rt.dispatch({ _tag: 'bump', payload: undefined } as any)
 

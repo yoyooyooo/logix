@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { Context, Effect, Layer, Schema } from 'effect'
+import { Context, Effect, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../../src/index.js'
 
 describe('HierarchicalInjector root provider', () => {
@@ -8,10 +8,7 @@ describe('HierarchicalInjector root provider', () => {
       readonly value: string
     }
 
-    class TestServiceTag extends Context.Tag('@test/HierarchicalInjectorRootProvider/Service')<
-      TestServiceTag,
-      TestService
-    >() {}
+    class TestServiceTag extends ServiceMap.Service<TestServiceTag, TestService>()('@test/HierarchicalInjectorRootProvider/Service') {}
 
     const RootModule = Logix.Module.make('HierRootProviderModule', {
       state: Schema.Struct({ ok: Schema.Boolean }),
@@ -45,8 +42,8 @@ describe('HierarchicalInjector root provider', () => {
     const otherTree = Logix.Runtime.make(Impl)
 
     try {
-      const rootSingleton = rootRuntime.runSync(M.tag) as Logix.ModuleRuntime<any, any>
-      const otherSingleton = otherTree.runSync(M.tag) as Logix.ModuleRuntime<any, any>
+      const rootSingleton = rootRuntime.runSync(Effect.service(M.tag).pipe(Effect.orDie)) as Logix.ModuleRuntime<any, any>
+      const otherSingleton = otherTree.runSync(Effect.service(M.tag).pipe(Effect.orDie)) as Logix.ModuleRuntime<any, any>
 
       const resolved = rootRuntime.runSync(
         Logix.Root.resolve(M.tag).pipe(Effect.provideService(M.tag, otherSingleton as any)),

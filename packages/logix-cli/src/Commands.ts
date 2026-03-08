@@ -226,7 +226,7 @@ const resolveRunIdForFailure = (argv: ReadonlyArray<string>): Effect.Effect<stri
   return resolveCliConfigArgvPrefix(argv).pipe(
     Effect.map((prefix) => (prefix.length > 0 ? [...prefix, ...argv] : argv)),
     Effect.map((argv2) => tryGetRunId(argv2) ?? 'missing-runId'),
-    Effect.catchAll(() => Effect.succeed('missing-runId')),
+    Effect.catch(() => Effect.succeed('missing-runId')),
   )
 }
 
@@ -340,7 +340,7 @@ export const runCli = (argv: ReadonlyArray<string>): Effect.Effect<RunOutcome, n
               } as RunOutcome
             },
           ),
-          Effect.catchAllCause((cause) => {
+          Effect.catchCause((cause) => {
             const error: SerializableErrorSummary = asSerializableErrorSummary(
               makeCliError({
                 code: 'CLI_COMMAND_FAILED',
@@ -358,7 +358,7 @@ export const runCli = (argv: ReadonlyArray<string>): Effect.Effect<RunOutcome, n
         )
       },
     }),
-    Effect.catchAllCause((cause) => {
+    Effect.catchCause((cause) => {
       const error: SerializableErrorSummary = asSerializableErrorSummary(
         makeCliError({
           code: 'CLI_INTERNAL',
@@ -375,7 +375,7 @@ export const runCli = (argv: ReadonlyArray<string>): Effect.Effect<RunOutcome, n
       )
     }),
     // CLI stdout is a strict protocol (CommandResult@v1); silence Effect logs to avoid polluting stdout/stderr.
-    Effect.provide(Logger.replace(Logger.defaultLogger, Logger.make(() => {}))),
+    Effect.provide(Logger.layer([Logger.make(() => {})])),
   )
 
 export const main = runCli

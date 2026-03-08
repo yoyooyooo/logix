@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 // @vitest-environment happy-dom
 import React from 'react'
 import { renderHook, waitFor } from '@testing-library/react'
-import { Layer, Schema } from 'effect'
+import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
 import { useRuntime, useModule } from '../../src/Hooks.js'
@@ -20,8 +20,8 @@ describe('Root.resolve (React integration)', () => {
     const otherTree = Logix.Runtime.make(CounterImpl)
 
     try {
-      const rootSingleton = rootRuntime.runSync(Counter.tag as any) as Logix.ModuleRuntime<any, any>
-      const otherSingleton = otherTree.runSync(Counter.tag as any) as Logix.ModuleRuntime<any, any>
+      const rootSingleton = rootRuntime.runSync(Effect.service(Counter.tag).pipe(Effect.orDie)) as Logix.ModuleRuntime<any, any>
+      const otherSingleton = otherTree.runSync(Effect.service(Counter.tag).pipe(Effect.orDie)) as Logix.ModuleRuntime<any, any>
 
       const overrideLayer = Layer.succeed(Counter.tag as any, otherSingleton as any)
 

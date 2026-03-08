@@ -23,7 +23,7 @@ describe('Runtime (048): explicit core kernel layer', () => {
     })
 
     const readEvidence = Effect.gen(function* () {
-      const moduleRuntime = yield* Root.tag
+      const moduleRuntime = yield* Effect.service(Root.tag).pipe(Effect.orDie)
       return {
         kernel: Logix.Kernel.getKernelImplementationRef(moduleRuntime),
         evidence: Logix.Kernel.getRuntimeServicesEvidence(moduleRuntime),

@@ -4,7 +4,7 @@ import * as Logix from '../../src/index.js'
 import * as Debug from '../../src/Debug.js'
 
 describe('Debug semantics: diagnostics=off should not change runtime behavior (US1)', () => {
-  it.scoped('off vs full: final state identical; off does not export debug:event evidence', () =>
+  it.effect('off vs full: final state identical; off does not export debug:event evidence', () =>
     Effect.gen(function* () {
       const State = Schema.Struct({ value: Schema.Number })
       const Actions = { inc: Schema.Void }
@@ -38,7 +38,7 @@ describe('Debug semantics: diagnostics=off should not change runtime behavior (U
           const state = yield* Effect.promise(() =>
             runtime.runPromise(
               Effect.gen(function* () {
-                const rt = yield* M.tag
+                const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
                 yield* rt.dispatch({ _tag: 'inc', payload: undefined })
                 return yield* rt.getState
               }),

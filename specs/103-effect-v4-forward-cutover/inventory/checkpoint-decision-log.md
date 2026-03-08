@@ -521,3 +521,132 @@
 - checkpointCommit: `8d4f36b1`
 - lastPassCheckpointCommit: `8d4f36b1`
 - timestamp: `2026-03-04T12:13:34+0800`
+
+### CP-3（更新22）
+
+- checkpoint: `CP-3`
+- checkpointResult: `NOT_PASS`
+- relatedGates: `["GP-1", "G1"]`
+- evidenceRefs:
+  - `specs/103-effect-v4-forward-cutover/inventory/gate-g1.md`
+  - `specs/103-effect-v4-forward-cutover/inventory/perf-prerequisite.md`
+  - `docs/perf/06-current-head-triage.md`
+  - `docs/perf/07-optimization-backlog-and-routing.md`
+  - `docs/perf/2026-03-06-s10-txn-lanes-native-anchor.md`
+  - `docs/perf/2026-03-06-s11-post-s10-blocker-probe.md`
+  - `docs/perf/2026-03-06-s14-watchers-native-anchor-pre-handler-split.md`
+  - `scripts/checks/schema-v4-legacy.ts`
+  - `packages/logix-query/src/Query.ts`
+  - `packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts`
+  - `packages/logix-core/test/internal/Bound/Bound.test.ts`
+  - `packages/logix-core/src/Runtime.ts`
+  - `packages/logix-core/test/Runtime/Runtime.SchedulingPolicySurfaceMapping.test.ts`
+  - `packages/logix-core/test/StateTrait/StateTrait.ConvergeAuto.ModuleOverride.test.ts`
+  - `packages/logix-core/test/StateTrait/StateTrait.ConvergeBudgetConfig.test.ts`
+- nextAction: 旧 perf blocker 已由 current-head 证据解除，不再继续以性能问题阻塞 Stage 2 实施；立即回到剩余迁移项（优先 `T020-T027`、`T031`），formal `G1` 放行待 `GP-1` 满足且 strict gate 记录在可比口径下重算后再刷新；当前已先完成 `T022` 第一刀（公开热切换 API effect 化）与 `T024` 风险写法清零。
+- checkpointCommit: `0ca18a73`
+- lastPassCheckpointCommit: `8d4f36b1`
+- timestamp: `2026-03-07T01:15:00+0800`
+
+### CP-3（更新23）
+
+- checkpoint: `CP-3`
+- checkpointResult: `NOT_PASS`
+- relatedGates: `["GP-1", "G1"]`
+- evidenceRefs:
+  - `specs/103-effect-v4-forward-cutover/inventory/gate-g1.md`
+  - `packages/logix-query/src/Query.ts`
+  - `scripts/checks/schema-v4-legacy.ts`
+  - `packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts`
+  - `packages/logix-core/test/internal/Bound/Bound.test.ts`
+  - `packages/logix-core/src/Runtime.ts`
+  - `packages/logix-core/src/ExternalStore.ts`
+  - `packages/logix-core/src/internal/state-trait/exec-vm-mode.ts`
+  - `packages/logix-core/src/internal/runtime/core/EffectOpCore.ts`
+  - `packages/logix-core/test/internal/Runtime/Runtime.ExecVmModeReference.test.ts`
+  - `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.txnQueue.LinkIdFallback.test.ts`
+  - `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.txnQueue.DiagnosticsScopePropagation.test.ts`
+- nextAction: 继续推进 Stage 2 剩余迁移项；当前优先级从 perf 转回 runtime/core 主线，优先消化 `T020/T021/T022` 余量与 `T031` 诊断对照，不再把性能问题当作默认阻塞项。
+- checkpointCommit: `0ca18a73`
+- lastPassCheckpointCommit: `8d4f36b1`
+- timestamp: `2026-03-07T10:50:00+0800`
+
+### CP-3（更新24）
+
+- checkpoint: `CP-3`
+- checkpointResult: `NOT_PASS`
+- relatedGates: `["GP-1", "G1"]`
+- evidenceRefs:
+  - `specs/103-effect-v4-forward-cutover/diagnostics/s0.snapshot.md`
+  - `specs/103-effect-v4-forward-cutover/diagnostics/s2.stage0-comparison.md`
+  - `packages/logix-core/test/Debug/Debug.RuntimeDebugEventRef.Serialization.test.ts`
+  - `packages/logix-core/test/Debug/Debug.DiagnosticsLevels.test.ts`
+  - `packages/logix-core/test/internal/Runtime/Lifecycle/Lifecycle.DiagnosticsSerialization.test.ts`
+  - `packages/logix-core/test/internal/observability/Observability.RuntimeEvidencePackage.test.ts`
+  - `packages/logix-core/test/internal/observability/TxnLaneEvidence.Schema.test.ts`
+- nextAction: `T031` 已完成，当前 Stage 2 不再被性能或诊断解释链阻塞；继续优先消化 `T020/T021/T022/T023/T025/T026/T027` 的 runtime/core 迁移余量。
+- checkpointCommit: `0ca18a73`
+- lastPassCheckpointCommit: `8d4f36b1`
+- timestamp: `2026-03-07T11:05:00+0800`
+
+### CP-3（更新25）
+
+- checkpoint: `CP-3`
+- checkpointResult: `NOT_PASS`
+- relatedGates: `["GP-1", "G1"]`
+- evidenceRefs:
+  - `packages/logix-core/src/internal/serviceId.ts`
+  - `packages/logix-core/src/internal/runtime/core/WorkflowRuntime.ts`
+  - `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`
+  - `packages/logix-core/test/internal/ServiceId.TagRegistry.test.ts`
+  - `packages/logix-core/test/Process/Process.Trigger.ModuleStateChange.MissingStreams.test.ts`
+  - `packages/logix-core/test/Process/Process.Trigger.ModuleAction.MissingStreams.test.ts`
+- nextAction: `T020` 已完成第一刀，当前 Stage 2 继续优先消化 `T021/T022/T023/T025/T026/T027` 余量；formal gate 仍维持 `NOT_PASS`，但不再阻塞实现推进。
+- checkpointCommit: `0ca18a73`
+- lastPassCheckpointCommit: `8d4f36b1`
+- timestamp: `2026-03-07T11:20:00+0800`
+
+## 2026-03-07 主线定位校正
+
+### CP-0（master-track rebind）
+
+- checkpoint: `CP-0`
+- checkpointResult: `PASS`
+- relatedGates: `[]`
+- evidenceRefs:
+  - `specs/103-effect-v4-forward-cutover/spec.md`
+  - `specs/103-effect-v4-forward-cutover/plan.md`
+  - `specs/103-effect-v4-forward-cutover/tasks.md`
+  - `specs/103-effect-v4-forward-cutover/checklists/requirements.md`
+  - `specs/103-effect-v4-forward-cutover/inventory/perf-prerequisite.md`
+  - `specs/103-effect-v4-forward-cutover/inventory/gate-g5.md`
+- nextAction: 继续以 `103` 作为全仓迁移主线推进；当前 runtime-core slice 已完成，但剩余阶段仍待落地。
+- checkpointCommit: `0ca18a73`
+- lastPassCheckpointCommit: `8d4f36b1`
+- timestamp: `2026-03-07T12:10:00+0800`
+
+### CP-1（refreshed）
+
+- checkpoint: `CP-1`
+- checkpointResult: `NOT_PASS`
+- relatedGates: `["GP-1"]`
+- evidenceRefs:
+  - `specs/103-effect-v4-forward-cutover/inventory/perf-prerequisite.md`
+- nextAction: 等 `feat/perf-dynamic-capacity-maxlevel` 真正进入 `origin/main` 后，再在 `103` 主线里重新宣称 `G1/G2/G5` 性能 gate 资格。
+- checkpointCommit: `0ca18a73`
+- lastPassCheckpointCommit: `8d4f36b1`
+- timestamp: `2026-03-07T12:10:00+0800`
+
+### CP-5（historical release evidence only）
+
+- checkpoint: `CP-5`
+- checkpointResult: `NOT_PASS`
+- relatedGates: `["G5"]`
+- evidenceRefs:
+  - `specs/103-effect-v4-forward-cutover/inventory/gate-g5.md`
+  - `specs/103-effect-v4-forward-cutover/perf/s6.gh.soak.strict.summary.md`
+  - `docs/effect-v4/09-release-notes-v1.0.zh-CN.md`
+- nextAction: 当前 `G5` 仅保留为历史 artifact 索引；任何新的 release 判定都必须基于当前 `HEAD` 的新证据，而不是旧 snapshot。
+- checkpointCommit: `0ca18a73`
+- lastPassCheckpointCommit: `8d4f36b1`
+- timestamp: `2026-03-07T12:10:00+0800`

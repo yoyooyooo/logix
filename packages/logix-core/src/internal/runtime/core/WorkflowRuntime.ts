@@ -1,4 +1,4 @@
-import { Cause, Context, Deferred, Effect, Exit, Fiber, FiberRef, Option, Stream } from 'effect'
+import { Cause, Deferred, Effect, Exit, Fiber, Option, Semaphore, ServiceMap, Stream } from 'effect'
 import * as EffectOpCore from './EffectOpCore.js'
 import * as Debug from './DebugSink.js'
 import * as LogicUnitMeta from './LogicUnitMeta.js'
@@ -15,8 +15,9 @@ import { makeWorkflowError } from '../../workflow/errors.js'
 import { compileWorkflowRuntimeStepsV1, type CompiledWorkflowStep } from '../../workflow/compiler.js'
 import { evalInputExpr, type CompiledInputExpr } from '../../workflow/inputExpr.js'
 import type { WorkflowDefV1, WorkflowTriggerV1 } from '../../workflow/model.js'
+import { tagFromServiceId } from '../../serviceId.js'
 
-type ModuleTag = Context.Tag<unknown, PublicModuleRuntime<unknown, unknown>>
+type ModuleTag = ServiceMap.Key<unknown, PublicModuleRuntime<unknown, unknown>>
 
 export type WorkflowLike = {
   readonly _tag?: 'Workflow'
@@ -55,7 +56,7 @@ type CompiledProgram = {
 }
 
 type ProgramState =
-  | { readonly mode: 'latest'; runSeq: number; current?: Fiber.RuntimeFiber<void, never>; currentRunId?: string }
+  | { readonly mode: 'latest'; runSeq: number; current?: Fiber.Fiber<void, never>; currentRunId?: string }
   | { readonly mode: 'exhaust'; runSeq: number; busy: boolean }
   | { readonly mode: 'parallel'; runSeq: number }
 
@@ -71,7 +72,7 @@ type WorkflowRegistryV1 = {
   watcherStartCount: number
   portsResolving: boolean
   portsReady: Deferred.Deferred<void, unknown>
-  parallelLimiter: Effect.Semaphore | null | undefined
+  parallelLimiter: Semaphore.Semaphore | null | undefined
 }
 
 const WORKFLOW_REGISTRY = Symbol.for('@logixjs/core/workflowRegistry')
@@ -100,19 +101,10 @@ const asNonEmptyString = (value: unknown): string | undefined =>
 
 const KERNEL_PORT_SOURCE_REFRESH = 'logix/kernel/sourceRefresh'
 
-const serviceTagCache = new Map<string, Context.Tag<unknown, unknown>>()
-
-const resolveServiceTag = (serviceId: string): Context.Tag<unknown, unknown> => {
-  const cached = serviceTagCache.get(serviceId)
-  if (cached) return cached
-  const created = Context.Tag(serviceId)() as Context.Tag<unknown, unknown>
-  serviceTagCache.set(serviceId, created)
-  return created
-}
 
 const resolveServicePort = (
   runtime: PublicModuleRuntime<unknown, unknown>,
-  env: Context.Context<unknown>,
+  env: ServiceMap.ServiceMap<unknown>,
   serviceId: string,
   programId: string,
   stepKey: string,
@@ -141,9 +133,9 @@ const resolveServicePort = (
 
         const force = isRecord(input) && input.force === true
         const runHandler = (state: unknown) =>
-          force ? Effect.locally(TaskRunner.forceSourceRefresh, true)(handler(state)) : handler(state)
+          force ? Effect.provideService(handler(state), TaskRunner.forceSourceRefresh, true) : handler(state)
 
-        const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
+        const inTxn = yield* Effect.service(TaskRunner.inSyncTransactionFiber).pipe(Effect.orDie)
         if (inTxn) {
           const state = yield* runtime.getState
           yield* runHandler(state)
@@ -164,8 +156,8 @@ const resolveServicePort = (
       })
   }
 
-  const tag = resolveServiceTag(serviceId)
-  const opt = Context.getOption(env, tag)
+  const tag = tagFromServiceId(serviceId)
+  const opt = ServiceMap.getOption(env, tag)
   if (Option.isNone(opt)) {
     throw makeWorkflowError({
       code: 'WORKFLOW_MISSING_SERVICE',
@@ -309,32 +301,32 @@ const makeTimer = (args: {
     readonly scheduleTimeout: (ms: number, cb: () => void) => () => void
   }
   readonly ms: number
-  readonly onCancel: Effect.Effect<void, never, unknown>
-}): Effect.Effect<void, never, unknown> =>
-  Effect.async<void, never, unknown>((resume) => {
-    let fired = false
-    // For ms=0, prefer host macrotask scheduling to avoid setTimeout(0) clamping
-    // (workflow.delay.timer perf boundary is sensitive to this).
-    const cancel =
-      args.ms <= 0
-        ? args.host.scheduleMacrotask(() => {
-            fired = true
-            // Route resumption through a microtask boundary:
-            // - Improves determinism in tests (deterministic HostScheduler).
-            // - Avoids deep JS-microtask chains that are invisible to HostScheduler flushing.
-            args.host.scheduleMicrotask(() => resume(Effect.void))
-          })
-        : args.host.scheduleTimeout(args.ms, () => {
-          fired = true
-          // Route resumption through a microtask boundary:
-          // - Improves determinism in tests (deterministic HostScheduler).
-          // - Avoids deep JS-microtask chains that are invisible to HostScheduler flushing.
-          args.host.scheduleMicrotask(() => resume(Effect.void))
-        })
-    return Effect.sync(() => {
-      cancel()
-    }).pipe(Effect.zipRight(fired ? Effect.void : args.onCancel))
-  })
+  readonly onCancel: Effect.Effect<void, never, never>
+}): Effect.Effect<void, never, never> =>
+  Effect.promise<void>((signal) =>
+    new Promise<void>((resolve) => {
+      let fired = false
+      const cancel =
+        args.ms <= 0
+          ? args.host.scheduleMacrotask(() => {
+              fired = true
+              args.host.scheduleMicrotask(resolve)
+            })
+          : args.host.scheduleTimeout(args.ms, () => {
+              fired = true
+              args.host.scheduleMicrotask(resolve)
+            })
+
+      const onAbort = () => {
+        cancel()
+        if (!fired) {
+          void Effect.runPromise(args.onCancel)
+        }
+      }
+
+      signal.addEventListener('abort', onAbort, { once: true })
+    }),
+  )
 
 const ensureLimiterReady = (registry: WorkflowRegistryV1, runtime: PublicModuleRuntime<unknown, unknown>) =>
   Effect.gen(function* () {
@@ -349,7 +341,7 @@ const ensureLimiterReady = (registry: WorkflowRegistryV1, runtime: PublicModuleR
     }
 
     const n = typeof limit === 'number' && Number.isFinite(limit) && limit >= 1 ? Math.floor(limit) : 16
-    registry.parallelLimiter = yield* Effect.makeSemaphore(n)
+    registry.parallelLimiter = yield* Semaphore.make(n)
   })
 
 const withRootEnvIfAvailable = <A, E, R>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
@@ -361,9 +353,9 @@ const withRootEnvIfAvailable = <A, E, R>(eff: Effect.Effect<A, E, R>): Effect.Ef
     const root: RootContext = rootOpt.value
     const rootEnv = root.context ?? (yield* Deferred.await(root.ready))
 
-    const currentEnv = yield* Effect.context<unknown>()
-    const mergedEnv = Context.merge(rootEnv as unknown as Context.Context<unknown>, currentEnv)
-    return yield* (Effect.provide(eff as unknown as Effect.Effect<A, E, unknown>, mergedEnv) as unknown as Effect.Effect<A, E, R>)
+    const currentEnv = yield* Effect.services<unknown>()
+    const mergedEnv = ServiceMap.merge(rootEnv as unknown as ServiceMap.ServiceMap<unknown>, currentEnv)
+    return yield* (Effect.provideServices(eff as unknown as Effect.Effect<A, E, unknown>, mergedEnv) as unknown as Effect.Effect<A, E, R>)
   }) as unknown as Effect.Effect<A, E, R>
 
 const ensurePortsResolved = (
@@ -383,7 +375,7 @@ const ensurePortsResolved = (
     }
 
     registry.portsResolving = true
-    const env = yield* Effect.context<unknown>()
+    const env = yield* Effect.services<unknown>()
 
     yield* Effect.sync(() => {
       const portCache = new Map<string, ServicePort>()
@@ -403,7 +395,7 @@ const ensurePortsResolved = (
       }
     }).pipe(
       Effect.tap(() => Deferred.succeed(registry.portsReady, undefined)),
-      Effect.catchAllCause((cause) => Deferred.failCause(registry.portsReady, cause).pipe(Effect.zipRight(Effect.failCause(cause)))),
+      Effect.catchCause((cause) => Deferred.failCause(registry.portsReady, cause).pipe(Effect.flatMap(() => Effect.failCause(cause)))),
       Effect.ensuring(
         Effect.sync(() => {
           registry.portsResolving = false
@@ -438,7 +430,7 @@ const startProgramRun = (args: {
       middleware: args.middleware,
     })
 
-    const diagnostics = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
+    const diagnostics = yield* Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie)
 
     const beginRun = (): { readonly runSeq: number; readonly runId: string; readonly canWriteBack: () => boolean } => {
       if (state.mode === 'latest') {
@@ -466,7 +458,8 @@ const startProgramRun = (args: {
       if (state.busy) {
         if (diagnostics !== 'off') {
           const observe = shouldObserveForRun(diagnostics, state.runSeq)
-          const tickSeq = observe ? (yield* TickSchedulerTag).getTickSeq() : undefined
+          const tickScheduler = yield* Effect.service(TickSchedulerTag).pipe(Effect.orDie)
+          const tickSeq = observe ? tickScheduler.getTickSeq() : undefined
           yield* runWorkflowBoundary({
             kind: 'flow',
             name: 'workflow.drop',
@@ -490,10 +483,11 @@ const startProgramRun = (args: {
       const prev = state.current
       const prevRunId = state.currentRunId
       if (prev) {
-        yield* Fiber.interruptFork(prev)
+        yield* Fiber.interrupt(prev)
         if (diagnostics !== 'off') {
           const observe = shouldObserveForRun(diagnostics, runSeq)
-          const tickSeq = observe ? (yield* TickSchedulerTag).getTickSeq() : undefined
+          const tickScheduler = yield* Effect.service(TickSchedulerTag).pipe(Effect.orDie)
+          const tickSeq = observe ? tickScheduler.getTickSeq() : undefined
           yield* runWorkflowBoundary({
             kind: 'flow',
             name: 'workflow.cancel',
@@ -526,8 +520,8 @@ const startProgramRun = (args: {
     })
 
     const programEffect = Effect.gen(function* () {
-      const host = yield* HostSchedulerTag
-      const tick = yield* TickSchedulerTag
+      const host = yield* Effect.service(HostSchedulerTag).pipe(Effect.orDie)
+      const tick = yield* Effect.service(TickSchedulerTag).pipe(Effect.orDie)
 
       if (!program.steps) {
         throw makeWorkflowError({
@@ -562,13 +556,10 @@ const startProgramRun = (args: {
                 program.priority === 'nonUrgent' ? runtime.dispatchLowPriority(action) : runtime.dispatch(action)
 
               const dispatchEffect = timerTriggered
-                ? Effect.locally(
-                    currentTxnOriginOverride,
-                    {
-                      kind: 'workflow.timer',
-                      name: `timer:${program.programId}:${step.key}`,
-                    },
-                  )(dispatchEffectBase)
+                ? Effect.provideService(dispatchEffectBase, currentTxnOriginOverride, {
+                  kind: 'workflow.timer',
+                  name: `timer:${program.programId}:${step.key}`,
+                })
                 : dispatchEffectBase
 
               yield* runWorkflowBoundary({
@@ -615,8 +606,8 @@ const startProgramRun = (args: {
               const fired = emitTimerEvents ? recordTimerEvent('workflow.timer.fired') : Effect.void
 
               const delayEffect = schedule.pipe(
-                Effect.zipRight(makeTimer({ host, ms: step.ms, onCancel })),
-                Effect.zipRight(fired),
+                Effect.flatMap(() => makeTimer({ host, ms: step.ms, onCancel })),
+                Effect.flatMap(() => fired),
               )
 
               const tickSeq = getTickSeq()
@@ -713,9 +704,9 @@ const startProgramRun = (args: {
                       })
 
                       const timeoutFail = schedule.pipe(
-                        Effect.zipRight(makeTimer({ host, ms: timeoutMs, onCancel })),
-                        Effect.zipRight(fired),
-                        Effect.zipRight(Effect.fail(timeoutError)),
+                        Effect.flatMap(() => makeTimer({ host, ms: timeoutMs, onCancel })),
+                        Effect.flatMap(() => fired),
+                        Effect.flatMap(() => Effect.fail(timeoutError)),
                       )
 
                       return yield* Effect.raceFirst(base, timeoutFail)
@@ -729,7 +720,7 @@ const startProgramRun = (args: {
               }
 
               // Do not retry defects/interrupts; only retry failure-channel errors.
-              if (Cause.isInterrupted(attemptExit.cause) || Option.isNone(Cause.failureOption(attemptExit.cause))) {
+              if (Cause.hasInterruptsOnly(attemptExit.cause) || Option.isNone(Cause.findErrorOption(attemptExit.cause))) {
                 break
               }
 
@@ -752,7 +743,7 @@ const startProgramRun = (args: {
               yield* runSteps(step.onSuccess)
             } else {
               // Timeout uses a timer; mark the continuation as timer-triggered (for trace:tick.triggerSummary).
-              const failure = Option.getOrUndefined(Cause.failureOption(exit.cause))
+              const failure = Option.getOrUndefined(Cause.findErrorOption(exit.cause))
               const isTimeout =
                 isObjectLike(failure) &&
                 (failure as Record<string, unknown>)._tag === 'WorkflowError' &&
@@ -780,46 +771,44 @@ const startProgramRun = (args: {
 
     const limited = registry.parallelLimiter ? registry.parallelLimiter.withPermits(1)(programEffect) : programEffect
 
-    const runOutsideTransaction = Effect.locally(TaskRunner.inSyncTransactionFiber, false)(
-      limited.pipe(
-        Effect.catchAllCause((cause) => {
-          const { errorSummary, downgrade } = toSerializableErrorSummary(cause)
-          const downgradeHint = downgrade ? ` (downgrade=${downgrade})` : ''
-          return Debug.record({
-            type: 'diagnostic',
-            moduleId: runtime.moduleId,
-            instanceId: runtime.instanceId,
-            code: 'workflow::run_crashed',
-            severity: 'error',
-            message: `Workflow run crashed for programId="${program.programId}" runId="${runId}".${downgradeHint}`,
-            hint: `${errorSummary.name ? `${errorSummary.name}: ` : ''}${errorSummary.message}`,
-            actionTag: args.trigger.kind === 'action' ? args.trigger.actionTag : undefined,
-            kind: 'workflow_run_crashed',
-            trigger: {
-              kind: 'workflow',
-              name: 'run',
-              details: {
-                programId: program.programId,
-                runId,
-                trigger: args.trigger,
-              },
+    const runOutsideTransaction = Effect.provideService(limited.pipe(
+      Effect.catchCause((cause) => {
+        const { errorSummary, downgrade } = toSerializableErrorSummary(cause)
+        const downgradeHint = downgrade ? ` (downgrade=${downgrade})` : ''
+        return Debug.record({
+          type: 'diagnostic',
+          moduleId: runtime.moduleId,
+          instanceId: runtime.instanceId,
+          code: 'workflow::run_crashed',
+          severity: 'error',
+          message: `Workflow run crashed for programId="${program.programId}" runId="${runId}".${downgradeHint}`,
+          hint: `${errorSummary.name ? `${errorSummary.name}: ` : ''}${errorSummary.message}`,
+          actionTag: args.trigger.kind === 'action' ? args.trigger.actionTag : undefined,
+          kind: 'workflow_run_crashed',
+          trigger: {
+            kind: 'workflow',
+            name: 'run',
+            details: {
+              programId: program.programId,
+              runId,
+              trigger: args.trigger,
             },
-          }).pipe(Effect.catchAllCause(() => Effect.void))
+          },
+        }).pipe(Effect.catchCause(() => Effect.void))
+      }),
+      Effect.ensuring(
+        Effect.sync(() => {
+          if (state.mode === 'exhaust') {
+            state.busy = false
+          }
         }),
-        Effect.ensuring(
-          Effect.sync(() => {
-            if (state.mode === 'exhaust') {
-              state.busy = false
-            }
-          }),
-        ),
       ),
-    )
+    ), TaskRunner.inSyncTransactionFiber, false)
 
-    const fiber = yield* Effect.forkScoped(runOutsideTransaction)
+    const fiber = yield* runOutsideTransaction.pipe(Effect.forkScoped({ startImmediately: true }))
 
     if (state.mode === 'latest') {
-      state.current = fiber as Fiber.RuntimeFiber<void, never>
+      state.current = fiber as Fiber.Fiber<void, never>
     }
   })
 
@@ -868,7 +857,7 @@ const registerPrograms = (args: {
   readonly entryLabel: string
 }): Effect.Effect<void, never, unknown> =>
   Effect.gen(function* () {
-    const runtime = yield* args.moduleTag
+    const runtime = yield* Effect.service(args.moduleTag).pipe(Effect.orDie)
     const { moduleId, instanceId, registry } = yield* ensureRegistry(runtime)
 
     // Lazily resolve the global parallel limiter once.
@@ -999,7 +988,7 @@ const startWatcherIfNeeded = (args: {
   readonly entryLabel: string
 }): Effect.Effect<void, never, unknown> =>
   Effect.gen(function* () {
-    const runtime = yield* args.moduleTag
+    const runtime = yield* Effect.service(args.moduleTag).pipe(Effect.orDie)
     const init = yield* ensureRegistry(runtime)
     const registry = init.registry
 
@@ -1064,8 +1053,8 @@ const startWatcherIfNeeded = (args: {
         )
       }),
     ).pipe(
-      Effect.locally(TaskRunner.inSyncTransactionFiber, false),
-      Effect.catchAllCause((cause) => {
+      (effect) => Effect.provideService(effect, TaskRunner.inSyncTransactionFiber, false),
+      Effect.catchCause((cause) => {
         const { errorSummary, downgrade } = toSerializableErrorSummary(cause)
         const downgradeHint = downgrade ? ` (downgrade=${downgrade})` : ''
         return Debug.record({

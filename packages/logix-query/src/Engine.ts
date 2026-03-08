@@ -1,6 +1,6 @@
 import type * as EffectOp from '@logixjs/core/EffectOp'
 import type { JsonValue } from '@logixjs/core/Observability'
-import { Context, Effect, Layer, Option } from 'effect'
+import { Effect, Layer, Option, ServiceMap } from 'effect'
 import { middleware as middlewareImpl, type MiddlewareConfig } from './internal/middleware/middleware.js'
 
 export type InvalidateRequest =
@@ -43,7 +43,7 @@ export interface Engine {
   }) => Effect.Effect<Option.Option<A>, never, any>
 }
 
-class EngineTagImpl extends Context.Tag('@logixjs/query/Engine')<EngineTagImpl, Engine>() {}
+class EngineTagImpl extends ServiceMap.Service<EngineTagImpl, Engine>()('@logixjs/query/Engine') {}
 
 export const Engine = Object.assign(EngineTagImpl, {
   layer: (engine: Engine): Layer.Layer<EngineTagImpl, never, never> => Layer.succeed(EngineTagImpl, engine),

@@ -8,7 +8,7 @@ import type { FormCaseLink } from './types'
 import { JsonCard, SectionTitle, TextField, PrimaryButton, GhostButton } from './shared'
 
 const WizardValues = Schema.Struct({
-  step: Schema.Literal(1, 2, 3),
+  step: Schema.Literals([1, 2, 3]),
   companyName: Schema.String,
   taxId: Schema.String,
   bankAccount: Schema.String,

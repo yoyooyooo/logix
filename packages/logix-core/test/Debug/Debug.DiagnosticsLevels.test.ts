@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
 import * as Logix from '../../src/index.js'
@@ -146,7 +146,7 @@ describe('Debug diagnosticsLevel (off|light|full)', () => {
       } satisfies Logix.Debug.Event
 
       yield* Logix.Debug.record(event).pipe(
-        Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel, 'off'),
+        (effect) => Effect.provideService(effect, Logix.Debug.internal.currentDiagnosticsLevel, 'off'),
         Effect.provide(Logix.Debug.devtoolsHubLayer({ bufferSize: 10 })),
       )
 

@@ -5,7 +5,7 @@ import * as Logix from '../../src/index.js'
 import * as StateTraitConverge from '../../src/internal/state-trait/converge.js'
 
 describe('StateTrait converge diagnostics=off', () => {
-  it.scoped('does not build decision payload when diagnostics=off (prod/errorOnly default)', () =>
+  it.effect('does not build decision payload when diagnostics=off (prod/errorOnly default)', () =>
     Effect.gen(function* () {
       const State = Schema.Struct({
         a: Schema.Number,

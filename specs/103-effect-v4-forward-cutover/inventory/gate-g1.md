@@ -3,7 +3,7 @@
 - gate: `G1`
 - result: `NOT_PASS`
 - mode: `strict_gate`
-- timestamp: `2026-03-03T19:45:11+0800`
+- timestamp: `2026-03-07T01:15:00+0800`
 
 ## criteria
 
@@ -16,12 +16,16 @@
 - `perf_abs_gate_passed`: `NOT_PASS`
 - `perf_rel_gate_passed`: `NOT_PASS`
 - `baseline_debt_declared`: `PASS`
+- `current_head_perf_blockers_cleared_for_implementation`: `PASS`
 
 ## commands
 
 ```bash
 pnpm -C packages/logix-core typecheck
 pnpm -C packages/logix-core typecheck:test
+pnpm check:schema-v4-legacy
+pnpm -C packages/logix-query typecheck:test
+pnpm -C packages/logix-core exec vitest run test/internal/Bound/Bound.test.ts -t "ignore invalid actions"
 pnpm check:forbidden-patterns -- --base HEAD
 pnpm -C packages/logix-core test
 pnpm -C packages/logix-core exec vitest run test/internal/Runtime/WorkflowRuntime.075.test.ts test/internal/Runtime/Process/TriggerStreams.RuntimeSchemaCache.test.ts
@@ -113,6 +117,14 @@ pnpm -C .codex/skills/logix-perf-evidence diff -- --before specs/103-effect-v4-f
 - `packages/logix-react/test/browser/perf-boundaries/form-list-scope-check.test.tsx`
 - `packages/logix-react/test/browser/watcher-browser-perf.test.tsx`
 - `scripts/checks/forbidden-patterns.ts`
+- `scripts/checks/schema-v4-legacy.ts`
+- `scripts/checks/schema-v4-legacy.test.ts`
+- `packages/logix-query/src/Query.ts`
+- `packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts`
+- `packages/logix-core/test/internal/Bound/Bound.test.ts`
+- `docs/perf/2026-03-06-s10-txn-lanes-native-anchor.md`
+- `docs/perf/2026-03-06-s11-post-s10-blocker-probe.md`
+- `docs/perf/2026-03-06-s14-watchers-native-anchor-pre-handler-split.md`
 - `.github/workflows/ci.yml`
 - `specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json`
 - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.json`
@@ -199,3 +211,13 @@ pnpm -C .codex/skills/logix-perf-evidence diff -- --before specs/103-effect-v4-f
 - 进展：ULW6 三轮 quick broad（`15/4`、`17/5`、`15/8`）中位为 `15/5`；`runtimeStore/externalStore` 整体维持回收，但 `form.listScopeCheck` 在 `light/off` 仍跨轮出现 `after:budgetExceeded`，G1 继续阻塞。
 - 进展：新增 tiny-graph `auto->full` 提前切换（`scopeStepCount<=2`）与 form 基准观测对齐（full/auto 同 capture sink）；ULW8 三轮 quick broad 为 `17/5`,`16/5`,`16/5`（中位 `16/5`）。
 - 判读：`externalStore.ingest.tickNotify` 在 ULW8 triplet 未复现回归，`runtimeStore.noTearing.tickNotify` 仍稳定 `before=512 -> after=128`，`form.listScopeCheck` 仍在 `off/light/full` 少量切片抖动，G1 继续阻塞。
+- 更新（2026-03-07）：`docs/perf` 的 current-head 结论已明确 `S-10/S-11/S-14` 后不存在默认 runtime/benchmark blocker；旧 perf 阻塞不再阻止继续实施 Stage 2 剩余迁移项。
+- 更新（2026-03-07）：本记录仍保持 `result=NOT_PASS`，因为它绑定的 strict broad gate 快照与 `GP-1` 前置条件尚未被正式重算/放行；依据 `FR-015`，这只限制宣称 `G1/G2/G5` 性能 gate 通过，不限制继续实现任务。
+- 更新（2026-03-07）：已完成 `T033/T036` 的 Schema 子轨第一刀：`logix-query` 移除旧的动态 union helper，并新增 `pnpm check:schema-v4-legacy` 作为 Stage 2 验收门。
+- 更新（2026-03-07）：已完成 `T022` 的第一刀：`Runtime.setTraitConvergeOverride/setSchedulingPolicyOverride/setConcurrencyPolicyOverride` 已改成 effectful API，不再在公开边界直接 `runtime.runSync(...)`。
+- 更新（2026-03-07）：已完成 `T022` 的第二刀：`ExternalStore.fromSubscriptionRef/fromStream` 已去除 public sugar 层的原始 `Effect.runSync/runFork` 直连，收敛到 managed runtime 生命周期控制。
+- 更新（2026-03-07）：`T021` 已完成两个局部 reference 子点：`execVmMode` 与 `currentLinkId` 改为 `Context.Reference + Effect.provideService`，相关核心回归通过。
+- 更新（2026-03-07）：`T020` 已完成第一刀：新增 `serviceId -> Context.Tag` / `moduleId -> runtime tag` 的单点 helper，并替换 `WorkflowRuntime` / `ProcessRuntime` 与相关 missing-streams 测试中的动态 tag 构造。
+- 更新（2026-03-07）：已完成 `T031`：对照 `diagnostics/s0.snapshot.md` 的 Stage 0 基线后，事务/lifecycle/debug serialization 与 diagnostics levels 的关键回归全绿，当前无“可解释性下降”证据。
+- 更新（2026-03-07）：`T024` 生产路径扫描通过，core src 不再存在直接 `yield* fiber` 风险写法。
+- 更新（2026-03-07）：已完成 `T035`：`$.onAction(schema)` 现在先识别 schema，再用 `decodeUnknownEither` 做安全过滤；非法输入只会被丢弃，不会终止后续合法 action 流。

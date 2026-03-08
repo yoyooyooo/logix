@@ -16,7 +16,7 @@
  * @architecture_pattern Decoupled Stores with Coordinator Logic
  */
 
-import { Effect, Schema, Context, Stream } from 'effect'
+import { Effect, Schema, ServiceMap, Stream } from 'effect'
 import * as Logix from '@logixjs/core'
 
 // ---------------------------------------------------------------------------
@@ -28,12 +28,9 @@ interface SearchResult {
   id: string
   name: string
 }
-class SearchApi extends Context.Tag('SearchApi')<
-  SearchApi,
-  {
-    readonly search: (keyword: string) => Effect.Effect<SearchResult[], Error>
-  }
->() {}
+class SearchApi extends ServiceMap.Service<SearchApi, {
+  readonly search: (keyword: string) => Effect.Effect<SearchResult[], Error>
+}>()('SearchApi') { }
 
 // 1.2. Schema 定义
 const SearchStateSchema = Schema.Struct({
@@ -57,20 +54,20 @@ export const SearchDef = Logix.Module.make('SearchModule', {
 
 const SearchLogic = SearchDef.logic<SearchApi>(($Search) =>
   Effect.gen(function* () {
-    const searchEffect = Effect.gen(function* (_) {
+    const searchEffect = Effect.gen(function* () {
       const api = yield* $Search.use(SearchApi)
       const { keyword } = yield* $Search.state.read
 
       yield* $Search.state.update((prev) => ({ ...prev, isSearching: true }))
-      const result = yield* Effect.either(api.search(keyword))
+      const result = yield* Effect.exit(api.search(keyword))
 
-      if (result._tag === 'Left') {
+      if (result._tag === 'Failure') {
         yield* $Search.state.update((prev) => ({ ...prev, isSearching: false }))
       } else {
         yield* $Search.state.update((prev) => ({
           ...prev,
           isSearching: false,
-          results: result.right,
+          results: result.value,
         }))
       }
     })
@@ -78,7 +75,7 @@ const SearchLogic = SearchDef.logic<SearchApi>(($Search) =>
     yield* $Search.onAction('search/trigger').runExhaust(searchEffect)
   }).pipe(
     // 收敛错误通道，方便作为 ModuleLogic 使用
-    Effect.catchAll(() => Effect.void),
+    Effect.catch(() => Effect.void),
   ),
 )
 

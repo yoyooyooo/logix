@@ -1,11 +1,10 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
 
 describe('Form traits check deps defaults', () => {
-  it.scoped('deps is optional; self validate still runs when deps excludes self', () =>
+  it.effect('deps is optional; self validate still runs when deps excludes self', () =>
     Effect.gen(function* () {
       const ValuesSchema = Schema.Struct({
         a: Schema.String,

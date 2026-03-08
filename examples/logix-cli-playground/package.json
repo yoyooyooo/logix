@@ -30,7 +30,7 @@
   "dependencies": {
     "@logixjs/cli": "workspace:*",
     "@logixjs/core": "workspace:*",
-    "effect": "^3.19.13"
+    "effect": "4.0.0-beta.28"
   },
   "devDependencies": {
     "@types/node": "^22.19.1",

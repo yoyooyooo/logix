@@ -4,7 +4,7 @@ import * as Logix from '../../src/index.js'
 import * as Debug from '../../src/Debug.js'
 
 describe('Runtime batch window semantics', () => {
-  it.scoped('dispatchBatch merges multiple dispatches into a single commit (commitMode=batch)', () =>
+  it.effect('dispatchBatch merges multiple dispatches into a single commit (commitMode=batch)', () =>
     Effect.gen(function* () {
       const State = Schema.Struct({ value: Schema.Number })
       const Actions = { inc: Schema.Void }
@@ -34,7 +34,7 @@ describe('Runtime batch window semantics', () => {
       const runtime = Logix.Runtime.make(impl, { layer })
 
       const program = Effect.gen(function* () {
-        const rt: any = yield* M.tag
+        const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
         yield* rt.dispatchBatch([
           { _tag: 'inc', payload: undefined },

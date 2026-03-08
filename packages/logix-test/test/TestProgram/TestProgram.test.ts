@@ -44,8 +44,8 @@ describe('TestProgram (new model: program module)', () => {
   it('should support forked onAction watchers inside a single Logic', async () => {
     const ForkCounterLogic = Counter.logic(($) =>
       Effect.gen(function* () {
-        yield* Effect.fork($.onAction('increment').run(() => $.state.update((s) => ({ ...s, count: s.count + 1 }))))
-        yield* Effect.fork($.onAction('decrement').run(() => $.state.update((s) => ({ ...s, count: s.count - 1 }))))
+        yield* Effect.forkChild($.onAction('increment').run(() => $.state.update((s) => ({ ...s, count: s.count + 1 }))))
+        yield* Effect.forkChild($.onAction('decrement').run(() => $.state.update((s) => ({ ...s, count: s.count - 1 }))))
       }),
     )
 
@@ -144,36 +144,38 @@ describe('TestProgram (new model: program module)', () => {
           const userHandle = $[User.id]
           const authHandle = $[Auth.id]
 
-          yield* userHandle.actions$.pipe(
-            Stream.runForEach((action) =>
-              Effect.gen(function* () {
-                if (action._tag === 'updateName' && action.payload === 'clear') {
-                  yield* authHandle.dispatch({
-                    _tag: 'login',
-                    payload: undefined,
-                  })
-                  yield* authHandle.dispatch({
-                    _tag: 'logout',
-                    payload: undefined,
-                  })
-                }
-              }),
-            ),
-            Effect.forkScoped,
-          )
-
-          yield* authHandle.actions$.pipe(
-            Stream.runForEach((action) =>
-              Effect.gen(function* () {
-                if (action._tag === 'logout') {
-                  yield* userHandle.dispatch({
-                    _tag: 'updateName',
-                    payload: '',
-                  })
-                }
-              }),
-            ),
-            Effect.forkScoped,
+          yield* Effect.all(
+            [
+              userHandle.actions$.pipe(
+                Stream.runForEach((action) =>
+                  Effect.gen(function* () {
+                    if (action._tag === 'updateName' && action.payload === 'clear') {
+                      yield* authHandle.dispatch({
+                        _tag: 'login',
+                        payload: undefined,
+                      })
+                      yield* authHandle.dispatch({
+                        _tag: 'logout',
+                        payload: undefined,
+                      })
+                    }
+                  }),
+                ),
+              ),
+              authHandle.actions$.pipe(
+                Stream.runForEach((action) =>
+                  Effect.gen(function* () {
+                    if (action._tag === 'logout') {
+                      yield* userHandle.dispatch({
+                        _tag: 'updateName',
+                        payload: '',
+                      })
+                    }
+                  }),
+                ),
+              ),
+            ],
+            { concurrency: 'unbounded' },
           )
         }),
     )
@@ -185,14 +187,15 @@ describe('TestProgram (new model: program module)', () => {
       processes: [LinkProcess],
     })
 
-    const result = await runTest(
-      TestProgram.runProgram(program.impl, (api) =>
-        Effect.gen(function* () {
-          yield* api.dispatch({ _tag: 'updateName', payload: 'clear' })
-          yield* api.assert.state((s) => s.name === '')
-        }),
-      ),
-    )
+      const result = await runTest(
+        TestProgram.runProgram(program.impl, (api) =>
+          Effect.gen(function* () {
+            yield* api.advance('10 millis')
+            yield* api.dispatch({ _tag: 'updateName', payload: 'clear' })
+            yield* api.assert.state((s) => s.name === '')
+          }),
+        ),
+      )
 
     expect(result.state).toEqual({ name: '' })
     Execution.expectActionTag(result, 'updateName')

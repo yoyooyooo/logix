@@ -53,7 +53,7 @@ const initialState: KanbanState = {
 }
 
 export const KanbanAppModule = KanbanAppDef.implement<SpecboardApi>({
-  initial: initialState,
+  initial: initialState as KanbanState,
   logics: [
     KanbanRefreshLogic,
     KanbanFilterLogic,

@@ -39,7 +39,7 @@ describe('StateTrait converge time-slicing (043)', () => {
     logics: [],
   })
 
-  it.scoped('skips deferred converge in the current txn, then flushes later', () =>
+  it.effect('skips deferred converge in the current txn, then flushes later', () =>
     Effect.gen(function* () {
       const runtime = Logix.Runtime.make(impl, {
         stateTransaction: {
@@ -54,7 +54,7 @@ describe('StateTrait converge time-slicing (043)', () => {
       yield* Effect.promise(() =>
         runtime.runPromise(
           Effect.gen(function* () {
-            const rt: any = yield* M.tag
+            const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
             yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 't1' }, () =>
               Effect.gen(function* () {
@@ -77,7 +77,7 @@ describe('StateTrait converge time-slicing (043)', () => {
     }),
   )
 
-  it.scoped('maxLagMs forces a flush even if debounceMs is large', () =>
+  it.effect('maxLagMs forces a flush even if debounceMs is large', () =>
     Effect.gen(function* () {
       const runtime = Logix.Runtime.make(impl, {
         stateTransaction: {
@@ -92,7 +92,7 @@ describe('StateTrait converge time-slicing (043)', () => {
       yield* Effect.promise(() =>
         runtime.runPromise(
           Effect.gen(function* () {
-            const rt: any = yield* M.tag
+            const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
             yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 't1' }, () =>
               Effect.gen(function* () {

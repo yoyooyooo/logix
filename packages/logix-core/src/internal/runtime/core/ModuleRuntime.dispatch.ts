@@ -1,4 +1,4 @@
-import { Effect, FiberRef, PubSub } from 'effect'
+import { Effect, PubSub } from 'effect'
 import type { StateChangeWithMeta, StateCommitMeta, StateCommitMode, StateCommitPriority } from './module.js'
 import * as Debug from './DebugSink.js'
 import type { ConcurrencyDiagnostics } from './ConcurrencyDiagnostics.js'
@@ -664,18 +664,18 @@ export const makeDispatchOps = <S, A>(args: {
     // Note: publish is a lossless/backpressure channel and may wait.
     // Must run outside the transaction window (FR-012) and must not block the txnQueue consumer fiber (avoid deadlock).
     dispatch: (action) =>
-      FiberRef.get(currentTxnOriginOverride).pipe(
+      Effect.service(currentTxnOriginOverride).pipe(Effect.orDie).pipe(
         Effect.flatMap((override) => {
           const analysis = analyzeAction(action)
           const propagationEntry = makeActionPropagationEntry(action, analysis)
           const resolvePolicy = makeLazyPolicyResolver()
           return enqueueTransaction(runDispatch(action, analysis, override)).pipe(
-            Effect.zipRight(publishActionPropagationBus([propagationEntry], 'dispatch', resolvePolicy)),
+            Effect.flatMap(() => publishActionPropagationBus([propagationEntry], 'dispatch', resolvePolicy)),
           )
         }),
       ),
     dispatchBatch: (actions) =>
-      FiberRef.get(currentTxnOriginOverride).pipe(
+      Effect.service(currentTxnOriginOverride).pipe(Effect.orDie).pipe(
         Effect.flatMap((override) => {
           const analyses = new Array<ActionAnalysis>(actions.length)
           for (let index = 0; index < actions.length; index += 1) {
@@ -687,18 +687,18 @@ export const makeDispatchOps = <S, A>(args: {
           }
           const resolvePolicy = makeLazyPolicyResolver()
           return enqueueTransaction(runDispatchBatch(actions, analyses, override)).pipe(
-            Effect.zipRight(publishActionPropagationBus(propagationEntries, 'dispatchBatch', resolvePolicy)),
+            Effect.flatMap(() => publishActionPropagationBus(propagationEntries, 'dispatchBatch', resolvePolicy)),
           )
         }),
       ),
     dispatchLowPriority: (action) =>
-      FiberRef.get(currentTxnOriginOverride).pipe(
+      Effect.service(currentTxnOriginOverride).pipe(Effect.orDie).pipe(
         Effect.flatMap((override) => {
           const analysis = analyzeAction(action)
           const propagationEntry = makeActionPropagationEntry(action, analysis)
           const resolvePolicy = makeLazyPolicyResolver()
           return enqueueTransaction(runDispatchLowPriority(action, analysis, override)).pipe(
-            Effect.zipRight(publishActionPropagationBus([propagationEntry], 'dispatchLowPriority', resolvePolicy)),
+            Effect.flatMap(() => publishActionPropagationBus([propagationEntry], 'dispatchLowPriority', resolvePolicy)),
           )
         }),
       ),

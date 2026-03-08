@@ -151,13 +151,12 @@ const checkJsonFile = (fileAbs: string, fileName: string): Effect.Effect<IrValid
         }),
       ),
     ),
-    Effect.catchAll((cause) =>
+    Effect.catch((cause) =>
       Effect.succeed({
         fileName,
         ok: false,
         error: asSerializableErrorSummary(cause),
-      }),
-    ),
+      })),
   )
 
 type IrValidateInvocation = Extract<CliInvocation, { readonly command: 'ir.validate' }>
@@ -191,7 +190,7 @@ export const runIrValidate = (inv: IrValidateInvocation): Effect.Effect<CommandR
     const workflowSurfaceReasons: string[] = []
     if (input.kind === 'dir' && manifestCheck?.ok) {
       const manifestFileAbs = path.join(path.resolve(process.cwd(), input.dir), 'control-surface.manifest.json')
-      const manifestValue = yield* readJsonFile(manifestFileAbs).pipe(Effect.catchAll(() => Effect.succeed(undefined)))
+      const manifestValue = yield* readJsonFile(manifestFileAbs).pipe(Effect.catch(() => Effect.succeed(undefined)))
 
       const workflowRefs =
         isRecord(manifestValue) && Array.isArray((manifestValue as any).modules)
@@ -209,7 +208,7 @@ export const runIrValidate = (inv: IrValidateInvocation): Effect.Effect<CommandR
           workflowSurfaceReasons.push('WORKFLOW_SURFACE_FILE_INVALID')
         } else {
           const wfAbs = path.join(path.resolve(process.cwd(), input.dir), 'workflow.surface.json')
-          const wfValue = yield* readJsonFile(wfAbs).pipe(Effect.catchAll(() => Effect.succeed(undefined)))
+          const wfValue = yield* readJsonFile(wfAbs).pipe(Effect.catch(() => Effect.succeed(undefined)))
           const wfMap =
             Array.isArray(wfValue)
               ? new Map(
@@ -309,7 +308,7 @@ export const runIrValidate = (inv: IrValidateInvocation): Effect.Effect<CommandR
       error: topError,
     })
   }).pipe(
-    Effect.catchAll((cause) =>
+    Effect.catch((cause) =>
       Effect.succeed(
         makeCommandResult({
           runId,
@@ -318,7 +317,6 @@ export const runIrValidate = (inv: IrValidateInvocation): Effect.Effect<CommandR
           artifacts: [],
           error: asSerializableErrorSummary(cause),
         }),
-      ),
-    ),
+      )),
   )
 }

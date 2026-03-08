@@ -13,7 +13,7 @@ const parseExecVmModeEnabled = (raw: string): boolean => {
   return normalized !== 'off' && normalized !== '0' && normalized !== 'false' && normalized !== 'disabled'
 }
 
-const coreNgExecVmModeLayer = Layer.unwrapEffect(
+const coreNgExecVmModeLayer = Layer.unwrap(
   Effect.gen(function* () {
     const execVmMode = yield* Config.string('LOGIX_CORE_NG_EXEC_VM_MODE').pipe(Config.withDefault('on'))
     const enabled = parseExecVmModeEnabled(execVmMode)

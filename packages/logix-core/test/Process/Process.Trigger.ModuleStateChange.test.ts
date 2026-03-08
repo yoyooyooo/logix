@@ -1,10 +1,11 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Context, Effect, Ref, Schema, TestClock } from 'effect'
+import { Context, Effect, Ref, Schema, ServiceMap } from 'effect'
+import { TestClock } from 'effect/testing'
 import * as Logix from '../../src/index.js'
 import { collectProcessErrorEvent, withProcessRuntime, withProcessRuntimeScope } from './test-helpers.js'
 
 describe('process: trigger moduleStateChange', () => {
-  it.scoped('should fail with actionable error when dot-path is invalid', () =>
+  it.effect('should fail with actionable error when dot-path is invalid', () =>
     Effect.gen(function* () {
       const Host = Logix.Module.make('ProcessTriggerInvalidDotPathHost', {
         state: Schema.Struct({ user: Schema.Struct({ name: Schema.String }) }),
@@ -40,7 +41,7 @@ describe('process: trigger moduleStateChange', () => {
     }),
   )
 
-  it.scoped('should trigger only when selected value changes', () =>
+  it.effect('should trigger only when selected value changes', () =>
     Effect.gen(function* () {
       const invoked = yield* Ref.make(0)
 
@@ -80,22 +81,22 @@ describe('process: trigger moduleStateChange', () => {
         layer,
         run: ({ env }) =>
           Effect.gen(function* () {
-            const host = Context.get(env, Host.tag)
+            const host = ServiceMap.get(env, Host.tag)
 
             yield* host.dispatch({ _tag: 'setName', payload: 'A' } as any)
-            yield* Effect.yieldNow()
+            yield* Effect.yieldNow
             yield* TestClock.adjust('10 millis')
-            yield* Effect.yieldNow()
+            yield* Effect.yieldNow
 
             yield* host.dispatch({ _tag: 'setName', payload: 'A' } as any)
-            yield* Effect.yieldNow()
+            yield* Effect.yieldNow
             yield* TestClock.adjust('10 millis')
-            yield* Effect.yieldNow()
+            yield* Effect.yieldNow
 
             yield* host.dispatch({ _tag: 'setName', payload: 'B' } as any)
-            yield* Effect.yieldNow()
+            yield* Effect.yieldNow
             yield* TestClock.adjust('10 millis')
-            yield* Effect.yieldNow()
+            yield* Effect.yieldNow
           }),
       })
 
@@ -103,7 +104,7 @@ describe('process: trigger moduleStateChange', () => {
     }),
   )
 
-  it.scoped('should ignore commits when unrelated paths change', () =>
+  it.effect('should ignore commits when unrelated paths change', () =>
     Effect.gen(function* () {
       const invoked = yield* Ref.make(0)
 
@@ -158,27 +159,27 @@ describe('process: trigger moduleStateChange', () => {
         layer,
         run: ({ env }) =>
           Effect.gen(function* () {
-            const host = Context.get(env, Host.tag)
+            const host = ServiceMap.get(env, Host.tag)
 
             yield* host.dispatch({ _tag: 'setAge', payload: 11 } as any)
-            yield* Effect.yieldNow()
+            yield* Effect.yieldNow
             yield* TestClock.adjust('10 millis')
-            yield* Effect.yieldNow()
+            yield* Effect.yieldNow
 
             yield* host.dispatch({ _tag: 'setName', payload: 'a' } as any)
-            yield* Effect.yieldNow()
+            yield* Effect.yieldNow
             yield* TestClock.adjust('10 millis')
-            yield* Effect.yieldNow()
+            yield* Effect.yieldNow
 
             yield* host.dispatch({ _tag: 'setName', payload: 'b' } as any)
-            yield* Effect.yieldNow()
+            yield* Effect.yieldNow
             yield* TestClock.adjust('10 millis')
-            yield* Effect.yieldNow()
+            yield* Effect.yieldNow
 
             yield* host.dispatch({ _tag: 'setAge', payload: 12 } as any)
-            yield* Effect.yieldNow()
+            yield* Effect.yieldNow
             yield* TestClock.adjust('10 millis')
-            yield* Effect.yieldNow()
+            yield* Effect.yieldNow
           }),
       })
 

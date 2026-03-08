@@ -1,10 +1,10 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Effect, Either, Layer, Schema } from 'effect'
+import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('Runtime.runProgram dispose (US1)', () => {
-  it.scoped('success path disposes runtime resources', () =>
+  it.effect('success path disposes runtime resources', () =>
     Effect.gen(function* () {
       let disposed = false
 
@@ -15,13 +15,11 @@ describe('Runtime.runProgram dispose (US1)', () => {
 
       const impl = Root.implement({ initial: undefined, logics: [] })
 
-      const layer = Layer.scopedDiscard(
-        Effect.addFinalizer(() =>
-          Effect.sync(() => {
-            disposed = true
-          }),
-        ),
-      ) as unknown as Layer.Layer<any, never, never>
+      const layer = Layer.effectDiscard(Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          disposed = true
+        }),
+      )) as unknown as Layer.Layer<any, never, never>
 
       yield* Effect.promise(() => Logix.Runtime.runProgram(impl, () => Effect.void, { layer, handleSignals: false }))
 
@@ -29,7 +27,7 @@ describe('Runtime.runProgram dispose (US1)', () => {
     }),
   )
 
-  it.scoped('failure path disposes runtime resources', () =>
+  it.effect('failure path disposes runtime resources', () =>
     Effect.gen(function* () {
       let disposed = false
 
@@ -40,21 +38,21 @@ describe('Runtime.runProgram dispose (US1)', () => {
 
       const impl = Root.implement({ initial: undefined, logics: [] })
 
-      const layer = Layer.scopedDiscard(
-        Effect.addFinalizer(() =>
-          Effect.sync(() => {
-            disposed = true
-          }),
-        ),
-      ) as unknown as Layer.Layer<any, never, never>
+      const layer = Layer.effectDiscard(Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          disposed = true
+        }),
+      )) as unknown as Layer.Layer<any, never, never>
 
-      const outcome = yield* Effect.tryPromise({
-        try: () =>
-          Logix.Runtime.runProgram(impl, () => Effect.dieMessage('main failed'), { layer, handleSignals: false }),
-        catch: (e) => e,
-      }).pipe(Effect.either)
+      const outcome = yield* Effect.exit(
+        Effect.tryPromise({
+          try: () =>
+            Logix.Runtime.runProgram(impl, () => Effect.die(new Error('main failed')), { layer, handleSignals: false }),
+          catch: (e) => e,
+        }),
+      )
 
-      expect(Either.isLeft(outcome)).toBe(true)
+      expect(outcome._tag).toBe('Failure')
 
       expect(disposed).toBe(true)
     }),

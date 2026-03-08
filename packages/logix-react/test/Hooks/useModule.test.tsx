@@ -83,7 +83,7 @@ describe('useModule', () => {
     // Read the internal instrumentation flag by accessing ModuleRuntime via Runtime.runPromise directly.
     const directInstr = await runtime.runPromise(
       Effect.gen(function* () {
-        const rt = yield* InstrCounter.tag
+        const rt = yield* Effect.service(InstrCounter.tag).pipe(Effect.orDie)
         return Logix.InternalContracts.getStateTransactionInstrumentation(rt as any)
       }) as Effect.Effect<string, never, any>,
     )

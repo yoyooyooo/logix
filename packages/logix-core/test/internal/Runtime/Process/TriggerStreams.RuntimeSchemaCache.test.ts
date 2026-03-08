@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Schema, Stream } from 'effect'
 import { resolveSchemaAst } from '../../../../src/internal/runtime/core/process/selectorSchema.js'

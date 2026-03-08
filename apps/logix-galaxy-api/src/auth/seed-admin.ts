@@ -1,4 +1,4 @@
-import { Config, Effect, Option } from 'effect'
+import { Effect, Option } from 'effect'
 import { Pool } from 'pg'
 
 import { makeBetterAuth } from './better-auth.js'
@@ -70,19 +70,20 @@ const parseBool = (raw: string): boolean => {
   return v === '1' || v === 'true' || v === 'yes' || v === 'on'
 }
 
+const requireEnv = (name: string): Effect.Effect<string, Error> =>
+  Effect.fromNullishOr(process.env[name]).pipe(Effect.mapError(() => new Error(`${name} is not set`)))
+
 export const seedAdminIfEnabled = Effect.gen(function* () {
-  const enabledOpt = yield* Config.option(Config.string('LOGIX_GALAXY_AUTO_SEED_ADMIN')).pipe(
-    Effect.catchAll(() => Effect.succeed(Option.none())),
-  )
+  const enabledOpt = Option.fromNullishOr(process.env.LOGIX_GALAXY_AUTO_SEED_ADMIN)
   const enabled = Option.isSome(enabledOpt) && parseBool(enabledOpt.value)
   if (!enabled) return
 
-  const databaseUrl = yield* Config.string('DATABASE_URL')
-  const secret = yield* Config.string('BETTER_AUTH_SECRET')
-  const baseURL = yield* Config.string('BETTER_AUTH_URL')
-  const email = yield* Config.string('ADMIN_EMAIL')
-  const password = yield* Config.string('ADMIN_PASSWORD')
-  const nameOpt = yield* Config.option(Config.string('ADMIN_NAME')).pipe(Effect.catchAll(() => Effect.succeed(Option.none())))
+  const databaseUrl = yield* requireEnv('DATABASE_URL')
+  const secret = yield* requireEnv('BETTER_AUTH_SECRET')
+  const baseURL = yield* requireEnv('BETTER_AUTH_URL')
+  const email = yield* requireEnv('ADMIN_EMAIL')
+  const password = yield* requireEnv('ADMIN_PASSWORD')
+  const nameOpt = Option.fromNullishOr(process.env.ADMIN_NAME)
   const name = Option.getOrElse(nameOpt, () => 'Admin')
 
   yield* Effect.tryPromise({

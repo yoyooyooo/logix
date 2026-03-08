@@ -81,7 +81,7 @@ export const runIrExport = (inv: IrExportInvocation): Effect.Effect<CommandResul
       artifacts,
     })
   }).pipe(
-    Effect.catchAll((cause) =>
+    Effect.catch((cause) =>
       Effect.succeed(
         makeCommandResult({
           runId,
@@ -90,7 +90,6 @@ export const runIrExport = (inv: IrExportInvocation): Effect.Effect<CommandResul
           artifacts: [],
           error: asSerializableErrorSummary(cause),
         }),
-      ),
-    ),
+      )),
   )
 }

@@ -1,5 +1,4 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
@@ -25,7 +24,7 @@ const assertKeysSubsetOf = (value: unknown, allowed: ReadonlyArray<string>, labe
 }
 
 describe('Form RulesManifest contracts (028)', () => {
-  it.scoped('serializable + stable memo + minimal shape', () =>
+  it.effect('serializable + stable memo + minimal shape', () =>
     Effect.gen(function* () {
       const ValuesSchema = Schema.Struct({
         name: Schema.String,

@@ -11,7 +11,7 @@
  *   - handler 内仅使用 Effect.gen + yield*，不使用 async/await。
  */
 
-import { Context, Effect, Schema } from 'effect'
+import { Effect, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 
 // ---------------------------------------------------------------------------
@@ -31,7 +31,7 @@ const SearchActionMap = {
 type SearchShape = Logix.Shape<typeof SearchStateSchema, typeof SearchActionMap>
 
 // Service Tag：由上层 Runtime 提供实现
-export class SearchService extends Context.Tag('@poc/SearchService')<SearchService, SearchService.Service>() {}
+export class SearchService extends ServiceMap.Service<SearchService, SearchService.Service>()('@poc/SearchService') {}
 
 export namespace SearchService {
   export interface Service {
@@ -89,7 +89,7 @@ const ProfileActionMap = {
 
 type ProfileShape = Logix.Shape<typeof ProfileStateSchema, typeof ProfileActionMap>
 
-export class LocationService extends Context.Tag('@poc/LocationService')<LocationService, LocationService.Service>() {}
+export class LocationService extends ServiceMap.Service<LocationService, LocationService.Service>()('@poc/LocationService') {}
 
 export namespace LocationService {
   export interface Service {
@@ -118,7 +118,7 @@ export const ProfileLogicAgent = ProfileDef.logic<LocationService>(($) =>
           yield* $.state.update((d) => ({ ...d, cities }))
         })
 
-        yield* loadCities.pipe(Effect.catchAll(() => $.state.update((d) => ({ ...d, toast: '加载城市失败' }))))
+        yield* loadCities.pipe(Effect.catch(() => $.state.update((d) => ({ ...d, toast: '加载城市失败' }))))
       }),
     )
   }),

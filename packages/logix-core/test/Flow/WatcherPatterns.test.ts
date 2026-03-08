@@ -1,6 +1,6 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Context, Effect, Layer, Schema } from 'effect'
+import { Context, Effect, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../src/index.js'
 import * as Debug from '../../src/Debug.js'
 
@@ -53,7 +53,7 @@ describe('Watcher patterns (Bound + Flow)', () => {
 
     const program = Effect.gen(function* () {
       const context = yield* Layer.build(layer)
-      const runtime = Context.get(context, Counter.tag)
+      const runtime = ServiceMap.get(context, Counter.tag)
 
       // Wait for logic subscriptions.
       yield* Effect.sleep('100 millis')
@@ -79,7 +79,7 @@ describe('Watcher patterns (Bound + Flow)', () => {
 
     const program = Effect.gen(function* () {
       const context = yield* Layer.build(layer)
-      const runtime = Context.get(context, Counter.tag)
+      const runtime = ServiceMap.get(context, Counter.tag)
 
       // Wait for logic subscriptions.
       yield* Effect.sleep('50 millis')
@@ -105,7 +105,7 @@ describe('Watcher patterns (Bound + Flow)', () => {
 
     const program = Effect.gen(function* () {
       const context = yield* Layer.build(layer)
-      const runtime = Context.get(context, Counter.tag)
+      const runtime = ServiceMap.get(context, Counter.tag)
 
       // Wait for logic subscriptions.
       yield* Effect.sleep('100 millis')
@@ -131,7 +131,7 @@ describe('Watcher patterns (Bound + Flow)', () => {
 
     const program = Effect.gen(function* () {
       const context = yield* Layer.build(layer)
-      const runtime = Context.get(context, Counter.tag)
+      const runtime = ServiceMap.get(context, Counter.tag)
 
       // Wait for logic subscriptions.
       yield* Effect.sleep('100 millis')
@@ -152,7 +152,7 @@ describe('Watcher patterns (Bound + Flow)', () => {
     await Effect.runPromise(Effect.scoped(program) as Effect.Effect<void, never, never>)
   })
 
-  it.scoped('production burst watcher writebacks should collapse into a single state:update commit', () =>
+  it.effect('production burst watcher writebacks should collapse into a single state:update commit', () =>
     Effect.gen(function* () {
       const previousEnv = process.env.NODE_ENV
       process.env.NODE_ENV = 'production'
@@ -188,7 +188,7 @@ describe('Watcher patterns (Bound + Flow)', () => {
         yield* Effect.promise(() =>
           runtime.runPromise(
             Effect.gen(function* () {
-              const rt: any = yield* Counter.tag
+              const rt: any = yield* Effect.service(Counter.tag).pipe(Effect.orDie)
 
               yield* Effect.sleep('50 millis')
               yield* rt.dispatch({ _tag: 'inc', payload: undefined })

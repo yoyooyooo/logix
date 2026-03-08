@@ -1,5 +1,7 @@
 # Logix 1.0（Effect v4）发布说明（中文）
 
+> 历史说明：本文件保留为 `103-effect-v4-forward-cutover` 的发布草案与历史 artifact 入口。它不代表当前 `HEAD` 已经满足 `G5` 放行；当前 truth 以 `specs/103-effect-v4-forward-cutover/inventory/gate-g5.md` 为准。
+
 ## 版本定位
 
 - 本版本是 `v4-only` 前向演进发布，不提供 v3 兼容层，不设置弃用过渡期开关。

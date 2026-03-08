@@ -1,10 +1,11 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Context, Effect, Ref, Schema, TestClock } from 'effect'
+import { Context, Effect, Ref, Schema, ServiceMap } from 'effect'
+import { TestClock } from 'effect/testing'
 import * as Logix from '../../src/index.js'
 import { withProcessRuntime, withProcessRuntimeScope } from './test-helpers.js'
 
 describe('process: trigger moduleStateChange selector diagnostics', () => {
-  it.scoped('should emit a warning event when moduleStateChange triggers are too frequent', () =>
+  it.effect('should emit a warning event when moduleStateChange triggers are too frequent', () =>
     Effect.gen(function* () {
       const Host = Logix.Module.make('ProcessSelectorDiagHost', {
         state: Schema.Struct({ n: Schema.Number }),
@@ -39,15 +40,15 @@ describe('process: trigger moduleStateChange selector diagnostics', () => {
         layer,
         run: ({ env, runtime }) =>
           Effect.gen(function* () {
-            const host = Context.get(env, Host.tag)
+            const host = ServiceMap.get(env, Host.tag)
 
             for (let i = 0; i < 30; i++) {
               yield* host.dispatch({ _tag: 'bump', payload: undefined } as any)
-              yield* Effect.yieldNow()
+              yield* Effect.yieldNow
             }
 
             yield* TestClock.adjust('20 millis')
-            yield* Effect.yieldNow()
+            yield* Effect.yieldNow
 
             let snapshot: ReadonlyArray<Logix.Process.ProcessEvent> = []
             for (let i = 0; i < 200; i++) {
@@ -60,7 +61,7 @@ describe('process: trigger moduleStateChange selector diagnostics', () => {
                   e.error?.code === 'process::selector_high_frequency',
               )
               if (hasWarning) break
-              yield* Effect.yieldNow()
+              yield* Effect.yieldNow
             }
 
             return yield* runtime.getEventsSnapshot()
@@ -80,7 +81,7 @@ describe('process: trigger moduleStateChange selector diagnostics', () => {
     }),
   )
 
-  it.scoped('should not trigger for unrelated path updates in diagnostics mode', () =>
+  it.effect('should not trigger for unrelated path updates in diagnostics mode', () =>
     Effect.gen(function* () {
       const invoked = yield* Ref.make(0)
 
@@ -117,16 +118,16 @@ describe('process: trigger moduleStateChange selector diagnostics', () => {
         layer,
         run: ({ env, runtime }) =>
           Effect.gen(function* () {
-            const host = Context.get(env, Host.tag)
+            const host = ServiceMap.get(env, Host.tag)
             expect(typeof (host as any).changesReadQueryWithMeta).toBe('function')
 
             for (let i = 0; i < 20; i++) {
               yield* host.dispatch({ _tag: 'bumpOther', payload: undefined } as any)
-              yield* Effect.yieldNow()
+              yield* Effect.yieldNow
             }
 
             yield* TestClock.adjust('20 millis')
-            yield* Effect.yieldNow()
+            yield* Effect.yieldNow
 
             return yield* runtime.getEventsSnapshot()
           }),

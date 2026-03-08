@@ -1,29 +1,24 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Duration, Effect, Layer, Schema } from 'effect'
 import { QueryClient } from '@tanstack/query-core'
 import * as Logix from '@logixjs/core'
 import * as Query from '../src/index.js'
 
 describe('TanStack.engine.cacheLimit', () => {
-  it.scoped('maxEntriesPerResource=1 should evict and cause reload when key flips', () =>
+  it.effect('maxEntriesPerResource=1 should evict and cause reload when key flips', () =>
     Effect.gen(function* () {
       const waitUntil = <A>(
         read: Effect.Effect<A, never, any>,
         predicate: (value: A) => boolean,
       ): Effect.Effect<A, Error, any> =>
         Effect.gen(function* () {
-          while (true) {
+          for (let i = 0; i < 400; i += 1) {
             const value = yield* read
             if (predicate(value)) return value
             yield* Effect.sleep(Duration.millis(5))
           }
-        }).pipe(
-          Effect.timeoutFail({
-            duration: Duration.seconds(2),
-            onTimeout: () => new Error('timeout waiting for condition'),
-          }),
-        )
+          return yield* Effect.fail(new Error('timeout waiting for condition'))
+        })
 
       const KeySchema = Schema.Struct({ q: Schema.String })
 
@@ -64,7 +59,7 @@ describe('TanStack.engine.cacheLimit', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* module.tag
+          const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const controller = module.controller.make(rt)
 
         const keys = ['a', 'b', 'a', 'b', 'a', 'b'] as const

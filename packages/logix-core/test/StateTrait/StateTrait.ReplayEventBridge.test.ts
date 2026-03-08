@@ -5,7 +5,7 @@ import * as Debug from '../../src/Debug.js'
 import type { ResourceRegistry } from '../../src/Resource.js'
 
 describe('ReplayEvent ↔ state:update bridge', () => {
-  it.scoped('records last ResourceSnapshot as state:update.replayEvent', () =>
+  it.effect('records last ResourceSnapshot as state:update.replayEvent', () =>
     Effect.gen(function* () {
       const SnapshotSchema = Schema.Any
 
@@ -66,7 +66,7 @@ describe('ReplayEvent ↔ state:update bridge', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* M.tag
+        const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
         yield* rt.dispatch({ _tag: 'refresh', payload: undefined } as any)
 
         // Wait for watchers + source IO fibers to complete at least one writeback cycle.

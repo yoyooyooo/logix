@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../../src/index.js'
@@ -53,13 +53,13 @@ describe('AppRuntime assembly graph report', () => {
     })
 
     let failOnce = true
-    const flakyLayer = Layer.suspend(() => {
+    const flakyLayer = Layer.unwrap(Effect.sync(() => {
       if (failOnce) {
         failOnce = false
-        return Layer.fail(new Error('boot once failure')) as unknown as Layer.Layer<never, never, never>
+        return Layer.effectDiscard(Effect.fail(new Error('boot once failure'))) as unknown as Layer.Layer<never, never, never>
       }
       return Layer.empty as Layer.Layer<never, never, never>
-    })
+    }))
 
     const app = AppRuntimeImpl.makeApp({
       layer: flakyLayer,

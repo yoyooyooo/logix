@@ -75,23 +75,15 @@ export const exportEvidencePackage = (options?: {
  * Controls what DevtoolsHub exports (ring buffer / snapshots), without changing Debug.record's fallback semantics.
  */
 export const diagnosticsLevel = (level: DiagnosticsLevel): Layer.Layer<any, never, never> =>
-  Layer.fiberRefLocallyScopedWith(Internal.currentDiagnosticsLevel as any, () => level) as Layer.Layer<
-    any,
-    never,
-    never
-  >
+  Internal.diagnosticsLevel(level) as Layer.Layer<any, never, never>
 
 export const diagnosticsMaterialization = (
   mode: DiagnosticsMaterialization,
 ): Layer.Layer<any, never, never> =>
-  Layer.fiberRefLocallyScopedWith(Internal.currentDiagnosticsMaterialization as any, () => mode) as Layer.Layer<
-    any,
-    never,
-    never
-  >
+  Internal.diagnosticsMaterialization(mode) as Layer.Layer<any, never, never>
 
 export const traceMode = (mode: TraceMode): Layer.Layer<any, never, never> =>
-  Layer.fiberRefLocallyScopedWith(Internal.currentTraceMode as any, () => mode) as Layer.Layer<any, never, never>
+  Internal.traceMode(mode) as Layer.Layer<any, never, never>
 
 export const traitConvergeDiagnosticsSampling = (
   config: TraitConvergeDiagnosticsSamplingConfig,
@@ -326,23 +318,21 @@ export const layer = (options?: DebugLayerOptions): Layer.Layer<any, never, neve
   return diagnostics ? (Layer.mergeAll(base, diagnosticsLevel(diagnostics)) as Layer.Layer<any, never, never>) : base
 }
 
-/**
- * PrettyLoggerOptions: parameters of Effect.Logger.prettyLogger.
- */
-export type PrettyLoggerOptions = Parameters<typeof Logger.prettyLogger>[0]
+export type PrettyLoggerOptions = Parameters<typeof Logger.consolePretty>[0]
 
-/**
- * Replace the default Effect logger with a pretty logger (as a Layer).
- *
- * Equivalent to `Logger.replace(Logger.defaultLogger, Logger.prettyLogger(options))`.
- */
 export const withPrettyLogger = (
   base: Layer.Layer<any, any, any>,
   options?: PrettyLoggerOptions,
 ): Layer.Layer<any, any, any> =>
   Layer.merge(
     base,
-    Logger.replace(Logger.defaultLogger, Logger.prettyLogger(options)) as unknown as Layer.Layer<any, any, any>,
+    Layer.effect(
+      Logger.CurrentLoggers,
+      Effect.gen(function* () {
+        const current = yield* Effect.service(Logger.CurrentLoggers)
+        return new Set([...current].filter((logger) => logger !== Logger.defaultLogger).concat(Logger.consolePretty(options)))
+      }),
+    ) as Layer.Layer<any, never, never>,
   )
 
 /**
@@ -351,20 +341,19 @@ export const withPrettyLogger = (
  * Advanced: use either `Debug.layer` or `Debug.replace` in a scope, not both.
  */
 export const replace = (sinks: ReadonlyArray<Sink>): Layer.Layer<any, never, never> =>
-  Layer.locallyScoped(internal.currentDebugSinks, sinks as ReadonlyArray<Internal.Sink>) as Layer.Layer<
-    any,
-    never,
-    never
-  >
+  Layer.succeed(internal.currentDebugSinks, sinks as ReadonlyArray<Internal.Sink>) as Layer.Layer<any, never, never>
 
 /**
  * Append sinks to the current Fiber's sink set (without overriding existing sinks).
  */
 export const appendSinks = (sinks: ReadonlyArray<Sink>): Layer.Layer<any, never, never> =>
-  Layer.fiberRefLocallyScopedWith(Internal.currentDebugSinks, (current) => [
-    ...current,
-    ...(sinks as ReadonlyArray<Internal.Sink>),
-  ]) as Layer.Layer<any, never, never>
+  Layer.effect(
+    internal.currentDebugSinks,
+    Effect.gen(function* () {
+      const current = yield* internal.currentDebugSinks
+      return [...current, ...(sinks as ReadonlyArray<Internal.Sink>)]
+    }),
+  ) as Layer.Layer<any, never, never>
 
 /**
  * Append the DevtoolsHub sink to aggregate Debug events into snapshots.
@@ -380,9 +369,7 @@ export function devtoolsHubLayer(
   baseOrOptions?: Layer.Layer<any, any, any> | DevtoolsHubOptions,
   maybeOptions?: DevtoolsHubOptions,
 ): Layer.Layer<any, never, any> {
-  // In effect v3, Layer values are objects tagged with `_op_layer`.
-  const isLayerValue = (value: unknown): value is Layer.Layer<any, any, any> =>
-    typeof value === 'object' && value !== null && '_op_layer' in (value as Record<string, unknown>)
+  const isLayerValue = (value: unknown): value is Layer.Layer<any, any, any> => Layer.isLayer(value)
 
   const hasBase = isLayerValue(baseOrOptions)
   const base = hasBase
@@ -432,7 +419,7 @@ export function devtoolsHubLayer(
  * DevTools can group events by this label.
  */
 export const runtimeLabel = (label: string): Layer.Layer<any, never, never> =>
-  Layer.fiberRefLocallyScopedWith(internal.currentRuntimeLabel as any, () => label) as Layer.Layer<any, never, never>
+  Layer.succeed(internal.currentRuntimeLabel, label) as Layer.Layer<any, never, never>
 
 /**
  * StateTrait debug view for Devtools/scripts.
@@ -534,7 +521,7 @@ export const getModuleFinalTraits = (runtime: ModuleRuntime<any, any>): Readonly
  * ```
  */
 const isLayer = (value: unknown): value is Layer.Layer<any, any, any> =>
-  typeof value === 'object' && value !== null && '_op_layer' in (value as Record<string, unknown>)
+  typeof value === 'object' && value !== null && 'build' in (value as Record<string, unknown>)
 
 export function traceLayer(onTrace?: (event: Event) => Effect.Effect<void>): Layer.Layer<any, never, never>
 export function traceLayer(
@@ -562,7 +549,13 @@ export function traceLayer(
 
   // Append the trace sink via FiberRef: extend the current Fiber's sink set.
   // Do not depend on DebugHub/Tag; use FiberRef.currentDebugSinks as the single source of truth.
-  const appendTrace = Layer.fiberRefLocallyScopedWith(Internal.currentDebugSinks, (sinks) => [...sinks, traceSink])
+  const appendTrace = Layer.effect(
+    Internal.currentDebugSinks,
+    Effect.gen(function* () {
+      const sinks = yield* Internal.currentDebugSinks
+      return [...sinks, traceSink]
+    }),
+  )
 
   // Same as devtoolsHubLayer: build base first, then appendTrace updates FiberRef sinks.
   return Layer.provideMerge(appendTrace, base as Layer.Layer<any, any, any>) as Layer.Layer<any, never, any>

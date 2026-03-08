@@ -1,11 +1,10 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
 
 describe('FormBlueprint.basic', () => {
-  it.scoped('Blueprint → Module → Runtime can run', () =>
+  it.effect('Blueprint → Module → Runtime can run', () =>
     Effect.gen(function* () {
       const Values = Schema.Struct({
         name: Schema.String,

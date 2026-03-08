@@ -27,11 +27,23 @@ const makeManualStore = <T>(initial: T) => {
 
 const flushMicrotasks = (times = 2): Effect.Effect<void> =>
   Effect.forEach(Array.from({ length: Math.max(0, times) }), () =>
-    Effect.promise(() => new Promise<void>((r) => queueMicrotask(r)))
+    Effect.gen(function* () {
+      yield* Effect.promise(() => new Promise<void>((r) => queueMicrotask(r)))
+      yield* Effect.yieldNow
+    })
   ).pipe(Effect.asVoid);
 
+const waitUntil = (predicate: () => boolean, maxTicks = 64): Effect.Effect<void> =>
+  Effect.gen(function* () {
+    for (let i = 0; i < maxTicks; i += 1) {
+      if (predicate()) return;
+      yield* flushMicrotasks(1);
+    }
+    return yield* Effect.die(new Error('waitUntil timed out'));
+  });
+
 describe("StateTrait.externalStore runtime semantics", () => {
-  it.scoped(
+  it.effect(
     "init is atomic (no missed updates between getSnapshot and subscribe)",
     () =>
       Effect.gen(function* () {
@@ -93,7 +105,7 @@ describe("StateTrait.externalStore runtime semantics", () => {
       })
   );
 
-  it.scoped("select/equals gating avoids redundant commits", () =>
+  it.effect("select/equals gating avoids redundant commits", () =>
     Effect.gen(function* () {
       const StateSchema = Schema.Struct({ value: Schema.Number });
       type State = Schema.Schema.Type<typeof StateSchema>;
@@ -161,7 +173,7 @@ describe("StateTrait.externalStore runtime semantics", () => {
       expect(afterNoChange.value).toBe(1);
 
       set({ a: 2, b: 1 });
-      yield* flushMicrotasks(6);
+      yield* waitUntil(() => commits.length === 1, 64);
       const afterChange = (yield* runtime.getState) as State;
       expect(afterChange.value).toBe(2);
 
@@ -170,7 +182,7 @@ describe("StateTrait.externalStore runtime semantics", () => {
     })
   );
 
-  it.scoped(
+  it.effect(
     "Signal Dirty dedups bursts within the same microtask (writes latest only once)",
     () =>
       Effect.gen(function* () {
@@ -228,7 +240,7 @@ describe("StateTrait.externalStore runtime semantics", () => {
           set(i);
         }
 
-        yield* flushMicrotasks(6);
+        yield* waitUntil(() => commits.length === 1, 64);
 
         const after = (yield* runtime.getState) as State;
         expect(after.value).toBe(100);
@@ -236,7 +248,7 @@ describe("StateTrait.externalStore runtime semantics", () => {
       })
   );
 
-  it.scoped("getSnapshot throw fuses the trait (no further writebacks)", () => {
+  it.effect("getSnapshot throw fuses the trait (no further writebacks)", () => {
     const ring = Logix.Debug.makeRingBufferSink(256);
     const DebugLayer = Logix.Debug.replace([ring.sink]);
 
@@ -366,7 +378,7 @@ describe("StateTrait.externalStore runtime semantics", () => {
     expect(node?.policy && (node.policy as any).source?.kind).toBe("external");
   });
 
-  it.scoped(
+  it.effect(
     "priority: nonUrgent externalStore writeback maps to low commit priority",
     () =>
       Effect.gen(function* () {
@@ -428,7 +440,7 @@ describe("StateTrait.externalStore runtime semantics", () => {
         priorities.length = 0;
 
         set(1);
-        yield* flushMicrotasks(6);
+        yield* waitUntil(() => priorities.length === 1, 64);
 
         const after = (yield* runtime.getState) as State;
         expect(after.value).toBe(1);
@@ -436,7 +448,7 @@ describe("StateTrait.externalStore runtime semantics", () => {
       })
   );
 
-  it.scoped(
+  it.effect(
     "ownership guard surfaces as a defect (ExternalOwnedWriteError)",
     () =>
       Effect.gen(function* () {
@@ -488,7 +500,7 @@ describe("StateTrait.externalStore runtime semantics", () => {
 
         expect(exit._tag).toBe("Failure");
         if (exit._tag === "Failure") {
-          const defects = Array.from(Cause.defects(exit.cause));
+          const defects = exit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect);
           expect(
             defects.some(
               (d: unknown) => (d as any)?.name === "ExternalOwnedWriteError"

@@ -1,15 +1,12 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Context, Deferred, Effect, Exit, Layer, Ref, Scope, Schema } from 'effect'
+import { Context, Deferred, Effect, Exit, Layer, Ref, Scope, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../../src/index.js'
 import * as Debug from '../../../src/Debug.js'
 import * as Middleware from '../../../src/Middleware.js'
 import * as ProcessRuntime from '../../../src/internal/runtime/core/process/ProcessRuntime.js'
 import { flushAllHostScheduler, makeTestHostScheduler, testHostSchedulerLayer } from '../testkit/hostSchedulerTestKit.js'
 
-class AlignmentPort extends Context.Tag('WorkflowProcess.SchedulingAlignment.Port')<
-  AlignmentPort,
-  (input: unknown) => Effect.Effect<void, unknown, never>
->() {}
+class AlignmentPort extends ServiceMap.Service<AlignmentPort, (input: unknown) => Effect.Effect<void, unknown, never>>()('WorkflowProcess.SchedulingAlignment.Port') {}
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -77,7 +74,7 @@ const runWorkflowExhaustCase = (): Effect.Effect<{
         Layer.succeed(
           AlignmentPort,
           (_input) =>
-            Ref.update(startedRef, (n) => n + 1).pipe(Effect.zipRight(Deferred.await(gate)), Effect.asVoid) as Effect.Effect<
+            Ref.update(startedRef, (n) => n + 1).pipe(Effect.flatMap(() => Deferred.await(gate)), Effect.asVoid) as Effect.Effect<
               void,
               unknown,
               never
@@ -90,7 +87,7 @@ const runWorkflowExhaustCase = (): Effect.Effect<{
       return yield* Effect.promise(() =>
         runtime.runPromise(
           Effect.gen(function* () {
-            const rt = yield* M.tag
+            const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
             yield* rt.dispatch({ _tag: 'start', payload: 1 })
             yield* flushAllHostScheduler(hostScheduler)
             yield* rt.dispatch({ _tag: 'start', payload: 2 })
@@ -163,7 +160,7 @@ const runProcessDropCase = (): Effect.Effect<{
     const scope = yield* Scope.make()
     try {
       const env = yield* Layer.buildWithScope(layer, scope)
-      const rt = Context.get(env as Context.Context<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
+      const rt = ServiceMap.get(env as Context.Context<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
 
       for (let i = 0; i < 50; i++) {
         const snapshot = yield* rt.getEventsSnapshot()
@@ -171,7 +168,7 @@ const runProcessDropCase = (): Effect.Effect<{
           (e) => e.type === 'process:start' && e.identity.identity.processId === 'WorkflowProcessAlignmentDrop',
         )
         if (startedEvt) break
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
       }
 
       yield* rt.deliverPlatformEvent({ eventName: 'test:alignment:drop' })
@@ -184,13 +181,13 @@ const runProcessDropCase = (): Effect.Effect<{
           yield* Deferred.succeed(gates[0]!, undefined)
           break
         }
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
       }
 
       for (let i = 0; i < 50; i++) {
         const completed = yield* Ref.get(completedRef)
         if (completed === 1) break
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
       }
 
       events = (yield* rt.getEventsSnapshot()) as any

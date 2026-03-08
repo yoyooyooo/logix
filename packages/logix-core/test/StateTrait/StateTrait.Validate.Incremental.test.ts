@@ -4,7 +4,7 @@ import * as Logix from '../../src/index.js'
 import * as Debug from '../../src/Debug.js'
 
 describe('StateTrait validate · incremental scopes + request dedupe', () => {
-  it.scoped('dedupes scopedValidate requests in a txn and validates only minimal check set', () =>
+  it.effect('dedupes scopedValidate requests in a txn and validates only minimal check set', () =>
     Effect.gen(function* () {
       const StateSchema = Schema.Struct({
         a: Schema.Number,
@@ -76,7 +76,7 @@ describe('StateTrait validate · incremental scopes + request dedupe', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt: any = yield* M.tag
+        const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
         yield* rt.dispatch({ _tag: 'validateA', payload: undefined } as any)
         yield* Effect.sleep('10 millis')

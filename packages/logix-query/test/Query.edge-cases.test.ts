@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { it as itFx } from '@effect/vitest'
 import { Duration, Effect, Layer, Schema } from 'effect'
 import { QueryClient } from '@tanstack/query-core'
@@ -64,7 +64,7 @@ describe('Query edge cases', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* module.tag
+          const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const controller = module.controller.make(rt)
 
         // onMount: key undefined -> should not fetch
@@ -127,7 +127,7 @@ describe('Query edge cases', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* module.tag
+          const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const controller = module.controller.make(rt)
 
         yield* Effect.forEach(

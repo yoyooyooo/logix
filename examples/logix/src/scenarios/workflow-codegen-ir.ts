@@ -12,13 +12,10 @@
  * 运行：
  *   pnpm -C examples/logix exec tsx src/scenarios/workflow-codegen-ir.ts
  */
-import { Context, Effect, Layer, Schema } from 'effect'
+import { Effect, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 
-class SubmitPort extends Context.Tag('WorkflowDemo/SubmitPort')<
-  SubmitPort,
-  (input: { readonly userId: string; readonly shouldFail: boolean }) => Effect.Effect<void, Error, never>
->() {}
+class SubmitPort extends ServiceMap.Service<SubmitPort, (input: { readonly userId: string; readonly shouldFail: boolean }) => Effect.Effect<void, Error, never>>()('WorkflowDemo/SubmitPort') { }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -128,7 +125,7 @@ const main = Effect.gen(function* () {
     yield* Effect.promise(() =>
       runtime.runPromise(
         Effect.gen(function* () {
-          const rt = yield* M.tag
+          const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
           // ---- latest: cancel + timer.cancel(interrupt) ----
           yield* rt.dispatch({ _tag: 'submitLatest', payload: { userId: 'u1', shouldFail: false } })

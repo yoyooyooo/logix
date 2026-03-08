@@ -1,4 +1,4 @@
-import { Context, Effect, Exit, Layer, Schema } from 'effect'
+import { Effect, Exit, Layer, Schema, ServiceMap } from 'effect'
 import { readFileSync } from 'node:fs'
 import * as Logix from '@logixjs/core'
 
@@ -33,7 +33,7 @@ const TrialRunImpl = TrialRunModule.impl
 
 const program = Effect.gen(function* () {
   const ctx = yield* Effect.scoped(TrialRunImpl.layer.pipe(Layer.build))
-  const runtime = Context.get(ctx, TrialRunDef.tag)
+  const runtime = ServiceMap.get(ctx, TrialRunDef.tag)
 
   yield* runtime.dispatch({ _tag: 'noop', payload: undefined })
   yield* Effect.sleep(10)

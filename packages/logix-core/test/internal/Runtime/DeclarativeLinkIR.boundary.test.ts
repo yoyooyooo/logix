@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Deferred, Effect, Layer, Schema, Stream } from 'effect'
 import * as Logix from '../../../src/index.js'
@@ -57,11 +57,13 @@ describe('DeclarativeLinkIR boundary (declarative vs blackbox)', () => {
         yield* Effect.promise(() =>
           runtime.runPromise(
             Effect.gen(function* () {
-              const store = yield* RuntimeStoreTag
-              const scheduler = yield* TickSchedulerTag
+              const store = yield* Effect.service(RuntimeStoreTag).pipe(Effect.orDie)
+              const scheduler = yield* Effect.service(TickSchedulerTag).pipe(Effect.orDie)
 
-              const sourceRt: any = yield* Source.tag
-              const targetRt: any = yield* Target.tag
+              const sourceRt: any = yield* Effect.service(Source.tag).pipe(Effect.orDie)
+              const targetRt: any = yield* Effect.service(Target.tag).pipe(Effect.orDie)
+
+              yield* Effect.sleep('50 millis')
 
               const sourceKey = `${sourceRt.moduleId}::${sourceRt.instanceId}` as `${string}::${string}`
               const targetKey = `${targetRt.moduleId}::${targetRt.instanceId}` as `${string}::${string}`
@@ -118,7 +120,7 @@ describe('DeclarativeLinkIR boundary (declarative vs blackbox)', () => {
               Stream.runForEach((action: SourceAction) => {
                 if (action._tag !== 'set') return Effect.void
                 return Effect.promise(() => new Promise<void>((r) => setTimeout(r, 0))).pipe(
-                  Effect.zipRight(target.actions.setMirror(action.payload)),
+                  Effect.flatMap(() => target.actions.setMirror(action.payload)),
                   Effect.tap(() => Deferred.succeed(dispatched, undefined)),
                   Effect.asVoid,
                 )
@@ -146,11 +148,13 @@ describe('DeclarativeLinkIR boundary (declarative vs blackbox)', () => {
         yield* Effect.promise(() =>
           runtime.runPromise(
             Effect.gen(function* () {
-              const store = yield* RuntimeStoreTag
-              const scheduler = yield* TickSchedulerTag
+              const store = yield* Effect.service(RuntimeStoreTag).pipe(Effect.orDie)
+              const scheduler = yield* Effect.service(TickSchedulerTag).pipe(Effect.orDie)
 
-              const sourceRt: any = yield* Source.tag
-              const targetRt: any = yield* Target.tag
+              const sourceRt: any = yield* Effect.service(Source.tag).pipe(Effect.orDie)
+              const targetRt: any = yield* Effect.service(Target.tag).pipe(Effect.orDie)
+
+              yield* Effect.sleep('50 millis')
 
               yield* sourceRt.dispatch({ _tag: 'set', payload: 1 })
               yield* scheduler.flushNow

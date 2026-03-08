@@ -18,7 +18,7 @@ const withLogixAutoImport = (code: string): string => {
   return `${LOGIX_AUTO_IMPORT_SNIPPET}\n${code}`
 }
 
-export const SandboxLogic = SandboxDef.logic(($) => {
+export const SandboxLogic = SandboxDef.logic<SandboxClientTag>(($) => {
   // Two-phase Logic: setup (synchronous, no Env) + run (async, Env available)
   return {
     setup: Effect.void, // No setup needed for this module
@@ -59,7 +59,7 @@ export const SandboxLogic = SandboxDef.logic(($) => {
               yield* Effect.log('[SandboxLogic] init action received')
               yield* $.dispatchers.setStatus('initializing')
               // Start syncing state (fork daemon)
-              yield* syncFlow.pipe(Effect.fork)
+              yield* syncFlow.pipe(Effect.forkChild)
               yield* Effect.log('[SandboxLogic] syncFlow forked')
 
               const { kernels, defaultKernelId } = yield* client.listKernels()

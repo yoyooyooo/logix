@@ -1,4 +1,4 @@
-import { Effect, FiberRef } from 'effect'
+import { Effect } from 'effect'
 import * as Debug from '../runtime/core/DebugSink.js'
 import { isDevEnv } from '../runtime/core/env.js'
 import { onceInRunSession } from './converge-diagnostics.js'
@@ -140,7 +140,7 @@ export const emitMetaSanitizeDiagnostics = (
   Effect.gen(function* () {
     if (!isDevEnv()) return
 
-    const level = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
+    const level = yield* Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie)
     if (level === 'off') return
 
     const moduleId = ctx.moduleId ?? 'unknown'
@@ -170,4 +170,3 @@ export const emitMetaSanitizeDiagnostics = (
       kind: 'meta_sanitized',
     })
   })
-

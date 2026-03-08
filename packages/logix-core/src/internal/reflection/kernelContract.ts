@@ -1,4 +1,4 @@
-import { Context, Effect, Exit, Layer } from 'effect'
+import { Effect, Exit, Layer, ServiceMap } from 'effect'
 import type { ModuleImpl, AnyModuleShape } from '../runtime/core/module.js'
 import type { ModuleRuntime } from '../runtime/core/module.js'
 import { trialRun } from '../observability/trialRun.js'
@@ -301,7 +301,7 @@ const runOnce = <Sh extends AnyModuleShape>(
     const interaction = run?.interaction
     const program = Effect.gen(function* () {
       const ctx = yield* rootImpl.layer.pipe(Layer.build)
-      const runtime = Context.get(ctx, rootImpl.module)
+      const runtime = ServiceMap.get(ctx, rootImpl.module)
       if (interaction) {
         yield* interaction(runtime)
       }

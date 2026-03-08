@@ -1,6 +1,6 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Chunk, Context, Effect, Fiber, Layer, Queue, PubSub, Schema, Stream, Deferred } from 'effect'
+import { Chunk, Effect, Fiber, Layer, Queue, PubSub, Schema, Stream, Deferred, ServiceMap } from 'effect'
 import * as Logix from '../../../src/index.js'
 import * as ModuleRuntimeImpl from '../../../src/internal/runtime/ModuleRuntime.js'
 import type { RuntimeInternals } from '../../../src/internal/runtime/core/RuntimeInternals.js'
@@ -30,7 +30,7 @@ const setupActionCollector = <A>(hub: PubSub.PubSub<A>, count: number) =>
         const subscription = yield* PubSub.subscribe(hub)
         yield* Deferred.succeed(ready, undefined)
         return yield* Effect.all(
-          Array.from({ length: count }, () => Queue.take(subscription)),
+          Array.from({ length: count }, () => PubSub.take(subscription)),
           { concurrency: 'unbounded' },
         )
       }),
@@ -75,7 +75,7 @@ describe('Bound API (public)', () => {
     })
 
     const program = Effect.gen(function* () {
-      const rt = yield* CounterModule.tag
+      const rt = yield* Effect.service(CounterModule.tag).pipe(Effect.orDie)
 
       // Wait for logic subscriptions to be installed.
       yield* Effect.sleep('10 millis')
@@ -128,7 +128,7 @@ describe('Bound API (public)', () => {
 
     const program = Effect.gen(function* () {
       // Entering the logic scope is enough to execute match/matchTag.
-      yield* CounterModule.tag
+      yield* Effect.service(CounterModule.tag).pipe(Effect.orDie)
     })
 
     await runtime.runPromise(program as Effect.Effect<void, never, any>)
@@ -214,8 +214,8 @@ describe('Bound API (public)', () => {
     try {
       await runtime.runPromise(
         Effect.gen(function* () {
-          const sourceRuntime = yield* Source.tag
-          const targetRuntime = yield* Target.tag
+          const sourceRuntime = yield* Effect.service(Source.tag).pipe(Effect.orDie)
+          const targetRuntime = yield* Effect.service(Target.tag).pipe(Effect.orDie)
 
           // Wait for logic subscriptions to be installed.
           yield* Effect.sleep('50 millis')
@@ -286,8 +286,8 @@ describe('Bound API (public)', () => {
     try {
       await runtime.runPromise(
         Effect.gen(function* () {
-          const loggerRuntime = yield* Logger.tag
-          const counterRuntime = yield* Counter.tag
+          const loggerRuntime = yield* Effect.service(Logger.tag).pipe(Effect.orDie)
+          const counterRuntime = yield* Effect.service(Counter.tag).pipe(Effect.orDie)
 
           // Wait for logic subscriptions to be installed.
           yield* Effect.sleep('50 millis')
@@ -349,8 +349,8 @@ describe('Bound API (public)', () => {
     )
 
     const program = Effect.gen(function* () {
-      const source = yield* SourceModule.tag
-      const consumer = yield* ConsumerModule.tag
+      const source = yield* Effect.service(SourceModule.tag).pipe(Effect.orDie)
+      const consumer = yield* Effect.service(ConsumerModule.tag).pipe(Effect.orDie)
 
       expect((yield* consumer.getState).received).toBe(0)
 
@@ -387,7 +387,7 @@ describe('Bound API (public)', () => {
   })
 
   it('should construct services() and advanced onAction builders', () => {
-    const ServiceTag = Context.GenericTag<{ readonly label: string }>('@logixjs/test/BoundService')
+    const ServiceTag = ServiceMap.Service<{ readonly label: string }>('@logixjs/test/BoundService')
 
     const AdvancedModule = Logix.Module.make('BoundAdvanced', {
       state: Schema.Struct({ count: Schema.Number }),
@@ -497,7 +497,13 @@ describe('Bound API (public)', () => {
     const $ = Logix.Bound.make(AdvancedModule.shape, dummyRuntime)
 
     const svcEffect = $.use(ServiceTag)
-    expect(svcEffect).toBe(ServiceTag)
+    const resolvedService = Effect.runSync(
+      svcEffect.pipe(
+        Effect.provideService(ServiceTag, { label: 'svc' }),
+        Effect.provideService(AdvancedModule.tag, dummyRuntime),
+      ),
+    )
+    expect(resolvedService).toEqual({ label: 'svc' })
 
     const builderProp = $.onAction.inc
     const builderValue = $.onAction({
@@ -509,6 +515,58 @@ describe('Bound API (public)', () => {
     expect(typeof (builderProp as any).run).toBe('function')
     expect(typeof (builderValue as any).run).toBe('function')
     expect(typeof (builderSchema as any).run).toBe('function')
+  })
+
+  it('should ignore invalid actions for $.onAction(schema) without terminating the stream', async () => {
+    const SchemaModule = Logix.Module.make('BoundSchemaSafe', {
+      state: Schema.Struct({ count: Schema.Number }),
+      actions: {
+        inc: Schema.Number,
+      },
+    })
+
+    const IncActionSchema = Schema.Struct({
+      _tag: Schema.Literal('inc'),
+      payload: Schema.Number,
+    })
+
+    const SchemaLogic = SchemaModule.logic(($) =>
+      Effect.gen(function* () {
+        yield* $.onAction(IncActionSchema).update((state, action) => ({
+          ...state,
+          count: state.count + action.payload,
+        }))
+      }),
+    )
+
+    const impl = SchemaModule.implement({
+      initial: { count: 0 },
+      logics: [SchemaLogic],
+    })
+
+    const runtime = Logix.Runtime.make(impl, {
+      layer: Layer.empty as Layer.Layer<any, never, never>,
+    })
+
+    const program = Effect.gen(function* () {
+      const rt = yield* Effect.service(SchemaModule.tag).pipe(Effect.orDie)
+
+      yield* Effect.sleep('50 millis')
+
+      yield* rt.dispatch({ _tag: 'inc', payload: 'oops' } as any)
+      yield* Effect.sleep('20 millis')
+      expect((yield* rt.getState).count).toBe(0)
+
+      yield* rt.dispatch({ _tag: 'inc', payload: 2 } as any)
+      yield* Effect.sleep('50 millis')
+      expect((yield* rt.getState).count).toBe(2)
+    })
+
+    try {
+      await runtime.runPromise(program as Effect.Effect<void, never, any>)
+    } finally {
+      await runtime.dispose()
+    }
   })
 
   it('should dispatch actions via $.dispatchers', async () => {

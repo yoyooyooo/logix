@@ -1,5 +1,6 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Context, Effect, Exit, Layer, Scope, Schema, TestClock } from 'effect'
+import { Context, Effect, Exit, Layer, Scope, Schema, ServiceMap } from 'effect'
+import { TestClock } from 'effect/testing'
 import * as Logix from '../../src/index.js'
 import {
   makeRunBudgetEnvelopeV1,
@@ -9,7 +10,7 @@ import * as ProcessEvents from '../../src/internal/runtime/core/process/events.j
 import * as ProcessRuntime from '../../src/internal/runtime/core/process/ProcessRuntime.js'
 
 describe('process: event budgets', () => {
-  it.scoped('caps per-run trigger/dispatch events and emits a summary when exceeded', () =>
+  it.effect('caps per-run trigger/dispatch events and emits a summary when exceeded', () =>
     Effect.gen(function* () {
       const TargetState = Schema.Struct({ count: Schema.Number })
       const TargetActions = { inc: Schema.Void }
@@ -63,15 +64,12 @@ describe('process: event budgets', () => {
       const scope = yield* Scope.make()
       try {
         const env = yield* Layer.buildWithScope(layer, scope)
-        const rt = Context.get(
-          env as Context.Context<any>,
-          ProcessRuntime.ProcessRuntimeTag as any,
-        ) as ProcessRuntime.ProcessRuntime
+        const rt = ServiceMap.get(env as Context.Context<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
 
         yield* rt.deliverPlatformEvent({ eventName: 'test:budget' })
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
         yield* TestClock.adjust('20 millis')
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
 
         for (let i = 0; i < 200; i++) {
           events = (yield* rt.getEventsSnapshot()) as any
@@ -82,7 +80,7 @@ describe('process: event budgets', () => {
               e.error?.code === 'process::event_budget_exceeded',
           )
           if (hasSummary) break
-          yield* Effect.yieldNow()
+          yield* Effect.yieldNow
         }
 
         events = (yield* rt.getEventsSnapshot()) as any

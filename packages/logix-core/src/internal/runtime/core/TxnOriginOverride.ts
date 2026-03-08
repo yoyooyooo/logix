@@ -1,9 +1,11 @@
-import { FiberRef } from 'effect'
+import { ServiceMap } from 'effect'
 
 export type TxnOriginOverride = {
   readonly kind: string
   readonly name?: string
 }
 
-export const currentTxnOriginOverride = FiberRef.unsafeMake<TxnOriginOverride | undefined>(undefined)
-
+export const currentTxnOriginOverride = ServiceMap.Reference<TxnOriginOverride | undefined>(
+  '@logixjs/core/TxnOriginOverride',
+  { defaultValue: () => undefined },
+)

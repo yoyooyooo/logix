@@ -1,4 +1,4 @@
-import { Context, Effect, FiberRef, Layer } from 'effect'
+import { Effect, Layer, ServiceMap } from 'effect'
 import type { JsonValue } from './jsonValue.js'
 import { projectJsonValue } from './jsonValue.js'
 import type { EvidencePackage } from './evidence.js'
@@ -22,10 +22,10 @@ export interface EvidenceCollector {
   readonly clear: () => void
 }
 
-class EvidenceCollectorTagImpl extends Context.Tag('@logixjs/core/EvidenceCollector')<
+class EvidenceCollectorTagImpl extends ServiceMap.Service<
   EvidenceCollectorTagImpl,
   EvidenceCollector
->() {}
+>()('@logixjs/core/EvidenceCollector') {}
 
 export const EvidenceCollectorTag = EvidenceCollectorTagImpl
 
@@ -53,7 +53,7 @@ export const makeEvidenceCollector = (session: RunSession): EvidenceCollector =>
   const debugSink: DebugSink = {
     record: (event: DebugEvent) =>
       Effect.gen(function* () {
-        const level = yield* FiberRef.get(currentDiagnosticsLevel)
+        const level = yield* Effect.service(currentDiagnosticsLevel)
         const instanceIdRaw = (event as any).instanceId
         const instanceId = typeof instanceIdRaw === 'string' && instanceIdRaw.length > 0 ? instanceIdRaw : 'unknown'
         const eventSeq = level === 'off' ? undefined : session.local.nextSeq('eventSeq', instanceId)

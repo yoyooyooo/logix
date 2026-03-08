@@ -27,13 +27,13 @@ export interface BuildEnvOptions {
 const toConfigProviderFromRecord = (
   record: Record<string, BuildEnvConfigValue | undefined> | undefined,
 ): ConfigProvider.ConfigProvider => {
-  const map = new Map<string, string>()
-  for (const [k, v] of Object.entries(record ?? {})) {
-    if (!k) continue
-    if (v === undefined) continue
-    map.set(k, String(v))
-  }
-  return ConfigProvider.fromMap(map)
+  const entries = Object.entries(record ?? {}).flatMap(([k, v]) => {
+    if (!k || v === undefined) {
+      return []
+    }
+    return [[k, String(v)] as const]
+  })
+  return ConfigProvider.fromUnknown(Object.fromEntries(entries))
 }
 
 export const layer = (options: BuildEnvOptions = {}): Layer.Layer<RuntimeHost, never, never> => {
@@ -45,7 +45,7 @@ export const layer = (options: BuildEnvOptions = {}): Layer.Layer<RuntimeHost, n
 
   const configProvider = options.configProvider ? options.configProvider : toConfigProviderFromRecord(options.config)
 
-  const config = Layer.setConfigProvider(configProvider)
+  const config = ConfigProvider.layer(configProvider)
 
   return Layer.mergeAll(runtimeHost, config) as Layer.Layer<RuntimeHost, never, never>
 }

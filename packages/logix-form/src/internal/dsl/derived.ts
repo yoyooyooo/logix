@@ -7,7 +7,7 @@ import type { DerivedSpec } from '../../Trait.js'
  *   without losing type information.
  * - Does no extra runtime normalization; final validation is still governed by Form.make guardrails.
  */
-export const derived = <TValues extends object, I>(_valuesSchema: Schema.Schema<TValues, I>) => {
+export const derived = <TValues extends object>(_valuesSchema: Schema.Schema<TValues>) => {
   function run(spec: DerivedSpec<TValues>): DerivedSpec<TValues>
   function run(spec: any): any {
     return spec

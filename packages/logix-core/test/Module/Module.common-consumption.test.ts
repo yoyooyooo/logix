@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { Deferred, Effect, Exit, FiberId, Layer, Schema } from 'effect'
+import { Deferred, Effect, Exit, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 import * as Form from '../../../logix-form/src/index.js'
 import * as Crud from '../../../domain/src/index.js'
@@ -42,7 +42,7 @@ describe('Module common entrypoints', () => {
       actions: {},
     })
 
-    const done = Deferred.unsafeMake<Exit.Exit<void, unknown>>(FiberId.none)
+    const done = await Effect.runPromise(Deferred.make<Exit.Exit<void, unknown>>())
 
     const hostLogic = Host.logic(($) =>
       Effect.gen(function* () {
@@ -55,7 +55,7 @@ describe('Module common entrypoints', () => {
         for (let i = 0; i < 20; i++) {
           const state = (yield* c.read((s: any) => s)) as any
           if (Array.isArray(state.items) && state.items.length === 1) return
-          yield* Effect.yieldNow()
+          yield* Effect.yieldNow
         }
       }).pipe(
         Effect.exit,
@@ -76,12 +76,12 @@ describe('Module common entrypoints', () => {
     try {
       await runtime.runPromise(
         Effect.gen(function* () {
-          yield* Host.tag
+          yield* Effect.service(Host.tag).pipe(Effect.orDie)
           const exit = yield* Deferred.await(done)
           expect(Exit.isSuccess(exit)).toBe(true)
 
-          const formRuntime = yield* form.tag
-          const crudRuntime = yield* crud.tag
+          const formRuntime = yield* Effect.service(form.tag).pipe(Effect.orDie)
+          const crudRuntime = yield* Effect.service(crud.tag).pipe(Effect.orDie)
 
           const formState: any = yield* formRuntime.getState
           expect(formState.errors?.$manual?.name).toBe('oops')

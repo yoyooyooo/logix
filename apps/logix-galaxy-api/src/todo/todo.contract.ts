@@ -1,4 +1,4 @@
-import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from '@effect/platform'
+import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/unstable/httpapi'
 import { Schema } from 'effect'
 
 export const TodoDto = Schema.Struct({
@@ -30,23 +30,33 @@ export const ServiceUnavailableError = Schema.Struct({
   message: Schema.String,
 })
 
+const TodoErrors = [ServiceUnavailableError.pipe(HttpApiSchema.status(503))] as const
+
 export const TodoGroup = HttpApiGroup.make('Todo')
-  .addError(ServiceUnavailableError, { status: 503 })
-  .add(HttpApiEndpoint.post('todoCreate')`/todos`.setPayload(TodoCreateRequest).addSuccess(TodoDto, { status: 201 }))
-  .add(HttpApiEndpoint.get('todoList')`/todos`.addSuccess(TodoListResponse))
   .add(
-    HttpApiEndpoint.get('todoGet')`/todos/${HttpApiSchema.param('id', Schema.NumberFromString)}`
-      .addSuccess(TodoDto)
-      .addError(NotFoundError, { status: 404 }),
-  )
-  .add(
-    HttpApiEndpoint.patch('todoUpdate')`/todos/${HttpApiSchema.param('id', Schema.NumberFromString)}`
-      .setPayload(TodoUpdateRequest)
-      .addSuccess(TodoDto)
-      .addError(NotFoundError, { status: 404 }),
-  )
-  .add(
-    HttpApiEndpoint.del('todoDelete')`/todos/${HttpApiSchema.param('id', Schema.NumberFromString)}`
-      .addSuccess(Schema.Void, { status: 204 })
-      .addError(NotFoundError, { status: 404 }),
+    HttpApiEndpoint.post('todoCreate', '/todos', {
+      payload: TodoCreateRequest,
+      success: TodoDto.pipe(HttpApiSchema.status(201)),
+      error: TodoErrors,
+    }),
+    HttpApiEndpoint.get('todoList', '/todos', {
+      success: TodoListResponse,
+      error: TodoErrors,
+    }),
+    HttpApiEndpoint.get('todoGet', '/todos/:id', {
+      params: { id: Schema.NumberFromString },
+      success: TodoDto,
+      error: [...TodoErrors, NotFoundError.pipe(HttpApiSchema.status(404))],
+    }),
+    HttpApiEndpoint.patch('todoUpdate', '/todos/:id', {
+      params: { id: Schema.NumberFromString },
+      payload: TodoUpdateRequest,
+      success: TodoDto,
+      error: [...TodoErrors, NotFoundError.pipe(HttpApiSchema.status(404))],
+    }),
+    HttpApiEndpoint.delete('todoDelete', '/todos/:id', {
+      params: { id: Schema.NumberFromString },
+      success: HttpApiSchema.NoContent,
+      error: [...TodoErrors, NotFoundError.pipe(HttpApiSchema.status(404))],
+    }),
   )

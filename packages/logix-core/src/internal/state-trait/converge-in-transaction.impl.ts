@@ -1,4 +1,4 @@
-import { Effect, FiberRef } from 'effect'
+import { Effect } from 'effect'
 import * as Debug from '../runtime/core/DebugSink.js'
 import {
   toSerializableErrorSummary,
@@ -265,19 +265,19 @@ export const convergeInTransaction = <S extends object>(
     }
 
     const stack = yield* getMiddlewareStack()
-    const diagnosticsLevel: Debug.DiagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
-    const debugSinks = yield* FiberRef.get(Debug.currentDebugSinks)
+    const diagnosticsLevel: Debug.DiagnosticsLevel = yield* Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie)
+    const debugSinks = yield* Effect.service(Debug.currentDebugSinks).pipe(Effect.orDie)
     // Decision / TraitSummary gate is based on "will it be consumed" (sinks), not diagnosticsLevel.
     // diagnosticsLevel only controls exportable/heavy details (trace payload, hotspots, static IR export, etc.).
     const shouldCollectDecision = debugSinks.length > 0 && !Debug.isErrorOnlyOnlySinks(debugSinks)
     const shouldCollectDecisionDetails = shouldCollectDecision && diagnosticsLevel !== 'off'
     const shouldCollectDecisionHeavyDetails = shouldCollectDecision && diagnosticsLevel !== 'off'
-    const execVmMode = yield* FiberRef.get(currentExecVmMode)
+    const execVmMode = yield* currentExecVmMode
 
     // 044: deterministic sampling for sampled mode (uses txnSeq as a stable anchor by default).
     let diagnosticsSampling: TraitConvergeDiagnosticsSamplingSummary | undefined
     if (diagnosticsLevel === 'sampled') {
-      const cfg = yield* FiberRef.get(Debug.currentTraitConvergeDiagnosticsSampling)
+      const cfg = yield* Effect.service(Debug.currentTraitConvergeDiagnosticsSampling).pipe(Effect.orDie)
       const sampleEveryN = normalizePositiveInt(cfg.sampleEveryN) ?? 32
       const topK = normalizePositiveInt(cfg.topK) ?? 3
       const txnSeq = ctx.txnSeq

@@ -12,24 +12,22 @@ import {
 } from './storage.js'
 
 const ResizePayload = Schema.Struct({
-  edge: Schema.Literal('top', 'left', 'right'),
+  edge: Schema.Literals(['top', 'left', 'right']),
 })
 
-const UpdateLayoutPayload = Schema.partial(
-  Schema.Struct({
-    height: Schema.Number,
-    marginLeft: Schema.Number,
-    marginRight: Schema.Number,
-    isDragging: Schema.Boolean,
-    trigger: Schema.optional(
-      Schema.Struct({
-        x: Schema.Number,
-        y: Schema.Number,
-        isDragging: Schema.Boolean,
-      }),
-    ),
-  }),
-)
+const UpdateLayoutPayload = Schema.Struct({
+  height: Schema.optional(Schema.Number),
+  marginLeft: Schema.optional(Schema.Number),
+  marginRight: Schema.optional(Schema.Number),
+  isDragging: Schema.optional(Schema.Boolean),
+  trigger: Schema.optional(
+    Schema.Struct({
+      x: Schema.Number,
+      y: Schema.Number,
+      isDragging: Schema.Boolean,
+    }),
+  ),
+})
 
 export const DevtoolsModule = Logix.Module.make('LogixDevtoolsModule', {
   state: DevtoolsStateSchema,
@@ -64,8 +62,8 @@ export const DevtoolsModule = Logix.Module.make('LogixDevtoolsModule', {
     clearImportedEvidence: Schema.Void,
     resizeStart: ResizePayload,
     updateLayout: UpdateLayoutPayload,
-    setTheme: Schema.Literal('system', 'light', 'dark'),
-    setMode: Schema.Literal('basic', 'deep'),
+    setTheme: Schema.Literals(['system', 'light', 'dark']),
+    setMode: Schema.Literals(['basic', 'deep']),
     updateSettings: Schema.Any,
   },
   reducers: {

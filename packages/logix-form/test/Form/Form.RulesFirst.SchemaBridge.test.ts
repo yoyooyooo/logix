@@ -1,15 +1,14 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
 
 describe('Form rules-first schema bridge (T046)', () => {
-  it.scoped('z.field(schema) validates and participates in reValidateOn', () =>
+  it.effect('z.field(schema) validates and participates in reValidateOn', () =>
     Effect.gen(function* () {
       const Email = Schema.String.pipe(
-        Schema.minLength(1, { message: () => '请填写邮箱' }),
-        Schema.pattern(/.+@.+\..+/, { message: () => '邮箱格式不正确' }),
+        Schema.refine((value): value is string => value.length >= 1, { message: '请填写邮箱' }),
+        Schema.refine((value): value is string => /.+@.+\..+/.test(value), { message: '邮箱格式不正确' }),
       )
 
       const ValuesSchema = Schema.Struct({

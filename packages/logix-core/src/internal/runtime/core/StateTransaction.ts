@@ -999,6 +999,16 @@ export const recordPatch = <S>(
   ctx.recordPatch(path, reason, from, to, traitNodeId, stepId)
 }
 
+export const markDirtyPath = <S>(
+  ctx: StateTxnContext<S>,
+  path: StatePatchPath | undefined,
+  reason: PatchReason,
+): FieldPathId | undefined => {
+  const state = ctx.current
+  if (!state) return undefined
+  return resolveAndRecordDirtyPathId(state, path, reason)
+}
+
 export const readDirtyEvidence = <S>(ctx: StateTxnContext<S>): TxnDirtyEvidence | undefined => {
   const state = ctx.current as StateTxnState<S> | undefined
   if (!state) return undefined

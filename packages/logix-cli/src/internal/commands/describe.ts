@@ -285,7 +285,7 @@ export const runDescribe = (
       artifacts,
     })
   }).pipe(
-    Effect.catchAll((cause) =>
+    Effect.catch((cause) =>
       Effect.succeed(
         makeCommandResult({
           runId,
@@ -294,8 +294,7 @@ export const runDescribe = (
           artifacts: [],
           error: asSerializableErrorSummary(cause),
         }),
-      ),
-    ),
+      )),
   )
 }
 

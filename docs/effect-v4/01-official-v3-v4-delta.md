@@ -7,13 +7,13 @@
 ## 1.1 Service/Context 体系重构
 
 - `Context.Tag / Context.GenericTag / Effect.Service / Context.Reference`
-  -> `ServiceMap.Service / ServiceMap.Reference`
+  -> `Context.Tag / Tag class / Context.Reference`
 - 影响：服务定义、环境模型、Layer 装配入口都会变化。
 - 对 Logix 的意义：不是简单替换名字，而是把“Runtime 环境面”统一映射到 `ServiceMap`，这会触发 core 与 react 适配层的结构性改造。
 
 ## 1.2 FiberRef 体系移除
 
-- `FiberRef` + `Effect.locally` 迁移为 `ServiceMap.Reference` + `Effect.provideService`
+- `FiberRef` + `Effect.locally` 迁移为 `Context.Reference` + `Effect.provideService`
 - 影响：fiber-local 语义和上下文注入方式发生变化。
 - 对 Logix 的意义：当前 runtime 内核大量依赖 FiberRef（调试级别、txn 语义、链路标识、诊断采样），需先做“引用模型重构”，否则后续迁移会碎片化。
 

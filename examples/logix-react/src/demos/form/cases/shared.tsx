@@ -99,7 +99,7 @@ export const GhostButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement>
   />
 )
 
-export const ResourceSnapshotSchema = <DataSchema extends Schema.Schema<any, any>>(data: DataSchema) =>
+export const ResourceSnapshotSchema = <DataSchema extends Schema.Schema<any>>(data: DataSchema) =>
   Schema.Struct({
     status: Schema.String,
     keyHash: Schema.optional(Schema.String),

@@ -15,7 +15,7 @@ const makeNow = (timeline: ReadonlyArray<number>): (() => number) => {
 }
 
 describe('StateTrait converge diagnostics sampling (deterministic topK)', () => {
-  it.scoped('only emits top3 when sampled; slow trait should be ranked into top1', () =>
+  it.effect('only emits top3 when sampled; slow trait should be ranked into top1', () =>
     Effect.gen(function* () {
       const State = Schema.Struct({
         a: Schema.Number,

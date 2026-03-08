@@ -1,4 +1,4 @@
-import { Context, Effect, Schema } from 'effect'
+import { ServiceMap, Effect, Schema } from 'effect'
 
 import {
   ConflictError,
@@ -142,5 +142,5 @@ export interface ProjectRepoService {
   }) => Effect.Effect<void, NotFoundErrorDto>
 }
 
-export class ProjectRepo extends Context.Tag('ProjectRepo')<ProjectRepo, ProjectRepoService>() {}
+export class ProjectRepo extends ServiceMap.Service<ProjectRepo, ProjectRepoService>()('ProjectRepo') {}
 

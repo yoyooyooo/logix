@@ -51,7 +51,7 @@ describe('ReplayMode · Sequence', () => {
     const spec = Logix.Resource.make<Key, { readonly name: string }, never, never>({
       id: 'user/profile',
       keySchema: KeySchema,
-      load: (key) => Effect.sleep('10 millis').pipe(Effect.zipRight(Effect.succeed({ name: `payload:${key.userId}` }))),
+      load: (key) => Effect.sleep('10 millis').pipe(Effect.flatMap(() => Effect.succeed({ name: `payload:${key.userId}` }))),
     })
 
     const recordEffect = Effect.scoped(

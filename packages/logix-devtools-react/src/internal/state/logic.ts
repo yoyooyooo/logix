@@ -1,5 +1,5 @@
 import * as Logix from '@logixjs/core'
-import { Effect, Stream } from 'effect'
+import { Effect, Queue, Stream } from 'effect'
 import {
   clearDevtoolsEvents,
   clearDevtoolsSnapshotOverride,
@@ -222,16 +222,20 @@ const materializeDirtyRootPathsFromCanonical = (args: {
 
 // Helper to create a stream from DOM events
 const fromDomEvent = <K extends keyof WindowEventMap>(event: K): Stream.Stream<WindowEventMap[K]> =>
-  Stream.async<WindowEventMap[K]>((emit) => {
-    const handler = (e: WindowEventMap[K]) => emit.single(e)
-    window.addEventListener(event, handler)
-    return Effect.sync(() => window.removeEventListener(event, handler))
-  })
+  Stream.callback<WindowEventMap[K]>((queue) =>
+    Effect.gen(function* () {
+      const handler = (e: WindowEventMap[K]) => {
+        Queue.offerUnsafe(queue, e)
+      }
+      window.addEventListener(event, handler)
+      yield* Effect.addFinalizer(() => Effect.sync(() => window.removeEventListener(event, handler)))
+    }),
+  )
 
 export const DevtoolsLogic = DevtoolsModule.logic<DevtoolsSnapshotStore>(($) => ({
   setup: $.lifecycle.onStart(
     Effect.gen(function* () {
-      const snapshotStore = yield* DevtoolsSnapshotStore
+      const snapshotStore = yield* $.use(DevtoolsSnapshotStore)
 
       // Initialization: sync once with the current snapshot.
       const initialSnapshot = yield* snapshotStore.get
@@ -245,7 +249,7 @@ export const DevtoolsLogic = DevtoolsModule.logic<DevtoolsSnapshotStore>(($) => 
 
   // run section: initialize snapshot subscription + register all onAction watchers and dragging logic.
   run: Effect.gen(function* () {
-    const snapshotStore = yield* DevtoolsSnapshotStore
+    const snapshotStore = yield* $.use(DevtoolsSnapshotStore)
 
     // Subscribe to Snapshot changes: recompute DevtoolsState on every Snapshot update.
     yield* $.on(snapshotStore.changes).runFork((snapshot) =>

@@ -76,7 +76,7 @@ const runTxn = (
   Effect.promise(() =>
     runtime.runPromise(
       Effect.gen(function* () {
-        const rt = yield* M.tag
+        const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
         void name
         yield* rt.dispatch({ _tag: 'incA', payload: undefined } as any)
       }),
@@ -90,7 +90,7 @@ const pickTraitConvergeRefs = (pkg: Logix.Observability.EvidencePackage): any[] 
     .filter((p) => p && typeof p === 'object' && p.kind === 'trait:converge')
 
 describe('StateTrait converge diagnostics levels', () => {
-  it.scoped('off: no exportable trait:converge event nor summary', () =>
+  it.effect('off: no exportable trait:converge event nor summary', () =>
     Effect.gen(function* () {
       const moduleId = 'StateTraitConvergeAuto_DiagnosticsLevels_Off'
       const { M, runtime } = makeRuntimeWithDevtoolsHub({
@@ -110,7 +110,7 @@ describe('StateTrait converge diagnostics levels', () => {
     }),
   )
 
-  it.scoped('light: trait:converge exported with slim dirty + rootIds mapping + minimal staticIrByDigest summary', () =>
+  it.effect('light: trait:converge exported with slim dirty + rootIds mapping + minimal staticIrByDigest summary', () =>
     Effect.gen(function* () {
       const moduleId = 'StateTraitConvergeAuto_DiagnosticsLevels_Light'
       const { M, runtime } = makeRuntimeWithDevtoolsHub({
@@ -152,7 +152,7 @@ describe('StateTrait converge diagnostics levels', () => {
     }),
   )
 
-  it.scoped('full: trait:converge exported with controlled roots summary and staticIrByDigest summary', () =>
+  it.effect('full: trait:converge exported with controlled roots summary and staticIrByDigest summary', () =>
     Effect.gen(function* () {
       const moduleId = 'StateTraitConvergeAuto_DiagnosticsLevels_Full'
       const { M, runtime } = makeRuntimeWithDevtoolsHub({
@@ -192,7 +192,7 @@ describe('StateTrait converge diagnostics levels', () => {
     }),
   )
 
-  it.scoped(
+  it.effect(
     'sampled: trait:converge exported with slim dirty + diagnosticsSampling summary + optional top3 hotspots',
     () =>
       Effect.gen(function* () {
@@ -248,7 +248,7 @@ describe('StateTrait converge diagnostics levels', () => {
       }),
   )
 
-  it.scoped('mixed tiers: staticIrByDigest should keep full/minimal shape per digest without cross-tier pollution', () =>
+  it.effect('mixed tiers: staticIrByDigest should keep full/minimal shape per digest without cross-tier pollution', () =>
     Effect.gen(function* () {
       Debug.clearDevtoolsEvents()
 
@@ -324,7 +324,7 @@ describe('StateTrait converge diagnostics levels', () => {
       yield* Effect.promise(() =>
         fullRuntime.runPromise(
           Effect.gen(function* () {
-            const rt = yield* FullModule.tag
+            const rt = yield* Effect.service(FullModule.tag).pipe(Effect.orDie)
             yield* rt.dispatch({ _tag: 'inc', payload: undefined } as any)
           }),
         ),
@@ -333,7 +333,7 @@ describe('StateTrait converge diagnostics levels', () => {
       yield* Effect.promise(() =>
         lightRuntime.runPromise(
           Effect.gen(function* () {
-            const rt = yield* LightModule.tag
+            const rt = yield* Effect.service(LightModule.tag).pipe(Effect.orDie)
             yield* rt.dispatch({ _tag: 'inc', payload: undefined } as any)
           }),
         ),

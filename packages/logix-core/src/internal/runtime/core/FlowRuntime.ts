@@ -283,7 +283,7 @@ export const make = <Sh extends AnyModuleShape, R = never>(
     <T, A, E, R2>(resolver: EffectResolver<T, Sh, R & R2, A, E>, options?: Logic.OperationOptions) =>
     (stream: Stream.Stream<T>): LogicEffect<Sh, R & R2, void, E> =>
       runStreamWithMode<T, A, E, R2>('parallel', 'flow.runParallel', resolver, options)(stream).pipe(
-        Effect.catchAllCause((cause) =>
+        Effect.catchCause((cause) =>
           Debug.record({
             type: 'diagnostic',
             moduleId: scope.moduleId,
@@ -297,8 +297,7 @@ export const make = <Sh extends AnyModuleShape, R = never>(
               kind: 'flow',
               name: 'runParallel',
             },
-          }).pipe(Effect.zipRight(Effect.failCause(cause))),
-        ),
+          }).pipe(Effect.flatMap(() => Effect.failCause(cause)))),
       ) as any
 
   const fromState = <V>(

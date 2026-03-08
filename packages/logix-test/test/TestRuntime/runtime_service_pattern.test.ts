@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { Effect, Schema, TestClock } from 'effect'
+import { Effect, Schema } from 'effect'
+import { TestClock } from 'effect/testing'
 import * as Logix from '@logixjs/core'
 import { runTest } from '../../src/TestRuntime.js'
 import * as TestProgram from '../../src/TestProgram.js'
@@ -11,12 +12,12 @@ const Counter = Logix.Module.make('RuntimeAsService.Counter', {
 
 const CounterLogic = Counter.logic(($) =>
   Effect.gen(function* () {
-    const t1 = yield* TestClock.currentTimeMillis
+    const t1 = yield* TestClock.testClockWith((clock) => clock.currentTimeMillis)
     yield* Effect.log(`LOGIC TIME 1: ${t1}`)
 
     yield* $.onAction('inc').runParallel(
       Effect.gen(function* () {
-        const t2 = yield* TestClock.currentTimeMillis
+        const t2 = yield* TestClock.testClockWith((clock) => clock.currentTimeMillis)
         yield* Effect.log(`LOGIC TIME 2: ${t2}`)
         yield* $.state.update((s) => ({ ...s, count: s.count + 1 }))
       }),

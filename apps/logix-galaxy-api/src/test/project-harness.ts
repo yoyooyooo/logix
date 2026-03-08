@@ -178,7 +178,7 @@ export const makeProjectHarness = (): ProjectHarness => {
       return user
     })
 
-  const die = <A>(message: string): Effect.Effect<A> => Effect.dieMessage(message)
+  const die = <A>(message: string): Effect.Effect<A> => Effect.die(new Error(message))
 
   const authService: AuthService = {
     login,
@@ -525,9 +525,9 @@ export const makeProjectHarness = (): ProjectHarness => {
           eventId: nextEventId++,
           projectId: input.projectId,
           eventType: input.eventType as any,
-          actorUserId: Option.getOrNull(Option.fromNullable(input.actorUserId)),
-          subjectUserId: Option.getOrNull(Option.fromNullable(input.subjectUserId)),
-          subjectGroupId: Option.getOrNull(Option.fromNullable(input.subjectGroupId)),
+          actorUserId: Option.getOrNull(Option.fromNullishOr(input.actorUserId)),
+          subjectUserId: Option.getOrNull(Option.fromNullishOr(input.subjectUserId)),
+          subjectGroupId: Option.getOrNull(Option.fromNullishOr(input.subjectGroupId)),
           createdAt: nowIso(),
           detail: input.detail ?? {},
         })

@@ -150,7 +150,7 @@ test(
         )
 
         const moduleRuntimes = (await runtime.runPromise(
-          Effect.all(moduleDefs.map((m) => m.tag), { concurrency: 'unbounded' }) as any,
+          Effect.all(moduleDefs.map((m) => Effect.service(m.tag).pipe(Effect.orDie)), { concurrency: 'unbounded' }) as any,
         )) as ReadonlyArray<any>
 
         const storeOptions = { lowPriorityDelayMs: 16, lowPriorityMaxDelayMs: 50 }
@@ -350,7 +350,7 @@ test(
         })
 
         try {
-          const moduleRuntime = (await runtime.runPromise(M.tag as any)) as any
+          const moduleRuntime = (await runtime.runPromise(Effect.service(M.tag).pipe(Effect.orDie))) as any
 
           const selectorCount = 200
           const readQueries = Array.from({ length: selectorCount }, (_, i) =>
@@ -370,6 +370,8 @@ test(
           for (const s of stores) s.getSnapshot()
 
           for (const u of unsubs) u()
+          await Promise.resolve()
+          await nextFrame()
 
           const s0 = stores[0]
           const rq0 = readQueries[0]
@@ -380,7 +382,6 @@ test(
             expect(s1).not.toBe(s0)
           }
 
-          await nextFrame()
         } finally {
           await runtime.dispose()
         }

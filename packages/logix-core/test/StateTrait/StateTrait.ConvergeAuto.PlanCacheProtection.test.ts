@@ -75,7 +75,7 @@ const pickDecisionSummaries = (ring: Debug.RingBufferSink): ReadonlyArray<any> =
     .map((e) => (e as any).data)
 
 describe('StateTrait converge auto plan cache protection', () => {
-  it.scoped('enforces capacity/eviction and triggers low-hit-rate self-protection', () =>
+  it.effect('enforces capacity/eviction and triggers low-hit-rate self-protection', () =>
     Effect.gen(function* () {
       const steps = 200
       const { M, runtime, ring } = makePlanCacheFixture({
@@ -84,7 +84,7 @@ describe('StateTrait converge auto plan cache protection', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt: any = yield* M.tag
+        const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
         for (let i = 0; i < steps; i++) {
           const input = `in${i}`
           yield* rt.dispatch({ _tag: 'bump', payload: input } as any)

@@ -66,7 +66,7 @@ const pickConfigErrors = (ring: Debug.RingBufferSink): ReadonlyArray<any> =>
     )
 
 describe('StateTrait converge auto correctness invariants', () => {
-  it.scoped('unknown_write should fall back to full even after a cache hit', () =>
+  it.effect('unknown_write should fall back to full even after a cache hit', () =>
     Effect.gen(function* () {
       const steps = 10
       const shape: Record<string, Schema.Schema<any>> = {}
@@ -108,7 +108,7 @@ describe('StateTrait converge auto correctness invariants', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt: any = yield* M.tag
+        const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
         const bump = (field: string) => rt.dispatch({ _tag: 'bump', payload: field } as any)
 
@@ -137,7 +137,7 @@ describe('StateTrait converge auto correctness invariants', () => {
     }),
   )
 
-  it.scoped('multiple writers should hard fail and block commit (not swallowed by cache/self-protection)', () =>
+  it.effect('multiple writers should hard fail and block commit (not swallowed by cache/self-protection)', () =>
     Effect.gen(function* () {
       const steps = 10
       const shape: Record<string, Schema.Schema<any>> = {}
@@ -179,7 +179,7 @@ describe('StateTrait converge auto correctness invariants', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt: any = yield* M.tag
+        const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
         const bump = (field: string) => rt.dispatch({ _tag: 'bump', payload: field } as any)
 
@@ -228,7 +228,7 @@ describe('StateTrait converge auto correctness invariants', () => {
     }),
   )
 
-  it.scoped('computed/link cycle should hard fail and block commit (not swallowed by cache/self-protection)', () =>
+  it.effect('computed/link cycle should hard fail and block commit (not swallowed by cache/self-protection)', () =>
     Effect.gen(function* () {
       const steps = 10
       const shape: Record<string, Schema.Schema<any>> = { a: Schema.Number, b: Schema.Number }
@@ -279,7 +279,7 @@ describe('StateTrait converge auto correctness invariants', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt: any = yield* M.tag
+        const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
         const bump = (field: string) => rt.dispatch({ _tag: 'bump', payload: field } as any)
 

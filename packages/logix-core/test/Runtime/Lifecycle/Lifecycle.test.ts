@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect, vi } from '@effect/vitest'
 import { Cause, Effect, Layer, ManagedRuntime, Schema } from 'effect'
 import * as Logix from '../../../src/index.js'
@@ -67,7 +67,7 @@ describe('Lifecycle hooks (Bound.lifecycle)', () => {
 
     await runtime.runPromise(
       Effect.gen(function* () {
-        const moduleRuntime = yield* TestModule.tag
+        const moduleRuntime = yield* Effect.service(TestModule.tag).pipe(Effect.orDie)
         yield* Effect.sleep('10 millis')
         yield* moduleRuntime.dispatch({
           _tag: 'triggerFlowError',

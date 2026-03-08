@@ -1,22 +1,15 @@
 # StageGateRecord: G4
 
 - gate: `G4`
-- result: `NOT_PASS`
-- mode: `strict_gate`
-- timestamp: `2026-03-02T18:30:00+08:00`
+- result: `PENDING`
+- mode: `exploratory`
+- timestamp: `2026-03-07T12:10:00+08:00`
 
 ## criteria
 
-- `apps_examples_docs_v4_only`: `NOT_PASS`
-- `schema_examples_no_legacy_syntax`: `NOT_PASS`
-- `ssot_synced`: `NOT_PASS`
-
-## commands
-
-```bash
-rg -n "effect v3|v3" apps/docs examples docs/ssot
-rg -n "Schema\.partial\(|Schema\.Record\(\{\s*key:|Schema\.pattern\(|Schema\.Union\(|Schema\.Literal\(" apps/docs examples docs/ssot
-```
+- `apps_examples_docs_v4_only`: `PENDING`
+- `schema_examples_no_legacy_syntax`: `PENDING`
+- `ssot_synced`: `PENDING`
 
 ## evidenceRefs
 
@@ -25,4 +18,5 @@ rg -n "Schema\.partial\(|Schema\.Record\(\{\s*key:|Schema\.pattern\(|Schema\.Uni
 
 ## notes
 
-- 阻塞原因：S5 文档与示例收口尚未完成。
+- apps/examples/docs/SSoT 的全仓 v4-only 收口仍属于 `103` 主线，但当前尚未完成。
+- 本 gate 代表主线后半段，而不是被移出主线的工作。

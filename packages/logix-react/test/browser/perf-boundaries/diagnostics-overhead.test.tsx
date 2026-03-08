@@ -219,7 +219,7 @@ test(
           // Warm up: avoid triggering module assembly during React render (may introduce Suspense / unstable latency).
           await runtime.runPromise(
             Effect.gen(function* () {
-              yield* PerfModule.tag
+              yield* Effect.service(PerfModule.tag).pipe(Effect.orDie)
             }) as Effect.Effect<void, never, any>,
           )
 

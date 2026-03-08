@@ -72,7 +72,7 @@ const getMessageFromUnknown = (cause: unknown): string => {
 
   if (Cause.isCause(cause)) {
     try {
-      const pretty = Cause.pretty(cause, { renderErrorCause: true })
+      const pretty = Cause.pretty(cause)
       if (typeof pretty === 'string' && pretty.length > 0) return pretty
     } catch {
       // ignore pretty printer failures

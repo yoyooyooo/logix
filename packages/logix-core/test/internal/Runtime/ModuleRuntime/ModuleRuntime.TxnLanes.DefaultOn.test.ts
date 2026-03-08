@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../../../src/index.js'
@@ -14,7 +14,7 @@ const computeValue = (a: number, offset: number): number => {
 const waitUntil = (cond: Effect.Effect<boolean>): Effect.Effect<void> =>
   Effect.gen(function* () {
     while (!(yield* cond)) {
-      yield* Effect.yieldNow()
+      yield* Effect.yieldNow
     }
   })
 
@@ -60,7 +60,7 @@ const makeDeferredModule = (args: { readonly deferred: number }) => {
 }
 
 describe('ModuleRuntime TxnLanes (062 default-on)', () => {
-  it.scoped('enables txn lanes by default (nonUrgent evidence)', () =>
+  it.effect('enables txn lanes by default (nonUrgent evidence)', () =>
     Effect.gen(function* () {
       const events: Array<Logix.Debug.Event> = []
       const sink: Logix.Debug.Sink = {
@@ -92,7 +92,7 @@ describe('ModuleRuntime TxnLanes (062 default-on)', () => {
       yield* Effect.promise(() =>
         runtime.runPromise(
           Effect.gen(function* () {
-            const rt: any = yield* M.tag
+            const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
             yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 't1' }, () =>
               Effect.gen(function* () {
@@ -121,7 +121,7 @@ describe('ModuleRuntime TxnLanes (062 default-on)', () => {
     }),
   )
 
-  it.scoped('overrideMode=forced_off disables lanes (runtime_default) and emits forced_off evidence', () =>
+  it.effect('overrideMode=forced_off disables lanes (runtime_default) and emits forced_off evidence', () =>
     Effect.gen(function* () {
       const events: Array<Logix.Debug.Event> = []
       const sink: Logix.Debug.Sink = {
@@ -154,7 +154,7 @@ describe('ModuleRuntime TxnLanes (062 default-on)', () => {
       yield* Effect.promise(() =>
         runtime.runPromise(
           Effect.gen(function* () {
-            const rt: any = yield* M.tag
+            const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
             yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 't1' }, () =>
               Effect.gen(function* () {
@@ -187,7 +187,7 @@ describe('ModuleRuntime TxnLanes (062 default-on)', () => {
     }),
   )
 
-  it.scoped('overrideMode=forced_sync disables lanes (runtime_default) and emits forced_sync evidence', () =>
+  it.effect('overrideMode=forced_sync disables lanes (runtime_default) and emits forced_sync evidence', () =>
     Effect.gen(function* () {
       const events: Array<Logix.Debug.Event> = []
       const sink: Logix.Debug.Sink = {
@@ -220,7 +220,7 @@ describe('ModuleRuntime TxnLanes (062 default-on)', () => {
       yield* Effect.promise(() =>
         runtime.runPromise(
           Effect.gen(function* () {
-            const rt: any = yield* M.tag
+            const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
             yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 't1' }, () =>
               Effect.gen(function* () {

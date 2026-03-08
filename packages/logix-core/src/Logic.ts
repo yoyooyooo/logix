@@ -1,4 +1,4 @@
-import { Context, Effect } from 'effect'
+import { Effect, ServiceMap } from 'effect'
 import type * as Logix from './internal/module.js'
 import * as Internal from './internal/LogicMiddleware.js'
 import * as PlatformInternal from './internal/platform/Platform.js'
@@ -10,7 +10,7 @@ export * from './internal/LogicMiddleware.js'
 /**
  * Core Tag for retrieving the current ModuleRuntime within a Logic scope.
  */
-export class RuntimeTag extends Context.Tag('@logixjs/Runtime')<RuntimeTag, Logix.ModuleRuntime<any, any>>() {}
+export class RuntimeTag extends ServiceMap.Service<RuntimeTag, Logix.ModuleRuntime<any, any>>()('@logixjs/Runtime') {}
 
 // Public Platform alias (equivalent to internal/platform/Platform.Service).
 export type Platform = PlatformInternal.Service

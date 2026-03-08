@@ -1,4 +1,4 @@
-import { Context, Effect } from 'effect'
+import { Effect, ServiceMap } from 'effect'
 
 export interface Service {
   readonly lifecycle: {
@@ -19,4 +19,4 @@ export interface Service {
   readonly emitReset: () => Effect.Effect<void, never, any>
 }
 
-export class Tag extends Context.Tag('@logixjs/Platform')<Tag, Service>() {}
+export class Tag extends ServiceMap.Service<Tag, Service>()('@logixjs/Platform') {}

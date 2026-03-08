@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../../src/index.js'
@@ -6,7 +6,7 @@ import { buildDependencyGraph } from '../../../src/internal/state-trait/graph.js
 import { reverseClosure } from '../../../src/internal/state-trait/reverse-closure.js'
 
 describe('StateTrait scoped validate · ReverseClosure', () => {
-  it.scoped('includes all downstream dependents for a target field', () =>
+  it.effect('includes all downstream dependents for a target field', () =>
     Effect.sync(() => {
       const StateSchema = Schema.Struct({
         age: Schema.Number,
@@ -48,7 +48,7 @@ describe('StateTrait scoped validate · ReverseClosure', () => {
     }),
   )
 
-  it.scoped('reuses cached dependency graph when program edges reference is stable', () =>
+  it.effect('reuses cached dependency graph when program edges reference is stable', () =>
     Effect.sync(() => {
       const StateSchema = Schema.Struct({
         age: Schema.Number,
@@ -81,7 +81,7 @@ describe('StateTrait scoped validate · ReverseClosure', () => {
 })
 
 describe('StateTrait scoped validate · writeback', () => {
-  it.scoped('writes check result into state.errors with ReverseClosure minimal set', () =>
+  it.effect('writes check result into state.errors with ReverseClosure minimal set', () =>
     Effect.gen(function* () {
       const StateSchema = Schema.Struct({
         age: Schema.Number,
@@ -158,7 +158,7 @@ describe('StateTrait scoped validate · writeback', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* M.tag
+        const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
         // First update age (converge produces the latest derived values within the same transaction).
         yield* rt.dispatch({ _tag: 'setAge', payload: { age: 10 } } as any)

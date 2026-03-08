@@ -56,7 +56,7 @@ const PollingLogic = PollingDef.logic(($) =>
   Effect.gen(function* () {
     // Ideally this is exposed via $.lifecycle.onSuspend
     // But internally it just consumes the Platform service
-    const platform = yield* Logix.Platform.tag
+    const platform = yield* Effect.service(Logix.Platform.tag).pipe(Effect.orDie)
 
     yield* Console.log('[Logic] Module initialized. Starting Polling...')
 

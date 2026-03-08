@@ -1,4 +1,4 @@
-import { Schema } from 'effect'
+import { Exit, Schema } from 'effect'
 import * as Rule from '../../Rule.js'
 import * as Validators from '../validators/index.js'
 import type { CanonicalListItem, CanonicalListPath, CanonicalPath, CanonicalValue } from '../form/types.js'
@@ -68,7 +68,7 @@ export type RulesDsl<TValues extends object> = {
       rule: Rule.RuleInput<CanonicalValue<TValues, P>, Ctx>,
       options?: { readonly errorTarget?: Rule.ErrorTarget },
     ): Rule.FieldDecl<CanonicalValue<TValues, P>, Ctx>
-    (schema: Schema.Schema<any, any, never>): RulesFieldNode
+    (schema: Schema.Schema<any>): RulesFieldNode
     (rule: Rule.RuleInput<any, any>): RulesFieldNode
   }
   readonly object: (shape: Readonly<Record<string, RulesNode>>) => RulesObjectNode
@@ -138,11 +138,15 @@ const makeFieldNode = (rule: Rule.RuleInput<any, any>): RulesFieldNode => ({
   rule,
 })
 
-const fieldFromSchema = (schema: Schema.Schema<any, any, never>): Rule.RuleInput<any, any> => ({
+const fieldFromSchema = (schema: Schema.Schema<any>): Rule.RuleInput<any, any> => ({
   validate: {
     schema: (value: unknown) => {
-      const decoded = Schema.decodeUnknownEither(schema)(value) as any
-      return decoded._tag === 'Right' ? undefined : Validators.schemaErrorMessage(decoded.left)
+      try {
+        Schema.decodeUnknownSync(schema as any)(value)
+        return undefined
+      } catch (error) {
+        return Validators.schemaErrorMessage(error)
+      }
     },
   },
 })
@@ -395,7 +399,7 @@ const compileSchema = <TValues extends object>(
  * - `$.rules.schema(node)`: zod-like rules authoring (Phase 3 will be filled in gradually)
  * - `$.rules.at(prefix)`: write relative paths under `prefix`
  */
-export const rules = <TValues extends object, I>(_valuesSchema: Schema.Schema<TValues, I>): RulesDsl<TValues> => {
+export const rules = <TValues extends object>(_valuesSchema: Schema.Schema<TValues>): RulesDsl<TValues> => {
   const makeDsl = (prefix: string): RulesDsl<TValues> => {
     const build: any = (
       ...decls: ReadonlyArray<Rule.RulesDecl<TValues> | ReadonlyArray<Rule.RulesDecl<TValues>>>
@@ -427,7 +431,7 @@ export const rules = <TValues extends object, I>(_valuesSchema: Schema.Schema<TV
       ruleInput: Rule.RuleInput<CanonicalValue<TValues, P>, Ctx>,
       options?: { readonly errorTarget?: Rule.ErrorTarget },
     ): Rule.FieldDecl<CanonicalValue<TValues, P>, Ctx>
-    function field(schema: Schema.Schema<any, any, never>): RulesFieldNode
+function field(schema: Schema.Schema<any>): RulesFieldNode
     function field(rule: Rule.RuleInput<any, any>): RulesFieldNode
     function field(...args: ReadonlyArray<any>): any {
       if (args.length >= 2 && typeof args[0] === 'string') {

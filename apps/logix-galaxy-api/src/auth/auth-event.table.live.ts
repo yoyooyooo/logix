@@ -59,11 +59,10 @@ export const AuthEventTableLive: Layer.Layer<AuthEventTable, never, Db> = Layer.
     )
 
     yield* ensure.pipe(
-      Effect.catchAll((e) =>
+      Effect.catch((e) =>
         Effect.logWarning('auth_events table init failed').pipe(
           Effect.annotateLogs({ error: e }),
-        ),
-      ),
+        )),
     )
 
     return { ensure } satisfies AuthEventTableService

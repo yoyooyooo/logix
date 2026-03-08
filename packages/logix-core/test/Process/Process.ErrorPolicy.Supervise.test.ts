@@ -4,7 +4,7 @@ import * as Logix from '../../src/index.js'
 import { withProcessRuntime, withProcessRuntimeScope } from './test-helpers.js'
 
 describe('process: errorPolicy supervise', () => {
-  it.scoped('should restart with runSeq increment until maxRestarts reached', () =>
+  it.effect('should restart with runSeq increment until maxRestarts reached', () =>
     Effect.gen(function* () {
       const Host = Logix.Module.make('ProcessSuperviseHost', {
         state: Schema.Void,
@@ -42,7 +42,7 @@ describe('process: errorPolicy supervise', () => {
               if (errorRunSeqs.includes(3)) {
                 break
               }
-              yield* Effect.yieldNow()
+              yield* Effect.yieldNow
             }
             return currentEvents
           }),

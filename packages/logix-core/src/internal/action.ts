@@ -24,7 +24,7 @@ export type ActionCreator<Tag extends string, Payload> = ActionFn<Payload, Actio
 export type ActionToken<
   Tag extends string,
   Payload,
-  PayloadSchema extends Schema.Schema<any, any, any> = Schema.Schema<any, any, any>,
+  PayloadSchema extends Schema.Schema<any> = Schema.Schema<any>,
 > = ActionCreator<Tag, Payload> & {
   readonly _kind: 'ActionToken'
   readonly tag: Tag
@@ -32,7 +32,7 @@ export type ActionToken<
   readonly source?: DevSource
 }
 
-export type AnyActionToken = ActionToken<string, any, Schema.Schema<any, any, any>>
+export type AnyActionToken = ActionToken<string, any, Schema.Schema<any>>
 
 export const isActionToken = (value: unknown): value is AnyActionToken =>
   typeof value === 'function' &&
@@ -40,7 +40,7 @@ export const isActionToken = (value: unknown): value is AnyActionToken =>
   typeof (value as any).tag === 'string' &&
   Schema.isSchema((value as any).schema)
 
-export const make = <Tag extends string, PayloadSchema extends Schema.Schema<any, any, any>>(
+export const make = <Tag extends string, PayloadSchema extends Schema.Schema<any>>(
   tag: Tag,
   schema: PayloadSchema,
   options?: { readonly source?: DevSource },
@@ -60,7 +60,7 @@ export const make = <Tag extends string, PayloadSchema extends Schema.Schema<any
   return fn
 }
 
-export const makeActions = <M extends Record<string, Schema.Schema<any, any, any>>>(
+export const makeActions = <M extends Record<string, Schema.Schema<any>>>(
   schemas: M,
   options?: {
     readonly source?: DevSource
@@ -79,11 +79,11 @@ export const makeActions = <M extends Record<string, Schema.Schema<any, any, any
   return out as any
 }
 
-export type ActionDef = Schema.Schema<any, any, any> | AnyActionToken
+export type ActionDef = Schema.Schema<any> | AnyActionToken
 export type ActionDefs = Record<string, ActionDef>
 
 export type NormalizedActionTokens<M extends ActionDefs> = {
-  readonly [K in keyof M]: M[K] extends Schema.Schema<any, any, any>
+  readonly [K in keyof M]: M[K] extends Schema.Schema<any>
     ? ActionToken<Extract<K, string>, Schema.Schema.Type<M[K]>, M[K]>
     : M[K] extends ActionToken<any, infer P, infer S>
       ? ActionToken<Extract<K, string>, P, S>

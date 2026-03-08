@@ -9,7 +9,7 @@
  *   - 这是“状态感知型 Pattern”的示例，相比场景版更加抽象，便于在多处开关/点赞/收藏场景下复用。
  */
 
-import { Data, Effect, Schema } from 'effect'
+import { Data, Effect, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 
 // ---------------------------------------------------------------------------
@@ -43,13 +43,17 @@ export class ToggleServiceError extends Data.TaggedError('ToggleServiceError')<{
   readonly reason: string
 }> {}
 
-export class ToggleService extends Effect.Service<ToggleService>()('ToggleService', {
-  effect: Effect.gen(function* () {
+export class ToggleService extends ServiceMap.Service<
+  ToggleService,
+  { readonly toggle: (input: { id: string; nextValue: boolean }) => Effect.Effect<void, ToggleServiceError> }
+>()('ToggleService') {}
+
+export const ToggleServiceLive = Layer.effect(
+  ToggleService,
+  Effect.gen(function* () {
     const toggle = (input: { id: string; nextValue: boolean }) =>
       Effect.gen(function* () {
         console.log('[ToggleService] toggle', input.id, '=>', input.nextValue)
-
-        // PoC：当 id 为 "fail" 时模拟后端失败，触发 ToggleServiceError。
         if (input.id === 'fail') {
           return yield* Effect.fail(
             new ToggleServiceError({
@@ -65,7 +69,7 @@ export class ToggleService extends Effect.Service<ToggleService>()('ToggleServic
       toggle,
     }
   }),
-}) {}
+)
 
 /**
  * Pattern 配置：预留给未来扩展（例如自定义错误文案、统计埋点等）。

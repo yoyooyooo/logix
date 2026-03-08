@@ -1,13 +1,12 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
 
 describe('Form rules-first complex form (US1)', () => {
-  it.scoped('covers derived + conditional required + list scope + $self', () =>
+  it.effect('covers derived + conditional required + list scope + $self', () =>
     Effect.gen(function* () {
-      const ChannelSchema = Schema.Union(Schema.Literal('email'), Schema.Literal('phone'))
+      const ChannelSchema = Schema.Union([Schema.Literal('email'), Schema.Literal('phone')])
 
       const ItemSchema = Schema.Struct({
         id: Schema.String,

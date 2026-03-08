@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { Effect, Layer, Schema, Context, Schedule, TestClock } from 'effect'
+import { Duration, Effect, Layer, Schema, ServiceMap } from 'effect'
+import { TestClock } from 'effect/testing'
 import * as Logix from '@logixjs/core'
 import { runTest } from '../../src/TestRuntime.js'
 import * as Execution from '../../src/Execution.js'
@@ -14,11 +15,11 @@ interface ToggleService {
   sync: (id: string, value: boolean) => Effect.Effect<void, Error>
 }
 
-const ToggleServiceTag = Context.GenericTag<ToggleService>('ToggleService')
+class ToggleServiceTag extends ServiceMap.Service<ToggleServiceTag, ToggleService>()('ToggleService') {}
 
 const ToggleModule = Logix.Module.make('ToggleModule', {
   state: Schema.Struct({
-    flags: Schema.Record({ key: Schema.String, value: Schema.Boolean }),
+    flags: Schema.Record(Schema.String, Schema.Boolean),
   }),
   actions: {
     toggle: Schema.Struct({ id: Schema.String, value: Schema.Boolean }),
@@ -37,16 +38,15 @@ const ToggleLogic = ToggleModule.logic<ToggleService>((api) =>
           flags: { ...s.flags, [id]: value },
         }))
 
-        const service = yield* ToggleServiceTag
+        const service = yield* api.use(ToggleServiceTag)
 
         // Sync with server, rollback on failure
         yield* service.sync(id, value).pipe(
-          Effect.catchAll(() =>
+          Effect.catch(() =>
             api.state.update((s) => ({
               ...s,
               flags: { ...s.flags, [id]: !value },
-            })),
-          ),
+            }))),
         )
       }),
     )
@@ -124,13 +124,16 @@ const TaskLogic = TaskModule.logic((api) =>
             }))
 
             // Poll until status becomes DONE
-            yield* Effect.repeat(
-              Effect.gen(function* () {
+            while (true) {
+              const done = yield* Effect.gen(function* () {
                 const current = yield* api.state.read
                 return current.status === 'DONE'
-              }),
-              Schedule.recurWhile((done: boolean) => !done).pipe(Schedule.addDelay(() => '10 millis')),
-            )
+              })
+              if (done) {
+                break
+              }
+              yield* Effect.sleep(Duration.millis(10))
+            }
           }),
         ),
         api.onAction('externalDone').run(() => api.state.update((s) => ({ ...s, status: 'DONE' }))),
@@ -182,7 +185,7 @@ interface SelectionService {
   readonly getSelectedIds: () => Effect.Effect<ReadonlyArray<string>>
 }
 
-const SelectionServiceTag = Context.GenericTag<SelectionService>('@logixjs/test/SelectionService')
+class SelectionServiceTag extends ServiceMap.Service<SelectionServiceTag, SelectionService>()('@logixjs/test/SelectionService') {}
 
 interface BulkOperationService {
   readonly applyToMany: (input: {
@@ -191,14 +194,14 @@ interface BulkOperationService {
   }) => Effect.Effect<void>
 }
 
-const BulkOperationServiceTag = Context.GenericTag<BulkOperationService>('@logixjs/test/BulkOperationService')
+class BulkOperationServiceTag extends ServiceMap.Service<BulkOperationServiceTag, BulkOperationService>()('@logixjs/test/BulkOperationService') {}
 
 interface NotificationService {
   readonly info: (message: string) => Effect.Effect<void>
   readonly error: (message: string) => Effect.Effect<void>
 }
 
-const NotificationServiceTag = Context.GenericTag<NotificationService>('@logixjs/test/NotificationService')
+class NotificationServiceTag extends ServiceMap.Service<NotificationServiceTag, NotificationService>()('@logixjs/test/NotificationService') {}
 
 const BulkModule = Logix.Module.make('BulkModule', {
   state: Schema.Struct({
@@ -342,7 +345,7 @@ const DirtyFormLogic = DirtyFormModule.logic((api) =>
 // Scenario: SearchModule · fromState + debounce + filter + runLatest
 // ---------------------------------------------------------------------------
 
-class SearchApi extends Context.Tag('@logixjs/test/SearchApi')<SearchApi, SearchApi.Service>() {}
+class SearchApi extends ServiceMap.Service<SearchApi, SearchApi.Service>()('@logixjs/test/SearchApi') {}
 
 namespace SearchApi {
   export interface Service {

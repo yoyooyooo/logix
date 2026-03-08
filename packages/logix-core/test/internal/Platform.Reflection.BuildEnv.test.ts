@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@effect/vitest'
-import { Cause, Config, Context, Effect, Exit, Option, Schema } from 'effect'
+import { Cause, Config, Effect, Exit, Option, Schema, ServiceMap } from 'effect'
 import * as BuildEnv from '../../src/internal/platform/BuildEnv.js'
 import { RuntimeHost } from '../../src/internal/platform/RuntimeHost.js'
 import * as Logix from '../../src/index.js'
@@ -15,7 +15,7 @@ describe('Platform.Reflection.BuildEnv', () => {
       const Actions = { noop: Schema.Void }
 
       const builder = Effect.gen(function* () {
-        const host = yield* RuntimeHost
+        const host = yield* Effect.service(RuntimeHost).pipe(Effect.orDie)
         const enableExperimental = yield* Config.boolean('ENABLE_EXPERIMENTAL_TRAIT').pipe(Config.withDefault(false))
 
         const traits = Logix.StateTrait.from(State)({
@@ -96,13 +96,10 @@ describe('Platform.Reflection.BuildEnv', () => {
 
   it.effect('should fail fast when builder accesses runtime-only services', () =>
     Effect.gen(function* () {
-      class BusinessService extends Context.Tag('BusinessService')<
-        BusinessService,
-        { readonly ping: Effect.Effect<void> }
-      >() {}
+      class BusinessService extends ServiceMap.Service<BusinessService, { readonly ping: Effect.Effect<void> }>()('BusinessService') {}
 
       const invalidBuilder = Effect.gen(function* () {
-        yield* BusinessService
+        yield* Effect.service(BusinessService).pipe(Effect.orDie)
         return 'ok'
       })
 
@@ -113,7 +110,7 @@ describe('Platform.Reflection.BuildEnv', () => {
 
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {
-        const failure = Cause.failureOption(exit.cause)
+        const failure = Cause.findErrorOption(exit.cause)
         expect(Option.isSome(failure)).toBe(true)
         if (Option.isSome(failure)) {
           const err = failure.value as any

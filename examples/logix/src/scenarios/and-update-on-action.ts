@@ -89,10 +89,10 @@ export const DirtyFormLive = DirtyFormModule.impl.layer
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const program = Effect.gen(function* () {
-    const runtime = yield* FormDef.tag
+    const runtime = yield* Effect.service(FormDef.tag).pipe(Effect.orDie)
 
     // Log state changes
-    yield* Effect.fork(
+    yield* Effect.forkChild(
       runtime
         .changes((s) => s)
         .pipe(Stream.runForEach((s) => Effect.log(`[State] value="${s.value}", isDirty=${s.isDirty}`))),

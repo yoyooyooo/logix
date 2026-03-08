@@ -45,7 +45,7 @@ describe('LogicTraits (setup) - declare', () => {
     })
 
     const readFinalTraits = Effect.gen(function* () {
-      const rt = yield* M.tag
+      const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
       return Logix.Debug.getModuleFinalTraits(rt)
     }) as Effect.Effect<ReadonlyArray<Logix.Debug.ModuleTraitsFinalItem>, never, any>
 

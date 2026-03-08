@@ -24,7 +24,7 @@ describe('SandboxClientLayer', () => {
       { status: 'ready', logs: [], traces: [], error: null, uiIntents: [] },
     ]
 
-    const FakeLayer = Layer.succeed<SandboxClientTag, SandboxClientService>(SandboxClientTag, {
+    const FakeLayer = Layer.succeed(SandboxClientTag, {
       init: () => Effect.void,
       listKernels: () => Effect.succeed({ kernels: [], defaultKernelId: undefined }),
       compile: () => Effect.succeed({ success: true }),
@@ -52,7 +52,7 @@ describe('SandboxClientLayer', () => {
     })
 
     const program = Effect.gen(function* () {
-      const svc = yield* SandboxClientTag
+      const svc = yield* Effect.service(SandboxClientTag)
 
       yield* svc.init()
       const compileResult = yield* svc.compile('code')

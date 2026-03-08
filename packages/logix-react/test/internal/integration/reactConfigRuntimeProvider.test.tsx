@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest'
 import React from 'react'
 import { renderHook, waitFor } from '@testing-library/react'
 import * as Logix from '@logixjs/core'
-import { Schema, ManagedRuntime, Layer, ConfigProvider, Effect, FiberRef, LogLevel, Logger } from 'effect'
+import { ConfigProvider, Effect, Layer, Logger, ManagedRuntime, References, Schema } from 'effect'
 import { RuntimeProvider } from '../../../src/RuntimeProvider.js'
 import { useRuntime, useModule, useSelector } from '../../../src/Hooks.js'
 import { getModuleCache } from '../../../src/internal/store/ModuleCache.js'
@@ -24,9 +24,7 @@ const CounterImpl = Counter.implement({
 
 describe('ReactModuleConfig with RuntimeProvider', () => {
   it('applies ConfigProvider values to ModuleCache via runtime snapshot', async () => {
-    const configLayer = Layer.setConfigProvider(
-      ConfigProvider.fromMap(new Map<string, string>([['logix.react.gc_time', '1000']])),
-    )
+    const configLayer = ConfigProvider.layer(ConfigProvider.fromUnknown({ 'logix.react.gc_time': '1000' }))
 
     const runtime = ManagedRuntime.make(configLayer as Layer.Layer<any, never, never>)
 
@@ -65,9 +63,7 @@ describe('ReactModuleConfig with RuntimeProvider', () => {
   })
 
   it('prefers runtime-level ReactRuntimeConfig.replace over ConfigProvider', async () => {
-    const configLayer = Layer.setConfigProvider(
-      ConfigProvider.fromMap(new Map<string, string>([['logix.react.gc_time', '1000']])),
-    )
+    const configLayer = ConfigProvider.layer(ConfigProvider.fromUnknown({ 'logix.react.gc_time': '1000' }))
 
     const runtime = ManagedRuntime.make(
       Layer.mergeAll(
@@ -200,9 +196,7 @@ describe('ReactModuleConfig with RuntimeProvider', () => {
 
   it('isolates config per runtime when multiple providers coexist', async () => {
     const runtimeA = ManagedRuntime.make(
-      Layer.setConfigProvider(
-        ConfigProvider.fromMap(new Map<string, string>([['logix.react.gc_time', '700']])),
-      ) as Layer.Layer<any, never, never>,
+      ConfigProvider.layer(ConfigProvider.fromUnknown({ 'logix.react.gc_time': '700' })) as Layer.Layer<any, never, never>,
     )
 
     const runtimeB = ManagedRuntime.make(ReactRuntimeConfig.replace({ gcTime: 900 }) as Layer.Layer<any, never, never>)
@@ -248,7 +242,7 @@ describe('ReactModuleConfig with RuntimeProvider', () => {
     const runtime = ManagedRuntime.make(Layer.empty as Layer.Layer<any, never, never>)
 
     const runtimeLayer = Layer.mergeAll(
-      Logger.minimumLogLevel(LogLevel.Debug) as Layer.Layer<any, never, never>,
+      Layer.succeed(References.MinimumLogLevel, 'Debug') as Layer.Layer<any, never, never>,
       Logix.Debug.layer({ mode: 'dev' }) as Layer.Layer<any, never, never>,
       Logix.Debug.traceLayer(() => Effect.void),
     ) as Layer.Layer<any, never, never>
@@ -266,11 +260,9 @@ describe('ReactModuleConfig with RuntimeProvider', () => {
 
       return activeRuntime.runSync(
         Effect.gen(function* () {
-          const loggers = yield* FiberRef.get(FiberRef.currentLoggers)
-          const level = yield* FiberRef.get(FiberRef.currentLogLevel)
-          const sinks = yield* FiberRef.get(
-            Logix.Debug.internal.currentDebugSinks as FiberRef.FiberRef<ReadonlyArray<Logix.Debug.Sink>>,
-          )
+          const loggers = yield* Effect.service(Logger.CurrentLoggers).pipe(Effect.orDie)
+          const level = yield* Effect.service(References.MinimumLogLevel).pipe(Effect.orDie)
+          const sinks = yield* Effect.service(Logix.Debug.internal.currentDebugSinks).pipe(Effect.orDie)
           return {
             loggerCount: (loggers as any).length ?? (loggers as any)?.size ?? 0,
             level,

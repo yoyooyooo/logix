@@ -1,6 +1,6 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Context, Effect, Layer, Schema } from 'effect'
+import { Effect, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../src/index.js'
 
 /**
@@ -10,7 +10,7 @@ import * as Logix from '../../src/index.js'
  * - `ModuleDef.implement({ imports })` should layer extra Env (Layer or other ModuleImpl.layer) into ModuleImpl.layer.
  */
 
-const ServiceTag = Context.GenericTag<{ label: string }>('@logixjs/test/Service')
+const ServiceTag = ServiceMap.Service<{ label: string }>('@logixjs/test/Service')
 
 const Consumer = Logix.Module.make('ModuleImplConsumer', {
   state: Schema.Struct({
@@ -23,7 +23,7 @@ const Consumer = Logix.Module.make('ModuleImplConsumer', {
 
 const consumerLogic = Consumer.logic<{ label: string }>(($) =>
   Effect.gen(function* () {
-    const svc = yield* ServiceTag
+    const svc = yield* Effect.service(ServiceTag).pipe(Effect.orDie)
 
     yield* $.onAction('read').run(() =>
       $.state.update((s) => ({
@@ -42,7 +42,7 @@ describe('ModuleImpl (public API)', () => {
     }).impl
 
     const implWithLayer = impl.withLayer(
-      Layer.succeed(ServiceTag as unknown as Context.Tag<any, { label: string }>, {
+      Layer.succeed(ServiceTag, {
         label: 'hello',
       }),
     )
@@ -64,10 +64,10 @@ describe('ModuleImpl (public API)', () => {
 
     const program = Effect.gen(function* () {
       const context = yield* implWithLayer.layer.pipe(Layer.build)
-      const runtime = Context.get(context, Consumer.tag)
+      const runtime = ServiceMap.get(context, Consumer.tag)
 
       // Ensure the Service is correctly injected into the Context via withLayer.
-      const svc = Context.get(context, ServiceTag as unknown as Context.Tag<any, { label: string }>)
+      const svc = ServiceMap.get(context as ServiceMap.ServiceMap<any>, ServiceTag as any) as { label: string }
       expect(svc.label).toBe('hello')
 
       expect(yield* runtime.getState).toEqual({ seen: '' })
@@ -91,15 +91,15 @@ describe('ModuleImpl (public API)', () => {
     const impl = Consumer.implement({
       initial: { seen: '' },
       logics: [consumerLogic],
-      imports: [Layer.succeed(ServiceTag as unknown as Context.Tag<any, { label: string }>, { label: 'from-import' })],
+      imports: [Layer.succeed(ServiceTag, { label: 'from-import' })],
     }).impl
 
     const program = Effect.gen(function* () {
       const context = yield* impl.layer.pipe(Layer.build)
-      const runtime = Context.get(context, Consumer.tag)
+      const runtime = ServiceMap.get(context, Consumer.tag)
 
       // The ServiceTag provided by imports should be visible in the Context.
-      const svc = Context.get(context, ServiceTag as unknown as Context.Tag<any, { label: string }>)
+      const svc = ServiceMap.get(context as ServiceMap.ServiceMap<any>, ServiceTag as any) as { label: string }
       expect(svc.label).toBe('from-import')
 
       expect(yield* runtime.getState).toEqual({ seen: '' })
@@ -133,10 +133,10 @@ describe('ModuleImpl (public API)', () => {
 
     const program = Effect.gen(function* () {
       const context = yield* impl.layer.pipe(Layer.build)
-      const runtime = Context.get(context, Consumer.tag)
+      const runtime = ServiceMap.get(context, Consumer.tag)
 
       // Dep's ModuleRuntime should already be attached to the Context.
-      const depRuntime = Context.get(context, Dep.tag)
+      const depRuntime = ServiceMap.get(context, Dep.tag)
       expect(yield* depRuntime.getState).toEqual({ value: 'dep-initial' })
 
       // ServiceTag can still be layered via withLayer/withLayers; this only verifies imports don't break the main module.

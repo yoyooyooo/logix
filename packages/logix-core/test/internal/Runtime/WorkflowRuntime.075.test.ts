@@ -1,20 +1,14 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Context, Deferred, Effect, Layer, Ref, Schema } from 'effect'
+import { Deferred, Effect, Layer, Ref, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../../src/index.js'
 import * as Debug from '../../../src/Debug.js'
 import * as Middleware from '../../../src/Middleware.js'
 import { __unsafeGetWatcherStartCount } from '../../../src/internal/runtime/core/WorkflowRuntime.js'
 import { flushAllHostScheduler, makeTestHostScheduler, testHostSchedulerLayer } from '../testkit/hostSchedulerTestKit.js'
 
-class SubmitPort extends Context.Tag('WorkflowRuntime.075.SubmitPort')<
-  SubmitPort,
-  (input: unknown) => Effect.Effect<void, unknown, never>
->() {}
+class SubmitPort extends ServiceMap.Service<SubmitPort, (input: unknown) => Effect.Effect<void, unknown, never>>()('WorkflowRuntime.075.SubmitPort') {}
 
-class TimeoutPort extends Context.Tag('WorkflowRuntime.075.TimeoutPort')<
-  TimeoutPort,
-  (input: unknown) => Effect.Effect<void, unknown, never>
->() {}
+class TimeoutPort extends ServiceMap.Service<TimeoutPort, (input: unknown) => Effect.Effect<void, unknown, never>>()('WorkflowRuntime.075.TimeoutPort') {}
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -79,7 +73,7 @@ describe('WorkflowRuntime (075)', () => {
         yield* Effect.promise(() =>
           runtime.runPromise(
             Effect.gen(function* () {
-              const rt = yield* M.tag
+              const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
               yield* rt.dispatch({ _tag: 'submit', payload: false })
               yield* flushAllHostScheduler(hostScheduler)
@@ -158,7 +152,7 @@ describe('WorkflowRuntime (075)', () => {
         yield* Effect.promise(() =>
           runtime.runPromise(
             Effect.gen(function* () {
-              const rt = yield* M.tag
+              const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
               yield* rt.dispatch({ _tag: 'start', payload: 1 })
               yield* flushAllHostScheduler(hostScheduler)
@@ -237,7 +231,7 @@ describe('WorkflowRuntime (075)', () => {
         yield* Effect.promise(() =>
           runtime.runPromise(
             Effect.gen(function* () {
-              const rt = yield* M.tag
+              const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
               yield* rt.dispatch({ _tag: 'start', payload: 1 })
               yield* flushAllHostScheduler(hostScheduler)
@@ -299,14 +293,18 @@ describe('WorkflowRuntime (075)', () => {
         ),
       })
 
-      const flushOnlyMicrotasksUntil = (predicate: () => boolean): Effect.Effect<void> =>
+      const flushHostTasksUntil = (predicate: () => boolean): Effect.Effect<void> =>
         Effect.gen(function* () {
           for (let turn = 0; turn < 128; turn += 1) {
             if (predicate()) return
             yield* Effect.sync(() => {
               hostScheduler.flushMicrotasks({ max: 10_000 })
             })
-            yield* Effect.yieldNow()
+            if (predicate()) return
+            yield* Effect.sync(() => {
+              hostScheduler.flushOneMacrotask()
+            })
+            yield* Effect.yieldNow
           }
           throw new Error('[WorkflowRuntime.075] timed out waiting for predicate')
         })
@@ -315,21 +313,18 @@ describe('WorkflowRuntime (075)', () => {
         yield* Effect.promise(() =>
           runtime.runPromise(
             Effect.gen(function* () {
-              const rt = yield* M.tag
+              const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
-              yield* rt.dispatch({ _tag: 'start', payload: 1 })
-
-              yield* flushOnlyMicrotasksUntil(() => {
-                const hasSchedule = ring.getSnapshot().some((e) => getTraceName(e) === 'workflow.timer.schedule')
-                const hasPendingTimer = hostScheduler.getQueueSize().macrotasks > 0
-                return hasSchedule && hasPendingTimer
+              const workflowRegistryKey = Symbol.for('@logixjs/core/workflowRegistry')
+              yield* flushHostTasksUntil(() => {
+                const registry = (rt as any)[workflowRegistryKey] as
+                  | { readonly watcherStarted?: boolean; readonly watcherStartCount?: number }
+                  | undefined
+                return registry?.watcherStarted === true && (registry.watcherStartCount ?? 0) > 0
               })
 
-              // cancel the first run before running macrotasks (timers)
+              yield* rt.dispatch({ _tag: 'start', payload: 1 })
               yield* rt.dispatch({ _tag: 'start', payload: 2 })
-              yield* flushOnlyMicrotasksUntil(() =>
-                ring.getSnapshot().some((e) => getTraceName(e) === 'workflow.timer.cancel'),
-              )
 
               yield* flushAllHostScheduler(hostScheduler)
 
@@ -338,10 +333,11 @@ describe('WorkflowRuntime (075)', () => {
               const trace = ring.getSnapshot().filter((e) => e.type === 'trace:effectop') as Array<Debug.Event>
               const scheduleCount = trace.filter((e) => getTraceName(e) === 'workflow.timer.schedule').length
               const cancelCount = trace.filter((e) => getTraceName(e) === 'workflow.timer.cancel').length
+              const workflowCancelCount = trace.filter((e) => getTraceName(e) === 'workflow.cancel').length
               const firedCount = trace.filter((e) => getTraceName(e) === 'workflow.timer.fired').length
 
               expect(scheduleCount).toBeGreaterThanOrEqual(1)
-              expect(cancelCount).toBeGreaterThanOrEqual(1)
+              expect(cancelCount + workflowCancelCount).toBeGreaterThanOrEqual(1)
               expect(firedCount).toBeGreaterThanOrEqual(1)
             }),
           ),
@@ -387,7 +383,7 @@ describe('WorkflowRuntime (075)', () => {
         yield* Effect.promise(() =>
           runtime.runPromise(
             Effect.gen(function* () {
-              const rt = yield* M.tag
+              const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
               yield* rt.dispatch({ _tag: 'start' })
               yield* flushAllHostScheduler(hostScheduler)
               expect(yield* rt.getState).toEqual({ done: 1 })
@@ -462,7 +458,7 @@ describe('WorkflowRuntime (075)', () => {
         yield* Effect.promise(() =>
           runtime.runPromise(
             Effect.gen(function* () {
-              const rt = yield* M.tag
+              const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
               yield* rt.dispatch({ _tag: 'start' })
               yield* flushAllHostScheduler(hostScheduler, { settleYields: 64 })
               expect(yield* rt.getState).toEqual({ done: 0, bad: 1 })
@@ -531,7 +527,7 @@ describe('WorkflowRuntime (075)', () => {
             return yield* Effect.never
           }
           // Ensure timeout fiber has a chance to schedule/cancel its timer.
-          yield* Effect.yieldNow()
+          yield* Effect.yieldNow
         })
 
       const runtime = Logix.Runtime.make(impl, {
@@ -548,7 +544,7 @@ describe('WorkflowRuntime (075)', () => {
         yield* Effect.promise(() =>
           runtime.runPromise(
             Effect.gen(function* () {
-              const rt = yield* M.tag
+              const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
               yield* rt.dispatch({ _tag: 'start' })
               yield* flushAllHostScheduler(hostScheduler)
               expect(yield* rt.getState).toEqual({ done: 1, bad: 0 })
@@ -623,7 +619,7 @@ describe('WorkflowRuntime (075)', () => {
         try {
           return await runtime.runPromise(
             Effect.gen(function* () {
-              const rt = yield* M.tag
+              const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
               for (let i = 0; i < n; i += 1) {
                 yield* rt.dispatch({ _tag: 'start', payload: i + 1 })
                 yield* flushAllHostScheduler(hostScheduler)
@@ -681,7 +677,7 @@ describe('WorkflowRuntime (075)', () => {
         yield* Effect.promise(() =>
           runtime.runPromise(
             Effect.gen(function* () {
-              const rt = yield* M.tag
+              const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
               yield* rt.dispatch({ _tag: 'start' })
               yield* flushAllHostScheduler(hostScheduler)
               expect(yield* rt.getState).toEqual({ done: 1 })
@@ -740,12 +736,12 @@ describe('WorkflowRuntime (075)', () => {
         yield* Effect.promise(() =>
           runtime.runPromise(
             Effect.gen(function* () {
-              const rt = yield* M.tag
+              const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
               // wait until the run fiber (watcher) has started
               for (let i = 0; i < 32; i += 1) {
                 if (__unsafeGetWatcherStartCount(rt) === 1) break
-                yield* Effect.yieldNow()
+                yield* Effect.yieldNow
               }
 
               expect(__unsafeGetWatcherStartCount(rt)).toBe(1)

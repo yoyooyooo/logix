@@ -1,4 +1,4 @@
-import { Effect, FiberRef } from 'effect'
+import { Effect } from 'effect'
 import type { JsonValue } from '../../observability/jsonValue.js'
 import type { EvidencePackage, EvidencePackageSource } from '../../observability/evidence.js'
 import { exportEvidencePackage, OBSERVABILITY_PROTOCOL_VERSION } from '../../observability/evidence.js'
@@ -636,8 +636,8 @@ export const devtoolsHubSink: Sink = {
     Effect.gen(function* () {
       // NOTE: the hub is a global singleton, but whether events are exportable/written to the buffer is controlled by FiberRef,
       // enabling different perf baselines/diagnostics tiers across scopes within the same process.
-      const level = yield* FiberRef.get(currentDiagnosticsLevel)
-      const materialization = yield* FiberRef.get(currentDiagnosticsMaterialization)
+      const level = yield* Effect.service(currentDiagnosticsLevel).pipe(Effect.orDie)
+      const materialization = yield* Effect.service(currentDiagnosticsMaterialization).pipe(Effect.orDie)
       const eventRuntimeLabel = normalizeRuntimeLabel((event as any).runtimeLabel)
 
       let changed = false

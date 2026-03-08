@@ -1,13 +1,13 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Effect, FiberRef } from 'effect'
+import { Effect } from 'effect'
 import type { ConcurrencyDiagnostics } from '../../../../src/internal/runtime/core/ConcurrencyDiagnostics.js'
 import type { ResolvedConcurrencyPolicy } from '../../../../src/internal/runtime/ModuleRuntime.concurrencyPolicy.js'
 import { makeEnqueueTransaction } from '../../../../src/internal/runtime/ModuleRuntime.txnQueue.js'
 import * as EffectOpCore from '../../../../src/internal/runtime/core/EffectOpCore.js'
 
 describe('ModuleRuntime.txnQueue (linkId fallback)', () => {
-  it.scoped('enqueueTransaction should generate deterministic linkId when caller has none', () =>
+  it.effect('enqueueTransaction should generate deterministic linkId when caller has none', () =>
     Effect.gen(function* () {
       const policy: ResolvedConcurrencyPolicy = {
         concurrencyLimit: 16,
@@ -38,8 +38,8 @@ describe('ModuleRuntime.txnQueue (linkId fallback)', () => {
       })
 
       const readTwice = Effect.gen(function* () {
-        const a = yield* FiberRef.get(EffectOpCore.currentLinkId)
-        const b = yield* FiberRef.get(EffectOpCore.currentLinkId)
+        const a = yield* EffectOpCore.currentLinkId
+        const b = yield* EffectOpCore.currentLinkId
         return [a, b] as const
       })
 

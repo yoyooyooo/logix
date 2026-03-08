@@ -1,5 +1,4 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
@@ -56,7 +55,7 @@ describe('Form derived guardrails', () => {
     ).toThrow(/only values\/ui are allowed/)
   })
 
-  it.scoped('exposes controller.* via $.use(form) ModuleHandle', () =>
+  it.effect('exposes controller.* via $.use(form) ModuleHandle', () =>
     Effect.gen(function* () {
       const ValuesSchema = Schema.Struct({
         name: Schema.String,

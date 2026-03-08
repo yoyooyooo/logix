@@ -1,4 +1,4 @@
-import { Effect, FiberRef } from 'effect'
+import { Effect } from 'effect'
 import * as Debug from './DebugSink.js'
 import type { DeclarativeLinkRuntime } from './DeclarativeLinkRuntime.js'
 import type { HostScheduler } from './HostScheduler.js'
@@ -105,38 +105,40 @@ export const exitRuntimeBatch = (): void => {
 const waitForBatchEndIfNeeded = (): Effect.Effect<void, never, never> =>
   batchDepth === 0
     ? Effect.void
-    : Effect.async<void, never>((resume, signal) => {
+    : Effect.promise<void>((signal) =>
+        new Promise<void>((resolve) => {
 
-    let done = false
-    const cleanup = () => {
-      if (done) return
-      done = true
-      batchWaiters.delete(waiter)
-      try {
-        signal.removeEventListener('abort', onAbort)
-      } catch {
-        // best-effort
-      }
-    }
+          let done = false
+          const cleanup = () => {
+            if (done) return
+            done = true
+            batchWaiters.delete(waiter)
+            try {
+              signal.removeEventListener('abort', onAbort)
+            } catch {
+              // best-effort
+            }
+          }
 
-    const onAbort = () => {
-      cleanup()
-    }
+          const onAbort = () => {
+            cleanup()
+          }
 
-    const waiter: BatchWaiter = {
-      resolve: () => {
-        cleanup()
-        resume(Effect.void)
-      },
-    }
+          const waiter: BatchWaiter = {
+            resolve: () => {
+              cleanup()
+              resolve()
+            },
+          }
 
-    batchWaiters.add(waiter)
-    try {
-      signal.addEventListener('abort', onAbort, { once: true })
-    } catch {
-      // best-effort
-    }
-  })
+          batchWaiters.add(waiter)
+          try {
+            signal.addEventListener('abort', onAbort, { once: true })
+          } catch {
+            // best-effort
+          }
+        }),
+      )
 
 // ---- TickScheduler implementation ----
 
@@ -391,23 +393,27 @@ export const makeTickScheduler = (args: {
     return moduleInstanceKey
   }
 
-  const yieldMicrotask = Effect.async<void, never>((resume) => {
-    hostScheduler.scheduleMicrotask(() => resume(Effect.void))
-  })
-  const yieldMacrotask = Effect.async<void, never>((resume, signal) => {
-    const cancel = hostScheduler.scheduleMacrotask(() => resume(Effect.void))
-    try {
-      signal.addEventListener(
-        'abort',
-        () => {
-          cancel()
-        },
-        { once: true },
-      )
-    } catch {
-      // best-effort
-    }
-  })
+  const yieldMicrotask = Effect.promise<void>(() =>
+    new Promise<void>((resolve) => {
+      hostScheduler.scheduleMicrotask(resolve)
+    }),
+  )
+  const yieldMacrotask = Effect.promise<void>((signal) =>
+    new Promise<void>((resolve) => {
+      const cancel = hostScheduler.scheduleMacrotask(resolve)
+      try {
+        signal.addEventListener(
+          'abort',
+          () => {
+            cancel()
+          },
+          { once: true },
+        )
+      } catch {
+        // best-effort
+      }
+    }),
+  )
 
   const scheduleTick = (): Effect.Effect<void, never, never> =>
     Effect.gen(function* () {
@@ -427,55 +433,51 @@ export const makeTickScheduler = (args: {
       const startedAs: TickScheduleStartedAs = waitedForBatch ? 'batch' : boundary
       const depthAtSchedule = microtaskChainDepth
 
-      yield* Effect.forkDaemon(
-        Effect.locally(TaskRunner.inSyncTransactionFiber, false)(
-          Effect.gen(function* () {
-            try {
-              yield* waitForBatchEndIfNeeded()
-              if (boundary === 'microtask') {
-                // Always yield at least one microtask tick boundary before flushing:
-                // - Keeps tick→notify semantics stable (async flush window) even under Runtime.batch.
-                // - Avoids "denominatorZero" artifacts in perf budgets when dispatch is synchronous (mr.actions.*).
-                if (waitedForBatch) {
-                  microtaskChainDepth = 0
-                }
-                yield* yieldMicrotask
-                if (!waitedForBatch) {
-                  microtaskChainDepth += 1
-                }
-              } else {
-                yield* yieldMacrotask
+      yield* Effect.provideService(Effect.gen(function* () {
+          try {
+            yield* waitForBatchEndIfNeeded()
+            if (boundary === 'microtask') {
+              // Always yield at least one microtask tick boundary before flushing:
+              // - Keeps tick→notify semantics stable (async flush window) even under Runtime.batch.
+              // - Avoids "denominatorZero" artifacts in perf budgets when dispatch is synchronous (mr.actions.*).
+              if (waitedForBatch) {
                 microtaskChainDepth = 0
               }
-
-              const schedule: TickSchedule = {
-                startedAs,
-                microtaskChainDepth: boundary === 'macrotask' ? depthAtSchedule : microtaskChainDepth,
-                ...(boundary === 'macrotask' ? { forcedMacrotask: true, reason: reason ?? 'unknown' } : {}),
+              yield* yieldMicrotask
+              if (!waitedForBatch) {
+                microtaskChainDepth += 1
               }
-
-              const outcome = yield* flushTick(schedule)
-              if (!outcome.stable) {
-                nextForcedReason =
-                  outcome.degradeReason === 'budget_steps'
-                    ? 'budget'
-                    : outcome.degradeReason === 'cycle_detected'
-                      ? 'cycle_detected'
-                      : 'unknown'
-              }
-            } finally {
-              scheduled = false
-              // If something was re-queued or arrived after commit, schedule the next tick (best-effort).
-              if (queue.hasPending()) {
-                yield* scheduleTick()
-              } else {
-                // Reset chain depth when the system becomes idle (avoid forcing a macrotask on the next unrelated tick).
-                microtaskChainDepth = 0
-              }
+            } else {
+              yield* yieldMacrotask
+              microtaskChainDepth = 0
             }
-          }),
-        ),
-      )
+        
+            const schedule: TickSchedule = {
+              startedAs,
+              microtaskChainDepth: boundary === 'macrotask' ? depthAtSchedule : microtaskChainDepth,
+              ...(boundary === 'macrotask' ? { forcedMacrotask: true, reason: reason ?? 'unknown' } : {}),
+            }
+        
+            const outcome = yield* flushTick(schedule)
+            if (!outcome.stable) {
+              nextForcedReason =
+                outcome.degradeReason === 'budget_steps'
+                  ? 'budget'
+                  : outcome.degradeReason === 'cycle_detected'
+                    ? 'cycle_detected'
+                    : 'unknown'
+            }
+          } finally {
+            scheduled = false
+            // If something was re-queued or arrived after commit, schedule the next tick (best-effort).
+            if (queue.hasPending()) {
+              yield* scheduleTick()
+            } else {
+              // Reset chain depth when the system becomes idle (avoid forcing a macrotask on the next unrelated tick).
+              microtaskChainDepth = 0
+            }
+          }
+        }), TaskRunner.inSyncTransactionFiber, false).pipe(Effect.forkDetach)
     })
 
   const flushTick = (schedule: TickSchedule): Effect.Effect<{ stable: boolean; degradeReason?: TickDegradeReason }, never, never> =>
@@ -487,8 +489,8 @@ export const makeTickScheduler = (args: {
     tickSeq += 1
     const currentTickSeq = tickSeq
 
-    const diagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
-    const traceMode = yield* FiberRef.get(Debug.currentTraceMode)
+    const diagnosticsLevel = yield* Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie)
+    const traceMode = yield* Effect.service(Debug.currentTraceMode).pipe(Effect.orDie)
     const shouldEmitTrace = traceMode === 'on' && diagnosticsLevel !== 'off'
     const shouldEmitSchedulingDiagnostics = diagnosticsLevel !== 'off'
 
@@ -1033,7 +1035,7 @@ export const makeTickScheduler = (args: {
       return
     }
 
-    yield* Effect.yieldNow()
+    yield* Effect.yieldNow
     if (tickSeq > beforeTickSeq) {
       return
     }

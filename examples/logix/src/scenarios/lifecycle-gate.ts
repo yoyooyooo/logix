@@ -11,7 +11,7 @@
  *   pnpm -C examples/logix exec tsx src/scenarios/lifecycle-gate.ts
  */
 
-import { Cause, Console, Context, Effect, Layer, Schema } from 'effect'
+import { Cause, Console, Effect, Layer, Schema, ServiceMap } from 'effect'
 import { fileURLToPath } from 'node:url'
 import * as Logix from '@logixjs/core'
 
@@ -45,17 +45,17 @@ const DemoLogic = DemoDef.logic(($) => ({
     // initRequired：blocking gate（yield* Demo 会等它完成）
     $.lifecycle.onInitRequired(
       Console.log('[Demo] initRequired:start').pipe(
-        Effect.zipRight(Effect.sleep('120 millis')),
-        Effect.zipRight(Console.log('[Demo] initRequired:done')),
-        Effect.zipRight($.state.update((s) => ({ ...s, ready: true }))),
+        Effect.flatMap(() => Effect.sleep('120 millis')),
+        Effect.flatMap(() => Console.log('[Demo] initRequired:done')),
+        Effect.flatMap(() => $.state.update((s) => ({ ...s, ready: true }))),
       ),
     )
 
     // start：non-blocking（ready 后 fork 执行；失败会进入同一条错误兜底链路）
     $.lifecycle.onStart(
       Console.log('[Demo] start:begin').pipe(
-        Effect.zipRight(Effect.sleep('50 millis')),
-        Effect.zipRight(Effect.dieMessage('Boom in start task')),
+        Effect.flatMap(() => Effect.sleep('50 millis')),
+        Effect.flatMap(() => Effect.die(new Error('Boom in start task'))),
       ),
     )
 
@@ -77,13 +77,13 @@ const silentDebugSink: Logix.Debug.Sink = { record: () => Effect.void }
 const DemoImpl = DemoModule.impl
 
 export const main = Effect.scoped(
-  Effect.locally(Logix.Debug.internal.currentDebugSinks, [silentDebugSink])(
+  Effect.provideService(
     Effect.gen(function* () {
       const startedAt = Date.now()
       yield* Console.log('[App] building module runtime (initRequired will block)...')
 
       const ctx = yield* Layer.build(DemoImpl.layer)
-      const demo = Context.get(ctx, DemoDef.tag)
+      const demo = ServiceMap.get(ctx, DemoDef.tag)
 
       yield* Console.log(`[App] built after ${Date.now() - startedAt}ms`, {
         moduleId: demo.moduleId,
@@ -92,13 +92,15 @@ export const main = Effect.scoped(
 
       yield* demo.dispatch({ _tag: 'boot', payload: undefined } as any)
       // 给 watcher 一次调度机会，确保 state 变更已落地（避免读到旧快照）
-      yield* Effect.yieldNow()
+      yield* Effect.yieldNow
       const state = yield* demo.getState
       yield* Console.log('[App] state after boot', state)
 
       // 给 start task / onError 留时间输出日志
       yield* Effect.sleep('200 millis')
     }),
+    Logix.Debug.internal.currentDebugSinks,
+    [silentDebugSink],
   ),
 )
 

@@ -7,7 +7,7 @@ const getConvergeData = (ring: Debug.RingBufferSink): ReadonlyArray<any> =>
   pickConvergeTraceEvents(ring.getSnapshot()).map((e) => (e as any).data)
 
 describe('StateTrait converge auto basic decision', () => {
-  it.scoped('decides executedMode + reasons for typical distributions', () =>
+  it.effect('decides executedMode + reasons for typical distributions', () =>
     Effect.gen(function* () {
       const { M, ring, runtime } = makeConvergeAutoFixture({
         diagnosticsLevel: 'light',
@@ -15,7 +15,7 @@ describe('StateTrait converge auto basic decision', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt: any = yield* M.tag
+        const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
         // txn#1: cold start must use full
         yield* rt.dispatch({ _tag: 'bumpA' } as any)

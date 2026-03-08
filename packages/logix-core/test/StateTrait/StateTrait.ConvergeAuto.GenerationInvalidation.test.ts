@@ -88,7 +88,7 @@ const pickStateUpdateDigests = (ring: Debug.RingBufferSink): ReadonlyArray<strin
     .filter((digest): digest is string => typeof digest === 'string' && digest.length > 0)
 
 describe('StateTrait converge auto generation invalidation', () => {
-  it.scoped('generation bump strictly invalidates cache (missReason=generation_bumped)', () =>
+  it.effect('generation bump strictly invalidates cache (missReason=generation_bumped)', () =>
     Effect.gen(function* () {
       const steps = 10
       const { M, runtime, ring, State, baseSpec } = makeGenerationFixture({
@@ -103,7 +103,7 @@ describe('StateTrait converge auto generation invalidation', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt: any = yield* M.tag
+        const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
         const runTxn = (_name: string, input: string) => rt.dispatch({ _tag: 'bump', payload: input } as any)
 
@@ -149,7 +149,7 @@ describe('StateTrait converge auto generation invalidation', () => {
     }),
   )
 
-  it.scoped('generation thrash triggers cache self-protection (disableReason=generation_thrash)', () =>
+  it.effect('generation thrash triggers cache self-protection (disableReason=generation_thrash)', () =>
     Effect.gen(function* () {
       const steps = 10
       const { M, runtime, ring, State, baseSpec } = makeGenerationFixture({
@@ -164,7 +164,7 @@ describe('StateTrait converge auto generation invalidation', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt: any = yield* M.tag
+        const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
         const runTxn = (_name: string, input: string) => rt.dispatch({ _tag: 'bump', payload: input } as any)
 

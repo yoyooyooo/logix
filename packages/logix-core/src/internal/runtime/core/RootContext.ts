@@ -1,4 +1,4 @@
-import { Context, Deferred, Effect } from 'effect'
+import { Deferred, Effect, ServiceMap } from 'effect'
 
 export type RootContextLifecycleState = 'uninitialized' | 'merged' | 'ready' | 'failed'
 
@@ -27,14 +27,14 @@ export class RootContextLifecycleError extends Error {
 }
 
 export interface RootContext {
-  context: Context.Context<any> | undefined
-  readonly ready: Deferred.Deferred<Context.Context<any>, never>
+  context: ServiceMap.ServiceMap<any> | undefined
+  readonly ready: Deferred.Deferred<ServiceMap.ServiceMap<any>, never>
   lifecycle: RootContextLifecycle
   readonly appId?: string
   readonly appModuleIds?: ReadonlyArray<string>
 }
 
-class RootContextTagImpl extends Context.Tag('@logixjs/core/RootContext')<RootContextTagImpl, RootContext>() {}
+class RootContextTagImpl extends ServiceMap.Service<RootContextTagImpl, RootContext>()('@logixjs/core/RootContext') {}
 
 export const RootContextTag = RootContextTagImpl
 
@@ -53,7 +53,7 @@ export const makeRootContext = (args?: {
   readonly appModuleIds?: ReadonlyArray<string>
 }): Effect.Effect<RootContext, never, never> =>
   Effect.gen(function* () {
-    const ready = yield* Deferred.make<Context.Context<any>>()
+    const ready = yield* Deferred.make<ServiceMap.ServiceMap<any>>()
     return {
       context: undefined,
       ready,
@@ -65,7 +65,7 @@ export const makeRootContext = (args?: {
 
 export const mergeRootContext = (
   root: RootContext,
-  context: Context.Context<any>,
+  context: ServiceMap.ServiceMap<any>,
 ): Effect.Effect<RootContext, RootContextLifecycleError, never> =>
   Effect.gen(function* () {
     if (root.context !== undefined || root.lifecycle.state !== 'uninitialized') {

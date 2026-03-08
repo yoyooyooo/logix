@@ -19,7 +19,7 @@ const quantile = (samples: ReadonlyArray<number>, q: number): number => {
 }
 
 describe('ModuleRuntime.transaction async-escape guard · perf baseline (Diagnostics=off)', () => {
-  it.scoped('records reproducible sync-vs-fail-fast latency evidence', () =>
+  it.effect('records reproducible sync-vs-fail-fast latency evidence', () =>
     Effect.gen(function* () {
       const prevNodeEnv = process.env.NODE_ENV
       process.env.NODE_ENV = 'production'
@@ -64,7 +64,7 @@ describe('ModuleRuntime.transaction async-escape guard · perf baseline (Diagnos
         const result = (yield* Effect.promise(() =>
           runtime.runPromise(
             Effect.gen(function* () {
-              const rt: any = yield* M.tag
+              const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
               const syncSamples: number[] = []
               const failFastSamples: number[] = []
@@ -98,7 +98,7 @@ describe('ModuleRuntime.transaction async-escape guard · perf baseline (Diagnos
                   failFastSamples.push(elapsed)
                 }
                 if (i >= warmup && exit._tag === 'Failure') {
-                  const defects = [...Cause.defects(exit.cause)]
+                  const defects = exit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)
                   if (defects.some((d) => (d as any)?.code === 'state_transaction::async_escape')) {
                     failFastCount += 1
                   }

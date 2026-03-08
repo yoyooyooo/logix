@@ -35,8 +35,8 @@
 
 ## 3.2 底层重构（必须重写）
 
-- `Context.* -> ServiceMap.Service`
-- `FiberRef/Effect.locally -> ServiceMap.Reference/Effect.provideService`
+- `Context.* -> Context.Tag / Tag class`
+- `FiberRef/Effect.locally -> Context.Reference/Effect.provideService`
 - Runtime 运行边界（散落 `run*` 调用收敛）
 - Cause 扁平化下的诊断因果表达
 - Layer memoization 隔离策略（`local: true` / `Layer.fresh`）

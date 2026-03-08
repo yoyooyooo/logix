@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Schema, Layer } from 'effect'
 import * as Logix from '../../src/index.js'
@@ -21,7 +21,7 @@ const Impl = Mod.implement({
 })
 
 describe('Runtime.make · devtools option', () => {
-  it.scoped('should enable DevtoolsHub + DebugObserver even when isDevEnv() = false', () =>
+  it.effect('should enable DevtoolsHub + DebugObserver even when isDevEnv() = false', () =>
     Effect.gen(function* () {
       const prevEnv = process.env.NODE_ENV
       process.env.NODE_ENV = 'production'
@@ -38,7 +38,7 @@ describe('Runtime.make · devtools option', () => {
         })
 
         const program = Effect.gen(function* () {
-          const rt = yield* Mod.tag
+          const rt = yield* Effect.service(Mod.tag).pipe(Effect.orDie)
           yield* rt.dispatch({ _tag: 'bump', payload: undefined })
           yield* Effect.sleep('10 millis')
         })
@@ -81,7 +81,7 @@ describe('Runtime.make · devtools option', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* Mod.tag
+        const rt = yield* Effect.service(Mod.tag).pipe(Effect.orDie)
         yield* rt.dispatch({ _tag: 'bump', payload: undefined })
         yield* Effect.sleep('10 millis')
       })

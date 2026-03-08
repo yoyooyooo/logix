@@ -1,4 +1,4 @@
-import { Effect, Layer, ManagedRuntime, Option, Scope } from 'effect'
+import { Effect, Layer, ManagedRuntime, Option, Scope, ServiceMap } from 'effect'
 import type { AnyModuleShape, ModuleImpl } from './internal/module.js'
 import type { AnyModule } from './Module.js'
 import * as AppRuntimeImpl from './internal/runtime/AppRuntime.js'
@@ -213,6 +213,7 @@ export interface DevtoolsRuntimeOptions {
   readonly traitConvergeDiagnosticsSampling?: Debug.TraitConvergeDiagnosticsSamplingConfig
   /** DebugObserver config for `trace:effectop`; undefined means full observation. */
   readonly observer?: Middleware.DebugObserverConfig | false
+  readonly traceMode?: Debug.TraceMode
   /** Reserved: React render sampling / throttling config (consumed by `@logixjs/react`). */
   readonly sampling?: {
     readonly reactRenderSampleRate?: number
@@ -286,6 +287,7 @@ export const make = (
     ? (Debug.devtoolsHubLayer(baseLayer, {
         bufferSize: devtoolsOptions?.bufferSize,
         diagnosticsLevel: devtoolsOptions?.diagnosticsLevel,
+        traceMode: devtoolsOptions?.traceMode ?? 'on',
         traitConvergeDiagnosticsSampling: devtoolsOptions?.traitConvergeDiagnosticsSampling,
       }) as Layer.Layer<any, never, never>)
     : baseLayer
@@ -418,33 +420,30 @@ export const setTraitConvergeOverride = (
   runtime: ManagedRuntime.ManagedRuntime<any, never>,
   moduleId: string,
   overrides: StateTransactionTraitConvergeOverrides | undefined,
-): void => {
+): Effect.Effect<void, never, never> => {
   warnInvalidStateTransactionTraitConvergeOverridesDevOnly(overrides, `Runtime.setTraitConvergeOverride(${moduleId})`)
 
-  runtime.runSync(
-    Effect.gen(function* () {
-      const runtimeConfigOpt = yield* Effect.serviceOption(StateTransactionConfigTag)
+  return Effect.map(runtime.servicesEffect, (services) => {
+    const runtimeConfigOpt = ServiceMap.getOption(services, StateTransactionConfigTag as any)
+    if (Option.isNone(runtimeConfigOpt)) {
+      return
+    }
 
-      if (Option.isNone(runtimeConfigOpt)) {
-        return
-      }
+    // NOTE: runtime config lives in Env as a Service; hot-switch by replacing the per-module patch map.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const runtimeConfig: any = runtimeConfigOpt.value
+    const next = {
+      ...(runtimeConfig.traitConvergeOverridesByModuleId ?? {}),
+    }
 
-      // NOTE: runtime config lives in Env as a Service; hot-switch by replacing the per-module patch map.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const runtimeConfig: any = runtimeConfigOpt.value
-      const next = {
-        ...(runtimeConfig.traitConvergeOverridesByModuleId ?? {}),
-      }
+    if (overrides) {
+      next[moduleId] = overrides
+    } else {
+      delete next[moduleId]
+    }
 
-      if (overrides) {
-        next[moduleId] = overrides
-      } else {
-        delete next[moduleId]
-      }
-
-      runtimeConfig.traitConvergeOverridesByModuleId = next
-    }),
-  )
+    runtimeConfig.traitConvergeOverridesByModuleId = next
+  }) as Effect.Effect<void, never, never>
 }
 
 /**
@@ -456,33 +455,30 @@ export const setSchedulingPolicyOverride = (
   runtime: ManagedRuntime.ManagedRuntime<any, never>,
   moduleId: string,
   patch: SchedulingPolicySurfacePatch | undefined,
-): void => {
+): Effect.Effect<void, never, never> => {
   warnInvalidSchedulingPolicySurfacePatchDevOnly(patch, `Runtime.setSchedulingPolicyOverride(${moduleId})`)
 
-  runtime.runSync(
-    Effect.gen(function* () {
-      const runtimeConfigOpt = yield* Effect.serviceOption(SchedulingPolicySurfaceTag)
+  return Effect.map(runtime.servicesEffect, (services) => {
+    const runtimeConfigOpt = ServiceMap.getOption(services, SchedulingPolicySurfaceTag as any)
+    if (Option.isNone(runtimeConfigOpt)) {
+      return
+    }
 
-      if (Option.isNone(runtimeConfigOpt)) {
-        return
-      }
+    // NOTE: runtime config lives in Env as a Service; hot-switch by replacing the per-module patch map.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const runtimeConfig: any = runtimeConfigOpt.value
+    const next = {
+      ...(runtimeConfig.overridesByModuleId ?? {}),
+    }
 
-      // NOTE: runtime config lives in Env as a Service; hot-switch by replacing the per-module patch map.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const runtimeConfig: any = runtimeConfigOpt.value
-      const next = {
-        ...(runtimeConfig.overridesByModuleId ?? {}),
-      }
+    if (patch) {
+      next[moduleId] = patch
+    } else {
+      delete next[moduleId]
+    }
 
-      if (patch) {
-        next[moduleId] = patch
-      } else {
-        delete next[moduleId]
-      }
-
-      runtimeConfig.overridesByModuleId = next
-    }),
-  )
+    runtimeConfig.overridesByModuleId = next
+  }) as Effect.Effect<void, never, never>
 }
 
 /**
@@ -494,8 +490,8 @@ export const setConcurrencyPolicyOverride = (
   runtime: ManagedRuntime.ManagedRuntime<any, never>,
   moduleId: string,
   patch: ConcurrencyPolicyPatch | undefined,
-): void => {
-  setSchedulingPolicyOverride(runtime, moduleId, patch)
+): Effect.Effect<void, never, never> => {
+  return setSchedulingPolicyOverride(runtime, moduleId, patch)
 }
 
 /**

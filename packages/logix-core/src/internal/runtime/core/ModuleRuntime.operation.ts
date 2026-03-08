@@ -1,4 +1,4 @@
-import { Context, Effect, FiberRef, Option } from 'effect'
+import { Effect, Option, ServiceMap } from 'effect'
 import type { StateTxnContext } from './StateTransaction.js'
 import * as Debug from './DebugSink.js'
 import * as EffectOpCore from './EffectOpCore.js'
@@ -12,12 +12,12 @@ export interface OperationRuntimeServices {
 }
 
 export const resolveOperationRuntimeServices = (): Effect.Effect<OperationRuntimeServices, never, any> =>
-  Effect.context<any>().pipe(
+  Effect.services<any>().pipe(
     Effect.map((context) => {
-      const middlewareOpt = Context.getOption(context, EffectOpCore.EffectOpMiddlewareTag as any) as Option.Option<{
+      const middlewareOpt = ServiceMap.getOption(context, EffectOpCore.EffectOpMiddlewareTag as any) as Option.Option<{
         readonly stack: EffectOp.MiddlewareStack
       }>
-      const runSessionOpt = Context.getOption(context, RunSessionTag as any) as Option.Option<RunSession>
+      const runSessionOpt = ServiceMap.getOption(context, RunSessionTag as any) as Option.Option<RunSession>
       return {
         middlewareStack: Option.isSome(middlewareOpt) ? middlewareOpt.value.stack : [],
         runSession: Option.isSome(runSessionOpt) ? runSessionOpt.value : undefined,
@@ -76,8 +76,8 @@ export const makeRunOperation = (args: {
     Effect.gen(function* () {
       const [{ middlewareStack, runSession }, existingLinkId, runtimeLabel] = yield* Effect.all([
         resolveOperationRuntimeServices(),
-        FiberRef.get(EffectOpCore.currentLinkId),
-        FiberRef.get(Debug.currentRuntimeLabel),
+        Effect.service(EffectOpCore.currentLinkId).pipe(Effect.orDie),
+        Effect.service(Debug.currentRuntimeLabel).pipe(Effect.orDie),
       ])
 
       const currentTxnId = txnContext.current?.txnId
@@ -112,10 +112,7 @@ export const makeRunOperation = (args: {
       const program = middlewareStack.length ? EffectOp.run(op, middlewareStack) : op.effect
 
       // linkId: created at the boundary, reused for nested ops (shared across modules via a FiberRef).
-      return yield* Effect.locally(
-        EffectOpCore.currentLinkId,
-        linkId,
-      )(Effect.locally(Debug.currentOpSeq, opSeq)(program))
+      return yield* Effect.provideService(Effect.provideService(program, Debug.currentOpSeq, opSeq), EffectOpCore.currentLinkId, linkId)
     })
 
   return runOperation

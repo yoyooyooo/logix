@@ -1,10 +1,9 @@
-import { describe, expect } from 'vitest'
-import { it } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('Runtime.runProgram exitCode (US1)', () => {
-  it.scoped('maps success void|number to process.exitCode and failure to non-zero', () =>
+  it.effect('maps success void|number to process.exitCode and failure to non-zero', () =>
     Effect.gen(function* () {
       const proc: any = (globalThis as any).process
       const prev = proc?.exitCode
@@ -37,14 +36,14 @@ describe('Runtime.runProgram exitCode (US1)', () => {
 
       yield* Effect.tryPromise({
         try: () =>
-          Logix.Runtime.runProgram(impl, () => Effect.dieMessage('fail'), {
+          Logix.Runtime.runProgram(impl, () => Effect.die(new Error('fail')), {
             layer: Layer.empty as Layer.Layer<any, never, never>,
             handleSignals: false,
             exitCode: true,
             reportError: false,
           }),
         catch: () => undefined,
-      }).pipe(Effect.catchAll(() => Effect.void))
+      }).pipe(Effect.catch(() => Effect.void))
 
       expect(proc.exitCode).toBe(1)
 

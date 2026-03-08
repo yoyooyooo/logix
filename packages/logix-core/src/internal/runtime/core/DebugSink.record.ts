@@ -1,4 +1,4 @@
-import { Cause, Effect, FiberRef, Layer, Logger } from 'effect'
+import { Cause, Effect, Layer, Logger, Option, ServiceMap } from 'effect'
 import {
   projectJsonValue,
   type DowngradeReason as JsonDowngradeReason,
@@ -274,30 +274,44 @@ export type Event =
 export interface Sink {
   readonly record: (event: Event) => Effect.Effect<void>
 }
-export const currentDebugSinks = FiberRef.unsafeMake<ReadonlyArray<Sink>>([])
-export const currentRuntimeLabel = FiberRef.unsafeMake<string | undefined>(undefined)
-export const currentTxnId = FiberRef.unsafeMake<string | undefined>(undefined)
-export const currentOpSeq = FiberRef.unsafeMake<number | undefined>(undefined)
+export const currentDebugSinks = ServiceMap.Reference<ReadonlyArray<Sink>>('@logixjs/core/Debug.currentDebugSinks', {
+  defaultValue: () => [],
+})
+export const currentRuntimeLabel = ServiceMap.Reference<string | undefined>('@logixjs/core/Debug.currentRuntimeLabel', {
+  defaultValue: () => undefined,
+})
+export const currentTxnId = ServiceMap.Reference<string | undefined>('@logixjs/core/Debug.currentTxnId', {
+  defaultValue: () => undefined,
+})
+export const currentOpSeq = ServiceMap.Reference<number | undefined>('@logixjs/core/Debug.currentOpSeq', {
+  defaultValue: () => undefined,
+})
 export type DiagnosticsLevel = 'off' | 'light' | 'sampled' | 'full'
-export const currentDiagnosticsLevel = FiberRef.unsafeMake<DiagnosticsLevel>('off')
+export const currentDiagnosticsLevel = ServiceMap.Reference<DiagnosticsLevel>('@logixjs/core/Debug.currentDiagnosticsLevel', {
+  defaultValue: () => 'off',
+})
 
 export const diagnosticsLevel = (level: DiagnosticsLevel): Layer.Layer<any, never, never> =>
-  Layer.fiberRefLocallyScopedWith(currentDiagnosticsLevel as any, () => level) as Layer.Layer<any, never, never>
+  Layer.succeed(currentDiagnosticsLevel, level) as Layer.Layer<any, never, never>
 
 export type DiagnosticsMaterialization = 'eager' | 'lazy'
-export const currentDiagnosticsMaterialization = FiberRef.unsafeMake<DiagnosticsMaterialization>('eager')
+export const currentDiagnosticsMaterialization = ServiceMap.Reference<DiagnosticsMaterialization>(
+  '@logixjs/core/Debug.currentDiagnosticsMaterialization',
+  {
+    defaultValue: () => 'eager',
+  },
+)
 
 export const diagnosticsMaterialization = (mode: DiagnosticsMaterialization): Layer.Layer<any, never, never> =>
-  Layer.fiberRefLocallyScopedWith(
-    currentDiagnosticsMaterialization as any,
-    () => mode,
-  ) as Layer.Layer<any, never, never>
+  Layer.succeed(currentDiagnosticsMaterialization, mode) as Layer.Layer<any, never, never>
 
 export type TraceMode = 'off' | 'on'
-export const currentTraceMode = FiberRef.unsafeMake<TraceMode>('on')
+export const currentTraceMode = ServiceMap.Reference<TraceMode>('@logixjs/core/Debug.currentTraceMode', {
+  defaultValue: () => 'on',
+})
 
 export const traceMode = (mode: TraceMode): Layer.Layer<any, never, never> =>
-  Layer.fiberRefLocallyScopedWith(currentTraceMode as any, () => mode) as Layer.Layer<any, never, never>
+  Layer.succeed(currentTraceMode, mode) as Layer.Layer<any, never, never>
 
 export interface TraitConvergeDiagnosticsSamplingConfig {
   /**
@@ -311,26 +325,29 @@ export interface TraitConvergeDiagnosticsSamplingConfig {
   readonly topK: number
 }
 
-export const currentTraitConvergeDiagnosticsSampling = FiberRef.unsafeMake<TraitConvergeDiagnosticsSamplingConfig>({
-  sampleEveryN: 32,
-  topK: 3,
-})
+export const currentTraitConvergeDiagnosticsSampling = ServiceMap.Reference<TraitConvergeDiagnosticsSamplingConfig>(
+  '@logixjs/core/Debug.currentTraitConvergeDiagnosticsSampling',
+  {
+    defaultValue: () => ({
+      sampleEveryN: 32,
+      topK: 3,
+    }),
+  },
+)
 
 export const traitConvergeDiagnosticsSampling = (
   config: TraitConvergeDiagnosticsSamplingConfig,
 ): Layer.Layer<any, never, never> =>
-  Layer.fiberRefLocallyScopedWith(currentTraitConvergeDiagnosticsSampling as any, () => config) as Layer.Layer<
-    any,
-    never,
-    never
-  >
+  Layer.succeed(currentTraitConvergeDiagnosticsSampling, config) as Layer.Layer<any, never, never>
 
 export const appendSinks = (sinks: ReadonlyArray<Sink>): Layer.Layer<any, never, never> =>
-  Layer.fiberRefLocallyScopedWith(currentDebugSinks, (current) => [...current, ...sinks]) as Layer.Layer<
-    any,
-    never,
-    never
-  >
+  Layer.effect(
+    currentDebugSinks,
+    Effect.gen(function* () {
+      const current = yield* Effect.service(currentDebugSinks)
+      return [...current, ...sinks]
+    }),
+  ) as Layer.Layer<any, never, never>
 
 export type RuntimeDebugEventKind =
   | 'action'
@@ -605,9 +622,7 @@ const lifecycleErrorLog = (event: Extract<Event, { readonly type: 'lifecycle:err
   const moduleId = event.moduleId ?? 'unknown'
   const causePretty = (() => {
     try {
-      return Cause.pretty(event.cause as Cause.Cause<unknown>, {
-        renderErrorCause: true,
-      })
+        return Cause.pretty(event.cause as Cause.Cause<unknown>)
     } catch {
       try {
         return JSON.stringify(event.cause, null, 2)
@@ -664,7 +679,7 @@ const diagnosticLog = (event: Extract<Event, { readonly type: 'diagnostic' }>) =
  * - Uses Layer.locallyScoped to inject Debug sinks via FiberRef state.
  * - Avoids misusing FiberRef as a Context.Tag.
  */
-export const noopLayer = Layer.locallyScoped(currentDebugSinks, [])
+export const noopLayer = Layer.succeed(currentDebugSinks, [])
 
 /**
  * errorOnlyLayer：
@@ -681,7 +696,7 @@ const errorOnlySink: Sink = {
         : Effect.void,
 }
 
-export const errorOnlyLayer = Layer.locallyScoped(currentDebugSinks, [errorOnlySink])
+export const errorOnlyLayer = Layer.succeed(currentDebugSinks, [errorOnlySink])
 
 export const isErrorOnlyOnlySinks = (sinks: ReadonlyArray<Sink>): boolean => sinks.length === 1 && sinks[0] === errorOnlySink
 
@@ -699,7 +714,7 @@ const consoleSink: Sink = {
         : Effect.logDebug({ debugEvent: event }),
 }
 
-export const consoleLayer = Layer.locallyScoped(currentDebugSinks, [consoleSink])
+export const consoleLayer = Layer.succeed(currentDebugSinks, [consoleSink])
 
 const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined'
 
@@ -730,7 +745,7 @@ const renderBrowserConsoleEvent = (event: Event): Effect.Effect<void> => {
     const moduleId = event.moduleId ?? 'unknown'
     const causePretty = (() => {
       try {
-        return Cause.pretty(event.cause as Cause.Cause<unknown>, { renderErrorCause: true })
+        return Cause.pretty(event.cause as Cause.Cause<unknown>)
       } catch {
         try {
           return JSON.stringify(event.cause, null, 2)
@@ -831,7 +846,7 @@ const browserConsoleSink: Sink = {
   },
 }
 
-export const browserConsoleLayer = Layer.locallyScoped(currentDebugSinks, [browserConsoleSink])
+export const browserConsoleLayer = Layer.succeed(currentDebugSinks, [browserConsoleSink])
 
 /**
  * Browser diagnostic-only debug layer:
@@ -855,16 +870,21 @@ const browserDiagnosticConsoleSink: Sink = {
   },
 }
 
-export const browserDiagnosticConsoleLayer = Layer.locallyScoped(currentDebugSinks, [browserDiagnosticConsoleSink])
+export const browserDiagnosticConsoleLayer = Layer.succeed(currentDebugSinks, [browserDiagnosticConsoleSink])
 
 /**
  * Browser-friendly Logger layer: replaces the default logger with Effect's pretty logger (browser mode).
  * - Avoids hand-written console styles; reuses Effect's colored/grouped formatting.
  * - Safely degrades to the default logger in server environments.
  */
-export const browserPrettyLoggerLayer = Logger.replace(
-  Logger.defaultLogger,
-  Logger.prettyLogger({ mode: 'browser', colors: true }),
+export const browserPrettyLoggerLayer = Layer.effect(
+  Logger.CurrentLoggers,
+  Effect.gen(function* () {
+    const current = yield* Effect.service(Logger.CurrentLoggers)
+    return new Set(
+      [...current].filter((logger) => logger !== Logger.defaultLogger).concat(Logger.consolePretty({ mode: 'browser', colors: true })),
+    )
+  }),
 )
 
 /**
@@ -876,7 +896,7 @@ export const defaultLayer = errorOnlyLayer
 
 export const record = (event: Event) =>
   Effect.gen(function* () {
-    const sinks = yield* FiberRef.get(currentDebugSinks)
+    const sinks = yield* Effect.service(currentDebugSinks)
 
     // Fast path: production default installs errorOnlyLayer (sinks=1).
     // Avoid paying diagnostics FiberRef + enrichment costs for high-frequency events that are always dropped by errorOnly.
@@ -914,13 +934,13 @@ export const record = (event: Event) =>
     // Trace events are performance-sensitive and should be explicitly enabled.
     // Keep the check scoped to trace:* only so non-trace events stay on the fast path.
     if (typeof event.type === 'string' && event.type.startsWith('trace:')) {
-      const mode = yield* FiberRef.get(currentTraceMode)
+      const mode = yield* Effect.service(currentTraceMode)
       if (mode === 'off') return
     }
 
     const enriched = event as Event
 
-    const diagnosticsLevel = yield* FiberRef.get(currentDiagnosticsLevel)
+    const diagnosticsLevel = yield* Effect.service(currentDiagnosticsLevel)
 
     // Enrich Debug.Event with basic fields (enabled only when diagnosticsLevel!=off):
     // - timestamp: for Devtools/Timeline/Overview time aggregation; avoids UI-side "first observed time" distortion.
@@ -940,14 +960,14 @@ export const record = (event: Event) =>
       ;(enriched as any).timestamp = getNow()
     }
     if (diagnosticsLevel !== 'off' && enriched.runtimeLabel === undefined) {
-      const runtimeLabel = yield* FiberRef.get(currentRuntimeLabel)
+      const runtimeLabel = yield* Effect.service(currentRuntimeLabel)
       if (runtimeLabel) {
         ;(enriched as any).runtimeLabel = runtimeLabel
       }
     }
 
     if (enriched.type === 'diagnostic' && (enriched as any).txnId === undefined) {
-      const txnId = yield* FiberRef.get(currentTxnId)
+      const txnId = yield* Effect.service(currentTxnId)
       if (txnId) {
         ;(enriched as any).txnId = txnId
       }
@@ -958,9 +978,9 @@ export const record = (event: Event) =>
       (enriched as any).type === 'trace:effectop' &&
       (enriched as any).linkId === undefined
     ) {
-      const linkId = yield* FiberRef.get(EffectOpCore.currentLinkId)
-      if (linkId) {
-        ;(enriched as any).linkId = linkId
+      const maybeLinkId = yield* Effect.serviceOption(EffectOpCore.currentLinkId)
+      if (Option.isSome(maybeLinkId) && maybeLinkId.value) {
+        ;(enriched as any).linkId = maybeLinkId.value
       }
     }
 
@@ -969,7 +989,7 @@ export const record = (event: Event) =>
       return
     }
 
-    yield* Effect.forEach(sinks, (sink) => sink.record(enriched), { discard: true })
+    yield* Effect.forEach(sinks as ReadonlyArray<Sink>, (sink) => sink.record(enriched), { discard: true })
   })
 
 /**

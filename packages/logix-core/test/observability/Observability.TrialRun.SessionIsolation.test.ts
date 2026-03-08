@@ -1,9 +1,10 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Context, Effect, Exit, Layer, Schema, TestClock } from 'effect'
+import { Context, Effect, Exit, Layer, Schema, ServiceMap } from 'effect'
+import { TestClock } from 'effect/testing'
 import * as Logix from '../../src/index.js'
 
 describe('Observability.TrialRun (US4)', () => {
-  it.scoped(
+  it.effect(
     'parallel RunSession trial runs should not leak runId/events/IR across sessions',
     () =>
       Effect.gen(function* () {
@@ -46,7 +47,7 @@ describe('Observability.TrialRun (US4)', () => {
           Logix.Observability.trialRun(
             Effect.gen(function* () {
               const ctx = yield* options.module.impl.impl.layer.pipe(Layer.build)
-              const runtime = Context.get(ctx, options.module.M.tag) as any
+              const runtime = ServiceMap.get(ctx, options.module.M.tag) as any
 
               // Give background logic/traits installation a chance to run so static IR registration and evidence collection can complete.
               yield* TestClock.adjust('1 millis')

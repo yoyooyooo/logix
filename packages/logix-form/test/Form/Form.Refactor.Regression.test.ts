@@ -1,11 +1,10 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
 
 describe('Form refactor regressions (US3)', () => {
-  it.scoped('setValue clears manual+schema errors and keeps errorCount consistent', () =>
+  it.effect('setValue clears manual+schema errors and keeps errorCount consistent', () =>
     Effect.gen(function* () {
       const ValuesSchema = Schema.Struct({
         name: Schema.String,
@@ -109,7 +108,7 @@ describe('Form refactor regressions (US3)', () => {
     ).toThrow(/Duplicate trait path "name".*traits\/derived.*rules/)
   })
 
-  it.scoped('rowId error ownership remains stable across swap/move/remove', () =>
+  it.effect('rowId error ownership remains stable across swap/move/remove', () =>
     Effect.gen(function* () {
       const RowSchema = Schema.Struct({
         id: Schema.String,

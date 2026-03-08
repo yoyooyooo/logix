@@ -44,8 +44,8 @@
 |---|---|---|
 | `catchAll*` / `fork*` / `Scope.extend` | API 迁移（rename + 行为校验） | 可机械替换，但必须跑并发/错误语义回归 |
 | `Runtime.run*` 边界 | API 迁移 + 入口重整 | 需要统一运行入口，避免散落调用 |
-| `Context.Tag/GenericTag` | 底层重构 | 必须整体切到 `ServiceMap.Service`，含依赖注入拓扑重排 |
-| `FiberRef` / `Effect.locally` | 底层重构 | 必须切到 `ServiceMap.Reference` + `Effect.provideService`，事务/诊断传播链重写 |
+| `Context.Tag/GenericTag` | 底层重构 | 必须整体切到 `Context.Tag / Tag class`，含依赖注入拓扑重排 |
+| `FiberRef` / `Effect.locally` | 底层重构 | 必须切到 `Context.Reference` + `Effect.provideService`，事务/诊断传播链重写 |
 | `Cause` 解析 | 底层重构 | 不能只换函数名，需重做诊断因果表达策略 |
 | `Layer memoization` | 底层重构（装配策略） | 需显式审计隔离点（`local: true` / `Layer.fresh`） |
 
@@ -53,15 +53,15 @@
 
 ## 4.1 Runtime Service 拓扑重建
 
-- 目标：把 runtime 依赖面从 v3 `Context.*` 重建到 v4 `ServiceMap.Service`。
+- 目标：把 runtime 依赖面从 v3 `Context.*` 重建到 v4 `Context.Tag / Tag class`。
 - 关键动作：
-  - 统一服务定义风格：`ServiceMap.Service<Self, Shape>()("Id")`。
+  - 统一服务定义风格：`Context.Tag / Tag class<Self, Shape>()("Id")`。
   - 禁止继续新增 `Context.Tag/GenericTag`。
   - 动态模块服务标识改为稳定 helper（防止 id 漂移）。
 
 ## 4.2 Runtime Reference 拓扑重建
 
-- 目标：把 Fiber-local 语义统一落到 `ServiceMap.Reference`。
+- 目标：把 Fiber-local 语义统一落到 `Context.Reference`。
 - 关键动作：
   - 诊断级别、txn 元信息、调度上下文、追踪开关等全部迁移到 Reference。
   - 所有“局部覆盖”统一改为 `Effect.provideService`，不再使用 `Effect.locally`。

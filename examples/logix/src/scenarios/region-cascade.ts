@@ -7,7 +7,7 @@
  *   - 价值：通过结构化配置消除样板代码，统一处理 Loading 与竞态问题。
  */
 
-import { Effect, Schema, Context } from 'effect'
+import { Effect, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 
 // ---------------------------------------------------------------------------
@@ -44,14 +44,14 @@ type RegionShape = Logix.Shape<typeof RegionStateSchema, typeof RegionActionMap>
 // 2. Service Definition (Mock)
 // ---------------------------------------------------------------------------
 
-export class RegionService extends Context.Tag('RegionService')<
+export class RegionService extends ServiceMap.Service<
   RegionService,
   {
     getProvinces: () => Effect.Effect<Array<{ code: string; name: string }>>
     getCities: (provinceCode: string) => Effect.Effect<Array<{ code: string; name: string }>>
     getDistricts: (cityCode: string) => Effect.Effect<Array<{ code: string; name: string }>>
   }
->() {}
+  >()('RegionService') {}
 
 // ---------------------------------------------------------------------------
 // 3. Module Definition

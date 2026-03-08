@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Context, Effect, Stream, SubscriptionRef } from 'effect'
 import * as Logix from '../../../src/index.js'
@@ -97,7 +97,7 @@ describe('ExternalStore sugars', () => {
     }),
   )
 
-  it.scoped('fromSubscriptionRef: runtime.ref() root view keeps stable storeId across calls', () =>
+  it.effect('fromSubscriptionRef: runtime.ref() root view keeps stable storeId across calls', () =>
     Effect.gen(function* () {
       const runtime = yield* ModuleRuntime.make({ count: 0 })
 

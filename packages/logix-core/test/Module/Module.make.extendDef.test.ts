@@ -1,10 +1,10 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('Module.make extend def (actions/reducers)', () => {
-  it.scoped('merges base + extension actions/reducers', () => {
+  it.effect('merges base + extension actions/reducers', () => {
     const State = Schema.Struct({ count: Schema.Number })
     type S = Schema.Schema.Type<typeof State>
 
@@ -38,7 +38,7 @@ describe('Module.make extend def (actions/reducers)', () => {
     )
 
     return Effect.gen(function* () {
-      const rt = yield* M.tag
+      const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
       const desc = Logix.Module.descriptor(M as any, rt as any)
       expect(desc.actionKeys.slice().sort()).toEqual(['dec', 'inc'])
@@ -49,7 +49,7 @@ describe('Module.make extend def (actions/reducers)', () => {
     }).pipe(Effect.provide(M.live({ count: 0 })))
   })
 
-  it.scoped('allows overriding base reducers', () => {
+  it.effect('allows overriding base reducers', () => {
     const State = Schema.Struct({ count: Schema.Number })
     type S = Schema.Schema.Type<typeof State>
 
@@ -76,7 +76,7 @@ describe('Module.make extend def (actions/reducers)', () => {
     )
 
     return Effect.gen(function* () {
-      const rt = yield* M.tag
+      const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
       yield* rt.dispatch({ _tag: 'inc', payload: undefined } as any)
       expect(yield* rt.getState).toEqual({ count: 2 })
     }).pipe(Effect.provide(M.live({ count: 0 })))

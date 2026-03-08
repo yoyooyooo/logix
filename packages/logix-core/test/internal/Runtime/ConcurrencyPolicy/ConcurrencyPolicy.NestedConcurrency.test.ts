@@ -1,6 +1,6 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Effect, PubSub, Ref, Stream } from 'effect'
+import { Effect, Fiber, PubSub, Ref, Stream } from 'effect'
 import * as ModuleRuntime from '../../../../src/internal/runtime/ModuleRuntime.js'
 import * as FlowRuntime from '../../../../src/internal/runtime/FlowRuntime.js'
 import { getRuntimeInternals } from '../../../../src/internal/runtime/core/runtimeInternalsAccessor.js'
@@ -45,13 +45,13 @@ describe('ConcurrencyPolicy (US1): nested concurrency', () => {
         // Outer layer: handle action triggers in parallel; inner layer: each action triggers another parallel fan-out.
         const worker = flow.runParallel(outerHandler)(runtime.actions$.pipe(Stream.take(4)))
 
-        const fiber = yield* Effect.fork(worker as any)
+        const fiber = yield* Effect.forkChild(worker as any)
 
         for (let i = 0; i < 4; i++) {
           yield* runtime.dispatch({ _tag: 'inc', payload: undefined } as any)
         }
 
-        yield* fiber
+        yield* Fiber.join(fiber)
 
         const maxOuter = yield* Ref.get(maxOuterInFlightRef)
         const maxInner = yield* Ref.get(maxInnerInFlightRef)

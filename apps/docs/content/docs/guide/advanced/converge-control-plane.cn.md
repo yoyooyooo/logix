@@ -201,11 +201,12 @@ export function App({ runtime }: { runtime: Logix.ManagedRuntime<any, any> }) {
 ### 配方 D：运行时热切换某个模块（排查用，避免频繁发版）
 
 ```ts
+import { Effect } from "effect"
 import * as Logix from "@logixjs/core"
 
-Logix.Runtime.setTraitConvergeOverride(runtime, "OrderForm", { traitConvergeMode: "full" })
+await Effect.runPromise(Logix.Runtime.setTraitConvergeOverride(runtime, "OrderForm", { traitConvergeMode: "full" }))
 // 取消覆盖：传 undefined
-Logix.Runtime.setTraitConvergeOverride(runtime, "OrderForm", undefined)
+await Effect.runPromise(Logix.Runtime.setTraitConvergeOverride(runtime, "OrderForm", undefined))
 ```
 
 > 提示：热切换是止血/排查工具，不建议把它当成长期配置系统；长期默认值应固化在 Runtime/Provider 配置中。

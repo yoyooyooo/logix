@@ -1,9 +1,6 @@
 import path from 'node:path'
 
-import { CliConfig, CommandDescriptor, CommandDirective, HelpDoc, Options, ValidationError } from '@effect/cli'
-import { NodeContext } from '@effect/platform-node'
-import { Effect, Option as FxOption } from 'effect'
-import * as HashMap from 'effect/HashMap'
+import { Effect } from 'effect'
 
 import { makeCliError } from './errors.js'
 
@@ -134,35 +131,6 @@ export type CliHelpResult = { readonly kind: 'help'; readonly text: string }
 const capitalize = (s: string): string => (s.length === 0 ? s : `${s[0]!.toUpperCase()}${s.slice(1)}`)
 const decapitalize = (s: string): string => (s.length === 0 ? s : `${s[0]!.toLowerCase()}${s.slice(1)}`)
 
-const optionalText = (name: string): Options.Options<string | undefined> =>
-  Options.text(name).pipe(
-    Options.optional,
-    Options.map((opt) => FxOption.getOrUndefined(opt)),
-  )
-
-const optionalChoice = <A extends string>(name: string, choices: ReadonlyArray<A>): Options.Options<A | undefined> =>
-  Options.choice(name, choices as any).pipe(
-    Options.optional,
-    Options.map((opt) => FxOption.getOrUndefined(opt) as A | undefined),
-  )
-
-const positiveIntOptional = (name: string): Options.Options<number | undefined> =>
-  Options.integer(name).pipe(
-    Options.optional,
-    Options.mapEffect((opt) =>
-      FxOption.match(opt, {
-        onNone: () => Effect.succeed(undefined),
-        onSome: (n) =>
-          n > 0
-            ? Effect.succeed(n)
-            : Effect.fail(ValidationError.invalidValue(HelpDoc.p(`--${name} 必须是正整数`))),
-      }),
-    ),
-  )
-
-const booleanWithNegation = (name: string): Options.Options<boolean> =>
-  Options.boolean(name, { negationNames: [`no${capitalize(name)}`] })
-
 const parseConfigValue = (value: string): string | number | boolean => {
   const trimmed = value.trim()
   if (trimmed === 'true') return true
@@ -171,53 +139,69 @@ const parseConfigValue = (value: string): string | number | boolean => {
   return Number.isFinite(asNumber) ? asNumber : trimmed
 }
 
-const configFlags = Options.keyValueMap('config').pipe(
-  Options.withDefault(HashMap.empty()),
-  Options.map((hm) => {
-    const out: Record<string, string | number | boolean> = {}
-    for (const [k, v] of HashMap.toEntries(hm)) out[k] = parseConfigValue(v)
-    return out
-  }),
-)
-
 const parseEntryRefFromOptions = (opts: {
   readonly entry?: string
-}): Effect.Effect<EntryRef, ValidationError.ValidationError> => {
+}): Effect.Effect<EntryRef, ReturnType<typeof makeCliError>> => {
   const entryRaw = typeof opts.entry === 'string' ? opts.entry.trim() : undefined
   if (!entryRaw) {
-    return Effect.fail(ValidationError.missingFlag(HelpDoc.p('缺少入口：请提供 --entry <modulePath>#<exportName>')))
+    return Effect.fail(
+      makeCliError({
+        code: 'CLI_INVALID_ARGUMENT',
+        message: '缺少入口：请提供 --entry <modulePath>#<exportName>',
+      }),
+    )
   }
 
   const hash = entryRaw.lastIndexOf('#')
   if (hash > 0 && hash < entryRaw.length - 1) {
     return Effect.succeed({ modulePath: entryRaw.slice(0, hash), exportName: entryRaw.slice(hash + 1) })
   }
-  return Effect.fail(ValidationError.invalidValue(HelpDoc.p(`--entry 非法：${entryRaw}（期望 <modulePath>#<exportName>）`)))
+  return Effect.fail(
+    makeCliError({
+      code: 'CLI_INVALID_ARGUMENT',
+      message: `--entry 非法：${entryRaw}（期望 <modulePath>#<exportName>）`,
+    }),
+  )
 }
 
 const parseIrValidateInputFromOptions = (opts: {
   readonly inDir?: string
   readonly artifact?: string
-}): Effect.Effect<IrValidateInput, ValidationError.ValidationError> => {
+}): Effect.Effect<IrValidateInput, ReturnType<typeof makeCliError>> => {
   const dir = typeof opts.inDir === 'string' ? opts.inDir.trim() : undefined
   const file = typeof opts.artifact === 'string' ? opts.artifact.trim() : undefined
 
   if (dir && file) {
-    return Effect.fail(ValidationError.invalidValue(HelpDoc.p('参数互斥：请仅提供 --in 或 --artifact。')))
+    return Effect.fail(
+      makeCliError({
+        code: 'CLI_INVALID_ARGUMENT',
+        message: '参数互斥：请仅提供 --in 或 --artifact。',
+      }),
+    )
   }
   if (dir) return Effect.succeed({ kind: 'dir', dir })
   if (file) return Effect.succeed({ kind: 'file', file })
-  return Effect.fail(ValidationError.missingFlag(HelpDoc.p('缺少输入：请提供 --in <dir> 或 --artifact <file>')))
+  return Effect.fail(
+    makeCliError({
+      code: 'CLI_INVALID_ARGUMENT',
+      message: '缺少输入：请提供 --in <dir> 或 --artifact <file>',
+    }),
+  )
 }
 
 const parseIrDiffInputFromOptions = (opts: {
   readonly before?: string
   readonly after?: string
-}): Effect.Effect<{ readonly before: string; readonly after: string }, ValidationError.ValidationError> => {
+}): Effect.Effect<{ readonly before: string; readonly after: string }, ReturnType<typeof makeCliError>> => {
   const before = typeof opts.before === 'string' ? opts.before.trim() : undefined
   const after = typeof opts.after === 'string' ? opts.after.trim() : undefined
   if (!before || !after) {
-    return Effect.fail(ValidationError.missingFlag(HelpDoc.p('缺少输入：请提供 --before <dir|file> 与 --after <dir|file>')))
+    return Effect.fail(
+      makeCliError({
+        code: 'CLI_INVALID_ARGUMENT',
+        message: '缺少输入：请提供 --before <dir|file> 与 --after <dir|file>',
+      }),
+    )
   }
   return Effect.succeed({ before, after })
 }
@@ -307,210 +291,6 @@ type LeafParsed =
   | { readonly command: 'anchor.autofill'; readonly options: ParsedOptions; readonly repoRoot: string }
   | { readonly command: 'transform.module'; readonly options: ParsedOptions; readonly repoRoot: string; readonly opsPath: string }
 
-const repoRootWithDefault = Options.text('repoRoot').pipe(Options.withDefault('.'))
-
-const baseOptions: Options.Options<ParsedOptions> = Options.all({
-  runId: optionalText('runId'),
-  out: optionalText('out'),
-  outRoot: optionalText('outRoot'),
-  budgetBytes: positiveIntOptional('budgetBytes'),
-  mode: optionalChoice<CliMode>('mode', ['report', 'write']),
-  tsconfig: optionalText('tsconfig'),
-  host: Options.choice('host', ['node', 'browser-mock'] as const).pipe(Options.withDefault('node')),
-  cliConfig: optionalText('cliConfig'),
-  profile: optionalText('profile'),
-  repoRoot: repoRootWithDefault,
-  entry: optionalText('entry'),
-  inDir: optionalText('in'),
-  artifact: optionalText('artifact'),
-  before: optionalText('before'),
-  after: optionalText('after'),
-  opsPath: optionalText('ops').pipe(Options.map((s) => (s ? s.trim() : s))),
-  diagnosticsLevel: Options.choice('diagnosticsLevel', ['off', 'light', 'full'] as const).pipe(Options.withDefault('light')),
-  maxEvents: positiveIntOptional('maxEvents'),
-  timeoutMs: positiveIntOptional('timeout'),
-  includeTrace: booleanWithNegation('includeTrace'),
-  config: configFlags,
-  allowWarn: booleanWithNegation('allowWarn'),
-  baselineDir: optionalText('baseline'),
-  includeContextPack: booleanWithNegation('includeContextPack'),
-  packMaxBytes: positiveIntOptional('packMaxBytes'),
-  requireRulesManifest: booleanWithNegation('requireRulesManifest'),
-  inputsFile: optionalText('inputs'),
-  includeUiKitRegistry: booleanWithNegation('includeUiKitRegistry'),
-  includeAnchorAutofill: booleanWithNegation('includeAnchorAutofill'),
-  maxUsedServices: positiveIntOptional('maxUsedServices'),
-  maxRawMode: positiveIntOptional('maxRawMode'),
-  describeJson: booleanWithNegation('json'),
-})
-
-const describeCommand = CommandDescriptor.make('describe', baseOptions).pipe(
-  CommandDescriptor.mapEffect(({ options }) => {
-    if (!options.describeJson) {
-      return Effect.fail(ValidationError.invalidValue(HelpDoc.p('describe 仅支持机器可读输出，请显式提供 --json')))
-    }
-    return Effect.succeed({
-      command: 'describe' as const,
-      options,
-      format: 'json' as const,
-    })
-  }),
-)
-
-const irExportCommand = CommandDescriptor.make('export', baseOptions).pipe(
-  CommandDescriptor.mapEffect(({ options }) =>
-    parseEntryRefFromOptions(options).pipe(Effect.map((entry) => ({ command: 'ir.export' as const, options, entry }))),
-  ),
-)
-
-const irValidateCommand = CommandDescriptor.make('validate', baseOptions).pipe(
-  CommandDescriptor.mapEffect(({ options }) =>
-    parseIrValidateInputFromOptions(options).pipe(
-      Effect.map((input) => ({ command: 'ir.validate' as const, options, input })),
-    ),
-  ),
-)
-
-const irDiffCommand = CommandDescriptor.make('diff', baseOptions).pipe(
-  CommandDescriptor.mapEffect(({ options }) =>
-    parseIrDiffInputFromOptions(options).pipe(
-      Effect.map(({ before, after }) => ({ command: 'ir.diff' as const, options, before, after })),
-    ),
-  ),
-)
-
-const irCommand = CommandDescriptor.make('ir').pipe(
-  CommandDescriptor.withSubcommands([
-    ['export', irExportCommand],
-    ['validate', irValidateCommand],
-    ['diff', irDiffCommand],
-  ] as const),
-)
-
-const trialRunCommand = CommandDescriptor.make('trialrun', baseOptions).pipe(
-  CommandDescriptor.mapEffect(({ options }) =>
-    parseEntryRefFromOptions(options).pipe(
-      Effect.map((entry) => ({
-        command: 'trialrun' as const,
-        options,
-        entry,
-        diagnosticsLevel: options.diagnosticsLevel,
-        maxEvents: options.maxEvents,
-        timeoutMs: options.timeoutMs,
-        includeTrace: options.includeTrace,
-        config: options.config,
-      })),
-    ),
-  ),
-)
-
-const spyEvidenceCommand = CommandDescriptor.make('evidence', baseOptions).pipe(
-  CommandDescriptor.mapEffect(({ options }) =>
-    parseEntryRefFromOptions(options).pipe(
-      Effect.map((entry) => ({
-        command: 'spy.evidence' as const,
-        options,
-        entry,
-        maxUsedServices: options.maxUsedServices,
-        maxRawMode: options.maxRawMode,
-        timeoutMs: options.timeoutMs,
-      })),
-    ),
-  ),
-)
-
-const spyCommand = CommandDescriptor.make('spy').pipe(CommandDescriptor.withSubcommands([['evidence', spyEvidenceCommand]] as const))
-
-const anchorIndexCommand = CommandDescriptor.make('index', baseOptions).pipe(
-  CommandDescriptor.map(({ options }) => ({ command: 'anchor.index' as const, options, repoRoot: options.repoRoot })),
-)
-
-const anchorAutofillCommand = CommandDescriptor.make('autofill', baseOptions).pipe(
-  CommandDescriptor.map(({ options }) => ({ command: 'anchor.autofill' as const, options, repoRoot: options.repoRoot })),
-)
-
-const anchorCommand = CommandDescriptor.make('anchor').pipe(
-  CommandDescriptor.withSubcommands([
-    ['index', anchorIndexCommand],
-    ['autofill', anchorAutofillCommand],
-  ] as const),
-)
-
-const transformModuleCommand = CommandDescriptor.make('module', baseOptions).pipe(
-  CommandDescriptor.mapEffect(({ options }) => {
-    const opsPath = typeof options.opsPath === 'string' && options.opsPath.length > 0 ? options.opsPath : undefined
-    if (!opsPath) {
-      return Effect.fail(ValidationError.missingFlag(HelpDoc.p('缺少输入：请提供 --ops <delta.json|->')))
-    }
-    return Effect.succeed({ command: 'transform.module' as const, options, repoRoot: options.repoRoot, opsPath })
-  }),
-)
-
-const transformCommand = CommandDescriptor.make('transform').pipe(
-  CommandDescriptor.withSubcommands([['module', transformModuleCommand]] as const),
-)
-
-const contractSuiteRunCommand = CommandDescriptor.make('run', baseOptions).pipe(
-  CommandDescriptor.mapEffect(({ options }) =>
-    parseEntryRefFromOptions(options).pipe(
-      Effect.map((entry) => ({
-        command: 'contract-suite.run' as const,
-        options,
-        entry,
-        diagnosticsLevel: options.diagnosticsLevel,
-        maxEvents: options.maxEvents,
-        timeoutMs: options.timeoutMs,
-        includeTrace: options.includeTrace,
-        config: options.config,
-        allowWarn: options.allowWarn,
-        baselineDir: options.baselineDir,
-        includeContextPack: options.includeContextPack,
-        packMaxBytes: options.packMaxBytes,
-        requireRulesManifest: options.requireRulesManifest,
-        inputsFile: options.inputsFile,
-        includeUiKitRegistry: options.includeUiKitRegistry,
-        includeAnchorAutofill: options.includeAnchorAutofill,
-        repoRoot: options.repoRoot,
-      })),
-    ),
-  ),
-)
-
-const contractSuiteCommand = CommandDescriptor.make('contract-suite').pipe(
-  CommandDescriptor.withSubcommands([['run', contractSuiteRunCommand]] as const),
-)
-
-const rootCommand = CommandDescriptor.make('logix').pipe(
-  CommandDescriptor.withSubcommands([
-    ['describe', describeCommand],
-    ['ir', irCommand],
-    ['trialrun', trialRunCommand],
-    ['contract-suite', contractSuiteCommand],
-    ['spy', spyCommand],
-    ['anchor', anchorCommand],
-    ['transform', transformCommand],
-  ] as const),
-)
-
-const isLeafParsed = (value: unknown): value is LeafParsed =>
-  Boolean(value) &&
-  typeof value === 'object' &&
-  'command' in (value as any) &&
-  typeof (value as any).command === 'string'
-
-const unwrapToLeaf = (value: unknown): LeafParsed | undefined => {
-  if (isLeafParsed(value)) return value
-  if (value && typeof value === 'object' && 'subcommand' in (value as any)) {
-    const sub = (value as any).subcommand as FxOption.Option<any>
-    if (FxOption.isNone(sub)) return undefined
-    const inner = sub.value
-    if (Array.isArray(inner) && inner.length >= 2) {
-      return unwrapToLeaf(inner[1])
-    }
-    return unwrapToLeaf(inner)
-  }
-  return undefined
-}
 
 const booleanOptionNames = new Set([
   'allowWarn',
@@ -672,13 +452,288 @@ const normalizeArgvForEffectCli = (argv: ReadonlyArray<string>): ReadonlyArray<s
 
 const ANSI_CSI_REGEX = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g')
 
-const renderValidationError = (err: ValidationError.ValidationError): string => {
-  try {
-    return HelpDoc.toAnsiText(err.error).replace(ANSI_CSI_REGEX, '').trim()
-  } catch {
-    return `${err._tag}`
+const renderValidationError = (err: unknown): string => {
+  if (err instanceof Error && typeof err.message === 'string' && err.message.length > 0) {
+    return err.message.replace(ANSI_CSI_REGEX, '').trim()
   }
+  return typeof err === 'string' ? err : 'CLI validation failed'
 }
+
+const defaultParsedOptions = (): ParsedOptions => ({
+  host: 'node',
+  repoRoot: '.',
+  diagnosticsLevel: 'light',
+  includeTrace: false,
+  config: {},
+  allowWarn: false,
+  includeContextPack: false,
+  requireRulesManifest: false,
+  includeUiKitRegistry: false,
+  includeAnchorAutofill: false,
+  describeJson: false,
+})
+
+type MutableParsedOptions = {
+  -readonly [K in keyof ParsedOptions]: ParsedOptions[K]
+}
+
+const invalidArgument = (message: string, helpText: string) =>
+  makeCliError({
+    code: 'CLI_INVALID_ARGUMENT',
+    message,
+    hint: helpText,
+  })
+
+const missingFlagError = (message: string, helpText: string) =>
+  makeCliError({
+    code: 'CLI_INVALID_ARGUMENT',
+    message,
+    hint: helpText,
+  })
+
+const parseManualOptions = (
+  tokens: ReadonlyArray<string>,
+  helpText: string,
+): Effect.Effect<ParsedOptions, ReturnType<typeof makeCliError>> =>
+  Effect.sync(() => {
+    const options: MutableParsedOptions = { ...defaultParsedOptions() }
+
+    const readValue = (flag: string, index: number): string => {
+      const value = tokens[index + 1]
+      if (!value || value.startsWith('--')) {
+        throw missingFlagError(`缺少参数值：${flag}`, helpText)
+      }
+      return value
+    }
+
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i]!
+      if (!token.startsWith('--')) {
+        throw invalidArgument(`未知参数：${token}`, helpText)
+      }
+
+      const valueFlag = flagsWithValue.has(token)
+      const key = canonicalOptionKey(token)
+
+      if (valueFlag) {
+        const value = readValue(token, i)
+        i += 1
+        switch (key) {
+          case 'runId':
+            options.runId = value
+            break
+          case 'out':
+            options.out = value
+            break
+          case 'outRoot':
+            options.outRoot = value
+            break
+          case 'budgetBytes':
+            options.budgetBytes = Number(value)
+            break
+          case 'mode':
+            options.mode = value as CliMode
+            break
+          case 'tsconfig':
+            options.tsconfig = value
+            break
+          case 'host':
+            options.host = value as CliHost
+            break
+          case 'cliConfig':
+            options.cliConfig = value
+            break
+          case 'profile':
+            options.profile = value
+            break
+          case 'repoRoot':
+            options.repoRoot = value
+            break
+          case 'entry':
+            options.entry = value
+            break
+          case 'in':
+            options.inDir = value
+            break
+          case 'artifact':
+            options.artifact = value
+            break
+          case 'before':
+            options.before = value
+            break
+          case 'after':
+            options.after = value
+            break
+          case 'ops':
+            options.opsPath = value
+            break
+          case 'diagnosticsLevel':
+            options.diagnosticsLevel = value as DiagnosticsLevel
+            break
+          case 'maxEvents':
+            options.maxEvents = Number(value)
+            break
+          case 'timeout':
+            options.timeoutMs = Number(value)
+            break
+          case 'config': {
+            const eq = value.indexOf('=')
+            if (eq <= 0) {
+              throw invalidArgument(`非法 --config：${value}（期望 K=V）`, helpText)
+            }
+            const k = value.slice(0, eq)
+            const v = value.slice(eq + 1)
+            options.config = { ...options.config, [k]: parseConfigValue(v) }
+            break
+          }
+          case 'baseline':
+            options.baselineDir = value
+            break
+          case 'packMaxBytes':
+            options.packMaxBytes = Number(value)
+            break
+          case 'inputs':
+            options.inputsFile = value
+            break
+          case 'maxUsedServices':
+            options.maxUsedServices = Number(value)
+            break
+          case 'maxRawMode':
+            options.maxRawMode = Number(value)
+            break
+          default:
+            throw invalidArgument(`未知参数：${token}`, helpText)
+        }
+        continue
+      }
+
+      switch (key) {
+        case 'includeTrace':
+          options.includeTrace = !token.startsWith('--no')
+          break
+        case 'allowWarn':
+          options.allowWarn = !token.startsWith('--no')
+          break
+        case 'includeContextPack':
+          options.includeContextPack = !token.startsWith('--no')
+          break
+        case 'requireRulesManifest':
+          options.requireRulesManifest = !token.startsWith('--no')
+          break
+        case 'includeUiKitRegistry':
+          options.includeUiKitRegistry = !token.startsWith('--no')
+          break
+        case 'includeAnchorAutofill':
+          options.includeAnchorAutofill = !token.startsWith('--no')
+          break
+        case 'json':
+          options.describeJson = !token.startsWith('--no')
+          break
+        default:
+          throw invalidArgument(`未知参数：${token}`, helpText)
+      }
+    }
+
+    return options
+  })
+
+const parseManualLeaf = (
+  argv: ReadonlyArray<string>,
+  helpText: string,
+): Effect.Effect<LeafParsed, unknown> =>
+  Effect.gen(function* () {
+    const normalized = normalizeArgvForEffectCli(argv)
+    const extracted = findCommandTokens(normalized)
+    if (!extracted) {
+      return yield* Effect.fail(
+        makeCliError({
+          code: 'CLI_INVALID_COMMAND',
+          message: '缺少命令：请提供 <group> <subcommand>（或 trialrun）',
+          hint: helpText,
+        }),
+      )
+    }
+
+    const drop = new Set(extracted.indices)
+    const rest = normalized.filter((_, idx) => !drop.has(idx))
+    const options = yield* parseManualOptions(rest, helpText)
+    const commandKey = extracted.tokens.join('.')
+
+    switch (commandKey) {
+      case 'describe':
+        if (!options.describeJson) {
+          return yield* Effect.fail(invalidArgument('describe 仅支持机器可读输出，请显式提供 --json', helpText))
+        }
+        return { command: 'describe', options, format: 'json' as const }
+      case 'ir.export':
+        return { command: 'ir.export', options, entry: yield* parseEntryRefFromOptions(options) }
+      case 'ir.validate':
+        return { command: 'ir.validate', options, input: yield* parseIrValidateInputFromOptions(options) }
+      case 'ir.diff': {
+        const diff = yield* parseIrDiffInputFromOptions(options)
+        return { command: 'ir.diff', options, before: diff.before, after: diff.after }
+      }
+      case 'trialrun':
+        return {
+          command: 'trialrun',
+          options,
+          entry: yield* parseEntryRefFromOptions(options),
+          diagnosticsLevel: options.diagnosticsLevel,
+          ...(typeof options.maxEvents === 'number' ? { maxEvents: options.maxEvents } : null),
+          ...(typeof options.timeoutMs === 'number' ? { timeoutMs: options.timeoutMs } : null),
+          includeTrace: options.includeTrace,
+          config: options.config,
+        }
+      case 'contract-suite.run':
+        return {
+          command: 'contract-suite.run',
+          options,
+          entry: yield* parseEntryRefFromOptions(options),
+          diagnosticsLevel: options.diagnosticsLevel,
+          ...(typeof options.maxEvents === 'number' ? { maxEvents: options.maxEvents } : null),
+          ...(typeof options.timeoutMs === 'number' ? { timeoutMs: options.timeoutMs } : null),
+          includeTrace: options.includeTrace,
+          config: options.config,
+          allowWarn: options.allowWarn,
+          ...(options.baselineDir ? { baselineDir: options.baselineDir } : null),
+          includeContextPack: options.includeContextPack,
+          ...(typeof options.packMaxBytes === 'number' ? { packMaxBytes: options.packMaxBytes } : null),
+          requireRulesManifest: options.requireRulesManifest,
+          ...(options.inputsFile ? { inputsFile: options.inputsFile } : null),
+          includeUiKitRegistry: options.includeUiKitRegistry,
+          includeAnchorAutofill: options.includeAnchorAutofill,
+          repoRoot: options.repoRoot,
+        }
+      case 'spy.evidence':
+        return {
+          command: 'spy.evidence',
+          options,
+          entry: yield* parseEntryRefFromOptions(options),
+          ...(typeof options.maxUsedServices === 'number' ? { maxUsedServices: options.maxUsedServices } : null),
+          ...(typeof options.maxRawMode === 'number' ? { maxRawMode: options.maxRawMode } : null),
+          ...(typeof options.timeoutMs === 'number' ? { timeoutMs: options.timeoutMs } : null),
+        }
+      case 'anchor.index':
+        return { command: 'anchor.index', options, repoRoot: options.repoRoot }
+      case 'anchor.autofill':
+        return { command: 'anchor.autofill', options, repoRoot: options.repoRoot }
+      case 'transform.module': {
+        const opsPath = typeof options.opsPath === 'string' && options.opsPath.length > 0 ? options.opsPath : undefined
+        if (!opsPath) {
+          return yield* Effect.fail(invalidArgument('缺少输入：请提供 --ops <delta.json|->', helpText))
+        }
+        return { command: 'transform.module', options, repoRoot: options.repoRoot, opsPath }
+      }
+      default:
+        return yield* Effect.fail(
+          makeCliError({
+            code: 'CLI_INVALID_COMMAND',
+            message: `未知命令：${commandKey}`,
+            hint: helpText,
+          }),
+        )
+    }
+  })
 
 export const parseCliInvocation = (
   argv: ReadonlyArray<string>,
@@ -688,37 +743,8 @@ export const parseCliInvocation = (
     return Effect.succeed(({ kind: 'help', text: options.helpText } as const satisfies CliHelpResult))
   }
 
-  const normalized = normalizeArgvForEffectCli(argv)
-
-  return CommandDescriptor.parse(rootCommand, ['logix', ...normalized], CliConfig.defaultConfig).pipe(
-    Effect.provide(NodeContext.layer),
-    Effect.flatMap((directive): Effect.Effect<CliHelpResult | CliInvocation, unknown> => {
-      if (CommandDirective.isBuiltIn(directive)) {
-        return Effect.succeed(({ kind: 'help', text: options.helpText } as const satisfies CliHelpResult))
-      }
-
-      if (directive.leftover.length > 0) {
-        return Effect.fail(
-          makeCliError({
-            code: 'CLI_INVALID_ARGUMENT',
-            message: `未知参数：${directive.leftover[0]}`,
-            hint: options.helpText,
-          }),
-        )
-      }
-
-      const rootValue = directive.value as any
-      const leaf = unwrapToLeaf(rootValue)
-      if (!leaf) {
-        return Effect.fail(
-          makeCliError({
-            code: 'CLI_INVALID_COMMAND',
-            message: '缺少命令：请提供 <group> <subcommand>（或 trialrun）',
-            hint: options.helpText,
-          }),
-        )
-      }
-
+  return parseManualLeaf(argv, options.helpText).pipe(
+    Effect.flatMap((leaf): Effect.Effect<CliHelpResult | CliInvocation, unknown> => {
       const runId = typeof leaf.options.runId === 'string' ? leaf.options.runId.trim() : undefined
       if (!runId) {
         return Effect.fail(makeCliError({ code: 'CLI_MISSING_RUNID', message: '缺少 --runId（必须显式提供）' }))
@@ -802,18 +828,15 @@ export const parseCliInvocation = (
           )
       }
     }),
-    Effect.catchAll((cause) => {
-      if (ValidationError.isValidationError(cause)) {
-        return Effect.fail(
-          makeCliError({
-            code: 'CLI_INVALID_ARGUMENT',
-            message: renderValidationError(cause),
-            hint: options.helpText,
-            cause,
-          }),
-        )
-      }
-      return Effect.fail(cause)
-    }),
+    Effect.catch((cause) =>
+      Effect.fail(
+        makeCliError({
+          code: 'CLI_INVALID_ARGUMENT',
+          message: renderValidationError(cause),
+          hint: options.helpText,
+          cause,
+        }),
+      ),
+    ),
   )
 }

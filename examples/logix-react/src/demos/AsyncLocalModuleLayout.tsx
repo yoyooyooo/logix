@@ -55,9 +55,9 @@ const asyncLocalRuntime = ManagedRuntime.make(
   Layer.mergeAll(
     Logix.Debug.runtimeLabel('AsyncLocalModuleDemo'),
     Logix.Debug.devtoolsHubLayer(),
-    Logger.pretty,
+    Logger.layer([Logger.consolePretty()]),
     ReactPlatformLayer,
-  ),
+  ) as Layer.Layer<any, never, never>,
 )
 
 interface AsyncLocalCounterViewProps {

@@ -1,4 +1,4 @@
-import { Context, Effect, Layer } from 'effect'
+import { Effect, Layer, ServiceMap } from 'effect'
 
 export type ResourceSnapshotPhase = 'idle' | 'loading' | 'success' | 'error'
 
@@ -45,7 +45,7 @@ export interface ReplayLogService {
   }) => Effect.Effect<ResourceSnapshotEvent | undefined>
 }
 
-export class ReplayLog extends Context.Tag('@logixjs/core/ReplayLog')<ReplayLog, ReplayLogService>() {}
+export class ReplayLog extends ServiceMap.Service<ReplayLog, ReplayLogService>()('@logixjs/core/ReplayLog') {}
 
 export const make = (initial?: ReadonlyArray<ReplayLogEvent>): ReplayLogService => {
   const events: Array<ReplayLogEvent> = initial ? Array.from(initial) : []

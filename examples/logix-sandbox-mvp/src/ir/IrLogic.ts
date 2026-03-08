@@ -133,7 +133,7 @@ const buildSandboxIrWrapper = (options: {
   ].join('\n')
 }
 
-export const IrLogic = IrDef.logic(($) => ({
+export const IrLogic = IrDef.logic<SandboxClientTag>(($) => ({
   setup: Effect.void,
   run: Effect.gen(function* () {
     const client = yield* $.use(SandboxClientTag)
@@ -233,7 +233,7 @@ export const IrLogic = IrDef.logic(($) => ({
             yield* $.dispatchers.setBundle(incoming as any)
             yield* $.dispatchers.setActiveTab(incoming.trialRunReport ? 'trialRun' : 'manifest')
           }).pipe(
-            Effect.catchAll((e) => $.dispatchers.setRunError(String(e))),
+            Effect.catch((e) => $.dispatchers.setRunError(String(e))),
             Effect.ensuring($.dispatchers.setIsRunning(false)),
           ),
         ),

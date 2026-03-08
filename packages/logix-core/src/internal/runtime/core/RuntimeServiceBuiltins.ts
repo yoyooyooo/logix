@@ -1,4 +1,4 @@
-import { Context, Effect } from 'effect'
+import { Effect, ServiceMap } from 'effect'
 
 export interface RuntimeServiceBuiltins {
   /**
@@ -10,7 +10,7 @@ export interface RuntimeServiceBuiltins {
   readonly getBuiltinMake: (serviceId: string) => Effect.Effect<unknown, never, any>
 }
 
-export class RuntimeServiceBuiltinsTag extends Context.Tag('@logixjs/core/RuntimeServiceBuiltins')<
+export class RuntimeServiceBuiltinsTag extends ServiceMap.Service<
   RuntimeServiceBuiltinsTag,
   RuntimeServiceBuiltins
->() {}
+>()('@logixjs/core/RuntimeServiceBuiltins') {}

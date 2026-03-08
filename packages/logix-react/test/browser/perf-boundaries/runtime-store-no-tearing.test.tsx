@@ -544,7 +544,7 @@ test(
         )
 
         const moduleRuntimes = (await runtime.runPromise(
-          Effect.all(moduleDefs.map((m) => m.tag), { concurrency: 'unbounded' }) as any,
+          Effect.all(moduleDefs.map((m) => Effect.service(m.tag).pipe(Effect.orDie)), { concurrency: 'unbounded' }) as any,
         )) as ReadonlyArray<any>
 
         const storeOptions = { lowPriorityDelayMs: 16, lowPriorityMaxDelayMs: 50 }

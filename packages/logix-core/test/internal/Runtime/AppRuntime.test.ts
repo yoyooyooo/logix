@@ -1,11 +1,11 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Context, Effect, Layer, Schema, Logger } from 'effect'
+import { Deferred, Effect, Layer, Schema, Logger, ServiceMap } from 'effect'
 import * as Logix from '../../../src/index.js'
 import * as AppRuntimeImpl from '../../../src/internal/runtime/AppRuntime.js'
 
 describe('AppRuntime.makeApp (via internal runtime config)', () => {
-  const ServiceTag = Context.GenericTag<'Service', { readonly id: string }>('Service')
+  class ServiceTag extends ServiceMap.Service<ServiceTag, { readonly id: string }>()('Service') {}
 
   const makeTestModule = (id: string) =>
     Logix.Module.make(id, {
@@ -80,6 +80,7 @@ describe('AppRuntime.makeApp (via internal runtime config)', () => {
     })
 
     let processRan = false
+    const processStarted = await Effect.runPromise(Deferred.make<void>())
 
     const RootImpl = RootModule.implement({
       initial: undefined,
@@ -87,7 +88,7 @@ describe('AppRuntime.makeApp (via internal runtime config)', () => {
       processes: [
         Effect.sync(() => {
           processRan = true
-        }),
+        }).pipe(Effect.andThen(Deferred.succeed(processStarted, undefined))),
       ],
     })
 
@@ -96,9 +97,10 @@ describe('AppRuntime.makeApp (via internal runtime config)', () => {
     })
 
     const program: Effect.Effect<void, never, any> = Effect.gen(function* () {
-      const counterRuntime = yield* CounterModule.tag
+      const counterRuntime = yield* Effect.service(CounterModule.tag).pipe(Effect.orDie)
       const state = yield* counterRuntime.getState
       expect(state).toEqual({ count: 0 })
+      yield* Deferred.await(processStarted)
     })
 
     await runtime.runPromise(program)
@@ -112,9 +114,10 @@ describe('AppRuntime.makeApp (via internal runtime config)', () => {
       logs.push(String(message))
     })
 
-    // 2) Build a Layer that includes Logger.replace.
-    //    Simulate a user scenario where both Logger and Debug layers are provided.
-    const loggerLayer = Layer.merge(Logger.replace(Logger.defaultLogger, testLogger), Logix.Debug.noopLayer)
+    const loggerLayer = Layer.mergeAll(
+      Logger.layer([testLogger]),
+      Logix.Debug.noopLayer,
+    ) as Layer.Layer<any, never, never>
 
     // 3) Build a minimal Root module.
     const RootModule = Logix.Module.make('Root', {

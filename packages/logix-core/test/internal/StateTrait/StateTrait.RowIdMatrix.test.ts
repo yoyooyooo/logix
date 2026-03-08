@@ -1,5 +1,6 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Effect, Layer, Schema, TestClock } from 'effect'
+import { Effect, Layer, Schema } from 'effect'
+import { TestClock } from 'effect/testing'
 import * as Logix from '../../../src/index.js'
 import * as ModuleRuntimeImpl from '../../../src/internal/runtime/ModuleRuntime.js'
 import * as BoundApiRuntime from '../../../src/internal/runtime/BoundApiRuntime.js'
@@ -84,7 +85,7 @@ describe('StateTrait RowID matrix (list.item source)', () => {
       keySchema: KeySchema,
       load: (key) =>
         Effect.sleep('30 millis').pipe(
-          Effect.zipRight(Effect.succeed({ name: `res:${key.userId}` })),
+          Effect.flatMap(() => Effect.succeed({ name: `res:${key.userId}` })),
           Effect.tap(() => Effect.sync(() => calls.push(key))),
         ),
     })
@@ -173,7 +174,7 @@ describe('StateTrait RowID matrix (list.item source)', () => {
       return { runtime, bound }
     })
 
-  it.scoped('keeps in-flight writeback after item object cloning', () => {
+  it.effect('keeps in-flight writeback after item object cloning', () => {
     const calls: Array<Key> = []
     const spec = makeResource(calls)
 
@@ -197,7 +198,7 @@ describe('StateTrait RowID matrix (list.item source)', () => {
     }).pipe(Effect.provide(Logix.Resource.layer([spec]) as Layer.Layer<never, never, ResourceRegistry>))
   })
 
-  it.scoped('routes in-flight writeback to the correct row after prepend', () => {
+  it.effect('routes in-flight writeback to the correct row after prepend', () => {
     const calls: Array<Key> = []
     const spec = makeResource(calls)
 
@@ -221,7 +222,7 @@ describe('StateTrait RowID matrix (list.item source)', () => {
     }).pipe(Effect.provide(Logix.Resource.layer([spec]) as Layer.Layer<never, never, ResourceRegistry>))
   })
 
-  it.scoped('does not write back to a removed row (no ghost write)', () => {
+  it.effect('does not write back to a removed row (no ghost write)', () => {
     const calls: Array<Key> = []
     const spec = makeResource(calls)
 
@@ -242,7 +243,7 @@ describe('StateTrait RowID matrix (list.item source)', () => {
     }).pipe(Effect.provide(Logix.Resource.layer([spec]) as Layer.Layer<never, never, ResourceRegistry>))
   })
 
-  it.scoped('keeps writeback correct after reorder (swap)', () => {
+  it.effect('keeps writeback correct after reorder (swap)', () => {
     const calls: Array<Key> = []
     const spec = makeResource(calls)
 
@@ -265,7 +266,7 @@ describe('StateTrait RowID matrix (list.item source)', () => {
     }).pipe(Effect.provide(Logix.Resource.layer([spec]) as Layer.Layer<never, never, ResourceRegistry>))
   })
 
-  it.scoped('keeps writeback correct after clone + reorder when trackBy is configured', () => {
+  it.effect('keeps writeback correct after clone + reorder when trackBy is configured', () => {
     const calls: Array<Key> = []
     const spec = makeResource(calls)
 

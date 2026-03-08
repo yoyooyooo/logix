@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Ref, Stream } from 'effect'
 import * as FlowRuntime from '../../../../src/internal/runtime/FlowRuntime.js'

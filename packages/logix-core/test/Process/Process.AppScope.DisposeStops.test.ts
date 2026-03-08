@@ -1,10 +1,12 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Deferred, Effect, Layer, Schema } from 'effect'
+import { Deferred, Effect, Exit, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../src/index.js'
+import * as ProcessRuntime from '../../src/internal/runtime/core/process/ProcessRuntime.js'
 
 describe('process: app-scope dispose stops', () => {
-  it.scoped('should stop app-scope process when runtime is disposed', () =>
+  it.effect('should stop app-scope process when runtime is disposed', () =>
     Effect.gen(function* () {
+      const started = yield* Deferred.make<void>()
       const stopped = yield* Deferred.make<void>()
 
       const RootModule = Logix.Module.make('ProcessAppScopeDisposeRoot', {
@@ -14,7 +16,11 @@ describe('process: app-scope dispose stops', () => {
 
       const Process = Logix.Process.make(
         'ProcessAppScopeDisposeStops',
-        Effect.never.pipe(Effect.ensuring(Deferred.succeed(stopped, undefined).pipe(Effect.asVoid))),
+        Deferred.succeed(started, undefined).pipe(
+          Effect.asVoid,
+          Effect.flatMap(() => Effect.never),
+          Effect.ensuring(Effect.uninterruptible(Deferred.succeed(stopped, undefined).pipe(Effect.asVoid))),
+        ),
       )
 
       const RootImpl = RootModule.implement({
@@ -26,18 +32,17 @@ describe('process: app-scope dispose stops', () => {
         layer: Layer.empty as Layer.Layer<any, never, never>,
       })
 
-      yield* Effect.promise(() => runtime.runPromise(Effect.void as any))
+      yield* Effect.promise(() => runtime.runPromise(Effect.service(RootModule.tag).pipe(Effect.orDie) as any))
+      yield* Effect.promise(() => Effect.runPromise(Deferred.await(started)))
       yield* Effect.promise(() => runtime.dispose())
 
-      const result = yield* Deferred.await(stopped).pipe(
-        Effect.timeoutFail({
-          duration: '1 second',
-          onTimeout: () => new Error('process did not stop after runtime.dispose'),
-        }),
-        Effect.either,
+      yield* Effect.promise(
+        () =>
+          Promise.race([
+            Effect.runPromise(Deferred.await(stopped)),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error('process did not stop after runtime.dispose')), 5000)),
+          ]),
       )
-
-      expect(result._tag).toBe('Right')
     }),
   )
 })

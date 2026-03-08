@@ -6,8 +6,9 @@ import { Effect, Schema, Layer } from 'effect'
 import * as Logix from '@logixjs/core'
 import { RuntimeProvider, useModule, useSelector, useDispatch } from '@logixjs/react'
 import { LogixDevtools } from '../../src/LogixDevtools.js'
-import { devtoolsLayer } from '../../src/DevtoolsLayer.js'
+import { clearDevtoolsEvents, devtoolsLayer } from '../../src/DevtoolsLayer.js'
 import { devtoolsRuntime, devtoolsModuleRuntime, type DevtoolsState } from '../../src/internal/state/index.js'
+import { emptyDevtoolsState } from '../../src/internal/state/model.js'
 
 // Add a `matchMedia` polyfill for jsdom to avoid DevtoolsShell theme detection errors.
 if (typeof window !== 'undefined') {
@@ -40,10 +41,11 @@ const CounterImpl = CounterModule.implement({
   initial: { count: 0 },
 })
 
-const runtime = Logix.Runtime.make(CounterImpl, {
-  label: 'OverviewRuntime',
-  layer: devtoolsLayer as Layer.Layer<any, never, never>,
-})
+const makeRuntime = () =>
+  Logix.Runtime.make(CounterImpl, {
+    label: 'OverviewRuntime',
+    layer: devtoolsLayer as Layer.Layer<any, never, never>,
+  })
 
 const CounterView: React.FC = () => {
   const runtimeHandle = useModule(CounterImpl.tag)
@@ -57,15 +59,19 @@ const CounterView: React.FC = () => {
   )
 }
 
-afterEach(() => {
+afterEach(async () => {
   cleanup()
-  Logix.Debug.clearDevtoolsEvents()
+  clearDevtoolsEvents()
+  await devtoolsRuntime.runPromise(devtoolsModuleRuntime.setState(emptyDevtoolsState as any) as any)
 })
 
 describe('@logixjs/devtools-react · OverviewStrip', () => {
   it('aggregates events into buckets and drives timeline range when clicking a bucket', async () => {
-    render(
-      <RuntimeProvider runtime={runtime} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>
+    const runtime = makeRuntime()
+
+    try {
+      render(
+        <RuntimeProvider runtime={runtime} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>
         <CounterView />
         <LogixDevtools position="bottom-left" initialOpen={true} />
       </RuntimeProvider>,
@@ -101,17 +107,23 @@ describe('@logixjs/devtools-react · OverviewStrip', () => {
     const targetBucket = bucketButtons.find((b) => !(b as HTMLButtonElement).disabled) ?? bucketButtons[0]
     fireEvent.click(targetBucket)
 
-    await waitFor(() => {
-      const after = devtoolsRuntime.runSync(
-        devtoolsModuleRuntime.getState as any as Effect.Effect<DevtoolsState, never, any>,
-      ) as DevtoolsState
-      expect(after.timelineRange).toBeDefined()
-    })
+      await waitFor(() => {
+        const after = devtoolsRuntime.runSync(
+          devtoolsModuleRuntime.getState as any as Effect.Effect<DevtoolsState, never, any>,
+        ) as DevtoolsState
+        expect(after.timelineRange).toBeDefined()
+      })
+    } finally {
+      await runtime.dispose()
+    }
   })
 
   it('shows last operation summary and can be dismissed', async () => {
-    render(
-      <RuntimeProvider runtime={runtime} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>
+    const runtime = makeRuntime()
+
+    try {
+      render(
+        <RuntimeProvider runtime={runtime} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>
         <CounterView />
         <LogixDevtools position="bottom-left" initialOpen={true} />
       </RuntimeProvider>,
@@ -124,14 +136,20 @@ describe('@logixjs/devtools-react · OverviewStrip', () => {
     const close = screen.getAllByLabelText('CloseOperationSummary')[0]
     fireEvent.click(close)
 
-    await waitFor(() => {
-      expect(screen.queryAllByText(/Last Operation/i)).toHaveLength(0)
-    })
+      await waitFor(() => {
+        expect(screen.queryAllByText(/Last Operation/i)).toHaveLength(0)
+      })
+    } finally {
+      await runtime.dispose()
+    }
   })
 
   it('does not crash when clearing events (hook order stays stable)', async () => {
-    render(
-      <RuntimeProvider runtime={runtime} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>
+    const runtime = makeRuntime()
+
+    try {
+      render(
+        <RuntimeProvider runtime={runtime} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>
         <CounterView />
         <LogixDevtools position="bottom-left" initialOpen={true} />
       </RuntimeProvider>,
@@ -151,12 +169,15 @@ describe('@logixjs/devtools-react · OverviewStrip', () => {
     const clearButtons = screen.getAllByText('Clear')
     fireEvent.click(clearButtons[0] as HTMLButtonElement)
 
-    await waitFor(() => {
-      const state = devtoolsRuntime.runSync(
-        devtoolsModuleRuntime.getState as any as Effect.Effect<DevtoolsState, never, any>,
-      ) as DevtoolsState
-      expect(state.timeline.length).toBe(0)
-      expect(screen.getAllByText('Overview: no events yet').length).toBeGreaterThan(0)
-    })
+      await waitFor(() => {
+        const state = devtoolsRuntime.runSync(
+          devtoolsModuleRuntime.getState as any as Effect.Effect<DevtoolsState, never, any>,
+        ) as DevtoolsState
+        expect(state.timeline.length).toBe(0)
+        expect(screen.getAllByText('Overview: no events yet').length).toBeGreaterThan(0)
+      })
+    } finally {
+      await runtime.dispose()
+    }
   })
 })

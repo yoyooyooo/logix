@@ -1,4 +1,4 @@
-import { Context, Effect, FiberRef, Option, Stream } from 'effect'
+import { Effect, Fiber, Option, ServiceMap, Stream } from 'effect'
 import { create } from 'mutative'
 import type { BoundApi } from '../runtime/core/module.js'
 import { getBoundInternals } from '../runtime/core/runtimeInternalsAccessor.js'
@@ -7,6 +7,7 @@ import * as Debug from '../runtime/core/DebugSink.js'
 import { getExternalStoreDescriptor } from '../external-store-descriptor.js'
 import { normalizeFieldPath } from '../field-path.js'
 import { DeclarativeLinkRuntimeTag } from '../runtime/core/env.js'
+import type { DeclarativeLinkRuntimeService } from '../runtime/core/env.js'
 import * as RowId from './rowid.js'
 import type { StateTraitEntry, StateTraitPlanStep } from './model.js'
 
@@ -39,7 +40,7 @@ const writebackCoordinatorByInternals = new WeakMap<object, ExternalStoreWriteba
 const getOrCreateExternalStoreWritebackCoordinator = (args: {
   readonly internals: ReturnType<typeof getBoundInternals>
   readonly bound: BoundApi<any, any>
-  readonly env: Context.Context<any>
+  readonly env: ServiceMap.ServiceMap<any>
 }): Effect.Effect<ExternalStoreWritebackCoordinator, never, any> =>
   Effect.gen(function* () {
     const cached = writebackCoordinatorByInternals.get(args.internals as any)
@@ -181,7 +182,7 @@ const resolveStore = (entry: ExternalStoreEntry<any>): Effect.Effect<any, never,
     const descriptor = getExternalStoreDescriptor(store)
 
     if (descriptor?.kind === 'service') {
-      const service = yield* descriptor.tag
+      const service = yield* Effect.service(descriptor.tag as ServiceMap.Key<any, unknown>).pipe(Effect.orDie)
       return descriptor.map(service)
     }
 
@@ -197,7 +198,7 @@ export const installExternalStoreSync = <S>(
     const fieldPath = step.targetFieldPath
     if (!fieldPath) return
 
-    const env = yield* Effect.context<any>()
+    const env = yield* Effect.services<any>()
     let internals: ReturnType<typeof getBoundInternals>
     try {
       internals = getBoundInternals(bound as any)
@@ -219,7 +220,7 @@ export const installExternalStoreSync = <S>(
     const makeScopedDescriptorStore = (): Effect.Effect<ExternalStoreLike | undefined, never, any> =>
       Effect.gen(function* () {
         if (rawDescriptor?.kind === 'subscriptionRef') {
-          let current = yield* Effect.locally(TaskRunner.inSyncTransactionFiber, false)(rawDescriptor.ref.get as any)
+          let current = yield* Effect.provideService(rawDescriptor.ref.get as any, TaskRunner.inSyncTransactionFiber, false)
           const listeners = new Set<() => void>()
 
           const notify = (): void => {
@@ -228,16 +229,16 @@ export const installExternalStoreSync = <S>(
             }
           }
 
-          yield* Effect.forkScoped(
-            Effect.locally(TaskRunner.inSyncTransactionFiber, false)(
-              Stream.runForEach(rawDescriptor.ref.changes as Stream.Stream<unknown, never, never>, (value) =>
-                Effect.sync(() => {
-                  current = value
-                  notify()
-                }),
-              ).pipe(Effect.catchAllCause(() => Effect.void)),
-            ),
+          const fiber = yield* Effect.forkDetach(
+            Effect.provideService(Stream.runForEach(rawDescriptor.ref.changes as Stream.Stream<unknown, never, never>, (value) =>
+              Effect.sync(() => {
+                current = value
+                notify()
+              }),
+            ).pipe(Effect.catchCause(() => Effect.void)), TaskRunner.inSyncTransactionFiber, false),
+            { startImmediately: true },
           )
+          internals.lifecycle.registerDestroy(Fiber.interrupt(fiber).pipe(Effect.asVoid), { name: `externalStore:${fieldPath}:subscriptionRef` })
 
           return {
             getSnapshot: () => current,
@@ -260,16 +261,16 @@ export const installExternalStoreSync = <S>(
             }
           }
 
-          yield* Effect.forkScoped(
-            Effect.locally(TaskRunner.inSyncTransactionFiber, false)(
-              Stream.runForEach(rawDescriptor.stream as Stream.Stream<unknown, any, any>, (value) =>
-                Effect.sync(() => {
-                  current = value
-                  notify()
-                }),
-              ).pipe(Effect.catchAllCause(() => Effect.void)),
-            ),
+          const fiber = yield* Effect.forkDetach(
+            Effect.provideService(Stream.runForEach(rawDescriptor.stream as Stream.Stream<unknown, any, any>, (value) =>
+              Effect.sync(() => {
+                current = value
+                notify()
+              }),
+            ).pipe(Effect.catchCause(() => Effect.void)), TaskRunner.inSyncTransactionFiber, false),
+            { startImmediately: true },
           )
+          internals.lifecycle.registerDestroy(Fiber.interrupt(fiber).pipe(Effect.asVoid), { name: `externalStore:${fieldPath}:stream` })
 
           return {
             getSnapshot: () => current,
@@ -286,9 +287,11 @@ export const installExternalStoreSync = <S>(
       }) as Effect.Effect<ExternalStoreLike | undefined, never, any>
 
     if (rawDescriptor?.kind === 'module') {
-      const linkRuntimeOpt = yield* Effect.serviceOption(DeclarativeLinkRuntimeTag)
+      const linkRuntimeOpt = yield* Effect.serviceOption(
+        DeclarativeLinkRuntimeTag as unknown as ServiceMap.Key<any, DeclarativeLinkRuntimeService>,
+      )
       if (Option.isNone(linkRuntimeOpt)) {
-        return yield* Effect.dieMessage('[StateTrait.externalStore] Missing DeclarativeLinkRuntime service (073).')
+        return yield* Effect.die(new Error('[StateTrait.externalStore] Missing DeclarativeLinkRuntime service (073).'))
       }
 
       const module = rawDescriptor.module
@@ -303,11 +306,11 @@ export const installExternalStoreSync = <S>(
           }
 
           const tag = (module as any).tag
-          if (tag && Context.isTag(tag)) {
+          if (tag && ServiceMap.isKey(tag)) {
             return internals.imports.get(tag as any)
           }
 
-          if (Context.isTag(module as any)) {
+          if (ServiceMap.isKey(module as any)) {
             return internals.imports.get(module as any)
           }
         }
@@ -315,24 +318,18 @@ export const installExternalStoreSync = <S>(
       })()
 
       if (!sourceRuntime) {
-        return yield* Effect.dieMessage(
-          `[StateTrait.externalStore] Module-as-Source store is unresolved for "${fieldPath}". ` +
-            `Fix: include the source ModuleTag in module imports (moduleId=${rawDescriptor.moduleId}).`,
-        )
+        return yield* Effect.die(new Error(`[StateTrait.externalStore] Module-as-Source store is unresolved for "${fieldPath}". ` +
+          `Fix: include the source ModuleTag in module imports (moduleId=${rawDescriptor.moduleId}).`))
       }
 
       if (rawDescriptor.instanceId && rawDescriptor.instanceId !== sourceRuntime.instanceId) {
-        return yield* Effect.dieMessage(
-          `[StateTrait.externalStore] Module-as-Source instanceId mismatch for "${fieldPath}". ` +
-            `descriptor.instanceId=${rawDescriptor.instanceId}, resolved.instanceId=${sourceRuntime.instanceId}`,
-        )
+        return yield* Effect.die(new Error(`[StateTrait.externalStore] Module-as-Source instanceId mismatch for "${fieldPath}". ` +
+          `descriptor.instanceId=${rawDescriptor.instanceId}, resolved.instanceId=${sourceRuntime.instanceId}`))
       }
 
       if (sourceRuntime.moduleId !== rawDescriptor.moduleId) {
-        return yield* Effect.dieMessage(
-          `[StateTrait.externalStore] Module-as-Source moduleId mismatch for "${fieldPath}". ` +
-            `descriptor.moduleId=${rawDescriptor.moduleId}, resolved.moduleId=${sourceRuntime.moduleId}`,
-        )
+        return yield* Effect.die(new Error(`[StateTrait.externalStore] Module-as-Source moduleId mismatch for "${fieldPath}". ` +
+          `descriptor.moduleId=${rawDescriptor.moduleId}, resolved.moduleId=${sourceRuntime.moduleId}`))
       }
 
       const staticIr = rawDescriptor.readQuery.staticIr
@@ -369,7 +366,7 @@ export const installExternalStoreSync = <S>(
 
       const writeValue = (nextValue: unknown): Effect.Effect<void, never, never> =>
         Effect.gen(function* () {
-          const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
+          const inTxn = yield* Effect.service(TaskRunner.inSyncTransactionFiber).pipe(Effect.orDie)
 
           const body = Effect.gen(function* () {
             const prevState = (yield* bound.state.read) as any
@@ -405,7 +402,7 @@ export const installExternalStoreSync = <S>(
             },
             () => body.pipe(Effect.asVoid),
           )
-        }).pipe(Effect.provide(env))
+        }).pipe(Effect.provideServices(env))
 
       const unregister = linkRuntimeOpt.value.registerModuleAsSourceLink({
         id: `${internals.instanceId}::externalStore:${step.id}`,
@@ -434,14 +431,10 @@ export const installExternalStoreSync = <S>(
     const store = scopedDescriptorStore ?? (rawDescriptor?.kind === 'service' ? yield* resolveStore(entry) : rawStore)
 
     if (!store || typeof store !== 'object') {
-      return yield* Effect.dieMessage(
-        `[StateTrait.externalStore] Invalid store for "${fieldPath}". Expected { getSnapshot, subscribe }.`,
-      )
+      return yield* Effect.die(new Error(`[StateTrait.externalStore] Invalid store for "${fieldPath}". Expected { getSnapshot, subscribe }.`))
     }
     if (!isFn((store as any).getSnapshot) || !isFn((store as any).subscribe)) {
-      return yield* Effect.dieMessage(
-        `[StateTrait.externalStore] Invalid store for "${fieldPath}". Expected { getSnapshot, subscribe }.`,
-      )
+      return yield* Effect.die(new Error(`[StateTrait.externalStore] Invalid store for "${fieldPath}". Expected { getSnapshot, subscribe }.`))
     }
 
     let fused = false
@@ -500,18 +493,18 @@ export const installExternalStoreSync = <S>(
         return Effect.void
       }
 
-      return Effect.async<void, never>((resumeEffect, signal) => {
-        let done = false
-        const r = () => {
-          if (done) return
-          done = true
-          resume = undefined
-          resumeEffect(Effect.void)
-        }
+      return Effect.promise<void>((signal) =>
+        new Promise<void>((resolve) => {
+          let done = false
+          const r = () => {
+            if (done) return
+            done = true
+            resume = undefined
+            resolve()
+          }
 
-        resume = r
+          resume = r
 
-        try {
           signal.addEventListener(
             'abort',
             () => {
@@ -521,10 +514,8 @@ export const installExternalStoreSync = <S>(
             },
             { once: true },
           )
-        } catch {
-          // best-effort
-        }
-      })
+        }),
+      )
     }
 
     const getSnapshotOrFuse = (): unknown => {
@@ -537,7 +528,7 @@ export const installExternalStoreSync = <S>(
       }
     }
 
-    const readSnapshotOrFuse = Effect.locally(TaskRunner.inSyncTransactionFiber, false)(Effect.sync(getSnapshotOrFuse))
+    const readSnapshotOrFuse = Effect.provideService(Effect.sync(getSnapshotOrFuse), TaskRunner.inSyncTransactionFiber, false)
 
     // T016: atomic init semantics (no missed updates between getSnapshot() and subscribe()).
     const before = yield* readSnapshotOrFuse
@@ -570,7 +561,7 @@ export const installExternalStoreSync = <S>(
 
     const writeValueSync = (nextValue: unknown): Effect.Effect<void, never, any> =>
       Effect.gen(function* () {
-        const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
+        const inTxn = yield* Effect.service(TaskRunner.inSyncTransactionFiber).pipe(Effect.orDie)
 
         const body = Effect.gen(function* () {
           const prevState = (yield* bound.state.read) as any
@@ -604,7 +595,7 @@ export const installExternalStoreSync = <S>(
           },
           () => body.pipe(Effect.asVoid),
         )
-      }).pipe(Effect.provide(env))
+      }).pipe(Effect.provideServices(env))
 
     const enqueueWriteValue = (nextValue: unknown): Effect.Effect<void, never, any> =>
       coordinator.enqueue({
@@ -624,22 +615,22 @@ export const installExternalStoreSync = <S>(
     }
 
     // Long-lived sync loop: coalesce changes, pull latest snapshot, and write back in a txn.
-    yield* Effect.forkScoped(
-      Effect.locally(TaskRunner.inSyncTransactionFiber, false)(
-        Effect.gen(function* () {
-          while (true) {
-            yield* awaitSignal()
-            if (fused) return
-
-            const snapshot = yield* readSnapshotOrFuse
-            if (fused) {
-              yield* recordFuseDiagnostic
-              return
-            }
-
-            yield* enqueueWriteValue(computeValue(snapshot))
+    const fiber = yield* Effect.forkDetach(
+      Effect.provideService(Effect.gen(function* () {
+        while (true) {
+          yield* awaitSignal()
+          if (fused) return
+      
+          const snapshot = yield* readSnapshotOrFuse
+          if (fused) {
+            yield* recordFuseDiagnostic
+            return
           }
-        }),
-      ),
+      
+          yield* enqueueWriteValue(computeValue(snapshot))
+        }
+      }), TaskRunner.inSyncTransactionFiber, false),
+      { startImmediately: true },
     )
+    internals.lifecycle.registerDestroy(Fiber.interrupt(fiber).pipe(Effect.asVoid), { name: `externalStore:${fieldPath}:writeback` })
   })

@@ -1,8 +1,9 @@
-import { Effect, TestClock, Duration } from 'effect'
+import { Effect, Duration } from 'effect'
+import { TestClock } from 'effect/testing'
 
 export interface WaitUntilOptions {
   readonly maxAttempts?: number
-  readonly step?: Duration.DurationInput
+  readonly step?: Duration.Input
 }
 
 /**
@@ -15,7 +16,7 @@ export const waitUntil = <A, E, R>(
 ): Effect.Effect<A, E, R | TestClock.TestClock> =>
   Effect.gen(function* () {
     const maxAttempts = options.maxAttempts ?? 20
-    const step = options.step ?? ('10 millis' as Duration.DurationInput)
+    const step = options.step ?? ('10 millis' as Duration.Input)
 
     let lastError: unknown
 
@@ -28,7 +29,7 @@ export const waitUntil = <A, E, R>(
       lastError = result.cause
       // Advance the test clock and yield once to let subscriptions/async logic make progress.
       yield* TestClock.adjust(step)
-      yield* Effect.yieldNow()
+      yield* Effect.yieldNow
     }
 
     // If it keeps failing, throw the last error cause.

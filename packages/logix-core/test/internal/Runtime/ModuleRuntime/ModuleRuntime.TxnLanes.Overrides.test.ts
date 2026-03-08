@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import type { StateTransactionOverrides } from '../../../../src/internal/runtime/core/env.js'
@@ -16,7 +16,7 @@ const computeValue = (a: number, offset: number): number => {
 const waitUntil = (cond: Effect.Effect<boolean>): Effect.Effect<void> =>
   Effect.gen(function* () {
     while (!(yield* cond)) {
-      yield* Effect.yieldNow()
+      yield* Effect.yieldNow
     }
   })
 
@@ -66,7 +66,7 @@ const makeDeferredModule = (args: { readonly deferred: number }) => {
 }
 
 describe('ModuleRuntime TxnLanes (runtime overrides)', () => {
-  it.scoped('overrideMode=forced_sync emits TxnLaneEvidence even when policy is effectively disabled', () =>
+  it.effect('overrideMode=forced_sync emits TxnLaneEvidence even when policy is effectively disabled', () =>
     Effect.gen(function* () {
       const events: Array<Logix.Debug.Event> = []
       const sink: Logix.Debug.Sink = {
@@ -103,7 +103,7 @@ describe('ModuleRuntime TxnLanes (runtime overrides)', () => {
       yield* Effect.promise(() =>
         runtime.runPromise(
           Effect.gen(function* () {
-            const rt: any = yield* M.tag
+            const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
             yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 't1' }, () =>
               Effect.gen(function* () {
@@ -138,7 +138,7 @@ describe('ModuleRuntime TxnLanes (runtime overrides)', () => {
     }),
   )
 
-  it.scoped('switching to overrideMode=forced_off coalesces backlog and produces forced_off evidence', () =>
+  it.effect('switching to overrideMode=forced_off coalesces backlog and produces forced_off evidence', () =>
     Effect.gen(function* () {
       const events: Array<Logix.Debug.Event> = []
       const sink: Logix.Debug.Sink = {
@@ -175,7 +175,7 @@ describe('ModuleRuntime TxnLanes (runtime overrides)', () => {
       yield* Effect.promise(() =>
         runtime.runPromise(
           Effect.gen(function* () {
-            const rt: any = yield* M.tag
+            const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
             yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 't1' }, () =>
               Effect.gen(function* () {

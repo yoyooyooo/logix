@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { Context, Effect, Layer, Schema } from 'effect'
+import { Context, Effect, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../../src/index.js'
 
 describe('Root.resolve override semantics', () => {
@@ -8,7 +8,7 @@ describe('Root.resolve override semantics', () => {
       readonly step: number
     }
 
-    class StepConfigTag extends Context.Tag('@test/RootResolveOverride/StepConfig')<StepConfigTag, StepConfig>() {}
+    class StepConfigTag extends ServiceMap.Service<StepConfigTag, StepConfig>()('@test/RootResolveOverride/StepConfig') {}
 
     const RootModule = Logix.Module.make('RootResolveOverrideRoot', {
       state: Schema.Struct({ ok: Schema.Boolean }),
@@ -27,7 +27,7 @@ describe('Root.resolve override semantics', () => {
 
     try {
       const inOverrideScope = Effect.gen(function* () {
-        const override = yield* StepConfigTag
+        const override = yield* Effect.service(StepConfigTag).pipe(Effect.orDie)
         const root = yield* Logix.Root.resolve(StepConfigTag)
         return { override, root }
       }).pipe(Effect.provideService(StepConfigTag, { step: 5 }))

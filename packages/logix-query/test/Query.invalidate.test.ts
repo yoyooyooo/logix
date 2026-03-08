@@ -1,5 +1,4 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Duration, Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Query from '../src/index.js'
@@ -7,7 +6,7 @@ import * as Query from '../src/index.js'
 const ReplayLog = Logix.InternalContracts.ReplayLog
 
 describe('Query.invalidate', () => {
-  it.scoped('should record invalidate event, call engine.invalidate, and refetch afterwards', () =>
+  it.effect('should record invalidate event, call engine.invalidate, and refetch afterwards', () =>
     Effect.gen(function* () {
       const KeySchema = Schema.Struct({ q: Schema.String })
       type Key = Schema.Schema.Type<typeof KeySchema>
@@ -51,7 +50,7 @@ describe('Query.invalidate', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* module.tag
+          const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const controller = module.controller.make(rt)
 
         // onMount: first load
@@ -96,7 +95,7 @@ describe('Query.invalidate', () => {
     }),
   )
 
-  it.scoped('byTag should refresh tagged queries only (fallback to all if no tags match)', () =>
+  it.effect('byTag should refresh tagged queries only (fallback to all if no tags match)', () =>
     Effect.gen(function* () {
       const KeySchema = Schema.Struct({ q: Schema.String })
       type Key = Schema.Schema.Type<typeof KeySchema>
@@ -160,7 +159,7 @@ describe('Query.invalidate', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* module.tag
+          const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const controller = module.controller.make(rt)
 
         // onMount: both a & b load once

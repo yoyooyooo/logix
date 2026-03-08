@@ -1,11 +1,10 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Duration, Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Query from '../../src/index.js'
 
 describe('Query.MissingClient', () => {
-  it.scoped('should treat missing Query.Engine as a configuration error', () =>
+  it.effect('should treat missing Query.Engine as a configuration error', () =>
     Effect.gen(function* () {
       const KeySchema = Schema.Struct({ q: Schema.String })
       type Key = Schema.Schema.Type<typeof KeySchema>
@@ -38,7 +37,7 @@ describe('Query.MissingClient', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* module.tag
+          const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const controller = module.controller.make(rt)
 
         yield* Effect.sleep(Duration.millis(30))

@@ -1,4 +1,4 @@
-import { Effect, FiberRef } from 'effect'
+import { Effect } from 'effect'
 import { create } from 'mutative'
 import type { PatchReason, StateTxnOrigin, TxnDirtyEvidence } from '../runtime/core/StateTransaction.js'
 import { normalizeFieldPath, type FieldPath, type FieldPathId } from '../field-path.js'
@@ -803,7 +803,7 @@ export const validateInTransaction = <S extends object>(
   requests: ReadonlyArray<ScopedValidateRequest>,
 ): Effect.Effect<void> =>
   Effect.gen(function* () {
-    const diagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
+    const diagnosticsLevel = yield* Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie)
     const enableTrace = diagnosticsLevel !== 'off'
     const enableTraceDetail = diagnosticsLevel === 'full' || diagnosticsLevel === 'sampled'
     const enableTraceLite = diagnosticsLevel === 'light'

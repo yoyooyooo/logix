@@ -1,4 +1,4 @@
-import type { SqlClient } from '@effect/sql/SqlClient'
+import type { SqlClient } from 'effect/unstable/sql/SqlClient'
 import { Effect, Layer, Option } from 'effect'
 
 import { Db } from '../db/db.js'
@@ -18,7 +18,7 @@ export const AuthEventRepoLive: Layer.Layer<AuthEventRepo, never, Db | AuthEvent
   AuthEventRepo,
   Effect.gen(function* () {
     const db = yield* Db
-    yield* AuthEventTable
+    yield* Effect.service(AuthEventTable)
     const withSql = <A, E>(f: (sql: SqlClient) => Effect.Effect<A, E>) => db.sql.pipe(Effect.flatMap(f))
 
     const write: AuthEventRepoService['write'] = (input) =>
@@ -70,9 +70,9 @@ export const AuthEventRepoLive: Layer.Layer<AuthEventRepo, never, Db | AuthEvent
           return rows.map((r) => ({
             eventId: r.eventId,
             eventType: r.eventType as any,
-            actorUserId: Option.getOrNull(Option.fromNullable(r.actorUserId)),
-            subjectUserId: Option.getOrNull(Option.fromNullable(r.subjectUserId)),
-            identifier: Option.getOrNull(Option.fromNullable(r.identifier)),
+            actorUserId: Option.getOrNull(Option.fromNullishOr(r.actorUserId)),
+            subjectUserId: Option.getOrNull(Option.fromNullishOr(r.subjectUserId)),
+            identifier: Option.getOrNull(Option.fromNullishOr(r.identifier)),
             createdAt: r.createdAt,
           }))
         }),

@@ -69,8 +69,8 @@ const main = Effect.gen(function* () {
     const result = yield* Effect.promise(() =>
       runtime.runPromise(
         Effect.gen(function* () {
-          const source: any = yield* Source.tag
-          const target: any = yield* Target.tag
+          const source: any = yield* Effect.service(Source.tag).pipe(Effect.orDie)
+          const target: any = yield* Effect.service(Target.tag).pipe(Effect.orDie)
 
           yield* source.dispatch({ _tag: 'ping', payload: undefined } as any)
           yield* Effect.sleep('20 millis')

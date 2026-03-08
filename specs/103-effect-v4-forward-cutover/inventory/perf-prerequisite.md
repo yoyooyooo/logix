@@ -3,26 +3,22 @@
 - gate: `GP-1`
 - result: `NOT_PASS`
 - mode: `strict_gate`
-- timestamp: `2026-03-02T19:53:41+0800`
+- timestamp: `2026-03-07T12:10:00+08:00`
 
 ## criteria
 
-- `main_contains_prereq_commit`: `NOT_PASS`（`origin/feat/perf-dynamic-capacity-maxlevel=dfec0166`，`origin/main=8d4f36b1`，`merge-base=b927f45c`，`origin/main..origin/feat` 计数=27，分支尚未并入 main）
-- `workflow_strict_diff_and_guards`: `PASS`（strict/triage 分流、并发保护、超时、pinned matrix、normalize 步骤均存在）
-- `github_scripts_present`: `PASS`（目标脚本已存在）
-- `perf_evidence_scripts_present`: `PASS`（目标脚本已存在）
+- `main_contains_prereq_commit`: `NOT_PASS`（`origin/feat/perf-dynamic-capacity-maxlevel=6dde14cb`，`origin/main=cd127327`，`origin/main..origin/feat` 计数=`1`，前置提交尚未进入 `main`）
+- `workflow_strict_diff_and_guards`: `PASS`（`logix-perf-{quick,sweep}.yml` 具备 strict/triage 分流、并发保护、超时、pinned matrix、normalize 步骤）
+- `github_scripts_present`: `PASS`
+- `perf_evidence_scripts_present`: `PASS`
 
 ## commands
 
 ```bash
 git rev-parse --short origin/feat/perf-dynamic-capacity-maxlevel
 git rev-parse --short origin/main
-git merge-base origin/feat/perf-dynamic-capacity-maxlevel origin/main
 git rev-list --count origin/main..origin/feat/perf-dynamic-capacity-maxlevel
-git log --oneline origin/main -- .github/workflows/logix-perf-quick.yml
-git log --oneline origin/main -- .github/workflows/logix-perf-sweep.yml
-ls .github/scripts
-ls .codex/skills/logix-perf-evidence/scripts
+git log --oneline origin/main -- .github/workflows/logix-perf-quick.yml .github/workflows/logix-perf-sweep.yml
 ```
 
 ## evidenceRefs
@@ -38,6 +34,6 @@ ls .codex/skills/logix-perf-evidence/scripts
 
 ## notes
 
-- 阻塞原因：仅剩“前置分支尚未合入 main”这一条未满足。
-- 复核说明：2026-03-02T19:53:41+0800 再次核验，结论不变。
-- 放行条件：`criteria` 全部变为 `PASS` 后，才允许宣称 G1/G2/G5 的性能 gate 通过。
+- `GP-1` 现在已经不是陈旧快照：上面的哈希与计数对应 2026-03-07 当前远端事实。
+- 它仍然限制“宣称 G1/G2/G5 性能 gate 通过”，但不阻塞主线下继续推进实现阶段。
+- 完整的发布级性能放行仍需在 `103` 主线后续阶段满足前置条件后重新执行。

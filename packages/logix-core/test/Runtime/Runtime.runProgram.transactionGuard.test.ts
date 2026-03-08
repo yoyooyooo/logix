@@ -1,10 +1,10 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('Runtime.runProgram (sync transaction guard)', () => {
-  it.scoped('rejects when called inside a synchronous StateTransaction body', () =>
+  it.effect('rejects when called inside a synchronous StateTransaction body', () =>
     Effect.gen(function* () {
       let inner: Promise<unknown> | undefined
 

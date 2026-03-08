@@ -101,59 +101,57 @@ describe('contracts (021): limit unbounded concurrency', () => {
         ...(overrides ?? {}),
       })
 
-      const program = Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
-        Effect.gen(function* () {
-          const diagnostics = yield* ConcurrencyDiagnostics.make({
-            moduleId: 'Contracts021',
-            instanceId: 'i-contracts-021',
-          })
-
-          yield* diagnostics.emitPressureIfNeeded({
-            policy: mkPolicy({
-              pressureWarningThreshold: { backlogCount: 1, backlogDurationMs: 1 },
-              warningCooldownMs: 1,
-            }),
-            trigger: {
-              kind: 'actionHub',
-              name: 'publish',
-              details: {
-                dispatchEntry: 'dispatch',
-                channel: 'main',
-                fanoutCount: 0,
-              },
+      const program = Effect.provideService(Effect.gen(function* () {
+        const diagnostics = yield* ConcurrencyDiagnostics.make({
+          moduleId: 'Contracts021',
+          instanceId: 'i-contracts-021',
+        })
+      
+        yield* diagnostics.emitPressureIfNeeded({
+          policy: mkPolicy({
+            pressureWarningThreshold: { backlogCount: 1, backlogDurationMs: 1 },
+            warningCooldownMs: 1,
+          }),
+          trigger: {
+            kind: 'actionHub',
+            name: 'publish',
+            details: {
+              dispatchEntry: 'dispatch',
+              channel: 'main',
+              fanoutCount: 0,
             },
-            backlogCount: 1,
-            saturatedDurationMs: 1,
-            inFlight: 0,
-          })
-
-          yield* diagnostics.emitUnboundedPolicyIfNeeded({
-            policy: mkPolicy({
-              concurrencyLimit: 'unbounded',
-              allowUnbounded: true,
-              requestedConcurrencyLimit: 'unbounded',
-              configScope: 'provider',
-              concurrencyLimitScope: 'provider',
-              requestedConcurrencyLimitScope: 'provider',
-              allowUnboundedScope: 'provider',
-            }),
-            trigger: { kind: 'concurrencyPolicy', name: 'resolve' },
-          })
-
-          yield* diagnostics.emitUnboundedPolicyIfNeeded({
-            policy: mkPolicy({
-              concurrencyLimit: 16,
-              allowUnbounded: false,
-              requestedConcurrencyLimit: 'unbounded',
-              configScope: 'runtime_default',
-              concurrencyLimitScope: 'runtime_default',
-              requestedConcurrencyLimitScope: 'provider',
-              allowUnboundedScope: 'builtin',
-            }),
-            trigger: { kind: 'concurrencyPolicy', name: 'resolve' },
-          })
-        }),
-      )
+          },
+          backlogCount: 1,
+          saturatedDurationMs: 1,
+          inFlight: 0,
+        })
+      
+        yield* diagnostics.emitUnboundedPolicyIfNeeded({
+          policy: mkPolicy({
+            concurrencyLimit: 'unbounded',
+            allowUnbounded: true,
+            requestedConcurrencyLimit: 'unbounded',
+            configScope: 'provider',
+            concurrencyLimitScope: 'provider',
+            requestedConcurrencyLimitScope: 'provider',
+            allowUnboundedScope: 'provider',
+          }),
+          trigger: { kind: 'concurrencyPolicy', name: 'resolve' },
+        })
+      
+        yield* diagnostics.emitUnboundedPolicyIfNeeded({
+          policy: mkPolicy({
+            concurrencyLimit: 16,
+            allowUnbounded: false,
+            requestedConcurrencyLimit: 'unbounded',
+            configScope: 'runtime_default',
+            concurrencyLimitScope: 'runtime_default',
+            requestedConcurrencyLimitScope: 'provider',
+            allowUnboundedScope: 'builtin',
+          }),
+          trigger: { kind: 'concurrencyPolicy', name: 'resolve' },
+        })
+      }), Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])
 
       yield* program
 

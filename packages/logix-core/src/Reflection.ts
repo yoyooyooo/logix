@@ -1,4 +1,4 @@
-import { Context, Effect, Exit, Layer } from 'effect'
+import { Effect, Exit, Layer, ServiceMap } from 'effect'
 import type { AnyModuleShape, ModuleImpl } from './internal/module.js'
 import type { AnyModule } from './Module.js'
 import type { StaticIr } from './internal/state-trait/ir.js'
@@ -241,7 +241,7 @@ export const verifyFullCutoverGate = <Sh extends AnyModuleShape>(
 
     const gateProgram = Effect.gen(function* () {
       const ctx = yield* rootImpl.layer.pipe(Layer.build)
-      const runtime: any = Context.get(ctx, rootImpl.module as any)
+      const runtime: any = ServiceMap.get(ctx, rootImpl.module as any)
       if (gateRun?.interaction) {
         yield* gateRun.interaction(runtime)
       }

@@ -1,4 +1,4 @@
-import { Context, Effect, Schema } from 'effect'
+import { Effect, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 
 // Note: 本示例中的 `Logic.forShape` 写法仅作为“针对 SearchShape + SearchApi 预绑定的 Bound API `$`”
@@ -27,7 +27,7 @@ export type SearchAction = Logix.ActionOf<SearchShape>
 // DI 示例：SearchApi 作为 Tag 注入的服务
 // ---------------------------------------------------------------------------
 
-export class SearchApi extends Context.Tag('@demo/SearchApi')<SearchApi, SearchApi.Service>() {}
+export class SearchApi extends ServiceMap.Service<SearchApi, SearchApi.Service>()('@demo/SearchApi') { }
 
 export namespace SearchApi {
   export interface Service {

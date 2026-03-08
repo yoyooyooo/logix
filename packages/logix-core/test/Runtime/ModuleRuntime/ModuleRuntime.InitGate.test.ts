@@ -1,11 +1,11 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Deferred, Effect, Fiber, Layer, Option, Schema } from 'effect'
 import * as Debug from '../../../src/Debug.js'
 import * as Logix from '../../../src/index.js'
 
 describe('ModuleRuntime init gate', () => {
-  it.scoped(
+  it.effect(
     'should block acquisition until initRequired completes (serial)',
     () =>
       Effect.gen(function* () {
@@ -53,7 +53,7 @@ describe('ModuleRuntime init gate', () => {
         // otherwise the layer will be built first (initRequired awaits the gate) and deadlock.
         const acquireFiber = yield* Effect.forkScoped(
           Effect.gen(function* () {
-            const runtime = yield* TestModule.tag
+            const runtime = yield* Effect.service(TestModule.tag).pipe(Effect.orDie)
             yield* Deferred.succeed(runtimeReady, runtime as unknown as Logix.ModuleRuntime<any, any>)
             yield* Deferred.await(keepAlive)
           }).pipe(Effect.provide(layer)),
@@ -61,8 +61,8 @@ describe('ModuleRuntime init gate', () => {
 
         yield* Deferred.await(firstStarted)
 
-        expect(yield* Deferred.poll(secondStarted)).toEqual(Option.none())
-        expect(yield* Fiber.poll(acquireFiber)).toEqual(Option.none())
+        expect(yield* Deferred.poll(secondStarted)).toBeUndefined()
+        expect(yield* Fiber.await(acquireFiber).pipe(Effect.timeoutOption(0))).toEqual(Option.none())
 
         yield* Deferred.succeed(gate, undefined)
 
@@ -75,7 +75,7 @@ describe('ModuleRuntime init gate', () => {
       }) as any,
   )
 
-  it.scoped(
+  it.effect(
     'should fail acquisition when initRequired fails and emit lifecycle:error',
     () =>
       Effect.gen(function* () {
@@ -106,11 +106,9 @@ describe('ModuleRuntime init gate', () => {
         >
 
         const exit = yield* Effect.exit(
-          Effect.locally(Debug.internal.currentDebugSinks as any, [sink])(
-            Effect.gen(function* () {
-              yield* TestModule.tag
-            }).pipe(Effect.provide(layer)),
-          ),
+          Effect.provideService(Effect.gen(function* () {
+            yield* Effect.service(TestModule.tag).pipe(Effect.orDie)
+          }).pipe(Effect.provide(layer)), Debug.internal.currentDebugSinks as any, [sink]),
         )
 
         expect(exit._tag).toBe('Failure')

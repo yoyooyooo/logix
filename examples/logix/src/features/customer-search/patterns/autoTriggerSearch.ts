@@ -43,7 +43,7 @@ export const runAutoTriggerSearch = <R>($: Logix.BoundApi<CustomerSearchShape, R
         $.state.mutate((draft) => {
           draft.isSearching = false
 
-          const failure = Cause.failureOption(cause)
+          const failure = Cause.findErrorOption(cause)
           draft.errorMessage =
             Option.isSome(failure) && typeof (failure.value as any)?.message === 'string'
               ? String((failure.value as any).message)

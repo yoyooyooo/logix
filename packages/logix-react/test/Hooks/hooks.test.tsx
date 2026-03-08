@@ -1,7 +1,7 @@
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { RuntimeProvider, useModule, useSelector, useRuntime } from '../../src/index.js'
 import * as Logix from '@logixjs/core'
-import { Context, Effect, Layer, Schema, ManagedRuntime } from 'effect'
+import { Effect, Layer, ManagedRuntime, Schema, ServiceMap } from 'effect'
 import { describe, it, expect, beforeEach } from 'vitest'
 // @vitest-environment happy-dom
 import React from 'react'
@@ -61,7 +61,7 @@ describe('React Hooks', () => {
     await waitFor(() => expect(result.current).toBe(0))
 
     // Update state
-    await runtime.runPromise(Effect.flatMap(CounterModule.tag, (rt) => rt.setState({ count: 1 })))
+    await runtime.runPromise(Effect.flatMap(Effect.service(CounterModule.tag).pipe(Effect.orDie), (rt) => rt.setState({ count: 1 })))
 
     await waitFor(() => expect(result.current).toBe(1))
   })
@@ -74,7 +74,7 @@ describe('React Hooks', () => {
     await waitFor(() => expect(result.current).toBe(0))
 
     await act(async () => {
-      await runtime.runPromise(Effect.flatMap(CounterModule.tag, (rt) => rt.setState({ count: 5 })))
+      await runtime.runPromise(Effect.flatMap(Effect.service(CounterModule.tag).pipe(Effect.orDie), (rt) => rt.setState({ count: 5 })))
     })
 
     await waitFor(() => expect(result.current).toBe(5))
@@ -185,7 +185,7 @@ describe('React Hooks', () => {
   })
 
   it('RuntimeProvider.layer should allow nested Env override', async () => {
-    const StepConfigTag = Context.GenericTag<{ readonly step: number }>('@test/StepConfigReact')
+    const StepConfigTag = ServiceMap.Service<{ readonly step: number }>('@test/StepConfigReact')
 
     const BaseLayer = Layer.succeed(StepConfigTag, { step: 1 })
     const InnerLayer = Layer.succeed(StepConfigTag, { step: 5 })
@@ -200,7 +200,7 @@ describe('React Hooks', () => {
       React.useEffect(() => {
         void adaptedRuntime.runPromise(
           Effect.gen(function* () {
-            const cfg = (yield* StepConfigTag) as { readonly step: number }
+            const cfg = (yield* Effect.service(StepConfigTag).pipe(Effect.orDie)) as { readonly step: number }
             setStep(cfg.step)
           }),
         )
@@ -234,7 +234,7 @@ describe('React Hooks', () => {
   })
 
   it('useRuntime({ layer }) should allow local Env override', async () => {
-    const StepConfigTag = Context.GenericTag<{ readonly step: number }>('@test/StepConfigHook')
+    const StepConfigTag = ServiceMap.Service<{ readonly step: number }>('@test/StepConfigHook')
 
     const BaseLayer = Layer.succeed(StepConfigTag, { step: 1 })
     const InnerLayer = Layer.succeed(StepConfigTag, { step: 5 })
@@ -248,7 +248,7 @@ describe('React Hooks', () => {
       React.useEffect(() => {
         void adaptedRuntime.runPromise(
           Effect.gen(function* () {
-            const cfg = (yield* StepConfigTag) as { readonly step: number }
+            const cfg = (yield* Effect.service(StepConfigTag).pipe(Effect.orDie)) as { readonly step: number }
             setStep(cfg.step)
           }),
         )
@@ -273,9 +273,9 @@ describe('React Hooks', () => {
   it('should not leak scoped resources when RuntimeProvider unmounts', async () => {
     let activeResources = 0
 
-    const ResourceTag = Context.GenericTag<number>('@test/Resource')
+    const ResourceTag = ServiceMap.Service<number>('@test/Resource')
 
-    const ResourceLayer = Layer.scoped(
+    const ResourceLayer = Layer.effect(
       ResourceTag,
       Effect.acquireRelease(
         Effect.sync(() => {

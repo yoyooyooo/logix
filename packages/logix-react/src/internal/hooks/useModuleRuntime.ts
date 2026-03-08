@@ -67,7 +67,7 @@ export function useModuleRuntime(handle: ReactModuleHandle): Logix.ModuleRuntime
     const mode = runtimeContext.policy.moduleTagMode
 
     const factory: ModuleCacheFactory = (scope: Scope.Scope) =>
-      (tag as unknown as Effect.Effect<Logix.ModuleRuntime<any, any>, never, any>).pipe(Scope.extend(scope))
+      Scope.provide(scope)(Effect.service(tag).pipe(Effect.orDie))
 
     return (
       mode === 'suspend'

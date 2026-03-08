@@ -1,4 +1,4 @@
-import { Deferred, Effect, FiberRef, Ref, Scope } from 'effect'
+import { Deferred, Effect, Ref, Scope } from 'effect'
 import * as Debug from './DebugSink.js'
 import * as EffectOpCore from './EffectOpCore.js'
 import * as TaskRunner from './TaskRunner.js'
@@ -119,7 +119,7 @@ export const makeEnqueueTransaction = (args: {
 
     const acquireBacklogSlot = (lane: TxnLane, capacity: number, policy: ResolvedConcurrencyPolicy): Effect.Effect<void> =>
       Effect.gen(function* () {
-        const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
+        const inTxn = yield* Effect.service(TaskRunner.inSyncTransactionFiber).pipe(Effect.orDie)
         if (inTxn) {
           yield* Debug.record({
             type: 'diagnostic',
@@ -132,7 +132,7 @@ export const makeEnqueueTransaction = (args: {
             hint: 'Move dispatch/setState calls outside the transaction window, or use a multi-entry pattern (pending → IO → writeback).',
             kind: 'enqueue_in_transaction',
           })
-          yield* Effect.dieMessage('enqueueTransaction is not allowed inside a synchronous StateTransaction body')
+          yield* Effect.die(new Error('enqueueTransaction is not allowed inside a synchronous StateTransaction body'))
         }
 
         const stateRef = lane === 'urgent' ? urgentStateRef : nonUrgentStateRef
@@ -266,7 +266,7 @@ export const makeEnqueueTransaction = (args: {
     const emitStartTrace = (trace: TxnQueueStartTrace | undefined): Effect.Effect<void> =>
       !trace
         ? Effect.void
-        : FiberRef.get(Debug.currentDiagnosticsLevel).pipe(
+        : Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie).pipe(
             Effect.flatMap((diagnosticsLevel) =>
               diagnosticsLevel === 'off'
                 ? Effect.void
@@ -309,18 +309,23 @@ export const makeEnqueueTransaction = (args: {
     const advanceQueue = (lane: TxnLane, start: Deferred.Deferred<void>): Effect.Effect<void> =>
       Effect.gen(function* () {
         let toStart: QueueWaiter | undefined
+        let needsVisibilityWindow = false
         yield* Effect.uninterruptible(
           Effect.sync(() => {
             if (currentWaiter?.start === start) {
               currentWaiter = undefined
               currentLane = undefined
               lastCompletedLane = lane
-              const next = pickNextWaiter()
-              if (next) {
-                currentWaiter = next
-                currentLane = next.lane
-                recordStartTrace(next, 'direct_handoff')
-                toStart = next
+              if (urgentWaitQueue.length > 0) {
+                const next = pickNextWaiter()
+                if (next) {
+                  currentWaiter = next
+                  currentLane = next.lane
+                  recordStartTrace(next, 'direct_handoff')
+                  toStart = next
+                }
+              } else if (nonUrgentWaitQueue.length > 0) {
+                needsVisibilityWindow = true
               }
               return
             }
@@ -342,6 +347,26 @@ export const makeEnqueueTransaction = (args: {
         )
         if (toStart) {
           yield* Deferred.succeed(toStart.start, undefined)
+          return
+        }
+
+        if (needsVisibilityWindow) {
+          yield* Effect.yieldNow
+          let deferredStart: QueueWaiter | undefined
+          yield* Effect.uninterruptible(
+            Effect.sync(() => {
+              if (currentWaiter) return
+              const next = pickNextWaiter()
+              if (!next) return
+              currentWaiter = next
+              currentLane = next.lane
+              recordStartTrace(next, 'post_visibility_window')
+              deferredStart = next
+            }),
+          )
+          if (deferredStart) {
+            yield* Deferred.succeed(deferredStart.start, undefined)
+          }
         }
       })
 
@@ -364,14 +389,12 @@ export const makeEnqueueTransaction = (args: {
         const eff: Effect.Effect<A2, E2, never> = a1 ? a1 : (a0 as Effect.Effect<A2, E2, never>)
         const stateRef = lane === 'urgent' ? urgentStateRef : nonUrgentStateRef
 
-        const existingLinkId = yield* FiberRef.get(EffectOpCore.currentLinkId)
+        const existingLinkId = yield* Effect.service(EffectOpCore.currentLinkId).pipe(Effect.orDie)
         const linkId = assignLinkId(existingLinkId)
 
         const policy = yield* args.resolveConcurrencyPolicy()
         const capacity = policy.losslessBackpressureCapacity
-        yield* Effect.locally(EffectOpCore.currentLinkId, linkId)(
-          acquireBacklogSlot(lane, capacity, policy),
-        )
+        yield* (Effect.provideService(acquireBacklogSlot(lane, capacity, policy), EffectOpCore.currentLinkId, linkId) as Effect.Effect<void, never, never>)
 
         const start = yield* Deferred.make<void>()
         const waiter: QueueWaiter = {
@@ -381,20 +404,22 @@ export const makeEnqueueTransaction = (args: {
           enqueueAtMs: readClockMs(),
           ...(currentLane ? { activeLaneAtEnqueue: currentLane } : {}),
         }
-        yield* Effect.locally(EffectOpCore.currentLinkId, linkId)(enqueueAndMaybeStart(waiter))
+        yield* (Effect.provideService(enqueueAndMaybeStart(waiter), EffectOpCore.currentLinkId, linkId) as Effect.Effect<void, never, never>)
 
-        return yield* Effect.locally(EffectOpCore.currentLinkId, linkId)(
+        return yield* (Effect.provideService(
           Effect.uninterruptibleMask((restore) =>
             Effect.ensuring(
               Effect.flatMap(restore(Deferred.await(start)), () => {
                 const startTrace = startTraceByStart.get(start)
                 startTraceByStart.delete(start)
-                return emitStartTrace(startTrace).pipe(Effect.zipRight(restore(eff)))
+                return emitStartTrace(startTrace).pipe(Effect.flatMap(() => restore(eff)))
               }),
-              Effect.uninterruptible(advanceQueue(lane, start).pipe(Effect.zipRight(release(stateRef)))),
+              Effect.uninterruptible(advanceQueue(lane, start).pipe(Effect.flatMap(() => release(stateRef)))),
             ),
           ),
-        )
+          EffectOpCore.currentLinkId,
+          linkId,
+        ) as Effect.Effect<A2, E2, never>)
       })
 
     return enqueueTransaction

@@ -1,4 +1,5 @@
-import { HttpApiBuilder, HttpServer } from '@effect/platform'
+import { HttpRouter, HttpServer } from 'effect/unstable/http'
+import { HttpApiBuilder } from 'effect/unstable/httpapi'
 import { Effect, Layer, Option } from 'effect'
 import { afterEach, describe, expect, it } from 'vitest'
 
@@ -9,18 +10,19 @@ import { TodoLive } from '../todo/todo.http.live.js'
 import { HealthLive } from './health.http.live.js'
 
 const TodoRepoTest = Layer.succeed(TodoRepo, {
-  create: () => Effect.dieMessage('TodoRepo not used in health tests'),
+  create: () => Effect.die(new Error('TodoRepo not used in health tests')),
   get: () => Effect.succeed(Option.none()),
   list: Effect.succeed([]),
   update: () => Effect.succeed(Option.none()),
   remove: () => Effect.succeed(false),
 })
 
-const ApiTestLive = HttpApiBuilder.api(EffectApi).pipe(
+const ApiTestLive = HttpApiBuilder.layer(EffectApi).pipe(
   Layer.provide(HealthLive),
   Layer.provide(TodoLive),
   Layer.provide(TodoRepoTest),
   Layer.provide(DbLive),
+  Layer.provide(HttpServer.layerServices),
 )
 
 describe('GET /health', () => {
@@ -37,7 +39,7 @@ describe('GET /health', () => {
   it('DATABASE_URL 未设置时返回 disabled', async () => {
     delete process.env.DATABASE_URL
 
-    const { handler, dispose } = HttpApiBuilder.toWebHandler(Layer.mergeAll(ApiTestLive, HttpServer.layerContext))
+    const { handler, dispose } = HttpRouter.toWebHandler(Layer.mergeAll(ApiTestLive), { disableLogger: true })
 
     try {
       const response = await handler(new Request('http://local.test/health'))
@@ -51,7 +53,7 @@ describe('GET /health', () => {
   it('动态 path 参数会按 Schema 解码并推导类型', async () => {
     delete process.env.DATABASE_URL
 
-    const { handler, dispose } = HttpApiBuilder.toWebHandler(Layer.mergeAll(ApiTestLive, HttpServer.layerContext))
+    const { handler, dispose } = HttpRouter.toWebHandler(Layer.mergeAll(ApiTestLive), { disableLogger: true })
 
     try {
       const response = await handler(new Request('http://local.test/health/42'))

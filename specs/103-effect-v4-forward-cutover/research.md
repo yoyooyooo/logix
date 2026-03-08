@@ -1,5 +1,7 @@
 # Research: Effect v4 前向式全仓重构
 
+> 2026-03-07 说明：本文件继续作为 `103` 主线研究档案保留。runtime-core truthful closure 现在被视为 `103` 的当前已完成 slice，而不是替代主线定位的新 spec。
+
 ## 1. 研究输入
 
 - 官方迁移入口：`https://github.com/Effect-TS/effect-smol/tree/main/migration`
@@ -22,8 +24,8 @@
 
 必须重构：
 
-- `Context.* -> ServiceMap.Service`（服务拓扑重建）。
-- `FiberRef/locally -> ServiceMap.Reference/provideService`（上下文传播模型重建）。
+- `Context.* -> Context.Tag / Tag class`（服务拓扑重建）。
+- `FiberRef/locally -> Context.Reference/provideService`（上下文传播模型重建）。
 - Cause 扁平化后的诊断表达（不再依赖树形结构）。
 - Layer memoization（实例隔离策略重新审计）。
 

@@ -1,5 +1,5 @@
 import { APIError } from 'better-auth/api'
-import { Config, Effect, Layer, Option } from 'effect'
+import { Effect, Layer, Option } from 'effect'
 import { Pool } from 'pg'
 
 import { makeBetterAuth } from './better-auth.js'
@@ -216,21 +216,13 @@ const makeDisabledAuthService = (reason: string): AuthService => {
   }
 }
 
-export const AuthServiceLive: Layer.Layer<Auth> = Layer.scoped(
+export const AuthServiceLive: Layer.Layer<Auth> = Layer.effect(
   Auth,
   Effect.gen(function* () {
-    const databaseUrlOpt = yield* Config.option(Config.string('DATABASE_URL')).pipe(
-      Effect.catchAll(() => Effect.succeed(Option.none())),
-    )
-    const secretOpt = yield* Config.option(Config.string('BETTER_AUTH_SECRET')).pipe(
-      Effect.catchAll(() => Effect.succeed(Option.none())),
-    )
-    const baseUrlOpt = yield* Config.option(Config.string('BETTER_AUTH_URL')).pipe(
-      Effect.catchAll(() => Effect.succeed(Option.none())),
-    )
-    const autoMigrateRawOpt = yield* Config.option(Config.string('BETTER_AUTH_AUTO_MIGRATE')).pipe(
-      Effect.catchAll(() => Effect.succeed(Option.none())),
-    )
+    const databaseUrlOpt = Option.fromNullishOr(process.env.DATABASE_URL)
+    const secretOpt = Option.fromNullishOr(process.env.BETTER_AUTH_SECRET)
+    const baseUrlOpt = Option.fromNullishOr(process.env.BETTER_AUTH_URL)
+    const autoMigrateRawOpt = Option.fromNullishOr(process.env.BETTER_AUTH_AUTO_MIGRATE)
     const autoMigrate = Option.getOrElse(autoMigrateRawOpt, () => '1') !== '0'
 
     if (Option.isNone(databaseUrlOpt)) {
@@ -257,7 +249,7 @@ export const AuthServiceLive: Layer.Layer<Auth> = Layer.scoped(
     yield* Effect.tryPromise({
       try: () => pool.query('create schema if not exists auth'),
       catch: (cause) => cause,
-    }).pipe(Effect.catchAll(() => Effect.void))
+    }).pipe(Effect.catch(() => Effect.void))
 
     const auth = makeBetterAuth({ pool, secret: secretOpt.value, baseURL: baseUrlOpt.value })
 
@@ -270,7 +262,7 @@ export const AuthServiceLive: Layer.Layer<Auth> = Layer.scoped(
         catch: () => toServiceUnavailable('BetterAuth migrations failed'),
       }).pipe(
         Effect.as(true as const),
-        Effect.catchAll(() => Effect.succeed(false as const)),
+        Effect.catch(() => Effect.succeed(false as const)),
       )
 
       if (!migrated) {

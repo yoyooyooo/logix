@@ -13,14 +13,14 @@ describe('Runtime + EffectOp bus semantics', () => {
     actions: Actions,
   })
 
-  it.scoped('should attach linkId and keep it consistent across a dispatch chain', () =>
+  it.effect('should attach linkId and keep it consistent across a dispatch chain', () =>
     Effect.gen(function* () {
       const events: Array<EffectOp.EffectOp<any, any, any>> = []
 
       const capture: EffectOp.Middleware = (op) =>
         Effect.sync(() => {
           events.push(op)
-        }).pipe(Effect.zipRight(op.effect))
+        }).pipe(Effect.flatMap(() => op.effect))
 
       const impl = M.implement({
         initial: { value: 0 },
@@ -33,7 +33,7 @@ describe('Runtime + EffectOp bus semantics', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* M.tag
+        const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
         yield* rt.dispatch({ _tag: 'bump', payload: undefined } as any)
 
@@ -55,7 +55,7 @@ describe('Runtime + EffectOp bus semantics', () => {
     }),
   )
 
-  it.scoped('guard rejection should be an explicit failure and have no side effects', () =>
+  it.effect('guard rejection should be an explicit failure and have no side effects', () =>
     Effect.gen(function* () {
       const guard: EffectOp.Middleware = (op) => {
         if (op.name === 'action:dispatch') {
@@ -82,7 +82,7 @@ describe('Runtime + EffectOp bus semantics', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* M.tag
+        const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
         const exit = yield* Effect.exit(rt.dispatch({ _tag: 'bump', payload: undefined } as any))
 
@@ -92,8 +92,8 @@ describe('Runtime + EffectOp bus semantics', () => {
           throw new Error('expected Failure')
         }
 
-        const failures = Cause.failures(exit.cause as Cause.Cause<unknown>)
-        expect(Chunk.some(failures, (d) => (d as any)?._tag === 'OperationRejected')).toBe(true)
+        const failures = exit.cause.reasons.filter(Cause.isFailReason).map((reason) => reason.error)
+        expect(failures.some((d) => (d as any)?._tag === 'OperationRejected')).toBe(true)
 
         // no side effects
         const state = yield* rt.getState
@@ -104,14 +104,14 @@ describe('Runtime + EffectOp bus semantics', () => {
     }),
   )
 
-  it.scoped('single dispatch should produce at most one state:update commit (0/1 commit) even with traits', () =>
+  it.effect('single dispatch should produce at most one state:update commit (0/1 commit) even with traits', () =>
     Effect.gen(function* () {
       const events: Array<EffectOp.EffectOp<any, any, any>> = []
 
       const capture: EffectOp.Middleware = (op) =>
         Effect.sync(() => {
           events.push(op)
-        }).pipe(Effect.zipRight(op.effect))
+        }).pipe(Effect.flatMap(() => op.effect))
 
       const TraitState = Schema.Struct({
         base: Schema.Number,
@@ -150,7 +150,7 @@ describe('Runtime + EffectOp bus semantics', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* TraitModule.tag
+        const rt = yield* Effect.service(TraitModule.tag).pipe(Effect.orDie)
 
         yield* rt.dispatch({ _tag: 'bump', payload: undefined } as any)
 
@@ -176,7 +176,7 @@ describe('Runtime + EffectOp bus semantics', () => {
     }),
   )
 
-  it.scoped(
+  it.effect(
     'single dispatch should produce at most one state:update commit (0/1 commit) with scopedValidate + traits',
     () =>
       Effect.gen(function* () {
@@ -185,7 +185,7 @@ describe('Runtime + EffectOp bus semantics', () => {
         const capture: EffectOp.Middleware = (op) =>
           Effect.sync(() => {
             events.push(op)
-          }).pipe(Effect.zipRight(op.effect))
+          }).pipe(Effect.flatMap(() => op.effect))
 
         const TraitState = Schema.Struct({
           base: Schema.Number,
@@ -241,7 +241,7 @@ describe('Runtime + EffectOp bus semantics', () => {
         })
 
         const program = Effect.gen(function* () {
-          const rt = yield* TraitModule.tag
+          const rt = yield* Effect.service(TraitModule.tag).pipe(Effect.orDie)
 
           yield* rt.dispatch({ _tag: 'bump', payload: undefined } as any)
 

@@ -1,6 +1,6 @@
 import React from 'react'
 import * as Logix from '@logixjs/core'
-import { Context, Effect, Layer, Scope } from 'effect'
+import { Effect, Layer, Scope, ServiceMap } from 'effect'
 import type { ActionOfHandle, ReactModuleHandle, StateOfHandle } from './useModuleRuntime.js'
 import { useModuleRuntime } from './useModuleRuntime.js'
 import { useSelector } from './useSelector.js'
@@ -249,9 +249,9 @@ export function useModule(
 
     const baseFactory = React.useMemo<ModuleCacheFactory>(
       () => (scope: Scope.Scope) =>
-        Layer.buildWithScope(normalizedHandle.layer, scope).pipe(
+        Layer.buildWithScope(Layer.fresh(normalizedHandle.layer), scope).pipe(
           Effect.map(
-            (context) => Context.get(context, normalizedHandle.module) as Logix.ModuleRuntime<unknown, unknown>,
+            (context) => ServiceMap.get(context, normalizedHandle.module) as Logix.ModuleRuntime<unknown, unknown>,
           ),
         ),
       [normalizedHandle],
@@ -267,11 +267,12 @@ export function useModule(
       // - on timeout we throw an error and let the caller's ErrorBoundary handle it.
       return (scope: Scope.Scope) =>
         baseFactory(scope).pipe(
-          Effect.timeoutFail({
-            duration: initTimeoutMs,
-            onTimeout: () =>
-              new Error(`[useModule] Module "${ownerId}" initialization timed out after ${initTimeoutMs}ms`),
-          }),
+          Effect.timeoutOption(initTimeoutMs),
+          Effect.flatMap((maybe) =>
+            maybe._tag === 'Some'
+              ? Effect.succeed(maybe.value)
+              : Effect.die(new Error(`[useModule] Module "${ownerId}" initialization timed out after ${initTimeoutMs}ms`)),
+          ),
         )
     }, [baseFactory, suspend, initTimeoutMs, ownerId])
 
@@ -340,7 +341,7 @@ export function useModule(
     })
 
     runtimeBase.runFork(effect)
-  }, [runtimeBase, runtime])
+  })
 
   if (selector) {
     // ModuleImpl path: selector is explicitly based on StateOf<Sh>; subscribe via runtime directly.

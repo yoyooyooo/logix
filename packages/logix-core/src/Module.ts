@@ -1,4 +1,4 @@
-import { Context, Effect, FiberRef, Layer, Schema } from 'effect'
+import { Effect, Layer, Schema, ServiceMap } from 'effect'
 import * as Debug from './Debug.js'
 import * as Logic from './Logic.js'
 import * as ModuleTagNS from './ModuleTag.js'
@@ -199,7 +199,7 @@ type ModuleDefBase<
   ) => Layer.Layer<ModuleRuntimeOfShape<Sh>, E, R>
   readonly schemas?: Record<string, unknown>
   readonly meta?: Record<string, JsonValue>
-  readonly services?: Record<string, Context.Tag<any, any>>
+  readonly services?: Record<string, ServiceMap.Key<any, any>>
   readonly dev?: ModuleDev
   readonly logic: <R = never, E = unknown>(
     build: (
@@ -218,7 +218,7 @@ export type AnyModule = {
   readonly reducers?: Record<string, unknown>
   readonly schemas?: Record<string, unknown>
   readonly meta?: Record<string, JsonValue>
-  readonly services?: Record<string, Context.Tag<any, any>>
+  readonly services?: Record<string, ServiceMap.Key<any, any>>
   readonly dev?: ModuleDev
 }
 
@@ -258,7 +258,7 @@ export const is = (value: unknown): value is ModuleDefBase => {
   if (!value || typeof value !== 'object') return false
   const kind = (value as any)._kind
   if (kind !== 'ModuleDef' && kind !== 'Module') return false
-  return Context.isTag((value as any).tag)
+  return ServiceMap.isKey((value as any).tag)
 }
 
 export const hasImpl = (value: unknown): value is AnyModule => {
@@ -441,17 +441,17 @@ const makeOverrideDiagnosticsLogic = (
   overrides: ReadonlyArray<LogicOverrideWarning>,
 ): ModuleLogic<any, any, never> => {
   if (overrides.length === 0) {
-    return Effect.void as any
+    return Effect.void as ModuleLogic<any, any, never>
   }
 
-  return tag.logic(() =>
+  return tag.logic<any, never>(() =>
     Effect.gen(function* () {
       if (!isDevEnv()) return
 
-      const diagnosticsLevel = yield* FiberRef.get(Debug.internal.currentDiagnosticsLevel as any)
+      const diagnosticsLevel = yield* Effect.service(Debug.internal.currentDiagnosticsLevel).pipe(Effect.orDie)
       if (diagnosticsLevel === 'off') return
 
-      const runtime = (yield* tag) as ModuleRuntime<any, any>
+      const runtime = (yield* Effect.service(tag).pipe(Effect.orDie)) as ModuleRuntime<any, any>
 
       yield* Effect.forEach(
         overrides,
@@ -470,7 +470,7 @@ const makeOverrideDiagnosticsLogic = (
           }),
         { discard: true },
       )
-    }),
+    }).pipe(Effect.catchCause(() => Effect.void)),
   )
 }
 
@@ -556,14 +556,14 @@ type MakeDef<Id extends string, SSchema extends AnySchema, AMap extends Action.A
   readonly traits?: unknown
   readonly schemas?: Record<string, unknown>
   readonly meta?: Record<string, JsonValue>
-  readonly services?: Record<string, Context.Tag<any, any>>
+  readonly services?: Record<string, ServiceMap.Key<any, any>>
   readonly dev?: ModuleDev
 }
 
 type AnyActionMap = Action.ActionDefs
 type EmptyActionMap = Record<never, never>
 
-type PayloadOfActionDef<V> = V extends Schema.Schema<any, any, any>
+type PayloadOfActionDef<V> = V extends Schema.Schema<any>
   ? Schema.Schema.Type<V>
   : V extends Action.ActionToken<any, infer P, any>
     ? P
@@ -597,7 +597,7 @@ export type MakeExtendDef<
   readonly effects?: EffectsFromMap<MergeActionMap<BaseActions, ExtActions>>
   readonly schemas?: Record<string, unknown>
   readonly meta?: Record<string, JsonValue>
-  readonly services?: Record<string, Context.Tag<any, any>>
+  readonly services?: Record<string, ServiceMap.Key<any, any>>
   readonly dev?: ModuleDev
 }
 

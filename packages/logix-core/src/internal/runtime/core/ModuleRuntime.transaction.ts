@@ -1,4 +1,4 @@
-import { Cause, Effect, Exit, Fiber, FiberRef, Option, PubSub, Queue, SubscriptionRef } from 'effect'
+import { Cause, Effect, Exit, Fiber, Option, PubSub, Queue, SubscriptionRef } from 'effect'
 import type { StateChangeWithMeta, StateCommitMeta, StateCommitMode, StateCommitPriority } from './module.js'
 import type {
   StateTraitProgram,
@@ -75,6 +75,7 @@ export type TraitRuntimeAccess = {
 export type TraitConvergeTimeSlicingState = {
   readonly signal: Queue.Queue<void>
   readonly backlogDirtyPaths: Set<StateTransaction.StatePatchPath>
+  readonly ensureWorkerStarted: () => Effect.Effect<void, never, never>
   backlogDirtyAllReason?: DirtyAllReason
   firstPendingAtMs: number | undefined
   lastTouchedAtMs: number | undefined
@@ -149,7 +150,7 @@ export const makeTransactionOps = <S>(args: {
    * - Otherwise, fall back to the underlying SubscriptionRef snapshot.
    */
   const readState: Effect.Effect<S> = Effect.gen(function* () {
-    const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
+    const inTxn = yield* Effect.service(TaskRunner.inSyncTransactionFiber).pipe(Effect.orDie)
     const current = txnContext.current
     if (inTxn && current) return current.draft
     return yield* SubscriptionRef.get(stateRef)
@@ -256,13 +257,13 @@ export const makeTransactionOps = <S>(args: {
       //   reducing end-to-end latency and full/off variance on externalStore ingest workloads.
       // - When traceMode=on, keep the original ordering so any selector eval trace stays after state:update
       //   (preserves a more intuitive txn → selector → render causal chain in devtools).
-      const diagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
+      const diagnosticsLevel = yield* Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie)
       let shouldCommitBeforeStateUpdate = false
       if (onCommit) {
         if (diagnosticsLevel === 'off') {
           shouldCommitBeforeStateUpdate = true
         } else {
-          const traceMode = yield* FiberRef.get(Debug.currentTraceMode)
+          const traceMode = yield* Effect.service(Debug.currentTraceMode).pipe(Effect.orDie)
           shouldCommitBeforeStateUpdate = traceMode === 'off'
         }
       }
@@ -276,7 +277,7 @@ export const makeTransactionOps = <S>(args: {
         })
       }
 
-      const debugSinks = yield* FiberRef.get(Debug.currentDebugSinks)
+      const debugSinks = yield* Effect.service(Debug.currentDebugSinks).pipe(Effect.orDie)
       const shouldRecordStateUpdate = debugSinks.length > 0 && !Debug.isErrorOnlyOnlySinks(debugSinks)
 
       if (shouldRecordStateUpdate) {
@@ -355,64 +356,166 @@ export const makeTransactionOps = <S>(args: {
     origin: StateTransaction.StateTxnOrigin,
     body: () => Effect.Effect<void, E2, never>,
   ): Effect.Effect<void, E2, never> =>
-    Effect.locally(
-      TaskRunner.inSyncTransactionFiber,
-      true,
-    )(
-      Effect.gen(function* () {
-        const baseState = yield* SubscriptionRef.get(stateRef)
+    Effect.provideService(Effect.gen(function* () {
+      const baseState = yield* SubscriptionRef.get(stateRef)
+    
+      StateTransaction.beginTransaction(txnContext, origin, baseState)
+      const txnCurrent: any = txnContext.current
+      txnCurrent.stateTraitValidateRequests = []
+      txnCurrent.commitMode = 'normal' as StateCommitMode
+      txnCurrent.priority = 'normal' as StateCommitPriority
+    
+      const stateCommitPriority = (origin as any)?.details?.stateCommit?.priority
+      if (stateCommitPriority === 'low' || stateCommitPriority === 'normal') {
+        txnCurrent.priority = stateCommitPriority as StateCommitPriority
+      }
+    
+      const txnId = txnContext.current?.txnId
+      const txnSeq = txnContext.current?.txnSeq
+    
+      TaskRunner.enterSyncTransactionShadow()
+      let exit: Exit.Exit<void, E2> | undefined
 
-        StateTransaction.beginTransaction(txnContext, origin, baseState)
-        const txnCurrent: any = txnContext.current
-        txnCurrent.stateTraitValidateRequests = []
-        txnCurrent.commitMode = 'normal' as StateCommitMode
-        txnCurrent.priority = 'normal' as StateCommitPriority
+      try {
+        exit = yield* Effect.exit(
+          Effect.provideService(
+            Effect.gen(function* () {
+              // Trait summary inside the transaction window (for devtools/diagnostics).
+              let traitSummary: unknown | undefined
+    
+              // Execute logic inside the transaction window (reducer / watcher writeback / traits, etc.).
+              // Contract: no IO/await/sleep/promises inside the transaction window.
+              //
+              // Fail-fast when async escapes the window (even in production), without blocking on cleanup.
+              // - Sync bodies typically finish before/within the first few polls.
+              // - Async bodies (sleep/await/IO) suspend and will not complete within the budget.
+              // Use daemon fiber to avoid supervision-induced blocking:
+              // - An uninterruptible async escape must not block abort/next transaction.
+              const bodyFiber = yield* Effect.forkChild(body())
+    
+              // Tune for perf: production path uses a small budget to keep the fast path cheap,
+              // but must still tolerate Effect's cooperative scheduling (especially in browser runs).
+              const yieldBudget = 1
+    
+              const pollBodyFiber = Effect.sync(() => {
+                const exit = bodyFiber.pollUnsafe()
+                return exit === undefined ? Option.none<Exit.Exit<void, E2>>() : Option.some(exit)
+              })
 
-        const stateCommitPriority = (origin as any)?.details?.stateCommit?.priority
-        if (stateCommitPriority === 'low' || stateCommitPriority === 'normal') {
-          txnCurrent.priority = stateCommitPriority as StateCommitPriority
-        }
-
-        const txnId = txnContext.current?.txnId
-        const txnSeq = txnContext.current?.txnSeq
-
-        TaskRunner.enterSyncTransactionShadow()
-        let exit: Exit.Exit<void, E2> | undefined
-
-        try {
-          exit = yield* Effect.exit(
-            Effect.locally(
-              Debug.currentTxnId,
-              txnId,
-            )(
-              Effect.gen(function* () {
-                // Trait summary inside the transaction window (for devtools/diagnostics).
-                let traitSummary: unknown | undefined
-
-                // Execute logic inside the transaction window (reducer / watcher writeback / traits, etc.).
-                // Contract: no IO/await/sleep/promises inside the transaction window.
-                //
-                // Fail-fast when async escapes the window (even in production), without blocking on cleanup.
-                // - Sync bodies typically finish before/within the first few polls.
-                // - Async bodies (sleep/await/IO) suspend and will not complete within the budget.
-                // Use daemon fiber to avoid supervision-induced blocking:
-                // - An uninterruptible async escape must not block abort/next transaction.
-                const bodyFiber = yield* Effect.forkDaemon(body())
-
-                // Tune for perf: production path uses a small budget to keep the fast path cheap,
-                // but must still tolerate Effect's cooperative scheduling (especially in browser runs).
-                const yieldBudget = 8
-
-                let polled = yield* Fiber.poll(bodyFiber)
-                for (let index = 0; index < yieldBudget && Option.isNone(polled); index += 1) {
-                  yield* Effect.yieldNow()
-                  polled = yield* Fiber.poll(bodyFiber)
+              let polled = yield* pollBodyFiber
+              for (let index = 0; index < yieldBudget && Option.isNone(polled); index += 1) {
+                yield* Effect.yieldNow
+                polled = yield* pollBodyFiber
+              }
+    
+              if (Option.isNone(polled)) {
+                // Do not pay diagnostics overhead when DiagnosticsLevel=off (perf default).
+                const diagnosticsLevel = yield* Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie)
+                if (diagnosticsLevel !== 'off') {
+                  yield* Debug.record({
+                    type: 'diagnostic',
+                    moduleId: optionsModuleId,
+                    instanceId,
+                    txnSeq,
+                    txnId,
+                    trigger: origin,
+                    code: ASYNC_ESCAPE_DIAGNOSTIC_CODE,
+                    severity: 'error',
+                    message: ASYNC_ESCAPE_MESSAGE,
+                    hint: ASYNC_ESCAPE_HINT,
+                    kind: ASYNC_ESCAPE_KIND,
+                  })
                 }
-
-                if (Option.isNone(polled)) {
-                  // Do not pay diagnostics overhead when DiagnosticsLevel=off (perf default).
-                  const diagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
-                  if (diagnosticsLevel !== 'off') {
+    
+                // Interrupt without awaiting: uninterruptible async escapes must not block abort/next txn.
+                yield* Fiber.interrupt(bodyFiber).pipe(Effect.asVoid, Effect.forkDetach({ startImmediately: true }))
+                return yield* Effect.die(makeAsyncEscapeError())
+              }
+    
+              const bodyExit = Option.getOrThrow(polled)
+              yield* Exit.match(bodyExit, {
+                onFailure: (cause) => Effect.failCause(cause),
+                onSuccess: () => Effect.void,
+              })
+    
+              const stateTraitProgram = traitRuntime.getProgram()
+    
+              // StateTrait: converge derived fields (computed/link, etc.) before commit to ensure 0/1 commit per window.
+              if (stateTraitProgram && txnContext.current) {
+                const convergeConfig = yield* resolveTraitConvergeConfig()
+                traitConvergeTimeSlicing.latestConvergeConfig = convergeConfig
+                const timeSlicingConfig = convergeConfig.traitConvergeTimeSlicing
+                const isDeferredFlushTxn = origin.kind === 'trait:deferred_flush'
+                const hasDeferredSteps =
+                  stateTraitProgram.convergeExecIr != null &&
+                  stateTraitProgram.convergeExecIr.topoOrderDeferredInt32.length > 0
+                const canTimeSlice = timeSlicingConfig.enabled === true && hasDeferredSteps
+                const schedulingScope: StateTraitConverge.ConvergeContext<any>['schedulingScope'] = isDeferredFlushTxn
+                  ? 'deferred'
+                  : canTimeSlice
+                    ? 'immediate'
+                    : 'all'
+    
+                const deferredSlice = isDeferredFlushTxn ? readDeferredFlushSlice(origin.details) : undefined
+                const deferredScopeStepIds =
+                  deferredSlice && stateTraitProgram.convergeExecIr
+                    ? stateTraitProgram.convergeExecIr.topoOrderDeferredInt32.subarray(
+                        deferredSlice.start,
+                        deferredSlice.end,
+                      )
+                    : undefined
+    
+                const convergeExit = yield* Effect.exit(
+                  StateTraitConverge.convergeInTransaction(
+                    stateTraitProgram as any,
+                    {
+                      moduleId: optionsModuleId,
+                      instanceId,
+                      txnSeq,
+                      txnId,
+                      configScope: convergeConfig.configScope,
+                      now: txnContext.config.now,
+                      budgetMs: convergeConfig.traitConvergeBudgetMs,
+                      decisionBudgetMs: convergeConfig.traitConvergeDecisionBudgetMs,
+                      requestedMode: isDeferredFlushTxn ? 'full' : convergeConfig.traitConvergeMode,
+                      schedulingScope,
+                      ...(deferredScopeStepIds ? { schedulingScopeStepIds: deferredScopeStepIds } : {}),
+                      dirtyAllReason: (txnContext.current as any)?.dirtyAllReason,
+                      dirtyPaths: txnContext.current?.dirtyPathIds,
+                      dirtyPathsKeyHash: (txnContext.current as any)?.dirtyPathIdsKeyHash,
+                      dirtyPathsKeySize: (txnContext.current as any)?.dirtyPathIdsKeySize,
+                      allowInPlaceDraft:
+                        txnContext.current != null &&
+                        !Object.is(txnContext.current.draft, txnContext.current.baseState),
+    	                        planCache: traitRuntime.getConvergePlanCache(),
+    	                        generation: traitRuntime.getConvergeGeneration(),
+    	                        cacheMissReasonHint: traitRuntime.getPendingCacheMissReason(),
+    	                        cacheMissReasonHintCount: traitRuntime.getPendingCacheMissReasonCount(),
+    	                        getDraft: () => txnContext.current!.draft as any,
+    	                        setDraft: (next) => {
+    	                          StateTransaction.updateDraft(txnContext, next as any)
+    	                        },
+                      recordPatch: (path, reason, from, to, traitNodeId, stepId) =>
+                        recordStatePatch(path, reason, from, to, traitNodeId, stepId),
+                    } as StateTraitConverge.ConvergeContext<any>,
+                  ),
+                )
+    
+                if (traitRuntime.getPendingCacheMissReason() === 'generation_bumped') {
+                  traitRuntime.setPendingCacheMissReason(undefined)
+                }
+    
+                if (convergeExit._tag === 'Failure') {
+                  const errors = convergeExit.cause.reasons
+                    .filter((reason) => Cause.isFailReason(reason) || Cause.isDieReason(reason))
+                    .map((reason) => (Cause.isFailReason(reason) ? reason.error : reason.defect))
+                  const configError = errors.find(
+                    (err): err is StateTraitConverge.StateTraitConfigError =>
+                      err instanceof StateTraitConverge.StateTraitConfigError,
+                  )
+    
+                  if (configError) {
+                    const fields = configError.fields ?? []
                     yield* Debug.record({
                       type: 'diagnostic',
                       moduleId: optionsModuleId,
@@ -420,342 +523,241 @@ export const makeTransactionOps = <S>(args: {
                       txnSeq,
                       txnId,
                       trigger: origin,
-                      code: ASYNC_ESCAPE_DIAGNOSTIC_CODE,
+                      code: 'state_trait::config_error',
                       severity: 'error',
-                      message: ASYNC_ESCAPE_MESSAGE,
-                      hint: ASYNC_ESCAPE_HINT,
-                      kind: ASYNC_ESCAPE_KIND,
-                    })
-                  }
-
-                  // Interrupt without awaiting: uninterruptible async escapes must not block abort/next txn.
-                  yield* Fiber.interruptFork(bodyFiber)
-                  return yield* Effect.die(makeAsyncEscapeError())
-                }
-
-                const bodyExit = Option.getOrThrow(polled)
-                yield* Exit.match(bodyExit, {
-                  onFailure: (cause) => Effect.failCause(cause),
-                  onSuccess: () => Effect.void,
-                })
-
-                const stateTraitProgram = traitRuntime.getProgram()
-
-                // StateTrait: converge derived fields (computed/link, etc.) before commit to ensure 0/1 commit per window.
-                if (stateTraitProgram && txnContext.current) {
-                  const convergeConfig = yield* resolveTraitConvergeConfig()
-                  traitConvergeTimeSlicing.latestConvergeConfig = convergeConfig
-                  const timeSlicingConfig = convergeConfig.traitConvergeTimeSlicing
-                  const isDeferredFlushTxn = origin.kind === 'trait:deferred_flush'
-                  const hasDeferredSteps =
-                    stateTraitProgram.convergeExecIr != null &&
-                    stateTraitProgram.convergeExecIr.topoOrderDeferredInt32.length > 0
-                  const canTimeSlice = timeSlicingConfig.enabled === true && hasDeferredSteps
-                  const schedulingScope: StateTraitConverge.ConvergeContext<any>['schedulingScope'] = isDeferredFlushTxn
-                    ? 'deferred'
-                    : canTimeSlice
-                      ? 'immediate'
-                      : 'all'
-
-                  const deferredSlice = isDeferredFlushTxn ? readDeferredFlushSlice(origin.details) : undefined
-                  const deferredScopeStepIds =
-                    deferredSlice && stateTraitProgram.convergeExecIr
-                      ? stateTraitProgram.convergeExecIr.topoOrderDeferredInt32.subarray(
-                          deferredSlice.start,
-                          deferredSlice.end,
-                        )
-                      : undefined
-
-                  const convergeExit = yield* Effect.exit(
-                    StateTraitConverge.convergeInTransaction(
-                      stateTraitProgram as any,
-                      {
-                        moduleId: optionsModuleId,
-                        instanceId,
-                        txnSeq,
-                        txnId,
-                        configScope: convergeConfig.configScope,
-                        now: txnContext.config.now,
-                        budgetMs: convergeConfig.traitConvergeBudgetMs,
-                        decisionBudgetMs: convergeConfig.traitConvergeDecisionBudgetMs,
-                        requestedMode: deferredScopeStepIds ? 'full' : convergeConfig.traitConvergeMode,
-                        schedulingScope,
-                        ...(deferredScopeStepIds ? { schedulingScopeStepIds: deferredScopeStepIds } : {}),
-                        dirtyAllReason: (txnContext.current as any)?.dirtyAllReason,
-                        dirtyPaths: txnContext.current?.dirtyPathIds,
-                        dirtyPathsKeyHash: (txnContext.current as any)?.dirtyPathIdsKeyHash,
-                        dirtyPathsKeySize: (txnContext.current as any)?.dirtyPathIdsKeySize,
-                        allowInPlaceDraft:
-                          txnContext.current != null &&
-                          !Object.is(txnContext.current.draft, txnContext.current.baseState),
-	                        planCache: traitRuntime.getConvergePlanCache(),
-	                        generation: traitRuntime.getConvergeGeneration(),
-	                        cacheMissReasonHint: traitRuntime.getPendingCacheMissReason(),
-	                        cacheMissReasonHintCount: traitRuntime.getPendingCacheMissReasonCount(),
-	                        getDraft: () => txnContext.current!.draft as any,
-	                        setDraft: (next) => {
-	                          StateTransaction.updateDraft(txnContext, next as any)
-	                        },
-                        recordPatch: (path, reason, from, to, traitNodeId, stepId) =>
-                          recordStatePatch(path, reason, from, to, traitNodeId, stepId),
-                      } as StateTraitConverge.ConvergeContext<any>,
-                    ),
-                  )
-
-                  if (traitRuntime.getPendingCacheMissReason() === 'generation_bumped') {
-                    traitRuntime.setPendingCacheMissReason(undefined)
-                  }
-
-                  if (convergeExit._tag === 'Failure') {
-                    const errors = [...Cause.failures(convergeExit.cause), ...Cause.defects(convergeExit.cause)]
-                    const configError = errors.find(
-                      (err): err is StateTraitConverge.StateTraitConfigError =>
-                        err instanceof StateTraitConverge.StateTraitConfigError,
-                    )
-
-                    if (configError) {
-                      const fields = configError.fields ?? []
-                      yield* Debug.record({
-                        type: 'diagnostic',
-                        moduleId: optionsModuleId,
-                        instanceId,
-                        txnSeq,
-                        txnId,
-                        trigger: origin,
-                        code: 'state_trait::config_error',
-                        severity: 'error',
-                        message: configError.message,
-                        hint:
-                          configError.code === 'CYCLE_DETECTED'
-                            ? `computed/link graph has a cycle: ${fields.join(', ')}`
-                            : `multiple writers detected for the same field: ${fields.join(', ')}`,
-                        kind: `state_trait_config_error:${configError.code}`,
-                      })
-                    }
-
-                    return yield* Effect.failCause(convergeExit.cause)
-                  }
-
-                  const outcome = convergeExit.value
-
-                  const dirtyAllReasonForDeferred: DirtyAllReason | undefined = (txnContext.current as any)?.dirtyAllReason
-                  const dirtyPathIdsForDeferred: ReadonlySet<StateTransaction.StatePatchPath> | undefined =
-                    canTimeSlice && !isDeferredFlushTxn && !dirtyAllReasonForDeferred
-                      ? txnContext.current.dirtyPathIds
-                      : undefined
-
-                  if (
-                    canTimeSlice &&
-                    !isDeferredFlushTxn &&
-                    outcome._tag !== 'Degraded' &&
-                    (dirtyAllReasonForDeferred != null ||
-                      (dirtyPathIdsForDeferred != null && dirtyPathIdsForDeferred.size > 0))
-                  ) {
-                    const nowMs = Date.now()
-                    traitConvergeTimeSlicing.firstPendingAtMs = traitConvergeTimeSlicing.firstPendingAtMs ?? nowMs
-                    traitConvergeTimeSlicing.lastTouchedAtMs = nowMs
-
-                    if (dirtyAllReasonForDeferred != null) {
-                      traitConvergeTimeSlicing.backlogDirtyAllReason = dirtyAllReasonForDeferred
-                      traitConvergeTimeSlicing.backlogDirtyPaths.clear()
-                    } else if (!traitConvergeTimeSlicing.backlogDirtyAllReason && dirtyPathIdsForDeferred) {
-                      for (const p of dirtyPathIdsForDeferred) {
-                        traitConvergeTimeSlicing.backlogDirtyPaths.add(p)
-                      }
-                    }
-
-                    const runtimeLabel = yield* FiberRef.get(Debug.currentRuntimeLabel)
-                    const diagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
-                    const debugSinks = yield* FiberRef.get(Debug.currentDebugSinks)
-                    const overridesOpt = yield* Effect.serviceOption(StateTransactionOverridesTag)
-                    const overrides = Option.isSome(overridesOpt) ? overridesOpt.value : undefined
-
-                    traitConvergeTimeSlicing.capturedContext = {
-                      runtimeLabel,
-                      diagnosticsLevel,
-                      debugSinks,
-                      overrides,
-                    }
-
-                    yield* Queue.offer(traitConvergeTimeSlicing.signal, undefined)
-                  }
-
-                  traitSummary = outcome.decision ? { converge: outcome.decision } : undefined
-
-                  if (outcome._tag === 'Degraded') {
-                    yield* Debug.record({
-                      type: 'diagnostic',
-                      moduleId: optionsModuleId,
-                      instanceId,
-                      txnSeq,
-                      code: outcome.reason === 'budget_exceeded' ? 'trait::budget_exceeded' : 'trait::runtime_error',
-                      severity: 'warning',
-                      message:
-                        outcome.reason === 'budget_exceeded'
-                          ? 'Trait converge exceeded budget; derived fields are frozen for this operation window.'
-                          : 'Trait converge failed at runtime; derived fields are frozen for this operation window.',
+                      message: configError.message,
                       hint:
-                        outcome.reason === 'budget_exceeded'
-                          ? 'Check whether computed/check contains heavy computation; move it to source/task or split into cacheable derived pieces.'
-                          : 'Check computed/link/check for invalid inputs or impure logic; add equals or guards if needed.',
-                      kind: 'trait_degraded',
+                        configError.code === 'CYCLE_DETECTED'
+                          ? `computed/link graph has a cycle: ${fields.join(', ')}`
+                          : `multiple writers detected for the same field: ${fields.join(', ')}`,
+                      kind: `state_trait_config_error:${configError.code}`,
                     })
                   }
+    
+                  return yield* Effect.failCause(convergeExit.cause)
                 }
-
-                // TraitLifecycle scoped validate: flush after converge so validation reads the latest derived state.
-                if (stateTraitProgram && txnContext.current) {
-                  const dedupeScopedValidateRequests = (
-                    requests: ReadonlyArray<StateTraitValidate.ScopedValidateRequest>,
-                  ): ReadonlyArray<StateTraitValidate.ScopedValidateRequest> => {
-                    if (requests.length <= 1) return requests
-
-                    const priorities: Record<StateTraitValidate.ValidateMode, number> = {
-                      submit: 4,
-                      blur: 3,
-                      valueChange: 2,
-                      manual: 1,
+    
+                const outcome = convergeExit.value
+    
+                const dirtyAllReasonForDeferred: DirtyAllReason | undefined = (txnContext.current as any)?.dirtyAllReason
+                const dirtyPathIdsForDeferred: ReadonlySet<StateTransaction.StatePatchPath> | undefined =
+                  canTimeSlice && !isDeferredFlushTxn && !dirtyAllReasonForDeferred
+                    ? txnContext.current.dirtyPathIds
+                    : undefined
+    
+                if (
+                  canTimeSlice &&
+                  !isDeferredFlushTxn &&
+                  outcome._tag !== 'Degraded' &&
+                  (dirtyAllReasonForDeferred != null ||
+                    (dirtyPathIdsForDeferred != null && dirtyPathIdsForDeferred.size > 0))
+                ) {
+                  const nowMs = Date.now()
+                  traitConvergeTimeSlicing.firstPendingAtMs = traitConvergeTimeSlicing.firstPendingAtMs ?? nowMs
+                  traitConvergeTimeSlicing.lastTouchedAtMs = nowMs
+    
+                  if (dirtyAllReasonForDeferred != null) {
+                    traitConvergeTimeSlicing.backlogDirtyAllReason = dirtyAllReasonForDeferred
+                    traitConvergeTimeSlicing.backlogDirtyPaths.clear()
+                  } else if (!traitConvergeTimeSlicing.backlogDirtyAllReason && dirtyPathIdsForDeferred) {
+                    for (const p of dirtyPathIdsForDeferred) {
+                      traitConvergeTimeSlicing.backlogDirtyPaths.add(p)
                     }
-
-                    let bestMode: StateTraitValidate.ValidateMode = 'manual'
-                    let bestP = priorities[bestMode]
-                    let hasRoot = false
-
-                    for (const r of requests) {
-                      const p = priorities[r.mode]
-                      if (p > bestP) {
-                        bestP = p
-                        bestMode = r.mode
-                      }
-                      if (r.target.kind === 'root') {
-                        hasRoot = true
-                      }
-                    }
-
-                    if (hasRoot) {
-                      return [{ mode: bestMode, target: { kind: 'root' } }]
-                    }
-
-                    const makeKey = (target: StateTraitValidate.ValidateTarget): string => {
-                      switch (target.kind) {
-                        case 'field':
-                          return `field:${target.path}`
-                        case 'list':
-                          return `list:${target.path}`
-                        case 'item':
-                          return `item:${target.path}:${target.index}:${target.field ?? ''}`
-                        case 'root':
-                          return 'root'
-                      }
-                    }
-
-                    const order: Array<string> = []
-                    const byKey = new Map<string, StateTraitValidate.ScopedValidateRequest>()
-
-                    for (const req of requests) {
-                      const key = makeKey(req.target)
-                      const existing = byKey.get(key)
-                      if (!existing) {
-                        byKey.set(key, req)
-                        order.push(key)
-                        continue
-                      }
-                      if (priorities[req.mode] > priorities[existing.mode]) {
-                        byKey.set(key, { ...existing, mode: req.mode })
-                      }
-                    }
-
-                    return order.map((k) => byKey.get(k)!).filter(Boolean)
                   }
-
-                  const pending = (txnContext.current as any).stateTraitValidateRequests as
-                    | ReadonlyArray<StateTraitValidate.ScopedValidateRequest>
-                    | undefined
-
-                  if (pending && pending.length > 0) {
-                    const deduped = dedupeScopedValidateRequests(pending)
-                    yield* StateTraitValidate.validateInTransaction(
-	                      stateTraitProgram as any,
-	                      {
-	                        moduleId: optionsModuleId,
-	                        instanceId,
-	                        txnSeq: txnContext.current!.txnSeq,
-	                        txnId: txnContext.current!.txnId,
-	                        origin: txnContext.current!.origin,
-	                        rowIdStore: traitRuntime.rowIdStore,
-	                        listConfigs: traitRuntime.getListConfigs(),
-	                        txnDirtyEvidence: StateTransaction.readDirtyEvidence(txnContext),
-	                        getDraft: () => txnContext.current!.draft as any,
-	                        setDraft: (next) => {
-	                          StateTransaction.updateDraft(txnContext, next as any)
-	                        },
-                        recordPatch: (path, reason, from, to, traitNodeId, stepId) =>
-                          recordStatePatch(path, reason, from, to, traitNodeId, stepId),
-                      } as StateTraitValidate.ValidateContext<any>,
-                      deduped,
-                    )
+    
+                  const runtimeLabel = yield* Effect.service(Debug.currentRuntimeLabel).pipe(Effect.orDie)
+                  const diagnosticsLevel = yield* Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie)
+                  const debugSinks = yield* Effect.service(Debug.currentDebugSinks).pipe(Effect.orDie)
+                  const overridesOpt = yield* Effect.serviceOption(StateTransactionOverridesTag)
+                  const overrides = Option.isSome(overridesOpt) ? overridesOpt.value : undefined
+    
+                  traitConvergeTimeSlicing.capturedContext = {
+                    runtimeLabel,
+                    diagnosticsLevel,
+                    debugSinks,
+                    overrides,
                   }
+    
+                  yield* traitConvergeTimeSlicing.ensureWorkerStarted()
                 }
-
-                // If a source key becomes empty, synchronously recycle it back to idle (avoid tearing / ghost data).
-                if (stateTraitProgram && txnContext.current) {
-                  yield* StateTraitSource.syncIdleInTransaction(
-                    stateTraitProgram as any,
-                    {
-                      moduleId: optionsModuleId,
-                      instanceId,
-                      getDraft: () => txnContext.current!.draft as any,
-                      setDraft: (next) => {
-                        StateTransaction.updateDraft(txnContext, next as any)
-                      },
+    
+                traitSummary = outcome.decision ? { converge: outcome.decision } : undefined
+    
+                if (outcome._tag === 'Degraded') {
+                  yield* Debug.record({
+                    type: 'diagnostic',
+                    moduleId: optionsModuleId,
+                    instanceId,
+                    txnSeq,
+                    code: outcome.reason === 'budget_exceeded' ? 'trait::budget_exceeded' : 'trait::runtime_error',
+                    severity: 'warning',
+                    message:
+                      outcome.reason === 'budget_exceeded'
+                        ? 'Trait converge exceeded budget; derived fields are frozen for this operation window.'
+                        : 'Trait converge failed at runtime; derived fields are frozen for this operation window.',
+                    hint:
+                      outcome.reason === 'budget_exceeded'
+                        ? 'Check whether computed/check contains heavy computation; move it to source/task or split into cacheable derived pieces.'
+                        : 'Check computed/link/check for invalid inputs or impure logic; add equals or guards if needed.',
+                    kind: 'trait_degraded',
+                  })
+                }
+              }
+    
+              // TraitLifecycle scoped validate: flush after converge so validation reads the latest derived state.
+              if (stateTraitProgram && txnContext.current) {
+                const dedupeScopedValidateRequests = (
+                  requests: ReadonlyArray<StateTraitValidate.ScopedValidateRequest>,
+                ): ReadonlyArray<StateTraitValidate.ScopedValidateRequest> => {
+                  if (requests.length <= 1) return requests
+    
+                  const priorities: Record<StateTraitValidate.ValidateMode, number> = {
+                    submit: 4,
+                    blur: 3,
+                    valueChange: 2,
+                    manual: 1,
+                  }
+    
+                  let bestMode: StateTraitValidate.ValidateMode = 'manual'
+                  let bestP = priorities[bestMode]
+                  let hasRoot = false
+    
+                  for (const r of requests) {
+                    const p = priorities[r.mode]
+                    if (p > bestP) {
+                      bestP = p
+                      bestMode = r.mode
+                    }
+                    if (r.target.kind === 'root') {
+                      hasRoot = true
+                    }
+                  }
+    
+                  if (hasRoot) {
+                    return [{ mode: bestMode, target: { kind: 'root' } }]
+                  }
+    
+                  const makeKey = (target: StateTraitValidate.ValidateTarget): string => {
+                    switch (target.kind) {
+                      case 'field':
+                        return `field:${target.path}`
+                      case 'list':
+                        return `list:${target.path}`
+                      case 'item':
+                        return `item:${target.path}:${target.index}:${target.field ?? ''}`
+                      case 'root':
+                        return 'root'
+                    }
+                  }
+    
+                  const order: Array<string> = []
+                  const byKey = new Map<string, StateTraitValidate.ScopedValidateRequest>()
+    
+                  for (const req of requests) {
+                    const key = makeKey(req.target)
+                    const existing = byKey.get(key)
+                    if (!existing) {
+                      byKey.set(key, req)
+                      order.push(key)
+                      continue
+                    }
+                    if (priorities[req.mode] > priorities[existing.mode]) {
+                      byKey.set(key, { ...existing, mode: req.mode })
+                    }
+                  }
+    
+                  return order.map((k) => byKey.get(k)!).filter(Boolean)
+                }
+    
+                const pending = (txnContext.current as any).stateTraitValidateRequests as
+                  | ReadonlyArray<StateTraitValidate.ScopedValidateRequest>
+                  | undefined
+    
+                if (pending && pending.length > 0) {
+                  const deduped = dedupeScopedValidateRequests(pending)
+                  yield* StateTraitValidate.validateInTransaction(
+    	                      stateTraitProgram as any,
+    	                      {
+    	                        moduleId: optionsModuleId,
+    	                        instanceId,
+    	                        txnSeq: txnContext.current!.txnSeq,
+    	                        txnId: txnContext.current!.txnId,
+    	                        origin: txnContext.current!.origin,
+    	                        rowIdStore: traitRuntime.rowIdStore,
+    	                        listConfigs: traitRuntime.getListConfigs(),
+    	                        txnDirtyEvidence: StateTransaction.readDirtyEvidence(txnContext),
+    	                        getDraft: () => txnContext.current!.draft as any,
+    	                        setDraft: (next) => {
+    	                          StateTransaction.updateDraft(txnContext, next as any)
+    	                        },
                       recordPatch: (path, reason, from, to, traitNodeId, stepId) =>
                         recordStatePatch(path, reason, from, to, traitNodeId, stepId),
-                    } as StateTraitSource.SourceSyncContext<any>,
+                    } as StateTraitValidate.ValidateContext<any>,
+                    deduped,
                   )
                 }
-
-                // Commit the transaction: write to the underlying state once, and emit a single aggregated state:update event.
-                yield* runOperation(
-                  'state',
-                  'state:update',
-                  { meta: { moduleId: optionsModuleId, instanceId } },
-                  Effect.gen(function* () {
-                    const replayEvent = (txnContext.current as any)?.lastReplayEvent as unknown
-                    const commitMode = ((txnContext.current as any)?.commitMode ?? 'normal') as StateCommitMode
-                    const priority = ((txnContext.current as any)?.priority ?? 'normal') as StateCommitPriority
-                    const fieldPathIdRegistry = txnContext.current?.fieldPathIdRegistry
-                    const dirtyAllSetStateHint =
-                      txnContext.current != null && (txnContext.current as any)[DIRTY_ALL_SET_STATE_HINT] === true
-                    const commitResult = yield* StateTransaction.commitWithState(txnContext, stateRef)
-
-                    if (commitResult) {
-                      yield* runPostCommitPhases({
-                        txn: commitResult.transaction,
-                        nextState: commitResult.finalState,
-                        replayEvent,
-                        commitMode,
-                        priority,
-                        fieldPathIdRegistry,
-                        dirtyAllSetStateHint,
-                        traitSummary,
-                      })
-                    }
-                  }),
+              }
+    
+              // If a source key becomes empty, synchronously recycle it back to idle (avoid tearing / ghost data).
+              if (stateTraitProgram && txnContext.current) {
+                yield* StateTraitSource.syncIdleInTransaction(
+                  stateTraitProgram as any,
+                  {
+                    moduleId: optionsModuleId,
+                    instanceId,
+                    getDraft: () => txnContext.current!.draft as any,
+                    setDraft: (next) => {
+                      StateTransaction.updateDraft(txnContext, next as any)
+                    },
+                    recordPatch: (path, reason, from, to, traitNodeId, stepId) =>
+                      recordStatePatch(path, reason, from, to, traitNodeId, stepId),
+                  } as StateTraitSource.SourceSyncContext<any>,
                 )
-              }),
-            ),
+              }
+    
+              // Commit the transaction: write to the underlying state once, and emit a single aggregated state:update event.
+              yield* runOperation(
+                'state',
+                'state:update',
+                { meta: { moduleId: optionsModuleId, instanceId } },
+                Effect.gen(function* () {
+                  const replayEvent = (txnContext.current as any)?.lastReplayEvent as unknown
+                  const commitMode = ((txnContext.current as any)?.commitMode ?? 'normal') as StateCommitMode
+                  const priority = ((txnContext.current as any)?.priority ?? 'normal') as StateCommitPriority
+                  const fieldPathIdRegistry = txnContext.current?.fieldPathIdRegistry
+                  const dirtyAllSetStateHint =
+                    txnContext.current != null && (txnContext.current as any)[DIRTY_ALL_SET_STATE_HINT] === true
+                  const commitResult = yield* StateTransaction.commitWithState(txnContext, stateRef)
+    
+                  if (commitResult) {
+                    yield* runPostCommitPhases({
+                      txn: commitResult.transaction,
+                      nextState: commitResult.finalState,
+                      replayEvent,
+                      commitMode,
+                      priority,
+                      fieldPathIdRegistry,
+                      dirtyAllSetStateHint,
+                      traitSummary,
+                    })
+                  }
+                }),
+              )
+            }),
+            Debug.currentTxnId,
+            txnId,
+          ),
           )
         } finally {
-          TaskRunner.exitSyncTransactionShadow()
-        }
-
-        if (exit!._tag === 'Failure') {
-          // Always clear the transaction context on failure to avoid leaking into subsequent entrypoints.
-          StateTransaction.abort(txnContext)
-          return yield* Effect.failCause(exit!.cause)
-        }
-      }),
-    )
+        TaskRunner.exitSyncTransactionShadow()
+      }
+    
+      if (exit!._tag === 'Failure') {
+        // Always clear the transaction context on failure to avoid leaking into subsequent entrypoints.
+        StateTransaction.abort(txnContext)
+        return yield* Effect.failCause(exit!.cause)
+      }
+    }), TaskRunner.inSyncTransactionFiber, true)
 
   /**
    * setStateInternal：
@@ -778,7 +780,7 @@ export const makeTransactionOps = <S>(args: {
     stepId?: number,
   ): Effect.Effect<void> =>
     Effect.gen(function* () {
-      const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
+      const inTxn = yield* Effect.service(TaskRunner.inSyncTransactionFiber).pipe(Effect.orDie)
       if (inTxn && txnContext.current) {
         const current: any = txnContext.current
 

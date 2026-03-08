@@ -1,18 +1,4 @@
-import {
-  Cause,
-  Context,
-  Deferred,
-  Effect,
-  Fiber,
-  FiberRef,
-  Layer,
-  Option,
-  PubSub,
-  Queue,
-  Ref,
-  Scope,
-  Stream,
-} from 'effect'
+import { Cause, Deferred, Effect, Fiber, Layer, Option, PubSub, Queue, Ref, ServiceMap, Scope, Stream } from 'effect'
 import * as Debug from '../DebugSink.js'
 import { toSerializableErrorSummary } from '../errorSummary.js'
 import * as TaskRunner from '../TaskRunner.js'
@@ -25,6 +11,7 @@ import * as Meta from './meta.js'
 import { resolveSchemaAst } from './selectorSchema.js'
 import { compileProcessTriggerStartPlan, type ProcessTriggerStartPlan } from './triggerStartPlan.js'
 import { makeNonPlatformTriggerStreamFactory } from './triggerStreams.js'
+import { moduleRuntimeTagFromModuleId } from '../../../serviceId.js'
 import type {
   ProcessControlRequest,
   ProcessDefinition,
@@ -54,7 +41,7 @@ type InstallationState = {
   }
   readonly scopeKey: string
   readonly definition: ProcessDefinition
-  env: Context.Context<any>
+  env: ServiceMap.ServiceMap<any>
   forkScope: Scope.Scope
   readonly process: Effect.Effect<void, any, unknown>
   readonly kind: Meta.ProcessMeta['kind']
@@ -80,7 +67,7 @@ type InstanceState = {
   status: ProcessInstanceStatus
   nextEventSeq: number
   nextTriggerSeq: number
-  fiber?: Fiber.RuntimeFiber<unknown, unknown>
+  fiber?: Fiber.Fiber<unknown, unknown>
 }
 
 export interface ProcessRuntime {
@@ -104,11 +91,16 @@ export interface ProcessRuntime {
   readonly getEventsSnapshot: () => Effect.Effect<ReadonlyArray<ProcessEvent>>
 }
 
-export class ProcessRuntimeTag extends Context.Tag('@logixjs/core/ProcessRuntime')<ProcessRuntimeTag, ProcessRuntime>() {}
+export class ProcessRuntimeTag extends ServiceMap.Service<ProcessRuntimeTag, ProcessRuntime>()('@logixjs/core/ProcessRuntime') {}
 
-const currentProcessTrigger = FiberRef.unsafeMake<ProcessTrigger | undefined>(undefined)
-const currentProcessEventBudget = FiberRef.unsafeMake<Ref.Ref<ProcessEvents.ProcessRunEventBudgetState> | undefined>(
-  undefined,
+const currentProcessTrigger = ServiceMap.Reference<ProcessTrigger | undefined>('@logixjs/core/ProcessRuntime.currentTrigger', {
+  defaultValue: () => undefined,
+})
+const currentProcessEventBudget = ServiceMap.Reference<Ref.Ref<ProcessEvents.ProcessRunEventBudgetState> | undefined>(
+  '@logixjs/core/ProcessRuntime.currentEventBudget',
+  {
+    defaultValue: () => undefined,
+  },
 )
 const RUNTIME_BOOT_EVENT = 'runtime:boot' as const
 const PROCESS_EVENT_HISTORY_MAX_CAPACITY = 0xffff_fffe
@@ -169,10 +161,7 @@ const makeProcessTriggerChainKernel = (args: {
 
     return Effect.gen(function* () {
       const budgetRef = yield* Ref.make(args.makeBudgetState(trigger))
-      return yield* Effect.locally(
-        currentProcessEventBudget,
-        budgetRef,
-      )(args.emitTriggerEvent(trigger, 'info').pipe(Effect.zipRight(args.runWithoutChainBudget(trigger, fatal))))
+      return yield* Effect.provideService(args.emitTriggerEvent(trigger, 'info').pipe(Effect.flatMap(() => args.runWithoutChainBudget(trigger, fatal))), currentProcessEventBudget, budgetRef)
     })
   }
 
@@ -185,21 +174,25 @@ const makeProcessTriggerChainKernel = (args: {
   }
 }
 
-const shouldNoopDueToSyncTxn = (scope: ProcessScope, kind: string): Effect.Effect<boolean> => {
+const shouldNoopDueToSyncTxn = (scope: ProcessScope, kind: string): Effect.Effect<boolean, never, never> => {
   const moduleId = scope.type === 'moduleInstance' ? scope.moduleId : undefined
   const instanceId = scope.type === 'moduleInstance' ? scope.instanceId : undefined
-  return TaskRunner.shouldNoopInSyncTransactionFiber({
-    moduleId,
-    instanceId,
-    code: 'process::invalid_usage',
-    severity: 'error',
-    message:
-      'ProcessRuntime scheduling is not allowed inside a synchronous StateTransaction body (it may deadlock the txnQueue).',
-    hint:
-      "Trigger/schedule Process outside the transaction window (e.g. in a watcher's run section or a separate fiber); " +
-      'do not trigger Process directly inside a reducer / synchronous transaction body.',
-    kind,
-  })
+  return Effect.provideService(
+    TaskRunner.shouldNoopInSyncTransactionFiber({
+      moduleId,
+      instanceId,
+      code: 'process::invalid_usage',
+      severity: 'error',
+      message:
+        'ProcessRuntime scheduling is not allowed inside a synchronous StateTransaction body (it may deadlock the txnQueue).',
+      hint:
+        "Trigger/schedule Process outside the transaction window (e.g. in a watcher's run section or a separate fiber); " +
+        'do not trigger Process directly inside a reducer / synchronous transaction body.',
+      kind,
+    }),
+    TaskRunner.inSyncTransactionFiber,
+    false,
+  )
 }
 
 const resolveRuntimeStateSchemaAst = (runtime: unknown): ReturnType<typeof resolveSchemaAst> => {
@@ -291,15 +284,6 @@ export const make = (options?: {
     const installations = new Map<InstallationKey, InstallationState>()
     const installationsByPlatformEvent = new Map<string, Set<InstallationKey>>()
     const instances = new Map<ProcessInstanceId, InstanceState>()
-    const moduleRuntimeTagCache = new Map<string, Context.Tag<any, any>>()
-
-    const resolveModuleRuntimeTag = (moduleId: string): Context.Tag<any, any> => {
-      const cached = moduleRuntimeTagCache.get(moduleId)
-      if (cached) return cached
-      const created = Context.Tag(`@logixjs/Module/${moduleId}`)() as Context.Tag<any, any>
-      moduleRuntimeTagCache.set(moduleId, created)
-      return created
-    }
 
     const eventHistoryCapacity = maxEventHistory > 0 ? maxEventHistory : 0
     const eventHistoryRing: ProcessEvent[] = []
@@ -344,7 +328,7 @@ export const make = (options?: {
 
     const recordDebugEvent = (event: ProcessEvent): Effect.Effect<void> =>
       Effect.gen(function* () {
-        const diagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
+        const diagnosticsLevel = yield* Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie)
 
         // diagnostics=off: avoid entering Debug sinks (near-zero cost); error cases are exposed via diagnostic events.
         if (diagnosticsLevel === 'off') {
@@ -383,7 +367,7 @@ export const make = (options?: {
 
     const emit = (event: ProcessEvent): Effect.Effect<void> =>
       Effect.gen(function* () {
-        const budgetRef = yield* FiberRef.get(currentProcessEventBudget)
+        const budgetRef = yield* Effect.service(currentProcessEventBudget).pipe(Effect.orDie)
         if (budgetRef) {
           const decision = yield* Ref.modify(budgetRef, (state) => {
             const [nextDecision, nextState] = ProcessEvents.applyProcessRunEventBudget(state, event)
@@ -433,8 +417,8 @@ export const make = (options?: {
       for (const dep of requires) {
         if (typeof dep !== 'string' || dep.length === 0) continue
 
-        const tag = resolveModuleRuntimeTag(dep)
-        const found = Context.getOption(installation.env, tag)
+        const tag = moduleRuntimeTagFromModuleId(dep)
+        const found = ServiceMap.getOption(installation.env, tag)
         if (Option.isNone(found)) {
           missing.push(dep)
         }
@@ -444,13 +428,13 @@ export const make = (options?: {
 
     const buildModuleRuntimeRegistry = (
       installation: InstallationState,
-      env: Context.Context<any>,
+  env: ServiceMap.ServiceMap<any>,
     ): ReadonlyMap<string, unknown> => {
       const registry = new Map<string, unknown>()
       for (const moduleId of installation.startPlan.dependencyModuleIds) {
         if (typeof moduleId !== 'string' || moduleId.length === 0 || registry.has(moduleId)) continue
-        const tag = resolveModuleRuntimeTag(moduleId)
-        const found = Context.getOption(env, tag)
+        const tag = moduleRuntimeTagFromModuleId(moduleId)
+        const found = ServiceMap.getOption(env, tag)
         if (Option.isSome(found)) {
           registry.set(moduleId, found.value)
         }
@@ -507,7 +491,7 @@ export const make = (options?: {
         }
       })
 
-    const startInstallation: (installationKey: InstallationKey) => Effect.Effect<void> = (installationKey) =>
+    const startInstallation: (installationKey: InstallationKey) => Effect.Effect<void, never, never> = (installationKey) =>
       Effect.gen(function* () {
         const installation = installations.get(installationKey)
         if (!installation) return
@@ -558,14 +542,14 @@ export const make = (options?: {
         // - Do not double-register on runtimeScope; the runtime finalizer already stops all instances.
         if (installation.forkScope !== runtimeScope) {
           yield* Scope.addFinalizer(
-            installation.forkScope as Scope.CloseableScope,
+            installation.forkScope as Scope.Closeable,
             Effect.suspend(() => {
               const status = instanceState.status.status
               if (status === 'stopped' || status === 'failed' || status === 'stopping') {
                 return Effect.void
               }
               return stopInstance(instanceState, 'scopeDisposed')
-            }).pipe(Effect.catchAllCause(() => Effect.void)),
+            }).pipe(Effect.catchCause(() => Effect.void)),
           )
         }
 
@@ -629,7 +613,7 @@ export const make = (options?: {
         const baseEnv = installation.env
         const moduleRuntimeRegistry = buildModuleRuntimeRegistry(installation, baseEnv)
 
-        const makeWrappedEnv = (): Context.Context<any> => {
+        const makeWrappedEnv = (): ServiceMap.ServiceMap<any> => {
           if (!shouldRecordChainEvents) {
             return baseEnv
           }
@@ -643,14 +627,14 @@ export const make = (options?: {
 
             for (const moduleId of requires) {
               if (typeof moduleId !== 'string' || moduleId.length === 0) continue
-            const tag = resolveModuleRuntimeTag(moduleId)
-            const found = Context.getOption(baseEnv, tag)
+            const tag = moduleRuntimeTagFromModuleId(moduleId)
+            const found = ServiceMap.getOption(baseEnv, tag)
             if (Option.isNone(found)) continue
             const runtime = found.value as any
 
             const recordDispatch = (action: unknown) =>
               Effect.gen(function* () {
-                const trigger = yield* FiberRef.get(currentProcessTrigger)
+                const trigger = yield* Effect.service(currentProcessTrigger).pipe(Effect.orDie)
                 if (!trigger) return
 
                 const actionId = actionIdFromUnknown(action) ?? 'unknown'
@@ -677,7 +661,7 @@ export const make = (options?: {
                   .pipe(Effect.tap(() => Effect.forEach(actions, recordDispatch, { discard: true }))),
             }
 
-            nextEnv = Context.add(tag, wrapped)(nextEnv)
+            nextEnv = ServiceMap.add(nextEnv, tag, wrapped)
           }
 
           return nextEnv
@@ -725,22 +709,17 @@ export const make = (options?: {
         })
 
         const makeRun = (trigger: ProcessTrigger, fatal: Deferred.Deferred<Cause.Cause<any>>): Effect.Effect<void> =>
-          Effect.locally(
-            currentProcessTrigger,
-            trigger,
-          )(
-            providedProcess.pipe(
-              Effect.catchAllCause((cause) => {
-                if (Cause.isInterruptedOnly(cause)) {
-                  return Effect.void
-                }
-                return Deferred.succeed(fatal, cause).pipe(
-                  Effect.asVoid,
-                  Effect.catchAll(() => Effect.void),
-                )
-              }),
-            ),
-          )
+          Effect.provideService(providedProcess.pipe(
+            Effect.catchCause((cause) => {
+              if (Cause.hasInterruptsOnly(cause)) {
+                return Effect.void
+              }
+              return Deferred.succeed(fatal, cause).pipe(
+                Effect.asVoid,
+                Effect.catch(() => Effect.void),
+              )
+            }),
+          ), currentProcessTrigger, trigger)
 
         const emitTriggerEvent = (trigger: ProcessTrigger, severity: ProcessEvent['severity']): Effect.Effect<void> => {
           if (!shouldRecordChainEvents) {
@@ -797,7 +776,7 @@ export const make = (options?: {
             ].join('\n')
             return Deferred.succeed(fatal, Cause.fail(err)).pipe(
               Effect.asVoid,
-              Effect.catchAll(() => Effect.void),
+              Effect.catch(() => Effect.void),
             )
           }
 
@@ -818,11 +797,11 @@ export const make = (options?: {
           // We rely on the fiber reaching "Suspended" (typically blocked on a queue take) as a proxy that the
           // subscription has been established.
           for (let i = 0; i < 64; i++) {
-            const status = yield* Fiber.status(runnerFiber)
-            if (status._tag === 'Suspended' || status._tag === 'Done') {
+            const exitOpt = yield* Fiber.await(runnerFiber).pipe(Effect.timeoutOption(0))
+            if (Option.isSome(exitOpt)) {
               break
             }
-            yield* Effect.yieldNow()
+            yield* Effect.yieldNow
           }
           yield* markStreamReady
 
@@ -835,22 +814,16 @@ export const make = (options?: {
           return yield* Effect.failCause(cause)
         })
 
-        const fiber = yield* Effect.forkIn(installation.forkScope)(
-          Effect.locally(TaskRunner.inSyncTransactionFiber, false)(
-            Effect.scoped(instanceProgram).pipe(
-              // If the instance fails early (e.g. invalid trigger spec), still unblock install/start.
-              Effect.ensuring(markStreamReady),
-              Effect.catchAllCause((cause) =>
-                Effect.gen(function* () {
-                // Interruptions (typically from scope dispose / manual stop) should not be treated as process failures.
-                // Otherwise we emit process:error/diagnostic during scope shutdown and may deadlock disposal.
-                if (Cause.isInterruptedOnly(cause)) {
-                  // If stopInstance already advanced the status to stopping, stopInstance owns the stop event and final state.
+        const processFiberEffect = Effect.provideService(
+          Effect.scoped(instanceProgram).pipe(
+            Effect.ensuring(markStreamReady),
+            Effect.catchCause((cause) =>
+              Effect.gen(function* () {
+                if (Cause.hasInterruptsOnly(cause)) {
                   if (instanceState.status.status === 'stopping') {
                     return
                   }
 
-                  // Otherwise treat as a natural stop due to scope disposal (e.g. moduleInstance scope closing).
                   instanceState.status = {
                     ...instanceState.status,
                     status: 'stopped',
@@ -868,17 +841,18 @@ export const make = (options?: {
                     }),
                   )
 
-                  const installation = installations.get(installationKey)
-                  if (installation?.pendingStart) {
-                    installation.pendingStart = undefined
+                  const pendingInstallation = installations.get(installationKey)
+                  if (pendingInstallation?.pendingStart) {
+                    pendingInstallation.pendingStart = undefined
                     yield* startInstallation(installationKey)
                   }
                   return
                 }
 
-                const primary = Option.getOrElse(Cause.failureOption(cause), () =>
-                  Option.getOrElse(Cause.dieOption(cause), () => cause),
-                )
+                const primary = Option.getOrElse(Cause.findErrorOption(cause), () => {
+                  const defects = cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)
+                  return defects[0] ?? cause
+                })
                 const summary = toSerializableErrorSummary(primary)
                 const error: SerializableErrorSummary = summary.errorSummary as any
 
@@ -906,7 +880,6 @@ export const make = (options?: {
                 installation.supervision = decision.nextState
 
                 if (decision.decision === 'restart') {
-                  // supervise: controlled restart (runSeq increments) and emit a restart event.
                   yield* emit({
                     type: 'process:restart',
                     identity,
@@ -925,13 +898,16 @@ export const make = (options?: {
                     `processId=${installation.identity.processId} scopeKey=${installation.scopeKey} failures=${decision.withinWindowFailures} maxRestarts=${decision.maxRestarts}`,
                   )
                 }
-                }),
-              ),
+              }),
             ),
           ),
+          TaskRunner.inSyncTransactionFiber,
+          false,
         )
 
-        instanceState.fiber = fiber as Fiber.RuntimeFiber<unknown, unknown>
+        const fiber = yield* Effect.forkIn(processFiberEffect, installation.forkScope)
+
+        instanceState.fiber = fiber as Fiber.Fiber<unknown, unknown>
         instanceState.status = {
           ...instanceState.status,
           status: 'running',
@@ -956,7 +932,7 @@ export const make = (options?: {
           return undefined
         }
 
-        const env = yield* Effect.context<R>()
+        const env = yield* Effect.services<R>()
         const forkScopeOpt = yield* Effect.serviceOption(Scope.Scope)
         const forkScope = Option.isSome(forkScopeOpt) ? forkScopeOpt.value : runtimeScope
 
@@ -980,7 +956,7 @@ export const make = (options?: {
           const updated: InstallationState = {
             ...existing,
             definition: meta.definition,
-            env: env as Context.Context<any>,
+            env: env as ServiceMap.ServiceMap<any>,
             forkScope,
             process: derived as unknown as Effect.Effect<void, any, unknown>,
             kind: meta.kind ?? 'process',
@@ -1078,7 +1054,7 @@ export const make = (options?: {
           identity,
           scopeKey,
           definition: meta.definition,
-          env: env as Context.Context<any>,
+          env: env as ServiceMap.ServiceMap<any>,
           forkScope,
           process: derived as unknown as Effect.Effect<void, any, unknown>,
           kind: meta.kind ?? 'process',
@@ -1250,16 +1226,15 @@ export const make = (options?: {
           }
         }
       }).pipe(
-        Effect.catchAllCause((cause) =>
+        Effect.catchCause((cause) =>
           Effect.sync(() => {
             // Finalizers must not throw; best-effort logging only.
             if (isDevEnv()) {
               // eslint-disable-next-line no-console
               console.warn('[ProcessRuntime] finalizer failed', Cause.pretty(cause))
             }
-          }),
+          })),
         ),
-      ),
     )
 
     return {
@@ -1274,4 +1249,4 @@ export const make = (options?: {
   })
 
 export const layer = (options?: { readonly maxEventHistory?: number }): Layer.Layer<ProcessRuntimeTag, never, never> =>
-  Layer.scoped(ProcessRuntimeTag, make(options))
+  Layer.effect(ProcessRuntimeTag, make(options))

@@ -121,12 +121,12 @@ export const makeNonPlatformTriggerStreamFactory = (options: TriggerStreamFactor
 
   const makeTimerTriggerStream = (spec: TimerTriggerSpec): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>
     Effect.gen(function* () {
-      const interval = Duration.decodeUnknown(spec.timerId)
-      if (Option.isNone(interval)) {
+      const interval = Duration.fromInput(spec.timerId as Duration.Input)
+      if (!interval) {
         return yield* Effect.fail(makeInvalidTimerIdError(spec.timerId))
       }
 
-      return Stream.tick(interval.value).pipe(
+      return Stream.tick(interval).pipe(
         Stream.map(
           () =>
             ({

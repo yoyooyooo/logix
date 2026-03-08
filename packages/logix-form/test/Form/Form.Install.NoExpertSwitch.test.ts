@@ -1,11 +1,10 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer } from 'effect'
 import * as Logix from '@logixjs/core'
 import { makeFormModule } from '../fixtures/listScopeCheck.js'
 
 describe('Form.install (no expert switch)', () => {
-  it.scoped('onChange should refresh list-scope checks without listValidateOnChange', () =>
+  it.effect('onChange should refresh list-scope checks without listValidateOnChange', () =>
     Effect.gen(function* () {
       const form = makeFormModule({
         rowCount: 3,

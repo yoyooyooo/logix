@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react'
-import { Layer, ManagedRuntime, Effect, Cause, FiberRef, Context, Scope } from 'effect'
+import { Cause, Effect, Layer, ManagedRuntime, Scope, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 import { RuntimeContext, ReactRuntimeContextValue } from './ReactContext.js'
 import { DEFAULT_CONFIG_SNAPSHOT, ReactRuntimeConfigSnapshot, type ReactConfigSnapshot } from './config.js'
@@ -112,7 +112,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
             moduleId: event.moduleId,
             instanceId: event.instanceId,
             runtimeLabel: event.runtimeLabel,
-          }).pipe(Effect.catchAllCause(() => Effect.void))
+          }).pipe(Effect.catchCause(() => Effect.void))
         }
 
         if (event.type === 'diagnostic' && event.severity === 'error') {
@@ -132,7 +132,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
               instanceId: event.instanceId,
               runtimeLabel: event.runtimeLabel,
             },
-          ).pipe(Effect.catchAllCause(() => Effect.void))
+          ).pipe(Effect.catchCause(() => Effect.void))
         }
 
         return Effect.void
@@ -149,9 +149,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
       return layerBinding.debugSinks
     }
     try {
-      return baseRuntime.runSync(
-        FiberRef.get(Logix.Debug.internal.currentDebugSinks as FiberRef.FiberRef<ReadonlyArray<Logix.Debug.Sink>>),
-      )
+      return baseRuntime.runSync(Effect.service(Logix.Debug.internal.currentDebugSinks).pipe(Effect.orDie))
     } catch {
       return []
     }
@@ -348,7 +346,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
         const key = resolvedPolicy.preload.keysByModuleId.get(moduleId) ?? getPreloadKeyForModuleId(moduleId)
         const factory: ModuleCacheFactory = (scope: Scope.Scope) =>
           Layer.buildWithScope((handle as any).layer, scope).pipe(
-            Effect.map((context) => Context.get(context, (handle as any).module) as any),
+            Effect.map((context) => ServiceMap.get(context, (handle as any).module) as any),
           )
 
         const value = preloadCache.warmSync(key, factory, configState.snapshot.gcTime, moduleId, {
@@ -362,7 +360,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
       const tagId = (handle as any).id ?? 'ModuleTag'
       const key = resolvedPolicy.preload.keysByTagId.get(tagId) ?? getPreloadKeyForTagId(tagId)
       const factory: ModuleCacheFactory = (scope: Scope.Scope) =>
-        (handle as unknown as Effect.Effect<{ readonly instanceId?: string }, unknown, unknown>).pipe(Scope.extend(scope))
+        Scope.provide(scope)(Effect.service(handle as any).pipe(Effect.orDie)) as Effect.Effect<any, unknown, unknown>
 
       const value = preloadCache.warmSync(key, factory, configState.snapshot.gcTime, tagId, {
         entrypoint: 'react.runtime.preload.sync-warm',
@@ -430,7 +428,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
 
           const factory: ModuleCacheFactory = (scope: Scope.Scope) =>
             Layer.buildWithScope((handle as any).layer, scope).pipe(
-              Effect.map((context) => Context.get(context, (handle as any).module) as any),
+              Effect.map((context) => ServiceMap.get(context, (handle as any).module) as any),
             )
 
           const op = cache.preload(key, factory, {
@@ -468,9 +466,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
         const tagId = (handle as any).id ?? 'ModuleTag'
         const key = resolvedPolicy.preload!.keysByTagId.get(tagId) ?? getPreloadKeyForTagId(tagId)
         const factory: ModuleCacheFactory = (scope: Scope.Scope) =>
-          (handle as unknown as Effect.Effect<{ readonly instanceId?: string }, unknown, unknown>).pipe(
-            Scope.extend(scope),
-          )
+          Scope.provide(scope)(Effect.service(handle as any).pipe(Effect.orDie)) as Effect.Effect<any, unknown, unknown>
 
         const op = cache.preload(key, factory, {
           ownerId: tagId,
@@ -524,7 +520,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
           runtimeWithBindings.runFork(
             onErrorRef
               .current(Cause.die(error), { source: 'provider', phase: 'provider.layer.build' })
-              .pipe(Effect.catchAllCause(() => Effect.void)),
+              .pipe(Effect.catchCause(() => Effect.void)),
           )
         }
         setDeferReady(true)

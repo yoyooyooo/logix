@@ -1,17 +1,17 @@
 import {
   Exit,
   Effect,
-  Runtime,
+  Fiber,
+  ManagedRuntime,
+  Layer,
   Stream,
   SubscriptionRef,
   PubSub,
   Scope,
-  Context,
-  FiberRef,
   Option,
   Queue,
   Duration,
-  Chunk,
+  ServiceMap,
 } from 'effect'
 import type {
   LogicPlan,
@@ -29,6 +29,7 @@ import * as RuntimeKernel from './RuntimeKernel.js'
 import * as FullCutoverGate from './FullCutoverGate.js'
 import * as KernelRef from './KernelRef.js'
 import * as RuntimeServiceBuiltins from './RuntimeServiceBuiltins.js'
+import * as TaskRunner from './TaskRunner.js'
 import {
   getDefaultStateTxnInstrumentation,
   isDevEnv,
@@ -40,6 +41,7 @@ import {
 } from './env.js'
 import type {
   StateTransactionInstrumentation,
+  StateTransactionOverrides,
   TraitConvergeTimeSlicingPatch,
   TickSchedulerService,
   TxnLanesPatch,
@@ -89,13 +91,13 @@ import * as ConcurrencyDiagnostics from './ConcurrencyDiagnostics.js'
 export { registerRuntime, unregisterRuntime, getRegisteredRuntime, getRuntimeByModuleAndInstance }
 
 export interface ModuleRuntimeOptions<S, A, R = never> {
-  readonly tag?: Context.Tag<any, PublicModuleRuntime<S, A>>
+  readonly tag?: ServiceMap.Key<any, PublicModuleRuntime<S, A>>
   /**
    * List of "child modules" resolvable within the current instance scope (imports-scope):
    * - Used only to build a minimal imports injector (ModuleToken -> ModuleRuntime).
    * - Do not capture the whole Context into ModuleRuntime (avoid accidentally retaining root/base services).
    */
-  readonly imports?: ReadonlyArray<Context.Tag<any, PublicModuleRuntime<any, any>>>
+  readonly imports?: ReadonlyArray<ServiceMap.Key<any, PublicModuleRuntime<any, any>>>
   readonly logics?: ReadonlyArray<Effect.Effect<any, any, R> | LogicPlan<any, R, any>>
   readonly processes?: ReadonlyArray<Effect.Effect<void, any, any>>
   readonly moduleId?: string
@@ -145,7 +147,7 @@ export const make = <S, A, R = never>(
     const actionCommitHub = yield* PubSub.unbounded<StateChangeWithMeta<A>>()
     let commitHubSubscriberCount = 0
 
-    const fromCommitHub = Stream.unwrapScoped(
+    const fromCommitHub = Stream.unwrap(
       Effect.gen(function* () {
         commitHubSubscriberCount += 1
         yield* Effect.addFinalizer(() =>
@@ -160,7 +162,7 @@ export const make = <S, A, R = never>(
     const moduleId = options.moduleId ?? 'unknown'
     const instanceId = normalizeNonEmptyString(options.instanceId) ?? makeDefaultInstanceId()
     const moduleInstanceKey = makeModuleInstanceKey(moduleId, instanceId)
-    const runtimeLabel = yield* FiberRef.get(Debug.currentRuntimeLabel)
+    const runtimeLabel = yield* Effect.service(Debug.currentRuntimeLabel).pipe(Effect.orDie)
     const lifecycle = yield* Lifecycle.makeLifecycleManager({
       moduleId,
       instanceId,
@@ -175,7 +177,9 @@ export const make = <S, A, R = never>(
     // - Prefer ModuleRuntimeOptions.stateTransaction.instrumentation.
     // - Otherwise read the default from the Runtime-level StateTransactionConfig service.
     // - Finally fall back to NODE_ENV-based defaults.
-    const runtimeConfigOpt = yield* Effect.serviceOption(StateTransactionConfigTag)
+    const runtimeConfigOpt = yield* Effect.serviceOption(
+      StateTransactionConfigTag as unknown as ServiceMap.Key<any, { instrumentation?: StateTransactionInstrumentation }>,
+    )
     const runtimeInstrumentation: StateTransactionInstrumentation | undefined = Option.isSome(runtimeConfigOpt)
       ? runtimeConfigOpt.value.instrumentation
       : undefined
@@ -359,6 +363,8 @@ export const make = <S, A, R = never>(
     const traitConvergeTimeSlicingState: {
       readonly signal: Queue.Queue<void>
       readonly backlogDirtyPaths: Set<StateTransaction.StatePatchPath>
+      readonly ensureWorkerStarted: () => Effect.Effect<void, never, never>
+      workerFiber: Fiber.Fiber<void, never> | undefined
       backlogDirtyAllReason?: DirtyAllReason
       firstPendingAtMs: number | undefined
       lastTouchedAtMs: number | undefined
@@ -367,6 +373,8 @@ export const make = <S, A, R = never>(
     } = {
       signal: traitConvergeTimeSlicingSignal,
       backlogDirtyPaths: new Set(),
+      ensureWorkerStarted: () => ensureTraitConvergeTimeSlicingWorkerStarted(),
+      workerFiber: undefined,
       backlogDirtyAllReason: undefined,
       firstPendingAtMs: undefined,
       lastTouchedAtMs: undefined,
@@ -405,13 +413,17 @@ export const make = <S, A, R = never>(
      * - Guarantees at most one transaction at a time per instance; different instances can still run in parallel.
      */
     const kernelImplementationRef = yield* KernelRef.resolveKernelImplementationRef()
-    const cutoverGateModeOpt = yield* Effect.serviceOption(RuntimeKernel.FullCutoverGateModeTag)
+    const cutoverGateModeOpt = yield* Effect.serviceOption(
+      RuntimeKernel.FullCutoverGateModeTag as unknown as ServiceMap.Key<any, RuntimeKernel.FullCutoverGateMode>,
+    )
     const cutoverGateMode = Option.isSome(cutoverGateModeOpt) ? cutoverGateModeOpt.value : 'fullCutover'
     const runtimeServicesOverrides = yield* RuntimeKernel.resolveRuntimeServicesOverrides({
       moduleId: options.moduleId,
     })
 
-    const runtimeServicesRegistryOpt = yield* Effect.serviceOption(RuntimeKernel.RuntimeServicesRegistryTag)
+    const runtimeServicesRegistryOpt = yield* Effect.serviceOption(
+      RuntimeKernel.RuntimeServicesRegistryTag as unknown as ServiceMap.Key<any, RuntimeKernel.RuntimeServicesRegistry>,
+    )
     const runtimeServicesRegistry = Option.isSome(runtimeServicesRegistryOpt)
       ? runtimeServicesRegistryOpt.value
       : undefined
@@ -452,12 +464,12 @@ export const make = <S, A, R = never>(
           getBuiltinMake: (candidateServiceId) =>
             candidateServiceId === serviceId
               ? (builtinMake as Effect.Effect<unknown, never, any>)
-              : Effect.dieMessage(`[Logix] builtin make not available: ${candidateServiceId}`),
+              : Effect.die(new Error(`[Logix] builtin make not available: ${candidateServiceId}`)),
         } satisfies RuntimeServiceBuiltins.RuntimeServiceBuiltins),
       )
 
     const readCurrentOpSeq = (): Effect.Effect<number | undefined> =>
-      FiberRef.get(Debug.currentOpSeq).pipe(
+      Effect.service(Debug.currentOpSeq).pipe(Effect.orDie).pipe(
         Effect.map((opSeqRaw) =>
           typeof opSeqRaw === 'number' && Number.isFinite(opSeqRaw) && opSeqRaw >= 0 ? Math.floor(opSeqRaw) : undefined,
         ),
@@ -545,7 +557,9 @@ export const make = <S, A, R = never>(
       }),
     )
 
-    const runtimeStoreOpt = yield* Effect.serviceOption(RuntimeStoreTag)
+    const runtimeStoreOpt = yield* Effect.serviceOption(
+      RuntimeStoreTag as unknown as ServiceMap.Key<any, { registerModuleInstance: (args: unknown) => void; unregisterModuleInstance: (key: string) => void }>,
+    )
     if (Option.isSome(runtimeStoreOpt)) {
       runtimeStoreOpt.value.registerModuleInstance({
         moduleId,
@@ -555,10 +569,12 @@ export const make = <S, A, R = never>(
       })
     }
 
-    const rootContextSvcOpt = yield* Effect.serviceOption(RootContextTag)
+    const rootContextSvcOpt = yield* Effect.serviceOption(RootContextTag as unknown as ServiceMap.Key<any, RootContext>)
     const rootContext = Option.isSome(rootContextSvcOpt) ? (rootContextSvcOpt.value as RootContext) : undefined
 
-    const tickSchedulerOpt = (yield* Effect.serviceOption(TickSchedulerTag)) as Option.Option<TickSchedulerService>
+    const tickSchedulerOpt = (yield* Effect.serviceOption(
+      TickSchedulerTag as unknown as ServiceMap.Key<any, TickSchedulerService>,
+    )) as Option.Option<TickSchedulerService>
     let tickSchedulerCached: TickSchedulerService | undefined = Option.isSome(tickSchedulerOpt) ? tickSchedulerOpt.value : undefined
 
     const readTickSchedulerFromRootContext = (root: RootContext | undefined): TickSchedulerService | undefined => {
@@ -566,13 +582,15 @@ export const make = <S, A, R = never>(
         return undefined
       }
 
-      const fromRoot = Context.getOption(root.context, TickSchedulerTag as any) as Option.Option<TickSchedulerService>
+      const fromRoot = ServiceMap.getOption(root.context, TickSchedulerTag as any) as Option.Option<TickSchedulerService>
       return Option.isSome(fromRoot) ? fromRoot.value : undefined
     }
 
     const refreshTickSchedulerFromEnv = (): Effect.Effect<TickSchedulerService | undefined> =>
       Effect.gen(function* () {
-        const refreshed = (yield* Effect.serviceOption(TickSchedulerTag)) as Option.Option<TickSchedulerService>
+        const refreshed = (yield* Effect.serviceOption(
+          TickSchedulerTag as unknown as ServiceMap.Key<any, TickSchedulerService>,
+        )) as Option.Option<TickSchedulerService>
         if (Option.isSome(refreshed)) {
           tickSchedulerCached = refreshed.value
           return refreshed.value
@@ -618,7 +636,7 @@ export const make = <S, A, R = never>(
 
             let root = rootContext
             if (!root) {
-              const rootOpt = yield* Effect.serviceOption(RootContextTag)
+              const rootOpt = yield* Effect.serviceOption(RootContextTag as unknown as ServiceMap.Key<any, RootContext>)
               if (Option.isSome(rootOpt)) {
                 root = rootOpt.value as RootContext
               }
@@ -814,9 +832,7 @@ export const make = <S, A, R = never>(
                   current.dirtyAllReason = args.dirtyAllReason
                 }
                 for (const p of args.dirtyPathsSnapshot) {
-                  if (typeof p === 'number' && Number.isFinite(p) && p >= 0) {
-                    current.dirtyPathIds.add(Math.floor(p))
-                  }
+                  StateTransaction.markDirtyPath(txnContext, p, 'unknown')
                 }
               }),
           ),
@@ -831,11 +847,9 @@ export const make = <S, A, R = never>(
     }
 
     // 043: time-slicing scheduler for deferred converge (debounce + maxLag); triggered by in-txn signals and enqueued outside the txn.
-    yield* Effect.forkScoped(
-      Effect.forever(
-        Effect.gen(function* () {
-          yield* Queue.take(traitConvergeTimeSlicingState.signal)
-
+    const runTraitConvergeTimeSlicingWorker = Effect.gen(function* () {
+      try {
+        while (true) {
           while (true) {
             const config = traitConvergeTimeSlicingState.latestConvergeConfig?.traitConvergeTimeSlicing
             if (!config?.enabled) {
@@ -846,34 +860,43 @@ export const make = <S, A, R = never>(
               return
             }
 
+            const hasBacklog =
+              traitConvergeTimeSlicingState.backlogDirtyPaths.size > 0 ||
+              traitConvergeTimeSlicingState.backlogDirtyAllReason != null
+            if (!hasBacklog) {
+              return
+            }
+
             const now = Date.now()
             const firstPendingAtMs = traitConvergeTimeSlicingState.firstPendingAtMs ?? now
             traitConvergeTimeSlicingState.firstPendingAtMs = firstPendingAtMs
 
             const captured = traitConvergeTimeSlicingState.capturedContext
-            const txnLanePolicy = yield* captured?.overrides
-              ? Effect.provideService(resolveTxnLanePolicy(), StateTransactionOverridesTag, captured.overrides)
-              : resolveTxnLanePolicy()
+            const txnLanePolicy = yield* (captured?.overrides
+              ? Effect.provideService(
+                  resolveTxnLanePolicy(),
+                  StateTransactionOverridesTag as unknown as ServiceMap.Key<any, StateTransactionOverrides>,
+                  captured.overrides,
+                )
+              : resolveTxnLanePolicy())
 
             const debounceMs = txnLanePolicy.enabled ? txnLanePolicy.debounceMs : config.debounceMs
             const maxLagMs = txnLanePolicy.enabled ? txnLanePolicy.maxLagMs : config.maxLagMs
+            const lastTouchedAtMs = traitConvergeTimeSlicingState.lastTouchedAtMs ?? firstPendingAtMs
+            const quietMs = Math.max(0, now - lastTouchedAtMs)
+            const lagMs = Math.max(0, now - firstPendingAtMs)
 
-            const elapsedMs = Math.max(0, now - firstPendingAtMs)
-            const remainingLagMs = Math.max(0, maxLagMs - elapsedMs)
-            if (remainingLagMs <= 0) {
+            if (quietMs >= debounceMs || lagMs >= maxLagMs) {
               break
             }
 
-            const sleepMs = Math.max(0, Math.min(debounceMs, remainingLagMs))
+            const untilQuietMs = Math.max(0, debounceMs - quietMs)
+            const untilLagMs = Math.max(0, maxLagMs - lagMs)
+            const sleepMs = Math.max(0, Math.min(untilQuietMs, untilLagMs))
             if (sleepMs > 0) {
               yield* Effect.sleep(Duration.millis(sleepMs))
             } else {
-              yield* Effect.yieldNow()
-            }
-
-            const drained = yield* Queue.takeAll(traitConvergeTimeSlicingState.signal)
-            if (Chunk.isEmpty(drained)) {
-              break
+              yield* Effect.yieldNow
             }
           }
 
@@ -909,11 +932,9 @@ export const make = <S, A, R = never>(
               next = Effect.provideService(next, StateTransactionOverridesTag, captured.overrides)
             }
             if (captured) {
-              next = next.pipe(
-                Effect.locally(Debug.currentRuntimeLabel, captured.runtimeLabel),
-                Effect.locally(Debug.currentDiagnosticsLevel, captured.diagnosticsLevel),
-                Effect.locally(Debug.currentDebugSinks, captured.debugSinks),
-              )
+              next = Effect.provideService(next, Debug.currentRuntimeLabel, captured.runtimeLabel)
+              next = Effect.provideService(next, Debug.currentDiagnosticsLevel, captured.diagnosticsLevel)
+              next = Effect.provideService(next, Debug.currentDebugSinks, captured.debugSinks)
             }
             return next
           }
@@ -973,15 +994,18 @@ export const make = <S, A, R = never>(
               }),
             )
 
-            return
+            const hasPending =
+              traitConvergeTimeSlicingState.backlogDirtyPaths.size > 0 ||
+              traitConvergeTimeSlicingState.backlogDirtyAllReason != null
+            if (!hasPending) {
+              return
+            }
+            continue
           }
 
           const totalSteps = program.convergeExecIr.topoOrderDeferredInt32.length
 
           let cursor = 0
-          // Perf/latency tradeoff:
-          // - Smaller initial slices reduce worst-case urgent blocking while a nonUrgent backlog is being drained.
-          // - Catch-up time is still bounded by maxLagMs and the yield policy.
           const initialChunkSize = txnLanePolicy.budgetMs <= 1 ? 1 : 32
           let chunkSize = Math.min(initialChunkSize, totalSteps)
           let yieldCount = 0
@@ -1025,9 +1049,6 @@ export const make = <S, A, R = never>(
             )
 
             cursor = sliceEnd
-
-            // Keep the signal queue bounded during long backlog processing.
-            yield* Queue.takeAll(traitConvergeTimeSlicingState.signal)
 
             const hasPending =
               traitConvergeTimeSlicingState.backlogDirtyPaths.size > 0 ||
@@ -1098,7 +1119,6 @@ export const make = <S, A, R = never>(
             }
 
             if (willCoalesce) {
-              // Ensure the scheduler wakes again for the new backlog after we cancel.
               deferredFlushCoalescedCount += 1
               deferredFlushCanceledCount += 1
               if (shouldEmitLaneEvidence) {
@@ -1140,7 +1160,6 @@ export const make = <S, A, R = never>(
                   }),
                 )
               }
-              yield* Queue.offer(traitConvergeTimeSlicingState.signal, undefined)
               break
             }
 
@@ -1155,19 +1174,40 @@ export const make = <S, A, R = never>(
             if (shouldYield) {
               yieldCount += 1
               lastYieldAtMs = Date.now()
-              yield* Effect.yieldNow()
+              yield* Effect.yieldNow
             }
           }
 
-          // If new backlog arrived while processing, ensure we don't lose wakeup after draining signals.
-          if (
+          const hasPending =
             traitConvergeTimeSlicingState.backlogDirtyPaths.size > 0 ||
             traitConvergeTimeSlicingState.backlogDirtyAllReason != null
-          ) {
-            yield* Queue.offer(traitConvergeTimeSlicingState.signal, undefined)
+          if (!hasPending) {
+            return
           }
-        }),
-      ),
+        }
+      } finally {
+        traitConvergeTimeSlicingState.workerFiber = undefined
+      }
+    })
+
+    const ensureTraitConvergeTimeSlicingWorkerStarted = () =>
+      Effect.gen(function* () {
+        if (traitConvergeTimeSlicingState.workerFiber) {
+          return
+        }
+        const fiber = yield* runTraitConvergeTimeSlicingWorker.pipe(
+          Effect.provideService(TaskRunner.inSyncTransactionFiber, false),
+          Effect.forkDetach({ startImmediately: true }),
+        )
+        traitConvergeTimeSlicingState.workerFiber = fiber
+      })
+
+    lifecycle.registerDestroy(
+      Effect.suspend(() => {
+        const fiber = traitConvergeTimeSlicingState.workerFiber
+        return fiber ? Fiber.interrupt(fiber).pipe(Effect.asVoid) : Effect.void
+      }),
+      { name: 'traitConvergeTimeSlicing' },
     )
 
     const declaredActionTags = (() => {
@@ -1310,9 +1350,7 @@ export const make = <S, A, R = never>(
     }
 
     const writeDenied = () =>
-      Effect.dieMessage(
-        '[ModuleRuntime.ref] state ref is read-only. Use runtime.setState / $.state.update / $.state.mutate instead.',
-      )
+      Effect.die(new Error('[ModuleRuntime.ref] state ref is read-only. Use runtime.setState / $.state.update / $.state.mutate instead.'))
 
     const denyPublish = (_value: unknown): Effect.Effect<boolean> => writeDenied() as Effect.Effect<boolean>
 
@@ -1329,7 +1367,7 @@ export const make = <S, A, R = never>(
     // Keep root ref identity stable for a runtime instance (important for storeId anchoring in ExternalStore.fromSubscriptionRef).
     const rootReadonlyRef = {
       get: SubscriptionRef.get(stateRef),
-      changes: stateRef.changes,
+      changes: SubscriptionRef.changes(stateRef),
       // Runtime guard for unsafe casts (`as any as SubscriptionRef`) to keep failure deterministic.
       modify: writeDenied,
       ref: rootDenyWriteRef,
@@ -1356,7 +1394,7 @@ export const make = <S, A, R = never>(
       actions$: actionsStream,
       actionsByTag$: actionsByTagStream,
       actionsWithMeta$: Stream.fromPubSub(actionCommitHub),
-      changes: <V>(selector: (s: S) => V) => Stream.map(stateRef.changes, selector).pipe(Stream.changes),
+      changes: <V>(selector: (s: S) => V) => Stream.map(SubscriptionRef.changes(stateRef), selector).pipe(Stream.changes),
       changesWithMeta: <V>(selector: (s: S) => V) =>
         Stream.map(fromCommitHub, ({ value, meta }) => ({
           value: selector(value),
@@ -1391,7 +1429,9 @@ export const make = <S, A, R = never>(
                 }
 
                 if (ReadQuery.shouldEvaluateStrictGateAtRuntime(runtimeCompiled)) {
-                  const strictGateOpt = yield* Effect.serviceOption(ReadQueryStrictGateConfigTag)
+                  const strictGateOpt = yield* Effect.serviceOption(
+                    ReadQueryStrictGateConfigTag as unknown as ServiceMap.Key<any, ReadQuery.ReadQueryStrictGateConfig>,
+                  )
 
                   if (Option.isSome(strictGateOpt)) {
                     const decision = ReadQuery.evaluateStrictGate({
@@ -1420,7 +1460,7 @@ export const make = <S, A, R = never>(
           )
         }
 
-        return Stream.unwrapScoped(
+        return Stream.unwrap(
           Effect.gen(function* () {
             const entry = yield* selectorGraph.ensureEntry(compiled)
             entry.subscriberCount += 1
@@ -1459,7 +1499,7 @@ export const make = <S, A, R = never>(
         const derivedRef = {
           get: Effect.map(SubscriptionRef.get(stateRef), selector),
           // Derived stream: selector-map stateRef.changes and de-duplicate.
-          changes: Stream.map(stateRef.changes, selector).pipe(Stream.changes) as Stream.Stream<V>,
+          changes: Stream.map(SubscriptionRef.changes(stateRef), selector).pipe(Stream.changes) as Stream.Stream<V>,
           // Runtime guard for unsafe casts (`as any as SubscriptionRef`) to keep failure deterministic.
           modify: writeDenied,
           ref: denyWriteRef,
@@ -1481,18 +1521,19 @@ export const make = <S, A, R = never>(
     //   can time the tick flush separately from transaction overhead.
     // - Falls back to forking the dispatch Effect if it cannot complete synchronously.
     if (declaredActionTags && declaredActionTags.size > 0) {
-      const driver = yield* Effect.runtime<never>()
+      const services = yield* Effect.services<any>()
+      const driver = ManagedRuntime.make(Layer.effectServices(Effect.succeed(services)))
       const actions: any = {}
 
       const dispatchSyncBestEffort = (action: A): void => {
         try {
-          const exit = Runtime.runSyncExit(driver, dispatchOps.dispatch(action) as any)
+          const exit = driver.runSyncExit(dispatchOps.dispatch(action) as any)
           if (Exit.isFailure(exit)) {
-            Runtime.runFork(driver, dispatchOps.dispatch(action) as any)
+            driver.runFork(dispatchOps.dispatch(action) as any)
           }
         } catch {
           try {
-            Runtime.runFork(driver, dispatchOps.dispatch(action) as any)
+            driver.runFork(dispatchOps.dispatch(action) as any)
           } catch {
             // ignore best-effort failures (e.g. runtime disposed)
           }
@@ -1514,16 +1555,18 @@ export const make = <S, A, R = never>(
 
     // Optional: when RunSession/EvidenceCollector is in scope, write runtime services evidence into the collector.
     // By default (non-trial-run), Env does not contain EvidenceCollectorTag, so this adds no overhead.
-    const collectorOpt = yield* Effect.serviceOption(EvidenceCollectorTag)
+      const collectorOpt = yield* Effect.serviceOption(
+        EvidenceCollectorTag as unknown as ServiceMap.Key<any, { setKernelImplementationRef: (x: unknown) => void; setRuntimeServicesEvidence: (x: unknown) => void }>,
+      )
     if (Option.isSome(collectorOpt)) {
       collectorOpt.value.setKernelImplementationRef(kernelImplementationRef)
-      const level = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
+      const level = yield* Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie)
       if (level !== 'off') {
         collectorOpt.value.setRuntimeServicesEvidence(runtimeServicesEvidence)
       }
     }
 
-    const convergeStaticIrCollectors = yield* FiberRef.get(currentConvergeStaticIrCollectors)
+    const convergeStaticIrCollectors = yield* Effect.service(currentConvergeStaticIrCollectors).pipe(Effect.orDie)
     const registerConvergeStaticIr = (staticIr: unknown): void => {
       if (convergeStaticIrCollectors.length === 0) return
       for (const collector of convergeStaticIrCollectors) {
@@ -1541,7 +1584,7 @@ export const make = <S, A, R = never>(
     // Build a minimal imports-scope injector:
     // - Only store ModuleToken -> ModuleRuntime mappings.
     // - Never capture the whole Context into ModuleRuntime (avoid leaking root/base services by accident).
-    const importsMap = new Map<Context.Tag<any, PublicModuleRuntime<any, any>>, PublicModuleRuntime<any, any>>()
+    const importsMap = new Map<ServiceMap.Key<any, PublicModuleRuntime<any, any>>, PublicModuleRuntime<any, any>>()
 
     for (const imported of options.imports ?? []) {
       const maybe = yield* Effect.serviceOption(imported)
@@ -1884,7 +1927,7 @@ export const make = <S, A, R = never>(
     )
 
     if (options.tag) {
-      registerRuntime(options.tag as Context.Tag<any, PublicModuleRuntime<S, A>>, runtime)
+      registerRuntime(options.tag as ServiceMap.Key<any, PublicModuleRuntime<S, A>>, runtime)
     }
 
     yield* Effect.addFinalizer(() =>
@@ -1904,7 +1947,7 @@ export const make = <S, A, R = never>(
         Effect.tap(() =>
           Effect.sync(() => {
             if (options.tag) {
-              unregisterRuntime(options.tag as Context.Tag<any, PublicModuleRuntime<any, any>>)
+              unregisterRuntime(options.tag as ServiceMap.Key<any, PublicModuleRuntime<any, any>>)
             }
             if (instanceKey) {
               unregisterRuntimeByInstanceKey(instanceKey)
@@ -1916,7 +1959,7 @@ export const make = <S, A, R = never>(
 
     if (options.tag && options.logics?.length) {
       yield* runModuleLogics({
-        tag: options.tag as Context.Tag<any, PublicModuleRuntime<S, A>>,
+        tag: options.tag as ServiceMap.Key<any, PublicModuleRuntime<S, A>>,
         logics: options.logics,
         runtime,
         lifecycle,
@@ -1926,15 +1969,15 @@ export const make = <S, A, R = never>(
     }
 
     if (options.processes && options.processes.length > 0) {
-      const env = (yield* Effect.context<Scope.Scope | R>()) as Context.Context<any>
-      const rootContextOpt = Context.getOption(env, RootContextTag as any)
+      const env = (yield* Effect.services<Scope.Scope | R>()) as ServiceMap.ServiceMap<any>
+      const rootContextOpt = ServiceMap.getOption(env, RootContextTag as any)
       const isAppModule =
         Option.isSome(rootContextOpt) &&
         Array.isArray((rootContextOpt.value as RootContext).appModuleIds) &&
         (rootContextOpt.value as RootContext).appModuleIds!.includes(moduleId)
 
       if (!isAppModule) {
-        const processRuntimeOpt = Context.getOption(env, ProcessRuntime.ProcessRuntimeTag as any)
+        const processRuntimeOpt = ServiceMap.getOption(env, ProcessRuntime.ProcessRuntimeTag as any)
         const processRuntime = Option.isSome(processRuntimeOpt)
           ? (processRuntimeOpt.value as ProcessRuntime.ProcessRuntime)
           : undefined
@@ -1960,7 +2003,7 @@ export const make = <S, A, R = never>(
                 // We explicitly provide the current module runtime to avoid falsely treating itself as a missing dependency.
                 const installation = options.tag
                   ? yield* installEffect.pipe(
-                      Effect.provideService(options.tag as Context.Tag<any, any>, runtime as any),
+                      Effect.provideService(options.tag as ServiceMap.Key<any, any>, runtime as any),
                     )
                   : yield* installEffect
 

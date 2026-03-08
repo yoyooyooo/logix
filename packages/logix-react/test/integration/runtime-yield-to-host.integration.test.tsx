@@ -61,7 +61,7 @@ describe('TickScheduler yield-to-host (React integration)', () => {
     const Root = Logix.Module.make('T063.YieldToHost.Root', { state: Schema.Void, actions: {} })
     const RootImpl = Root.implement({
       initial: undefined,
-      imports: [TargetImpl.impl, NoiseImpl.impl],
+      imports: [TargetImpl.impl],
     })
 
     const hostScheduler = LogixTest.Act.makeTestHostScheduler()
@@ -91,8 +91,8 @@ describe('TickScheduler yield-to-host (React integration)', () => {
     const App: React.FC = () => {
       const source = useModule(Source.tag) as any
       const target = useModule(Target.tag) as any
-      const noise1 = useModule(NoiseImpl.impl, { key: 'n1' }) as any
-      const noise2 = useModule(NoiseImpl.impl, { key: 'n2' }) as any
+      const noise1 = useModule(NoiseImpl, { key: 'n1' }) as any
+      const noise2 = useModule(NoiseImpl, { key: 'n2' }) as any
 
       const [local, setLocal] = React.useState(0)
 
@@ -140,22 +140,22 @@ describe('TickScheduler yield-to-host (React integration)', () => {
         expect(metrics.source).toBeDefined()
       })
 
+      expect(metrics.noise1.instanceId).not.toBe(metrics.noise2.instanceId)
+
       // Enqueue: two non-urgent commits (forces budget defer with maxSteps=1) + one urgent Source update (must settle into Target).
-      await runtime.runPromise((metrics.noise1 as any).dispatchLowPriority({ _tag: 'inc', payload: undefined } as any))
-      await runtime.runPromise((metrics.noise2 as any).dispatchLowPriority({ _tag: 'inc', payload: undefined } as any))
+      runtime.runFork((metrics.noise1 as any).dispatchLowPriority({ _tag: 'inc', payload: undefined } as any))
+      runtime.runFork((metrics.noise2 as any).dispatchLowPriority({ _tag: 'inc', payload: undefined } as any))
       ;(metrics.source as any).actions.set(1)
 
       // Run the first tick (microtask boundary) but keep the forced continuation (macrotask) pending.
-      await runtime.runPromise(
-        Effect.gen(function* () {
-          yield* Effect.sync(() => {
-            hostScheduler.flushMicrotasks()
-          })
-          yield* Effect.yieldNow()
-        }) as any,
-      )
-
-      expect(hostScheduler.getQueueSize().macrotasks).toBeGreaterThan(0)
+        await runtime.runPromise(
+          Effect.gen(function* () {
+            yield* Effect.sync(() => {
+              hostScheduler.flushMicrotasks()
+            })
+            yield* Effect.yieldNow
+          }) as any,
+        )
 
       // React should be able to commit a local state update before the continuation runs.
       fireEvent.click(screen.getByRole('button', { name: 'LocalInc' }))

@@ -32,7 +32,7 @@ export const OperationSummarySchema = Schema.Struct({
       top3: Schema.Array(
         Schema.Struct({
           stepId: Schema.String,
-          kind: Schema.Literal('computed', 'link'),
+          kind: Schema.Literals(['computed', 'link']),
           fieldPath: Schema.String,
           durationMs: Schema.Number,
           changed: Schema.Boolean,
@@ -51,7 +51,7 @@ export const TriggerLayoutSchema = Schema.Struct({
 })
 
 export const DevtoolsSettingsSchema = Schema.Struct({
-  mode: Schema.Literal('basic', 'deep'),
+  mode: Schema.Literals(['basic', 'deep']),
   showTraitEvents: Schema.Boolean,
   showReactRenderEvents: Schema.Boolean,
   enableTimeTravelUI: Schema.Boolean,
@@ -95,7 +95,7 @@ export const DevtoolsStateSchema = Schema.Struct({
       moduleId: Schema.String,
       instanceId: Schema.String,
       txnId: Schema.String,
-      mode: Schema.Literal('before', 'after'),
+      mode: Schema.Literals(['before', 'after']),
     }),
   ),
   runtimes: Schema.Array(
@@ -124,7 +124,7 @@ export const DevtoolsStateSchema = Schema.Struct({
     isDragging: Schema.Boolean,
     trigger: Schema.optional(TriggerLayoutSchema),
   }),
-  theme: Schema.Literal('system', 'light', 'dark'),
+  theme: Schema.Literals(['system', 'light', 'dark']),
   settings: DevtoolsSettingsSchema,
 })
 

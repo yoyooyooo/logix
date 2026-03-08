@@ -56,9 +56,9 @@ describe('@logixjs/devtools-react: process:* events', () => {
         Effect.gen(function* () {
           yield* Root.tag
           const source: any = yield* Source.tag
-          yield* Effect.yieldNow()
+          yield* Effect.yieldNow
           yield* source.dispatch(PING_ACTION as any)
-          yield* Effect.yieldNow()
+          yield* Effect.yieldNow
         }) as any,
       )
 

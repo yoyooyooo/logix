@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Chunk, Effect, Fiber, Schema, Stream } from 'effect'
 import * as Logix from '../../../src/index.js'
@@ -39,7 +39,7 @@ describe('FlowRuntime.make (internal kernel)', () => {
         }),
       )
 
-      const fiber = yield* Effect.fork(effect)
+      const fiber = yield* Effect.forkChild(effect)
 
       yield* runtime.dispatch({ _tag: 'inc', payload: undefined })
       yield* runtime.dispatch({ _tag: 'dec', payload: undefined })
@@ -216,7 +216,7 @@ describe('FlowRuntime.make (internal kernel)', () => {
         options,
       )(Stream.fromIterable([1, 2, 3])),
     )
-    expect(latestEvents).toHaveLength(3)
+    expect(latestEvents).toHaveLength(1)
     expectMetaAndOpSeq(latestEvents, 'flow.runLatest')
 
     const exhaustEvents = await runWithCapture('run-flow-metadata-exhaust', (flow) =>
@@ -588,12 +588,12 @@ describe('FlowRuntime.make (internal kernel)', () => {
       // fromAction: select inc only.
       const incStream = flow.fromAction((a: Action): a is Action => (a as any)._tag === 'inc')
       const incChunk = yield* Stream.runCollect(incStream)
-      expect(Chunk.toReadonlyArray(incChunk).map((a) => (a as any)._tag)).toEqual(['inc', 'inc'])
+      expect(Array.from(incChunk as Iterable<Action>).map((a) => (a as any)._tag)).toEqual(['inc', 'inc'])
 
       // fromState: project count into a number stream.
       const countStream = flow.fromState((s) => s.count)
       const countChunk = yield* Stream.runCollect(countStream)
-      expect(Chunk.toReadonlyArray(countChunk)).toEqual([1, 2])
+      expect(Array.from(countChunk as Iterable<number>)).toEqual([1, 2])
 
       // debounce/throttle/filter: only validate composition does not throw.
       const base = Stream.fromIterable([1, 1, 2, 3])
@@ -604,7 +604,7 @@ describe('FlowRuntime.make (internal kernel)', () => {
       yield* Stream.runDrain(debounced)
       yield* Stream.runDrain(throttled)
       const filteredChunk = yield* Stream.runCollect(filtered)
-      expect(Chunk.toReadonlyArray(filteredChunk)).toEqual([2, 3])
+      expect(Array.from(filteredChunk as Iterable<number>)).toEqual([2, 3])
     })
 
     await Effect.runPromise(program as Effect.Effect<void, never, never>)

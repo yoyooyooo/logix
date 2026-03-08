@@ -1,10 +1,9 @@
-import { describe, expect } from 'vitest'
-import { it } from '@effect/vitest'
-import { Duration, Effect, Layer, Schema } from 'effect'
+import { describe, it, expect } from '@effect/vitest'
+import { Duration, Effect, Layer, Option, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('Runtime.runProgram signals (US1)', () => {
-  it.scoped('handleSignals triggers graceful shutdown and removes listeners', () =>
+  it.effect('handleSignals triggers graceful shutdown and removes listeners', () =>
     Effect.gen(function* () {
       const proc: any = (globalThis as any).process
       if (!proc || typeof proc.emit !== 'function') {
@@ -22,7 +21,7 @@ describe('Runtime.runProgram signals (US1)', () => {
       const impl = Root.implement({ initial: undefined, logics: [] })
 
       // Make boot take a little time so the signal can arrive before boot completes.
-      const slowBootLayer = Layer.scopedDiscard(Effect.sleep('30 millis')) as unknown as Layer.Layer<any, never, never>
+      const slowBootLayer = Layer.effectDiscard(Effect.sleep('30 millis')) as unknown as Layer.Layer<any, never, never>
 
       const p = Logix.Runtime.runProgram(impl, () => Effect.never, {
         layer: slowBootLayer,
@@ -39,11 +38,9 @@ describe('Runtime.runProgram signals (US1)', () => {
       const timeoutError = new Error('runProgram did not settle in time')
 
       yield* Effect.tryPromise({ try: () => p, catch: (e) => e }).pipe(
-        Effect.timeoutFail({
-          duration: Duration.millis(2_000),
-          onTimeout: () => timeoutError,
-        }),
-        Effect.catchAll((e) => (e === timeoutError ? Effect.fail(e) : Effect.void)),
+        Effect.timeoutOption(Duration.millis(2_000)),
+        Effect.flatMap((maybe) => (Option.isSome(maybe) ? Effect.void : Effect.fail(timeoutError))),
+        Effect.catch((e) => (e === timeoutError ? Effect.fail(e) : Effect.void)),
       )
 
       const afterSigint = typeof proc.listenerCount === 'function' ? proc.listenerCount('SIGINT') : 0

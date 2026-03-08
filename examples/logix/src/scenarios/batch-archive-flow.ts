@@ -11,7 +11,7 @@
  *   该场景对应文档中的 L0–L3 资产链路示例，用作 IntentRule ↔ Code 的金标样板。
  */
 
-import { Context, Effect, Schema, Data } from 'effect'
+import { Data, Effect, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 import { ConfirmServiceTag, type ConfirmService, runConfirmAndThenPattern } from '../patterns/confirm.js'
 import { NotificationServiceTag, type NotificationService, runNotifyOnResultPattern } from '../patterns/notification.js'
@@ -28,7 +28,7 @@ export class ArchiveError extends Data.TaggedError('ArchiveError')<{
   readonly message: string
 }> {}
 
-export class ArchiveServiceTag extends Context.Tag('@svc/ArchiveService')<ArchiveServiceTag, ArchiveService>() {}
+export class ArchiveServiceTag extends ServiceMap.Service<ArchiveServiceTag, ArchiveService>()('@svc/ArchiveService') {}
 
 // ---------------------------------------------------------------------------
 // Schema → Shape：列表页的简化 State / Action
@@ -85,11 +85,11 @@ export const BatchArchiveLogic = BatchArchiveDef.logic<ConfirmServiceTag | Archi
         const archiveEffect = Effect.gen(function* () {
           yield* $.state.update((prev: BatchArchiveState) => ({ ...prev, isArchiving: true }))
 
-          const result = yield* Effect.either(archiveSvc.archiveMany(ids))
+          const result = yield* Effect.exit(archiveSvc.archiveMany(ids))
 
           yield* $.state.update((prev: BatchArchiveState) => ({ ...prev, isArchiving: false }))
 
-          if (result._tag === 'Right') {
+          if (result._tag === 'Success') {
             yield* runNotifyOnResultPattern({
               kind: 'success',
               message: `归档成功：${ids.length} 条记录`,
@@ -100,7 +100,9 @@ export const BatchArchiveLogic = BatchArchiveDef.logic<ConfirmServiceTag | Archi
           } else {
             yield* runNotifyOnResultPattern({
               kind: 'failure',
-              message: (result.left as ArchiveError).message,
+              message: ((result.cause as any).error ?? result.cause) instanceof ArchiveError
+                ? (((result.cause as any).error ?? result.cause) as ArchiveError).message
+                : '归档失败',
             })
           }
         })
@@ -114,7 +116,7 @@ export const BatchArchiveLogic = BatchArchiveDef.logic<ConfirmServiceTag | Archi
       yield* $.onAction('batch/archive').runExhaust(handleArchive)
     }).pipe(
       // 收敛错误通道，方便作为 ModuleLogic 使用
-      Effect.catchAll(() => Effect.void),
+      Effect.catch(() => Effect.void),
     ),
 )
 

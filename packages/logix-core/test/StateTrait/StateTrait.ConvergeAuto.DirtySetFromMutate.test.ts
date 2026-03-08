@@ -4,7 +4,7 @@ import * as Logix from '../../src/index.js'
 import * as Debug from '../../src/Debug.js'
 
 describe('StateTrait converge · dirty-set from $.state.mutate', () => {
-  it.scoped('$.state.mutate should produce field-level dirty roots (vs plain reducer falls back to dirtyAll)', () =>
+  it.effect('$.state.mutate should produce field-level dirty roots (vs plain reducer falls back to dirtyAll)', () =>
     Effect.gen(function* () {
       const State = Schema.Struct({
         a: Schema.Number,
@@ -66,7 +66,7 @@ describe('StateTrait converge · dirty-set from $.state.mutate', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt: any = yield* M.tag
+        const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
         // watcher txn: uses $.state.mutate
         yield* rt.dispatch({ _tag: 'mutateA', payload: undefined } as any)

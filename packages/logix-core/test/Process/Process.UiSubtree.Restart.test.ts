@@ -43,7 +43,7 @@ describe('process: uiSubtree stop → start (re-install)', () => {
                   ticks += 1
                 }),
               ),
-              Effect.zipRight(Effect.sleep('5 millis')),
+              Effect.flatMap(() => Effect.sleep('5 millis')),
             ),
           )
         }).pipe(Effect.ensuring(Effect.uninterruptible(Effect.sleep('80 millis')))),
@@ -69,7 +69,7 @@ describe('process: uiSubtree stop → start (re-install)', () => {
       const getValue = () =>
         runtime.runPromise(
           Effect.gen(function* () {
-            const counter = yield* CounterDef.tag
+            const counter = yield* Effect.service(CounterDef.tag).pipe(Effect.orDie)
             return (yield* counter.getState).value
           }),
         )
@@ -132,6 +132,6 @@ describe('process: uiSubtree stop → start (re-install)', () => {
       yield* Effect.promise(() => runtime.dispose())
     })
 
-  it.scoped('mode=switch: should restart even if re-install happens during stopping', () => runCase('switch', true))
-  it.scoped('mode=exhaust: should not restart if re-install happens during stopping', () => runCase('exhaust', false))
+  it.effect('mode=switch: should restart even if re-install happens during stopping', () => runCase('switch', true))
+  it.effect('mode=exhaust: should not restart if re-install happens during stopping', () => runCase('exhaust', false))
 })

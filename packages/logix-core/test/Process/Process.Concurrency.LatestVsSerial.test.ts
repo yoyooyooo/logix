@@ -1,10 +1,10 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Context, Deferred, Effect, Exit, Layer, Ref, Scope, Schema } from 'effect'
+import { Context, Deferred, Effect, Exit, Layer, Ref, Scope, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../src/index.js'
 import * as ProcessRuntime from '../../src/internal/runtime/core/process/ProcessRuntime.js'
 
 describe('process: concurrency latest vs serial', () => {
-  it.scoped('latest should cancel previous runs (no leak)', () =>
+  it.effect('latest should cancel previous runs (no leak)', () =>
     Effect.gen(function* () {
       const started = yield* Ref.make(0)
       const completed = yield* Ref.make(0)
@@ -28,7 +28,7 @@ describe('process: concurrency latest vs serial', () => {
           const gate = yield* Deferred.make<void>()
           yield* Effect.uninterruptible(
             Ref.update(started, (n) => n + 1).pipe(
-              Effect.zipRight(Ref.update(gatesRef, (arr) => [...arr, gate])),
+              Effect.flatMap(() => Ref.update(gatesRef, (arr) => [...arr, gate])),
               Effect.asVoid,
             ),
           )
@@ -47,10 +47,7 @@ describe('process: concurrency latest vs serial', () => {
       const scope = yield* Scope.make()
       try {
         const env = yield* Layer.buildWithScope(layer, scope)
-        const rt = Context.get(
-          env as Context.Context<any>,
-          ProcessRuntime.ProcessRuntimeTag as any,
-        ) as ProcessRuntime.ProcessRuntime
+        const rt = ServiceMap.get(env as Context.Context<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
 
         // wait Process instance started & subscribed
         for (let i = 0; i < 50; i++) {
@@ -59,21 +56,21 @@ describe('process: concurrency latest vs serial', () => {
             (e) => e.type === 'process:start' && e.identity.identity.processId === 'ProcessConcurrencyLatest',
           )
           if (startedEvt) break
-          yield* Effect.yieldNow()
+          yield* Effect.yieldNow
         }
 
         yield* rt.deliverPlatformEvent({ eventName: 'test:latest' })
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
         yield* rt.deliverPlatformEvent({ eventName: 'test:latest' })
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
         yield* rt.deliverPlatformEvent({ eventName: 'test:latest' })
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
 
         // wait all 3 runs started (gate created)
         for (let i = 0; i < 50; i++) {
           const n = yield* Ref.get(started)
           if (n === 3) break
-          yield* Effect.yieldNow()
+          yield* Effect.yieldNow
         }
 
         const gates = yield* Ref.get(gatesRef)
@@ -85,7 +82,7 @@ describe('process: concurrency latest vs serial', () => {
         for (let i = 0; i < 50; i++) {
           const n = yield* Ref.get(completed)
           if (n === 1) break
-          yield* Effect.yieldNow()
+          yield* Effect.yieldNow
         }
       } finally {
         yield* Scope.close(scope, Exit.succeed(undefined))
@@ -97,7 +94,7 @@ describe('process: concurrency latest vs serial', () => {
     }),
   )
 
-  it.scoped('serial should run without overlap', () =>
+  it.effect('serial should run without overlap', () =>
     Effect.gen(function* () {
       const completed = yield* Ref.make(0)
       const active = yield* Ref.make(0)
@@ -137,10 +134,7 @@ describe('process: concurrency latest vs serial', () => {
       const scope = yield* Scope.make()
       try {
         const env = yield* Layer.buildWithScope(layer, scope)
-        const rt = Context.get(
-          env as Context.Context<any>,
-          ProcessRuntime.ProcessRuntimeTag as any,
-        ) as ProcessRuntime.ProcessRuntime
+        const rt = ServiceMap.get(env as Context.Context<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
 
         for (let i = 0; i < 50; i++) {
           const events = yield* rt.getEventsSnapshot()
@@ -148,15 +142,15 @@ describe('process: concurrency latest vs serial', () => {
             (e) => e.type === 'process:start' && e.identity.identity.processId === 'ProcessConcurrencySerial',
           )
           if (startedEvt) break
-          yield* Effect.yieldNow()
+          yield* Effect.yieldNow
         }
 
         yield* rt.deliverPlatformEvent({ eventName: 'test:serial' })
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
         yield* rt.deliverPlatformEvent({ eventName: 'test:serial' })
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
         yield* rt.deliverPlatformEvent({ eventName: 'test:serial' })
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
 
         // release one-by-one; serial mode must not overlap
         for (let i = 0; i < 3; i++) {
@@ -166,15 +160,15 @@ describe('process: concurrency latest vs serial', () => {
               yield* Deferred.succeed(gates[i]!, undefined)
               break
             }
-            yield* Effect.yieldNow()
+            yield* Effect.yieldNow
           }
-          yield* Effect.yieldNow()
+          yield* Effect.yieldNow
         }
 
         for (let i = 0; i < 50; i++) {
           const n = yield* Ref.get(completed)
           if (n === 3) break
-          yield* Effect.yieldNow()
+          yield* Effect.yieldNow
         }
       } finally {
         yield* Scope.close(scope, Exit.succeed(undefined))
@@ -185,7 +179,7 @@ describe('process: concurrency latest vs serial', () => {
     }),
   )
 
-  it.scoped('serial should drain backlog without dropping triggers', () =>
+  it.effect('serial should drain backlog without dropping triggers', () =>
     Effect.gen(function* () {
       const completed = yield* Ref.make(0)
       const total = 48
@@ -203,7 +197,7 @@ describe('process: concurrency latest vs serial', () => {
           errorPolicy: { mode: 'failStop' },
           diagnosticsLevel: 'off',
         },
-        Effect.yieldNow().pipe(Effect.zipRight(Ref.update(completed, (n) => n + 1)), Effect.asVoid),
+        Effect.yieldNow.pipe(Effect.flatMap(() => Ref.update(completed, (n) => n + 1)), Effect.asVoid),
       )
 
       const HostImpl = Host.implement({
@@ -216,10 +210,7 @@ describe('process: concurrency latest vs serial', () => {
       const scope = yield* Scope.make()
       try {
         const env = yield* Layer.buildWithScope(layer, scope)
-        const rt = Context.get(
-          env as Context.Context<any>,
-          ProcessRuntime.ProcessRuntimeTag as any,
-        ) as ProcessRuntime.ProcessRuntime
+        const rt = ServiceMap.get(env as Context.Context<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
 
         for (let i = 0; i < 100; i++) {
           const events = yield* rt.getEventsSnapshot()
@@ -227,7 +218,7 @@ describe('process: concurrency latest vs serial', () => {
             (e) => e.type === 'process:start' && e.identity.identity.processId === 'ProcessConcurrencySerialBacklog',
           )
           if (startedEvt) break
-          yield* Effect.yieldNow()
+          yield* Effect.yieldNow
         }
 
         for (let i = 0; i < total; i++) {
@@ -237,7 +228,7 @@ describe('process: concurrency latest vs serial', () => {
         for (let i = 0; i < 2000; i++) {
           const n = yield* Ref.get(completed)
           if (n === total) break
-          yield* Effect.yieldNow()
+          yield* Effect.yieldNow
         }
       } finally {
         yield* Scope.close(scope, Exit.succeed(undefined))

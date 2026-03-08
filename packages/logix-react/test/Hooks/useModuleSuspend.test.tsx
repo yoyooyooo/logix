@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
 // @vitest-environment happy-dom
 import React, { Suspense } from 'react'
-import { render, fireEvent, renderHook, waitFor } from '@testing-library/react'
-import { Schema, Effect, Layer, ManagedRuntime, Context } from 'effect'
+import { act, render, fireEvent, renderHook, waitFor } from '@testing-library/react'
+import { Effect, Layer, ManagedRuntime, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
 import { useModule } from '../../src/Hooks.js'
@@ -33,10 +33,15 @@ const AsyncCounterImpl = Counter.implement({
   ] as any,
 })
 
+const waitForAsyncCounterLogic = (runtime: ManagedRuntime.ManagedRuntime<any, any>) =>
+  act(async () => {
+    await runtime.runPromise(Effect.sleep('20 millis'))
+  })
+
 describe('useModule(Impl) suspend mode', () => {
   it('should reuse same key across hook calls even when RuntimeProvider.layer is present', async () => {
     const runtime = ManagedRuntime.make(Layer.empty as Layer.Layer<any, never, never>)
-    const EnvTag = Context.GenericTag<{ readonly name: string }>('@logixjs/react-test/useModuleSuspend/env')
+    const EnvTag = ServiceMap.Service<{ readonly name: string }>('@logixjs/react-test/useModuleSuspend/env')
     const EnvLayer = Layer.succeed(EnvTag, { name: 'env' })
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -61,13 +66,15 @@ describe('useModule(Impl) suspend mode', () => {
       return { a, b, aValue, bValue }
     }
 
-    const { result } = renderHook(() => useTest(), { wrapper })
+    const { result, unmount } = renderHook(() => useTest(), { wrapper })
 
     await waitFor(() => {
       expect(result.current.aValue).toBe(0)
       expect(result.current.bValue).toBe(0)
       expect(result.current.a.runtime.instanceId).toBe(result.current.b.runtime.instanceId)
     })
+
+    await waitForAsyncCounterLogic(runtime)
 
     result.current.a.dispatchers.inc()
 
@@ -76,12 +83,13 @@ describe('useModule(Impl) suspend mode', () => {
       expect(result.current.bValue).toBe(1)
     })
 
+    unmount()
     await runtime.dispose()
   })
 
   it('should isolate instances for different keys even when RuntimeProvider.layer is present', async () => {
     const runtime = ManagedRuntime.make(Layer.empty as Layer.Layer<any, never, never>)
-    const EnvTag = Context.GenericTag<{ readonly name: string }>('@logixjs/react-test/useModuleSuspend/env-keys')
+    const EnvTag = ServiceMap.Service<{ readonly name: string }>('@logixjs/react-test/useModuleSuspend/env-keys')
     const EnvLayer = Layer.succeed(EnvTag, { name: 'env' })
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -106,13 +114,15 @@ describe('useModule(Impl) suspend mode', () => {
       return { a, b, aValue, bValue }
     }
 
-    const { result } = renderHook(() => useTest(), { wrapper })
+    const { result, unmount } = renderHook(() => useTest(), { wrapper })
 
     await waitFor(() => {
       expect(result.current.aValue).toBe(0)
       expect(result.current.bValue).toBe(0)
       expect(result.current.a.runtime.instanceId).not.toBe(result.current.b.runtime.instanceId)
     })
+
+    await waitForAsyncCounterLogic(runtime)
 
     result.current.a.dispatchers.inc()
 
@@ -121,12 +131,13 @@ describe('useModule(Impl) suspend mode', () => {
       expect(result.current.bValue).toBe(0)
     })
 
+    unmount()
     await runtime.dispose()
   })
 
   it('should not share instances across different RuntimeProvider.layer scopes even with the same key', async () => {
     const runtime = ManagedRuntime.make(Layer.empty as Layer.Layer<any, never, never>)
-    const EnvTag = Context.GenericTag<{ readonly name: string }>('@logixjs/react-test/useModuleSuspend/scope-env')
+    const EnvTag = ServiceMap.Service<{ readonly name: string }>('@logixjs/react-test/useModuleSuspend/scope-env')
     const LayerA = Layer.succeed(EnvTag, { name: 'A' })
     const LayerB = Layer.succeed(EnvTag, { name: 'B' })
 
@@ -172,6 +183,8 @@ describe('useModule(Impl) suspend mode', () => {
       expect(getByTestId('id:a').textContent).not.toBe(getByTestId('id:b').textContent)
     })
 
+    await waitForAsyncCounterLogic(runtime)
+
     fireEvent.click(getByTestId('inc-a'))
 
     await waitFor(() => {
@@ -204,12 +217,14 @@ describe('useModule(Impl) suspend mode', () => {
       return { counter, value }
     }
 
-    const { result } = renderHook(() => useTest(), { wrapper })
+    const { result, unmount } = renderHook(() => useTest(), { wrapper })
 
     await waitFor(() => {
       expect(result.current).not.toBeNull()
       expect(result.current?.value).toBe(0)
     })
+
+    await waitForAsyncCounterLogic(runtime)
 
     result.current?.counter.dispatchers.inc()
 
@@ -217,6 +232,7 @@ describe('useModule(Impl) suspend mode', () => {
       expect(result.current?.value).toBe(1)
     })
 
+    unmount()
     await runtime.dispose()
   })
 

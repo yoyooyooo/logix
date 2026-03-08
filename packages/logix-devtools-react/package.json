@@ -50,7 +50,7 @@
   "dependencies": {
     "@logixjs/core": "workspace:*",
     "clsx": "^2.1.1",
-    "effect": "^3.19.8",
+    "effect": "4.0.0-beta.28",
     "framer-motion": "^12.23.26",
     "tailwind-merge": "^3.4.0"
   },

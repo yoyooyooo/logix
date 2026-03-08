@@ -87,14 +87,12 @@ export const CounterLiveFluent = CounterFluentModule.impl.layer
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const program = Effect.gen(function* () {
-    const runtime = yield* CounterDef.tag
+    const runtime = yield* Effect.service(CounterDef.tag).pipe(Effect.orDie)
 
     // Log state changes
-    yield* Effect.fork(
-      runtime
-        .changes((s) => s)
-        .pipe(Stream.runForEach((s) => Effect.log(`[State] count=${s.count}, hasValue=${s.hasValue}`))),
-    )
+    yield* Effect.forkChild(runtime
+      .changes((s) => s)
+      .pipe(Stream.runForEach((s) => Effect.log(`[State] count=${s.count}, hasValue=${s.hasValue}`))))
 
     yield* Effect.log('--- Start ---')
 

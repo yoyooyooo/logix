@@ -1,6 +1,6 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
-import { Effect, Fiber, SubscriptionRef, TestClock } from 'effect'
+import { describe, it, expect } from '@effect/vitest'
+import { Effect, Fiber, SubscriptionRef } from 'effect'
+import { TestClock } from 'effect/testing'
 import { I18n, I18nTag, type I18nDriver } from '../../src/index.js'
 
 const makeControlledDriver = (initial: { readonly language: string; readonly initialized: boolean }) => {
@@ -59,11 +59,11 @@ const makeControlledDriver = (initial: { readonly language: string; readonly ini
 }
 
 describe('I18n ready semantics', () => {
-  it.scoped('t is non-blocking; tReady waits for initialized', () => {
+  it.effect('t is non-blocking; tReady waits for initialized', () => {
     const ctl = makeControlledDriver({ language: 'en', initialized: false })
     return Effect.gen(function* () {
-      const svc = yield* I18nTag
-      yield* Effect.yieldNow()
+      const svc = yield* Effect.service(I18nTag).pipe(Effect.orDie)
+      yield* Effect.yieldNow
       expect(ctl.handlerCount.initialized()).toBeGreaterThan(0)
 
       const s0 = yield* SubscriptionRef.get(svc.snapshot)
@@ -71,7 +71,9 @@ describe('I18n ready semantics', () => {
 
       expect(svc.t('hello', { defaultValue: 'Hello' })).toBe('Hello')
 
-      const waitFiber = yield* Effect.fork(svc.tReady('hello', { defaultValue: 'Hello' }, 1000))
+      const waitFiber = yield* svc.tReady('hello', { defaultValue: 'Hello' }, 1000).pipe(
+        Effect.forkScoped({ startImmediately: true }),
+      )
 
       yield* Effect.sync(() => ctl.emitInitialized())
 
@@ -80,7 +82,7 @@ describe('I18n ready semantics', () => {
         const snap = yield* SubscriptionRef.get(svc.snapshot)
         if (snap.init === 'ready') break
         yield* TestClock.adjust('1 millis')
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
       }
 
       const readyValue = yield* Fiber.join(waitFiber)
@@ -88,25 +90,29 @@ describe('I18n ready semantics', () => {
     }).pipe(Effect.provide(I18n.layer(ctl.driver)))
   })
 
-  it.scoped('tReady degrades on timeout (default + override)', () => {
+  it.effect('tReady degrades on timeout (default + override)', () => {
     const ctl = makeControlledDriver({ language: 'en', initialized: false })
     return Effect.gen(function* () {
-      const svc = yield* I18nTag
+      const svc = yield* Effect.service(I18nTag).pipe(Effect.orDie)
 
-      const defaultTimeout = yield* Effect.fork(svc.tReady('bye', { defaultValue: 'Bye' }))
+      const defaultTimeout = yield* svc.tReady('bye', { defaultValue: 'Bye' }).pipe(
+        Effect.forkScoped({ startImmediately: true }),
+      )
       yield* TestClock.adjust('5 seconds')
       expect(yield* Fiber.join(defaultTimeout)).toBe('Bye')
 
-      const overrideTimeout = yield* Effect.fork(svc.tReady('soon', { defaultValue: 'Soon' }, 50))
+      const overrideTimeout = yield* svc.tReady('soon', { defaultValue: 'Soon' }, 50).pipe(
+        Effect.forkScoped({ startImmediately: true }),
+      )
       yield* TestClock.adjust('50 millis')
       expect(yield* Fiber.join(overrideTimeout)).toBe('Soon')
     }).pipe(Effect.provide(I18n.layer(ctl.driver)))
   })
 
-  it.scoped('changeLanguage updates snapshot; failed init degrades', () => {
+  it.effect('changeLanguage updates snapshot; failed init degrades', () => {
     const ctl = makeControlledDriver({ language: 'en', initialized: true })
     return Effect.gen(function* () {
-      const svc = yield* I18nTag
+      const svc = yield* Effect.service(I18nTag).pipe(Effect.orDie)
 
       const s0 = yield* SubscriptionRef.get(svc.snapshot)
       expect(s0.init).toBe('ready')

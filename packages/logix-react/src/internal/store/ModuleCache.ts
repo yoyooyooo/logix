@@ -30,10 +30,10 @@ export interface ModuleCachePreloadOptions extends ModuleCacheLoadOptions {
 }
 
 interface ResourceEntry {
-  scope: Scope.CloseableScope
+  scope: Scope.Closeable
   status: 'pending' | 'success' | 'error'
   promise: Promise<ModuleRuntimeLike>
-  fiber?: Fiber.RuntimeFiber<ModuleRuntimeLike, unknown>
+  fiber?: Fiber.Fiber<ModuleRuntimeLike, unknown>
   value?: ModuleRuntimeLike
   error?: unknown
   refCount: number
@@ -89,9 +89,9 @@ const debugBestEffortFailure = (label: string, error: unknown): void => {
 }
 
 const causeToUnknown = (cause: Cause.Cause<unknown>): unknown => {
-  const failure = Option.getOrUndefined(Cause.failureOption(cause))
+  const failure = Option.getOrUndefined(Cause.findErrorOption(cause))
   if (failure !== undefined) return failure
-  const defect = Option.getOrUndefined(Cause.dieOption(cause))
+  const defect = cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)[0]
   if (defect !== undefined) return defect
   return cause
 }
@@ -101,7 +101,7 @@ const yieldEffect = (strategy: YieldStrategy): Effect.Effect<void> => {
     case 'none':
       return Effect.void
     case 'microtask':
-      return Effect.yieldNow()
+      return Effect.yieldNow
     case 'macrotask':
       return Effect.promise(
         () =>
@@ -263,7 +263,7 @@ export class ModuleCache {
     // - Does not depend on React Runtime Env.
     // - Uses the global default Runtime, avoiding early ManagedRuntime.runSync in suspend:true scenarios
     //   (may encounter async Layer building).
-    const scope = Effect.runSync(Scope.make()) as Scope.CloseableScope
+    const scope = Effect.runSync(Scope.make()) as Scope.Closeable
 
     const workloadKey = `${options?.entrypoint ?? 'unknown'}::${ownerId ?? 'unknown'}`
     const yieldDecision = decideYieldStrategy(this.runtime as unknown as object, workloadKey, options?.yield)
@@ -360,9 +360,9 @@ export class ModuleCache {
 
     const startedAt = performance.now()
 
-    const buildEffect = yieldEffect(yieldDecision.strategy).pipe(Effect.zipRight(factory(scope)))
+    const buildEffect = yieldEffect(yieldDecision.strategy).pipe(Effect.flatMap(() => factory(scope)))
 
-    const fiber = this.runtime.runFork(buildEffect) as Fiber.RuntimeFiber<ModuleRuntimeLike, unknown>
+    const fiber = this.runtime.runFork(buildEffect) as Fiber.Fiber<ModuleRuntimeLike, unknown>
     entry.fiber = fiber
 
     const promise: Promise<A> = this.runtime.runPromise(Fiber.await(fiber)).then((exit) => {
@@ -512,7 +512,7 @@ export class ModuleCache {
       return existing.value as A
     }
 
-    const scope = this.runtime.runSync(Scope.make()) as Scope.CloseableScope
+    const scope = this.runtime.runSync(Scope.make()) as Scope.Closeable
 
     const startedAt = performance.now()
 
@@ -666,7 +666,7 @@ export class ModuleCache {
       return undefined
     }
 
-    const scope = this.runtime.runSync(Scope.make()) as Scope.CloseableScope
+    const scope = this.runtime.runSync(Scope.make()) as Scope.Closeable
     const startedAt = performance.now()
     const workloadKey = `${options?.entrypoint ?? 'unknown'}::${ownerId ?? 'unknown'}`
 
@@ -728,7 +728,7 @@ export class ModuleCache {
       }
     }
 
-    const scope = Effect.runSync(Scope.make()) as Scope.CloseableScope
+    const scope = Effect.runSync(Scope.make()) as Scope.Closeable
 
     const ownerId = options?.ownerId
     const gcTime = options?.gcTime ?? this.gcDelayMs
@@ -789,9 +789,9 @@ export class ModuleCache {
     this.entries.set(key, entry)
 
     const startedAt = performance.now()
-    const buildEffect = yieldEffect(yieldDecision.strategy).pipe(Effect.zipRight(factory(scope)))
+    const buildEffect = yieldEffect(yieldDecision.strategy).pipe(Effect.flatMap(() => factory(scope)))
 
-    const fiber = this.runtime.runFork(buildEffect) as Fiber.RuntimeFiber<ModuleRuntimeLike, unknown>
+    const fiber = this.runtime.runFork(buildEffect) as Fiber.Fiber<ModuleRuntimeLike, unknown>
     entry.fiber = fiber
 
     const promise: Promise<A> = this.runtime.runPromise(Fiber.await(fiber)).then((exit) => {

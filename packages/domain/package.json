@@ -50,16 +50,16 @@
   },
   "dependencies": {
     "@logixjs/core": "workspace:*",
-    "effect": "^3.19.8"
+    "effect": "4.0.0-beta.28"
   },
   "devDependencies": {
-    "@effect/vitest": "^0.27.0",
+    "@effect/vitest": "4.0.0-beta.28",
     "tsup": "^8.0.0",
     "typescript": "^5.8.2",
     "vitest": "^4.0.15"
   },
   "peerDependencies": {
     "@logixjs/core": "workspace:*",
-    "effect": "^3.19.8"
+    "effect": "4.0.0-beta.28"
   }
 }

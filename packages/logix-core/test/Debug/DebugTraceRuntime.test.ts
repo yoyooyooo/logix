@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
@@ -15,13 +15,11 @@ describe('Debug trace events', () => {
     }
 
     await Effect.runPromise(
-      Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [sink])(
-        Logix.Debug.record({
-          type: 'trace:inc',
-          moduleId: 'DebugTraceCounter',
-          data: { source: 'DebugTraceRuntime.test' },
-        }),
-      ),
+      Effect.provideService(Logix.Debug.record({
+        type: 'trace:inc',
+        moduleId: 'DebugTraceCounter',
+        data: { source: 'DebugTraceRuntime.test' },
+      }), Logix.Debug.internal.currentDebugSinks as any, [sink]),
     )
 
     // Verify trace:* events are delivered to the caller via DebugSink.

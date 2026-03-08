@@ -4,7 +4,7 @@ import * as Logix from '../../src/index.js'
 import * as Debug from '../../src/Debug.js'
 
 describe('Runtime devtools diagnostics=off vacuum path', () => {
-  it.scoped('should skip DebugObserver and DevtoolsHub while preserving user sinks', () =>
+  it.effect('should skip DebugObserver and DevtoolsHub while preserving user sinks', () =>
     Effect.gen(function* () {
       Debug.clearDevtoolsEvents()
       const snapshotTokenBefore = Debug.getDevtoolsSnapshotToken()
@@ -34,7 +34,7 @@ describe('Runtime devtools diagnostics=off vacuum path', () => {
         const finalState = yield* Effect.promise(() =>
           runtime.runPromise(
             Effect.gen(function* () {
-              const rt = yield* M.tag
+              const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
               yield* rt.dispatch({ _tag: 'inc', payload: undefined })
               return yield* rt.getState
             }),
@@ -55,7 +55,7 @@ describe('Runtime devtools diagnostics=off vacuum path', () => {
     }),
   )
 
-  it.scoped('should keep omitted diagnosticsLevel semantics (no ring-trim policy event)', () =>
+  it.effect('should keep omitted diagnosticsLevel semantics (no ring-trim policy event)', () =>
     Effect.gen(function* () {
       Debug.clearDevtoolsEvents()
       Debug.devtoolsHubLayer({ bufferSize: 9, diagnosticsLevel: 'full' })
@@ -84,7 +84,7 @@ describe('Runtime devtools diagnostics=off vacuum path', () => {
         yield* Effect.promise(() =>
           runtime.runPromise(
             Effect.gen(function* () {
-              const rt = yield* M.tag
+              const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
               yield* rt.dispatch({ _tag: 'inc', payload: undefined })
             }),
           ),

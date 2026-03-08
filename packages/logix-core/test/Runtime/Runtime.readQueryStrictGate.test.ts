@@ -31,17 +31,13 @@ describe('Runtime.readQuery.strictGate', () => {
     })
 
     const program = Effect.gen(function* () {
-      const rt: any = yield* M.tag
+      const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
       const selector = (s: { count: number }) => (s.count > 0 ? s.count : 0)
 
-      const fiber = yield* Effect.fork(Stream.runCollect(Stream.take(rt.changesReadQueryWithMeta(selector), 1)))
+      const fiber = yield* Effect.forkChild(Stream.runCollect(Stream.take(rt.changesReadQueryWithMeta(selector), 1)))
       // Ensure subscription starts before dispatch; PubSub-based streams drop events when no subscribers exist.
       for (let i = 0; i < 64; i++) {
-        const status = yield* Fiber.status(fiber)
-        if (status._tag === 'Suspended' || status._tag === 'Done') {
-          break
-        }
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
       }
       yield* rt.dispatch({ _tag: 'inc', payload: undefined })
 
@@ -49,7 +45,7 @@ describe('Runtime.readQuery.strictGate', () => {
       expect(exit._tag).toBe('Failure')
       if (exit._tag !== 'Failure') return
 
-      const defects = [...Cause.defects(exit.cause)]
+      const defects = exit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)
       const err = defects.find((e) => (e as any)?._tag === 'ReadQueryStrictGateError') as any
       expect(err).toBeDefined()
       expect(err?.details?.fallbackReason).toBe('missingBuildGrade')
@@ -96,17 +92,13 @@ describe('Runtime.readQuery.strictGate', () => {
     })
 
     const program = Effect.gen(function* () {
-      const rt: any = yield* M.tag
+      const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
       const selector = (s: { count: number }) => (s.count > 0 ? s.count : 0)
 
-      const fiber = yield* Effect.fork(Stream.runCollect(Stream.take(rt.changesReadQueryWithMeta(selector), 1)))
+      const fiber = yield* Effect.forkChild(Stream.runCollect(Stream.take(rt.changesReadQueryWithMeta(selector), 1)))
       // Ensure subscription starts before dispatch; PubSub-based streams drop events when no subscribers exist.
       for (let i = 0; i < 64; i++) {
-        const status = yield* Fiber.status(fiber)
-        if (status._tag === 'Suspended' || status._tag === 'Done') {
-          break
-        }
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
       }
       yield* rt.dispatch({ _tag: 'inc', payload: undefined })
 
@@ -114,7 +106,7 @@ describe('Runtime.readQuery.strictGate', () => {
       expect(exit._tag).toBe('Success')
       if (exit._tag !== 'Success') return
 
-      const values = Chunk.toReadonlyArray(exit.value) as ReadonlyArray<any>
+      const values = Array.from(exit.value as Iterable<any>)
       expect(values.length).toBe(1)
       expect(values[0]?.value).toBe(1)
     })

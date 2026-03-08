@@ -1,4 +1,4 @@
-import { Effect } from 'effect'
+import { Effect, Exit } from 'effect'
 
 import { ApiResponseError, type ArtifactName, type SpecListItem, type TaskItem } from '../../api/client'
 import { parseUserStories } from '../../lib/spec-relations'
@@ -74,10 +74,10 @@ export const KanbanRefreshLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
   setup: Effect.void,
   run: Effect.gen(function* () {
     const api = yield* $.use(SpecboardApi)
-    const initRes = yield* Effect.either(api.listSpecs())
+    const initRes = yield* Effect.exit(api.listSpecs())
     yield* $.state.mutate((draft) => {
-      if (initRes._tag === 'Left') {
-        draft.error = formatError(initRes.left)
+      if (Exit.isFailure(initRes)) {
+        draft.error = formatError(initRes.cause)
         draft.specs = []
         draft.tasksBySpec = {}
         draft.loadingBySpec = {}
@@ -87,7 +87,7 @@ export const KanbanRefreshLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
       }
 
       draft.error = null
-      draft.specs = Array.from(initRes.right.items)
+      draft.specs = Array.from(initRes.value.items)
       draft.tasksBySpec = {}
       draft.loadingBySpec = {}
       draft.storiesBySpec = {}
@@ -171,20 +171,20 @@ export const KanbanEnsureTasksLoadedLogic = KanbanAppDef.logic<SpecboardApi>(($)
                       draft.loadingBySpec[specId] = true
                     })
 
-                    const res = yield* Effect.either(api.listTasks(specId))
+                    const res = yield* Effect.exit(api.listTasks(specId))
 
                     yield* $.state.mutate((draft) => {
-                      if (res._tag === 'Right') {
-                        draft.tasksBySpec[specId] = Array.from(res.right.tasks)
+                      if (Exit.isSuccess(res)) {
+                        draft.tasksBySpec[specId] = Array.from(res.value.tasks) as ReadonlyArray<TaskItem> as any
                         return
                       }
 
-                      if (isNotFound(res.left)) {
+                      if (isNotFound(res.cause)) {
                         draft.tasksBySpec[specId] = []
                         return
                       }
 
-                      draft.error = formatError(res.left)
+                      draft.error = formatError(res.cause)
                       draft.tasksBySpec[specId] = []
                     })
                   }).pipe(
@@ -202,20 +202,20 @@ export const KanbanEnsureTasksLoadedLogic = KanbanAppDef.logic<SpecboardApi>(($)
                       draft.loadingStoriesBySpec[specId] = true
                     })
 
-                    const res = yield* Effect.either(api.readFile(specId, 'spec.md'))
+                    const res = yield* Effect.exit(api.readFile(specId, 'spec.md'))
 
                     yield* $.state.mutate((draft) => {
-                      if (res._tag === 'Right') {
-                        draft.storiesBySpec[specId] = Array.from(parseUserStories(res.right.content))
+                      if (Exit.isSuccess(res)) {
+                        draft.storiesBySpec[specId] = Array.from(parseUserStories(res.value.content))
                         return
                       }
 
-                      if (isNotFound(res.left)) {
+                      if (isNotFound(res.cause)) {
                         draft.storiesBySpec[specId] = []
                         return
                       }
 
-                      draft.error = formatError(res.left)
+                      draft.error = formatError(res.cause)
                       draft.storiesBySpec[specId] = []
                     })
                   }).pipe(
@@ -243,15 +243,15 @@ export const KanbanToggleTaskLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
     const toggleTask = (specId: string, line: number, checked: boolean) =>
       Effect.gen(function* () {
         const api = yield* $.use(SpecboardApi)
-        const res = yield* Effect.either(api.toggleTask(specId, line, checked))
+        const res = yield* Effect.exit(api.toggleTask(specId, line, checked))
 
         yield* $.state.mutate((draft) => {
-          if (res._tag === 'Left') {
-            draft.error = formatError(res.left)
+          if (Exit.isFailure(res)) {
+            draft.error = formatError(res.cause)
             return
           }
 
-          const tasks = Array.from(res.right.tasks)
+          const tasks = Array.from(res.value.tasks) as Array<TaskItem>
           draft.tasksBySpec[specId] = tasks
           const stats = computeStats(tasks)
           draft.specs = draft.specs.map((s) => (s.id === specId ? { ...s, taskStats: stats } : s))
@@ -317,13 +317,13 @@ export const KanbanSpecDetailLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
           if (!specId) return { name: a.payload, content: '' as string, isNotFound: false }
 
           const api = yield* $.use(SpecboardApi)
-          const res = yield* Effect.either(api.readFile(specId, a.payload))
+          const res = yield* Effect.exit(api.readFile(specId, a.payload))
 
-          if (res._tag === 'Right') {
-            return { name: a.payload, content: res.right.content, isNotFound: false }
+          if (Exit.isSuccess(res)) {
+            return { name: a.payload, content: res.value.content, isNotFound: false }
           }
 
-          return { name: a.payload, content: '', isNotFound: isNotFound(res.left), error: formatError(res.left) }
+          return { name: a.payload, content: '', isNotFound: isNotFound(res.cause), error: formatError(res.cause) }
         }),
       success: (r) =>
         $.state.mutate((draft) => {
@@ -389,8 +389,8 @@ export const KanbanSpecDetailLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
           const api = yield* $.use(SpecboardApi)
           const specId = a.payload
 
-          const specMd = yield* Effect.either(api.readFile(specId, 'spec.md'))
-          const tasks = yield* Effect.either(api.listTasks(specId))
+          const specMd = yield* Effect.exit(api.readFile(specId, 'spec.md'))
+          const tasks = yield* Effect.exit(api.listTasks(specId))
 
           type ArtifactCheck = { readonly name: ArtifactName; readonly exists: boolean | null }
           const optional: ReadonlyArray<ArtifactName> = [
@@ -406,7 +406,7 @@ export const KanbanSpecDetailLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
             (name): Effect.Effect<ArtifactCheck, never, never> =>
               api.readFile(specId, name).pipe(
                 Effect.as({ name, exists: true }),
-                Effect.catchAll(() => Effect.succeed({ name, exists: false })),
+                Effect.catch(() => Effect.succeed({ name, exists: false })),
               ),
             { concurrency: 'unbounded' },
           )
@@ -423,27 +423,27 @@ export const KanbanSpecDetailLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
             if (c.exists === false) draft.specDetail.artifactExists[c.name] = false
           }
 
-          if (r.tasks._tag === 'Right') {
-            const tasks = Array.from(r.tasks.right.tasks)
+          if (Exit.isSuccess(r.tasks)) {
+            const tasks = Array.from(r.tasks.value.tasks) as Array<TaskItem>
             draft.tasksBySpec[r.specId] = tasks
             const stats = computeStats(tasks)
             draft.specs = draft.specs.map((s) => (s.id === r.specId ? { ...s, taskStats: stats } : s))
-          } else if (isNotFound(r.tasks.left)) {
+          } else if (isNotFound(r.tasks.cause)) {
             draft.tasksBySpec[r.specId] = []
           } else {
-            draft.error = formatError(r.tasks.left)
+            draft.error = formatError(r.tasks.cause)
           }
 
-          if (r.specMd._tag === 'Right') {
-            draft.specDetail.content = r.specMd.right.content
-            draft.specDetail.specMarkdown = r.specMd.right.content
+          if (Exit.isSuccess(r.specMd)) {
+            draft.specDetail.content = r.specMd.value.content
+            draft.specDetail.specMarkdown = r.specMd.value.content
             draft.specDetail.artifactExists['spec.md'] = true
             draft.specDetail.specError = null
             return
           }
 
-          draft.specDetail.specError = formatError(r.specMd.left)
-          if (isNotFound(r.specMd.left)) {
+          draft.specDetail.specError = formatError(r.specMd.cause)
+          if (isNotFound(r.specMd.cause)) {
             draft.specDetail.artifactExists['spec.md'] = false
           }
         }),

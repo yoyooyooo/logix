@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { Context, Effect, Exit, Layer, Schema } from 'effect'
+import { Effect, Exit, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 import matrix from '@logixjs/perf-evidence/assets/matrix.json'
 import { getRuntimeModuleExternalStore } from '../../../src/internal/store/RuntimeExternalStore.js'
@@ -39,10 +39,10 @@ test(
       const perfSuite = (matrix.suites as any[]).find((s) => s.id === 'workflow.submit.tickNotify') as any
       expect(perfSuite).toBeDefined()
 
-      class SubmitPort extends Context.Tag('PerfWorkflow.075.SubmitPort')<
+      class SubmitPort extends ServiceMap.Service<
         SubmitPort,
         (shouldFail: boolean) => Effect.Effect<void, Error, never>
-      >() {}
+      >()('PerfWorkflow.075.SubmitPort') {}
 
       const M = Logix.Module.make('PerfWorkflow075.Submit', {
         state: Schema.Struct({ ok: Schema.Number, bad: Schema.Number }),
@@ -135,7 +135,7 @@ test(
           },
         )
 
-        const moduleRuntime = (await runtime.runPromise(M.tag as any)) as any
+        const moduleRuntime = (await runtime.runPromise(Effect.service(M.tag).pipe(Effect.orDie))) as any
 
         const storeOptions = { lowPriorityDelayMs: 16, lowPriorityMaxDelayMs: 50 }
         const store = getRuntimeModuleExternalStore(runtime as any, moduleRuntime, storeOptions)
@@ -361,7 +361,7 @@ test(
           },
         )
 
-        const moduleRuntime = (await runtime.runPromise(M.tag as any)) as any
+        const moduleRuntime = (await runtime.runPromise(Effect.service(M.tag).pipe(Effect.orDie))) as any
 
         const storeOptions = { lowPriorityDelayMs: 16, lowPriorityMaxDelayMs: 50 }
         const store = getRuntimeModuleExternalStore(runtime as any, moduleRuntime, storeOptions)
