@@ -75,10 +75,13 @@ describe('React Runtime transaction integration', () => {
 
           result.current.inc()
 
-          // Give internal Effects a chance to run.
-          yield* Effect.sleep('10 millis')
+          let after = before
+          for (let i = 0; i < 100; i += 1) {
+            yield* Effect.sleep('5 millis')
+            after = countTxnStateUpdates()
+            if (after - before > 0) break
+          }
 
-          const after = countTxnStateUpdates()
           // This interaction should append exactly one state event with a txnId.
           expect(after - before).toBe(1)
         }),
