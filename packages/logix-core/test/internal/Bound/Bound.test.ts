@@ -40,6 +40,37 @@ const setupActionCollector = <A>(hub: PubSub.PubSub<A>, count: number) =>
     return fiber
   })
 
+
+const waitUntil = <A>(
+  read: Effect.Effect<A, never, any>,
+  predicate: (value: A) => boolean,
+): Effect.Effect<A, Error, any> =>
+  Effect.gen(function* () {
+    for (let i = 0; i < 400; i += 1) {
+      const value = yield* read
+      if (predicate(value)) return value
+      yield* Effect.sleep('5 millis')
+    }
+    return yield* Effect.fail(new Error('timeout waiting for bound state'))
+  })
+
+const waitUntilStable = <A>(
+  read: Effect.Effect<A, never, any>,
+  predicate: (value: A) => boolean,
+  rounds = 20,
+): Effect.Effect<A, Error, any> =>
+  Effect.gen(function* () {
+    const value = yield* waitUntil(read, predicate)
+    for (let i = 0; i < rounds; i += 1) {
+      yield* Effect.sleep('5 millis')
+      const next = yield* read
+      if (!predicate(next)) {
+        return yield* Effect.fail(new Error('bound state changed again after reaching target'))
+      }
+    }
+    return value
+  })
+
 describe('Bound API (public)', () => {
   it('should handle onAction filter/map/update/mutate', async () => {
     const CounterLogic = CounterModule.logic(($) =>
@@ -73,7 +104,6 @@ describe('Bound API (public)', () => {
     const runtime = Logix.Runtime.make(impl, {
       layer: Layer.empty as Layer.Layer<any, never, never>,
     })
-
     const program = Effect.gen(function* () {
       const rt = yield* Effect.service(CounterModule.tag).pipe(Effect.orDie)
 
@@ -82,15 +112,57 @@ describe('Bound API (public)', () => {
 
       // inc：update( +1 ) + mutate( +4 ) = +5
       yield* rt.dispatch({ _tag: 'inc', payload: undefined })
-      yield* Effect.sleep('10 millis')
-      let state = yield* rt.getState
+      let state = yield* waitUntilStable(rt.getState as any, (s: any) => s.count === 5)
       expect(state.count).toBe(5)
 
       // setValue: tag-based onAction + map + update
       yield* rt.dispatch({ _tag: 'setValue', payload: 'hello' })
-      yield* Effect.sleep('10 millis')
-      state = yield* rt.getState
+      state = yield* waitUntil(rt.getState as any, (s: any) => s.value === 'HELLO')
       expect(state.value).toBe('HELLO')
+    })
+
+    await runtime.runPromise(program as Effect.Effect<void, never, any>)
+  })
+
+  it('should settle repeated matching dispatches without late duplicate commits', async () => {
+    const CounterLogic = CounterModule.logic(($) =>
+      Effect.gen(function* () {
+        yield* Effect.all(
+          [
+            $.onAction('inc').update((state) => ({
+              ...state,
+              count: state.count + 1,
+            })),
+            $.onAction((a): a is Logix.ActionOf<typeof CounterModule.shape> => a._tag === 'inc').mutate((draft) => {
+              draft.count += 4
+            }),
+          ],
+          { concurrency: 'unbounded' },
+        )
+      }),
+    )
+
+    const impl = CounterModule.implement({
+      initial: { count: 0, value: 'init' },
+      logics: [CounterLogic],
+    })
+
+    const runtime = Logix.Runtime.make(impl, {
+      layer: Layer.empty as Layer.Layer<any, never, never>,
+    })
+
+    const program = Effect.gen(function* () {
+      const rt = yield* Effect.service(CounterModule.tag).pipe(Effect.orDie)
+
+      yield* Effect.sleep('10 millis')
+
+      yield* Effect.all(
+        Array.from({ length: 3 }, () => rt.dispatch({ _tag: 'inc', payload: undefined })),
+        { concurrency: 'unbounded' },
+      )
+
+      const state = yield* waitUntilStable(rt.getState as any, (s: any) => s.count === 15)
+      expect(state.count).toBe(15)
     })
 
     await runtime.runPromise(program as Effect.Effect<void, never, any>)

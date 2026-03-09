@@ -215,4 +215,124 @@ describe('Query.invalidate', () => {
       yield* Effect.promise(() => runtime.runPromise(program as any))
     }),
   )
+
+  it.effect('byTag should preserve untouched snapshots until its own refresh path runs', () =>
+    Effect.gen(function* () {
+      const KeySchema = Schema.Struct({ q: Schema.String })
+      type Key = Schema.Schema.Type<typeof KeySchema>
+
+      let loadCallsA = 0
+      const specA = Logix.Resource.make<Key, { readonly q: string; readonly v: number }, never, never>({
+        id: 'demo/query-invalidate-byTag/state/A',
+        keySchema: KeySchema,
+        load: (key) =>
+          Effect.sync(() => {
+            loadCallsA += 1
+            return { q: key.q, v: loadCallsA }
+          }).pipe(Effect.delay(Duration.millis(10))),
+      })
+
+      let loadCallsB = 0
+      const specB = Logix.Resource.make<Key, { readonly q: string; readonly v: number }, never, never>({
+        id: 'demo/query-invalidate-byTag/state/B',
+        keySchema: KeySchema,
+        load: (key) =>
+          Effect.sync(() => {
+            loadCallsB += 1
+            return { q: key.q, v: loadCallsB }
+          }).pipe(Effect.delay(Duration.millis(10))),
+      })
+
+      const ParamsSchema = Schema.Struct({ q: Schema.String })
+
+      const module = Query.make('QueryInvalidateByTagSnapshotBlueprint', {
+        params: ParamsSchema,
+        initialParams: { q: 'x' },
+        queries: ($) => ({
+          a: $.source({
+            resource: specA,
+            deps: ['params.q'],
+            triggers: ['onMount'],
+            tags: ['user'],
+            concurrency: 'switch',
+            key: (q) => ({ q }),
+          }),
+          b: $.source({
+            resource: specB,
+            deps: ['params.q'],
+            triggers: ['onMount'],
+            tags: ['order'],
+            concurrency: 'switch',
+            key: (q) => ({ q }),
+          }),
+        }),
+      })
+
+      const engine: Query.Engine = {
+        fetch: ({ effect }) => effect,
+        invalidate: () => Effect.void,
+      }
+
+      const runtime = Logix.Runtime.make(module.impl, {
+        layer: Layer.mergeAll(Logix.Resource.layer([specA, specB]), Query.Engine.layer(engine), ReplayLog.layer()),
+        middleware: [Query.Engine.middleware()],
+      })
+
+      const waitUntil = <A>(
+        read: Effect.Effect<A, never, any>,
+        predicate: (value: A) => boolean,
+      ): Effect.Effect<A, Error, any> =>
+        Effect.gen(function* () {
+          for (let i = 0; i < 400; i += 1) {
+            const value = yield* read
+            if (predicate(value)) return value
+            yield* Effect.sleep(Duration.millis(5))
+          }
+          return yield* Effect.fail(new Error('timeout waiting for invalidate-byTag snapshot state'))
+        })
+
+      const program = Effect.gen(function* () {
+        const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
+        const controller = module.controller.make(rt)
+
+        const initial = yield* waitUntil(
+          controller.getState as any,
+          (s: any) =>
+            s.queries.a.status === 'success' &&
+            s.queries.a.data?.v === 1 &&
+            s.queries.b.status === 'success' &&
+            s.queries.b.data?.v === 1,
+        )
+        expect(initial.queries.a.data).toEqual({ q: 'x', v: 1 })
+        expect(initial.queries.b.data).toEqual({ q: 'x', v: 1 })
+
+        yield* controller.controller.invalidate({ kind: 'byTag', tag: 'user' })
+        const afterMatch = yield* waitUntil(
+          controller.getState as any,
+          (s: any) =>
+            s.queries.a.status === 'success' &&
+            s.queries.a.data?.v === 2 &&
+            s.queries.b.status === 'success' &&
+            s.queries.b.data?.v === 1,
+        )
+        expect(afterMatch.queries.a.data).toEqual({ q: 'x', v: 2 })
+        expect(afterMatch.queries.b.data).toEqual({ q: 'x', v: 1 })
+
+        yield* controller.controller.invalidate({ kind: 'byTag', tag: 'unknown' })
+        const afterFallback = yield* waitUntil(
+          controller.getState as any,
+          (s: any) =>
+            s.queries.a.status === 'success' &&
+            s.queries.a.data?.v === 3 &&
+            s.queries.b.status === 'success' &&
+            s.queries.b.data?.v === 2,
+        )
+        expect(afterFallback.queries.a.data).toEqual({ q: 'x', v: 3 })
+        expect(afterFallback.queries.b.data).toEqual({ q: 'x', v: 2 })
+      })
+
+      yield* Effect.promise(() => runtime.runPromise(program as any))
+    }),
+  )
+
 })
