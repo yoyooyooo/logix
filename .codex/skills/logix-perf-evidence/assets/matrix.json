@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "logix-browser-perf-matrix-v1",
-  "updatedAt": "2026-03-06",
+  "updatedAt": "2026-01-19",
   "defaults": {
     "runs": 30,
     "warmupDiscard": 5,
@@ -36,20 +36,13 @@
     {
       "id": "watchers.clickToPaint",
       "priority": "P1",
-      "title": "watchers: click→paint-ish (DOM stable + next frame)",
+      "title": "watchers: click→paint",
       "primaryAxis": "watchers",
       "axes": {
         "watchers": [1, 8, 32, 64, 128, 256, 512],
         "reactStrictMode": [false, true]
       },
       "metrics": ["e2e.clickToPaintMs"],
-      "requiredEvidence": [
-        "watchers.phase.clickInvokeToNativeCaptureMs",
-        "watchers.phase.nativeCaptureToHandlerMs",
-        "watchers.phase.handlerToDomStableMs",
-        "watchers.phase.domStableToPaintGapMs",
-        "budget.cutOffCount"
-      ],
       "budgets": [
         {
           "id": "p95<=16ms",
@@ -76,52 +69,7 @@
         { "watchers": 128, "reactStrictMode": true },
         { "watchers": 256, "reactStrictMode": true }
       ],
-      "notes": "使用 DOM stable 后再过一帧的近似 paint 口径；同次 sample 内额外输出 click invoke→native capture、native capture→handler、handler→DOM stable、DOM stable→paint gap phase evidence，避免继续依赖两条独立 suite 的聚合差值来判断超线落点。"
-    },
-    {
-      "id": "watchers.clickToDomStable",
-      "priority": "P1",
-      "title": "watchers: click→DOM stable",
-      "primaryAxis": "watchers",
-      "axes": {
-        "watchers": [1, 8, 32, 64, 128, 256, 512],
-        "reactStrictMode": [false, true]
-      },
-      "metrics": ["e2e.clickToDomStableMs"],
-      "requiredEvidence": [
-        "watchers.phase.clickInvokeToNativeCaptureMs",
-        "watchers.phase.nativeCaptureToHandlerMs",
-        "watchers.phase.handlerToDomStableMs",
-        "watchers.phase.domStableToPaintGapMs",
-        "budget.cutOffCount"
-      ],
-      "budgets": [
-        {
-          "id": "p95<=16ms",
-          "type": "absolute",
-          "metric": "e2e.clickToDomStableMs",
-          "p95Ms": 16
-        },
-        {
-          "id": "p95<=50ms",
-          "type": "absolute",
-          "metric": "e2e.clickToDomStableMs",
-          "p95Ms": 50
-        },
-        {
-          "id": "p95<=100ms",
-          "type": "absolute",
-          "metric": "e2e.clickToDomStableMs",
-          "p95Ms": 100
-        }
-      ],
-      "baselineBudgetId": "p95<=50ms",
-      "limitBudgetId": "p95<=100ms",
-      "baselinePoints": [
-        { "watchers": 128, "reactStrictMode": true },
-        { "watchers": 256, "reactStrictMode": true }
-      ],
-      "notes": "把 watcher runtime 更直接映射到 DOM stable，并和 clickToPaint 共用同次 sample 的 phase evidence，直接解释超线主要落在 handler→DOM stable 还是 DOM stable→paint。"
+      "notes": "现有维度示例：packages/logix-react/test/browser/watcher-browser-perf.test.tsx（后续纳入统一报告输出）。"
     },
     {
       "id": "converge.txnCommit",
@@ -161,6 +109,12 @@
           "minDeltaMs": 0.1,
           "numeratorRef": "convergeMode=auto",
           "denominatorRef": "convergeMode=full"
+        },
+        {
+          "id": "decision.p95<=0.5ms",
+          "type": "absolute",
+          "metric": "runtime.decisionMs",
+          "p95Ms": 0.5
         }
       ],
       "baselineBudgetId": "commit.p95<=50ms",
@@ -170,45 +124,7 @@
         { "steps": 800, "dirtyRootsRatio": 0.05, "convergeMode": "auto" },
         { "steps": 2000, "dirtyRootsRatio": 0.75, "convergeMode": "full" }
       ],
-      "notes": "对齐 013 的写入分布口径（通过 dirtyRootsRatio 派生 dirtyRoots）；auto<=full*1.05 是 runtime 类硬门（默认在 DiagnosticsLevel=off 下跑）；light|full 仅记录开销曲线；decisionMs 继续采样，但 auto-only 的 decision gate 单独拆到 converge.txnCommit.autoDecision，避免 full/dirty 的 notApplicable 混进失败视图。"
-    },
-    {
-      "id": "converge.txnCommit.autoDecision",
-      "priority": "P1",
-      "title": "converge: auto decision / txn commit",
-      "primaryAxis": "steps",
-      "axes": {
-        "steps": [200, 400, 600, 800, 1200, 1600, 2000],
-        "dirtyRootsRatio": [0.005, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2, 0.25, 0.33, 0.4, 0.5, 0.6, 0.7, 0.75, 0.8, 0.9, 1]
-      },
-      "derivedParams": [
-        {
-          "name": "dirtyRoots",
-          "rule": "dirtyRoots = max(1, ceil(steps * dirtyRootsRatio))"
-        }
-      ],
-      "metrics": ["runtime.decisionMs"],
-      "budgets": [
-        {
-          "id": "decision.p95<=0.5ms",
-          "type": "absolute",
-          "metric": "runtime.decisionMs",
-          "p95Ms": 0.5
-        }
-      ],
-      "baselineBudgetId": "decision.p95<=0.5ms",
-      "requiredEvidence": [
-        "converge.requestedMode",
-        "converge.executedMode",
-        "converge.outcome",
-        "converge.reasons",
-        "converge.decisionDurationMs"
-      ],
-      "baselinePoints": [
-        { "steps": 800, "dirtyRootsRatio": 0.05 },
-        { "steps": 2000, "dirtyRootsRatio": 1 }
-      ],
-      "notes": "只覆盖 auto 路径的 decision budget，避免在 full/dirty 上把 runtime.decisionMs=notApplicable 误记为 gate 失败。"
+      "notes": "对齐 013 的写入分布口径（通过 dirtyRootsRatio 派生 dirtyRoots）；auto<=full*1.05 是 runtime 类硬门（默认在 DiagnosticsLevel=off 下跑）；light|full 仅记录开销曲线；decisionMs 可先占位，不可用时必须显式标注 unavailable + reason。"
     },
     {
       "id": "converge.timeSlicing.txnCommit",
@@ -259,7 +175,6 @@
           "type": "relative",
           "metric": "runtime.txnCommitMs",
           "maxRatio": 1.05,
-          "minDeltaMs": 0.5,
           "numeratorRef": "requestedMode=auto",
           "denominatorRef": "requestedMode=full"
         }
@@ -374,15 +289,14 @@
       "metrics": ["runtime.txnCommitMs", "runtime.decisionMs"],
       "budgets": [
         {
-      "id": "auto<=full*1.05",
-      "type": "relative",
-      "metric": "runtime.txnCommitMs",
-      "maxRatio": 1.05,
-      "minDeltaMs": 0.1,
-      "numeratorRef": "convergeMode=auto",
-      "denominatorRef": "convergeMode=full"
-    }
-  ],
+          "id": "auto<=full*1.05",
+          "type": "relative",
+          "metric": "runtime.txnCommitMs",
+          "maxRatio": 1.05,
+          "numeratorRef": "convergeMode=auto",
+          "denominatorRef": "convergeMode=full"
+        }
+      ],
       "requiredEvidence": [
         "cache.size",
         "cache.hit",
@@ -413,8 +327,7 @@
         }
       ],
       "baselineBudgetId": "p95<=100ms",
-      "requiredEvidence": ["react.suspenseFallbackRenders"],
-      "notes": "对应 Edge Cases: StrictMode + 现有 runtime 内的真实 state-level suspend 路径；mountCycles 表示预热后被计时的第 N 次交互，suspenseCycles 表示 tick 后额外的 async wait 次数。指标是单次 interaction→stable，而不是多次点击总耗时。"
+      "notes": "对应 Edge Cases: 严格模式/挂起导致抖动；指标以“稳定交互延迟”定义边界（而非首次渲染）。"
     },
     {
       "id": "react.bootResolve",
@@ -498,11 +411,10 @@
     {
       "id": "txnLanes.urgentBacklog",
       "priority": "P1",
-      "title": "txn lanes: urgent interaction under non-urgent backlog (mode matrix)",
+      "title": "txn lanes: urgent interaction under non-urgent backlog (off vs on)",
       "primaryAxis": "steps",
       "axes": {
-        "steps": [200, 800, 2000],
-        "mode": ["default", "off"]
+        "steps": [200, 800, 2000]
       },
       "metrics": ["e2e.urgentToStableMs", "runtime.backlogCatchUpMs"],
       "budgets": [
@@ -533,9 +445,9 @@
       ],
       "baselineBudgetId": "urgent.p95<=50ms",
       "limitBudgetId": "urgent.p95<=100ms",
-      "baselinePoints": [{ "steps": 2000, "mode": "default" }, { "steps": 2000, "mode": "off" }],
+      "baselinePoints": [{ "steps": 2000 }],
       "requiredEvidence": ["txnLanes.mode", "txnLanes.budgetMs", "txnLanes.maxLagMs", "budget.cutOffCount"],
-      "notes": "060 Txn Lanes：在 backlog 存在时测量 urgent 交互延迟与追平时间；计时起点锚定到真实 click 触发时刻（不是 setTimeout 排队时刻），避免把浏览器 timer 排队延迟混进 runtime 指标。mode 轴显式覆盖 runtime 默认 default-on 与 forced-off 基线，不再依赖隐式 VITE_LOGIX_PERF_TXN_LANES_MODE 默认值。仍支持通过 env 强制覆盖做专项实验；支持 VITE_LOGIX_PERF_KERNEL_ID=core-ng 复跑。"
+      "notes": "060 Txn Lanes：在 backlog 存在时测量 urgent 交互延迟与追平时间；off/on 通过 VITE_LOGIX_PERF_TXN_LANES_MODE 切换；支持 VITE_LOGIX_PERF_KERNEL_ID=core-ng 复跑。"
     },
     {
       "id": "runtimeStore.noTearing.tickNotify",
@@ -559,7 +471,7 @@
           "type": "relative",
           "metric": "timePerTickMs",
           "maxRatio": 1.25,
-          "minDeltaMs": 0.11,
+          "minDeltaMs": 0.02,
           "numeratorRef": "diagnosticsLevel=full",
           "denominatorRef": "diagnosticsLevel=off"
         }

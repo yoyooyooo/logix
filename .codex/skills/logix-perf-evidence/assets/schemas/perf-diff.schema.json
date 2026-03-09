@@ -19,7 +19,7 @@
     "Recommendation": { "$ref": "./perf-report.schema.json#/$defs/Recommendation" },
     "EvidenceUnit": {
       "type": "string",
-      "enum": ["count", "ratio", "bytes", "ms", "string"]
+      "enum": ["count", "ratio", "bytes", "string"]
     },
     "EvidenceAgg": {
       "type": "object",

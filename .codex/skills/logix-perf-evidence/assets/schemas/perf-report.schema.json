@@ -261,7 +261,7 @@
       "required": ["name", "unit", "status"],
       "properties": {
         "name": { "type": "string", "minLength": 1 },
-        "unit": { "type": "string", "enum": ["count", "ratio", "bytes", "ms", "string"] },
+        "unit": { "type": "string", "enum": ["count", "ratio", "bytes", "string"] },
         "status": { "type": "string", "enum": ["ok", "unavailable"] },
         "value": {
           "oneOf": [{ "type": "number" }, { "type": "string" }]
@@ -284,7 +284,7 @@
         {
           "if": {
             "properties": {
-              "unit": { "enum": ["count", "ratio", "bytes", "ms"] }
+              "unit": { "enum": ["count", "ratio", "bytes"] }
             }
           },
           "then": { "properties": { "value": { "type": "number" } } }

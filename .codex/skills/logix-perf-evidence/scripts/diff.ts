@@ -1,13 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
-import {
-  applyWatchersPhaseDisplayToNotes,
-  buildWatchersPhaseDisplay,
-  buildWatchersPhaseHighlight,
-  type PerfDiffHighlight,
-  type WatchersPhaseDisplay,
-} from './watchers-phase-display'
+import { compareStepsGrid } from './lib/steps-grid'
 
 type Primitive = string | number | boolean
 type Params = Record<string, Primitive>
@@ -45,7 +39,7 @@ type MetricResult =
       readonly unavailableReason: string
     }
 
-type EvidenceUnit = 'count' | 'ratio' | 'bytes' | 'ms' | 'string'
+type EvidenceUnit = 'count' | 'ratio' | 'bytes' | 'string'
 
 type EvidenceResult =
   | {
@@ -205,7 +199,6 @@ type PerfDiff = {
       readonly beforeOnly: number
       readonly afterOnly: number
     }
-    readonly highlights?: ReadonlyArray<PerfDiffHighlight>
   }
   readonly suites: ReadonlyArray<{
     readonly id: string
@@ -213,7 +206,6 @@ type PerfDiff = {
     readonly budgetViolations?: ReadonlyArray<unknown>
     readonly evidenceDeltas?: ReadonlyArray<EvidenceDelta>
     readonly metricDeltas?: ReadonlyArray<MetricDeltaSummary>
-    readonly watchersPhaseDisplay?: WatchersPhaseDisplay
     readonly notes?: string
   }>
 }
@@ -337,6 +329,13 @@ const assertComparable = (args: {
     configMismatches.push(`matrixHash: missing (before=${String(beforeMatrixHash)} after=${String(afterMatrixHash)})`)
   } else if (beforeMatrixHash !== afterMatrixHash) {
     configMismatches.push(`matrixHash: before=${beforeMatrixHash} after=${afterMatrixHash}`)
+  }
+
+  const stepsGrid = compareStepsGrid(args.beforeReport, args.afterReport)
+  if (!stepsGrid.matched) {
+    configMismatches.push(`stepsGridHash: before=${stepsGrid.beforeHash} after=${stepsGrid.afterHash}`)
+    warnings.push(`steps.grid.before: ${stepsGrid.beforeSummary}`)
+    warnings.push(`steps.grid.after: ${stepsGrid.afterSummary}`)
   }
 
   const assertNumber = (label: string, before: number, after: number) => {
@@ -702,7 +701,6 @@ const medianNumber = (samples: ReadonlyArray<number>): number => {
 const inferEvidenceUnit = (name: string): EvidenceUnit => {
   const lowered = name.toLowerCase()
   if (lowered.includes('bytes') || lowered.includes('byte')) return 'bytes'
-  if (lowered.endsWith('ms')) return 'ms'
   if (lowered.includes('ratio') || lowered.includes('rate')) return 'ratio'
   return 'count'
 }
@@ -1109,7 +1107,6 @@ const main = async (): Promise<void> => {
   let slicesAfterOnly = 0
 
   const suiteDiffs: Array<PerfDiff['suites'][number]> = []
-  const summaryHighlights: PerfDiffHighlight[] = []
 
   for (const suiteId of suiteIds) {
     const spec = suiteSpecById.get(suiteId)
@@ -1301,12 +1298,6 @@ const main = async (): Promise<void> => {
       })
     }
 
-    const watchersPhaseDisplay = buildWatchersPhaseDisplay(suiteId, evidenceDeltas)
-    const watchersPhaseHighlight = buildWatchersPhaseHighlight(watchersPhaseDisplay)
-    if (watchersPhaseHighlight) {
-      summaryHighlights.push(watchersPhaseHighlight)
-    }
-
     const metricDeltas = computeMetricDeltaSummaries(spec, beforeSuite, afterSuite)
 
     let notes: string | undefined
@@ -1327,15 +1318,12 @@ const main = async (): Promise<void> => {
       }
     }
 
-    notes = applyWatchersPhaseDisplayToNotes(notes, watchersPhaseDisplay)
-
     suiteDiffs.push({
       id: suiteId,
       thresholdDeltas: thresholdDeltas.length > 0 ? thresholdDeltas : undefined,
       budgetViolations: [],
       evidenceDeltas: evidenceDeltas.length > 0 ? evidenceDeltas : undefined,
       metricDeltas: metricDeltas.length > 0 ? metricDeltas : undefined,
-      watchersPhaseDisplay,
       notes,
     })
   }
@@ -1368,7 +1356,6 @@ const main = async (): Promise<void> => {
             afterOnly: slicesAfterOnly,
           }
         : undefined,
-      highlights: summaryHighlights.length > 0 ? summaryHighlights : undefined,
     },
     suites: suiteDiffs,
   }

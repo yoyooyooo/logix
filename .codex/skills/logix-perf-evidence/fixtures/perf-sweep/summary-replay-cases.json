@@ -1,0 +1,752 @@
+{
+  "cases": [
+    {
+      "id": "no_diff",
+      "files": {},
+      "expect": {
+        "status": "no_diff"
+      }
+    },
+    {
+      "id": "triage_only_not_comparable",
+      "files": {
+        "diff": {
+          "meta": {
+            "comparability": {
+              "comparable": false
+            }
+          },
+          "summary": {
+            "regressions": 0,
+            "improvements": 0
+          }
+        }
+      },
+      "expect": {
+        "status": "triage_only_not_comparable"
+      }
+    },
+    {
+      "id": "regressions_resolved_by_tail_recheck",
+      "files": {
+        "diff": {
+          "meta": {
+            "comparability": {
+              "comparable": true
+            }
+          },
+          "summary": {
+            "regressions": 1,
+            "improvements": 0
+          }
+        },
+        "tailRecheckSummary": {
+          "status": "resolved",
+          "counts": {
+            "resolved": 1,
+            "flaky": 0,
+            "persistentTail": 0,
+            "persistentSystemic": 0,
+            "missing": 0
+          }
+        }
+      },
+      "expect": {
+        "status": "regressions_resolved_by_tail_recheck"
+      }
+    },
+    {
+      "id": "has_regressions",
+      "files": {
+        "diff": {
+          "meta": {
+            "comparability": {
+              "comparable": true
+            }
+          },
+          "summary": {
+            "regressions": 2,
+            "improvements": 0
+          }
+        }
+      },
+      "expect": {
+        "status": "has_regressions"
+      }
+    },
+    {
+      "id": "head_capacity_dynamic_hard_failed",
+      "files": {
+        "diff": {
+          "meta": {
+            "comparability": {
+              "comparable": true
+            }
+          },
+          "summary": {
+            "regressions": 0,
+            "improvements": 0
+          }
+        },
+        "capacityLatest": {
+          "evaluation": {
+            "hardPass": false,
+            "warnPass": true
+          }
+        }
+      },
+      "expect": {
+        "status": "head_capacity_dynamic_hard_failed"
+      }
+    },
+    {
+      "id": "head_capacity_floor_failed",
+      "env": {
+        "PERF_CAPACITY_FLOOR_MIN": "2000"
+      },
+      "files": {
+        "diff": {
+          "meta": {
+            "comparability": {
+              "comparable": true
+            }
+          },
+          "summary": {
+            "regressions": 0,
+            "improvements": 0
+          }
+        },
+        "after": {
+          "suites": [
+            {
+              "id": "converge.txnCommit",
+              "thresholds": [
+                {
+                  "budget": {
+                    "id": "commit.p95<=50ms",
+                    "type": "absolute",
+                    "metric": "txn.commit.ms.p95",
+                    "p95Ms": 50
+                  },
+                  "where": {
+                    "convergeMode": "auto",
+                    "dirtyRootsRatio": 0.5
+                  },
+                  "maxLevel": 800,
+                  "firstFailLevel": 1600,
+                  "reason": "budgetExceeded"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "head_capacity_floor_failed"
+      }
+    },
+    {
+      "id": "head_budget_exceeded",
+      "files": {
+        "diff": {
+          "meta": {
+            "comparability": {
+              "comparable": true
+            }
+          },
+          "summary": {
+            "regressions": 0,
+            "improvements": 0
+          }
+        },
+        "after": {
+          "suites": [
+            {
+              "id": "converge.txnCommit",
+              "thresholds": [
+                {
+                  "budget": {
+                    "id": "commit.p95<=50ms",
+                    "type": "absolute",
+                    "metric": "txn.commit.ms.p95",
+                    "p95Ms": 50
+                  },
+                  "where": {
+                    "convergeMode": "auto",
+                    "dirtyRootsRatio": 0.2
+                  },
+                  "maxLevel": 1200,
+                  "firstFailLevel": 1600,
+                  "reason": "budgetExceeded"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "head_budget_exceeded"
+      }
+    },
+    {
+      "id": "head_budget_exceeded_from_probe_signal",
+      "files": {
+        "diff": {
+          "meta": {
+            "comparability": {
+              "comparable": true
+            }
+          },
+          "summary": {
+            "regressions": 0,
+            "improvements": 0
+          }
+        },
+        "after": {
+          "suites": [
+            {
+              "id": "converge.txnCommit",
+              "thresholds": [
+                {
+                  "budget": {
+                    "id": "commit.p95<=50ms",
+                    "type": "absolute",
+                    "metric": "txn.commit.ms.p95",
+                    "p95Ms": 50
+                  },
+                  "where": {
+                    "convergeMode": "auto",
+                    "dirtyRootsRatio": 0.2
+                  },
+                  "maxLevel": 1600,
+                  "firstFailLevel": null
+                }
+              ]
+            }
+          ]
+        },
+        "afterProbe": {
+          "suites": [
+            {
+              "id": "converge.txnCommit",
+              "thresholds": [
+                {
+                  "budget": {
+                    "id": "commit.p95<=50ms",
+                    "type": "absolute",
+                    "metric": "txn.commit.ms.p95",
+                    "p95Ms": 50
+                  },
+                  "where": {
+                    "convergeMode": "auto",
+                    "dirtyRootsRatio": 0.2
+                  },
+                  "maxLevel": 1200,
+                  "firstFailLevel": 1600,
+                  "reason": "budgetExceeded"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "head_budget_exceeded",
+        "headSignalSource": "probe"
+      }
+    },
+    {
+      "id": "head_auto_probe_budget_limited_tail_recheck_resolved",
+      "files": {
+        "diff": {
+          "meta": {
+            "comparability": {
+              "comparable": true
+            }
+          },
+          "summary": {
+            "regressions": 0,
+            "improvements": 0
+          }
+        },
+        "autoProbeHead": {
+          "dataSufficiency": {
+            "hasInsufficientData": true,
+            "reasonCodes": [
+              "time_budget_limit"
+            ],
+            "insufficientDirtyRatioCount": 0,
+            "insufficientDirtyRatios": []
+          }
+        },
+        "tailRecheckSummary": {
+          "status": "resolved",
+          "counts": {
+            "resolved": 1,
+            "flaky": 0,
+            "persistentTail": 0,
+            "persistentSystemic": 0,
+            "missing": 0
+          }
+        }
+      },
+      "expect": {
+        "status": "head_auto_probe_budget_limited_tail_recheck_resolved"
+      }
+    },
+    {
+      "id": "head_auto_probe_budget_limited",
+      "files": {
+        "diff": {
+          "meta": {
+            "comparability": {
+              "comparable": true
+            }
+          },
+          "summary": {
+            "regressions": 0,
+            "improvements": 0
+          }
+        },
+        "autoProbeHead": {
+          "dataSufficiency": {
+            "hasInsufficientData": true,
+            "reasonCodes": [
+              "collect_budget_limit"
+            ],
+            "insufficientDirtyRatioCount": 0,
+            "insufficientDirtyRatios": []
+          }
+        },
+        "tailRecheckSummary": {
+          "status": "persistent",
+          "counts": {
+            "resolved": 0,
+            "flaky": 0,
+            "persistentTail": 1,
+            "persistentSystemic": 0,
+            "missing": 0
+          }
+        }
+      },
+      "expect": {
+        "status": "head_auto_probe_budget_limited"
+      }
+    },
+    {
+      "id": "head_auto_probe_budget_limited_timeout_fail",
+      "files": {
+        "diff": {
+          "meta": {
+            "comparability": {
+              "comparable": true
+            }
+          },
+          "summary": {
+            "regressions": 0,
+            "improvements": 0
+          }
+        },
+        "autoProbeHead": {
+          "dataSufficiency": {
+            "hasInsufficientData": true,
+            "reasonCodes": [
+              "collect_budget_limit"
+            ],
+            "insufficientDirtyRatioCount": 0,
+            "insufficientDirtyRatios": []
+          }
+        },
+        "tailRecheckSummary": {
+          "status": "timeout_fail",
+          "counts": {
+            "resolved": 0,
+            "flaky": 0,
+            "persistentTail": 0,
+            "persistentSystemic": 0,
+            "missing": 1
+          }
+        }
+      },
+      "expect": {
+        "status": "head_auto_probe_budget_limited"
+      }
+    },
+    {
+      "id": "head_auto_probe_insufficient",
+      "files": {
+        "diff": {
+          "meta": {
+            "comparability": {
+              "comparable": true
+            }
+          },
+          "summary": {
+            "regressions": 0,
+            "improvements": 0
+          }
+        },
+        "autoProbeHead": {
+          "dataSufficiency": {
+            "hasInsufficientData": true,
+            "reasonCodes": [
+              "insufficient_kept_samples"
+            ],
+            "insufficientDirtyRatioCount": 1,
+            "insufficientDirtyRatios": [
+              0.5
+            ]
+          }
+        }
+      },
+      "expect": {
+        "status": "head_auto_probe_insufficient"
+      }
+    },
+    {
+      "id": "curve_chart_rendered",
+      "files": {
+        "diff": {
+          "meta": {
+            "comparability": {
+              "comparable": true,
+              "allowConfigDrift": false,
+              "allowEnvDrift": false,
+              "warnings": []
+            }
+          },
+          "summary": {
+            "regressions": 0,
+            "improvements": 0
+          },
+          "suites": [
+            {
+              "id": "converge.txnCommit",
+              "thresholdDeltas": []
+            }
+          ]
+        },
+        "before": {
+          "suites": [
+            {
+              "id": "converge.txnCommit",
+              "thresholds": [],
+              "points": [
+                {
+                  "params": { "convergeMode": "auto", "dirtyRootsRatio": 0.5, "steps": 2000 },
+                  "status": "ok",
+                  "metrics": [
+                    { "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 5.1, "p95Ms": 5.7 } }
+                  ]
+                },
+                {
+                  "params": { "convergeMode": "full", "dirtyRootsRatio": 0.5, "steps": 2000 },
+                  "status": "ok",
+                  "metrics": [
+                    { "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 5.4, "p95Ms": 6.0 } }
+                  ]
+                },
+                {
+                  "params": { "convergeMode": "auto", "dirtyRootsRatio": 0.5, "steps": 4000 },
+                  "status": "ok",
+                  "metrics": [
+                    { "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 6.1, "p95Ms": 6.8 } }
+                  ]
+                },
+                {
+                  "params": { "convergeMode": "full", "dirtyRootsRatio": 0.5, "steps": 4000 },
+                  "status": "ok",
+                  "metrics": [
+                    { "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 6.5, "p95Ms": 7.0 } }
+                  ]
+                },
+                {
+                  "params": { "convergeMode": "auto", "dirtyRootsRatio": 0.75, "steps": 2000 },
+                  "status": "ok",
+                  "metrics": [
+                    { "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 6.9, "p95Ms": 7.6 } }
+                  ]
+                },
+                {
+                  "params": { "convergeMode": "full", "dirtyRootsRatio": 0.75, "steps": 2000 },
+                  "status": "ok",
+                  "metrics": [
+                    { "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 7.3, "p95Ms": 8.0 } }
+                  ]
+                },
+                {
+                  "params": { "convergeMode": "auto", "dirtyRootsRatio": 0.75, "steps": 4000 },
+                  "status": "ok",
+                  "metrics": [
+                    { "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 8.1, "p95Ms": 8.7 } }
+                  ]
+                },
+                {
+                  "params": { "convergeMode": "full", "dirtyRootsRatio": 0.75, "steps": 4000 },
+                  "status": "ok",
+                  "metrics": [
+                    { "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 8.5, "p95Ms": 9.0 } }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "after": {
+          "suites": [
+            {
+              "id": "converge.txnCommit",
+              "thresholds": [],
+              "points": [
+                {
+                  "params": { "convergeMode": "auto", "dirtyRootsRatio": 0.5, "steps": 2000 },
+                  "status": "ok",
+                  "metrics": [
+                    { "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 5.3, "p95Ms": 5.9 } }
+                  ]
+                },
+                {
+                  "params": { "convergeMode": "full", "dirtyRootsRatio": 0.5, "steps": 2000 },
+                  "status": "ok",
+                  "metrics": [
+                    { "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 5.5, "p95Ms": 6.0 } }
+                  ]
+                },
+                {
+                  "params": { "convergeMode": "auto", "dirtyRootsRatio": 0.5, "steps": 4000 },
+                  "status": "ok",
+                  "metrics": [
+                    { "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 6.3, "p95Ms": 7.0 } }
+                  ]
+                },
+                {
+                  "params": { "convergeMode": "full", "dirtyRootsRatio": 0.5, "steps": 4000 },
+                  "status": "ok",
+                  "metrics": [
+                    { "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 6.6, "p95Ms": 7.1 } }
+                  ]
+                },
+                {
+                  "params": { "convergeMode": "auto", "dirtyRootsRatio": 0.75, "steps": 2000 },
+                  "status": "ok",
+                  "metrics": [
+                    { "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 7.1, "p95Ms": 7.8 } }
+                  ]
+                },
+                {
+                  "params": { "convergeMode": "full", "dirtyRootsRatio": 0.75, "steps": 2000 },
+                  "status": "ok",
+                  "metrics": [
+                    { "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 7.4, "p95Ms": 8.0 } }
+                  ]
+                },
+                {
+                  "params": { "convergeMode": "auto", "dirtyRootsRatio": 0.75, "steps": 4000 },
+                  "status": "ok",
+                  "metrics": [
+                    { "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 8.4, "p95Ms": 8.9 } }
+                  ]
+                },
+                {
+                  "params": { "convergeMode": "full", "dirtyRootsRatio": 0.75, "steps": 4000 },
+                  "status": "ok",
+                  "metrics": [
+                    { "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 8.7, "p95Ms": 9.1 } }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "curveHistoryRuns": [
+          {
+            "runId": "12345678901",
+            "after": {
+              "suites": [
+                {
+                  "id": "converge.txnCommit",
+                  "thresholds": [],
+                  "points": [
+                    { "params": { "convergeMode": "auto", "dirtyRootsRatio": 0.5, "steps": 2000 }, "status": "ok", "metrics": [{ "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 5.0, "p95Ms": 5.6 } }] },
+                    { "params": { "convergeMode": "full", "dirtyRootsRatio": 0.5, "steps": 2000 }, "status": "ok", "metrics": [{ "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 5.3, "p95Ms": 5.9 } }] },
+                    { "params": { "convergeMode": "auto", "dirtyRootsRatio": 0.5, "steps": 4000 }, "status": "ok", "metrics": [{ "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 6.0, "p95Ms": 6.7 } }] },
+                    { "params": { "convergeMode": "full", "dirtyRootsRatio": 0.5, "steps": 4000 }, "status": "ok", "metrics": [{ "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 6.4, "p95Ms": 6.9 } }] },
+                    { "params": { "convergeMode": "auto", "dirtyRootsRatio": 0.75, "steps": 2000 }, "status": "ok", "metrics": [{ "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 6.8, "p95Ms": 7.5 } }] },
+                    { "params": { "convergeMode": "full", "dirtyRootsRatio": 0.75, "steps": 2000 }, "status": "ok", "metrics": [{ "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 7.2, "p95Ms": 7.9 } }] },
+                    { "params": { "convergeMode": "auto", "dirtyRootsRatio": 0.75, "steps": 4000 }, "status": "ok", "metrics": [{ "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 8.0, "p95Ms": 8.6 } }] },
+                    { "params": { "convergeMode": "full", "dirtyRootsRatio": 0.75, "steps": 4000 }, "status": "ok", "metrics": [{ "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 8.4, "p95Ms": 8.9 } }] }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "runId": "12345678902",
+            "after": {
+              "suites": [
+                {
+                  "id": "converge.txnCommit",
+                  "thresholds": [],
+                  "points": [
+                    { "params": { "convergeMode": "auto", "dirtyRootsRatio": 0.5, "steps": 2000 }, "status": "ok", "metrics": [{ "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 5.2, "p95Ms": 5.8 } }] },
+                    { "params": { "convergeMode": "full", "dirtyRootsRatio": 0.5, "steps": 2000 }, "status": "ok", "metrics": [{ "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 5.4, "p95Ms": 6.0 } }] },
+                    { "params": { "convergeMode": "auto", "dirtyRootsRatio": 0.5, "steps": 4000 }, "status": "ok", "metrics": [{ "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 6.2, "p95Ms": 6.9 } }] },
+                    { "params": { "convergeMode": "full", "dirtyRootsRatio": 0.5, "steps": 4000 }, "status": "ok", "metrics": [{ "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 6.5, "p95Ms": 7.0 } }] },
+                    { "params": { "convergeMode": "auto", "dirtyRootsRatio": 0.75, "steps": 2000 }, "status": "ok", "metrics": [{ "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 7.0, "p95Ms": 7.7 } }] },
+                    { "params": { "convergeMode": "full", "dirtyRootsRatio": 0.75, "steps": 2000 }, "status": "ok", "metrics": [{ "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 7.3, "p95Ms": 8.0 } }] },
+                    { "params": { "convergeMode": "auto", "dirtyRootsRatio": 0.75, "steps": 4000 }, "status": "ok", "metrics": [{ "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 8.2, "p95Ms": 8.8 } }] },
+                    { "params": { "convergeMode": "full", "dirtyRootsRatio": 0.75, "steps": 4000 }, "status": "ok", "metrics": [{ "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 8.6, "p95Ms": 9.0 } }] }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "expect": {
+        "status": "ok",
+        "contains": [
+          "Curve mode: base/head p50-p75-p95 across `steps`",
+          "converge.txnCommit auto<=full*1.05 p95 curve",
+          "Historical curve overlay (head-only)"
+        ]
+      }
+    },
+    {
+      "id": "curve_chart_head_only_when_not_comparable",
+      "files": {
+        "diff": {
+          "meta": {
+            "comparability": {
+              "comparable": false,
+              "allowConfigDrift": true,
+              "allowEnvDrift": true,
+              "warnings": [
+                "steps.grid.before: converge.txnCommit=[steps:2000|dirtyRootsRatio:0.5|convergeMode:auto,full]",
+                "steps.grid.after: converge.txnCommit=[steps:2000,4000|dirtyRootsRatio:0.5|convergeMode:auto,full]"
+              ]
+            }
+          },
+          "summary": {
+            "regressions": 0,
+            "improvements": 0
+          },
+          "suites": [
+            {
+              "id": "converge.txnCommit",
+              "thresholdDeltas": []
+            }
+          ]
+        },
+        "before": {
+          "suites": [
+            {
+              "id": "converge.txnCommit",
+              "thresholds": [],
+              "points": [
+                {
+                  "params": { "convergeMode": "auto", "dirtyRootsRatio": 0.5, "steps": 2000 },
+                  "status": "ok",
+                  "metrics": [
+                    { "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 5.1, "p95Ms": 5.7 } }
+                  ]
+                },
+                {
+                  "params": { "convergeMode": "full", "dirtyRootsRatio": 0.5, "steps": 2000 },
+                  "status": "ok",
+                  "metrics": [
+                    { "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 5.4, "p95Ms": 6.0 } }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "after": {
+          "suites": [
+            {
+              "id": "converge.txnCommit",
+              "thresholds": [],
+              "points": [
+                {
+                  "params": { "convergeMode": "auto", "dirtyRootsRatio": 0.5, "steps": 2000 },
+                  "status": "ok",
+                  "metrics": [
+                    { "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 5.3, "p95Ms": 5.9 } }
+                  ]
+                },
+                {
+                  "params": { "convergeMode": "full", "dirtyRootsRatio": 0.5, "steps": 2000 },
+                  "status": "ok",
+                  "metrics": [
+                    { "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 5.5, "p95Ms": 6.0 } }
+                  ]
+                },
+                {
+                  "params": { "convergeMode": "auto", "dirtyRootsRatio": 0.5, "steps": 4000 },
+                  "status": "ok",
+                  "metrics": [
+                    { "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 6.3, "p95Ms": 7.0 } }
+                  ]
+                },
+                {
+                  "params": { "convergeMode": "full", "dirtyRootsRatio": 0.5, "steps": 4000 },
+                  "status": "ok",
+                  "metrics": [
+                    { "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 6.6, "p95Ms": 7.1 } }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "curveHistoryRuns": [
+          {
+            "runId": "22334455667",
+            "after": {
+              "suites": [
+                {
+                  "id": "converge.txnCommit",
+                  "thresholds": [],
+                  "points": [
+                    { "params": { "convergeMode": "auto", "dirtyRootsRatio": 0.5, "steps": 2000 }, "status": "ok", "metrics": [{ "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 5.0, "p95Ms": 5.6 } }] },
+                    { "params": { "convergeMode": "full", "dirtyRootsRatio": 0.5, "steps": 2000 }, "status": "ok", "metrics": [{ "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 5.3, "p95Ms": 5.9 } }] },
+                    { "params": { "convergeMode": "auto", "dirtyRootsRatio": 0.5, "steps": 4000 }, "status": "ok", "metrics": [{ "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 6.0, "p95Ms": 6.7 } }] },
+                    { "params": { "convergeMode": "full", "dirtyRootsRatio": 0.5, "steps": 4000 }, "status": "ok", "metrics": [{ "name": "runtime.txnCommitMs", "status": "ok", "stats": { "n": 20, "medianMs": 6.4, "p95Ms": 6.9 } }] }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "expect": {
+        "status": "triage_only_not_comparable",
+        "contains": [
+          "Curve mode: head-only p50-p75-p95 across `steps`",
+          "reason: `missing/incomplete base curve points`",
+          "Historical curve overlay (head-only)"
+        ]
+      }
+    },
+    {
+      "id": "ok",
+      "files": {
+        "diff": {
+          "meta": {
+            "comparability": {
+              "comparable": true
+            }
+          },
+          "summary": {
+            "regressions": 0,
+            "improvements": 1
+          }
+        }
+      },
+      "expect": {
+        "status": "ok"
+      }
+    }
+  ]
+}

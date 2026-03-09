@@ -1,0 +1,126 @@
+{
+  "budgetControllerCases": [
+    {
+      "id": "time_budget_reserve_denies_collect",
+      "config": {
+        "timeBudgetMinutes": 1,
+        "reserveMinutes": 0.25,
+        "maxTotalCollects": 10,
+        "minCollectEstimateSeconds": 10
+      },
+      "timeline": [
+        {
+          "action": "canRunCollect",
+          "atMs": 34000,
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "action": "recordCollect",
+          "durationMs": 10000
+        },
+        {
+          "action": "canRunCollect",
+          "atMs": 36000,
+          "expect": {
+            "ok": false,
+            "reasonCode": "time_budget_reserve"
+          }
+        }
+      ]
+    },
+    {
+      "id": "collect_budget_limit_denies_collect",
+      "config": {
+        "timeBudgetMinutes": 10,
+        "reserveMinutes": 0,
+        "maxTotalCollects": 1,
+        "minCollectEstimateSeconds": 1
+      },
+      "timeline": [
+        {
+          "action": "canRunCollect",
+          "atMs": 0,
+          "expect": {
+            "ok": true
+          }
+        },
+        {
+          "action": "recordCollect",
+          "durationMs": 1000
+        },
+        {
+          "action": "canRunCollect",
+          "atMs": 1000,
+          "expect": {
+            "ok": false,
+            "reasonCode": "collect_budget_limit"
+          }
+        }
+      ]
+    }
+  ],
+  "decisionCases": [
+    {
+      "id": "top_saturated_extend",
+      "input": {
+        "summary": {
+          "floorMedianMaxLevel": 6400,
+          "p90MedianMaxLevel": 7800,
+          "p95MedianMaxLevel": 7900,
+          "averageUpperLimit": 7800,
+          "dirtyRootsRatioCount": 4
+        },
+        "iteration": 2,
+        "maxIterations": 5,
+        "maxLevel": 8000,
+        "secondLevel": 6400,
+        "maxLevelCap": 20000,
+        "minIterationsBeforeEarlyStop": 2,
+        "targetFloorMin": 6000,
+        "initialTopLevel": 8000,
+        "topEnvelopeStable": true,
+        "boundaryObserved": true,
+        "topTimeoutCount": 0,
+        "topSaturationRatio": 0.95,
+        "minTopHeadroom": 400
+      },
+      "expect": {
+        "decision": "top_saturated_extend",
+        "shouldExtend": true,
+        "topSaturated": true
+      }
+    },
+    {
+      "id": "target_floor_stable_enough",
+      "input": {
+        "summary": {
+          "floorMedianMaxLevel": 6200,
+          "p90MedianMaxLevel": 6400,
+          "p95MedianMaxLevel": 6500,
+          "averageUpperLimit": 6200,
+          "dirtyRootsRatioCount": 4
+        },
+        "iteration": 3,
+        "maxIterations": 5,
+        "maxLevel": 9000,
+        "secondLevel": 7200,
+        "maxLevelCap": 20000,
+        "minIterationsBeforeEarlyStop": 2,
+        "targetFloorMin": 6000,
+        "initialTopLevel": 6000,
+        "topEnvelopeStable": true,
+        "boundaryObserved": true,
+        "topTimeoutCount": 0,
+        "topSaturationRatio": 0.95,
+        "minTopHeadroom": 400
+      },
+      "expect": {
+        "decision": "target_floor_stable_enough",
+        "shouldExtend": false,
+        "topSaturated": false
+      }
+    }
+  ]
+}
