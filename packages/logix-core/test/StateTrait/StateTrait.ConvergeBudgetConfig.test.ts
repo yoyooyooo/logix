@@ -11,7 +11,7 @@ const lastConvergeData = (ring: Debug.RingBufferSink): any => {
 
 const makeTxnProgram = (M: any, name: string) =>
   Effect.gen(function* () {
-    const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
+    const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
     yield* Logix.InternalContracts.runWithStateTransaction(rt as any, { kind: 'test', name }, () =>
       Effect.gen(function* () {
         const prev = yield* rt.getState
@@ -64,7 +64,7 @@ describe('StateTrait converge budget config', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
+        const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
         yield* rt.dispatch({ _tag: 'bump', payload: undefined } as any)
 
         const updates = ring

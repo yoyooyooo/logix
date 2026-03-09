@@ -23,7 +23,7 @@ describe('Form refactor regressions (US3)', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* module.tag
+        const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const controller = module.controller.make(rt)
 
         // Manually write a schema error (avoid relying on Schema decoding details) + a manual error (setError).
@@ -176,7 +176,7 @@ describe('Form refactor regressions (US3)', () => {
         new Map(items.map((row, i) => [String(row?.id ?? i), i]))
 
       const program = Effect.gen(function* () {
-        const rt = yield* module.tag
+        const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const controller = module.controller.make(rt)
 
         yield* controller.field('items.0.warehouseId').set('WH-DUP')

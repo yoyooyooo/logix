@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Context, Effect, Layer, Schema, ServiceMap } from 'effect'
+import {Effect, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../../src/index.js'
 import { flushAllHostScheduler, makeTestHostScheduler, testHostSchedulerLayer } from '../testkit/hostSchedulerTestKit.js'
 

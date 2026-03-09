@@ -54,8 +54,8 @@ describe('@logixjs/devtools-react: process:* events', () => {
     try {
       await runtime.runPromise(
         Effect.gen(function* () {
-          yield* Root.tag
-          const source: any = yield* Source.tag
+          yield* Effect.service(Root.tag).pipe(Effect.orDie)
+          const source: any = yield* Effect.service(Source.tag).pipe(Effect.orDie)
           yield* Effect.yieldNow
           yield* source.dispatch(PING_ACTION as any)
           yield* Effect.yieldNow

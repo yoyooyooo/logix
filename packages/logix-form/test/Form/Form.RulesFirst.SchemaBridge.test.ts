@@ -43,7 +43,7 @@ describe('Form rules-first schema bridge (T046)', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* module.tag
+        const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const controller = module.controller.make(rt)
 
         yield* controller.controller.handleSubmit({

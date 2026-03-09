@@ -19,7 +19,7 @@ const waitUntil = (cond: Effect.Effect<boolean>): Effect.Effect<void> =>
   })
 
 const makeDeferredModule = (args: { readonly deferred: number }) => {
-  const fields: Record<string, Schema.Schema.Any> = {
+  const fields: Record<string, Schema.Top> = {
     a: Schema.Number,
   }
   for (let i = 0; i < args.deferred; i++) {

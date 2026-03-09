@@ -1,6 +1,6 @@
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Chunk, Deferred, Effect, Fiber, Layer, ManagedRuntime, Option, PubSub, Queue, Schema, ServiceMap, Stream, SubscriptionRef } from 'effect'
+import { Chunk, Deferred, Effect, Fiber, Layer, ManagedRuntime, Option, PubSub, Queue, Schema, Scope, ServiceMap, Stream, SubscriptionRef } from 'effect'
 import { TestClock } from 'effect/testing'
 import * as Logix from '../../../../src/index.js'
 import * as ModuleRuntime from '../../../../src/internal/runtime/ModuleRuntime.js'
@@ -25,8 +25,8 @@ const requireActionsByTag = <A>(
 describe('ModuleRuntime (internal)', () => {
   describe('compliance basics', () => {
     it.effect('should maintain state consistency and ref view', () =>
-      Effect.gen(function* () {
-        const runtime = yield* ModuleRuntime.make({ count: 0 })
+      Effect.scoped(Effect.gen(function* () {
+        const runtime = yield* (ModuleRuntime.make({ count: 0 }) as unknown as Effect.Effect<any, never, any>)
 
         // initial state
         expect(yield* runtime.getState).toEqual({ count: 0 })
@@ -42,17 +42,17 @@ describe('ModuleRuntime (internal)', () => {
         // write protection: root refs are read-only, setting should fail
         const exit = yield* Effect.exit((ref as any).modify((current: any) => [current, { count: 2 }]))
         expect(exit._tag).toBe('Failure')
-      }),
+      })) as Effect.Effect<void, unknown, Scope.Scope>,
     )
 
     it.effect('should support ref(selector) as read-only derived view', () =>
-      Effect.gen(function* () {
-        const runtime = yield* ModuleRuntime.make({
+      Effect.scoped(Effect.gen(function* () {
+        const runtime = yield* (ModuleRuntime.make({
           count: 0,
           name: 'test',
-        })
+        }) as unknown as Effect.Effect<any, never, any>)
 
-        const countRef = runtime.ref((s) => s.count)
+        const countRef = runtime.ref((s: { count: number }) => s.count)
 
         // initial value
         expect(yield* countRef.get).toBe(0)
@@ -68,7 +68,7 @@ describe('ModuleRuntime (internal)', () => {
         // write protection: derived refs are read-only, setting should fail
         const exit = yield* Effect.exit((countRef as any).modify((current: any) => [current, 2]))
         expect(exit._tag).toBe('Failure')
-      }),
+      })) as Effect.Effect<void, unknown, Scope.Scope>,
     )
 
     it.effect('should publish actions to actionHub (dispatch path)', () =>
@@ -1869,7 +1869,7 @@ describe('ModuleRuntime (internal)', () => {
               }),
             ),
           ),
-        ), Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink]) as Effect.Effect<void, never, any>
+        ), Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink]) as unknown as Effect.Effect<void, never, any>
 
         yield* program
       }),

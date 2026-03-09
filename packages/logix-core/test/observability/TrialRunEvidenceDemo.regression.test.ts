@@ -1,6 +1,6 @@
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Context, Effect, Exit, Layer, Schema, ServiceMap } from 'effect'
+import {Effect, Exit, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('TrialRun evidence demo (regression)', () => {

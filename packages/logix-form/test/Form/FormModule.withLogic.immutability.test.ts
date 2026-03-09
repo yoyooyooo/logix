@@ -38,14 +38,14 @@ describe('FormModule.withLogic immutability', () => {
       })
 
       const baseProgram = Effect.gen(function* () {
-        const rt = yield* form.tag
+        const rt = yield* Effect.service(form.tag).pipe(Effect.orDie)
         yield* Effect.sleep('30 millis')
         const state: any = yield* rt.getState
         expect(state.name).toBe('')
       })
 
       const liveProgram = Effect.gen(function* () {
-        const rt = yield* live.tag
+        const rt = yield* Effect.service(live.tag).pipe(Effect.orDie)
         yield* Deferred.await(done)
         const state: any = yield* rt.getState
         expect(state.name).toBe('Alice')

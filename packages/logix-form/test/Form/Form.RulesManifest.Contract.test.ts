@@ -136,7 +136,7 @@ describe('Form RulesManifest contracts (028)', () => {
       })
 
       const program = Effect.gen(function* () {
-        const hostRt = yield* Host.tag
+        const hostRt = yield* Effect.service(Host.tag).pipe(Effect.orDie)
         yield* Effect.sleep('20 millis')
         const state = yield* hostRt.getState
         expect(state.ok).toBe(true)

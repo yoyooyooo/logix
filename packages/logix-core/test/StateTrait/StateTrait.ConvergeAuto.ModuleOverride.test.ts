@@ -17,7 +17,7 @@ const runTxn = (
   Effect.promise(() =>
     runtime.runPromise(
       Effect.gen(function* () {
-        const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
+        const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
         yield* Logix.InternalContracts.runWithStateTransaction(rt as any, { kind: 'test', name }, () =>
           Effect.gen(function* () {
             const prev = yield* rt.getState
@@ -86,7 +86,7 @@ describe('StateTrait converge auto module overrides (hot switch)', () => {
       yield* Effect.promise(() =>
         runtime.runPromise(
           Effect.gen(function* () {
-            const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
+            const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
             yield* Logix.InternalContracts.runWithStateTransaction(
               rt as any,
               { kind: 'test', name: 'provider-wins' },

@@ -26,7 +26,7 @@ describe('Query edge cases', () => {
     ).toThrow(/manual/i)
   })
 
-  itFx.scoped('should skip refresh when key(deps) is undefined', () =>
+  itFx.effect('should skip refresh when key(deps) is undefined', () =>
     Effect.gen(function* () {
       let calls = 0
       const Spec = Logix.Resource.make({
@@ -86,7 +86,7 @@ describe('Query edge cases', () => {
     }),
   )
 
-  itFx.scoped('should behave as "exhaust-trailing" when concurrency="exhaust"', () =>
+  itFx.effect('should behave as "exhaust-trailing" when concurrency="exhaust"', () =>
     Effect.gen(function* () {
       const KeySchema = Schema.Struct({ q: Schema.String })
       type Key = Schema.Schema.Type<typeof KeySchema>

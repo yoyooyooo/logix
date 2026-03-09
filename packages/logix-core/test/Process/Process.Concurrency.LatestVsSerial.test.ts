@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Context, Deferred, Effect, Exit, Layer, Ref, Scope, Schema, ServiceMap } from 'effect'
+import {Deferred, Effect, Exit, Layer, Ref, Scope, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../src/index.js'
 import * as ProcessRuntime from '../../src/internal/runtime/core/process/ProcessRuntime.js'
 
@@ -47,7 +47,7 @@ describe('process: concurrency latest vs serial', () => {
       const scope = yield* Scope.make()
       try {
         const env = yield* Layer.buildWithScope(layer, scope)
-        const rt = ServiceMap.get(env as Context.Context<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
+        const rt = ServiceMap.get(env as ServiceMap.ServiceMap<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
 
         // wait Process instance started & subscribed
         for (let i = 0; i < 50; i++) {
@@ -134,7 +134,7 @@ describe('process: concurrency latest vs serial', () => {
       const scope = yield* Scope.make()
       try {
         const env = yield* Layer.buildWithScope(layer, scope)
-        const rt = ServiceMap.get(env as Context.Context<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
+        const rt = ServiceMap.get(env as ServiceMap.ServiceMap<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
 
         for (let i = 0; i < 50; i++) {
           const events = yield* rt.getEventsSnapshot()
@@ -210,7 +210,7 @@ describe('process: concurrency latest vs serial', () => {
       const scope = yield* Scope.make()
       try {
         const env = yield* Layer.buildWithScope(layer, scope)
-        const rt = ServiceMap.get(env as Context.Context<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
+        const rt = ServiceMap.get(env as ServiceMap.ServiceMap<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
 
         for (let i = 0; i < 100; i++) {
           const events = yield* rt.getEventsSnapshot()

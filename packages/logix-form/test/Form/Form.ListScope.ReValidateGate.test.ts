@@ -17,7 +17,7 @@ describe('Form list-scope reValidate gate (submitCount)', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* form.tag
+        const rt = yield* Effect.service(form.tag).pipe(Effect.orDie)
         const controller = form.controller.make(rt)
 
         // Pre-submit: `onChange` does not auto-validate (no cross-row errors).

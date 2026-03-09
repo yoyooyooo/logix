@@ -54,7 +54,7 @@ describe('Form validateOn/reValidateOn strategy', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* module.tag
+        const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const form = module.controller.make(rt)
 
         // Pre-submit: with validateOn=["onSubmit"], name/secret should not auto-validate on change/blur.

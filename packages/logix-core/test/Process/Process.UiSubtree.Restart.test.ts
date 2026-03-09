@@ -53,7 +53,7 @@ describe('process: uiSubtree stop → start (re-install)', () => {
         layer: Layer.empty as Layer.Layer<any, never, never>,
       })
 
-      const installOnce = (scope: Scope.CloseableScope, mode?: 'switch' | 'exhaust') =>
+      const installOnce = (scope: Scope.Scope, mode?: 'switch' | 'exhaust') =>
         runtime.runPromise(
           Logix.InternalContracts.installProcess(Ticker as any, {
             scope: { type: 'uiSubtree', subtreeId } as const,
@@ -74,7 +74,7 @@ describe('process: uiSubtree stop → start (re-install)', () => {
           }),
         )
 
-      const scope1 = Effect.runSync(Scope.make()) as Scope.CloseableScope
+      const scope1 = Effect.runSync(Scope.make()) as Scope.Scope
       yield* Effect.promise(() => installOnce(scope1))
 
       yield* Effect.promise(() => runtime.runPromise(Effect.sleep('40 millis') as any))
@@ -93,7 +93,7 @@ describe('process: uiSubtree stop → start (re-install)', () => {
 
       const stopPromise = runtime.runPromise(Scope.close(scope1, Exit.void) as any)
 
-      const scope2 = Effect.runSync(Scope.make()) as Scope.CloseableScope
+      const scope2 = Effect.runSync(Scope.make()) as Scope.Scope
       yield* Effect.promise(() => installOnce(scope2, mode))
 
       yield* Effect.promise(() => stopPromise)

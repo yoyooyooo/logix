@@ -152,7 +152,7 @@ describe('Form rules-first complex form (US1)', () => {
         new Map(items.map((row, i) => [String(row?.id ?? i), i]))
 
       const program = Effect.gen(function* () {
-        const rt = yield* module.tag
+        const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const controller = module.controller.make(rt)
 
         // derived: only writes values/ui, not errors.

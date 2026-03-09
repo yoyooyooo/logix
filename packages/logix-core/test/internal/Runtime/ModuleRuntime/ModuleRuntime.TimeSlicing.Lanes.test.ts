@@ -23,7 +23,7 @@ describe('ModuleRuntime time-slicing (lanes enabled)', () => {
     Effect.gen(function* () {
       const DEFERRED = 512
 
-      const fields: Record<string, Schema.Schema.Any> = {
+      const fields: Record<string, Schema.Top> = {
         a: Schema.Number,
         b: Schema.Number,
       }

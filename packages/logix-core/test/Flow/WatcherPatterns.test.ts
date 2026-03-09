@@ -1,6 +1,6 @@
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Context, Effect, Layer, Schema, ServiceMap } from 'effect'
+import {Effect, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../src/index.js'
 import * as Debug from '../../src/Debug.js'
 

@@ -46,7 +46,7 @@ describe('FormModule $.self', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* live.tag
+        const rt = yield* Effect.service(live.tag).pipe(Effect.orDie)
         yield* Deferred.await(done)
         const state: any = yield* rt.getState
         expect(state.errors?.name).toBe('required')

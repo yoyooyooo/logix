@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Context, Effect, Exit, Layer, Scope, Schema, ServiceMap } from 'effect'
+import {Effect, Exit, Layer, Scope, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../src/index.js'
 import * as ProcessRuntime from '../../src/internal/runtime/core/process/ProcessRuntime.js'
 
@@ -41,7 +41,7 @@ describe('process: event history cap', () => {
       const scope = yield* Scope.make()
       try {
         const env = yield* Layer.buildWithScope(layer, scope)
-        const runtime = ServiceMap.get(env as Context.Context<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
+        const runtime = ServiceMap.get(env as ServiceMap.ServiceMap<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
 
         for (const trigger of triggerSpecs) {
           yield* runtime.deliverPlatformEvent({ eventName: trigger.platformEvent })
@@ -112,7 +112,7 @@ describe('process: event history cap', () => {
       const scope = yield* Scope.make()
       try {
         const env = yield* Layer.buildWithScope(layer, scope)
-        const runtime = ServiceMap.get(env as Context.Context<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
+        const runtime = ServiceMap.get(env as ServiceMap.ServiceMap<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
 
         yield* runtime.deliverPlatformEvent({ eventName: 'test:history:zero' })
 
@@ -158,7 +158,7 @@ describe('process: event history cap', () => {
       const scope = yield* Scope.make()
       try {
         const env = yield* Layer.buildWithScope(layer, scope)
-        const runtime = ServiceMap.get(env as Context.Context<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
+        const runtime = ServiceMap.get(env as ServiceMap.ServiceMap<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
 
         snapshot = yield* runtime.getEventsSnapshot()
       } finally {
@@ -206,7 +206,7 @@ describe('process: event history cap', () => {
       const scope = yield* Scope.make()
       try {
         const env = yield* Layer.buildWithScope(layer, scope)
-        const runtime = ServiceMap.get(env as Context.Context<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
+        const runtime = ServiceMap.get(env as ServiceMap.ServiceMap<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
 
         for (const trigger of triggerSpecs) {
           yield* runtime.deliverPlatformEvent({ eventName: trigger.platformEvent })

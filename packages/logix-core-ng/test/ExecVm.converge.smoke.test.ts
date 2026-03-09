@@ -62,7 +62,7 @@ describe('core-ng: Exec VM (converge smoke)', () => {
         })
 
         const program = Effect.gen(function* () {
-          const rt = yield* M.tag
+          const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
           yield* rt.dispatch({ _tag: 'mutateA', payload: undefined })
           yield* Effect.sleep('10 millis')
 

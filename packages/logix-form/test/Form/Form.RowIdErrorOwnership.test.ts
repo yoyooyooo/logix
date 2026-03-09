@@ -75,7 +75,7 @@ describe('Form rowId error ownership', () => {
         new Map(items.map((row, i) => [String(row?.id ?? i), i]))
 
       const program = Effect.gen(function* () {
-        const rt = yield* module.tag
+        const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const controller = module.controller.make(rt)
 
         // Create duplicates: row-0 / row-1 should both be marked invalid and get a stable $rowId (no trackBy -> store/index).

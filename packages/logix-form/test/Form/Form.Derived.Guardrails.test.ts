@@ -122,7 +122,7 @@ describe('Form derived guardrails', () => {
       })
 
       const program = Effect.gen(function* () {
-        const hostRuntime = yield* Host.tag
+        const hostRuntime = yield* Effect.service(Host.tag).pipe(Effect.orDie)
         yield* Effect.sleep('50 millis')
         const state = yield* hostRuntime.getState
         expect(state.hasController).toBe(true)

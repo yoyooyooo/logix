@@ -76,7 +76,7 @@ const runTxn = (
   Effect.promise(() =>
     runtime.runPromise(
       Effect.gen(function* () {
-        const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
+        const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
         void name
         yield* rt.dispatch({ _tag: 'incA', payload: undefined } as any)
       }),

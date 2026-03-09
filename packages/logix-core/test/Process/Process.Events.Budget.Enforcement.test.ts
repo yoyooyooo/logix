@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Context, Effect, Exit, Layer, Scope, Schema, ServiceMap } from 'effect'
+import {Effect, Exit, Layer, Scope, Schema, ServiceMap } from 'effect'
 import { TestClock } from 'effect/testing'
 import * as Logix from '../../src/index.js'
 import {
@@ -64,7 +64,7 @@ describe('process: event budgets', () => {
       const scope = yield* Scope.make()
       try {
         const env = yield* Layer.buildWithScope(layer, scope)
-        const rt = ServiceMap.get(env as Context.Context<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
+        const rt = ServiceMap.get(env as ServiceMap.ServiceMap<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
 
         yield* rt.deliverPlatformEvent({ eventName: 'test:budget' })
         yield* Effect.yieldNow

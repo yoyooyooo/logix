@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { Context, Effect, Schema, ServiceMap } from 'effect'
+import {Effect, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('BoundApi $.root.resolve', () => {

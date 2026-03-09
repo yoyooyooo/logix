@@ -33,7 +33,7 @@ describe('Form controller default actions', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* module.tag
+        const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const form = module.controller.make(rt)
 
         // scoped validate: hit the `name` rule.

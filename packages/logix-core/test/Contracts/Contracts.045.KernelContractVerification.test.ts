@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Context, Effect, Exit, Layer, Schema, ServiceMap } from 'effect'
+import {Effect, Exit, Layer, Schema, ServiceMap } from 'effect'
 import { TestClock } from 'effect/testing'
 import * as Logix from '../../src/index.js'
 import { coreNgRuntimeServicesRegistry } from '../../src/internal/runtime/core/RuntimeServices.impls.coreNg.js'

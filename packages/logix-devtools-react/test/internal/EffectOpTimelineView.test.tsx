@@ -54,7 +54,7 @@ afterEach(async () => {
 
 // A minimal Counter Module used to drive the Devtools timeline and produce EffectOp / Debug events.
 const DEFERRED_STEPS = 64
-const counterFields: Record<string, Schema.Schema.Any> = { count: Schema.Number }
+const counterFields: Record<string, Schema.Top> = { count: Schema.Number }
 for (let i = 0; i < DEFERRED_STEPS; i++) {
   counterFields[`d${i}`] = Schema.Number
 }
@@ -329,7 +329,7 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
     await waitFor(() => {
       // At least one react-render event row should exist (labels are normalized; no longer rely on trace:* types).
       const viewRows = screen.getAllByRole('button', {
-        name: new RegExp(targetRenderLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
+        name: new RegExp(targetRenderLabel!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
       })
       expect(viewRows.length).toBeGreaterThan(0)
     })

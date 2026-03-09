@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Context, Effect, Exit, Layer, Scope, Schema, ServiceMap } from 'effect'
+import {Effect, Exit, Layer, Scope, Schema, ServiceMap } from 'effect'
 import { TestClock } from 'effect/testing'
 import * as Logix from '../../src/index.js'
 import * as ProcessRuntime from '../../src/internal/runtime/core/process/ProcessRuntime.js'
@@ -69,7 +69,7 @@ describe('process: diagnostics chain (trigger → dispatch → error/stop)', () 
       const scope = yield* Scope.make()
       try {
         const env = yield* Layer.buildWithScope(layer, scope)
-        const rt = ServiceMap.get(env as Context.Context<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
+        const rt = ServiceMap.get(env as ServiceMap.ServiceMap<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
 
         const source = ServiceMap.get(env, SourceModule.tag)
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Context, Effect, Ref, Schema, ServiceMap } from 'effect'
+import {Effect, Ref, Schema, ServiceMap } from 'effect'
 import { TestClock } from 'effect/testing'
 import * as Logix from '../../src/index.js'
 import { collectProcessErrorEvent, withProcessRuntime, withProcessRuntimeScope } from './test-helpers.js'

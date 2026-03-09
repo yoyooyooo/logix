@@ -45,7 +45,7 @@ describe('Form traits check deps defaults', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* module.tag
+        const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const form = module.controller.make(rt)
 
         // b change => validates b, and should pull in a check via deps:["b"]
