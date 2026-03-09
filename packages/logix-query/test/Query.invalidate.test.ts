@@ -165,24 +165,44 @@ describe('Query.invalidate', () => {
         middleware: [Query.Engine.middleware()],
       })
 
+      const waitUntil = <A>(
+        read: Effect.Effect<A, never, any>,
+        predicate: (value: A) => boolean,
+      ): Effect.Effect<A, Error, any> =>
+        Effect.gen(function* () {
+          for (let i = 0; i < 400; i += 1) {
+            const value = yield* read
+            if (predicate(value)) return value
+            yield* Effect.sleep(Duration.millis(5))
+          }
+          return yield* Effect.fail(new Error('timeout waiting for invalidate-byTag state'))
+        })
+
       const program = Effect.gen(function* () {
           const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const controller = module.controller.make(rt)
 
         // onMount: both a & b load once
-        yield* Effect.sleep(Duration.millis(30))
-        expect(loadCallsA).toBe(1)
-        expect(loadCallsB).toBe(1)
+        yield* waitUntil(
+          Effect.sync(() => ({ a: loadCallsA, b: loadCallsB })),
+          ({ a, b }) => a === 1 && b === 1,
+        )
 
         // Tag match: refresh `a` only
         yield* controller.controller.invalidate({ kind: 'byTag', tag: 'user' })
-        yield* Effect.sleep(Duration.millis(60))
+        yield* waitUntil(
+          Effect.sync(() => ({ a: loadCallsA, b: loadCallsB })),
+          ({ a, b }) => a === 2 && b === 1,
+        )
         expect(loadCallsA).toBe(2)
         expect(loadCallsB).toBe(1)
 
         // No tag match: fall back to refreshing all
         yield* controller.controller.invalidate({ kind: 'byTag', tag: 'unknown' })
-        yield* Effect.sleep(Duration.millis(60))
+        yield* waitUntil(
+          Effect.sync(() => ({ a: loadCallsA, b: loadCallsB })),
+          ({ a, b }) => a === 3 && b === 2,
+        )
         expect(loadCallsA).toBe(3)
         expect(loadCallsB).toBe(2)
 
