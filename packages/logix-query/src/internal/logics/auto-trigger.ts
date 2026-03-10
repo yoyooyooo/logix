@@ -198,14 +198,16 @@ export const autoTrigger = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
       Effect.all(
         [
           // params/ui changes: handled by Query's default logic, avoiding scattered UI-side useEffect triggers.
-          $.onAction('setParams').runFork((action: any) =>
+          // Keep params/ui-driven auto refresh aligned with action stream order.
+          // `source.refresh` already forks IO internally, so the watcher itself can stay ordered.
+          $.onAction('setParams').run((action: any) =>
             Effect.gen(function* () {
               const state = (yield* $.state.read) as any
               const next = { ...state, params: action.payload }
               yield* maybeAutoRefresh('keyChange', next)
             }),
           ),
-          $.onAction('setUi').runFork((action: any) =>
+          $.onAction('setUi').run((action: any) =>
             Effect.gen(function* () {
               const state = (yield* $.state.read) as any
               const next = { ...state, ui: action.payload }
