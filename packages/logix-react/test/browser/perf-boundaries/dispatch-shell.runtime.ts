@@ -80,7 +80,7 @@ export const runDispatchShellSample = (
 ): Effect.Effect<void, never, any> =>
   Effect.gen(function* () {
     if (entrypointMode === 'reuseScope') {
-      const moduleScope = (yield* Effect.service(rt.module.tag).pipe(Effect.orDie)) as any
+      const moduleScope = (yield* rt.module.tag) as any
       for (let i = 0; i < iterations; i++) {
         yield* moduleScope.dispatch({ _tag: 'bump' } as any)
       }
@@ -88,7 +88,7 @@ export const runDispatchShellSample = (
     }
 
     for (let i = 0; i < iterations; i++) {
-      const moduleScope = (yield* Effect.service(rt.module.tag).pipe(Effect.orDie)) as any
+      const moduleScope = (yield* rt.module.tag) as any
       yield* moduleScope.dispatch({ _tag: 'bump' } as any)
     }
   }) as Effect.Effect<void, never, any>
