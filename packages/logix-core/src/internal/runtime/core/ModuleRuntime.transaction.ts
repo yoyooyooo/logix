@@ -77,6 +77,9 @@ type TxnPhaseTraceData = {
   readonly commitMode: StateCommitMode
   readonly priority: StateCommitPriority
   readonly queue?: TxnQueuePhaseTiming
+  readonly dispatchActionRecordMs: number
+  readonly dispatchActionCommitHubMs: number
+  readonly dispatchActionCount: number
   readonly bodyShellMs: number
   readonly asyncEscapeGuardMs: number
   readonly traitConvergeMs: number
@@ -454,6 +457,10 @@ export const makeTransactionOps = <S>(args: {
       txnCurrent.stateTraitValidateRequests = []
       txnCurrent.commitMode = 'normal' as StateCommitMode
       txnCurrent.priority = 'normal' as StateCommitPriority
+      txnCurrent.dispatchPhaseTimingEnabled = phaseTimingEnabled
+      txnCurrent.dispatchActionRecordMs = 0
+      txnCurrent.dispatchActionCommitHubMs = 0
+      txnCurrent.dispatchActionCount = 0
     
       const stateCommitPriority = (origin as any)?.details?.stateCommit?.priority
       if (stateCommitPriority === 'low' || stateCommitPriority === 'normal') {
@@ -845,6 +852,18 @@ export const makeTransactionOps = <S>(args: {
                         commitMode,
                         priority,
                         ...(queuePhaseTiming ? { queue: queuePhaseTiming } : null),
+                        dispatchActionRecordMs:
+                          typeof (txnContext.current as any)?.dispatchActionRecordMs === 'number'
+                            ? (txnContext.current as any).dispatchActionRecordMs
+                            : 0,
+                        dispatchActionCommitHubMs:
+                          typeof (txnContext.current as any)?.dispatchActionCommitHubMs === 'number'
+                            ? (txnContext.current as any).dispatchActionCommitHubMs
+                            : 0,
+                        dispatchActionCount:
+                          typeof (txnContext.current as any)?.dispatchActionCount === 'number'
+                            ? (txnContext.current as any).dispatchActionCount
+                            : 0,
                         bodyShellMs,
                         asyncEscapeGuardMs,
                         traitConvergeMs,

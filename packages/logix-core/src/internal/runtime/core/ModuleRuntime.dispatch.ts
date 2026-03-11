@@ -13,6 +13,14 @@ import type { ResolvedConcurrencyPolicy } from './ModuleRuntime.concurrencyPolic
 
 type DispatchEntryPoint = 'dispatch' | 'dispatchBatch' | 'dispatchLowPriority'
 
+const readClockMs = (): number => {
+  const perf = globalThis.performance
+  if (perf && typeof perf.now === 'function') {
+    return perf.now()
+  }
+  return Date.now()
+}
+
 type ActionAnalysis = {
   readonly actionTag: string | undefined
   readonly actionTagNormalized: string
@@ -344,8 +352,11 @@ export const makeDispatchOps = <S, A>(args: {
       yield* applyActionStateWritebacks(action, analysis)
 
       const unknownAction = declaredActionTags ? !declaredActionTags.has(analysis.actionTagNormalized) : false
+      const current: any = txnContext.current
+      const phaseTimingEnabled = current?.dispatchPhaseTimingEnabled === true
 
       // Record action dispatch (for Devtools/diagnostics).
+      const actionRecordStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
       yield* Debug.record({
         type: 'action:dispatch',
         moduleId: optionsModuleId,
@@ -356,9 +367,13 @@ export const makeDispatchOps = <S, A>(args: {
         txnSeq: txnContext.current?.txnSeq,
         txnId: txnContext.current?.txnId,
       })
+      if (phaseTimingEnabled) {
+        current.dispatchActionRecordMs =
+          (typeof current.dispatchActionRecordMs === 'number' ? current.dispatchActionRecordMs : 0) +
+          Math.max(0, readClockMs() - actionRecordStartedAtMs)
+      }
 
       // actionsWithMeta$: provides stable txnSeq/txnId anchors for higher-level subscriptions (e.g. Process).
-      const current = txnContext.current
       if (current) {
         const meta: StateCommitMeta = {
           txnSeq: current.txnSeq,
@@ -368,7 +383,15 @@ export const makeDispatchOps = <S, A>(args: {
           originKind: current.origin.kind,
           originName: current.origin.name,
         }
+        const actionCommitStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
         yield* PubSub.publish(actionCommitHub, { value: action, meta })
+        if (phaseTimingEnabled) {
+          current.dispatchActionCommitHubMs =
+            (typeof current.dispatchActionCommitHubMs === 'number' ? current.dispatchActionCommitHubMs : 0) +
+            Math.max(0, readClockMs() - actionCommitStartedAtMs)
+          current.dispatchActionCount =
+            (typeof current.dispatchActionCount === 'number' ? current.dispatchActionCount : 0) + 1
+        }
       }
     })
 

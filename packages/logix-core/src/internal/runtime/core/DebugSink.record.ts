@@ -1471,6 +1471,9 @@ export const toRuntimeDebugEventRef = (
                     startMode: data.queue.startMode,
                   }
                 : undefined,
+              dispatchActionRecordMs: data?.dispatchActionRecordMs,
+              dispatchActionCommitHubMs: data?.dispatchActionCommitHubMs,
+              dispatchActionCount: data?.dispatchActionCount,
               bodyShellMs: data?.bodyShellMs,
               asyncEscapeGuardMs: data?.asyncEscapeGuardMs,
               traitConvergeMs: data?.traitConvergeMs,
