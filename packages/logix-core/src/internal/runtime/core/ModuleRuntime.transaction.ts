@@ -37,6 +37,17 @@ const makeAsyncEscapeError = (): Error =>
     kind: ASYNC_ESCAPE_KIND,
   })
 
+const findAsyncEscapeFiber = (cause: unknown): Fiber.Fiber<unknown, unknown> | undefined => {
+  const defect = Cause.findDefect(cause as any) as
+    | { readonly _tag: 'Success'; readonly success: Fiber.Fiber<unknown, unknown> }
+    | { readonly _tag: 'Failure' }
+
+  if (defect?._tag !== 'Success') return undefined
+  const value: any = defect.success
+  if (typeof value !== 'object' || value == null) return undefined
+  return typeof value.id === 'number' && typeof value._yielded === 'function' ? (value as Fiber.Fiber<unknown, unknown>) : undefined
+}
+
 const readDeferredFlushSlice = (details: unknown): { readonly start: number; readonly end: number } | undefined => {
   if (!details || typeof details !== 'object') return undefined
   const raw = details as any
@@ -471,55 +482,18 @@ export const makeTransactionOps = <S>(args: {
               // Use daemon fiber to avoid supervision-induced blocking:
               // - An uninterruptible async escape must not block abort/next transaction.
               const bodyShellStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
-              let asyncEscapeGuardMs = 0
+              const asyncEscapeGuardStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
+              const bodyExit = yield* Effect.sync(
+                () => Effect.runSyncExit(body() as Effect.Effect<void, E2, never>) as Exit.Exit<void, E2>,
+              )
+              const asyncEscapeGuardMs = phaseTimingEnabled
+                ? Math.max(0, readClockMs() - asyncEscapeGuardStartedAtMs)
+                : 0
 
-              if (!isDevEnv() && phaseDiagnosticsLevel === 'off') {
-                const asyncEscapeGuardStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
-                const bodyExit = yield* Effect.sync(() => Effect.runSyncExit(body()))
-                asyncEscapeGuardMs = phaseTimingEnabled
-                  ? Math.max(0, readClockMs() - asyncEscapeGuardStartedAtMs)
-                  : 0
+              if (Exit.isFailure(bodyExit)) {
+                const asyncEscapeFiber = findAsyncEscapeFiber(bodyExit.cause)
 
-                if (Exit.isFailure(bodyExit)) {
-                  const asyncEscapeDefect = Cause.findDefect(bodyExit.cause, (defect: any) => {
-                    if (typeof defect !== 'object' || defect == null) return false
-                    return typeof defect.id === 'number' && typeof defect._yielded === 'function'
-                  }) as
-                    | { readonly _tag: 'Success'; readonly value: Fiber.Fiber<unknown, unknown> }
-                    | { readonly _tag: 'Failure' }
-
-                  if (asyncEscapeDefect?._tag === 'Success') {
-                    if (asyncEscapeDefect.value) {
-                      yield* Fiber.interruptFork(asyncEscapeDefect.value)
-                    }
-                    return yield* Effect.die(makeAsyncEscapeError())
-                  }
-
-                  return yield* Effect.failCause(bodyExit.cause)
-                }
-              } else {
-                const bodyFiber = yield* Effect.forkChild(body())
-
-                // Tune for perf: production path uses a small budget to keep the fast path cheap,
-                // but must still tolerate Effect's cooperative scheduling (especially in browser runs).
-                const yieldBudget = 1
-
-                const pollBodyFiber = Effect.sync(() => {
-                  const exit = bodyFiber.pollUnsafe()
-                  return exit === undefined ? Option.none<Exit.Exit<void, E2>>() : Option.some(exit)
-                })
-
-                const asyncEscapeGuardStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
-                let polled = yield* pollBodyFiber
-                for (let index = 0; index < yieldBudget && Option.isNone(polled); index += 1) {
-                  yield* Effect.yieldNow
-                  polled = yield* pollBodyFiber
-                }
-                asyncEscapeGuardMs = phaseTimingEnabled
-                  ? Math.max(0, readClockMs() - asyncEscapeGuardStartedAtMs)
-                  : 0
-
-                if (Option.isNone(polled)) {
+                if (asyncEscapeFiber) {
                   if (phaseDiagnosticsLevel !== 'off') {
                     yield* Debug.record({
                       type: 'diagnostic',
@@ -536,16 +510,11 @@ export const makeTransactionOps = <S>(args: {
                     })
                   }
 
-                  // Interrupt without awaiting: uninterruptible async escapes must not block abort/next txn.
-                  yield* Fiber.interrupt(bodyFiber).pipe(Effect.asVoid, Effect.forkDetach({ startImmediately: true }))
+                  yield* Fiber.interrupt(asyncEscapeFiber).pipe(Effect.asVoid, Effect.forkDetach({ startImmediately: true }))
                   return yield* Effect.die(makeAsyncEscapeError())
                 }
 
-                const bodyExit = Option.getOrThrow(polled)
-                yield* Exit.match(bodyExit, {
-                  onFailure: (cause) => Effect.failCause(cause),
-                  onSuccess: () => Effect.void,
-                })
+                return yield* Effect.failCause(bodyExit.cause)
               }
               const bodyShellMs = phaseTimingEnabled ? Math.max(0, readClockMs() - bodyShellStartedAtMs) : 0
 

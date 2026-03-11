@@ -67,4 +67,29 @@ GitHub Actions run：
 - `sourceSync`
 - `commit`
 
-下一步直接用该事件做 targeted collect，判断固定税主要落在哪一段。
+## 第二刀结果
+
+在 `effect-v4` 上继续用 `trace:txn-phase` 做 targeted collect 后，固定税主要落点已确认：
+
+- `runtime.txnPhase.queue* ≈ 0`
+- `runtime.txnPhase.commit* ≈ 0.04ms`
+- `runtime.txnPhase.bodyShellMs ≈ 4.1ms`
+- `runtime.txnPhase.asyncEscapeGuardMs ≈ 4.08ms`
+
+因此真正的大头在事务体里的 async-escape guard。
+
+随后将生产态路径改为 sync-first：
+
+- `diagnostics=off` 下不再为每个 transaction 固定创建 child fiber 再 `poll/yield`
+- 改为直接 `Effect.runSyncExit(body())`
+- 仅在检测到 async escape 时记录诊断并中断逃逸 fiber
+
+语义回归：
+
+- `test/internal/Runtime/ModuleRuntime/ModuleRuntime.transaction.AsyncEscapeGuard.Perf.off.test.ts`
+- `test/Runtime/Runtime.PublicSemantics.NoDrift.test.ts`
+- `test/StateTrait/StateTrait.ConvergeAuto.TransactionBoundary.test.ts`
+
+这三条均已通过。
+
+下一步继续收 `diagnostics=light/full` 的同类固定税。
