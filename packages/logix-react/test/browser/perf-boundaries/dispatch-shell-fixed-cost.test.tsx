@@ -53,6 +53,9 @@ const suite: MatrixSuite = {
     'runtime.txnPhase.queueEnqueueBookkeepingMs',
     'runtime.txnPhase.queueWaitMs',
     'runtime.txnPhase.queueStartHandoffMs',
+    'runtime.txnPhase.dispatchActionRecordMs',
+    'runtime.txnPhase.dispatchActionCommitHubMs',
+    'runtime.txnPhase.dispatchActionCount',
     'runtime.txnPhase.bodyShellMs',
     'runtime.txnPhase.asyncEscapeGuardMs',
     'runtime.txnPhase.traitConvergeMs',
@@ -138,6 +141,18 @@ test('browser dispatch shell: fixed cost across state width', { timeout: TEST_TI
               ),
               'runtime.txnPhase.queueWaitMs': timingEvidence(phaseTiming, (value) => value.queueWaitMs),
               'runtime.txnPhase.queueStartHandoffMs': timingEvidence(phaseTiming, (value) => value.queueStartHandoffMs),
+              'runtime.txnPhase.dispatchActionRecordMs': timingEvidence(
+                phaseTiming,
+                (value: any) => value.dispatchActionRecordMs,
+              ),
+              'runtime.txnPhase.dispatchActionCommitHubMs': timingEvidence(
+                phaseTiming,
+                (value: any) => value.dispatchActionCommitHubMs,
+              ),
+              'runtime.txnPhase.dispatchActionCount': timingEvidence(
+                phaseTiming,
+                (value: any) => value.dispatchActionCount,
+              ),
               'runtime.txnPhase.bodyShellMs': timingEvidence(phaseTiming, (value) => value.bodyShellMs),
               'runtime.txnPhase.asyncEscapeGuardMs': timingEvidence(phaseTiming, (value) => value.asyncEscapeGuardMs),
               'runtime.txnPhase.traitConvergeMs': timingEvidence(phaseTiming, (value) => value.traitConvergeMs),
