@@ -5,7 +5,9 @@ import { getProfileConfig, runMatrixSuite, withNodeEnv, type MatrixSuite } from 
 import {
   makeDispatchShellRuntime,
   runDispatchShellSample,
+  runDispatchShellSampleWithDiagnosticsLevel,
   type DispatchShellEntrypointMode,
+  type DispatchShellTxnPhaseTiming,
 } from './dispatch-shell.runtime.js'
 
 const suite: MatrixSuite = {
@@ -41,19 +43,46 @@ const suite: MatrixSuite = {
     'module.traitCount',
     'runtime.dispatchesPerSample',
     'runtime.entrypointMode',
+    'runtime.txnPhase.traceCount',
+    'runtime.txnPhase.queueResolvePolicyMs',
+    'runtime.txnPhase.queueBackpressureMs',
+    'runtime.txnPhase.queueEnqueueBookkeepingMs',
+    'runtime.txnPhase.queueWaitMs',
+    'runtime.txnPhase.queueStartHandoffMs',
+    'runtime.txnPhase.bodyShellMs',
+    'runtime.txnPhase.asyncEscapeGuardMs',
+    'runtime.txnPhase.traitConvergeMs',
+    'runtime.txnPhase.scopedValidateMs',
+    'runtime.txnPhase.sourceSyncMs',
+    'runtime.txnPhase.commitTotalMs',
+    'runtime.txnPhase.commitRowIdSyncMs',
+    'runtime.txnPhase.commitPublishCommitMs',
+    'runtime.txnPhase.commitStateUpdateDebugRecordMs',
+    'runtime.txnPhase.commitOnCommitBeforeStateUpdateMs',
+    'runtime.txnPhase.commitOnCommitAfterStateUpdateMs',
   ],
 }
 
 const { runs, warmupDiscard, timeoutMs } = getProfileConfig(matrix)
 
 const SAMPLE_BATCH = 50
+const PHASE_TRACE_BATCH = 5
 const EXPECTED_POINT_COUNT = suite.axes.stateWidth.length * suite.axes.entrypointMode.length
 const EXPECTED_WORK_MS = timeoutMs * EXPECTED_POINT_COUNT
 const TEST_TIMEOUT_MS = Math.max(30_000, Math.ceil(EXPECTED_WORK_MS * 1.2 + 5_000))
 
+const timingEvidence = (
+  timing: DispatchShellTxnPhaseTiming | undefined,
+  pick: (timing: DispatchShellTxnPhaseTiming) => number | undefined,
+): number | { readonly unavailableReason: string } => {
+  const value = timing ? pick(timing) : undefined
+  return typeof value === 'number' && Number.isFinite(value) ? value : { unavailableReason: 'phaseTimingMissing' }
+}
+
 test('browser dispatch shell: fixed cost across state width', { timeout: TEST_TIMEOUT_MS }, async () => {
   await withNodeEnv('production', async () => {
-    const runtimeByKey = new Map<number, ReturnType<typeof makeDispatchShellRuntime>>()
+    const metricRuntimeByKey = new Map<number, ReturnType<typeof makeDispatchShellRuntime>>()
+    const phaseRuntimeByKey = new Map<number, ReturnType<typeof makeDispatchShellRuntime>>()
 
     try {
       const { points, thresholds } = await runMatrixSuite(
@@ -63,12 +92,22 @@ test('browser dispatch shell: fixed cost across state width', { timeout: TEST_TI
           const stateWidth = params.stateWidth as number
           const entrypointMode = params.entrypointMode as DispatchShellEntrypointMode
 
-          const runtime = runtimeByKey.get(stateWidth) ?? makeDispatchShellRuntime(stateWidth)
-          runtimeByKey.set(stateWidth, runtime)
+          const metricRuntime = metricRuntimeByKey.get(stateWidth) ?? makeDispatchShellRuntime(stateWidth)
+          metricRuntimeByKey.set(stateWidth, metricRuntime)
+
+          const phaseRuntime =
+            phaseRuntimeByKey.get(stateWidth) ?? makeDispatchShellRuntime(stateWidth, { captureTxnPhaseTiming: true })
+          phaseRuntimeByKey.set(stateWidth, phaseRuntime)
 
           const start = performance.now()
-          await runtime.runtime.runPromise(runDispatchShellSample(runtime, entrypointMode, SAMPLE_BATCH) as any)
+          await metricRuntime.runtime.runPromise(runDispatchShellSample(metricRuntime, entrypointMode, SAMPLE_BATCH) as any)
           const end = performance.now()
+
+          phaseRuntime.clearTxnPhaseTimings()
+          await phaseRuntime.runtime.runPromise(
+            runDispatchShellSampleWithDiagnosticsLevel(phaseRuntime, entrypointMode, PHASE_TRACE_BATCH, 'light') as any,
+          )
+          const phaseTiming = phaseRuntime.getTxnPhaseTimingSummary()
 
           return {
             metrics: {
@@ -80,6 +119,39 @@ test('browser dispatch shell: fixed cost across state width', { timeout: TEST_TI
               'module.traitCount': 0,
               'runtime.dispatchesPerSample': SAMPLE_BATCH,
               'runtime.entrypointMode': entrypointMode,
+              'runtime.txnPhase.traceCount':
+                phaseTiming?.traceCount ?? { unavailableReason: 'phaseTimingMissing' },
+              'runtime.txnPhase.queueResolvePolicyMs': timingEvidence(phaseTiming, (value) => value.queueResolvePolicyMs),
+              'runtime.txnPhase.queueBackpressureMs': timingEvidence(phaseTiming, (value) => value.queueBackpressureMs),
+              'runtime.txnPhase.queueEnqueueBookkeepingMs': timingEvidence(
+                phaseTiming,
+                (value) => value.queueEnqueueBookkeepingMs,
+              ),
+              'runtime.txnPhase.queueWaitMs': timingEvidence(phaseTiming, (value) => value.queueWaitMs),
+              'runtime.txnPhase.queueStartHandoffMs': timingEvidence(phaseTiming, (value) => value.queueStartHandoffMs),
+              'runtime.txnPhase.bodyShellMs': timingEvidence(phaseTiming, (value) => value.bodyShellMs),
+              'runtime.txnPhase.asyncEscapeGuardMs': timingEvidence(phaseTiming, (value) => value.asyncEscapeGuardMs),
+              'runtime.txnPhase.traitConvergeMs': timingEvidence(phaseTiming, (value) => value.traitConvergeMs),
+              'runtime.txnPhase.scopedValidateMs': timingEvidence(phaseTiming, (value) => value.scopedValidateMs),
+              'runtime.txnPhase.sourceSyncMs': timingEvidence(phaseTiming, (value) => value.sourceSyncMs),
+              'runtime.txnPhase.commitTotalMs': timingEvidence(phaseTiming, (value) => value.commitTotalMs),
+              'runtime.txnPhase.commitRowIdSyncMs': timingEvidence(phaseTiming, (value) => value.commitRowIdSyncMs),
+              'runtime.txnPhase.commitPublishCommitMs': timingEvidence(
+                phaseTiming,
+                (value) => value.commitPublishCommitMs,
+              ),
+              'runtime.txnPhase.commitStateUpdateDebugRecordMs': timingEvidence(
+                phaseTiming,
+                (value) => value.commitStateUpdateDebugRecordMs,
+              ),
+              'runtime.txnPhase.commitOnCommitBeforeStateUpdateMs': timingEvidence(
+                phaseTiming,
+                (value) => value.commitOnCommitBeforeStateUpdateMs,
+              ),
+              'runtime.txnPhase.commitOnCommitAfterStateUpdateMs': timingEvidence(
+                phaseTiming,
+                (value) => value.commitOnCommitAfterStateUpdateMs,
+              ),
             },
           }
         },
@@ -130,7 +202,11 @@ test('browser dispatch shell: fixed cost across state width', { timeout: TEST_TI
 
       emitPerfReport(report)
     } finally {
-      await Promise.allSettled(Array.from(runtimeByKey.values()).map((runtime) => runtime.runtime.dispose()))
+      await Promise.allSettled(
+        Array.from(metricRuntimeByKey.values())
+          .concat(Array.from(phaseRuntimeByKey.values()))
+          .map((runtime) => runtime.runtime.dispose()),
+      )
     }
   })
 })
