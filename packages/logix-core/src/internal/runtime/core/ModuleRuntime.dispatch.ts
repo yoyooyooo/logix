@@ -5,7 +5,7 @@ import type { ConcurrencyDiagnostics } from './ConcurrencyDiagnostics.js'
 import * as ReducerDiagnostics from './ReducerDiagnostics.js'
 import * as StateTransaction from './StateTransaction.js'
 import { mutateWithPatchPaths } from './mutativePatches.js'
-import { currentTxnOriginOverride, type TxnOriginOverride } from './TxnOriginOverride.js'
+import type { TxnOriginOverride } from './TxnOriginOverride.js'
 import type { RunOperation } from './ModuleRuntime.operation.js'
 import type { RunWithStateTransaction, SetStateInternal } from './ModuleRuntime.transaction.js'
 import type { EnqueueTransaction } from './ModuleRuntime.txnQueue.js'
@@ -93,6 +93,15 @@ export const makeDispatchOps = <S, A>(args: {
 }): {
   readonly registerReducer: (tag: string, fn: (state: S, action: A) => S) => void
   readonly registerActionStateWriteback: (tag: string, handler: ActionStateWritebackHandler<S, A>) => void
+  readonly dispatchWithOriginOverride: (action: A, override?: TxnOriginOverride) => Effect.Effect<void, never, any>
+  readonly dispatchBatchWithOriginOverride: (
+    actions: ReadonlyArray<A>,
+    override?: TxnOriginOverride,
+  ) => Effect.Effect<void, never, any>
+  readonly dispatchLowPriorityWithOriginOverride: (
+    action: A,
+    override?: TxnOriginOverride,
+  ) => Effect.Effect<void, never, any>
   readonly dispatch: (action: A) => Effect.Effect<void, never, any>
   readonly dispatchBatch: (actions: ReadonlyArray<A>) => Effect.Effect<void, never, any>
   readonly dispatchLowPriority: (action: A) => Effect.Effect<void, never, any>
@@ -684,46 +693,67 @@ export const makeDispatchOps = <S, A>(args: {
   return {
     registerReducer,
     registerActionStateWriteback,
+    dispatchWithOriginOverride: (action, override) => {
+      const analysis = analyzeAction(action)
+      const propagationEntry = makeActionPropagationEntry(action, analysis)
+      const resolvePolicy = makeLazyPolicyResolver()
+      return enqueueTransaction(runDispatch(action, analysis, override)).pipe(
+        Effect.flatMap(() => publishActionPropagationBus([propagationEntry], 'dispatch', resolvePolicy)),
+      )
+    },
+    dispatchBatchWithOriginOverride: (actions, override) => {
+      const analyses = new Array<ActionAnalysis>(actions.length)
+      for (let index = 0; index < actions.length; index += 1) {
+        analyses[index] = analyzeAction(actions[index] as A)
+      }
+      const propagationEntries = new Array<ActionPropagationEntry<A>>(actions.length)
+      for (let index = 0; index < actions.length; index += 1) {
+        propagationEntries[index] = makeActionPropagationEntry(actions[index] as A, analyses[index] as ActionAnalysis)
+      }
+      const resolvePolicy = makeLazyPolicyResolver()
+      return enqueueTransaction(runDispatchBatch(actions, analyses, override)).pipe(
+        Effect.flatMap(() => publishActionPropagationBus(propagationEntries, 'dispatchBatch', resolvePolicy)),
+      )
+    },
+    dispatchLowPriorityWithOriginOverride: (action, override) => {
+      const analysis = analyzeAction(action)
+      const propagationEntry = makeActionPropagationEntry(action, analysis)
+      const resolvePolicy = makeLazyPolicyResolver()
+      return enqueueTransaction(runDispatchLowPriority(action, analysis, override)).pipe(
+        Effect.flatMap(() => publishActionPropagationBus([propagationEntry], 'dispatchLowPriority', resolvePolicy)),
+      )
+    },
     // Note: publish is a lossless/backpressure channel and may wait.
     // Must run outside the transaction window (FR-012) and must not block the txnQueue consumer fiber (avoid deadlock).
-    dispatch: (action) =>
-      Effect.service(currentTxnOriginOverride).pipe(Effect.orDie).pipe(
-        Effect.flatMap((override) => {
-          const analysis = analyzeAction(action)
-          const propagationEntry = makeActionPropagationEntry(action, analysis)
-          const resolvePolicy = makeLazyPolicyResolver()
-          return enqueueTransaction(runDispatch(action, analysis, override)).pipe(
-            Effect.flatMap(() => publishActionPropagationBus([propagationEntry], 'dispatch', resolvePolicy)),
-          )
-        }),
-      ),
-    dispatchBatch: (actions) =>
-      Effect.service(currentTxnOriginOverride).pipe(Effect.orDie).pipe(
-        Effect.flatMap((override) => {
-          const analyses = new Array<ActionAnalysis>(actions.length)
-          for (let index = 0; index < actions.length; index += 1) {
-            analyses[index] = analyzeAction(actions[index] as A)
-          }
-          const propagationEntries = new Array<ActionPropagationEntry<A>>(actions.length)
-          for (let index = 0; index < actions.length; index += 1) {
-            propagationEntries[index] = makeActionPropagationEntry(actions[index] as A, analyses[index] as ActionAnalysis)
-          }
-          const resolvePolicy = makeLazyPolicyResolver()
-          return enqueueTransaction(runDispatchBatch(actions, analyses, override)).pipe(
-            Effect.flatMap(() => publishActionPropagationBus(propagationEntries, 'dispatchBatch', resolvePolicy)),
-          )
-        }),
-      ),
-    dispatchLowPriority: (action) =>
-      Effect.service(currentTxnOriginOverride).pipe(Effect.orDie).pipe(
-        Effect.flatMap((override) => {
-          const analysis = analyzeAction(action)
-          const propagationEntry = makeActionPropagationEntry(action, analysis)
-          const resolvePolicy = makeLazyPolicyResolver()
-          return enqueueTransaction(runDispatchLowPriority(action, analysis, override)).pipe(
-            Effect.flatMap(() => publishActionPropagationBus([propagationEntry], 'dispatchLowPriority', resolvePolicy)),
-          )
-        }),
-      ),
+    dispatch: (action) => {
+      const analysis = analyzeAction(action)
+      const propagationEntry = makeActionPropagationEntry(action, analysis)
+      const resolvePolicy = makeLazyPolicyResolver()
+      return enqueueTransaction(runDispatch(action, analysis)).pipe(
+        Effect.flatMap(() => publishActionPropagationBus([propagationEntry], 'dispatch', resolvePolicy)),
+      )
+    },
+    dispatchBatch: (actions) => {
+      const analyses = new Array<ActionAnalysis>(actions.length)
+      for (let index = 0; index < actions.length; index += 1) {
+        analyses[index] = analyzeAction(actions[index] as A)
+      }
+      const propagationEntries = new Array<ActionPropagationEntry<A>>(actions.length)
+      for (let index = 0; index < actions.length; index += 1) {
+        propagationEntries[index] = makeActionPropagationEntry(actions[index] as A, analyses[index] as ActionAnalysis)
+      }
+      const resolvePolicy = makeLazyPolicyResolver()
+      return enqueueTransaction(runDispatchBatch(actions, analyses)).pipe(
+        Effect.flatMap(() => publishActionPropagationBus(propagationEntries, 'dispatchBatch', resolvePolicy)),
+      )
+    },
+    dispatchLowPriority: (action) => {
+      const analysis = analyzeAction(action)
+      const propagationEntry = makeActionPropagationEntry(action, analysis)
+      const resolvePolicy = makeLazyPolicyResolver()
+      return enqueueTransaction(runDispatchLowPriority(action, analysis)).pipe(
+        Effect.flatMap(() => publishActionPropagationBus([propagationEntry], 'dispatchLowPriority', resolvePolicy)),
+      )
+    },
   }
 }

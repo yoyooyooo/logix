@@ -5,7 +5,6 @@ import * as LogicUnitMeta from './LogicUnitMeta.js'
 import { toSerializableErrorSummary } from './errorSummary.js'
 import type { AnyModuleShape, LogicPlan, ModuleRuntime as PublicModuleRuntime } from './module.js'
 import { HostSchedulerTag, TickSchedulerTag } from './env.js'
-import { currentTxnOriginOverride } from './TxnOriginOverride.js'
 import { getRuntimeInternals } from './runtimeInternalsAccessor.js'
 import { RootContextTag, type RootContext } from './RootContext.js'
 import * as TaskRunner from './TaskRunner.js'
@@ -551,16 +550,22 @@ const startProgramRun = (args: {
               const payload = evalPayload(step.payload)
               const action = { _tag: step.actionTag, payload }
               const tickSeq = getTickSeq()
+              const timerOriginOverride = timerTriggered
+                ? ({
+                    kind: 'workflow.timer',
+                    name: `timer:${program.programId}:${step.key}`,
+                  } as const)
+                : undefined
+              const internals = timerOriginOverride ? getRuntimeInternals(runtime) : undefined
 
               const dispatchEffectBase =
-                program.priority === 'nonUrgent' ? runtime.dispatchLowPriority(action) : runtime.dispatch(action)
-
-              const dispatchEffect = timerTriggered
-                ? Effect.provideService(dispatchEffectBase, currentTxnOriginOverride, {
-                  kind: 'workflow.timer',
-                  name: `timer:${program.programId}:${step.key}`,
-                })
-                : dispatchEffectBase
+                program.priority === 'nonUrgent'
+                  ? timerOriginOverride
+                    ? internals!.txn.dispatchLowPriorityWithOriginOverride(action, timerOriginOverride)
+                    : runtime.dispatchLowPriority(action)
+                  : timerOriginOverride
+                    ? internals!.txn.dispatchWithOriginOverride(action, timerOriginOverride)
+                    : runtime.dispatch(action)
 
               yield* runWorkflowBoundary({
                 kind: 'flow',
@@ -573,7 +578,7 @@ const startProgramRun = (args: {
                   ...(tickSeq !== undefined ? { tickSeq } : null),
                   policy,
                 },
-                effect: dispatchEffect,
+                effect: dispatchEffectBase,
               }).pipe(Effect.asVoid)
               continue
             }

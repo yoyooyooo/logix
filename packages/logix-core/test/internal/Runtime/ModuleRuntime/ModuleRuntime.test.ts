@@ -1527,6 +1527,49 @@ describe('ModuleRuntime (internal)', () => {
       }),
     )
 
+    it.effect('trace:txn-phase should retain dispatch phase counters after commit', () =>
+      Effect.gen(function* () {
+        const ring = Debug.makeRingBufferSink(32)
+
+        const CounterModule = Logix.Module.make('TxnPhaseTraceModule', {
+          state: Schema.Struct({ count: Schema.Number }),
+          actions: { inc: Schema.Void },
+        })
+
+        const program = Effect.provideService(Effect.provideService(Effect.scoped(
+          ModuleRuntime.make(
+            { count: 0 },
+            {
+              moduleId: 'TxnPhaseTraceModule',
+              tag: CounterModule.tag,
+              reducers: {
+                inc: (state) => ({ ...state, count: state.count + 1 }),
+              },
+            },
+          ).pipe(
+            Effect.flatMap((runtime) =>
+              Effect.gen(function* () {
+                yield* runtime.dispatch({ _tag: 'inc', payload: undefined } as any)
+
+                const phaseEvent = ring
+                  .getSnapshot()
+                  .find((event) => event.type === 'trace:txn-phase' && event.moduleId === 'TxnPhaseTraceModule') as
+                  | any
+                  | undefined
+
+                expect(phaseEvent).toBeDefined()
+                expect(phaseEvent?.data?.dispatchActionCount).toBe(1)
+                expect(typeof phaseEvent?.data?.dispatchActionRecordMs).toBe('number')
+                expect(typeof phaseEvent?.data?.dispatchActionCommitHubMs).toBe('number')
+              }),
+            ),
+          ),
+        ), Debug.internal.currentDiagnosticsLevel as any, 'light'), Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])
+
+        yield* program
+      }),
+    )
+
     it.effect('state:update diagnostics should keep dirtySet metadata anchors when pathIds are truncated', () =>
       Effect.gen(function* () {
         const ring = Debug.makeRingBufferSink(32)

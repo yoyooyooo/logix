@@ -76,6 +76,7 @@ type TxnPhaseTraceData = {
   readonly originName?: string
   readonly commitMode: StateCommitMode
   readonly priority: StateCommitPriority
+  readonly txnPreludeMs: number
   readonly queue?: TxnQueuePhaseTiming
   readonly dispatchActionRecordMs: number
   readonly dispatchActionCommitHubMs: number
@@ -447,11 +448,12 @@ export const makeTransactionOps = <S>(args: {
     body: () => Effect.Effect<void, E2, never>,
   ): Effect.Effect<void, E2, never> =>
     Effect.provideService(Effect.gen(function* () {
+      const txnPreludeStartedAtMs = readClockMs()
       const phaseDiagnosticsLevel = yield* Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie)
       const phaseTimingEnabled = phaseDiagnosticsLevel !== 'off'
       const queuePhaseTiming = yield* Effect.service(currentTxnQueuePhaseTiming).pipe(Effect.orDie)
       const baseState = yield* SubscriptionRef.get(stateRef)
-    
+
       StateTransaction.beginTransaction(txnContext, origin, baseState)
       const txnCurrent: any = txnContext.current
       txnCurrent.stateTraitValidateRequests = []
@@ -461,7 +463,8 @@ export const makeTransactionOps = <S>(args: {
       txnCurrent.dispatchActionRecordMs = 0
       txnCurrent.dispatchActionCommitHubMs = 0
       txnCurrent.dispatchActionCount = 0
-    
+      const txnPreludeMs = phaseTimingEnabled ? Math.max(0, readClockMs() - txnPreludeStartedAtMs) : 0
+
       const stateCommitPriority = (origin as any)?.details?.stateCommit?.priority
       if (stateCommitPriority === 'low' || stateCommitPriority === 'normal') {
         txnCurrent.priority = stateCommitPriority as StateCommitPriority
@@ -827,10 +830,27 @@ export const makeTransactionOps = <S>(args: {
                   const commitMode = ((txnContext.current as any)?.commitMode ?? 'normal') as StateCommitMode
                   const priority = ((txnContext.current as any)?.priority ?? 'normal') as StateCommitPriority
                   const fieldPathIdRegistry = txnContext.current?.fieldPathIdRegistry
+                  const dispatchPhaseTiming =
+                    phaseTimingEnabled && txnContext.current
+                      ? {
+                          dispatchActionRecordMs:
+                            typeof (txnContext.current as any).dispatchActionRecordMs === 'number'
+                              ? (txnContext.current as any).dispatchActionRecordMs
+                              : 0,
+                          dispatchActionCommitHubMs:
+                            typeof (txnContext.current as any).dispatchActionCommitHubMs === 'number'
+                              ? (txnContext.current as any).dispatchActionCommitHubMs
+                              : 0,
+                          dispatchActionCount:
+                            typeof (txnContext.current as any).dispatchActionCount === 'number'
+                              ? (txnContext.current as any).dispatchActionCount
+                              : 0,
+                        }
+                      : undefined
                   const dirtyAllSetStateHint =
                     txnContext.current != null && (txnContext.current as any)[DIRTY_ALL_SET_STATE_HINT] === true
                   const commitResult = yield* StateTransaction.commitWithState(txnContext, stateRef)
-    
+
                   if (commitResult) {
                     const commitPhaseTiming = yield* runPostCommitPhases({
                       txn: commitResult.transaction,
@@ -851,19 +871,11 @@ export const makeTransactionOps = <S>(args: {
                         originName: commitResult.transaction.origin.name,
                         commitMode,
                         priority,
+                        txnPreludeMs,
                         ...(queuePhaseTiming ? { queue: queuePhaseTiming } : null),
-                        dispatchActionRecordMs:
-                          typeof (txnContext.current as any)?.dispatchActionRecordMs === 'number'
-                            ? (txnContext.current as any).dispatchActionRecordMs
-                            : 0,
-                        dispatchActionCommitHubMs:
-                          typeof (txnContext.current as any)?.dispatchActionCommitHubMs === 'number'
-                            ? (txnContext.current as any).dispatchActionCommitHubMs
-                            : 0,
-                        dispatchActionCount:
-                          typeof (txnContext.current as any)?.dispatchActionCount === 'number'
-                            ? (txnContext.current as any).dispatchActionCount
-                            : 0,
+                        dispatchActionRecordMs: dispatchPhaseTiming?.dispatchActionRecordMs ?? 0,
+                        dispatchActionCommitHubMs: dispatchPhaseTiming?.dispatchActionCommitHubMs ?? 0,
+                        dispatchActionCount: dispatchPhaseTiming?.dispatchActionCount ?? 0,
                         bodyShellMs,
                         asyncEscapeGuardMs,
                         traitConvergeMs,

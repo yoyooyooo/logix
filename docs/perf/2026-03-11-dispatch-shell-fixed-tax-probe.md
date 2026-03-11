@@ -93,3 +93,78 @@ GitHub Actions run：
 这三条均已通过。
 
 下一步继续收 `diagnostics=light/full` 的同类固定税。
+
+## 第三轮跟进：trace 读数修正 + outer shell 复测
+
+后续在 `effect-v4` current-head 上又做了三件事：
+
+1. 修正 `trace:txn-phase` 里的 dispatch 计数丢失：
+   - 原因是 `StateTransaction.commitWithState(...)` 会先清空 `txnContext.current`，导致 `dispatchActionCount / dispatchActionRecordMs / dispatchActionCommitHubMs` 在 trace 投影时回读成 `0`。
+   - 现已改成 commit 前先抓快照，再写 trace。
+2. 给 `runOperation` 热路径做两处小收敛：
+   - 不再每次都先 `Effect.services()` 扫全 Context 再解 middleware/runSession。
+   - `runtimeLabel` 改成构造期下沉到闭包，不再在每个 operation 上重复读一次。
+3. 把 `workflow.timer` 的 override 从公共 `dispatch` 热路径里挪到 internal fast-path：
+   - 普通 `runtime.dispatch(...)` 不再为 `TxnOriginOverride` 做 env lookup。
+   - workflow timer 仍保持 `originKind='workflow.timer'` 语义，并已由 `WorkflowRuntime.075` 回归锁住。
+
+本地 `soak` 复测结论：
+
+- `dispatchActionCount` 现已稳定为 `1`
+- `dispatchActionRecordMs ≈ 0`
+- `dispatchActionCommitHubMs ≈ 0`
+- 新增的 `txnPreludeMs / queueContextLookupMs / queueResolvePolicyMs` 在 browser trace 下基本都量化成 `0`
+
+这说明：
+
+- 先前 “dispatch 内部 timing 一直是 0” 的读数有一部分是 trace 取值 bug
+- bug 修完后，`action:dispatch` 记录与 `actionCommitHub` 仍然不是 residual 主因
+- browser `performance.now()` 的粒度已经不够再拆更小的 sub-phase
+
+## 第四轮跟进：Node 微基线确认 residual 位置
+
+为避开 browser 时钟分辨率地板，新增 Node 侧微基线：
+
+- `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.dispatchShell.Phases.Perf.light.test.ts`
+
+当前分支本地样本：
+
+- `dispatch.p50 ≈ 0.091ms`
+- `dispatch.p95 ≈ 0.137ms`
+- `txnPrelude.avg ≈ 0.002ms`
+- `queueContext.avg ≈ 0.003ms`
+- `queueResolve.avg ≈ 0.003ms`
+- `bodyShell.avg ≈ 0.013ms`
+- `commit.avg ≈ 0.013ms`
+- `dispatchRecord.avg ≈ 0.002ms`
+- `dispatchCommitHub.avg ≈ 0.001ms`
+- `residual.avg ≈ 0.068ms`
+
+对比 `ab135e74` 基线，同口径 Node 微基线的变化大致是：
+
+- `dispatch.p50` 基本持平
+- `dispatch.p95` 小幅下降，约 `-0.002ms`
+- `residual.avg` 从约 `0.074ms` 降到约 `0.068ms`
+
+结论更新：
+
+1. 当前这轮代码级 hot-path 收敛只收回了大约 `0.006ms` 量级的 residual
+2. 已可明确排除：
+   - `dispatchActionRecord`
+   - `dispatchActionCommitHub`
+   - `txnPrelude`
+   - `queue resolvePolicy`
+3. 剩余主要税点仍落在 trace 外层，最像：
+   - `enqueueTransaction(...)` 返回前的外层 await 壳
+   - queue finalizer / release 之后的 Effect runtime 解释器成本
+   - 公共 `dispatch` 外层组合壳
+
+### 失败试探
+
+尝试把 `enqueueTransaction` 的 `Effect.ensuring(...)` 改写成显式 `exit -> advanceQueue/release -> done(exit)` 后，
+Node 微基线出现明显负优化：
+
+- `dispatch.p95` 从约 `0.137ms` 升到约 `0.213ms`
+- `residual.avg` 从约 `0.068ms` 升到约 `0.082ms`
+
+该试探已当场回退，没有继续叠加。

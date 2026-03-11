@@ -1460,9 +1460,11 @@ export const toRuntimeDebugEventRef = (
               originName: data?.originName,
               commitMode: data?.commitMode,
               priority: data?.priority,
+              txnPreludeMs: data?.txnPreludeMs,
               queue: data?.queue
                 ? {
                     lane: data.queue.lane,
+                    contextLookupMs: data.queue.contextLookupMs,
                     resolvePolicyMs: data.queue.resolvePolicyMs,
                     backpressureMs: data.queue.backpressureMs,
                     enqueueBookkeepingMs: data.queue.enqueueBookkeepingMs,

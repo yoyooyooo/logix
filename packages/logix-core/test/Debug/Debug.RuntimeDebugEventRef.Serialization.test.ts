@@ -81,8 +81,10 @@ describe('Debug.RuntimeDebugEventRef serialization', () => {
           originName: 'bump',
           commitMode: 'normal',
           priority: 'normal',
+          txnPreludeMs: 0.05,
           queue: {
             lane: 'urgent',
+            contextLookupMs: 0.05,
             resolvePolicyMs: 0.1,
             backpressureMs: 0.2,
             enqueueBookkeepingMs: 0.3,
@@ -111,6 +113,8 @@ describe('Debug.RuntimeDebugEventRef serialization', () => {
       }) as any
       expect(refFull).toBeDefined()
       expect(refFull.label).toBe('trace:txn-phase')
+      expect(refFull.meta?.txnPreludeMs).toBe(0.05)
+      expect(refFull.meta?.queue?.contextLookupMs).toBe(0.05)
       expect(refFull.meta?.queue?.lane).toBe('urgent')
       expect(refFull.meta?.bodyShellMs).toBe(1.2)
       expect(refFull.meta?.commit?.totalMs).toBe(2.2)
@@ -120,6 +124,8 @@ describe('Debug.RuntimeDebugEventRef serialization', () => {
         diagnosticsLevel: 'light',
       }) as any
       expect(refLight).toBeDefined()
+      expect(refLight.meta?.txnPreludeMs).toBe(0.05)
+      expect(refLight.meta?.queue?.contextLookupMs).toBe(0.05)
       expect(refLight.meta?.queue?.queueWaitMs).toBe(0.4)
       expect(refLight.meta?.commit?.publishCommitMs).toBe(0.6)
       expect(() => JSON.stringify(refLight)).not.toThrow()

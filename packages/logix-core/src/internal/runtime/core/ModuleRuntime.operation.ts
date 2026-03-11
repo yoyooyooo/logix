@@ -1,10 +1,11 @@
-import { Effect, Option, ServiceMap } from 'effect'
+import { Effect, Option } from 'effect'
 import type { StateTxnContext } from './StateTransaction.js'
 import * as Debug from './DebugSink.js'
 import * as EffectOpCore from './EffectOpCore.js'
 import * as EffectOp from '../../effect-op.js'
 import type { RunSession } from '../../observability/runSession.js'
 import { RunSessionTag } from '../../observability/runSession.js'
+import { EffectOpMiddlewareTag } from './EffectOpCore.js'
 
 export interface OperationRuntimeServices {
   readonly middlewareStack: EffectOp.MiddlewareStack
@@ -12,17 +13,14 @@ export interface OperationRuntimeServices {
 }
 
 export const resolveOperationRuntimeServices = (): Effect.Effect<OperationRuntimeServices, never, any> =>
-  Effect.services<any>().pipe(
-    Effect.map((context) => {
-      const middlewareOpt = ServiceMap.getOption(context, EffectOpCore.EffectOpMiddlewareTag as any) as Option.Option<{
-        readonly stack: EffectOp.MiddlewareStack
-      }>
-      const runSessionOpt = ServiceMap.getOption(context, RunSessionTag as any) as Option.Option<RunSession>
-      return {
-        middlewareStack: Option.isSome(middlewareOpt) ? middlewareOpt.value.stack : [],
-        runSession: Option.isSome(runSessionOpt) ? runSessionOpt.value : undefined,
-      }
-    }),
+  Effect.all([
+    Effect.serviceOption(EffectOpMiddlewareTag as any),
+    Effect.serviceOption(RunSessionTag as any),
+  ]).pipe(
+    Effect.map(([middlewareOpt, runSessionOpt]) => ({
+      middlewareStack: Option.isSome(middlewareOpt) ? middlewareOpt.value.stack : [],
+      runSession: Option.isSome(runSessionOpt) ? runSessionOpt.value : undefined,
+    })),
   )
 
 export const getMiddlewareStack = (): Effect.Effect<EffectOp.MiddlewareStack, never, any> =>
@@ -60,9 +58,10 @@ export type RunOperation = <A, E, R>(
 export const makeRunOperation = (args: {
   readonly optionsModuleId: string | undefined
   readonly instanceId: string
+  readonly runtimeLabel: string | undefined
   readonly txnContext: StateTxnContext<any>
 }): RunOperation => {
-  const { optionsModuleId, instanceId, txnContext } = args
+  const { optionsModuleId, instanceId, runtimeLabel, txnContext } = args
 
   const runOperation: RunOperation = <A2, E2, R2>(
     kind: EffectOp.EffectOp['kind'],
@@ -74,10 +73,9 @@ export const makeRunOperation = (args: {
     eff: Effect.Effect<A2, E2, R2>,
   ): Effect.Effect<A2, E2, R2> =>
     Effect.gen(function* () {
-      const [{ middlewareStack, runSession }, existingLinkId, runtimeLabel] = yield* Effect.all([
+      const [{ middlewareStack, runSession }, existingLinkId] = yield* Effect.all([
         resolveOperationRuntimeServices(),
         Effect.service(EffectOpCore.currentLinkId).pipe(Effect.orDie),
-        Effect.service(Debug.currentRuntimeLabel).pipe(Effect.orDie),
       ])
 
       const currentTxnId = txnContext.current?.txnId

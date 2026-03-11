@@ -506,6 +506,7 @@ export const make = <S, A, R = never>(
       makeRunOperation({
         optionsModuleId: options.moduleId,
         instanceId,
+        runtimeLabel,
         txnContext,
       }),
     )
@@ -1866,6 +1867,9 @@ export const make = <S, A, R = never>(
         instrumentation,
         registerReducer: dispatchOps.registerReducer as any,
         registerActionStateWriteback: dispatchOps.registerActionStateWriteback as any,
+        dispatchWithOriginOverride: dispatchOps.dispatchWithOriginOverride as any,
+        dispatchLowPriorityWithOriginOverride: dispatchOps.dispatchLowPriorityWithOriginOverride as any,
+        dispatchBatchWithOriginOverride: dispatchOps.dispatchBatchWithOriginOverride as any,
         runWithStateTransaction: runWithStateTransactionInternal as any,
         updateDraft,
         recordStatePatch,

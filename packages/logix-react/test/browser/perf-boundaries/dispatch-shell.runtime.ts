@@ -10,6 +10,8 @@ export type DispatchShellControlPlane = {
 }
 
 export type DispatchShellTxnPhaseTiming = {
+  readonly txnPreludeMs?: number
+  readonly queueContextLookupMs?: number
   readonly queueResolvePolicyMs?: number
   readonly queueBackpressureMs?: number
   readonly queueEnqueueBookkeepingMs?: number
@@ -51,6 +53,8 @@ const summarizeTxnPhaseTimings = (
     )
 
   return {
+    txnPreludeMs: numericField((trace) => trace?.txnPreludeMs),
+    queueContextLookupMs: numericField((trace) => trace?.queue?.contextLookupMs),
     queueResolvePolicyMs: numericField((trace) => trace?.queue?.resolvePolicyMs),
     queueBackpressureMs: numericField((trace) => trace?.queue?.backpressureMs),
     queueEnqueueBookkeepingMs: numericField((trace) => trace?.queue?.enqueueBookkeepingMs),

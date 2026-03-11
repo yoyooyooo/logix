@@ -403,6 +403,17 @@ describe('WorkflowRuntime (075)', () => {
           return kinds.some((k) => isRecord(k) && k.kind === 'timer')
         })
         expect(timerTick).toBeDefined()
+
+        const timerOriginCommit = ring
+          .getSnapshot()
+          .find(
+            (e) =>
+              e.type === 'state:update' &&
+              e.moduleId === 'WorkflowRuntime.075.TickTriggerSummary' &&
+              (e as any).originKind === 'workflow.timer',
+          ) as (Debug.Event & { readonly originName?: string }) | undefined
+        expect(timerOriginCommit).toBeDefined()
+        expect(timerOriginCommit?.originName?.startsWith('timer:')).toBe(true)
       } finally {
         yield* Effect.promise(() => runtime.dispose())
       }

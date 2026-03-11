@@ -48,6 +48,8 @@ const suite: MatrixSuite = {
     'runtime.resolveScopeMsPerDispatch',
     'runtime.dispatchAwaitMsPerDispatch',
     'runtime.txnPhase.traceCount',
+    'runtime.txnPhase.txnPreludeMs',
+    'runtime.txnPhase.queueContextLookupMs',
     'runtime.txnPhase.queueResolvePolicyMs',
     'runtime.txnPhase.queueBackpressureMs',
     'runtime.txnPhase.queueEnqueueBookkeepingMs',
@@ -133,6 +135,11 @@ test('browser dispatch shell: fixed cost across state width', { timeout: TEST_TI
               'runtime.dispatchAwaitMsPerDispatch': breakdown.dispatchAwaitMsPerDispatch,
               'runtime.txnPhase.traceCount':
                 phaseTiming?.traceCount ?? { unavailableReason: 'phaseTimingMissing' },
+              'runtime.txnPhase.txnPreludeMs': timingEvidence(phaseTiming, (value) => value.txnPreludeMs),
+              'runtime.txnPhase.queueContextLookupMs': timingEvidence(
+                phaseTiming,
+                (value) => value.queueContextLookupMs,
+              ),
               'runtime.txnPhase.queueResolvePolicyMs': timingEvidence(phaseTiming, (value) => value.queueResolvePolicyMs),
               'runtime.txnPhase.queueBackpressureMs': timingEvidence(phaseTiming, (value) => value.queueBackpressureMs),
               'runtime.txnPhase.queueEnqueueBookkeepingMs': timingEvidence(

@@ -67,6 +67,10 @@
 - 当前默认只剩 `S-2` benchmark 解释链与 `R-2` 架构/API 候选；两者都不是默认 blocker 后继。
 - 当前执行路由与并行规则统一见 `docs/perf/07-optimization-backlog-and-routing.md`；本页只保留设计裁决：queue-side runtime cut 已被 invoke-window observation 与 native-anchor benchmark cut 联合否掉。
 - blind first-host-yield、handoff-lite、remembered-pressure pre-urgent cap、以及 post-urgent visibility window 已明确判失败，不再在本页重复展开；若未来要重开，只能基于新的 native-anchor SLA 或新的页面内 queue 内税点证据。
+- `dispatchShell.fixedCost` follow-up 也已给出同类裁决：
+  - 目前 residual 不在 `dispatchActionRecord / actionCommitHub / txnPrelude / queueResolvePolicy`
+  - browser trace 已无法继续细拆 sub-ms 税点
+  - 若 future evidence 要继续这条线，默认改走 Node 微基线 + queue outer await / interpreter cost 假设，不再优先改 inner txn body
 
 ## 2. API vNext（直接替换，不兼容旧形态）
 

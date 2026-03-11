@@ -29,6 +29,7 @@ export type TxnQueueStartTrace = {
 export type TxnQueuePhaseTiming = {
   readonly lane: TxnLane
   readonly waiterSeq: number
+  readonly contextLookupMs: number
   readonly resolvePolicyMs: number
   readonly backpressureMs: number
   readonly enqueueBookkeepingMs: number
@@ -412,10 +413,12 @@ export const makeEnqueueTransaction = (args: {
         const eff: Effect.Effect<A2, E2, never> = a1 ? a1 : (a0 as Effect.Effect<A2, E2, never>)
         const stateRef = lane === 'urgent' ? urgentStateRef : nonUrgentStateRef
 
+        const contextLookupStartedAtMs = readClockMs()
         const existingLinkId = yield* Effect.service(EffectOpCore.currentLinkId).pipe(Effect.orDie)
         const linkId = assignLinkId(existingLinkId)
         const diagnosticsLevel = yield* Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie)
         const phaseTimingEnabled = diagnosticsLevel !== 'off'
+        const contextLookupMs = phaseTimingEnabled ? Math.max(0, readClockMs() - contextLookupStartedAtMs) : 0
 
         const resolvePolicyStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
         const policy = yield* args.resolveConcurrencyPolicy()
@@ -448,6 +451,7 @@ export const makeEnqueueTransaction = (args: {
                   ? {
                       lane,
                       waiterSeq: waiter.waiterSeq,
+                      contextLookupMs,
                       resolvePolicyMs,
                       backpressureMs,
                       enqueueBookkeepingMs,

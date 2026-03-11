@@ -57,6 +57,10 @@
 - 当前也没有新的默认 runtime 后继；若要继续推进，只能在 `S-2` benchmark 解释链或 `R-2` 架构/API 候选里显式选线。
 - 当前执行路由与并行规则统一见 `docs/perf/07-optimization-backlog-and-routing.md`。
 - 这里只保留 current-head 裁决：不要再继续拧 `budgetMs/chunkSize` 小常数。`txnQueue.*` observation 与 native-anchor 证据都显示，旧主延迟不在 queue 内；blind first-host-yield、handoff-lite、remembered-pressure pre-urgent cap、以及 post-urgent visibility window 已明确判失败。
+- `dispatchShell.fixedCost` 的 follow-up current-head 证据表明：
+  - `dispatchActionRecord / dispatchActionCommitHub / txnPrelude / queueResolvePolicy` 都不是 residual 主因
+  - browser trace 已到时钟分辨率地板，继续拆这条线时优先用 Node 微基线而不是再堆 browser sub-phase
+  - 当前 residual 更像 `enqueueTransaction` 外层 await / Effect 解释器成本；不要再先砍 inner txn body
 
 当前不建议先做：
 - `watchers`：先修 suite 语义，不再继续往 runtime 里塞 watcher 优化。
