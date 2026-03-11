@@ -83,6 +83,19 @@ export type DispatchShellRuntime = {
   readonly getTxnPhaseTimingSummary: () => DispatchShellTxnPhaseTiming | undefined
 }
 
+export type DispatchShellSampleBreakdown = {
+  readonly resolveScopeMsPerDispatch: number
+  readonly dispatchAwaitMsPerDispatch: number
+}
+
+const readClockMs = (): number => {
+  const perf = globalThis.performance
+  if (perf && typeof perf.now === 'function') {
+    return perf.now()
+  }
+  return Date.now()
+}
+
 export const makeDispatchShellRuntime = (
   stateWidth: number,
   options?: { readonly captureTxnPhaseTiming?: boolean },
@@ -188,3 +201,45 @@ export const runDispatchShellSampleWithDiagnosticsLevel = (
   runDispatchShellSample(rt, entrypointMode, iterations).pipe(
     (effect) => Effect.provideService(effect, Logix.Debug.internal.currentDiagnosticsLevel, diagnosticsLevel),
   )
+
+export const runDispatchShellSampleWithBreakdown = (
+  rt: DispatchShellRuntime,
+  entrypointMode: DispatchShellEntrypointMode,
+  iterations: number,
+): Effect.Effect<DispatchShellSampleBreakdown, never, any> =>
+  Effect.gen(function* () {
+    if (entrypointMode === 'reuseScope') {
+      const resolveStartedAtMs = readClockMs()
+      const moduleScope = (yield* rt.module.tag) as any
+      const resolveScopeMsPerDispatch = Math.max(0, readClockMs() - resolveStartedAtMs) / iterations
+
+      let dispatchAwaitTotalMs = 0
+      for (let i = 0; i < iterations; i++) {
+        const dispatchStartedAtMs = readClockMs()
+        yield* moduleScope.dispatch({ _tag: 'bump' } as any)
+        dispatchAwaitTotalMs += Math.max(0, readClockMs() - dispatchStartedAtMs)
+      }
+
+      return {
+        resolveScopeMsPerDispatch,
+        dispatchAwaitMsPerDispatch: dispatchAwaitTotalMs / iterations,
+      }
+    }
+
+    let resolveScopeTotalMs = 0
+    let dispatchAwaitTotalMs = 0
+    for (let i = 0; i < iterations; i++) {
+      const resolveStartedAtMs = readClockMs()
+      const moduleScope = (yield* rt.module.tag) as any
+      resolveScopeTotalMs += Math.max(0, readClockMs() - resolveStartedAtMs)
+
+      const dispatchStartedAtMs = readClockMs()
+      yield* moduleScope.dispatch({ _tag: 'bump' } as any)
+      dispatchAwaitTotalMs += Math.max(0, readClockMs() - dispatchStartedAtMs)
+    }
+
+    return {
+      resolveScopeMsPerDispatch: resolveScopeTotalMs / iterations,
+      dispatchAwaitMsPerDispatch: dispatchAwaitTotalMs / iterations,
+    }
+  }) as Effect.Effect<DispatchShellSampleBreakdown, never, any>

@@ -6,6 +6,8 @@ import {
   makeDispatchShellRuntime,
   runDispatchShellSample,
   runDispatchShellSampleWithDiagnosticsLevel,
+  runDispatchShellSampleWithBreakdown,
+  type DispatchShellSampleBreakdown,
   type DispatchShellEntrypointMode,
   type DispatchShellTxnPhaseTiming,
 } from './dispatch-shell.runtime.js'
@@ -43,6 +45,8 @@ const suite: MatrixSuite = {
     'module.traitCount',
     'runtime.dispatchesPerSample',
     'runtime.entrypointMode',
+    'runtime.resolveScopeMsPerDispatch',
+    'runtime.dispatchAwaitMsPerDispatch',
     'runtime.txnPhase.traceCount',
     'runtime.txnPhase.queueResolvePolicyMs',
     'runtime.txnPhase.queueBackpressureMs',
@@ -108,6 +112,9 @@ test('browser dispatch shell: fixed cost across state width', { timeout: TEST_TI
             runDispatchShellSampleWithDiagnosticsLevel(phaseRuntime, entrypointMode, PHASE_TRACE_BATCH, 'light') as any,
           )
           const phaseTiming = phaseRuntime.getTxnPhaseTimingSummary()
+          const breakdown = (await phaseRuntime.runtime.runPromise(
+            runDispatchShellSampleWithBreakdown(phaseRuntime, entrypointMode, PHASE_TRACE_BATCH) as any,
+          )) as DispatchShellSampleBreakdown
 
           return {
             metrics: {
@@ -119,6 +126,8 @@ test('browser dispatch shell: fixed cost across state width', { timeout: TEST_TI
               'module.traitCount': 0,
               'runtime.dispatchesPerSample': SAMPLE_BATCH,
               'runtime.entrypointMode': entrypointMode,
+              'runtime.resolveScopeMsPerDispatch': breakdown.resolveScopeMsPerDispatch,
+              'runtime.dispatchAwaitMsPerDispatch': breakdown.dispatchAwaitMsPerDispatch,
               'runtime.txnPhase.traceCount':
                 phaseTiming?.traceCount ?? { unavailableReason: 'phaseTimingMissing' },
               'runtime.txnPhase.queueResolvePolicyMs': timingEvidence(phaseTiming, (value) => value.queueResolvePolicyMs),
