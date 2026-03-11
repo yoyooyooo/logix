@@ -15,6 +15,9 @@ export type DispatchShellTxnPhaseTiming = {
   readonly queueEnqueueBookkeepingMs?: number
   readonly queueWaitMs?: number
   readonly queueStartHandoffMs?: number
+  readonly dispatchActionRecordMs?: number
+  readonly dispatchActionCommitHubMs?: number
+  readonly dispatchActionCount?: number
   readonly bodyShellMs?: number
   readonly asyncEscapeGuardMs?: number
   readonly traitConvergeMs?: number
@@ -53,6 +56,9 @@ const summarizeTxnPhaseTimings = (
     queueEnqueueBookkeepingMs: numericField((trace) => trace?.queue?.enqueueBookkeepingMs),
     queueWaitMs: numericField((trace) => trace?.queue?.queueWaitMs),
     queueStartHandoffMs: numericField((trace) => trace?.queue?.startHandoffMs),
+    dispatchActionRecordMs: numericField((trace) => trace?.dispatchActionRecordMs),
+    dispatchActionCommitHubMs: numericField((trace) => trace?.dispatchActionCommitHubMs),
+    dispatchActionCount: numericField((trace) => trace?.dispatchActionCount),
     bodyShellMs: numericField((trace) => trace?.bodyShellMs),
     asyncEscapeGuardMs: numericField((trace) => trace?.asyncEscapeGuardMs),
     traitConvergeMs: numericField((trace) => trace?.traitConvergeMs),
