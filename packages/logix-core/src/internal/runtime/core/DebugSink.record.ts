@@ -1451,6 +1451,59 @@ export const toRuntimeDebugEventRef = (
         })
       }
 
+      if (event.type === 'trace:txn-phase') {
+        const data: any = (event as any).data
+        const metaInput = isLightLike
+          ? {
+              kind: data?.kind,
+              originKind: data?.originKind,
+              originName: data?.originName,
+              commitMode: data?.commitMode,
+              priority: data?.priority,
+              queue: data?.queue
+                ? {
+                    lane: data.queue.lane,
+                    resolvePolicyMs: data.queue.resolvePolicyMs,
+                    backpressureMs: data.queue.backpressureMs,
+                    enqueueBookkeepingMs: data.queue.enqueueBookkeepingMs,
+                    queueWaitMs: data.queue.queueWaitMs,
+                    startHandoffMs: data.queue.startHandoffMs,
+                    startMode: data.queue.startMode,
+                  }
+                : undefined,
+              bodyShellMs: data?.bodyShellMs,
+              asyncEscapeGuardMs: data?.asyncEscapeGuardMs,
+              traitConvergeMs: data?.traitConvergeMs,
+              scopedValidateMs: data?.scopedValidateMs,
+              sourceSyncMs: data?.sourceSyncMs,
+              commit: data?.commit
+                ? {
+                    totalMs: data.commit.totalMs,
+                    rowIdSyncMs: data.commit.rowIdSyncMs,
+                    publishCommitMs: data.commit.publishCommitMs,
+                    stateUpdateDebugRecordMs: data.commit.stateUpdateDebugRecordMs,
+                    onCommitBeforeStateUpdateMs: data.commit.onCommitBeforeStateUpdateMs,
+                    onCommitAfterStateUpdateMs: data.commit.onCommitAfterStateUpdateMs,
+                  }
+                : undefined,
+            }
+          : data
+
+        const metaProjection = projectJsonValue(metaInput)
+        options?.onMetaProjection?.({
+          stats: metaProjection.stats,
+          downgrade: metaProjection.downgrade,
+        })
+        downgrade = mergeDowngrade(downgrade, metaProjection.downgrade)
+
+        return withDowngrade({
+          ...base,
+          kind: 'devtools',
+          label: event.type,
+          meta: metaProjection.value,
+        })
+      }
+
       // trace:react-render / trace:react-selector: keep slim meta only (field trimming is handled by JsonValue projection).
       if (event.type === 'trace:react-render' || event.type === 'trace:react-selector') {
         const data: any = (event as any).data

@@ -1,4 +1,4 @@
-import { Deferred, Effect, Ref, Scope } from 'effect'
+import { Deferred, Effect, Ref, Scope, ServiceMap } from 'effect'
 import * as Debug from './DebugSink.js'
 import * as EffectOpCore from './EffectOpCore.js'
 import * as TaskRunner from './TaskRunner.js'
@@ -25,6 +25,30 @@ export type TxnQueueStartTrace = {
     readonly nonUrgent: number
   }
 }
+
+export type TxnQueuePhaseTiming = {
+  readonly lane: TxnLane
+  readonly waiterSeq: number
+  readonly resolvePolicyMs: number
+  readonly backpressureMs: number
+  readonly enqueueBookkeepingMs: number
+  readonly queueWaitMs: number
+  readonly startHandoffMs: number
+  readonly startMode?: TxnQueueStartMode
+  readonly activeLaneAtEnqueue?: TxnLane
+  readonly previousCompletedLane?: TxnLane
+  readonly queueDepthAtStart?: {
+    readonly urgent: number
+    readonly nonUrgent: number
+  }
+}
+
+export const currentTxnQueuePhaseTiming = ServiceMap.Reference<TxnQueuePhaseTiming | undefined>(
+  '@logixjs/core/TxnQueue.currentTxnQueuePhaseTiming',
+  {
+    defaultValue: () => undefined,
+  },
+)
 
 export interface EnqueueTransaction {
   <A, E>(eff: Effect.Effect<A, E, never>): Effect.Effect<A, E, never>
@@ -263,21 +287,20 @@ export const makeEnqueueTransaction = (args: {
       }
     }
 
-    const emitStartTrace = (trace: TxnQueueStartTrace | undefined): Effect.Effect<void> =>
+    const emitStartTrace = (
+      diagnosticsLevel: Debug.DiagnosticsLevel,
+      trace: TxnQueueStartTrace | undefined,
+    ): Effect.Effect<void> =>
       !trace
         ? Effect.void
-        : Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie).pipe(
-            Effect.flatMap((diagnosticsLevel) =>
-              diagnosticsLevel === 'off'
-                ? Effect.void
-                : Debug.record({
-                    type: 'trace:txn-queue',
-                    moduleId: args.moduleId,
-                    instanceId: args.instanceId,
-                    data: trace,
-                  }),
-            ),
-          )
+        : diagnosticsLevel === 'off'
+          ? Effect.void
+          : Debug.record({
+              type: 'trace:txn-queue',
+              moduleId: args.moduleId,
+              instanceId: args.instanceId,
+              data: trace,
+            })
 
     const enqueueAndMaybeStart = (waiter: QueueWaiter): Effect.Effect<void> =>
       Effect.gen(function* () {
@@ -391,11 +414,18 @@ export const makeEnqueueTransaction = (args: {
 
         const existingLinkId = yield* Effect.service(EffectOpCore.currentLinkId).pipe(Effect.orDie)
         const linkId = assignLinkId(existingLinkId)
+        const diagnosticsLevel = yield* Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie)
+        const phaseTimingEnabled = diagnosticsLevel !== 'off'
 
+        const resolvePolicyStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
         const policy = yield* args.resolveConcurrencyPolicy()
+        const resolvePolicyMs = phaseTimingEnabled ? Math.max(0, readClockMs() - resolvePolicyStartedAtMs) : 0
         const capacity = policy.losslessBackpressureCapacity
+        const backpressureStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
         yield* (Effect.provideService(acquireBacklogSlot(lane, capacity, policy), EffectOpCore.currentLinkId, linkId) as Effect.Effect<void, never, never>)
+        const backpressureMs = phaseTimingEnabled ? Math.max(0, readClockMs() - backpressureStartedAtMs) : 0
 
+        const enqueueBookkeepingStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
         const start = yield* Deferred.make<void>()
         const waiter: QueueWaiter = {
           lane,
@@ -405,6 +435,7 @@ export const makeEnqueueTransaction = (args: {
           ...(currentLane ? { activeLaneAtEnqueue: currentLane } : {}),
         }
         yield* (Effect.provideService(enqueueAndMaybeStart(waiter), EffectOpCore.currentLinkId, linkId) as Effect.Effect<void, never, never>)
+        const enqueueBookkeepingMs = phaseTimingEnabled ? Math.max(0, readClockMs() - enqueueBookkeepingStartedAtMs) : 0
 
         return yield* (Effect.provideService(
           Effect.uninterruptibleMask((restore) =>
@@ -412,7 +443,31 @@ export const makeEnqueueTransaction = (args: {
               Effect.flatMap(restore(Deferred.await(start)), () => {
                 const startTrace = startTraceByStart.get(start)
                 startTraceByStart.delete(start)
-                return emitStartTrace(startTrace).pipe(Effect.flatMap(() => restore(eff)))
+                const resumedAtMs = phaseTimingEnabled ? readClockMs() : 0
+                const queuePhaseTiming: TxnQueuePhaseTiming | undefined = phaseTimingEnabled
+                  ? {
+                      lane,
+                      waiterSeq: waiter.waiterSeq,
+                      resolvePolicyMs,
+                      backpressureMs,
+                      enqueueBookkeepingMs,
+                      queueWaitMs: startTrace?.queueWaitMs ?? 0,
+                      startHandoffMs: startTrace ? Math.max(0, resumedAtMs - startTrace.startAtMs) : 0,
+                      ...(startTrace?.startMode ? { startMode: startTrace.startMode } : null),
+                      ...(startTrace?.activeLaneAtEnqueue ? { activeLaneAtEnqueue: startTrace.activeLaneAtEnqueue } : null),
+                      ...(startTrace?.previousCompletedLane ? { previousCompletedLane: startTrace.previousCompletedLane } : null),
+                      ...(startTrace?.queueDepthAtStart ? { queueDepthAtStart: startTrace.queueDepthAtStart } : null),
+                    }
+                  : undefined
+                return emitStartTrace(diagnosticsLevel, startTrace).pipe(
+                  Effect.flatMap(() =>
+                    restore(
+                      queuePhaseTiming
+                        ? Effect.provideService(eff, currentTxnQueuePhaseTiming, queuePhaseTiming)
+                        : eff,
+                    ),
+                  ),
+                )
               }),
               Effect.uninterruptible(advanceQueue(lane, start).pipe(Effect.flatMap(() => release(stateRef)))),
             ),

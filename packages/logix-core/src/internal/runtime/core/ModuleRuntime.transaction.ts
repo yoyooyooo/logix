@@ -15,7 +15,12 @@ import * as StateTraitSource from '../../state-trait/source.js'
 import * as RowId from '../../state-trait/rowid.js'
 import type { RunOperation } from './ModuleRuntime.operation.js'
 import type { ResolvedTraitConvergeConfig } from './ModuleRuntime.traitConvergeConfig.js'
-import type { CapturedTxnRuntimeScope, EnqueueTransaction } from './ModuleRuntime.txnQueue.js'
+import {
+  currentTxnQueuePhaseTiming,
+  type CapturedTxnRuntimeScope,
+  type EnqueueTransaction,
+  type TxnQueuePhaseTiming,
+} from './ModuleRuntime.txnQueue.js'
 import { StateTransactionOverridesTag, type StateTransactionOverrides } from './env.js'
 
 const DIRTY_ALL_SET_STATE_HINT = Symbol.for('@logixjs/core/dirtyAllSetStateHint')
@@ -43,6 +48,38 @@ const readDeferredFlushSlice = (details: unknown): { readonly start: number; rea
   const e = Math.floor(end)
   if (s < 0 || e <= s) return undefined
   return { start: s, end: e }
+}
+
+type TxnPostCommitPhaseTiming = {
+  readonly totalMs: number
+  readonly rowIdSyncMs: number
+  readonly publishCommitMs: number
+  readonly stateUpdateDebugRecordMs: number
+  readonly onCommitBeforeStateUpdateMs: number
+  readonly onCommitAfterStateUpdateMs: number
+}
+
+type TxnPhaseTraceData = {
+  readonly kind: 'txn-phase'
+  readonly originKind: string
+  readonly originName?: string
+  readonly commitMode: StateCommitMode
+  readonly priority: StateCommitPriority
+  readonly queue?: TxnQueuePhaseTiming
+  readonly bodyShellMs: number
+  readonly asyncEscapeGuardMs: number
+  readonly traitConvergeMs: number
+  readonly scopedValidateMs: number
+  readonly sourceSyncMs: number
+  readonly commit: TxnPostCommitPhaseTiming
+}
+
+const readClockMs = (): number => {
+  const perf = globalThis.performance
+  if (perf && typeof perf.now === "function") {
+    return perf.now()
+  }
+  return Date.now()
 }
 
 export type RunWithStateTransaction = <E>(
@@ -165,7 +202,8 @@ export const makeTransactionOps = <S>(args: {
     readonly fieldPathIdRegistry: FieldPathIdRegistry | undefined
     readonly dirtyAllSetStateHint: boolean
     readonly traitSummary: unknown
-  }): Effect.Effect<void> =>
+    readonly phaseTimingEnabled: boolean
+  }): Effect.Effect<TxnPostCommitPhaseTiming | undefined> =>
     Effect.gen(function* () {
       const {
         txn,
@@ -176,7 +214,14 @@ export const makeTransactionOps = <S>(args: {
         fieldPathIdRegistry,
         dirtyAllSetStateHint,
         traitSummary,
+        phaseTimingEnabled,
       } = args
+      const phaseStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
+      let rowIdSyncMs = 0
+      let publishCommitMs = 0
+      let stateUpdateDebugRecordMs = 0
+      let onCommitBeforeStateUpdateMs = 0
+      let onCommitAfterStateUpdateMs = 0
       const shouldWarnDirtyAllSetState =
         dirtyAllSetStateHint || (txn.origin.kind === 'state' && txn.origin.name === 'setState')
 
@@ -222,6 +267,7 @@ export const makeTransactionOps = <S>(args: {
       // so in-flight gates and cache reuse remain stable under insert/remove/reorder.
       const listConfigs = traitRuntime.getListConfigs()
       if (listConfigs.length > 0) {
+        const rowIdSyncStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
         const shouldSyncRowIds = RowId.shouldReconcileListConfigsByDirtyEvidence({
           dirty: txn.dirty,
           listConfigs,
@@ -229,6 +275,9 @@ export const makeTransactionOps = <S>(args: {
         })
         if (shouldSyncRowIds) {
           traitRuntime.rowIdStore.updateAll(nextState as any, listConfigs)
+        }
+        if (phaseTimingEnabled) {
+          rowIdSyncMs = Math.max(0, readClockMs() - rowIdSyncStartedAtMs)
         }
       }
 
@@ -244,10 +293,14 @@ export const makeTransactionOps = <S>(args: {
       // Always publish:
       // - PubSub already optimizes for 0 subscribers.
       // - Skipping here can drop the first commit due to subscription start races (strictGate/process triggers/tests).
+      const publishCommitStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
       yield* PubSub.publish(commitHub, {
         value: nextState,
         meta,
       })
+      if (phaseTimingEnabled) {
+        publishCommitMs = Math.max(0, readClockMs() - publishCommitStartedAtMs)
+      }
 
       // Perf-sensitive ordering:
       // - In diagnostics=off mode (default for production/perf runs), allow selectorGraph notifications to be published
@@ -269,18 +322,23 @@ export const makeTransactionOps = <S>(args: {
       }
 
       if (onCommit && shouldCommitBeforeStateUpdate) {
+        const onCommitStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
         yield* onCommit({
           state: nextState,
           meta,
           transaction: txn,
           diagnosticsLevel,
         })
+        if (phaseTimingEnabled) {
+          onCommitBeforeStateUpdateMs = Math.max(0, readClockMs() - onCommitStartedAtMs)
+        }
       }
 
       const debugSinks = yield* Effect.service(Debug.currentDebugSinks).pipe(Effect.orDie)
       const shouldRecordStateUpdate = debugSinks.length > 0 && !Debug.isErrorOnlyOnlySinks(debugSinks)
 
       if (shouldRecordStateUpdate) {
+        const stateUpdateDebugRecordStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
         const shouldComputeEvidence = diagnosticsLevel !== 'off'
 
         const staticIrDigest = shouldComputeEvidence ? traitRuntime.getConvergeStaticIrDigest() : undefined
@@ -334,16 +392,34 @@ export const makeTransactionOps = <S>(args: {
           traitSummary,
           replayEvent: replayEvent as any,
         })
+        if (phaseTimingEnabled) {
+          stateUpdateDebugRecordMs = Math.max(0, readClockMs() - stateUpdateDebugRecordStartedAtMs)
+        }
       }
 
       if (onCommit && !shouldCommitBeforeStateUpdate) {
+        const onCommitStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
         yield* onCommit({
           state: nextState,
           meta,
           transaction: txn,
           diagnosticsLevel,
         })
+        if (phaseTimingEnabled) {
+          onCommitAfterStateUpdateMs = Math.max(0, readClockMs() - onCommitStartedAtMs)
+        }
       }
+
+      return phaseTimingEnabled
+        ? {
+            totalMs: Math.max(0, readClockMs() - phaseStartedAtMs),
+            rowIdSyncMs,
+            publishCommitMs,
+            stateUpdateDebugRecordMs,
+            onCommitBeforeStateUpdateMs,
+            onCommitAfterStateUpdateMs,
+          }
+        : undefined
     })
 
   /**
@@ -357,6 +433,9 @@ export const makeTransactionOps = <S>(args: {
     body: () => Effect.Effect<void, E2, never>,
   ): Effect.Effect<void, E2, never> =>
     Effect.provideService(Effect.gen(function* () {
+      const phaseDiagnosticsLevel = yield* Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie)
+      const phaseTimingEnabled = phaseDiagnosticsLevel !== 'off'
+      const queuePhaseTiming = yield* Effect.service(currentTxnQueuePhaseTiming).pipe(Effect.orDie)
       const baseState = yield* SubscriptionRef.get(stateRef)
     
       StateTransaction.beginTransaction(txnContext, origin, baseState)
@@ -391,6 +470,7 @@ export const makeTransactionOps = <S>(args: {
               // - Async bodies (sleep/await/IO) suspend and will not complete within the budget.
               // Use daemon fiber to avoid supervision-induced blocking:
               // - An uninterruptible async escape must not block abort/next transaction.
+              const bodyShellStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
               const bodyFiber = yield* Effect.forkChild(body())
     
               // Tune for perf: production path uses a small budget to keep the fast path cheap,
@@ -402,11 +482,13 @@ export const makeTransactionOps = <S>(args: {
                 return exit === undefined ? Option.none<Exit.Exit<void, E2>>() : Option.some(exit)
               })
 
+              const asyncEscapeGuardStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
               let polled = yield* pollBodyFiber
               for (let index = 0; index < yieldBudget && Option.isNone(polled); index += 1) {
                 yield* Effect.yieldNow
                 polled = yield* pollBodyFiber
               }
+              const asyncEscapeGuardMs = phaseTimingEnabled ? Math.max(0, readClockMs() - asyncEscapeGuardStartedAtMs) : 0
     
               if (Option.isNone(polled)) {
                 // Do not pay diagnostics overhead when DiagnosticsLevel=off (perf default).
@@ -437,8 +519,12 @@ export const makeTransactionOps = <S>(args: {
                 onFailure: (cause) => Effect.failCause(cause),
                 onSuccess: () => Effect.void,
               })
-    
+              const bodyShellMs = phaseTimingEnabled ? Math.max(0, readClockMs() - bodyShellStartedAtMs) : 0
+
               const stateTraitProgram = traitRuntime.getProgram()
+              let traitConvergeMs = 0
+              let scopedValidateMs = 0
+              let sourceSyncMs = 0
     
               // StateTrait: converge derived fields (computed/link, etc.) before commit to ensure 0/1 commit per window.
               if (stateTraitProgram && txnContext.current) {
@@ -465,6 +551,7 @@ export const makeTransactionOps = <S>(args: {
                       )
                     : undefined
     
+                const traitConvergeStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
                 const convergeExit = yield* Effect.exit(
                   StateTraitConverge.convergeInTransaction(
                     stateTraitProgram as any,
@@ -500,6 +587,9 @@ export const makeTransactionOps = <S>(args: {
                     } as StateTraitConverge.ConvergeContext<any>,
                   ),
                 )
+                if (phaseTimingEnabled) {
+                  traitConvergeMs = Math.max(0, readClockMs() - traitConvergeStartedAtMs)
+                }
     
                 if (traitRuntime.getPendingCacheMissReason() === 'generation_bumped') {
                   traitRuntime.setPendingCacheMissReason(undefined)
@@ -674,6 +764,7 @@ export const makeTransactionOps = <S>(args: {
                   | undefined
     
                 if (pending && pending.length > 0) {
+                  const scopedValidateStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
                   const deduped = dedupeScopedValidateRequests(pending)
                   yield* StateTraitValidate.validateInTransaction(
     	                      stateTraitProgram as any,
@@ -695,11 +786,15 @@ export const makeTransactionOps = <S>(args: {
                     } as StateTraitValidate.ValidateContext<any>,
                     deduped,
                   )
+                  if (phaseTimingEnabled) {
+                    scopedValidateMs = Math.max(0, readClockMs() - scopedValidateStartedAtMs)
+                  }
                 }
               }
-    
+
               // If a source key becomes empty, synchronously recycle it back to idle (avoid tearing / ghost data).
               if (stateTraitProgram && txnContext.current) {
+                const sourceSyncStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
                 yield* StateTraitSource.syncIdleInTransaction(
                   stateTraitProgram as any,
                   {
@@ -713,6 +808,9 @@ export const makeTransactionOps = <S>(args: {
                       recordStatePatch(path, reason, from, to, traitNodeId, stepId),
                   } as StateTraitSource.SourceSyncContext<any>,
                 )
+                if (phaseTimingEnabled) {
+                  sourceSyncMs = Math.max(0, readClockMs() - sourceSyncStartedAtMs)
+                }
               }
     
               // Commit the transaction: write to the underlying state once, and emit a single aggregated state:update event.
@@ -730,7 +828,7 @@ export const makeTransactionOps = <S>(args: {
                   const commitResult = yield* StateTransaction.commitWithState(txnContext, stateRef)
     
                   if (commitResult) {
-                    yield* runPostCommitPhases({
+                    const commitPhaseTiming = yield* runPostCommitPhases({
                       txn: commitResult.transaction,
                       nextState: commitResult.finalState,
                       replayEvent,
@@ -739,7 +837,33 @@ export const makeTransactionOps = <S>(args: {
                       fieldPathIdRegistry,
                       dirtyAllSetStateHint,
                       traitSummary,
+                      phaseTimingEnabled,
                     })
+
+                    if (phaseTimingEnabled && commitPhaseTiming) {
+                      const trace: TxnPhaseTraceData = {
+                        kind: 'txn-phase',
+                        originKind: commitResult.transaction.origin.kind,
+                        originName: commitResult.transaction.origin.name,
+                        commitMode,
+                        priority,
+                        ...(queuePhaseTiming ? { queue: queuePhaseTiming } : null),
+                        bodyShellMs,
+                        asyncEscapeGuardMs,
+                        traitConvergeMs,
+                        scopedValidateMs,
+                        sourceSyncMs,
+                        commit: commitPhaseTiming,
+                      }
+                      yield* Debug.record({
+                        type: 'trace:txn-phase',
+                        moduleId: optionsModuleId,
+                        instanceId,
+                        txnSeq: commitResult.transaction.txnSeq,
+                        txnId: commitResult.transaction.txnId,
+                        data: trace,
+                      })
+                    }
                   }
                 }),
               )

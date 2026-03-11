@@ -6,6 +6,7 @@ coverage
 .turbo
 .next
 .vite
+.vitest-browser-cache
 .cache
 .source
 
