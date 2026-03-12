@@ -12,10 +12,18 @@ export interface OperationRuntimeServices {
   readonly runSession: RunSession | undefined
 }
 
+const readMiddlewareEnv = (): Effect.Effect<Option.Option<EffectOpCore.EffectOpMiddlewareEnv>, never, any> =>
+  Effect.serviceOption(EffectOpMiddlewareTag as any).pipe(
+    Effect.map((option) => option as Option.Option<EffectOpCore.EffectOpMiddlewareEnv>),
+  )
+
+const readRunSession = (): Effect.Effect<Option.Option<RunSession>, never, any> =>
+  Effect.serviceOption(RunSessionTag as any).pipe(Effect.map((option) => option as Option.Option<RunSession>))
+
 export const resolveOperationRuntimeServices = (): Effect.Effect<OperationRuntimeServices, never, any> =>
   Effect.all([
-    Effect.serviceOption(EffectOpMiddlewareTag as any),
-    Effect.serviceOption(RunSessionTag as any),
+    readMiddlewareEnv(),
+    readRunSession(),
   ]).pipe(
     Effect.map(([middlewareOpt, runSessionOpt]) => ({
       middlewareStack: Option.isSome(middlewareOpt) ? middlewareOpt.value.stack : [],
