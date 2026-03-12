@@ -447,7 +447,7 @@ export const makeTransactionOps = <S>(args: {
     origin: StateTransaction.StateTxnOrigin,
     body: () => Effect.Effect<void, E2, never>,
   ): Effect.Effect<void, E2, never> =>
-    Effect.provideService(Effect.gen(function* () {
+    (Effect.provideService(Effect.gen(function* () {
       const txnPreludeStartedAtMs = readClockMs()
       const phaseDiagnosticsLevel = yield* Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie)
       const phaseTimingEnabled = phaseDiagnosticsLevel !== 'off'
@@ -493,8 +493,15 @@ export const makeTransactionOps = <S>(args: {
               // - An uninterruptible async escape must not block abort/next transaction.
               const bodyShellStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
               const asyncEscapeGuardStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
+              const currentServices = yield* Effect.services<any>()
               const bodyExit = yield* Effect.sync(
-                () => Effect.runSyncExit(body() as Effect.Effect<void, E2, never>) as Exit.Exit<void, E2>,
+                () =>
+                  Effect.runSyncExit(
+                    Effect.provideServices(
+                      body() as Effect.Effect<void, E2, any>,
+                      currentServices,
+                    ) as Effect.Effect<void, E2, never>,
+                  ) as Exit.Exit<void, E2>,
               )
               const asyncEscapeGuardMs = phaseTimingEnabled
                 ? Math.max(0, readClockMs() - asyncEscapeGuardStartedAtMs)
@@ -909,7 +916,7 @@ export const makeTransactionOps = <S>(args: {
         StateTransaction.abort(txnContext)
         return yield* Effect.failCause(exit!.cause)
       }
-    }), TaskRunner.inSyncTransactionFiber, true)
+    }), TaskRunner.inSyncTransactionFiber, true) as Effect.Effect<void, E2, never>)
 
   /**
    * setStateInternal：

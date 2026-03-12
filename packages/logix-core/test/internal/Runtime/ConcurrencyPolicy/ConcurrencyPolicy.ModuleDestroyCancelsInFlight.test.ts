@@ -3,6 +3,13 @@ import { it, expect } from '@effect/vitest'
 import { Deferred, Effect, Exit, PubSub, Queue, Scope } from 'effect'
 import * as ModuleRuntime from '../../../../src/internal/runtime/ModuleRuntime.js'
 
+const waitForStartup = Effect.promise(
+  () =>
+    new Promise<void>((resolve) => {
+      setTimeout(resolve, 10)
+    }),
+)
+
 describe('ConcurrencyPolicy (US1): ModuleRuntime.destroy should cancel in-flight fibers', () => {
   it('closing the runtime scope should interrupt in-flight action handlers', async () => {
     const program = Effect.gen(function* () {
@@ -40,6 +47,7 @@ describe('ConcurrencyPolicy (US1): ModuleRuntime.destroy should cancel in-flight
         scope,
       )
 
+      yield* waitForStartup
       // Trigger once to start the handler.
       yield* runtime.dispatch({ _tag: 'inc', payload: undefined } as any)
       yield* Deferred.await(started)

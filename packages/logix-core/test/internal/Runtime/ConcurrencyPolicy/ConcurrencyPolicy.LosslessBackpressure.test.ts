@@ -5,6 +5,13 @@ import * as ModuleRuntime from '../../../../src/internal/runtime/ModuleRuntime.j
 import { ConcurrencyPolicyTag } from '../../../../src/internal/runtime/core/env.js'
 import * as Debug from '../../../../src/Debug.js'
 
+const waitForStartup = Effect.promise(
+  () =>
+    new Promise<void>((resolve) => {
+      setTimeout(resolve, 10)
+    }),
+)
+
 describe('ConcurrencyPolicy (US1): lossless backpressure', () => {
   it('dispatch should become slower under overload (lossless, no drop)', async () => {
     const N = 48
@@ -22,25 +29,26 @@ describe('ConcurrencyPolicy (US1): lossless backpressure', () => {
           ),
         )
         const consumerFiber = yield* Effect.forkChild(consumer)
-    
+
+        yield* waitForStartup
         const actions = Array.from({ length: N }, () => ({
           _tag: 'inc',
           payload: undefined,
         }))
-    
+
         const t0 = Date.now()
         yield* Effect.forEach(actions, (a) => runtime.dispatch(a as any), { concurrency: 'unbounded' })
         const dispatchElapsedMs = Date.now() - t0
-    
+
         yield* Fiber.join(consumerFiber)
         const processed = yield* Ref.get(processedRef)
         expect(processed).toBe(N)
-    
+
         const asyncEscape = ring
           .getSnapshot()
           .some((e) => e.type === 'diagnostic' && e.code === 'state_transaction::async_escape')
         expect(asyncEscape).toBe(false)
-    
+
         return dispatchElapsedMs
       }).pipe(
         Effect.provideService(ConcurrencyPolicyTag, {

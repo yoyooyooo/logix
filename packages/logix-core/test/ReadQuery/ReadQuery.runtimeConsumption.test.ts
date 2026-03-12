@@ -1,16 +1,28 @@
-import { describe, it, expect } from '@effect/vitest'
-import { Cause, Effect, Fiber, Option, Stream } from 'effect'
+import { describe, it, expect } from 'vitest'
+import { Cause, Effect, Fiber, Stream } from 'effect'
 import * as Debug from '../../src/Debug.js'
 import * as ModuleRuntime from '../../src/internal/runtime/ModuleRuntime.js'
 import { ReadQueryStrictGateConfigTag } from '../../src/internal/runtime/core/env.js'
 import * as Logix from '../../src/index.js'
 
+const waitForStartup = () =>
+  Effect.promise(
+    () =>
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, 10)
+      }),
+  )
+
 describe('ReadQuery.runtimeConsumption', () => {
-  it.effect('build-graded selector skips runtime strict-gate re-evaluation', () =>
-    Effect.gen(function* () {
+  it('build-graded selector skips runtime strict-gate re-evaluation', async () => {
+    await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
       const ring = Debug.makeRingBufferSink(64)
 
-      const runtime = yield* Effect.provideService(ModuleRuntime.make({ count: 0 }, { moduleId: 'M', instanceId: 'i' } as any), Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])
+      const runtime = yield* Effect.provideService(
+        ModuleRuntime.make({ count: 0 }, { moduleId: 'M', instanceId: 'i' } as any),
+        Debug.internal.currentDebugSinks as any,
+        [ring.sink as Debug.Sink],
+      )
 
       const selector = (s: { count: number }) => (s.count > 0 ? s.count : 0)
       const graded = Logix.ReadQuery.gradeReadQueryAtBuild({
@@ -22,24 +34,20 @@ describe('ReadQuery.runtimeConsumption', () => {
       expect(graded.compiled.quality?.source).toBe('build')
 
       const stream = Stream.take(runtime.changesReadQueryWithMeta(graded.compiled), 1)
-      const fiber = yield* Effect.forkChild(Effect.provideService(Stream.runCollect(stream), Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink]))
+      const fiber = yield* Effect.forkChild(
+        Effect.provideService(Stream.runCollect(stream), Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink]),
+      )
 
-      // Ensure subscription starts before the commit happens; PubSub-based streams drop events when no subscribers exist.
-      for (let i = 0; i < 64; i++) {
-        const status = yield* Fiber.await(fiber).pipe(Effect.timeoutOption(0))
-        if (Option.isNone(status) || (Option.isSome(status) && status.value._tag === 'Success')) {
-          break
-        }
-        yield* Effect.yieldNow
-      }
-
-      yield* Effect.provideService(runtime.setState({ count: 1 }), Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])
+      yield* waitForStartup()
+      yield* Effect.provideService(runtime.setState({ count: 1 }), Debug.internal.currentDebugSinks as any, [
+        ring.sink as Debug.Sink,
+      ])
 
       const exit = yield* Fiber.await(fiber)
       expect(exit._tag).toBe('Success')
       if (exit._tag !== 'Success') return
 
-        const values = Array.from(exit.value as Iterable<any>)
+      const values = Array.from(exit.value as Iterable<any>)
       expect(values.length).toBe(1)
       expect(values[0]?.value).toBe(1)
 
@@ -51,30 +59,30 @@ describe('ReadQuery.runtimeConsumption', () => {
       Effect.provideService(ReadQueryStrictGateConfigTag, {
         mode: 'error',
       }),
-    ),
-  )
+    )))
+  })
 
-  it.effect('ungraded dynamic selector is observable under runtime strict-gate config (missingBuildGrade)', () =>
-    Effect.gen(function* () {
+  it('ungraded dynamic selector is observable under runtime strict-gate config (missingBuildGrade)', async () => {
+    await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
       const ring = Debug.makeRingBufferSink(64)
 
-      const runtime = yield* Effect.provideService(ModuleRuntime.make({ count: 0 }, { moduleId: 'M', instanceId: 'i' } as any), Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])
+      const runtime = yield* Effect.provideService(
+        ModuleRuntime.make({ count: 0 }, { moduleId: 'M', instanceId: 'i' } as any),
+        Debug.internal.currentDebugSinks as any,
+        [ring.sink as Debug.Sink],
+      )
 
       const selector = (s: { count: number }) => (s.count > 0 ? s.count : 0)
       const stream = Stream.take(runtime.changesReadQueryWithMeta(selector), 1)
 
-      const fiber = yield* Effect.forkChild(Effect.provideService(Stream.runCollect(stream), Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink]))
+      const fiber = yield* Effect.forkChild(
+        Effect.provideService(Stream.runCollect(stream), Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink]),
+      )
 
-      // Ensure subscription starts before the commit happens; PubSub-based streams drop events when no subscribers exist.
-      for (let i = 0; i < 64; i++) {
-        const status = yield* Fiber.await(fiber).pipe(Effect.timeoutOption(0))
-        if (Option.isNone(status) || (Option.isSome(status) && status.value._tag === 'Failure')) {
-          break
-        }
-        yield* Effect.yieldNow
-      }
-
-      yield* Effect.provideService(runtime.setState({ count: 1 }), Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])
+      yield* waitForStartup()
+      yield* Effect.provideService(runtime.setState({ count: 1 }), Debug.internal.currentDebugSinks as any, [
+        ring.sink as Debug.Sink,
+      ])
 
       const exit = yield* Fiber.await(fiber)
       expect(exit._tag).toBe('Failure')
@@ -100,11 +108,11 @@ describe('ReadQuery.runtimeConsumption', () => {
       Effect.provideService(ReadQueryStrictGateConfigTag, {
         mode: 'error',
       }),
-    ),
-  )
+    )))
+  })
 
-  it.effect('build-graded FAIL is enforced at runtime even without runtime strict-gate config', () =>
-    Effect.gen(function* () {
+  it('build-graded FAIL is enforced at runtime even without runtime strict-gate config', async () => {
+    await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
       const runtime = yield* ModuleRuntime.make({ count: 0 }, { moduleId: 'M', instanceId: 'i' } as any)
 
       const selector = (s: { count: number }) => (s.count > 0 ? s.count : 0)
@@ -119,15 +127,7 @@ describe('ReadQuery.runtimeConsumption', () => {
       const stream = runtime.changesReadQueryWithMeta(graded.compiled)
       const fiber = yield* Effect.forkChild(Stream.runCollect(Stream.take(stream, 1)))
 
-      // Ensure subscription starts before the commit happens; PubSub-based streams drop events when no subscribers exist.
-      for (let i = 0; i < 64; i++) {
-        const status = yield* Fiber.await(fiber).pipe(Effect.timeoutOption(0))
-        if (Option.isNone(status) || (Option.isSome(status) && status.value._tag === 'Failure')) {
-          break
-        }
-        yield* Effect.yieldNow
-      }
-
+      yield* waitForStartup()
       yield* runtime.setState({ count: 1 })
 
       const exit = yield* Fiber.await(fiber)
@@ -138,8 +138,8 @@ describe('ReadQuery.runtimeConsumption', () => {
       const err = defects.find((e) => (e as any)?._tag === 'ReadQueryStrictGateError') as any
       expect(err).toBeDefined()
       expect(err?.details?.rule).toBe('requireStatic:global')
-    }),
-  )
+    })))
+  })
 
   it('marks runtime dynamic fallback with missingBuildGrade quality marker', () => {
     const selector = (s: { count: number }) => (s.count > 0 ? s.count : 0)

@@ -21,15 +21,14 @@ const readRunSession = (): Effect.Effect<Option.Option<RunSession>, never, any> 
   Effect.serviceOption(RunSessionTag as any).pipe(Effect.map((option) => option as Option.Option<RunSession>))
 
 export const resolveOperationRuntimeServices = (): Effect.Effect<OperationRuntimeServices, never, any> =>
-  Effect.all([
-    readMiddlewareEnv(),
-    readRunSession(),
-  ]).pipe(
-    Effect.map(([middlewareOpt, runSessionOpt]) => ({
+  Effect.gen(function* () {
+    const middlewareOpt = yield* readMiddlewareEnv()
+    const runSessionOpt = yield* readRunSession()
+    return {
       middlewareStack: Option.isSome(middlewareOpt) ? middlewareOpt.value.stack : [],
       runSession: Option.isSome(runSessionOpt) ? runSessionOpt.value : undefined,
-    })),
-  )
+    }
+  })
 
 export const getMiddlewareStack = (): Effect.Effect<EffectOp.MiddlewareStack, never, any> =>
   resolveOperationRuntimeServices().pipe(Effect.map((runtimeServices) => runtimeServices.middlewareStack))
@@ -81,10 +80,8 @@ export const makeRunOperation = (args: {
     eff: Effect.Effect<A2, E2, R2>,
   ): Effect.Effect<A2, E2, R2> =>
     Effect.gen(function* () {
-      const [{ middlewareStack, runSession }, existingLinkId] = yield* Effect.all([
-        resolveOperationRuntimeServices(),
-        Effect.service(EffectOpCore.currentLinkId).pipe(Effect.orDie),
-      ])
+      const { middlewareStack, runSession } = yield* resolveOperationRuntimeServices()
+      const existingLinkId = yield* Effect.service(EffectOpCore.currentLinkId).pipe(Effect.orDie)
 
       const currentTxnId = txnContext.current?.txnId
 

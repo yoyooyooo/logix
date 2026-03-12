@@ -44,13 +44,19 @@ describe('Module common entrypoints', () => {
 
     const done = await Effect.runPromise(Deferred.make<Exit.Exit<void, unknown>>())
 
-    const hostLogic = Host.logic(($) =>
-      Effect.gen(function* () {
-        const f = yield* $.use(form)
-        const c = yield* $.use(crud)
+      const hostLogic = Host.logic(($) =>
+        Effect.gen(function* () {
+          const f = yield* $.use(form)
+          const c = yield* $.use(crud)
 
-        yield* f.controller.setError('name', 'oops')
-        yield* c.controller.save({ id: 'e1', name: 'Alice' } satisfies Entity)
+          yield* Effect.promise(
+            () =>
+              new Promise<void>((resolve) => {
+                setTimeout(resolve, 10)
+              }),
+          )
+          yield* f.controller.setError('name', 'oops')
+          yield* c.controller.save({ id: 'e1', name: 'Alice' } satisfies Entity)
 
         for (let i = 0; i < 20; i++) {
           const state = (yield* c.read((s: any) => s)) as any

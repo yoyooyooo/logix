@@ -5,6 +5,13 @@ import * as Logix from '../../../src/index.js'
 import * as ModuleRuntime from '../../../src/internal/runtime/ModuleRuntime.js'
 import * as Debug from '../../../src/Debug.js'
 
+const waitForStartup = Effect.promise(
+  () =>
+    new Promise<void>((resolve) => {
+      setTimeout(resolve, 10)
+    }),
+)
+
 describe('TaskRunner (run*Task)', () => {
   const StateSchema = Schema.Struct({
     logs: Schema.Array(Schema.String),
@@ -245,17 +252,18 @@ describe('TaskRunner (run*Task)', () => {
             logics: [logic] as any,
           },
         )
-      
+
+        yield* waitForStartup
         // second trigger should be ignored while first is busy
         yield* runtime.dispatch({ _tag: 'start', payload: 1 } as any)
         yield* runtime.dispatch({ _tag: 'start', payload: 2 } as any)
-      
+
         yield* Deferred.succeed(io, 10)
         yield* Deferred.await(successTxnDone)
-      
+
         expect(pendingCount).toBe(1)
         expect(successCount).toBe(1)
-      
+
         const finalState = (yield* runtime.getState) as any
         expect(finalState.results).toEqual([10])
       }), Debug.internal.currentDebugSinks as any, [sink])
