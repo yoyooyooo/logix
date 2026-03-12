@@ -138,7 +138,9 @@ const waitForBodyText = async (text: string, timeoutMs: number, reason: string):
     if (document.body.textContent?.includes(text)) return
     await nextFrame()
   }
-  throw new Error(reason)
+  const bodyText = document.body.textContent ?? ''
+  const lastValue = /Value:\s*(-?\d+)/.exec(bodyText)?.[1]
+  throw new Error(lastValue ? `${reason}:lastValue=${lastValue}` : reason)
 }
 
 const waitForIncrementButton = async (
