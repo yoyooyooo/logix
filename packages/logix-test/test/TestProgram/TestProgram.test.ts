@@ -99,16 +99,12 @@ describe('TestProgram (new model: program module)', () => {
       actions: {
         updateName: Schema.String,
       },
+      reducers: {
+        updateName: Logix.Module.Reducer.mutate((draft, payload: string) => {
+          draft.name = payload
+        }),
+      },
     })
-
-    const UserLogic = User.logic((api) =>
-      Effect.gen(function* () {
-        yield* api.onAction('updateName').update((s, a) => ({
-          ...s,
-          name: a.payload,
-        }))
-      }),
-    )
 
     const Auth = Logix.Module.make('Auth', {
       state: Schema.Struct({ loggedIn: Schema.Boolean }),
@@ -116,23 +112,19 @@ describe('TestProgram (new model: program module)', () => {
         login: Schema.Void,
         logout: Schema.Void,
       },
+      reducers: {
+        login: Logix.Module.Reducer.mutate((draft) => {
+          draft.loggedIn = true
+        }),
+        logout: Logix.Module.Reducer.mutate((draft) => {
+          draft.loggedIn = false
+        }),
+      },
     })
-
-    const AuthLogic = Auth.logic((api) =>
-      Effect.gen(function* () {
-        yield* Effect.all(
-          [
-            api.onAction('login').update((s) => ({ ...s, loggedIn: true })),
-            api.onAction('logout').update((s) => ({ ...s, loggedIn: false })),
-          ],
-          { concurrency: 'unbounded' },
-        )
-      }),
-    )
 
     const AuthImpl = Auth.implement({
       initial: { loggedIn: true },
-      logics: [AuthLogic],
+      logics: [],
     })
 
     const LinkProcess = Logix.Link.make(
@@ -182,7 +174,7 @@ describe('TestProgram (new model: program module)', () => {
 
     const program = User.implement({
       initial: { name: 'Alice' },
-      logics: [UserLogic],
+      logics: [],
       imports: [AuthImpl.impl],
       processes: [LinkProcess],
     })
@@ -190,7 +182,7 @@ describe('TestProgram (new model: program module)', () => {
       const result = await runTest(
         TestProgram.runProgram(program.impl, (api) =>
           Effect.gen(function* () {
-            yield* api.advance('10 millis')
+            yield* api.advance('50 millis')
             yield* api.dispatch({ _tag: 'updateName', payload: 'clear' })
             yield* api.assert.state((s) => s.name === '')
           }),
