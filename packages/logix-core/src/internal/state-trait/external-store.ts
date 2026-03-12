@@ -57,6 +57,30 @@ const getOrCreateExternalStoreWritebackCoordinator = (args: {
       return Array.from(drained.values())
     }
 
+    const makeSingleFieldNextState = (
+      prevState: unknown,
+      normalizedPatchPath: ReadonlyArray<string>,
+      fieldPath: string,
+      nextValue: unknown,
+    ): unknown => {
+      if (
+        normalizedPatchPath.length === 1 &&
+        prevState !== null &&
+        typeof prevState === 'object' &&
+        !Array.isArray(prevState)
+      ) {
+        const fieldKey = normalizedPatchPath[0]!
+        return {
+          ...(prevState as Record<string, unknown>),
+          [fieldKey]: nextValue,
+        }
+      }
+
+      return create(prevState, (draft) => {
+        RowId.setAtPathMutating(draft as any, fieldPath, nextValue)
+      })
+    }
+
     const applyWritebackBatch = (batch: ReadonlyArray<ExternalStoreWritebackRequest>): Effect.Effect<void, never, any> =>
       Effect.gen(function* () {
         if (batch.length === 0) return
@@ -69,9 +93,12 @@ const getOrCreateExternalStoreWritebackCoordinator = (args: {
           const prevValue = RowId.getAtPath(prevState as any, req.fieldPath)
           if (req.isEqual(prevValue, req.nextValue)) return
 
-          const nextDraft = create(prevState, (draft) => {
-            RowId.setAtPathMutating(draft as any, req.fieldPath, req.nextValue)
-          })
+          const nextDraft = makeSingleFieldNextState(
+            prevState,
+            req.normalizedPatchPath,
+            req.fieldPath,
+            req.nextValue,
+          )
 
           args.internals.txn.recordStatePatch(
             req.normalizedPatchPath,
