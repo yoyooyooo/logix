@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "logix-browser-perf-matrix-v1",
-  "updatedAt": "2026-03-11",
+  "updatedAt": "2026-03-12",
   "defaults": {
     "runs": 30,
     "warmupDiscard": 5,
@@ -70,6 +70,44 @@
         { "watchers": 256, "reactStrictMode": true }
       ],
       "notes": "现有维度示例：packages/logix-react/test/browser/watcher-browser-perf.test.tsx（后续纳入统一报告输出）。"
+    },
+    {
+      "id": "watchers.clickToDomStable",
+      "priority": "P1",
+      "title": "watchers: click→DOM stable",
+      "primaryAxis": "watchers",
+      "axes": {
+        "watchers": [1, 8, 32, 64, 128, 256, 512],
+        "reactStrictMode": [false, true]
+      },
+      "metrics": ["e2e.clickToDomStableMs"],
+      "budgets": [
+        {
+          "id": "p95<=16ms",
+          "type": "absolute",
+          "metric": "e2e.clickToDomStableMs",
+          "p95Ms": 16
+        },
+        {
+          "id": "p95<=50ms",
+          "type": "absolute",
+          "metric": "e2e.clickToDomStableMs",
+          "p95Ms": 50
+        },
+        {
+          "id": "p95<=100ms",
+          "type": "absolute",
+          "metric": "e2e.clickToDomStableMs",
+          "p95Ms": 100
+        }
+      ],
+      "baselineBudgetId": "p95<=50ms",
+      "limitBudgetId": "p95<=100ms",
+      "baselinePoints": [
+        { "watchers": 128, "reactStrictMode": true },
+        { "watchers": 256, "reactStrictMode": true }
+      ],
+      "notes": "现有维度示例：packages/logix-react/test/browser/watcher-browser-perf.test.tsx（paired phase evidence / DOM stable 语义）。"
     },
     {
       "id": "converge.txnCommit",

@@ -56,8 +56,16 @@ const PerfApp: React.FC<PerfAppProps> = ({ onIncrementNativeCapture, onIncrement
   )
 }
 
-const paintSuite = (matrix.suites as any[]).find((s) => s.id === 'watchers.clickToPaint') as any
-const domStableSuite = (matrix.suites as any[]).find((s) => s.id === 'watchers.clickToDomStable') as any
+const requireSuite = (id: string) => {
+  const suite = (matrix.suites as any[]).find((candidate) => candidate.id === id)
+  if (!suite) {
+    throw new Error(`[watcher-browser-perf] Missing perf matrix suite: ${id}`)
+  }
+  return suite as any
+}
+
+const paintSuite = requireSuite('watchers.clickToPaint')
+const domStableSuite = requireSuite('watchers.clickToDomStable')
 
 const watchersLevels = paintSuite.axes.watchers as number[]
 const strictModeLevels = paintSuite.axes.reactStrictMode as boolean[]
