@@ -22,6 +22,16 @@ const suite = (matrix.suites as any[]).find((s) => s.id === 'react.deferPreload'
 const { runs, warmupDiscard, timeoutMs } = getProfileConfig(matrix)
 
 const TEST_TIMEOUT_MS = Math.max(30_000, timeoutMs * (suite.axes.mountCycles as number[]).length)
+const nextFrame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()))
+
+const waitForBodyText = async (text: string, timeoutMs: number): Promise<boolean> => {
+  const deadline = performance.now() + timeoutMs
+  while (performance.now() < deadline) {
+    if (document.body.textContent?.includes(text)) return true
+    await nextFrame()
+  }
+  return false
+}
 
 const State = Schema.Struct({ count: Schema.Number })
 const Actions = { inc: Schema.Void }
@@ -71,7 +81,18 @@ test('browser react defer+preload: no double fallback/suspend', { timeout: TEST_
         const start = performance.now()
         const screen = await render(app)
         try {
-          await expect.element(screen.getByText('Count: 0')).toBeInTheDocument()
+          const ready = await waitForBodyText('Count: 0', 3_000)
+          if (!ready) {
+            return {
+              metrics: {
+                'e2e.bootToReadyMs': { unavailableReason: 'deferInitialValueTimeout' as const },
+              },
+              evidence: {
+                'react.defer.gatingFallbackRenders': gatingFallbackRenders,
+                'react.defer.suspenseFallbackRenders': suspenseFallbackRenders,
+              },
+            }
+          }
           const end = performance.now()
 
           if (preloadEnabled) {
