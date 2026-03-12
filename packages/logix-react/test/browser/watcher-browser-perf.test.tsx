@@ -14,6 +14,7 @@ const PerfModule = makePerfCounterModule('PerfBrowserCounter')
 const nextFrame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()))
 const MAX_CAPTURE_SAMPLE_ATTEMPTS = 3
 const RETRYABLE_CAPTURE_ERRORS = new Set(['watcherNativeCaptureMissing', 'watcherHandlerStartMissing'])
+const SAMPLE_STAGE_TIMEOUT_MS = 3_000
 
 type PerfAppProps = {
   readonly onIncrementNativeCapture?: (atMs: number) => void
@@ -131,6 +132,30 @@ const toPhaseEvidence = (sample: SampleMetrics) => ({
   'watchers.phase.domStableToPaintGapMs': sample.domStableToPaintGapMs,
 })
 
+const waitForBodyText = async (text: string, timeoutMs: number, reason: string): Promise<void> => {
+  const deadline = performance.now() + timeoutMs
+  while (performance.now() < deadline) {
+    if (document.body.textContent?.includes(text)) return
+    await nextFrame()
+  }
+  throw new Error(reason)
+}
+
+const waitForIncrementButton = async (
+  screen: Awaited<ReturnType<typeof render>>,
+  timeoutMs: number,
+): Promise<ReturnType<typeof screen.getByRole>> => {
+  const deadline = performance.now() + timeoutMs
+  while (performance.now() < deadline) {
+    try {
+      return screen.getByRole('button', { name: 'Increment' }).first()
+    } catch {
+      await nextFrame()
+    }
+  }
+  throw new Error('watcherButtonMissing')
+}
+
 const collectSampleMetrics = async (args: { readonly watchers: number; readonly reactStrictMode: boolean }): Promise<SampleMetrics> => {
   for (let attempt = 0; attempt < MAX_CAPTURE_SAMPLE_ATTEMPTS; attempt++) {
     const perfKernelLayer = makePerfKernelLayer()
@@ -155,13 +180,13 @@ const collectSampleMetrics = async (args: { readonly watchers: number; readonly 
 
     const screen = await render(args.reactStrictMode ? <React.StrictMode>{app}</React.StrictMode> : app)
     try {
-      await expect.element(screen.getByText('Value: 0')).toBeInTheDocument()
+      await waitForBodyText('Value: 0', SAMPLE_STAGE_TIMEOUT_MS, 'watcherInitValueMissing')
       await nextFrame()
 
-      const button = screen.getByRole('button', { name: 'Increment' }).first()
+      const button = await waitForIncrementButton(screen, SAMPLE_STAGE_TIMEOUT_MS)
       const clickInvokeAt = performance.now()
       await button.click()
-      await expect.element(screen.getByText(`Value: ${args.watchers}`)).toBeInTheDocument()
+      await waitForBodyText(`Value: ${args.watchers}`, SAMPLE_STAGE_TIMEOUT_MS, 'watcherIncrementResultMissing')
       const domStableAt = performance.now()
       await nextFrame()
       const paintishAt = performance.now()

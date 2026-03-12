@@ -40,7 +40,7 @@ export type MetricResult =
 
 export type MetricSample = number | { readonly unavailableReason: string }
 
-export type EvidenceUnit = 'count' | 'ratio' | 'bytes' | 'string'
+export type EvidenceUnit = 'count' | 'ratio' | 'bytes' | 'ms' | 'string'
 
 export type EvidenceSample = number | string | { readonly unavailableReason: string }
 
@@ -142,6 +142,7 @@ const summarizeNumber = (samples: ReadonlyArray<number>): number => {
 const inferEvidenceUnit = (name: string): EvidenceUnit => {
   const lowered = name.toLowerCase()
   if (lowered.includes('bytes') || lowered.includes('byte')) return 'bytes'
+  if (lowered.endsWith('ms')) return 'ms'
   if (lowered.includes('ratio') || lowered.includes('rate')) return 'ratio'
   return 'count'
 }
@@ -216,6 +217,20 @@ const withTimeout = async <A>(
   } finally {
     if (timeoutId) clearTimeout(timeoutId)
   }
+}
+
+const toStructuredMeasureFailureReason = (error: unknown): string | undefined => {
+  if (!(error instanceof Error)) {
+    return undefined
+  }
+  const message = error.message.trim()
+  if (!message) {
+    return undefined
+  }
+  if (message.startsWith('watcher') || message.startsWith('perf:')) {
+    return message
+  }
+  return undefined
 }
 
 const parseRef = (ref: string): Params => {
@@ -351,15 +366,28 @@ const computeThresholdMaxLevelRelative = (
       }
     }
 
+    const minDeltaMsRaw = budget.minDeltaMs
+    const minDeltaMs = typeof minDeltaMsRaw === 'number' && Number.isFinite(minDeltaMsRaw) ? minDeltaMsRaw : 0
+
     if (denominatorP95.p95Ms <= 0) {
+      // When both sides are effectively 0 (below timer resolution), treat the ratio as non-actionable and pass.
+      // This avoids spurious failures on ultra-fast paths (e.g. synchronous dispatch + microtask flush).
+      if (numeratorP95.p95Ms <= 0) {
+        maxLevel = level
+        continue
+      }
+
+      // If the absolute delta is below the configured floor, treat it as non-actionable even when denominator is 0.
+      // This keeps relative budgets usable under coarse timer resolution.
+      if (numeratorP95.p95Ms - denominatorP95.p95Ms <= minDeltaMs) {
+        maxLevel = level
+        continue
+      }
       return { maxLevel, firstFailLevel: level, reason: 'denominatorZero' }
     }
 
     const ratio = numeratorP95.p95Ms / denominatorP95.p95Ms
     const deltaMs = numeratorP95.p95Ms - denominatorP95.p95Ms
-    const minDeltaMsRaw = budget.minDeltaMs
-    const minDeltaMs =
-      typeof minDeltaMsRaw === 'number' && Number.isFinite(minDeltaMsRaw) ? minDeltaMsRaw : 0
     const overBudget = ratio > budget.maxRatio && deltaMs > minDeltaMs
 
     if (!overBudget) {
@@ -496,7 +524,18 @@ export const runMatrixSuite = async (
         break
       }
 
-      const res = await withTimeout(remainingMs, () => measureOnce(rawParams))
+      let res: Awaited<ReturnType<typeof withTimeout<Awaited<ReturnType<typeof measureOnce>>>>>
+      try {
+        res = await withTimeout(remainingMs, () => measureOnce(rawParams))
+      } catch (error) {
+        const structuredReason = toStructuredMeasureFailureReason(error)
+        if (!structuredReason) {
+          throw error
+        }
+        status = 'failed'
+        reason = structuredReason
+        break
+      }
       if (!res.ok) {
         status = 'timeout'
         reason = `pointTimeoutMs=${timeoutMs}`
