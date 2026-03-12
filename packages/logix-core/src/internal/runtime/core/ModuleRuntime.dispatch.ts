@@ -300,7 +300,7 @@ export const makeDispatchOps = <S, A>(args: {
     )
   }
 
-
+	
   const applyActionStateWritebacks = (action: A, analysis: ActionAnalysis): Effect.Effect<void, never, any> => {
     const tag = analysis.actionTag
     if (tag == null || actionStateWritebacks.size === 0) {
@@ -311,32 +311,89 @@ export const makeDispatchOps = <S, A>(args: {
       return Effect.void
     }
 
-    return Effect.forEach(
-      handlers,
-      (handler) =>
+    return Effect.gen(function* () {
+      let currentState: S | undefined
+      let pendingState: S | undefined
+      let pendingWholeStateWrite = false
+      let pendingChanged = false
+      const pendingPatchPaths: Array<StateTransaction.StatePatchPath> = []
+
+      const clearPending = (): void => {
+        pendingState = undefined
+        pendingWholeStateWrite = false
+        pendingChanged = false
+        pendingPatchPaths.length = 0
+      }
+
+      const flushPending = (): Effect.Effect<void, never, any> =>
         Effect.gen(function* () {
-          if (handler.kind === 'effect') {
-            yield* handler.run(action)
+          if (!pendingChanged || pendingState === undefined) {
+            clearPending()
             return
           }
 
-          const prev = yield* readState
-          if (handler.kind === 'update') {
-            const next = handler.run(prev, action)
-            if (Object.is(next, prev)) return
-            yield* setStateInternal(next, '*', 'unknown', undefined, next)
-            return
+          if (pendingWholeStateWrite) {
+            yield* setStateInternal(pendingState, '*', 'unknown', undefined, pendingState)
+          } else {
+            for (const path of pendingPatchPaths) {
+              recordStatePatch(path, 'unknown')
+            }
+            StateTransaction.updateDraft(txnContext, pendingState)
           }
 
-          const { nextState, patchPaths } = mutateWithPatchPaths(prev as S, (draft) => handler.run(draft as S, action))
+          currentState = pendingState
+          clearPending()
+        })
 
+      const getCurrentState = (): Effect.Effect<S, never, any> =>
+        currentState === undefined
+          ? readState.pipe(
+              Effect.tap((state) =>
+                Effect.sync(() => {
+                  currentState = state
+                }),
+              ),
+            )
+          : Effect.succeed(currentState)
+
+      for (const handler of handlers) {
+        if (handler.kind === 'effect') {
+          yield* flushPending()
+          yield* handler.run(action)
+          currentState = undefined
+          continue
+        }
+
+        const prev = pendingState ?? (yield* getCurrentState())
+
+        if (handler.kind === 'update') {
+          const next = handler.run(prev, action)
+          if (Object.is(next, prev)) {
+            continue
+          }
+          pendingState = next
+          pendingChanged = true
+          pendingWholeStateWrite = true
+          continue
+        }
+
+        const { nextState, patchPaths } = mutateWithPatchPaths(prev as S, (draft) => handler.run(draft as S, action))
+        if (Object.is(nextState, prev)) {
+          continue
+        }
+
+        pendingState = nextState
+        pendingChanged = true
+
+        if (!pendingWholeStateWrite) {
           for (const path of patchPaths) {
-            recordStatePatch(path, 'unknown')
+            pendingPatchPaths.push(path)
           }
-          StateTransaction.updateDraft(txnContext, nextState)
-        }),
-      { discard: true },
-    )
+        }
+      }
+
+      yield* flushPending()
+    })
   }
 
   const makeActionOrigin = (
