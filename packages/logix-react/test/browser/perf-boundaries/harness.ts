@@ -219,6 +219,20 @@ const withTimeout = async <A>(
   }
 }
 
+const toStructuredMeasureFailureReason = (error: unknown): string | undefined => {
+  if (!(error instanceof Error)) {
+    return undefined
+  }
+  const message = error.message.trim()
+  if (!message) {
+    return undefined
+  }
+  if (message.startsWith('watcher') || message.startsWith('perf:')) {
+    return message
+  }
+  return undefined
+}
+
 const parseRef = (ref: string): Params => {
   const out: Params = {}
   for (const part of ref.split('&')) {
@@ -510,7 +524,18 @@ export const runMatrixSuite = async (
         break
       }
 
-      const res = await withTimeout(remainingMs, () => measureOnce(rawParams))
+      let res: Awaited<ReturnType<typeof withTimeout<Awaited<ReturnType<typeof measureOnce>>>>>
+      try {
+        res = await withTimeout(remainingMs, () => measureOnce(rawParams))
+      } catch (error) {
+        const structuredReason = toStructuredMeasureFailureReason(error)
+        if (!structuredReason) {
+          throw error
+        }
+        status = 'failed'
+        reason = structuredReason
+        break
+      }
       if (!res.ok) {
         status = 'timeout'
         reason = `pointTimeoutMs=${timeoutMs}`
