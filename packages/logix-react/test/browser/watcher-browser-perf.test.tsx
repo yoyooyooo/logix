@@ -12,6 +12,8 @@ import { getProfileConfig, makePerfKernelLayer, runMatrixSuite, withNodeEnv } fr
 const PerfModule = makePerfCounterModule('PerfBrowserCounter')
 
 const nextFrame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()))
+const MAX_CAPTURE_SAMPLE_ATTEMPTS = 3
+const RETRYABLE_CAPTURE_ERRORS = new Set(['watcherNativeCaptureMissing', 'watcherHandlerStartMissing'])
 
 type PerfAppProps = {
   readonly onIncrementNativeCapture?: (atMs: number) => void
@@ -100,58 +102,77 @@ const toPhaseEvidence = (sample: SampleMetrics) => ({
 })
 
 const collectSampleMetrics = async (args: { readonly watchers: number; readonly reactStrictMode: boolean }): Promise<SampleMetrics> => {
-  const perfKernelLayer = makePerfKernelLayer()
-  const layer = PerfModule.live({ value: 0 }, makePerfCounterIncWatchersLogic(PerfModule, args.watchers))
-  const runtime = ManagedRuntime.make(Layer.mergeAll(perfKernelLayer, layer) as Layer.Layer<any, never, never>)
-  let nativeCaptureAt: number | undefined
-  let handlerStartAt: number | undefined
+  for (let attempt = 0; attempt < MAX_CAPTURE_SAMPLE_ATTEMPTS; attempt++) {
+    const perfKernelLayer = makePerfKernelLayer()
+    const layer = PerfModule.live({ value: 0 }, makePerfCounterIncWatchersLogic(PerfModule, args.watchers))
+    const runtime = ManagedRuntime.make(Layer.mergeAll(perfKernelLayer, layer) as Layer.Layer<any, never, never>)
+    let nativeCaptureAt: number | undefined
+    let handlerStartAt: number | undefined
+    let retryableError: Error | undefined
 
-  const app = (
-    <RuntimeProvider runtime={runtime}>
-      <PerfApp
-        onIncrementNativeCapture={(atMs) => {
-          nativeCaptureAt = atMs
-        }}
-        onIncrementHandlerStart={(atMs) => {
-          handlerStartAt = atMs
-        }}
-      />
-    </RuntimeProvider>
-  )
+    const app = (
+      <RuntimeProvider runtime={runtime}>
+        <PerfApp
+          onIncrementNativeCapture={(atMs) => {
+            nativeCaptureAt = atMs
+          }}
+          onIncrementHandlerStart={(atMs) => {
+            handlerStartAt = atMs
+          }}
+        />
+      </RuntimeProvider>
+    )
 
-  const screen = await render(args.reactStrictMode ? <React.StrictMode>{app}</React.StrictMode> : app)
-  try {
-    await expect.element(screen.getByText('Value: 0')).toBeInTheDocument()
-    await nextFrame()
+    const screen = await render(args.reactStrictMode ? <React.StrictMode>{app}</React.StrictMode> : app)
+    try {
+      await expect.element(screen.getByText('Value: 0')).toBeInTheDocument()
+      await nextFrame()
 
-    const button = screen.getByRole('button', { name: 'Increment' }).first()
-    const clickInvokeAt = performance.now()
-    await button.click()
-    await expect.element(screen.getByText(`Value: ${args.watchers}`)).toBeInTheDocument()
-    const domStableAt = performance.now()
-    await nextFrame()
-    const paintishAt = performance.now()
+      const button = screen.getByRole('button', { name: 'Increment' }).first()
+      const clickInvokeAt = performance.now()
+      await button.click()
+      await expect.element(screen.getByText(`Value: ${args.watchers}`)).toBeInTheDocument()
+      const domStableAt = performance.now()
+      await nextFrame()
+      const paintishAt = performance.now()
 
-    if (nativeCaptureAt === undefined) {
-      throw new Error('watcherNativeCaptureMissing')
+      if (nativeCaptureAt === undefined) {
+        throw new Error('watcherNativeCaptureMissing')
+      }
+
+      if (handlerStartAt === undefined) {
+        throw new Error('watcherHandlerStartMissing')
+      }
+
+      return {
+        clickInvokeToNativeCaptureMs: Math.max(0, nativeCaptureAt - clickInvokeAt),
+        nativeCaptureToHandlerMs: Math.max(0, handlerStartAt - nativeCaptureAt),
+        handlerToDomStableMs: Math.max(0, domStableAt - handlerStartAt),
+        domStableToPaintGapMs: Math.max(0, paintishAt - domStableAt),
+        domStableMs: domStableAt - clickInvokeAt,
+        paintishMs: paintishAt - clickInvokeAt,
+      }
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        RETRYABLE_CAPTURE_ERRORS.has(error.message) &&
+        attempt < MAX_CAPTURE_SAMPLE_ATTEMPTS - 1
+      ) {
+        retryableError = error
+      } else {
+        throw error
+      }
+    } finally {
+      screen.unmount()
+      await runtime.dispose()
     }
 
-    if (handlerStartAt === undefined) {
-      throw new Error('watcherHandlerStartMissing')
+    if (retryableError) {
+      await nextFrame()
     }
-
-    return {
-      clickInvokeToNativeCaptureMs: Math.max(0, nativeCaptureAt - clickInvokeAt),
-      nativeCaptureToHandlerMs: Math.max(0, handlerStartAt - nativeCaptureAt),
-      handlerToDomStableMs: Math.max(0, domStableAt - handlerStartAt),
-      domStableToPaintGapMs: Math.max(0, paintishAt - domStableAt),
-      domStableMs: domStableAt - clickInvokeAt,
-      paintishMs: paintishAt - clickInvokeAt,
-    }
-  } finally {
-    screen.unmount()
-    await runtime.dispose()
   }
+
+  throw new Error('watcherSampleCollectionExhausted')
 }
 
 test(
