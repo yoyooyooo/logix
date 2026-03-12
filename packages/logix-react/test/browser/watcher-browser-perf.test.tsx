@@ -188,7 +188,18 @@ const collectSampleMetrics = async (args: { readonly watchers: number; readonly 
       const button = await waitForIncrementButton(screen, SAMPLE_STAGE_TIMEOUT_MS)
       const clickInvokeAt = performance.now()
       await button.click()
-      await waitForBodyText(`Value: ${args.watchers}`, SAMPLE_STAGE_TIMEOUT_MS, 'watcherIncrementResultMissing')
+      try {
+        await waitForBodyText(`Value: ${args.watchers}`, SAMPLE_STAGE_TIMEOUT_MS, 'watcherIncrementResultMissing')
+      } catch (error) {
+        if (error instanceof Error && error.message.startsWith('watcherIncrementResultMissing')) {
+          const nativeCaptureSeen = nativeCaptureAt === undefined ? 0 : 1
+          const handlerStartSeen = handlerStartAt === undefined ? 0 : 1
+          throw new Error(
+            `${error.message}:nativeCaptureSeen=${nativeCaptureSeen}:handlerStartSeen=${handlerStartSeen}`,
+          )
+        }
+        throw error
+      }
       const domStableAt = performance.now()
       await nextFrame()
       const paintishAt = performance.now()
