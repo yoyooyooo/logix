@@ -62,6 +62,16 @@ const CounterView: React.FC = () => {
   )
 }
 
+const waitForStartup = () =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, 20)
+  })
+
+const refreshDevtoolsState = async () => {
+  await devtoolsRuntime.runPromise(devtoolsModuleRuntime.dispatch({ _tag: 'toggleOpen', payload: undefined }) as any)
+  await devtoolsRuntime.runPromise(devtoolsModuleRuntime.dispatch({ _tag: 'toggleOpen', payload: undefined }) as any)
+}
+
 describe('@logixjs/devtools-react integration with @logixjs/react', () => {
   beforeAll(() => {
     if (typeof window !== 'undefined') {
@@ -101,9 +111,11 @@ describe('@logixjs/devtools-react integration with @logixjs/react', () => {
 
     // Initial state
     expect(button.textContent).toContain('count: 0')
+    await waitForStartup()
 
     // Trigger one increment
     fireEvent.click(button)
+    await refreshDevtoolsState()
 
     // Wait for Effect/Debug Sink to process this event and update the snapshot.
     await waitFor(() => {
@@ -123,6 +135,7 @@ describe('@logixjs/devtools-react integration with @logixjs/react', () => {
     // Trigger two more increments to verify state:update snapshots are preserved in order on the timeline.
     fireEvent.click(button)
     fireEvent.click(button)
+    await refreshDevtoolsState()
 
     await waitFor(() => {
       const snapshot = getDevtoolsSnapshot()

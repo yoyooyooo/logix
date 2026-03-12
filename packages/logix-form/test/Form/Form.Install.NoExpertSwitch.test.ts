@@ -3,6 +3,13 @@ import { Effect, Layer } from 'effect'
 import * as Logix from '@logixjs/core'
 import { makeFormModule } from '../fixtures/listScopeCheck.js'
 
+const waitForAsync = Effect.promise(
+  () =>
+    new Promise<void>((resolve) => {
+      setTimeout(resolve, 20)
+    }),
+)
+
 describe('Form.install (no expert switch)', () => {
   it.effect('onChange should refresh list-scope checks without listValidateOnChange', () =>
     Effect.gen(function* () {
@@ -19,6 +26,7 @@ describe('Form.install (no expert switch)', () => {
       const program = Effect.gen(function* () {
         const rt = yield* Effect.service(form.tag).pipe(Effect.orDie)
         const controller = form.controller.make(rt)
+        yield* waitForAsync
 
         // Initial: no errors
         const s0: any = yield* controller.getState
@@ -27,7 +35,7 @@ describe('Form.install (no expert switch)', () => {
         // Create duplicates: rows 0/1 should be marked invalid immediately (no listValidateOnChange switch needed).
         yield* controller.field('items.0.warehouseId').set('WH-DUP')
         yield* controller.field('items.1.warehouseId').set('WH-DUP')
-        yield* Effect.sleep('20 millis')
+        yield* waitForAsync
 
         const s1: any = yield* controller.getState
         const rows1: any[] = s1.errors?.items?.rows ?? []

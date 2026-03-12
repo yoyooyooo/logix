@@ -3,6 +3,13 @@ import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
 
+const waitForAsync = Effect.promise(
+  () =>
+    new Promise<void>((resolve) => {
+      setTimeout(resolve, 20)
+    }),
+)
+
 describe('Form validateOn/reValidateOn strategy', () => {
   it.effect('validateOn/reValidateOn + rule.validateOn override/disable', () =>
     Effect.gen(function* () {
@@ -56,10 +63,11 @@ describe('Form validateOn/reValidateOn strategy', () => {
       const program = Effect.gen(function* () {
         const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const form = module.controller.make(rt)
+        yield* waitForAsync
 
         // Pre-submit: with validateOn=["onSubmit"], name/secret should not auto-validate on change/blur.
         yield* form.field('code').blur()
-        yield* Effect.sleep('20 millis')
+        yield* waitForAsync
 
         const s1: any = yield* form.getState
         expect(s1.errors?.code).toBe('code-required')
@@ -68,7 +76,7 @@ describe('Form validateOn/reValidateOn strategy', () => {
 
         // Fix code (onChange should not trigger the blurOnly rule).
         yield* form.field('code').set('X')
-        yield* Effect.sleep('20 millis')
+        yield* waitForAsync
 
         const s2: any = yield* form.getState
         expect(s2.errors?.code).toBe('code-required')
@@ -93,27 +101,27 @@ describe('Form validateOn/reValidateOn strategy', () => {
 
         // Post-submit: with reValidateOn=["onChange"], name should revalidate and clear automatically.
         yield* form.field('name').set('Alice')
-        yield* Effect.sleep('20 millis')
+        yield* waitForAsync
 
         const s4: any = yield* form.getState
         expect(s4.errors?.name).toBeUndefined()
 
         // validateOn=[]: does not participate in onChange auto-validation (error should not clear automatically).
         yield* form.field('secret').set('OK')
-        yield* Effect.sleep('20 millis')
+        yield* waitForAsync
 
         const s5: any = yield* form.getState
         expect(s5.errors?.secret).toBe('secret-required')
 
         // validateOn=["onBlur"]: does not participate in onChange (error should not appear automatically), but blur triggers it.
         yield* form.field('code').set('')
-        yield* Effect.sleep('20 millis')
+        yield* waitForAsync
 
         const s6: any = yield* form.getState
         expect(s6.errors?.code).toBeUndefined()
 
         yield* form.field('code').blur()
-        yield* Effect.sleep('20 millis')
+        yield* waitForAsync
 
         const s7: any = yield* form.getState
         expect(s7.errors?.code).toBe('code-required')

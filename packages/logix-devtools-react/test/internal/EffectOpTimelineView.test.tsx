@@ -118,6 +118,16 @@ const makeRuntime = () =>
     },
   })
 
+const waitForStartup = () =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, 20)
+  })
+
+const refreshDevtoolsState = async () => {
+  await devtoolsRuntime.runPromise(devtoolsModuleRuntime.dispatch({ _tag: 'toggleOpen', payload: undefined }) as any)
+  await devtoolsRuntime.runPromise(devtoolsModuleRuntime.dispatch({ _tag: 'toggleOpen', payload: undefined }) as any)
+}
+
 const CounterView: React.FC = () => {
   const runtimeHandle = useModule(CounterImpl.tag)
   const count = useModule(runtimeHandle, (s) => s.count)
@@ -158,11 +168,13 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
     )
 
     const counterButton = screen.getAllByText(/count:/i)[0] as HTMLButtonElement
+    await waitForStartup()
 
     // Trigger multiple increments to ensure the timeline contains multiple events.
     fireEvent.click(counterButton)
     fireEvent.click(counterButton)
     fireEvent.click(counterButton)
+    await refreshDevtoolsState()
 
     // Wait for the Devtools panel to render and for the Inspector to show "Latest Event" details.
     await waitFor(() => {
@@ -235,11 +247,13 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
     )
 
     const counterButton = screen.getAllByText(/count:/i)[0] as HTMLButtonElement
+    await waitForStartup()
 
     // Trigger multiple increments to generate multiple transactions (each interaction = one StateTransaction).
     fireEvent.click(counterButton)
     fireEvent.click(counterButton)
     fireEvent.click(counterButton)
+    await refreshDevtoolsState()
 
     let targetTxnId: string | undefined
 
@@ -295,10 +309,12 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
     )
 
     const counterButton = screen.getAllByText(/count:/i)[0] as HTMLButtonElement
+    await waitForStartup()
 
     // Trigger multiple increments to produce a few transactions and render events.
     fireEvent.click(counterButton)
     fireEvent.click(counterButton)
+    await refreshDevtoolsState()
 
     let targetRenderLabel: string | undefined
 
@@ -350,9 +366,11 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
     )
 
     const counterButton = screen.getAllByText(/count:/i)[0] as HTMLButtonElement
+    await waitForStartup()
 
     fireEvent.click(counterButton)
     fireEvent.click(counterButton)
+    await refreshDevtoolsState()
 
     let selectorEventLabel: string | undefined
 
