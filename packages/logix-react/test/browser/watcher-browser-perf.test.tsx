@@ -94,6 +94,36 @@ type SampleMetrics = {
   readonly domStableMs: number
 }
 
+const sampleKeyOf = (args: { readonly watchers: number; readonly reactStrictMode: boolean }): string =>
+  `${args.reactStrictMode ? 'strict' : 'loose'}:${args.watchers}`
+
+const pushSharedSample = (
+  cache: Map<string, SampleMetrics[]>,
+  args: { readonly watchers: number; readonly reactStrictMode: boolean },
+  sample: SampleMetrics,
+): void => {
+  const key = sampleKeyOf(args)
+  const queue = cache.get(key) ?? []
+  queue.push(sample)
+  cache.set(key, queue)
+}
+
+const shiftSharedSample = (
+  cache: Map<string, SampleMetrics[]>,
+  args: { readonly watchers: number; readonly reactStrictMode: boolean },
+): SampleMetrics | undefined => {
+  const key = sampleKeyOf(args)
+  const queue = cache.get(key)
+  if (!queue || queue.length === 0) {
+    return undefined
+  }
+  const sample = queue.shift()
+  if (queue.length === 0) {
+    cache.delete(key)
+  }
+  return sample
+}
+
 const toPhaseEvidence = (sample: SampleMetrics) => ({
   'watchers.phase.clickInvokeToNativeCaptureMs': sample.clickInvokeToNativeCaptureMs,
   'watchers.phase.nativeCaptureToHandlerMs': sample.nativeCaptureToHandlerMs,
@@ -180,14 +210,18 @@ test(
   { timeout: TEST_TIMEOUT_MS },
   async () => {
     await withNodeEnv('production', async () => {
+      const sharedSamples = new Map<string, SampleMetrics[]>()
+
       const { points: paintPoints, thresholds: paintThresholds } = await runMatrixSuite(
         paintSuite,
         { runs, warmupDiscard, timeoutMs },
         async (params) => {
-          const sample = await collectSampleMetrics({
+          const sampleArgs = {
             watchers: params.watchers as number,
             reactStrictMode: params.reactStrictMode as boolean,
-          })
+          } as const
+          const sample = await collectSampleMetrics(sampleArgs)
+          pushSharedSample(sharedSamples, sampleArgs, sample)
           return {
             metrics: {
               'e2e.clickToPaintMs': sample.paintishMs,
@@ -202,10 +236,11 @@ test(
         domStableSuite,
         { runs, warmupDiscard, timeoutMs },
         async (params) => {
-          const sample = await collectSampleMetrics({
+          const sampleArgs = {
             watchers: params.watchers as number,
             reactStrictMode: params.reactStrictMode as boolean,
-          })
+          } as const
+          const sample = shiftSharedSample(sharedSamples, sampleArgs) ?? (await collectSampleMetrics(sampleArgs))
           return {
             metrics: {
               'e2e.clickToDomStableMs': sample.domStableMs,
