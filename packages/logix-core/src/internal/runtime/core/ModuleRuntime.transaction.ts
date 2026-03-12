@@ -22,6 +22,7 @@ import {
   type TxnQueuePhaseTiming,
 } from './ModuleRuntime.txnQueue.js'
 import { StateTransactionOverridesTag, type StateTransactionOverrides } from './env.js'
+import { runSyncExitWithServices } from './runner/SyncEffectRunner.js'
 
 const DIRTY_ALL_SET_STATE_HINT = Symbol.for('@logixjs/core/dirtyAllSetStateHint')
 const ASYNC_ESCAPE_DIAGNOSTIC_CODE = 'state_transaction::async_escape'
@@ -495,13 +496,7 @@ export const makeTransactionOps = <S>(args: {
               const asyncEscapeGuardStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
               const currentServices = yield* Effect.services<any>()
               const bodyExit = yield* Effect.sync(
-                () =>
-                  Effect.runSyncExit(
-                    Effect.provideServices(
-                      body() as Effect.Effect<void, E2, any>,
-                      currentServices,
-                    ) as Effect.Effect<void, E2, never>,
-                  ) as Exit.Exit<void, E2>,
+                () => runSyncExitWithServices(body() as Effect.Effect<void, E2, any>, currentServices) as Exit.Exit<void, E2>,
               )
               const asyncEscapeGuardMs = phaseTimingEnabled
                 ? Math.max(0, readClockMs() - asyncEscapeGuardStartedAtMs)
