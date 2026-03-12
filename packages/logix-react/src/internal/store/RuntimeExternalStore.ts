@@ -31,7 +31,13 @@ type HostScheduler = {
   readonly scheduleTimeout: (ms: number, cb: () => void) => Cancel
 }
 
+type RuntimeFlushCoordinator = {
+  readonly enqueue: (flush: () => void) => void
+  readonly delete: (flush: () => void) => void
+}
+
 const storesByRuntime = new WeakMap<object, Map<TopicKey, ExternalStore<any>>>()
+const runtimeFlushCoordinators = new WeakMap<object, RuntimeFlushCoordinator>()
 
 const getStoreMapForRuntime = (runtime: object): Map<TopicKey, ExternalStore<any>> => {
   const cached = storesByRuntime.get(runtime)
@@ -73,6 +79,41 @@ const removeStore = (runtime: ManagedRuntime.ManagedRuntime<any, any>, topicKey:
   map.delete(topicKey)
 }
 
+const getOrCreateRuntimeFlushCoordinator = (
+  runtime: ManagedRuntime.ManagedRuntime<any, any>,
+  scheduler: HostScheduler,
+): RuntimeFlushCoordinator => {
+  const cached = runtimeFlushCoordinators.get(runtime as any)
+  if (cached) return cached
+
+  let scheduled = false
+  const pending = new Set<() => void>()
+
+  const flush = () => {
+    scheduled = false
+    const current = Array.from(pending)
+    pending.clear()
+    for (const entry of current) {
+      entry()
+    }
+  }
+
+  const coordinator: RuntimeFlushCoordinator = {
+    enqueue: (entry) => {
+      pending.add(entry)
+      if (scheduled) return
+      scheduled = true
+      scheduler.scheduleMicrotask(flush)
+    },
+    delete: (entry) => {
+      pending.delete(entry)
+    },
+  }
+
+  runtimeFlushCoordinators.set(runtime as any, coordinator)
+  return coordinator
+}
+
 const makeTopicExternalStore = <S>(args: {
   readonly runtime: ManagedRuntime.ManagedRuntime<any, any>
   readonly runtimeStore: RuntimeStore
@@ -84,6 +125,7 @@ const makeTopicExternalStore = <S>(args: {
 }): ExternalStore<S> => {
   const { runtime, runtimeStore, topicKey } = args
   const hostScheduler = getHostScheduler(runtime)
+  const runtimeFlushCoordinator = getOrCreateRuntimeFlushCoordinator(runtime, hostScheduler)
 
   let currentVersion: number | undefined
   let hasSnapshot = false
@@ -117,6 +159,7 @@ const makeTopicExternalStore = <S>(args: {
   const flushNotify = (): void => {
     notifyScheduled = false
     cancelLow()
+    runtimeFlushCoordinator.delete(flushNotify)
     for (const listener of listeners) {
       try {
         listener()
@@ -158,7 +201,7 @@ const makeTopicExternalStore = <S>(args: {
     cancelLow()
     if (notifyScheduled) return
     notifyScheduled = true
-    hostScheduler.scheduleMicrotask(flushNotify)
+    runtimeFlushCoordinator.enqueue(flushNotify)
   }
 
   const onRuntimeStoreChange = (): void => {
