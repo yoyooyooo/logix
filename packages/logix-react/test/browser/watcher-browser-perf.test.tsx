@@ -179,8 +179,8 @@ const collectSampleMetrics = async (args: { readonly watchers: number; readonly 
         nativeCaptureToHandlerMs: Math.max(0, handlerStartAt - nativeCaptureAt),
         handlerToDomStableMs: Math.max(0, domStableAt - handlerStartAt),
         domStableToPaintGapMs: Math.max(0, paintishAt - domStableAt),
-        domStableMs: domStableAt - clickInvokeAt,
-        paintishMs: paintishAt - clickInvokeAt,
+        domStableMs: domStableAt - nativeCaptureAt,
+        paintishMs: paintishAt - nativeCaptureAt,
       }
     } catch (error) {
       if (
