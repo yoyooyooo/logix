@@ -66,6 +66,8 @@
 - `watchers`：先修 suite 语义，不再继续往 runtime 里塞 watcher 优化。
 - `converge`：先修 gate 表达，把 `notApplicable` 从失败视图剥离。
 - `externalStore`：`S-1` 已按 residual/noise 关闭；除非后续出现新的 clean/comparable 连续复现证据，否则不要重开。
+  - `2026-03-14` 补充：`D-4 raw direct writeback fallback` 已失败，记录见 `docs/perf/2026-03-14-d4-external-store-raw-direct-failed.md`。
+  - 当前不要再继续做 raw path 回退或 coordinator tweak；若要继续重开 `externalStore`，下一候选应转到 `ModuleRuntime.transaction.ts` 的事务相位采样税。
 
 ## A 刀（优先级 P0）：full 诊断懒构造
 

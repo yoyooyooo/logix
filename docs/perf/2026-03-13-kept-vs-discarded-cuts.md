@@ -92,6 +92,18 @@
 - 不满足“稳定打到 256/512”这个保留标准
 - 当前只能按 evidence-only 失败线收口
 
+### D-4 · `externalStore` raw direct writeback fallback
+
+- 结论：废弃
+- 文件：`packages/logix-core/src/internal/state-trait/external-store.ts`
+- 关键记录：`docs/perf/2026-03-14-d4-external-store-raw-direct-failed.md`
+
+废弃原因：
+- browser targeted 仍停在 `~5.6ms ~ 6.1ms`
+- soak 对比 `effect-v4 r3` 没有稳定净收益
+- `off / 256` 甚至从 `~5.2ms` 回到 `~6.1ms`
+- 说明 raw path 回退不是当前主税点
+
 ### G-1 · `TickScheduler` flush-before-commit fast path
 
 - 结论：废弃

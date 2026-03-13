@@ -18,6 +18,8 @@
 
 - `2026-03-13-main-vs-effect-v4-final-comparison.md`
   - 当前阶段的分支级最终对比：明确提升 / 持平 / 小固定税 / 未收口项。
+- `2026-03-14-d4-external-store-raw-direct-failed.md`
+  - `externalStore` 的 raw-path 回退试探失败；browser targeted + soak 都没拿到稳定收益，当前不再继续调这条线。
 - `2026-03-13-kept-vs-discarded-cuts.md`
   - 当前阶段保留刀与废弃刀清单，只看“哪些该留、哪些不该留”时优先读它。
 - `05-forward-only-vnext-plan.md`
@@ -116,3 +118,5 @@
   - S-13：把 `watchers.phase.*Ms` 提升到 diff / triage / artifact report 首屏显示，并明确禁止再用跨 suite 聚合差值解释 watchers 红样本。
 - `2026-03-06-s14-watchers-native-anchor-pre-handler-split.md`
   - S-14：把 `clickToHandler` 再拆成 `clickInvokeToNativeCapture / nativeCaptureToHandler` 两段，并确认 dominant phase 是页面外 click 注入税，而不是页面内 `nativeCapture->handler`。
+- `2026-03-14-d4-external-store-raw-direct-failed.md`
+  - D-4：把 raw external-store 写回临时退回 `main` 风格直写链路，但 browser targeted + soak 均未形成稳定收益，按 evidence-only 废弃。

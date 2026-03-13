@@ -162,6 +162,9 @@ TraitLifecycle.scopedValidate($, {
 
 状态：
 - [x] 已完成（内核实现）：引入 per-module writeback coordinator（同 module 同时最多一个 writeback txn in-flight），burst 更新在 in-flight window 内合并写回；证据见 `docs/perf/2026-03-04-b1-externalStore-batched-writeback.md`。
+- [x] `2026-03-14` 失败复核：`D-4 raw direct writeback fallback` 已验证无稳定收益，记录见 `docs/perf/2026-03-14-d4-external-store-raw-direct-failed.md`。
+  - 裁决：不要再沿着 raw path 回退 / coordinator tweak 继续切。
+  - 若 future evidence 继续重开这条线，默认转去看 `ModuleRuntime.transaction.ts` 的事务相位采样税，而不是回退 `B-1`。
 
 ### Wave C（P1）：Ref.list 自动增量
 
