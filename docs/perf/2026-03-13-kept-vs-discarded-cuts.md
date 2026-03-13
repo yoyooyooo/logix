@@ -115,6 +115,20 @@
 - 主会话复跑回到 `phaseFlushBeforeCommitMs≈1.92ms`
 - 收益不稳，不适合作为主线保留刀
 
+### T-1 · `txn-phase` 默认采样门收紧
+
+- 结论：废弃
+- 文件：
+  - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`
+  - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.txnQueue.ts`
+- 关键记录：`docs/perf/2026-03-14-t1-txn-phase-gate-failed.md`
+
+废弃原因：
+- 只改善了部分 `full` 点位
+- `off / 256` 从 `~5.2ms` 回到 `~6.1ms`
+- 绝对 `p95<=3ms` 仍全线失守
+- 说明默认 `txn-phase` 采样门不是当前主税点
+
 ### C-2 · `react.bootResolve.sync` config reload skip
 
 - 结论：废弃

@@ -68,6 +68,8 @@
 - `externalStore`：`S-1` 已按 residual/noise 关闭；除非后续出现新的 clean/comparable 连续复现证据，否则不要重开。
   - `2026-03-14` 补充：`D-4 raw direct writeback fallback` 已失败，记录见 `docs/perf/2026-03-14-d4-external-store-raw-direct-failed.md`。
   - 当前不要再继续做 raw path 回退或 coordinator tweak；若要继续重开 `externalStore`，下一候选应转到 `ModuleRuntime.transaction.ts` 的事务相位采样税。
+  - `2026-03-14` 再补充：`T-1 txn-phase default gate` 也已失败，记录见 `docs/perf/2026-03-14-t1-txn-phase-gate-failed.md`。
+  - 当前不要继续叠 `txn-phase` gate tweak；这条线需要重新做 fresh browser compare 后再选下一刀。
 
 ## A 刀（优先级 P0）：full 诊断懒构造
 
