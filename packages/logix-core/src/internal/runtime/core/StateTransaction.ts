@@ -209,7 +209,7 @@ interface StateTxnState<S> {
    * - Used to enable list-index evidence recording only when the module actually declares list traits.
    */
   listPathSet?: ReadonlySet<string>
-  readonly patches: Array<TxnPatchRecord>
+  patches: Array<TxnPatchRecord>
   patchCount: number
   patchesTruncated: boolean
   fieldPathIdRegistry?: FieldPathIdRegistry
@@ -220,6 +220,7 @@ interface StateTxnState<S> {
    * - Independent of instrumentation: light mode does not keep patches, but still maintains dirtyPathIds/dirtyAllReason for low-cost semantics (e.g. scheduling/diagnostics).
    */
   readonly dirtyPathIds: Set<FieldPathId>
+  dirtyPathIdSnapshot: Array<FieldPathId>
   /**
    * dirtyPathIdsKeyHash / dirtyPathIdsKeySize:
    * - Incrementally maintained key for the current dirtyPathIds Set (in insertion order),
@@ -530,10 +531,9 @@ const buildDirtyEvidenceSnapshot = <S>(state: StateTxnState<S>): TxnDirtyEvidenc
     }
   }
 
-  const dirtyPathIds = Array.from(state.dirtyPathIds)
   return {
     dirtyAll: false,
-    dirtyPathIds,
+    dirtyPathIds: state.dirtyPathIdSnapshot,
     dirtyPathsKeyHash: state.dirtyPathIdsKeyHash,
     dirtyPathsKeySize: state.dirtyPathIdsKeySize,
   }
@@ -661,6 +661,12 @@ const buildCommittedTransaction = <S>(
   const { config } = ctx
   inferReplaceEvidence(ctx, state, finalState)
   const dirty = buildDirtyEvidenceSnapshot(state)
+  const patches =
+    config.instrumentation === 'full'
+      ? state.patches.length === 0
+        ? EMPTY_TXN_PATCHES
+        : (state.patches as ReadonlyArray<TxnPatchRecord>)
+      : EMPTY_TXN_PATCHES
 
   return {
     txnId: state.txnId,
@@ -675,7 +681,7 @@ const buildCommittedTransaction = <S>(
     ...(state.patchesTruncated ? { patchesTruncatedReason: 'max_patches' } : null),
     initialStateSnapshot: state.initialStateSnapshot,
     finalStateSnapshot: config.captureSnapshots ? finalState : undefined,
-    patches: config.instrumentation === 'full' ? state.patches.slice() : EMPTY_TXN_PATCHES,
+    patches,
     moduleId: config.moduleId,
     instanceId: config.instanceId,
   }
@@ -701,6 +707,7 @@ export const makeContext = <S>(config: StateTxnConfig): StateTxnContext<S> => {
     patchCount: 0,
     patchesTruncated: false,
     dirtyPathIds: new Set(),
+    dirtyPathIdSnapshot: [],
     dirtyPathIdsKeyHash: 2166136261 >>> 0,
     dirtyPathIdsKeySize: 0,
     dirtyAllReason: undefined,
@@ -801,11 +808,12 @@ export const beginTransaction = <S>(ctx: StateTxnContext<S>, origin: StateTxnOri
   state.initialStateSnapshot = initialSnapshot
   state.inferReplaceEvidence = false
   state.inferReplaceEvidenceIfEmpty = true
-  state.patches.length = 0
+  state.patches = []
   state.patchCount = 0
   state.patchesTruncated = false
   state.fieldPathIdRegistry = ctx.config.getFieldPathIdRegistry?.()
   state.dirtyPathIds.clear()
+  state.dirtyPathIdSnapshot = []
   state.dirtyPathIdsKeyHash = 2166136261 >>> 0
   state.dirtyPathIdsKeySize = 0
   state.dirtyAllReason = undefined
@@ -958,6 +966,7 @@ const resolveAndRecordDirtyPathId = <S>(
   // Only update when the id is newly inserted (Set ignores duplicates but keeps insertion order).
   const afterSize = state.dirtyPathIds.size
   if (afterSize !== state.dirtyPathIdsKeySize) {
+    state.dirtyPathIdSnapshot.push(id)
     let h = state.dirtyPathIdsKeyHash >>> 0
     h ^= id >>> 0
     h = Math.imul(h, 16777619)
@@ -1062,6 +1071,10 @@ export const commitWithState = <S>(
 
     const endedAt = now()
     const transaction = buildCommittedTransaction(ctx, state, finalState, endedAt)
+
+    // Hand off the current patch array to the committed transaction, then switch the scratch
+    // state to a fresh array so later transactions do not mutate the committed snapshot.
+    state.patches = []
 
     // Clear the current transaction.
     ctx.current = undefined

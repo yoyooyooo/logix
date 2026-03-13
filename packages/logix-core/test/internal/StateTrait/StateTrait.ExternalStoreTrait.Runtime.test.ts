@@ -1,8 +1,22 @@
 import { describe, it, expect } from "@effect/vitest";
-import { Cause, Effect, Schema, Stream } from "effect";
+import { Cause, Effect, Layer, Schema, Stream, SubscriptionRef } from "effect";
+import { vi } from "vitest";
 import * as Logix from "../../../src/index.js";
 import * as ModuleRuntimeImpl from "../../../src/internal/runtime/ModuleRuntime.js";
 import * as BoundApiRuntime from "../../../src/internal/runtime/BoundApiRuntime.js";
+import {
+  makeModuleInstanceKey,
+  makeRuntimeStore,
+  type ModuleInstanceKey,
+  type RuntimeStoreModuleCommit,
+  type RuntimeStorePendingDrain,
+} from "../../../src/internal/runtime/core/RuntimeStore.js";
+import * as StateTransaction from "../../../src/internal/runtime/core/StateTransaction.js";
+import {
+  flushAllHostScheduler,
+  makeTestHostScheduler,
+  testHostSchedulerLayer,
+} from "../testkit/hostSchedulerTestKit.js";
 
 const makeManualStore = <T>(initial: T) => {
   let current = initial;
@@ -41,6 +55,334 @@ const waitUntil = (predicate: () => boolean, maxTicks = 64): Effect.Effect<void>
     }
     return yield* Effect.die(new Error('waitUntil timed out'));
   });
+
+type ExternalStoreIngestProxyPhaseSample = {
+  readonly phaseSetMs: number;
+  readonly phaseCommitMs: number;
+  readonly phaseCommitWithStateMs: number;
+  readonly phasePreStoreCommitMs: number;
+  readonly phaseStoreCommitInnerMs: number;
+  readonly phasePostStoreCommitMs: number;
+  readonly phaseTickFlushLagMs: number;
+  readonly phaseWaitForBatchOrEnqueueMs: number;
+  readonly phaseYieldMicrotaskMs: number;
+  readonly phaseFlushBeforeCommitMs: number;
+  readonly phaseTailMs: number;
+  readonly phaseTopicBumpMs: number;
+  readonly phaseListenerSnapshotFlattenMs: number;
+  readonly phaseListenerCallbackFanoutMs: number;
+  readonly tickDelta: number;
+  readonly finalValues: ReadonlyArray<number>;
+};
+
+const measureMs = (run: () => void): number => {
+  const startedAt = process.hrtime.bigint();
+  run();
+  return Number(process.hrtime.bigint() - startedAt) / 1_000_000;
+};
+
+const measureRuntimeStoreCommitProxyPhases = (): Pick<
+  ExternalStoreIngestProxyPhaseSample,
+  "phaseTopicBumpMs" | "phaseListenerSnapshotFlattenMs" | "phaseListenerCallbackFanoutMs"
+> => {
+  const moduleCount = 4;
+  const listenersPerTopic = 16;
+  const iterations = 256;
+
+  const makeStoreCase = (withListeners: boolean) => {
+    const store = makeRuntimeStore();
+    const topics: Array<ModuleInstanceKey> = Array.from({ length: moduleCount }, (_, index) => {
+      const moduleId = `PerfRuntimeStoreCommitProxy.M${index}`;
+      const instanceId = "instance";
+      const moduleInstanceKey = makeModuleInstanceKey(moduleId, instanceId);
+      store.registerModuleInstance({
+        moduleId,
+        instanceId,
+        moduleInstanceKey,
+        initialState: { value: index },
+      });
+
+      if (withListeners) {
+        for (let i = 0; i < listenersPerTopic; i += 1) {
+          store.subscribeTopic(moduleInstanceKey, () => {});
+        }
+      }
+
+      return moduleInstanceKey;
+    });
+
+    return { store, topics };
+  };
+
+  const makeAccepted = (topics: ReadonlyArray<ModuleInstanceKey>, tickSeq: number): RuntimeStorePendingDrain => ({
+    modules: new Map<ModuleInstanceKey, RuntimeStoreModuleCommit>(
+      topics.map((topicKey, index) => [
+        topicKey,
+        {
+          moduleId: `PerfRuntimeStoreCommitProxy.M${index}`,
+          instanceId: "instance",
+          moduleInstanceKey: topicKey,
+          state: { value: tickSeq + index },
+          meta: {
+            txnSeq: tickSeq,
+            txnId: `txn-${tickSeq}-${index}`,
+            commitMode: "normal" as const,
+            priority: "normal" as const,
+            originKind: "trait-external-store",
+            originName: "value",
+          },
+          opSeq: index + 1,
+        },
+      ]),
+    ),
+    dirtyTopics: new Map(topics.map((topicKey) => [topicKey, "normal" as const])),
+  });
+
+  const bumpCase = makeStoreCase(false);
+  let tickSeq = 1;
+  const topicBumpTotalMs = measureMs(() => {
+    for (let i = 0; i < iterations; i += 1) {
+      bumpCase.store.commitTick({
+        tickSeq,
+        accepted: makeAccepted(bumpCase.topics, tickSeq),
+      });
+      tickSeq += 1;
+    }
+  });
+
+  const flattenCase = makeStoreCase(true);
+  tickSeq = 1;
+  let flattenedListeners = 0;
+  const snapshotFlattenTotalMs = measureMs(() => {
+    for (let i = 0; i < iterations; i += 1) {
+      const committed = flattenCase.store.commitTick({
+        tickSeq,
+        accepted: makeAccepted(flattenCase.topics, tickSeq),
+      });
+      flattenedListeners += committed.changedTopicListeners.length;
+      tickSeq += 1;
+    }
+  });
+
+  const fanoutCase = makeStoreCase(true);
+  tickSeq = 1;
+  let callbackCount = 0;
+  const callbackFanoutTotalMs = measureMs(() => {
+    for (let i = 0; i < iterations; i += 1) {
+      const committed = fanoutCase.store.commitTick({
+        tickSeq,
+        accepted: makeAccepted(fanoutCase.topics, tickSeq),
+      });
+      for (const listener of committed.changedTopicListeners) {
+        listener();
+        callbackCount += 1;
+      }
+      tickSeq += 1;
+    }
+  });
+
+  if (flattenedListeners === 0 || callbackCount === 0) {
+    throw new Error("runtimeStore proxy perf skeleton produced no listener fanout");
+  }
+
+  return {
+    phaseTopicBumpMs: topicBumpTotalMs / iterations,
+    phaseListenerSnapshotFlattenMs: Math.max(0, (snapshotFlattenTotalMs - topicBumpTotalMs) / iterations),
+    phaseListenerCallbackFanoutMs: Math.max(0, (callbackFanoutTotalMs - snapshotFlattenTotalMs) / iterations),
+  };
+};
+
+const makeTracingHostScheduler = () => {
+  const base = makeTestHostScheduler();
+  let firstMicrotaskScheduledAt: number | undefined;
+  let firstMicrotaskInvokedAt: number | undefined;
+
+  const scheduler = {
+    ...base,
+    scheduleMicrotask: (cb: () => void) => {
+      const scheduledAt = performance.now();
+      if (firstMicrotaskScheduledAt === undefined) {
+        firstMicrotaskScheduledAt = scheduledAt;
+      }
+      base.scheduleMicrotask(() => {
+        if (firstMicrotaskInvokedAt === undefined) {
+          firstMicrotaskInvokedAt = performance.now();
+        }
+        cb();
+      });
+    },
+  };
+
+  return {
+    scheduler,
+    base,
+    reset() {
+      firstMicrotaskScheduledAt = undefined;
+      firstMicrotaskInvokedAt = undefined;
+    },
+    read() {
+      return {
+        firstMicrotaskScheduledAt,
+        firstMicrotaskInvokedAt,
+      };
+    },
+  };
+};
+
+const runExternalStoreIngestProxyPhaseSample = (): Effect.Effect<ExternalStoreIngestProxyPhaseSample> =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const moduleCount = 4;
+      const StateSchema = Schema.Struct({ value: Schema.Number });
+      type State = Schema.Schema.Type<typeof StateSchema>;
+      const tracingHostScheduler = makeTracingHostScheduler();
+
+      const stores = Array.from({ length: moduleCount }, (_, index) => makeManualStore(index));
+      const modules = stores.map((entry, index) =>
+        Logix.Module.make(`ExternalStoreIngestProxyPerf.M${index}`, {
+          state: StateSchema,
+          actions: {},
+          traits: Logix.StateTrait.from(StateSchema)({
+            value: Logix.StateTrait.externalStore({ store: entry.store }),
+          }),
+        }),
+      );
+
+      const Root = Logix.Module.make("ExternalStoreIngestProxyPerf.Root", {
+        state: Schema.Void,
+        actions: {},
+      });
+
+      const runtime = Logix.Runtime.make(
+        Root.implement({
+          initial: undefined,
+          imports: modules.map((moduleDef, index) =>
+            moduleDef.implement({
+              initial: { value: index },
+              imports: [],
+              logics: [],
+            }).impl,
+          ),
+        }),
+        {
+          layer: testHostSchedulerLayer(tracingHostScheduler.scheduler as any),
+        },
+      );
+
+      yield* Effect.addFinalizer(() => Effect.promise(() => runtime.dispose()).pipe(Effect.orDie));
+
+      const moduleRuntimes = (yield* Effect.promise(() =>
+        runtime.runPromise(
+          Effect.all(
+            modules.map((moduleDef) => Effect.service(moduleDef.tag).pipe(Effect.orDie)),
+            { concurrency: "unbounded" },
+          ) as any,
+        ),
+      ).pipe(Effect.orDie)) as ReadonlyArray<Logix.ModuleRuntime<State, any>>;
+
+      const runtimeStore = Logix.InternalContracts.getRuntimeStore(runtime as any);
+      const mutableRuntimeStore = runtimeStore as any;
+      const originalCommitTick = mutableRuntimeStore.commitTick.bind(runtimeStore);
+      const originalCommitWithState = StateTransaction.commitWithState;
+      let firstCommitEnteredAt: number | undefined;
+      let lastCommitExitedAt: number | undefined;
+      let firstCommitWithStateStartedAt: number | undefined;
+      let lastCommitWithStateEndedAt: number | undefined;
+
+      mutableRuntimeStore.commitTick = ((args: {
+        readonly tickSeq: number;
+        readonly accepted: RuntimeStorePendingDrain;
+        readonly onListener?: (listener: () => void) => void;
+      }): ReturnType<typeof originalCommitTick> => {
+        const enteredAt = performance.now();
+        if (firstCommitEnteredAt === undefined) {
+          firstCommitEnteredAt = enteredAt;
+        }
+        const committed = originalCommitTick(args);
+        lastCommitExitedAt = performance.now();
+        return committed;
+      }) as typeof originalCommitTick;
+
+      const commitWithStateSpy = vi
+        .spyOn(StateTransaction, "commitWithState")
+        .mockImplementation(((ctx, stateRef) =>
+          Effect.gen(function* () {
+            const startedAt = performance.now();
+            if (firstCommitWithStateStartedAt === undefined) {
+              firstCommitWithStateStartedAt = startedAt;
+            }
+            const result = yield* originalCommitWithState(ctx as any, stateRef as any);
+            lastCommitWithStateEndedAt = performance.now();
+            return result;
+          })) as typeof StateTransaction.commitWithState);
+
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          commitWithStateSpy.mockRestore();
+        }),
+      );
+
+      yield* flushAllHostScheduler(tracingHostScheduler.base);
+      const baseTick = runtimeStore.getTickSeq();
+      tracingHostScheduler.reset();
+
+      const setStartedAt = performance.now();
+      stores.forEach((entry, index) => {
+        entry.set(100 + index);
+      });
+      const setFinishedAt = performance.now();
+
+      const readStateValue = (moduleRuntime: Logix.ModuleRuntime<State, any>): number => {
+        const state = runtimeStore.getModuleState(`${moduleRuntime.moduleId}::${moduleRuntime.instanceId}` as any) as State | undefined;
+        return state?.value ?? Number.NaN;
+      };
+
+      yield* waitUntil(
+        () =>
+          runtimeStore.getTickSeq() > baseTick &&
+          moduleRuntimes.every((moduleRuntime, index) => readStateValue(moduleRuntime) === 100 + index),
+        128,
+      );
+      yield* flushAllHostScheduler(tracingHostScheduler.base);
+      const committedAt = performance.now();
+
+      const tailStartedAt = performance.now();
+      const finalTick = runtimeStore.getTickSeq();
+      const finalValues = moduleRuntimes.map((moduleRuntime) => readStateValue(moduleRuntime));
+      const tailFinishedAt = performance.now();
+      const commitProxy = measureRuntimeStoreCommitProxyPhases();
+      const commitEnteredAt = firstCommitEnteredAt ?? committedAt;
+      const commitExitedAt = lastCommitExitedAt ?? commitEnteredAt;
+      const commitWithStateStartedAt = firstCommitWithStateStartedAt ?? commitEnteredAt;
+      const commitWithStateEndedAt = lastCommitWithStateEndedAt ?? commitWithStateStartedAt;
+      const { firstMicrotaskScheduledAt, firstMicrotaskInvokedAt } = tracingHostScheduler.read();
+      const microtaskScheduledAt = firstMicrotaskScheduledAt ?? commitWithStateEndedAt;
+      const microtaskInvokedAt = firstMicrotaskInvokedAt ?? microtaskScheduledAt;
+
+      const sample = {
+        phaseSetMs: setFinishedAt - setStartedAt,
+        phaseCommitMs: committedAt - setFinishedAt,
+        phaseCommitWithStateMs: Math.max(0, commitWithStateEndedAt - commitWithStateStartedAt),
+        phasePreStoreCommitMs: Math.max(0, commitWithStateStartedAt - setFinishedAt),
+        phaseStoreCommitInnerMs: Math.max(0, commitExitedAt - commitEnteredAt),
+        phasePostStoreCommitMs: Math.max(0, commitWithStateEndedAt - commitExitedAt),
+        phaseTickFlushLagMs: Math.max(0, commitEnteredAt - commitWithStateEndedAt),
+        phaseWaitForBatchOrEnqueueMs: Math.max(0, microtaskScheduledAt - commitWithStateEndedAt),
+        phaseYieldMicrotaskMs: Math.max(0, microtaskInvokedAt - microtaskScheduledAt),
+        phaseFlushBeforeCommitMs: Math.max(0, commitEnteredAt - microtaskInvokedAt),
+        phaseTailMs: tailFinishedAt - tailStartedAt,
+        phaseTopicBumpMs: commitProxy.phaseTopicBumpMs,
+        phaseListenerSnapshotFlattenMs: commitProxy.phaseListenerSnapshotFlattenMs,
+        phaseListenerCallbackFanoutMs: commitProxy.phaseListenerCallbackFanoutMs,
+        tickDelta: finalTick - baseTick,
+        finalValues,
+      } satisfies ExternalStoreIngestProxyPhaseSample;
+
+      console.info("PERF_EXTERNAL_STORE_INGEST_PROXY", JSON.stringify(sample));
+
+      return sample;
+    }),
+  );
 
 describe("StateTrait.externalStore runtime semantics", () => {
   it.effect(
@@ -246,6 +588,60 @@ describe("StateTrait.externalStore runtime semantics", () => {
         expect(after.value).toBe(100);
         expect(commits).toEqual([100]);
       })
+  );
+
+  it.effect("perf skeleton: externalStore ingest proxy phases", () =>
+    Effect.gen(function* () {
+      const sample = yield* runExternalStoreIngestProxyPhaseSample();
+
+      expect(sample.phaseSetMs).toBeGreaterThanOrEqual(0);
+      expect(sample.phaseCommitMs).toBeGreaterThanOrEqual(0);
+      expect(sample.phaseCommitWithStateMs).toBeGreaterThanOrEqual(0);
+      expect(sample.phasePreStoreCommitMs).toBeGreaterThanOrEqual(0);
+      expect(sample.phaseStoreCommitInnerMs).toBeGreaterThanOrEqual(0);
+      expect(sample.phasePostStoreCommitMs).toBeGreaterThanOrEqual(0);
+      expect(sample.phaseTickFlushLagMs).toBeGreaterThanOrEqual(0);
+      expect(sample.phaseWaitForBatchOrEnqueueMs).toBeGreaterThanOrEqual(0);
+      expect(sample.phaseYieldMicrotaskMs).toBeGreaterThanOrEqual(0);
+      expect(sample.phaseFlushBeforeCommitMs).toBeGreaterThanOrEqual(0);
+      expect(sample.phaseTailMs).toBeGreaterThanOrEqual(0);
+      expect(sample.phaseTopicBumpMs).toBeGreaterThanOrEqual(0);
+      expect(sample.phaseListenerSnapshotFlattenMs).toBeGreaterThanOrEqual(0);
+      expect(sample.phaseListenerCallbackFanoutMs).toBeGreaterThanOrEqual(0);
+      expect(sample.tickDelta).toBeGreaterThanOrEqual(1);
+      expect(sample.finalValues.every((value, index) => value === 100 + index)).toBe(true);
+    })
+  );
+
+  it.effect("committed transaction patches stay stable across later transactions", () =>
+    Effect.gen(function* () {
+      type State = { readonly value: number };
+
+      const ctx = StateTransaction.makeContext<State>({
+        instrumentation: "full",
+      });
+      const ref = yield* SubscriptionRef.make<State>({ value: 0 });
+
+      StateTransaction.beginTransaction(ctx, { kind: "perf", name: "first" }, { value: 0 });
+      StateTransaction.updateDraft(ctx, { value: 1 });
+      StateTransaction.recordPatch(ctx, "value", "reducer", 0, 1);
+      const firstTxn = yield* StateTransaction.commit(ctx, ref);
+
+      expect(firstTxn?.patches).toHaveLength(1);
+      const firstPatch = firstTxn?.patches[0];
+
+      StateTransaction.beginTransaction(ctx, { kind: "perf", name: "second" }, { value: 1 });
+      StateTransaction.updateDraft(ctx, { value: 2 });
+      StateTransaction.recordPatch(ctx, "value", "reducer", 1, 2);
+      const secondTxn = yield* StateTransaction.commit(ctx, ref);
+
+      expect(secondTxn?.patches).toHaveLength(1);
+      expect(firstTxn?.patches).toHaveLength(1);
+      expect(firstTxn?.patches[0]).toBe(firstPatch);
+      expect(firstTxn?.patches[0]).toMatchObject({ from: 0, to: 1 });
+      expect(secondTxn?.patches[0]).toMatchObject({ from: 1, to: 2 });
+      expect(firstTxn?.patches).not.toBe(secondTxn?.patches);
+    })
   );
 
   it.effect("getSnapshot throw fuses the trait (no further writebacks)", () => {

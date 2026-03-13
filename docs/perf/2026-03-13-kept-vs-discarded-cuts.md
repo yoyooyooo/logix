@@ -31,6 +31,26 @@
 - 把 `applyActionStateWritebacks` 从“每个 handler 单独 `readState + setStateInternal/updateDraft`”
 - 改成“单次 dispatch 内按顺序折叠后统一提交”
 
+### F-1 · `StateTransaction` commit prep fastpath
+
+- 结论：保留
+- 文件：`packages/logix-core/src/internal/runtime/core/StateTransaction.ts`
+- 关键记录：`docs/perf/2026-03-13-f1-statetransaction-commit-prep-fastpath.md`
+
+保留原因：
+- 这刀命中了 `externalStore.ingest.tickNotify` 的提交前纯分配成本
+- 切刀前，同口径样本里：
+  - `phaseCommitMs≈5.45ms`
+  - `phasePreStoreCommitMs≈5.31ms`
+- 切刀后，`phasePreStoreCommitMs` 下探到约：
+  - `5.04ms`
+  - `4.38ms`
+- 同时 `commitTick` 内部继续保持亚毫秒级
+- 当前可以把剩余主税点继续收窄到 `tickFlushLag`
+
+做法摘要：
+- 去掉 `buildCommittedTransaction(...)` 里对 `patches.slice()` / `Array.from(dirtyPathIds)` 的无条件分配，改为 handoff + snapshot 维护
+
 ## 废弃刀
 
 ### D-1 · `externalStore` single-field fast path
@@ -58,6 +78,30 @@
 - `256` 仅小幅改善
 - `512/full` 变差
 - 仍然没形成稳定全域收益
+
+### D-3 · `externalStore` burst writeback batching
+
+- 结论：废弃
+- 分支：`agent/effect-v4-external-store-burst-batch`
+- 文件：`packages/logix-core/src/internal/state-trait/external-store.ts`
+- 关键记录：`docs/perf/2026-03-13-d3-external-store-burst-batching-failed.md`
+
+废弃原因：
+- 邻近 tests 和 `typecheck:test` 虽然通过
+- browser targeted perf 因环境阻塞未拿到 `256/512` 结果
+- 不满足“稳定打到 256/512”这个保留标准
+- 当前只能按 evidence-only 失败线收口
+
+### G-1 · `TickScheduler` flush-before-commit fast path
+
+- 结论：废弃
+- 文件：`packages/logix-core/src/internal/runtime/core/TickScheduler.ts`
+- 关键记录：`docs/perf/2026-03-13-g1-tickscheduler-flush-before-commit-failed.md`
+
+废弃原因：
+- node-only 补证里一度出现 `phaseFlushBeforeCommitMs≈1.08ms`
+- 主会话复跑回到 `phaseFlushBeforeCommitMs≈1.92ms`
+- 收益不稳，不适合作为主线保留刀
 
 ### C-2 · `react.bootResolve.sync` config reload skip
 
