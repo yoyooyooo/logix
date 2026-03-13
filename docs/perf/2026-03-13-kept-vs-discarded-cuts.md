@@ -59,6 +59,21 @@
 - `512/full` 变差
 - 仍然没形成稳定全域收益
 
+### C-2 · `react.bootResolve.sync` config reload skip
+
+- 结论：废弃
+- 分支：`agent/effect-v4-bootresolve-sync-tax`
+- 文件：`packages/logix-react/src/internal/provider/RuntimeProvider.tsx`
+- 关键证据：
+  - `specs/103-effect-v4-forward-cutover/perf/diff.local.quick.bootresolve-sync-tax.config-only.json`
+  - `specs/103-effect-v4-forward-cutover/perf/diff.local.quick.bootresolve-sync-tax.config-only.r2.json`
+
+废弃原因：
+- 第一轮 `sync` 切片有改善，但第二轮没有稳定复现
+- `sync + auto + microtask` 在 `r2` 直接反向
+- `suspend` 多个切片出现分布漂移
+- 不符合“稳定净收益”保留标准
+
 ### E-1 · `watchers` capture retry
 
 - 结论：不保留为主线性能刀
