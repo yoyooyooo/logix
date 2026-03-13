@@ -42,6 +42,7 @@
 - [x] R-1：`txnLanes` backlog policy split（历史 runtime 主线，已由 `S-10` native-anchor benchmark cut 收口；不再继续 queue-side runtime cut）。
   - 这里只保留 `2026-03-06` 的失败/checkpoint 锚点：`docs/perf/2026-03-06-r1-txn-lanes-startup-phase-checkpoint.md`、`docs/perf/2026-03-06-r1-txn-lanes-handoff-lite-failed.md`、`docs/perf/2026-03-06-r1-txn-lanes-phase-split-failed.md`、`docs/perf/2026-03-06-r1-txn-lanes-urgent-aware-v3-failed.md`、`docs/perf/2026-03-06-r1-txn-lanes-invoke-window-failed.md`。
   - 正式收口记录：`docs/perf/2026-03-06-s10-txn-lanes-native-anchor.md`。
+- [x] U-1：`TickScheduler.scheduleTick` immediate start，`externalStore.ingest.tickNotify` 的 absolute/relative budgets 都通过到 `watchers=512`；记录见 `docs/perf/2026-03-14-u1-tickscheduler-start-immediately.md`。
 
 ## 1. 目标状态（一次性收敛）
 
@@ -59,7 +60,7 @@
 裁决：
 1. current-head 已无默认 runtime blocker。`S-11` 在独立 worktree 对 remaining browser blocker 队列做 real probe 后，得到 `next_blocker: none`。
 2. 已由 benchmark 纠偏关闭：`txnLanes.urgentBacklog`。`S-10` 把 suite 改成 `nativeCapture -> MutationObserver DOM stable` 后，`mode=default/off` 的 `urgent.p95<=50ms` 都稳定通过到 `steps=2000`；`S-11` 进一步确认它不应继续留在默认 blocker probe 队列里。
-3. 已完成 residual audit 并关闭：`externalStore.ingest.tickNotify / full-off`。clean targeted audit 已证明它是 residual/noise，且 `S-11` real probe 再次通过。
+3. `externalStore.ingest.tickNotify` 已由 `U-1` 正式收口：absolute/relative budgets 都通过到 `watchers=512`。
 4. 证据候选：`watchers.clickToPaint`。它仍更像 suite 语义问题，不再优先往 runtime 继续塞 watcher 优化。
 
 当前路由裁决：
@@ -167,6 +168,7 @@ TraitLifecycle.scopedValidate($, {
   - 若 future evidence 继续重开这条线，先重做 browser compare，不再默认回退 `B-1`。
 - [x] `2026-03-14` 失败复核：`T-1 txn-phase default gate` 已验证只改善局部 `full`，无法收口绝对预算，记录见 `docs/perf/2026-03-14-t1-txn-phase-gate-failed.md`。
   - 裁决：不要继续叠 `txn-phase` gate tweak。
+- [x] `2026-03-14` 保留刀：`U-1 scheduleTick immediate start` 已直接收口 `externalStore` 主债，记录见 `docs/perf/2026-03-14-u1-tickscheduler-start-immediately.md`。
 
 ### Wave C（P1）：Ref.list 自动增量
 

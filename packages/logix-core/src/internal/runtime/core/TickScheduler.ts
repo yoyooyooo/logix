@@ -477,7 +477,7 @@ export const makeTickScheduler = (args: {
               microtaskChainDepth = 0
             }
           }
-        }), TaskRunner.inSyncTransactionFiber, false).pipe(Effect.forkDetach)
+        }), TaskRunner.inSyncTransactionFiber, false).pipe(Effect.forkDetach({ startImmediately: true }))
     })
 
   const flushTick = (schedule: TickSchedule): Effect.Effect<{ stable: boolean; degradeReason?: TickDegradeReason }, never, never> =>

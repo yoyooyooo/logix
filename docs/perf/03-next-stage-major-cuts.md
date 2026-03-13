@@ -35,6 +35,7 @@
 - [x] R-1：`txnLanes` backlog policy split（历史 runtime 主线，已由 `S-10` native-anchor benchmark cut 收口；不再继续 queue-side runtime cut）。
   - 保留 `2026-03-06` 的失败/checkpoint 锚点：`docs/perf/2026-03-06-r1-txn-lanes-startup-phase-checkpoint.md`、`docs/perf/2026-03-06-r1-txn-lanes-handoff-lite-failed.md`、`docs/perf/2026-03-06-r1-txn-lanes-phase-split-failed.md`、`docs/perf/2026-03-06-r1-txn-lanes-urgent-aware-v3-failed.md`、`docs/perf/2026-03-06-r1-txn-lanes-invoke-window-failed.md`。
   - 正式收口记录：`docs/perf/2026-03-06-s10-txn-lanes-native-anchor.md`。
+- [x] U-1：`TickScheduler.scheduleTick` immediate start（`forkDetach({ startImmediately: true })`），把 `externalStore.ingest.tickNotify` 的 `p95<=3ms` 与 soak `full/off<=1.25` 一起打穿到 `watchers=512`。
 
 
 ## Current-Head 裁决（2026-03-06，含 `S-11` blocker probe 回写）
@@ -65,11 +66,11 @@
 当前不建议先做：
 - `watchers`：先修 suite 语义，不再继续往 runtime 里塞 watcher 优化。
 - `converge`：先修 gate 表达，把 `notApplicable` 从失败视图剥离。
-- `externalStore`：`S-1` 已按 residual/noise 关闭；除非后续出现新的 clean/comparable 连续复现证据，否则不要重开。
-  - `2026-03-14` 补充：`D-4 raw direct writeback fallback` 已失败，记录见 `docs/perf/2026-03-14-d4-external-store-raw-direct-failed.md`。
-  - 当前不要再继续做 raw path 回退或 coordinator tweak；若要继续重开 `externalStore`，下一候选应转到 `ModuleRuntime.transaction.ts` 的事务相位采样税。
-  - `2026-03-14` 再补充：`T-1 txn-phase default gate` 也已失败，记录见 `docs/perf/2026-03-14-t1-txn-phase-gate-failed.md`。
-  - 当前不要继续叠 `txn-phase` gate tweak；这条线需要重新做 fresh browser compare 后再选下一刀。
+- `externalStore`：已由 `U-1` 收口。
+  - `2026-03-14` 前置失败试探仍保留为负样本：
+    - `docs/perf/2026-03-14-d4-external-store-raw-direct-failed.md`
+    - `docs/perf/2026-03-14-t1-txn-phase-gate-failed.md`
+  - 当前不要再重开这条线，除非未来出现新的 browser blocker 证据。
 
 ## A 刀（优先级 P0）：full 诊断懒构造
 

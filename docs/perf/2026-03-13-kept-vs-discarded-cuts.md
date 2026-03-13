@@ -51,6 +51,20 @@
 做法摘要：
 - 去掉 `buildCommittedTransaction(...)` 里对 `patches.slice()` / `Array.from(dirtyPathIds)` 的无条件分配，改为 handoff + snapshot 维护
 
+### U-1 · `TickScheduler` scheduleTick immediate start
+
+- 结论：保留
+- 文件：`packages/logix-core/src/internal/runtime/core/TickScheduler.ts`
+- 关键记录：`docs/perf/2026-03-14-u1-tickscheduler-start-immediately.md`
+
+保留原因：
+- 只改一处 detached fiber 启动方式，就把 `externalStore.ingest.tickNotify` 从 `~5ms ~ 6ms` 级压回 `~0.8ms ~ 1.1ms`
+- browser targeted 和 soak 都把 `p95<=3ms` 打穿到 `watchers=512`
+- soak 下 `full/off<=1.25` 也一起回到门内
+
+做法摘要：
+- 把 `scheduleTick()` 末尾的 `Effect.forkDetach()` 改成 `Effect.forkDetach({ startImmediately: true })`
+
 ## 废弃刀
 
 ### D-1 · `externalStore` single-field fast path
@@ -199,7 +213,10 @@
 ## 当前裁决
 
 当前阶段：
-- 真正建议保留并继续背书的，只有 `K-1`
+- 真正建议保留并继续背书的：
+  - `K-1`
+  - `F-1`
+  - `U-1`
 - 其它切刀要么是定位刀，要么是收益不稳的实验刀
 
 ## 后续使用方式
