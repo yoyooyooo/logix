@@ -16,6 +16,10 @@
 
 ## 当前主线（无存量用户）
 
+- `2026-03-13-main-vs-effect-v4-final-comparison.md`
+  - 当前阶段的分支级最终对比：明确提升 / 持平 / 小固定税 / 未收口项。
+- `2026-03-13-kept-vs-discarded-cuts.md`
+  - 当前阶段保留刀与废弃刀清单，只看“哪些该留、哪些不该留”时优先读它。
 - `05-forward-only-vnext-plan.md`
   - 在“零存量用户”前提下的唯一主线方案（破坏式收敛 + API vNext + 执行波次）。
 - `06-current-head-triage.md`
