@@ -1,6 +1,11 @@
 {
   "name": "@logixjs/form",
   "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yoyooyooo/logix",
+    "directory": "packages/logix-form"
+  },
   "license": "Apache-2.0",
   "description": "Form domain package for Logix v3 Trait system",
   "files": [

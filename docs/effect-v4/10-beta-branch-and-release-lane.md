@@ -26,7 +26,6 @@
 
 - 引入 Changesets 统一管理 public packages 版本。
 - 当前 Beta 线把以下公共 `@logixjs/*` 包视为同一发布列车：
-  - `@logixjs/cli`
   - `@logixjs/core`
   - `@logixjs/core-ng`
   - `@logixjs/devtools-react`
@@ -35,8 +34,9 @@
   - `@logixjs/i18n`
   - `@logixjs/query`
   - `@logixjs/react`
-  - `@logixjs/sandbox`
   - `@logixjs/test`
+- `@logixjs/cli` 暂不纳入首轮 Beta 列车，单独等待 npm 首发路径收口。
+- `@logixjs/sandbox` 暂不纳入首轮 Beta 列车，单独等待 kernel 产物链收口。
 - `speckit-kit` 不属于这条发布线，先从 Changesets 中忽略。
 - 当前 Beta 通道使用 npm `dist-tag=beta`。在 Effect v4 正式 GA 之前，不切到 `latest`。
 

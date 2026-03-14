@@ -1,6 +1,12 @@
 {
   "name": "@logixjs/cli",
   "version": "1.0.0",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yoyooyooo/logix",
+    "directory": "packages/logix-cli"
+  },
   "license": "Apache-2.0",
   "description": "Node-only Logix CLI toolbox (IR export / trialrun / gates)",
   "type": "module",

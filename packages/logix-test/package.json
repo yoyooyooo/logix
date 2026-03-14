@@ -1,6 +1,11 @@
 {
   "name": "@logixjs/test",
   "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yoyooyooo/logix",
+    "directory": "packages/logix-test"
+  },
   "license": "Apache-2.0",
   "description": "Testing utilities for Logix v3",
   "files": [

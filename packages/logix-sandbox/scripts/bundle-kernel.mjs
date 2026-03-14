@@ -7,12 +7,14 @@
  */
 
 import * as esbuild from 'esbuild'
+import { createRequire } from 'module'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { mkdirSync, copyFileSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const sandboxRoot = join(__dirname, '..')
+const requireFromSandbox = createRequire(join(sandboxRoot, 'package.json'))
 
 // The version is only used for the banner (the actual version is determined by pnpm overrides/lockfile).
 const EFFECT_VERSION = '3.19.13'
@@ -35,8 +37,6 @@ const effectCdnPlugin = {
 const sandboxRuntimeExternalPlugin = (options) => {
   const effectRoot = options.effectRoot ?? './effect.js'
   const effectSubpathPrefix = options.effectSubpathPrefix ?? './effect/'
-  const platformPath = options.platformPath ?? './@effect/platform.js'
-
   return {
     name: 'sandbox-runtime-external',
     setup(build) {
@@ -48,10 +48,6 @@ const sandboxRuntimeExternalPlugin = (options) => {
         return { path: `${effectSubpathPrefix}${subpath}.js`, external: true }
       })
 
-      build.onResolve({ filter: /^@effect\/platform$/ }, () => ({
-        path: platformPath,
-        external: true,
-      }))
     },
   }
 }
@@ -77,6 +73,8 @@ const canonicalizePascalSegment = (segment) => {
 const canonicalizeLogixCoreSubpath = (subpath) =>
   subpath.split('/').filter(Boolean).map(canonicalizePascalSegment).join('.')
 
+const resolvePackageJson = (specifier) => requireFromSandbox.resolve(`${specifier}/package.json`)
+
 async function bundle() {
   console.log('📦 开始为 Sandbox 打包内置运行环境...')
   console.log(`   effect 版本(预期): ${EFFECT_VERSION}`)
@@ -87,24 +85,15 @@ async function bundle() {
   mkdirSync(publicRoot, { recursive: true })
 
   // 1) Bundle effect (browser ESM, single-file entry).
-  const effectPkg = JSON.parse(readFileSync(join(sandboxRoot, 'node_modules/effect/package.json'), 'utf8'))
+  const effectPkg = JSON.parse(readFileSync(resolvePackageJson('effect'), 'utf8'))
   const effectSubpaths = Object.keys(effectPkg.exports ?? {})
     .filter((key) => key.startsWith('./') && !key.includes('*'))
     .map((key) => key.slice(2))
     .filter((key) => key.length > 0 && key !== 'package.json' && key !== '.index')
 
-  const platformPkg = JSON.parse(readFileSync(join(sandboxRoot, 'node_modules/@effect/platform/package.json'), 'utf8'))
-  const platformSubpaths = Object.keys(platformPkg.exports ?? {})
-    .filter((key) => key.startsWith('./') && !key.includes('*'))
-    .map((key) => key.slice(2))
-    .filter((key) => key.length > 0 && key !== 'package.json')
-
   const effectEntryPoints = Object.fromEntries([
     ['effect', 'effect'],
     ...effectSubpaths.map((subpath) => [`effect/${subpath}`, `effect/${subpath}`]),
-    // @effect/platform (root + all subpaths; other @effect/* can still go through the sandbox compiler esm.sh path)
-    ['@effect/platform', '@effect/platform'],
-    ...platformSubpaths.map((subpath) => [`@effect/platform/${subpath}`, `@effect/platform/${subpath}`]),
   ])
 
   await esbuild.build({
@@ -124,9 +113,7 @@ async function bundle() {
       js: `// effect runtime bundle for @logixjs/sandbox (v${EFFECT_VERSION})\n`,
     },
   })
-  console.log(
-    `✅ 打包完成: public/sandbox/effect.js (+ effect:${effectSubpaths.length} subpaths, @effect/platform:${platformSubpaths.length} subpaths)`,
-  )
+  console.log(`✅ 打包完成: public/sandbox/effect.js (+ effect:${effectSubpaths.length} subpaths)`)
 
   // 2) Bundle the @logixjs/core kernel (externalized to ./effect.js).
   const entry = join(sandboxRoot, '../logix-core/src/index.ts')
@@ -235,7 +222,6 @@ async function bundle() {
       sandboxRuntimeExternalPlugin({
         effectRoot: '../effect.js',
         effectSubpathPrefix: '../effect/',
-        platformPath: '../@effect/platform.js',
       }),
     ],
     banner: {

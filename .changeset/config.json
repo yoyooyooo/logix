@@ -4,7 +4,6 @@
   "commit": false,
   "fixed": [
     [
-      "@logixjs/cli",
       "@logixjs/core",
       "@logixjs/core-ng",
       "@logixjs/devtools-react",
@@ -13,7 +12,6 @@
       "@logixjs/i18n",
       "@logixjs/query",
       "@logixjs/react",
-      "@logixjs/sandbox",
       "@logixjs/test"
     ]
   ],
@@ -25,5 +23,5 @@
     "version": false,
     "tag": false
   },
-  "ignore": ["@logixjs/perf-evidence", "speckit-kit"]
+  "ignore": ["@logixjs/cli", "@logixjs/perf-evidence", "@logixjs/sandbox", "speckit-kit"]
 }

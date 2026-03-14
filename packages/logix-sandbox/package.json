@@ -1,6 +1,12 @@
 {
   "name": "@logixjs/sandbox",
   "version": "1.0.0",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yoyooyooo/logix",
+    "directory": "packages/logix-sandbox"
+  },
   "license": "Apache-2.0",
   "description": "Sandbox runtime for running Logix/Effect code in a browser Worker",
   "files": [
