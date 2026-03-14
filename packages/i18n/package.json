@@ -1,6 +1,6 @@
 {
   "name": "@logixjs/i18n",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "license": "Apache-2.0",
   "description": "I18n domain package for Logix",
   "files": [
