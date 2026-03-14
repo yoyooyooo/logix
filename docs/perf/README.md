@@ -34,6 +34,8 @@
   - `bootResolve` 的真正问题是 RAF 轮询地板。切到 `MutationObserver` 后，`sync/suspend` 都回到 `~1ms` 级。
 - `2026-03-14-c7-current-head-reprobe-clear.md`
   - 在 `U-1` 与 `C-6` 之后重新跑 `probe_next_blocker --json`，结果继续为 `clear`。
+- `2026-03-14-current-effective-conclusions.md`
+  - 当前阶段唯一应继续采信的 perf 结论汇总；优先读这页，再回看 dated 记录。
 - `2026-03-13-kept-vs-discarded-cuts.md`
   - 当前阶段保留刀与废弃刀清单，只看“哪些该留、哪些不该留”时优先读它。
 - `05-forward-only-vnext-plan.md`
