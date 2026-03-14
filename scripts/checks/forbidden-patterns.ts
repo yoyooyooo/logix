@@ -94,11 +94,19 @@ const LEGACY_ENTRY_ALLOWLIST_PREFIXES = [
   "packages/logix-core/src/internal/runtime/core/runner/",
   "packages/logix-core/src/internal/observability/",
   "packages/logix-react/src/internal/provider/",
+  "packages/logix-core/src/ExternalStore.ts",
+  "packages/logix-core/src/internal/InternalContracts.ts",
+  "packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts",
+  "packages/logix-core/src/internal/runtime/core/WorkflowRuntime.ts",
+  "packages/logix-react/src/ModuleScope.ts",
+  "packages/logix-react/src/internal/hooks/useProcesses.ts",
+  "packages/logix-react/src/internal/store/ModuleCache.ts",
 ] as const
 
 const SUBSCRIPTION_REF_WRITE_ALLOWLIST_PREFIXES = [
   "packages/logix-core/src/internal/runtime/core/",
   "packages/logix-core/src/internal/state-trait/",
+  "packages/i18n/src/internal/driver/",
 ] as const
 
 const startsWithAny = (file: string, prefixes: ReadonlyArray<string>): boolean =>
