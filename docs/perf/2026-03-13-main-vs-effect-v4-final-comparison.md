@@ -7,6 +7,15 @@
 - 对未收口项明确标为未定
 - broad self-run 与 direct compare 分开使用
 
+## 更新（2026-03-14）
+
+本页是 `2026-03-13` 阶段收口记录，后续有两条重要覆盖：
+
+1. `externalStore.ingest.tickNotify` 的“共同未收口绝对预算债”已被 `docs/perf/2026-03-14-u1-tickscheduler-start-immediately.md` 覆盖，当前不再成立。
+2. `react.bootResolve.sync` 的旧“小固定税”已被 `docs/perf/2026-03-14-c6-bootresolve-observer-ready.md` 覆盖。
+   - 旧 suite 主要吃了 RAF 轮询地板
+   - 当前应先视为 benchmark 语义问题，而不是 runtime 小税
+
 ## 结论摘要
 
 当前可以较有把握地说：

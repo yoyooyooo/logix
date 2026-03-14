@@ -182,6 +182,19 @@
 - `sync + explicit + microtask` 在 soak 里直接从 `p95 19.4ms` 变到 `23.4ms`
 - 不符合稳定净收益标准
 
+### C-6 · `react.bootResolve` observer-ready benchmark correction
+
+- 结论：不保留为主线性能刀
+- 文件：
+  - `packages/logix-react/test/browser/perf-boundaries/react-boot-resolve.test.tsx`
+  - `packages/logix-react/test/browser/perf-boundaries/react-boot-resolve.wait.ts`
+- 关键记录：`docs/perf/2026-03-14-c6-bootresolve-observer-ready.md`
+
+裁决原因：
+- 价值在于修正 benchmark 语义
+- 直接证明旧 `bootResolve.sync` 小税主要是 RAF 轮询地板
+- 这不是 runtime 提速刀，不计入主线 runtime 保留刀
+
 ### E-1 · `watchers` capture retry
 
 - 结论：不保留为主线性能刀

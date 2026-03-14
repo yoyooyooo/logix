@@ -47,6 +47,7 @@
 
 4. 剩余只保留架构候选。
 - `S-14` 已把 `watchers.clickToPaint` 的旧 `clickToHandler` 再拆成 `clickInvokeToNativeCapture + nativeCaptureToHandler`，并确认 dominant phase 是页面外 click 注入税；`S-2` 整条 benchmark 解释链已收口，不再是待排期候选。
+- `C-6` 已确认 `react.bootResolve.sync` 的旧“小固定税”主要来自 RAF 轮询地板；当前不再把它当作 runtime watchlist。
 - 架构候选：`R-2`，只有在出现新的产品级 SLA 或新的 native-anchor 证据时，才讨论 `TxnLanePolicy` API vNext。
 
 ## 四分法裁决

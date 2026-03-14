@@ -28,6 +28,7 @@
 当前判定补充（`2026-03-06 / S-14`）：
 - `probe_next_blocker` 在独立 worktree 的 real probe 已确认 remaining browser blocker queue clear。
 - 默认不再存在 runtime 主线；`S-2` 已由 `S-14` 关闭，当前只保留 `R-2` 架构/API 候选。
+- `2026-03-14 / C-6` 又确认：`react.bootResolve.sync` 的旧税点主要是 RAF 轮询地板，不再作为 runtime watchlist。
 
 ## D-3 执行协议（当前默认）
 
