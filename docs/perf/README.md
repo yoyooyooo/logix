@@ -32,6 +32,8 @@
   - `provider.gating` 里的 idle binding extra render 试探失败；现象存在，但去掉后没有形成稳定净收益。
 - `2026-03-14-c6-bootresolve-observer-ready.md`
   - `bootResolve` 的真正问题是 RAF 轮询地板。切到 `MutationObserver` 后，`sync/suspend` 都回到 `~1ms` 级。
+- `2026-03-14-c7-current-head-reprobe-clear.md`
+  - 在 `U-1` 与 `C-6` 之后重新跑 `probe_next_blocker --json`，结果继续为 `clear`。
 - `2026-03-13-kept-vs-discarded-cuts.md`
   - 当前阶段保留刀与废弃刀清单，只看“哪些该留、哪些不该留”时优先读它。
 - `05-forward-only-vnext-plan.md`
@@ -144,3 +146,5 @@
   - C-5：验证 `useLayerBinding(enabled=false)` 的 extra render 是否是主税点，结果为否。
 - `2026-03-14-c6-bootresolve-observer-ready.md`
   - C-6：把 `bootResolve` readiness 从 RAF 轮询改成 MutationObserver，确认此前的 `sync` 小税主要是测量伪影。
+- `2026-03-14-c7-current-head-reprobe-clear.md`
+  - C-7：重新跑 current-head blocker probe，确认当前仍无新的默认 runtime blocker。

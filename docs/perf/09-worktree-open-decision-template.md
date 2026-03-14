@@ -178,6 +178,19 @@
     1. current-head 再次出现新的 real probe failure
     2. 出现新的 clean/comparable native-anchor 证据或新的产品级 SLA
 
+## 6.1 当前实例（2026-03-14）
+
+- 证据：`docs/perf/2026-03-14-c7-current-head-reprobe-clear.md`
+- Trigger: `不成立`
+- Default Decision: `不开新的 perf worktree`
+- Override: `否`
+- If Not Open:
+  - 结论：`本轮不开新的 perf worktree`
+  - Watchlist only: `R-2`
+  - Reopen conditions:
+    1. `probe_next_blocker --json` 再次出现新的 `blocker`
+    2. 出现新的 clean/comparable native-anchor 证据或新的产品级 SLA
+
 ## 7. 与其它文档的关系
 
 - `06-current-head-triage.md`

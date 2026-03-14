@@ -19,6 +19,7 @@
 
 - `docs/perf/2026-03-06-s10-txn-lanes-native-anchor.md`
 - `docs/perf/2026-03-06-s11-post-s10-blocker-probe.md`
+- `docs/perf/2026-03-14-c7-current-head-reprobe-clear.md`
 - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.s10-txn-lanes-native-anchor.targeted.json`
 - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.s10-txn-lanes-native-anchor.recheck.targeted.json`
 - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.s10-txn-lanes-native-anchor.confirm.targeted.json`
@@ -48,6 +49,7 @@
 4. 剩余只保留架构候选。
 - `S-14` 已把 `watchers.clickToPaint` 的旧 `clickToHandler` 再拆成 `clickInvokeToNativeCapture + nativeCaptureToHandler`，并确认 dominant phase 是页面外 click 注入税；`S-2` 整条 benchmark 解释链已收口，不再是待排期候选。
 - `C-6` 已确认 `react.bootResolve.sync` 的旧“小固定税”主要来自 RAF 轮询地板；当前不再把它当作 runtime watchlist。
+- `C-7` 又在 current-head 上重新执行了 `probe_next_blocker --json`，结果继续是 `clear`。
 - 架构候选：`R-2`，只有在出现新的产品级 SLA 或新的 native-anchor 证据时，才讨论 `TxnLanePolicy` API vNext。
 
 ## 四分法裁决
@@ -116,3 +118,4 @@
 1. 先做 clean/comparable evidence audit，不要在没有新证据时重开新的 code cut。
 2. 只有在新的 native-anchor 证据再次显示页面内 `nativeCapture->handler` 存在稳定税点，或出现新的产品级 SLA 时，才重新讨论 `S-2` 重开或推进 `R-2`。
 3. 在没有新增证据之前，所有结论都以 docs/evidence-only 收口。
+4. `2026-03-14 / C-7` 已再次验证 `status=clear`；当前默认不再重开任何 perf 实施线。
