@@ -1,7 +1,6 @@
 {
   "name": "@logixjs/cli",
-  "version": "1.0.0",
-  "private": true,
+  "version": "1.0.1",
   "repository": {
     "type": "git",
     "url": "https://github.com/yoyooyooo/logix",
