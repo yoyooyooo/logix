@@ -56,6 +56,15 @@ describe('logix-cli integration (describe --json)', () => {
     expect(report.commands.some((command: any) => command.name === 'ir.export')).toBe(true)
     expect(report.commands.some((command: any) => command.name === 'describe')).toBe(true)
 
+    const unsupportedCommands = ['trialrun', 'contract-suite.run', 'spy.evidence', 'anchor.index', 'transform.module']
+    for (const name of unsupportedCommands) {
+      const command = report.commands.find((entry: any) => entry.name === name)
+      expect(command).toBeDefined()
+      expect(command.availability).toBe('unavailable')
+      expect(command.unavailableReasonCode).toBe('CLI_NOT_IMPLEMENTED')
+      expect(command.outputs).toEqual([])
+    }
+
     expect(report?.protocol?.commandResultSchemaRef).toContain('cli-command-result.schema.json')
     expect(report?.configVisibility?.profile).toBe('ci')
     expect(report?.configVisibility?.discovery?.found).toBe(true)
@@ -65,4 +74,3 @@ describe('logix-cli integration (describe --json)', () => {
     )
   })
 })
-

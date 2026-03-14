@@ -28,6 +28,8 @@ type CommandContractV1 = {
   readonly name: string
   readonly category: 'meta' | 'oracle' | 'gate' | 'write'
   readonly summary: string
+  readonly availability: 'available' | 'unavailable'
+  readonly unavailableReasonCode?: 'CLI_NOT_IMPLEMENTED'
   readonly options: ReadonlyArray<OptionContractV1>
   readonly outputs: ReadonlyArray<{
     readonly outputKey: string
@@ -88,11 +90,24 @@ const makeCommand = (
   exitCodes: [0, 1, 2],
 })
 
+const makeUnsupportedCommand = (
+  input: Omit<CommandContractV1, 'options' | 'exitCodes' | 'outputs' | 'availability' | 'unavailableReasonCode'> & {
+    readonly options?: ReadonlyArray<OptionContractV1>
+  },
+): CommandContractV1 =>
+  makeCommand({
+    ...input,
+    availability: 'unavailable',
+    unavailableReasonCode: 'CLI_NOT_IMPLEMENTED',
+    outputs: [],
+  })
+
 const COMMAND_CONTRACTS: ReadonlyArray<CommandContractV1> = [
   makeCommand({
     name: 'describe',
     category: 'meta',
     summary: '机器可读命令契约与配置可见性（仅支持 --json）',
+    availability: 'available',
     options: [{ name: '--json', type: 'boolean', required: true, default: true }],
     outputs: [{ outputKey: 'describeReport', kind: 'CliDescribeReport' }],
   }),
@@ -100,6 +115,7 @@ const COMMAND_CONTRACTS: ReadonlyArray<CommandContractV1> = [
     name: 'ir.export',
     category: 'oracle',
     summary: '导出控制面 IR（manifest/workflow surface）',
+    availability: 'available',
     options: [{ name: '--entry', type: 'string', required: true }],
     outputs: [
       { outputKey: 'controlSurfaceManifest', kind: 'ControlSurfaceManifest' },
@@ -110,6 +126,7 @@ const COMMAND_CONTRACTS: ReadonlyArray<CommandContractV1> = [
     name: 'ir.validate',
     category: 'gate',
     summary: '对导出工件做结构化门禁校验',
+    availability: 'available',
     options: [
       { name: '--in', type: 'string', required: false },
       { name: '--artifact', type: 'string', required: false },
@@ -120,13 +137,14 @@ const COMMAND_CONTRACTS: ReadonlyArray<CommandContractV1> = [
     name: 'ir.diff',
     category: 'gate',
     summary: '比较 before/after 工件差异并门禁化',
+    availability: 'available',
     options: [
       { name: '--before', type: 'string', required: true },
       { name: '--after', type: 'string', required: true },
     ],
     outputs: [{ outputKey: 'irDiffReport', kind: 'IrDiffReport' }],
   }),
-  makeCommand({
+  makeUnsupportedCommand({
     name: 'trialrun',
     category: 'oracle',
     summary: '受控试跑并输出 TrialRunReport',
@@ -138,12 +156,8 @@ const COMMAND_CONTRACTS: ReadonlyArray<CommandContractV1> = [
       { name: '--includeTrace', type: 'boolean', required: false, default: false },
       { name: '--config', type: 'kv', required: false, repeatable: true },
     ],
-    outputs: [
-      { outputKey: 'trialRunReport', kind: 'TrialRunReport' },
-      { outputKey: 'traceSlim', kind: 'EvidencePackage' },
-    ],
   }),
-  makeCommand({
+  makeUnsupportedCommand({
     name: 'contract-suite.run',
     category: 'gate',
     summary: '一键验收（trialrun + verdict/context-pack）',
@@ -164,17 +178,8 @@ const COMMAND_CONTRACTS: ReadonlyArray<CommandContractV1> = [
       { name: '--includeTrace', type: 'boolean', required: false, default: false },
       { name: '--config', type: 'kv', required: false, repeatable: true },
     ],
-    outputs: [
-      { outputKey: 'trialRunReport', kind: 'TrialRunReport' },
-      { outputKey: 'contractSuiteVerdict', kind: 'ContractSuiteVerdict' },
-      { outputKey: 'contractSuiteContextPack', kind: 'ContractSuiteContextPack' },
-      { outputKey: 'manifestDiff', kind: 'ManifestDiff' },
-      { outputKey: 'anchorPatchPlan', kind: 'PatchPlan' },
-      { outputKey: 'anchorAutofillReport', kind: 'AutofillReport' },
-      { outputKey: 'traceSlim', kind: 'EvidencePackage' },
-    ],
   }),
-  makeCommand({
+  makeUnsupportedCommand({
     name: 'spy.evidence',
     category: 'oracle',
     summary: '采集 $.use(Tag) 证据（不写回源码）',
@@ -184,19 +189,18 @@ const COMMAND_CONTRACTS: ReadonlyArray<CommandContractV1> = [
       { name: '--maxRawMode', type: 'integer', required: false },
       { name: '--timeout', type: 'integer', required: false },
     ],
-    outputs: [{ outputKey: 'spyEvidenceReport', kind: 'SpyEvidenceReport' }],
   }),
-  makeCommand({
+  makeUnsupportedCommand({
     name: 'anchor.index',
     category: 'oracle',
     summary: '扫描仓库并构建 AnchorIndex',
     options: [{ name: '--repoRoot', type: 'string', required: false, default: '.' }],
-    outputs: [{ outputKey: 'anchorIndex', kind: 'AnchorIndex' }],
   }),
   makeCommand({
     name: 'anchor.autofill',
     category: 'write',
     summary: '补齐锚点（默认 report-only）',
+    availability: 'available',
     options: [{ name: '--repoRoot', type: 'string', required: false, default: '.' }],
     outputs: [
       { outputKey: 'patchPlan', kind: 'PatchPlan' },
@@ -204,18 +208,13 @@ const COMMAND_CONTRACTS: ReadonlyArray<CommandContractV1> = [
       { outputKey: 'writeBackResult', kind: 'WriteBackResult' },
     ],
   }),
-  makeCommand({
+  makeUnsupportedCommand({
     name: 'transform.module',
     category: 'write',
     summary: '按 delta 批量变更 module（默认 report-only）',
     options: [
       { name: '--repoRoot', type: 'string', required: false, default: '.' },
       { name: '--ops', type: 'string', required: true },
-    ],
-    outputs: [
-      { outputKey: 'patchPlan', kind: 'PatchPlan' },
-      { outputKey: 'transformReport', kind: 'TransformReport' },
-      { outputKey: 'writeBackResult', kind: 'WriteBackResult' },
     ],
   }),
 ]
@@ -297,4 +296,3 @@ export const runDescribe = (
       )),
   )
 }
-
