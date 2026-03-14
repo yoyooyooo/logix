@@ -38,8 +38,11 @@
   - `@logixjs/sandbox`
   - `@logixjs/test`
 - `speckit-kit` 不属于这条发布线，先从 Changesets 中忽略。
-- 当前 Beta 通道使用 npm `dist-tag=beta`。在 Effect v4 正式 GA 之前，不切到 `latest`。
-- 新包首发时，npm 可能会把 `latest` 与本次发布版本一起落到同一版本号；`@logixjs/cli` 首发后的当前状态就是 `latest=1.0.1`、`beta=1.0.1`。
+- 当前 Beta 通道使用两层语义：
+  - 版本号本身带 prerelease 后缀，例如 `1.0.2-beta.0`
+  - npm `dist-tag` 仍使用 `beta`
+- 在 Effect v4 正式 GA 之前，不切到 `latest`。
+- 历史上已经发出去的首轮 Beta 里，`@logixjs/cli` 发生过“新包首发时 `latest` 与 `beta` 都落到 `1.0.1`”的情况；从切入 prerelease mode 之后，后续 Beta 将改用带后缀的版本号继续演进。
 
 ## 发布流程
 
@@ -52,6 +55,16 @@
    - 复跑 release lane 校验
    - 复跑 browser smoke
    - 执行 `changeset publish --tag beta`
+
+## Prerelease Mode
+
+- `effect-v4` 当前已进入 Changesets 的 `pre enter beta` 模式。
+- 这意味着后续版本 PR 会把公开包版本从当前稳定数字基线继续推进为 prerelease 版本：
+  - 例如 `1.0.1` 之后的下一轮 Beta 会变成 `1.0.2-beta.0`
+- 这样做的目的：
+  - 让版本号本身表达 Beta 语义
+  - 仍保留 npm `beta` tag 作为安装入口
+  - 避免“版本号看起来像正式版，只靠 dist-tag 区分”的歧义
 
 ## 发布认证机制
 
