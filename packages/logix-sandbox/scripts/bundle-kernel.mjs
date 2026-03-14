@@ -89,7 +89,7 @@ async function bundle() {
   const effectSubpaths = Object.keys(effectPkg.exports ?? {})
     .filter((key) => key.startsWith('./') && !key.includes('*'))
     .map((key) => key.slice(2))
-    .filter((key) => key.length > 0 && key !== 'package.json' && key !== '.index')
+    .filter((key) => key.length > 0 && key !== 'package.json' && key !== '.index' && key !== 'testing')
 
   const effectEntryPoints = Object.fromEntries([
     ['effect', 'effect'],
