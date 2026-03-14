@@ -1,5 +1,11 @@
 # @logixjs/sandbox
 
+## 1.0.1
+
+### Patch Changes
+
+- b847c4a: Restore `@logixjs/sandbox` to the Effect v4 beta release lane after fixing the kernel bundle path for browser publishing.
+
 ## 1.0.0
 
 ### Minor Changes
