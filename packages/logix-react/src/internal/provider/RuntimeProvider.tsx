@@ -66,6 +66,8 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
 }) => {
   const parent = useContext(RuntimeContext)
   const baseRuntime = useRuntimeResolution(runtime, parent)
+  const providerStartedAtRef = React.useRef(performance.now())
+  const didReportProviderGatingRef = React.useRef(false)
   const resolvedPolicy = useMemo(
     () =>
       resolveRuntimeProviderPolicy({
@@ -561,6 +563,46 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
   }, [resolvedPolicy.mode, deferReady])
 
   const isReady = isTickServicesReady && isLayerReady && isConfigReady && (resolvedPolicy.mode !== 'defer' || deferReady || syncWarmPreloadReady)
+
+  useEffect(() => {
+    if (!isReady) {
+      return
+    }
+    if (didReportProviderGatingRef.current) {
+      return
+    }
+    let diagnosticsLevel: Logix.Debug.DiagnosticsLevel = 'off'
+    try {
+      diagnosticsLevel = runtimeWithBindings.runSync(
+        Effect.service(Logix.Debug.internal.currentDiagnosticsLevel).pipe(Effect.orDie),
+      )
+    } catch {
+      diagnosticsLevel = isDevEnv() ? 'light' : 'off'
+    }
+    if (diagnosticsLevel === 'off') {
+      return
+    }
+    didReportProviderGatingRef.current = true
+
+    const durationMs = Math.round((performance.now() - providerStartedAtRef.current) * 100) / 100
+
+    void runtimeWithBindings
+      .runPromise(
+        Logix.Debug.record({
+          type: 'trace:react.provider.gating',
+          data: {
+            event: 'ready',
+            policyMode: resolvedPolicy.mode,
+            durationMs,
+            configLoadMode: configState.loadMode,
+            syncOverBudget: Boolean(configState.syncOverBudget),
+            syncDurationMs:
+              configState.syncDurationMs !== undefined ? Math.round(configState.syncDurationMs * 100) / 100 : undefined,
+          },
+        }) as unknown as Effect.Effect<void, never, never>,
+      )
+      .catch(() => {})
+  }, [configState.loadMode, configState.syncDurationMs, configState.syncOverBudget, isReady, resolvedPolicy.mode, runtimeWithBindings])
 
   if (!isReady) {
     const blockersList = [

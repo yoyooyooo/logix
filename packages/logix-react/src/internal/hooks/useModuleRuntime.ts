@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useContext } from 'react'
+import { useEffect, useMemo, useContext, useRef } from 'react'
 import * as Logix from '@logixjs/core'
 import { Effect, Scope } from 'effect'
 import { useRuntime } from './useRuntime.js'
@@ -38,6 +38,14 @@ export function useModuleRuntime<H extends ReactModuleHandle>(
 export function useModuleRuntime(handle: ReactModuleHandle): Logix.ModuleRuntime<any, any> {
   const runtime = useRuntime()
   const runtimeContext = useContext(RuntimeContext)
+  const moduleTagResolveTraceRef = useRef<
+    | {
+        readonly tokenId: string
+        readonly durationMs: number
+        readonly cacheMode: 'sync' | 'suspend'
+      }
+    | undefined
+  >(undefined)
   if (!runtimeContext) {
     throw new RuntimeProviderNotFoundError('useModuleRuntime')
   }
@@ -65,11 +73,12 @@ export function useModuleRuntime(handle: ReactModuleHandle): Logix.ModuleRuntime
     const key = preloadKey ?? `tag:${tokenId}`
 
     const mode = runtimeContext.policy.moduleTagMode
+    const startedAtMs = performance.now()
 
     const factory: ModuleCacheFactory = (scope: Scope.Scope) =>
       Scope.provide(scope)(Effect.service(tag).pipe(Effect.orDie))
 
-    return (
+    const resolvedRuntime = (
       mode === 'suspend'
         ? cache.read(key, factory, undefined, tokenId, {
             entrypoint: 'react.useModuleRuntime',
@@ -83,17 +92,32 @@ export function useModuleRuntime(handle: ReactModuleHandle): Logix.ModuleRuntime
             warnSyncBlockingThresholdMs: 5,
           })
     ) as Logix.ModuleRuntime<any, any>
+
+    moduleTagResolveTraceRef.current = {
+      tokenId,
+      durationMs: Math.round((performance.now() - startedAtMs) * 100) / 100,
+      cacheMode: mode,
+    }
+
+    return resolvedRuntime
   }, [cache, runtimeContext.policy, handle])
 
   useEffect(() => {
     if (!isTagHandle) {
       return
     }
-    if (!isDevEnv() && !Logix.Debug.isDevtoolsEnabled()) {
+    let diagnosticsLevel: Logix.Debug.DiagnosticsLevel = 'off'
+    try {
+      diagnosticsLevel = runtime.runSync(Effect.service(Logix.Debug.internal.currentDiagnosticsLevel).pipe(Effect.orDie))
+    } catch {
+      diagnosticsLevel = isDevEnv() ? 'light' : 'off'
+    }
+    if (diagnosticsLevel === 'off') {
       return
     }
 
     const tokenId = (handle as any)?.id ?? 'ModuleTag'
+    const trace = moduleTagResolveTraceRef.current
 
     const effect = Logix.Debug.record({
       type: 'trace:react.moduleTag.resolve',
@@ -103,6 +127,8 @@ export function useModuleRuntime(handle: ReactModuleHandle): Logix.ModuleRuntime
         mode: runtimeContext.policy.moduleTagMode,
         tokenId,
         yieldStrategy: runtimeContext.policy.yield.strategy,
+        durationMs: trace?.durationMs,
+        cacheMode: trace?.cacheMode ?? runtimeContext.policy.moduleTagMode,
       },
     })
 
