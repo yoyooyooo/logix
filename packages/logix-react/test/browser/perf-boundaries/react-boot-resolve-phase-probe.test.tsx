@@ -57,8 +57,10 @@ const waitForEvent = async (
 }
 
 type PhaseSample = {
-  readonly providerGatingMs: number
+  readonly providerReadyMs: number
+  readonly providerEffectDelayMs: number
   readonly configSnapshotSyncMs: number
+  readonly moduleImplResolveMs: number
   readonly implInitMs: number
   readonly tagInitMs: number
   readonly tagResolveMs: number
@@ -116,6 +118,11 @@ const collectPhaseSample = async (params: {
       (event) => event.type === 'trace:react.runtime.config.snapshot' && (event as any).data?.mode === 'sync',
       1_000,
     )) as any
+    const moduleImplResolve = (await waitForEvent(
+      events,
+      (event) => event.type === 'trace:react.moduleImpl.resolve',
+      1_000,
+    )) as any
     const implInit = (await waitForEvent(
       events,
       (event) => event.type === 'trace:react.module.init' && event.moduleId === ImplModule.id,
@@ -133,8 +140,10 @@ const collectPhaseSample = async (params: {
     )) as any
 
     return {
-      providerGatingMs: providerGating.data.durationMs,
+      providerReadyMs: providerGating.data.durationMs,
+      providerEffectDelayMs: providerGating.data.effectDelayMs,
       configSnapshotSyncMs: configSnapshot.data.durationMs,
+      moduleImplResolveMs: moduleImplResolve.data.durationMs,
       implInitMs: implInit.data.durationMs,
       tagInitMs: tagInit.data.durationMs,
       tagResolveMs: tagResolve.data.durationMs,
@@ -172,8 +181,10 @@ test(
 
         const row = {
           ...point,
-          providerGatingMs: pick('providerGatingMs'),
+          providerReadyMs: pick('providerReadyMs'),
+          providerEffectDelayMs: pick('providerEffectDelayMs'),
           configSnapshotSyncMs: pick('configSnapshotSyncMs'),
+          moduleImplResolveMs: pick('moduleImplResolveMs'),
           implInitMs: pick('implInitMs'),
           tagInitMs: pick('tagInitMs'),
           tagResolveMs: pick('tagResolveMs'),
@@ -181,8 +192,10 @@ test(
           bootToTagReadyMs: pick('bootToTagReadyMs'),
         }
 
-        expect(row.providerGatingMs).toBeGreaterThanOrEqual(0)
+        expect(row.providerReadyMs).toBeGreaterThanOrEqual(0)
+        expect(row.providerEffectDelayMs).toBeGreaterThanOrEqual(0)
         expect(row.configSnapshotSyncMs).toBeGreaterThanOrEqual(0)
+        expect(row.moduleImplResolveMs).toBeGreaterThanOrEqual(0)
         expect(row.implInitMs).toBeGreaterThanOrEqual(0)
         expect(row.tagInitMs).toBeGreaterThanOrEqual(0)
         expect(row.tagResolveMs).toBeGreaterThanOrEqual(0)

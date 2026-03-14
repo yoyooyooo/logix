@@ -71,6 +71,7 @@ describe('RuntimeProvider bootResolve phase traces', () => {
       const configSnapshot = events.find(
         (event) => event.type === 'trace:react.runtime.config.snapshot' && (event as any).data?.mode === 'sync',
       ) as any
+      const moduleImplResolve = events.find((event) => event.type === 'trace:react.moduleImpl.resolve') as any
       const tagResolve = events.find((event) => event.type === 'trace:react.moduleTag.resolve') as any
       const implInit = events.find(
         (event) => event.type === 'trace:react.module.init' && event.moduleId === ImplModule.id,
@@ -80,10 +81,14 @@ describe('RuntimeProvider bootResolve phase traces', () => {
       ) as any
 
       expect(typeof providerGating?.data?.durationMs).toBe('number')
+      expect(typeof providerGating?.data?.effectDelayMs).toBe('number')
       expect(providerGating?.data?.policyMode).toBe('sync')
 
       expect(typeof configSnapshot?.data?.durationMs).toBe('number')
       expect(configSnapshot?.data?.mode).toBe('sync')
+
+      expect(typeof moduleImplResolve?.data?.durationMs).toBe('number')
+      expect(moduleImplResolve?.data?.cacheMode).toBe('sync')
 
       expect(typeof tagResolve?.data?.durationMs).toBe('number')
       expect(tagResolve?.data?.cacheMode).toBe('sync')

@@ -30,6 +30,8 @@
   - `bootResolve.sync` 的 phase evidence 已补齐，当前最可信主税点收敛到 `provider.gating`。
 - `2026-03-14-c5-provider-gating-idle-binding-failed.md`
   - `provider.gating` 里的 idle binding extra render 试探失败；现象存在，但去掉后没有形成稳定净收益。
+- `2026-03-14-c6-bootresolve-observer-ready.md`
+  - `bootResolve` 的真正问题是 RAF 轮询地板。切到 `MutationObserver` 后，`sync/suspend` 都回到 `~1ms` 级。
 - `2026-03-13-kept-vs-discarded-cuts.md`
   - 当前阶段保留刀与废弃刀清单，只看“哪些该留、哪些不该留”时优先读它。
 - `05-forward-only-vnext-plan.md`
@@ -140,3 +142,5 @@
   - C-4：补 `bootResolve.sync` phase evidence。当前已确认 `provider.gating` 是最值得继续切的下一段。
 - `2026-03-14-c5-provider-gating-idle-binding-failed.md`
   - C-5：验证 `useLayerBinding(enabled=false)` 的 extra render 是否是主税点，结果为否。
+- `2026-03-14-c6-bootresolve-observer-ready.md`
+  - C-6：把 `bootResolve` readiness 从 RAF 轮询改成 MutationObserver，确认此前的 `sync` 小税主要是测量伪影。

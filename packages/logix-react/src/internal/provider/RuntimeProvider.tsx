@@ -67,6 +67,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
   const parent = useContext(RuntimeContext)
   const baseRuntime = useRuntimeResolution(runtime, parent)
   const providerStartedAtRef = React.useRef(performance.now())
+  const providerReadyAtRef = React.useRef<number | undefined>(undefined)
   const didReportProviderGatingRef = React.useRef(false)
   const resolvedPolicy = useMemo(
     () =>
@@ -563,6 +564,9 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
   }, [resolvedPolicy.mode, deferReady])
 
   const isReady = isTickServicesReady && isLayerReady && isConfigReady && (resolvedPolicy.mode !== 'defer' || deferReady || syncWarmPreloadReady)
+  if (isReady && providerReadyAtRef.current === undefined) {
+    providerReadyAtRef.current = performance.now()
+  }
 
   useEffect(() => {
     if (!isReady) {
@@ -584,7 +588,9 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
     }
     didReportProviderGatingRef.current = true
 
-    const durationMs = Math.round((performance.now() - providerStartedAtRef.current) * 100) / 100
+    const readyAt = providerReadyAtRef.current ?? performance.now()
+    const durationMs = Math.round((readyAt - providerStartedAtRef.current) * 100) / 100
+    const effectDelayMs = Math.round((performance.now() - readyAt) * 100) / 100
 
     void runtimeWithBindings
       .runPromise(
@@ -594,6 +600,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
             event: 'ready',
             policyMode: resolvedPolicy.mode,
             durationMs,
+            effectDelayMs,
             configLoadMode: configState.loadMode,
             syncOverBudget: Boolean(configState.syncOverBudget),
             syncDurationMs:

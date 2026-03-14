@@ -192,6 +192,14 @@ export function useModule(
   }
 
   let runtime: Logix.ModuleRuntime<unknown, unknown>
+  const moduleImplResolveTraceRef = React.useRef<
+    | {
+        readonly moduleId: string
+        readonly cacheMode: 'sync' | 'suspend'
+        readonly durationMs: number
+      }
+    | undefined
+  >(undefined)
 
   if (isModuleImpl(normalizedHandle)) {
     // ModuleImpl: build a local ModuleRuntime from the current Runtime's resource cache
@@ -276,6 +284,7 @@ export function useModule(
         )
     }, [baseFactory, suspend, initTimeoutMs, ownerId])
 
+    const moduleResolveStartedAt = performance.now()
     const moduleRuntime = (suspend
       ? cache.read(key, factory, gcTime, ownerId, {
           entrypoint: 'react.useModule',
@@ -288,6 +297,11 @@ export function useModule(
           policyMode: runtimeContext.policy.mode,
           warnSyncBlockingThresholdMs: 5,
         })) as unknown as Logix.ModuleRuntime<unknown, unknown>
+    moduleImplResolveTraceRef.current = {
+      moduleId,
+      cacheMode: suspend ? 'suspend' : 'sync',
+      durationMs: Math.round((performance.now() - moduleResolveStartedAt) * 100) / 100,
+    }
 
     React.useEffect(() => cache.retain(key), [cache, key])
 
@@ -299,6 +313,36 @@ export function useModule(
 
   // Provide an instance label for DevTools: bind key/label to runtime.instanceId via a Debug trace event,
   // then downstream DevTools sinks can parse and render it.
+  React.useEffect(() => {
+    if (!isModuleImpl(normalizedHandle)) {
+      return
+    }
+    let diagnosticsLevel: Logix.Debug.DiagnosticsLevel = 'off'
+    try {
+      diagnosticsLevel = runtimeBase.runSync(Effect.service(Logix.Debug.internal.currentDiagnosticsLevel).pipe(Effect.orDie))
+    } catch {
+      diagnosticsLevel = isDevEnv() ? 'light' : 'off'
+    }
+    if (diagnosticsLevel === 'off') {
+      return
+    }
+    const trace = moduleImplResolveTraceRef.current
+    if (!trace) {
+      return
+    }
+    const effect = Logix.Debug.record({
+      type: 'trace:react.moduleImpl.resolve',
+      moduleId: trace.moduleId,
+      instanceId: runtime.instanceId,
+      data: {
+        cacheMode: trace.cacheMode,
+        durationMs: trace.durationMs,
+      },
+    })
+
+    runtimeBase.runFork(effect)
+  }, [runtimeBase, runtime, normalizedHandle])
+
   React.useEffect(() => {
     if (!isModuleImpl(normalizedHandle)) {
       return

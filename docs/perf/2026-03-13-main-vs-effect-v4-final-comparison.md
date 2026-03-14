@@ -15,7 +15,8 @@
 2. `effect-v4` 在两条关键链路上有明确提升：
    - `watchers`
    - `react.bootResolve` 的 `suspend` 路径
-3. `effect-v4` 在 `react.bootResolve` 的 `sync` 路径上有稳定小固定税。
+3. `react.bootResolve.sync` 的旧“小固定税”结论已被 `2026-03-14-c6-bootresolve-observer-ready.md` 覆盖。
+  - 当前更合理的结论是：旧 suite 主要吃了 RAF 轮询地板，不能再用它背书 runtime 小税。
 4. `externalStore.ingest.tickNotify` 仍是两边共同未收口的绝对预算债，不下“分支回退”结论。
 
 ## 证据分组
@@ -57,15 +58,15 @@
 - broad self-run 复核：`23013191849`、`23013194289`
 - 最终裁决：整体基本持平
 
-### C. 小固定税
+### C. 已被后续 evidence correction 覆盖
 
 #### C1. `react.bootResolve.sync`
 
-- 关键证据：`22996148884`
-- soak 复核：`22997110261`、`22997112372`
-- 结果：
-  - `sync` 路径稳定慢 `~1.4ms ~ 1.6ms`
-- 最终裁决：存在小固定税，但不构成 broad 级总体回退
+- 旧结论来源：基于 RAF 轮询版 `waitForBodyText(...)`
+- 新结论：见 `docs/perf/2026-03-14-c6-bootresolve-observer-ready.md`
+- 当前裁决：
+  - 旧“小固定税”不再成立
+  - 这条线应先视为 benchmark 语义问题，而不是 runtime 回退
 
 ### D. 未收口
 
@@ -121,12 +122,12 @@
 - `effect-v4` 在两条关键链路上有明确提升：
   - `watchers`
   - `react.bootResolve.suspend`
-- `effect-v4` 在 `react.bootResolve.sync` 上有小固定税
+- `react.bootResolve.sync` 的旧小税结论已失效，等待按 observer-ready 语义重做 direct compare
 - `externalStore` 仍是两边共同未收口的绝对预算债
 
 ## 下一步建议
 
 若继续推进：
 1. 优先收口 `externalStore.ingest.tickNotify` 的绝对 `p95<=3ms`
-2. 其次再看 `react.bootResolve.sync` 的小固定税是否值得继续砍
+2. 若后续还要比较 `react.bootResolve.sync`，先以 observer-ready 语义重做 direct compare
 3. `watchers` 当前不再作为默认 blocker
