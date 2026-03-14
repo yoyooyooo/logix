@@ -17,6 +17,30 @@
     "./Commands": "./src/Commands.ts",
     "./internal/*": null
   },
+  "publishConfig": {
+    "access": "public",
+    "bin": {
+      "logix": "dist/bin/logix.js",
+      "logix-devserver": "dist/bin/logix-devserver.js"
+    },
+    "exports": {
+      "./package.json": "./package.json",
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
+      },
+      "./Commands": {
+        "types": "./dist/Commands.d.ts",
+        "import": "./dist/Commands.js",
+        "require": "./dist/Commands.cjs"
+      },
+      "./internal/*": null
+    },
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts"
+  },
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc -p tsconfig.json --noEmit",

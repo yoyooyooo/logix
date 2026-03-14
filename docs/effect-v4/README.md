@@ -27,6 +27,7 @@
 - `07-logix-core-v4-optimization-tier-analysis.md`：logix-core 的阶梯化优化机会（快收益/中收益/深重构）。
 - `08-tier-debate-consensus.md`：三层（Tier-1/2/3）辩论后统一裁决、节奏与硬门禁。
 - `09-release-notes-v1.0.zh-CN.md`：Logix 1.0（Effect v4）breaking changes + 中文迁移说明。
+- `10-beta-branch-and-release-lane.md`：`effect-v4` 长期分支、与 `main` 的同步方式、Beta 发版列车与质量门。
 
 ## Spec 入口（实施主线）
 

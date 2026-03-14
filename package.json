@@ -6,6 +6,11 @@
   "scripts": {
     "build": "pnpm -r build",
     "build:pkg": "turbo run build --filter='./packages/*'",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release:beta": "changeset publish --tag beta",
+    "release:check": "changeset status --verbose",
+    "ci:release:beta": "pnpm check:effect-v4-matrix && pnpm build:pkg && pnpm typecheck && pnpm typecheck:test && pnpm test:turbo",
     "typecheck": "pnpm -r typecheck",
     "typecheck:test": "pnpm -r typecheck:test",
     "verify": "pnpm verify:public-submodules",
@@ -28,6 +33,7 @@
     "test:fast": "bun x vitest run",
     "test:full": "vitest run",
     "test:browser": "pnpm -C packages/logix-react test -- --project browser && pnpm -C packages/logix-sandbox test:browser",
+    "test:browser:release": "pnpm -C packages/logix-react exec vitest run test/browser/browser-environment-smoke.test.tsx --project browser",
     "test:watch": "vitest",
     "test:turbo": "turbo run test --ui=stream --output-logs=new-only --log-prefix=none --summarize=true --filter='./packages/*' --filter='./apps/logix-galaxy-api' --filter='./examples/effect-api' --filter='./examples/logix-react' -- --run --cache --project=!browser* --silent=passed-only --reporter=dot --hideSkippedTests",
     "coverage": "vitest run --coverage",
@@ -38,6 +44,7 @@
     "check:schema-v4-legacy": "tsx scripts/checks/schema-v4-legacy.ts"
   },
   "devDependencies": {
+    "@changesets/cli": "2.30.0",
     "@effect/eslint-plugin": "^0.3.2",
     "@effect/language-service": "^0.56.0",
     "@eslint/js": "^9.39.1",
