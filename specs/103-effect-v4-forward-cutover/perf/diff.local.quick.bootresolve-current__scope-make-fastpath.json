@@ -1,0 +1,537 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-03-14T05:04:41.923Z",
+    "from": {
+      "file": "specs/103-effect-v4-forward-cutover/perf/after.local.quick.bootresolve-current.json",
+      "commit": "185c48de07ae583822ddfd9e701755229a5a499f"
+    },
+    "to": {
+      "file": "specs/103-effect-v4-forward-cutover/perf/after.local.quick.bootresolve-scope-make-fastpath.json",
+      "commit": "185c48de07ae583822ddfd9e701755229a5a499f"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": true,
+      "allowEnvDrift": true,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.after=true"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 0,
+    "budgetViolations": 0,
+    "slices": {
+      "total": 8,
+      "compared": 8,
+      "skippedCoverage": 0,
+      "skippedData": 0,
+      "beforeOnly": 0,
+      "afterOnly": 0
+    }
+  },
+  "suites": [
+    {
+      "id": "react.bootResolve",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=0 ok=8 unavailable=0 missing=0] after[value=0 ok=8 unavailable=0 missing=0]"
+        },
+        {
+          "name": "react.module.keyMode",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "explicit"
+          },
+          "after": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "explicit"
+          },
+          "message": "react.module.keyMode(points) unit=count: before[value=explicit ok=8 unavailable=0 missing=0] after[value=explicit ok=8 unavailable=0 missing=0]"
+        },
+        {
+          "name": "react.policy.mode",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "suspend"
+          },
+          "after": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "suspend"
+          },
+          "message": "react.policy.mode(points) unit=count: before[value=suspend ok=8 unavailable=0 missing=0] after[value=suspend ok=8 unavailable=0 missing=0]"
+        },
+        {
+          "name": "react.policy.yieldStrategy",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "microtask"
+          },
+          "after": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "microtask"
+          },
+          "message": "react.policy.yieldStrategy(points) unit=ratio: before[value=microtask ok=8 unavailable=0 missing=0] after[value=microtask ok=8 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 8,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=8 unavailable=0 missing=0] after[value=core ok=8 unavailable=0 missing=0]"
+        }
+      ],
+      "metricDeltas": [
+        {
+          "metric": "e2e.bootToModuleImplReadyMs",
+          "unit": "ms",
+          "compared": 8,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [
+            {
+              "params": {
+                "reactStrictMode": false,
+                "mountCycles": 1,
+                "policyMode": "suspend",
+                "yieldStrategy": "none",
+                "keyMode": "auto"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 9.700000047683716,
+                "p95Ms": 17.600000023841858
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 14.600000023841858,
+                "p95Ms": 19.600000023841858
+              },
+              "deltaMs": {
+                "medianMs": 4.899999976158142,
+                "p95Ms": 2
+              },
+              "ratio": {
+                "median": 1.5051546342340714,
+                "p95": 1.113636363482426
+              }
+            },
+            {
+              "params": {
+                "reactStrictMode": false,
+                "mountCycles": 1,
+                "policyMode": "sync",
+                "yieldStrategy": "none",
+                "keyMode": "auto"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 9.799999952316284,
+                "p95Ms": 18.100000023841858
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 15.299999952316284,
+                "p95Ms": 19.899999976158142
+              },
+              "deltaMs": {
+                "medianMs": 5.5,
+                "p95Ms": 1.7999999523162842
+              },
+              "ratio": {
+                "median": 1.56122449252666,
+                "p95": 1.0994475110467001
+              }
+            },
+            {
+              "params": {
+                "reactStrictMode": false,
+                "mountCycles": 1,
+                "policyMode": "suspend",
+                "yieldStrategy": "none",
+                "keyMode": "explicit"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 10.800000071525574,
+                "p95Ms": 17.700000047683716
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 11.5,
+                "p95Ms": 18.800000071525574
+              },
+              "deltaMs": {
+                "medianMs": 0.6999999284744263,
+                "p95Ms": 1.100000023841858
+              },
+              "ratio": {
+                "median": 1.064814807762825,
+                "p95": 1.0621468938349414
+              }
+            },
+            {
+              "params": {
+                "reactStrictMode": false,
+                "mountCycles": 1,
+                "policyMode": "sync",
+                "yieldStrategy": "microtask",
+                "keyMode": "explicit"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 9.700000047683716,
+                "p95Ms": 19.100000023841858
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 10.600000023841858,
+                "p95Ms": 19.600000023841858
+              },
+              "deltaMs": {
+                "medianMs": 0.8999999761581421,
+                "p95Ms": 0.5
+              },
+              "ratio": {
+                "median": 1.0927835022406063,
+                "p95": 1.0261780104385272
+              }
+            },
+            {
+              "params": {
+                "reactStrictMode": false,
+                "mountCycles": 1,
+                "policyMode": "sync",
+                "yieldStrategy": "none",
+                "keyMode": "explicit"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 9.700000047683716,
+                "p95Ms": 18.799999952316284
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 14.899999976158142,
+                "p95Ms": 19.100000023841858
+              },
+              "deltaMs": {
+                "medianMs": 5.199999928474426,
+                "p95Ms": 0.30000007152557373
+              },
+              "ratio": {
+                "median": 1.5360824642177342,
+                "p95": 1.0159574506535365
+              }
+            }
+          ],
+          "topImprovements": [
+            {
+              "params": {
+                "reactStrictMode": false,
+                "mountCycles": 1,
+                "policyMode": "suspend",
+                "yieldStrategy": "microtask",
+                "keyMode": "auto"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 10.399999976158142,
+                "p95Ms": 18.799999952316284
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 12.299999952316284,
+                "p95Ms": 18.399999976158142
+              },
+              "deltaMs": {
+                "medianMs": 1.899999976158142,
+                "p95Ms": -0.3999999761581421
+              },
+              "ratio": {
+                "median": 1.182692305818641,
+                "p95": 0.9787234054695378
+              }
+            },
+            {
+              "params": {
+                "reactStrictMode": false,
+                "mountCycles": 1,
+                "policyMode": "sync",
+                "yieldStrategy": "microtask",
+                "keyMode": "auto"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 10,
+                "p95Ms": 19.700000047683716
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 14.400000095367432,
+                "p95Ms": 19.399999976158142
+              },
+              "deltaMs": {
+                "medianMs": 4.400000095367432,
+                "p95Ms": -0.30000007152557373
+              },
+              "ratio": {
+                "median": 1.4400000095367431,
+                "p95": 0.9847715700101815
+              }
+            }
+          ]
+        },
+        {
+          "metric": "e2e.bootToModuleTagReadyMs",
+          "unit": "ms",
+          "compared": 8,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [
+            {
+              "params": {
+                "reactStrictMode": false,
+                "mountCycles": 1,
+                "policyMode": "suspend",
+                "yieldStrategy": "none",
+                "keyMode": "auto"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 9.700000047683716,
+                "p95Ms": 17.600000023841858
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 14.600000023841858,
+                "p95Ms": 19.600000023841858
+              },
+              "deltaMs": {
+                "medianMs": 4.899999976158142,
+                "p95Ms": 2
+              },
+              "ratio": {
+                "median": 1.5051546342340714,
+                "p95": 1.113636363482426
+              }
+            },
+            {
+              "params": {
+                "reactStrictMode": false,
+                "mountCycles": 1,
+                "policyMode": "sync",
+                "yieldStrategy": "none",
+                "keyMode": "auto"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 9.799999952316284,
+                "p95Ms": 18.100000023841858
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 15.299999952316284,
+                "p95Ms": 19.899999976158142
+              },
+              "deltaMs": {
+                "medianMs": 5.5,
+                "p95Ms": 1.7999999523162842
+              },
+              "ratio": {
+                "median": 1.56122449252666,
+                "p95": 1.0994475110467001
+              }
+            },
+            {
+              "params": {
+                "reactStrictMode": false,
+                "mountCycles": 1,
+                "policyMode": "suspend",
+                "yieldStrategy": "none",
+                "keyMode": "explicit"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 10.800000071525574,
+                "p95Ms": 17.700000047683716
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 11.5,
+                "p95Ms": 18.800000071525574
+              },
+              "deltaMs": {
+                "medianMs": 0.6999999284744263,
+                "p95Ms": 1.100000023841858
+              },
+              "ratio": {
+                "median": 1.064814807762825,
+                "p95": 1.0621468938349414
+              }
+            },
+            {
+              "params": {
+                "reactStrictMode": false,
+                "mountCycles": 1,
+                "policyMode": "sync",
+                "yieldStrategy": "microtask",
+                "keyMode": "explicit"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 9.700000047683716,
+                "p95Ms": 19.100000023841858
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 10.600000023841858,
+                "p95Ms": 19.600000023841858
+              },
+              "deltaMs": {
+                "medianMs": 0.8999999761581421,
+                "p95Ms": 0.5
+              },
+              "ratio": {
+                "median": 1.0927835022406063,
+                "p95": 1.0261780104385272
+              }
+            },
+            {
+              "params": {
+                "reactStrictMode": false,
+                "mountCycles": 1,
+                "policyMode": "suspend",
+                "yieldStrategy": "microtask",
+                "keyMode": "explicit"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 10.399999976158142,
+                "p95Ms": 18.699999928474426
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 13.199999928474426,
+                "p95Ms": 19
+              },
+              "deltaMs": {
+                "medianMs": 2.799999952316284,
+                "p95Ms": 0.30000007152557373
+              },
+              "ratio": {
+                "median": 1.2692307652630044,
+                "p95": 1.016042784634922
+              }
+            }
+          ],
+          "topImprovements": [
+            {
+              "params": {
+                "reactStrictMode": false,
+                "mountCycles": 1,
+                "policyMode": "suspend",
+                "yieldStrategy": "microtask",
+                "keyMode": "auto"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 10.399999976158142,
+                "p95Ms": 18.799999952316284
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 12.299999952316284,
+                "p95Ms": 18.399999976158142
+              },
+              "deltaMs": {
+                "medianMs": 1.899999976158142,
+                "p95Ms": -0.3999999761581421
+              },
+              "ratio": {
+                "median": 1.182692305818641,
+                "p95": 0.9787234054695378
+              }
+            },
+            {
+              "params": {
+                "reactStrictMode": false,
+                "mountCycles": 1,
+                "policyMode": "sync",
+                "yieldStrategy": "microtask",
+                "keyMode": "auto"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 10,
+                "p95Ms": 19.700000047683716
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 14.400000095367432,
+                "p95Ms": 19.399999976158142
+              },
+              "deltaMs": {
+                "medianMs": 4.400000095367432,
+                "p95Ms": -0.30000007152557373
+              },
+              "ratio": {
+                "median": 1.4400000095367431,
+                "p95": 0.9847715700101815
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

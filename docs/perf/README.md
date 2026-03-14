@@ -24,6 +24,8 @@
   - `txn-phase` 默认采样门收紧试探失败；只改善了局部 `full`，没有解决 `off` 主税点。
 - `2026-03-14-u1-tickscheduler-start-immediately.md`
   - `scheduleTick` 的 detached fiber 改成 immediate start 后，`externalStore.ingest.tickNotify` 的 absolute/relative budgets 全部通过到 `watchers=512`。
+- `2026-03-14-c3-bootresolve-readsync-scope-fastpath-failed.md`
+  - `bootResolve.sync` 的 `readSync scope-make` fastpath 试探失败；`sync` 和部分 `suspend` 都变差。
 - `2026-03-13-kept-vs-discarded-cuts.md`
   - 当前阶段保留刀与废弃刀清单，只看“哪些该留、哪些不该留”时优先读它。
 - `05-forward-only-vnext-plan.md`
@@ -128,3 +130,5 @@
   - T-1：把默认 `txn-phase` 采样门收紧到 `traceMode=on`，但只改善局部 `full`，绝对预算仍未收口，按 evidence-only 废弃。
 - `2026-03-14-u1-tickscheduler-start-immediately.md`
   - U-1：把 `scheduleTick()` 的 detached fiber 改成 immediate start，直接打穿 `externalStore` 的 `p95<=3ms` 与 soak `full/off<=1.25`。
+- `2026-03-14-c3-bootresolve-readsync-scope-fastpath-failed.md`
+  - C-3：把 `readSync` 的 `Scope.make()` 改成全局 `Effect.runSync`，但 `sync` 和 `suspend` 都没有形成净收益，按 evidence-only 废弃。

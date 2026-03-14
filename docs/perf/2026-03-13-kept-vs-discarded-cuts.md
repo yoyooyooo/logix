@@ -158,6 +158,18 @@
 - `suspend` 多个切片出现分布漂移
 - 不符合“稳定净收益”保留标准
 
+### C-3 · `react.bootResolve.sync` readSync scope-make fastpath
+
+- 结论：废弃
+- 文件：`packages/logix-react/src/internal/store/ModuleCache.ts`
+- 关键记录：`docs/perf/2026-03-14-c3-bootresolve-readsync-scope-fastpath-failed.md`
+
+废弃原因：
+- `sync + auto + none` 从 `p95 18.1ms` 变到 `19.9ms`
+- `sync + explicit + none` 中位数从 `9.7ms` 变到 `14.9ms`
+- 还顺带拉坏了 `suspend + auto + none`
+- 说明 `readSync` 的 `Scope.make()` 入口不是正确切口
+
 ### E-1 · `watchers` capture retry
 
 - 结论：不保留为主线性能刀
