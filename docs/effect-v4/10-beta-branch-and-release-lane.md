@@ -54,13 +54,14 @@
 5. 合入版本 PR 后，`release.yml` 再次运行：
    - 复跑 release lane 校验
    - 复跑 browser smoke
-   - 执行 `changeset publish --tag beta`
+   - 执行 `release:beta`
 
 ## Prerelease Mode
 
 - `effect-v4` 当前已进入 Changesets 的 `pre enter beta` 模式。
 - 这意味着后续版本 PR 会把公开包版本从当前稳定数字基线继续推进为 prerelease 版本：
   - 例如 `1.0.1` 之后的下一轮 Beta 会变成 `1.0.2-beta.0`
+- 在这个模式下，发布脚本不能再显式传 `--tag beta` 给 `changeset publish`；tag 语义由 pre mode 自己驱动。
 - 这样做的目的：
   - 让版本号本身表达 Beta 语义
   - 仍保留 npm `beta` tag 作为安装入口

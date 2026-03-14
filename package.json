@@ -8,7 +8,7 @@
     "build:pkg": "turbo run build --filter='./packages/*'",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release:beta": "changeset publish --tag beta",
+    "release:beta": "node scripts/release-beta.mjs",
     "release:check": "changeset status --verbose",
     "ci:release:beta": "pnpm check:effect-v4-matrix && pnpm build:pkg && pnpm typecheck && pnpm typecheck:test && pnpm test:turbo",
     "typecheck": "pnpm -r typecheck",
