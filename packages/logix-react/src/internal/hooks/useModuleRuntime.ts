@@ -4,9 +4,9 @@ import { Effect, Scope } from 'effect'
 import { useRuntime } from './useRuntime.js'
 import { isModuleRef, type ModuleRef } from '../store/ModuleRef.js'
 import { RuntimeContext } from '../provider/ReactContext.js'
+import { emitRuntimeDebugEventBestEffort, readRuntimeDiagnosticsLevel } from '../provider/runtimeDebugBridge.js'
 import { RuntimeProviderNotFoundError } from '../provider/errors.js'
 import { getModuleCache, type ModuleCacheFactory } from '../store/ModuleCache.js'
-import { isDevEnv } from '../provider/env.js'
 
 const isModuleRuntime = (value: unknown): value is Logix.ModuleRuntime<any, any> =>
   typeof value === 'object' && value !== null && 'dispatch' in value && 'getState' in value
@@ -106,12 +106,7 @@ export function useModuleRuntime(handle: ReactModuleHandle): Logix.ModuleRuntime
     if (!isTagHandle) {
       return
     }
-    let diagnosticsLevel: Logix.Debug.DiagnosticsLevel = 'off'
-    try {
-      diagnosticsLevel = runtime.runSync(Effect.service(Logix.Debug.internal.currentDiagnosticsLevel).pipe(Effect.orDie))
-    } catch {
-      diagnosticsLevel = isDevEnv() ? 'light' : 'off'
-    }
+    const diagnosticsLevel = readRuntimeDiagnosticsLevel(runtime)
     if (diagnosticsLevel === 'off') {
       return
     }
@@ -132,7 +127,7 @@ export function useModuleRuntime(handle: ReactModuleHandle): Logix.ModuleRuntime
       },
     })
 
-    runtime.runFork(effect)
+    emitRuntimeDebugEventBestEffort(runtime, effect)
   }, [runtime, runtimeContext.policy, resolved, handle, isTagHandle])
 
   return resolved as Logix.ModuleRuntime<any, any>

@@ -8,6 +8,7 @@ import { useRuntime } from './useRuntime.js'
 import { isDevEnv } from '../provider/env.js'
 import { getModuleCache, type ModuleCacheFactory, stableHash } from '../store/ModuleCache.js'
 import { RuntimeContext } from '../provider/ReactContext.js'
+import { emitRuntimeDebugEventBestEffort, readRuntimeDiagnosticsLevel } from '../provider/runtimeDebugBridge.js'
 import { RuntimeProviderNotFoundError } from '../provider/errors.js'
 import {
   applyHandleExtend,
@@ -317,12 +318,7 @@ export function useModule(
     if (!isModuleImpl(normalizedHandle)) {
       return
     }
-    let diagnosticsLevel: Logix.Debug.DiagnosticsLevel = 'off'
-    try {
-      diagnosticsLevel = runtimeBase.runSync(Effect.service(Logix.Debug.internal.currentDiagnosticsLevel).pipe(Effect.orDie))
-    } catch {
-      diagnosticsLevel = isDevEnv() ? 'light' : 'off'
-    }
+    const diagnosticsLevel = readRuntimeDiagnosticsLevel(runtimeBase)
     if (diagnosticsLevel === 'off') {
       return
     }
@@ -340,7 +336,7 @@ export function useModule(
       },
     })
 
-    runtimeBase.runFork(effect)
+    emitRuntimeDebugEventBestEffort(runtimeBase, effect)
   }, [runtimeBase, runtime, normalizedHandle])
 
   React.useEffect(() => {
@@ -361,7 +357,7 @@ export function useModule(
       data: { label },
     })
 
-    runtimeBase.runFork(effect)
+    emitRuntimeDebugEventBestEffort(runtimeBase, effect)
   }, [runtimeBase, runtime, normalizedHandle, options])
 
   // Component-level render trace: record once per commit per component (each useModule call),
