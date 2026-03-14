@@ -29,5 +29,8 @@
     "@logixjs/test": "1.0.1",
     "speckit-kit": "0.0.1"
   },
-  "changesets": []
+  "changesets": [
+    "beta-prerelease-pivot",
+    "cli-first-publish-tracking"
+  ]
 }

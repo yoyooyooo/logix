@@ -1,5 +1,13 @@
 # @logixjs/cli
 
+## 1.0.2-beta.0
+
+### Patch Changes
+
+- e51fb6c: Switch the Effect v4 beta lane to real prerelease semver so future beta publishes use versions like `1.0.2-beta.0` instead of relying on the npm `beta` dist-tag alone.
+- Updated dependencies [e51fb6c]
+  - @logixjs/core@1.0.2-beta.0
+
 ## 1.0.0
 
 ### Minor Changes
