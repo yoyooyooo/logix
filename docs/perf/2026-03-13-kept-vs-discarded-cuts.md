@@ -170,6 +170,18 @@
 - 还顺带拉坏了 `suspend + auto + none`
 - 说明 `readSync` 的 `Scope.make()` 入口不是正确切口
 
+### C-5 · `react.bootResolve.sync` provider.gating idle binding fastpath
+
+- 结论：废弃
+- 文件：`packages/logix-react/src/internal/provider/runtimeBindings.ts`
+- 关键记录：`docs/perf/2026-03-14-c5-provider-gating-idle-binding-failed.md`
+
+废弃原因：
+- `useLayerBinding(enabled=false)` 的确会多跑一轮 render
+- 但把这轮 idle rerender 去掉后，`sync` 只拿到局部小收益
+- `sync + explicit + microtask` 在 soak 里直接从 `p95 19.4ms` 变到 `23.4ms`
+- 不符合稳定净收益标准
+
 ### E-1 · `watchers` capture retry
 
 - 结论：不保留为主线性能刀

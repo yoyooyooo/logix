@@ -28,6 +28,8 @@
   - `bootResolve.sync` 的 `readSync scope-make` fastpath 试探失败；`sync` 和部分 `suspend` 都变差。
 - `2026-03-14-c4-bootresolve-phase-evidence.md`
   - `bootResolve.sync` 的 phase evidence 已补齐，当前最可信主税点收敛到 `provider.gating`。
+- `2026-03-14-c5-provider-gating-idle-binding-failed.md`
+  - `provider.gating` 里的 idle binding extra render 试探失败；现象存在，但去掉后没有形成稳定净收益。
 - `2026-03-13-kept-vs-discarded-cuts.md`
   - 当前阶段保留刀与废弃刀清单，只看“哪些该留、哪些不该留”时优先读它。
 - `05-forward-only-vnext-plan.md`
@@ -136,3 +138,5 @@
   - C-3：把 `readSync` 的 `Scope.make()` 改成全局 `Effect.runSync`，但 `sync` 和 `suspend` 都没有形成净收益，按 evidence-only 废弃。
 - `2026-03-14-c4-bootresolve-phase-evidence.md`
   - C-4：补 `bootResolve.sync` phase evidence。当前已确认 `provider.gating` 是最值得继续切的下一段。
+- `2026-03-14-c5-provider-gating-idle-binding-failed.md`
+  - C-5：验证 `useLayerBinding(enabled=false)` 的 extra render 是否是主税点，结果为否。
