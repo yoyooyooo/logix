@@ -6,26 +6,31 @@
   "additionalProperties": false,
   "properties": {
     "dirtyAll": { "type": "boolean" },
-    "paths": {
-      "type": "array",
-      "items": { "type": "string", "minLength": 1 },
-      "minItems": 1
-    },
     "reason": {
       "type": "string",
       "enum": ["unknownWrite", "customMutation", "nonTrackablePatch", "fallbackPolicy"]
-    }
+    },
+    "pathIds": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 0 },
+      "minItems": 0
+    },
+    "pathCount": { "type": "integer", "minimum": 0 },
+    "keySize": { "type": "integer", "minimum": 0 },
+    "keyHash": { "type": "integer", "minimum": 0 },
+    "pathIdsTruncated": { "type": "boolean" }
   },
-  "required": ["dirtyAll"],
+  "required": ["dirtyAll", "pathIds", "pathCount", "keySize", "keyHash", "pathIdsTruncated"],
   "allOf": [
     {
-      "if": { "properties": { "dirtyAll": { "const": true } }, "required": ["dirtyAll"] },
-      "then": { "not": { "required": ["paths"] } }
-    },
-    {
       "if": { "properties": { "dirtyAll": { "const": false } }, "required": ["dirtyAll"] },
-      "then": { "required": ["paths"] }
+      "then": {
+        "properties": {
+          "pathIds": { "minItems": 1 },
+          "pathCount": { "minimum": 1 },
+          "keySize": { "minimum": 1 }
+        }
+      }
     }
   ]
 }
-

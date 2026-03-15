@@ -1,13 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { Layer, ManagedRuntime, Exit, Context, Effect, Cause, Runtime, FiberRef, LogLevel, Scope } from 'effect'
+import { Cause, Effect, Exit, Layer, LogLevel, Logger, ManagedRuntime, References, Scope, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
-import type * as HashSet from 'effect/HashSet'
-import type * as Logger from 'effect/Logger'
 import { isDevEnv } from './env.js'
 import type { RuntimeProviderProps } from './RuntimeProvider.js'
 
-// Logger set type aligned with FiberRef.currentLoggers
-type LoggerSet = HashSet.HashSet<Logger.Logger<unknown, any>>
+type LoggerSet = ReadonlySet<Logger.Logger<unknown, any>>
 
 const toErrorString = (error: unknown): string =>
   error instanceof Error ? (error.stack ?? error.message) : String(error)
@@ -19,8 +16,8 @@ const debugScopeCloseFailure = (error: unknown): void => {
 }
 
 interface LayerBinding {
-  readonly context: Context.Context<any>
-  readonly scope: Scope.CloseableScope
+  readonly context: ServiceMap.ServiceMap<any>
+  readonly scope: Scope.Closeable
   readonly runtime: ManagedRuntime.ManagedRuntime<any, any>
   readonly layer: Layer.Layer<any, any, never>
   readonly enabled: boolean
@@ -118,25 +115,22 @@ export const useLayerBinding = (
     // - Does not depend on Runtime Env.
     // - Uses the global default Runtime to create Scope, avoiding triggering AsyncFiberException via ManagedRuntime.runSync
     //   when Runtime.layer contains async Layers (e.g. Debug.layer/traceLayer).
-    const newScope = Effect.runSync(Scope.make()) as Scope.CloseableScope
+    const newScope = Effect.runSync(Scope.make()) as Scope.Closeable
     const buildEffect = Effect.gen(function* () {
-      const context = (yield* Layer.buildWithScope(layer, newScope)) as Context.Context<any>
+      const context = (yield* Layer.buildWithScope(layer, newScope)) as ServiceMap.ServiceMap<any>
       const applyEnv = <A, E>(effect: Effect.Effect<A, E, any>) =>
-        Effect.mapInputContext(
-          Scope.extend(effect, newScope) as Effect.Effect<A, E, any>,
-          (parent: Context.Context<any>) => Context.merge(parent, context),
-        )
+        Scope.provide(newScope)(Effect.provideServices(effect as Effect.Effect<A, E, any>, context))
 
-      const loggers: LoggerSet = yield* applyEnv(FiberRef.get(FiberRef.currentLoggers))
-      const logLevel: LogLevel.LogLevel = yield* applyEnv(FiberRef.get(FiberRef.currentLogLevel))
+      const loggers: LoggerSet = yield* applyEnv(Effect.service(Logger.CurrentLoggers)).pipe(Effect.orDie)
+      const logLevel: LogLevel.LogLevel = yield* applyEnv(Effect.service(References.MinimumLogLevel)).pipe(Effect.orDie)
       const debugSinks: ReadonlyArray<Logix.Debug.Sink> = yield* applyEnv(
-        FiberRef.get(Logix.Debug.internal.currentDebugSinks as FiberRef.FiberRef<ReadonlyArray<Logix.Debug.Sink>>),
+        Effect.service(Logix.Debug.internal.currentDebugSinks).pipe(Effect.orDie),
       )
       return { context, loggers, logLevel, debugSinks }
     })
 
     const assignBinding = (result: {
-      context: Context.Context<any>
+      context: ServiceMap.ServiceMap<any>
       loggers: LoggerSet
       logLevel: LogLevel.LogLevel
       debugSinks: ReadonlyArray<Logix.Debug.Sink>
@@ -190,7 +184,7 @@ export const useLayerBinding = (
             const cause = Cause.die(error)
             runtime.runFork(
               onError(cause, { source: 'provider', phase: 'provider.layer.build' }).pipe(
-                Effect.catchAllCause(() => Effect.void),
+                Effect.catchCause(() => Effect.void),
               ),
             )
           }
@@ -240,7 +234,7 @@ export const useLayerBinding = (
 
 export const createRuntimeAdapter = (
   runtime: ManagedRuntime.ManagedRuntime<any, any>,
-  contexts: ReadonlyArray<Context.Context<any>>,
+  contexts: ReadonlyArray<ServiceMap.ServiceMap<any>>,
   scopes: ReadonlyArray<Scope.Scope>,
   loggerSets: ReadonlyArray<LoggerSet>,
   logLevels: ReadonlyArray<LogLevel.LogLevel>,
@@ -257,16 +251,10 @@ export const createRuntimeAdapter = (
   }
 
   const applyContexts = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-    // First inherit Provider scopes via scope.extend (preserving FiberRef/Logger changes),
-    // then merge Context via mapInputContext (inner overrides outer).
     contexts.reduceRight(
-      (acc, ctx) =>
-        Effect.mapInputContext(
-          acc as Effect.Effect<A, E, any>,
-          (parent: Context.Context<any>) => Context.merge(parent, ctx) as Context.Context<any>,
-        ),
+      (acc, ctx) => Effect.provideServices(acc as Effect.Effect<A, E, any>, ctx),
       scopes.reduceRight(
-        (acc, scope) => Scope.extend(acc as Effect.Effect<A, E, any>, scope),
+        (acc, scope) => Scope.provide(scope)(acc as Effect.Effect<A, E, any>),
         effect as Effect.Effect<A, E, any>,
       ) as Effect.Effect<A, E, any>,
     ) as Effect.Effect<A, E, R>
@@ -278,24 +266,21 @@ export const createRuntimeAdapter = (
 
     let result: Effect.Effect<A, E, any> = effect as Effect.Effect<A, E, any>
     if (last) {
-      result = Effect.locally(FiberRef.currentLoggers, last)(result)
+      result = Effect.provideService(result, Logger.CurrentLoggers, last)
     }
     if (logLevel) {
-      result = Effect.locally(FiberRef.currentLogLevel, logLevel)(result)
+      result = Effect.provideService(result, References.MinimumLogLevel, logLevel)
     }
     // Only override DebugSink set when sinks is non-empty.
     // For Providers that only inject Env/Theme and don't care about Debug (sinks.length === 0),
     // keep the outer Runtime/Provider's DebugSink unchanged to avoid accidentally disabling Devtools observability.
     if (sinks && sinks.length > 0) {
-      result = Effect.locally(
-        Logix.Debug.internal.currentDebugSinks as FiberRef.FiberRef<ReadonlyArray<Logix.Debug.Sink>>,
-        sinks,
-      )(result)
+      result = Effect.provideService(result, Logix.Debug.internal.currentDebugSinks, sinks)
     }
     return result as Effect.Effect<A, E, R>
   }
 
-  const adapted: ManagedRuntime.ManagedRuntime<any, any> = {
+  const adapted = {
     ...runtime,
     runFork: <A, E>(effect: Effect.Effect<A, E, any>, options?: Parameters<typeof runtime.runFork>[1]) =>
       runtime.runFork(applyLoggers(applyContexts(effect)), options),
@@ -305,9 +290,9 @@ export const createRuntimeAdapter = (
       runtime.runPromiseExit(applyLoggers(applyContexts(effect)), options),
     runSync: <A, E>(effect: Effect.Effect<A, E, any>) => runtime.runSync(applyLoggers(applyContexts(effect))),
     runSyncExit: <A, E>(effect: Effect.Effect<A, E, any>) => runtime.runSyncExit(applyLoggers(applyContexts(effect))),
-    runCallback: <A, E>(effect: Effect.Effect<A, E, any>, options?: Runtime.RunCallbackOptions<A, any>) =>
-      runtime.runCallback(applyLoggers(applyContexts(effect)), options),
-  }
+    runCallback: <A, E>(effect: Effect.Effect<A, E, any>, options?: Parameters<typeof runtime.runCallback>[1]) =>
+      runtime.runCallback(applyLoggers(applyContexts(effect)) as Effect.Effect<A, E, any>, options as any),
+  } as ManagedRuntime.ManagedRuntime<any, any>
 
   return adapted
 }

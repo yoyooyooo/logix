@@ -8,12 +8,6 @@ import { Inspector } from '../inspector/Inspector.js'
 import { OverviewStrip } from '../overview/OverviewStrip.js'
 import { OperationSummaryBar } from '../summary/OperationSummaryBar.js'
 import { SettingsPanel } from '../settings/SettingsPanel.js'
-import {
-  getDevtoolsSnapshot,
-  getDevtoolsSnapshotByRuntimeLabel,
-  getDevtoolsSnapshotToken,
-  subscribeDevtoolsSnapshotToken,
-} from '../../snapshot/index.js'
 
 export interface DevtoolsShellProps {
   position?: 'bottom-left' | 'bottom-right'
@@ -32,20 +26,8 @@ export const DevtoolsShell: React.FC<DevtoolsShellProps & { getProgramForModule?
   position = 'bottom-left',
   getProgramForModule,
 }) => {
-  const { open, layout, theme, settings, operationSummary, selectedRuntime } = useDevtoolsState()
+  const { open, layout, theme, settings, operationSummary } = useDevtoolsState()
   const dispatch = useDevtoolsDispatch()
-  const snapshotToken = React.useSyncExternalStore(
-    subscribeDevtoolsSnapshotToken,
-    getDevtoolsSnapshotToken,
-    getDevtoolsSnapshotToken,
-  )
-  const snapshotProjection = React.useMemo(() => {
-    if (selectedRuntime) {
-      return getDevtoolsSnapshotByRuntimeLabel(selectedRuntime).projection
-    }
-
-    return getDevtoolsSnapshot().projection
-  }, [selectedRuntime, snapshotToken])
   const dragStateRef = React.useRef<{
     startMouseX: number
     startMouseY: number
@@ -353,27 +335,6 @@ export const DevtoolsShell: React.FC<DevtoolsShellProps & { getProgramForModule?
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-mono" style={{ color: 'var(--dt-text-muted)' }}>
-              projection:{snapshotProjection.tier}
-            </span>
-            {snapshotProjection.degraded && snapshotProjection.reason && (
-              <span
-                className="text-[10px] font-mono px-1.5 py-0.5 rounded border"
-                style={{
-                  borderColor: 'var(--dt-warning)',
-                  color: 'var(--dt-warning)',
-                  backgroundColor: 'var(--dt-primary-bg)',
-                }}
-                title={`${snapshotProjection.reason.message}\nAction: ${snapshotProjection.reason.recommendedAction}`}
-              >
-                degraded · {snapshotProjection.reason.code}
-              </span>
-            )}
-          </div>
-
-          <div className="w-px h-4" style={{ backgroundColor: 'var(--dt-border)' }} />
-
           <div
             className="flex items-center p-0.5 rounded-lg border"
             style={{

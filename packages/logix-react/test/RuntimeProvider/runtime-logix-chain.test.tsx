@@ -4,11 +4,11 @@ import React from 'react'
 import { describe, it, expect } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import * as Logix from '@logixjs/core'
-import { Context, Effect, Layer, Schema } from 'effect'
+import { Effect, Layer, Schema, ServiceMap } from 'effect'
 import { RuntimeProvider, useModule, useRuntime } from '../../src/index.js'
 
 describe('Logix Runtime → ModuleRuntime → RuntimeProvider → useModule chain', () => {
-  const EnvTag = Context.GenericTag<{
+  const EnvTag = ServiceMap.Service<{
     readonly label: string
   }>('@tests/EnvService')
 
@@ -27,16 +27,16 @@ describe('Logix Runtime → ModuleRuntime → RuntimeProvider → useModule chai
   const TestLogic = TestModule.logic<{ readonly label: string }>(($) =>
     Effect.gen(function* () {
       // Read EnvTag in the run phase to ensure RuntimeProvider.layer overrides take effect.
-      yield* $.onAction('init').run({
-        effect: Effect.gen(function* () {
-          const env = yield* EnvTag
+      yield* $.onAction('init').run(
+        Effect.gen(function* () {
+          const env = yield* Effect.service(EnvTag).pipe(Effect.orDie)
           yield* $.state.update((s) => ({
             ...s,
             initialized: true,
             label: env.label,
           }))
         }),
-      })
+      )
     }),
   )
 
@@ -52,7 +52,7 @@ describe('Logix Runtime → ModuleRuntime → RuntimeProvider → useModule chai
       Effect.gen(function* () {
         // This dispatch runs under AppRuntime's envLayer;
         // EnvTag read inside Logic should come from the Root Runtime layer, not the React Provider override.
-        const runtime = (yield* TestModule.tag) as Logix.ModuleRuntime<
+        const runtime = (yield* Effect.service(TestModule.tag).pipe(Effect.orDie)) as Logix.ModuleRuntime<
           { initialized: boolean; label: string },
           { _tag: 'init'; payload: void }
         >

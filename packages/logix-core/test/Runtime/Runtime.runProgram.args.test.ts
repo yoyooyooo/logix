@@ -1,10 +1,10 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('Runtime.runProgram args injection (US1)', () => {
-  it.scoped('passes typed args to main without reading process.argv', () =>
+  it.effect('passes typed args to main without reading process.argv', () =>
     Effect.gen(function* () {
       const Root = Logix.Module.make('Runtime.runProgram.args', {
         state: Schema.Void,

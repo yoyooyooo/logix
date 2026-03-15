@@ -1,4 +1,5 @@
-import { HttpApiBuilder, HttpServer } from '@effect/platform'
+import { HttpRouter, HttpServer } from 'effect/unstable/http'
+import { HttpApiBuilder } from 'effect/unstable/httpapi'
 import { Effect, Layer, Option } from 'effect'
 import { describe, expect, it } from 'vitest'
 
@@ -14,7 +15,7 @@ import type { AuthLoginResponseDto } from '../auth/auth.service.js'
 import { UserLive } from './user.http.live.js'
 
 const TodoRepoTest = Layer.succeed(TodoRepo, {
-  create: () => Effect.dieMessage('TodoRepo not used in user tests'),
+  create: () => Effect.die(new Error('TodoRepo not used in user tests')),
   get: () => Effect.succeed(Option.none()),
   list: Effect.succeed([]),
   update: () => Effect.succeed(Option.none()),
@@ -42,7 +43,7 @@ describe('User', () => {
     const harness = makeAuthHarness()
     harness.seedUser({ email: 'admin@example.com', password: 'admin123456', displayName: 'Admin', roles: ['admin'] })
 
-    const ApiTestLive = HttpApiBuilder.api(EffectApiAuth).pipe(
+    const ApiTestLive = HttpApiBuilder.layer(EffectApiAuth).pipe(
       Layer.provide(HealthLive),
       Layer.provide(TodoLive),
       Layer.provide(AuthLive),
@@ -52,9 +53,10 @@ describe('User', () => {
       Layer.provide(harness.AuthEventRepoTest),
       Layer.provide(AuthRateLimitLive),
       Layer.provide(DbLive),
+      Layer.provide(HttpServer.layerServices),
     )
 
-    const { handler, dispose } = HttpApiBuilder.toWebHandler(Layer.mergeAll(ApiTestLive, HttpServer.layerContext))
+    const { handler, dispose } = HttpRouter.toWebHandler(Layer.mergeAll(ApiTestLive), { disableLogger: true })
 
     try {
       const adminLogin = await login(handler, 'admin@example.com', 'admin123456')
@@ -90,7 +92,7 @@ describe('User', () => {
     const harness = makeAuthHarness()
     harness.seedUser({ email: 'admin@example.com', password: 'admin123456', displayName: 'Admin', roles: ['admin'] })
 
-    const ApiTestLive = HttpApiBuilder.api(EffectApiAuth).pipe(
+    const ApiTestLive = HttpApiBuilder.layer(EffectApiAuth).pipe(
       Layer.provide(HealthLive),
       Layer.provide(TodoLive),
       Layer.provide(AuthLive),
@@ -100,9 +102,10 @@ describe('User', () => {
       Layer.provide(harness.AuthEventRepoTest),
       Layer.provide(AuthRateLimitLive),
       Layer.provide(DbLive),
+      Layer.provide(HttpServer.layerServices),
     )
 
-    const { handler, dispose } = HttpApiBuilder.toWebHandler(Layer.mergeAll(ApiTestLive, HttpServer.layerContext))
+    const { handler, dispose } = HttpRouter.toWebHandler(Layer.mergeAll(ApiTestLive), { disableLogger: true })
 
     try {
       const adminLogin = await login(handler, 'admin@example.com', 'admin123456')
@@ -157,7 +160,7 @@ describe('User', () => {
     const harness = makeAuthHarness()
     harness.seedUser({ email: 'admin@example.com', password: 'admin123456', displayName: 'Admin', roles: ['admin'] })
 
-    const ApiTestLive = HttpApiBuilder.api(EffectApiAuth).pipe(
+    const ApiTestLive = HttpApiBuilder.layer(EffectApiAuth).pipe(
       Layer.provide(HealthLive),
       Layer.provide(TodoLive),
       Layer.provide(AuthLive),
@@ -167,9 +170,10 @@ describe('User', () => {
       Layer.provide(harness.AuthEventRepoTest),
       Layer.provide(AuthRateLimitLive),
       Layer.provide(DbLive),
+      Layer.provide(HttpServer.layerServices),
     )
 
-    const { handler, dispose } = HttpApiBuilder.toWebHandler(Layer.mergeAll(ApiTestLive, HttpServer.layerContext))
+    const { handler, dispose } = HttpRouter.toWebHandler(Layer.mergeAll(ApiTestLive), { disableLogger: true })
 
     try {
       const adminLogin = await login(handler, 'admin@example.com', 'admin123456')
@@ -216,7 +220,7 @@ describe('User', () => {
     const harness = makeAuthHarness()
     harness.seedUser({ email: 'alice@example.com', password: 'alice123456', displayName: 'Alice', roles: ['user'] })
 
-    const ApiTestLive = HttpApiBuilder.api(EffectApiAuth).pipe(
+    const ApiTestLive = HttpApiBuilder.layer(EffectApiAuth).pipe(
       Layer.provide(HealthLive),
       Layer.provide(TodoLive),
       Layer.provide(AuthLive),
@@ -226,9 +230,10 @@ describe('User', () => {
       Layer.provide(harness.AuthEventRepoTest),
       Layer.provide(AuthRateLimitLive),
       Layer.provide(DbLive),
+      Layer.provide(HttpServer.layerServices),
     )
 
-    const { handler, dispose } = HttpApiBuilder.toWebHandler(Layer.mergeAll(ApiTestLive, HttpServer.layerContext))
+    const { handler, dispose } = HttpRouter.toWebHandler(Layer.mergeAll(ApiTestLive), { disableLogger: true })
 
     try {
       const userLogin = await login(handler, 'alice@example.com', 'alice123456')

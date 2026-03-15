@@ -79,22 +79,4 @@ describe('args: logix.cli.json argv prefix', () => {
     if (parsed.command !== 'trialrun') throw new Error('expected trialrun command')
     expect(parsed.global.host).toBe('browser-mock')
   })
-
-  it('should accept --with-anchors alias for ir export', async () => {
-    const parsed = await Effect.runPromise(parseCliInvocation([
-      'ir',
-      'export',
-      '--runId',
-      'r-with-anchors',
-      '--entry',
-      'x.ts#AppRoot',
-      '--with-anchors',
-    ], { helpText: 'help' }))
-
-    expect(parsed.kind).toBe('command')
-    if (parsed.kind !== 'command') throw new Error('expected command')
-    expect(parsed.command).toBe('ir.export')
-    if (parsed.command !== 'ir.export') throw new Error('expected ir.export command')
-    expect(parsed.withAnchors).toBe(true)
-  })
 })

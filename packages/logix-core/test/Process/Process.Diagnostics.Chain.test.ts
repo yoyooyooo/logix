@@ -1,10 +1,11 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Context, Effect, Exit, Layer, Scope, Schema, TestClock } from 'effect'
+import {Effect, Exit, Layer, Scope, Schema, ServiceMap } from 'effect'
+import { TestClock } from 'effect/testing'
 import * as Logix from '../../src/index.js'
 import * as ProcessRuntime from '../../src/internal/runtime/core/process/ProcessRuntime.js'
 
 describe('process: diagnostics chain (trigger → dispatch → error/stop)', () => {
-  it.scoped('should carry stable trigger + txnSeq into dispatch event', () =>
+  it.effect('should carry stable trigger + txnSeq into dispatch event', () =>
     Effect.gen(function* () {
       const SourceState = Schema.Struct({ ok: Schema.Boolean })
       const SourceActions = { ping: Schema.Any }
@@ -24,7 +25,7 @@ describe('process: diagnostics chain (trigger → dispatch → error/stop)', () 
 
       const TargetLogic = TargetModule.logic(($) =>
         Effect.gen(function* () {
-          yield* $.onAction('inc').run({ effect: () => $.state.update((s) => ({ ...s, count: s.count + 1 })) })
+          yield* $.onAction('inc').run(() => $.state.update((s) => ({ ...s, count: s.count + 1 })))
         }),
       )
 
@@ -68,22 +69,19 @@ describe('process: diagnostics chain (trigger → dispatch → error/stop)', () 
       const scope = yield* Scope.make()
       try {
         const env = yield* Layer.buildWithScope(layer, scope)
-        const rt = Context.get(
-          env as Context.Context<any>,
-          ProcessRuntime.ProcessRuntimeTag as any,
-        ) as ProcessRuntime.ProcessRuntime
+        const rt = ServiceMap.get(env as ServiceMap.ServiceMap<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
 
-        const source = Context.get(env, SourceModule.tag)
+        const source = ServiceMap.get(env, SourceModule.tag)
 
         for (let i = 0; i < 10; i++) {
-          yield* Effect.yieldNow()
+          yield* Effect.yieldNow
         }
 
         const weirdPayload = { raw: BigInt(1), meta: { nested: true } }
         yield* source.dispatch({ _tag: 'ping', payload: weirdPayload } as any)
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
         yield* TestClock.adjust('20 millis')
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
 
         for (let i = 0; i < 100; i++) {
           events = (yield* rt.getEventsSnapshot()) as any
@@ -91,7 +89,7 @@ describe('process: diagnostics chain (trigger → dispatch → error/stop)', () 
             (e: any) => e.identity?.identity?.processId === 'ProcessDiagChain' && e.type === 'process:error',
           )
           if (hasError) break
-          yield* Effect.yieldNow()
+          yield* Effect.yieldNow
         }
       } finally {
         yield* Scope.close(scope, Exit.succeed(undefined))

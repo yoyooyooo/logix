@@ -1,6 +1,6 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Context, Effect, Layer, Schema } from 'effect'
+import {Effect, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../src/index.js'
 import * as Debug from '../../src/Debug.js'
 
@@ -28,13 +28,13 @@ const CounterRunForkLogic = Counter.logic(($) =>
 // Watcher wiring using Effect.all + run.
 const CounterAllLogic = Counter.logic(($) =>
   Effect.gen(function* () {
-      yield* Effect.all(
-        [
-        $.onAction('inc').run({ effect: $.state.update((s) => ({ ...s, value: s.value + 1 })) }),
-        $.onAction('dec').run({ effect: $.state.update((s) => ({ ...s, value: s.value - 1 })) }),
-        ],
-        { concurrency: 'unbounded' },
-      )
+    yield* Effect.all(
+      [
+        $.onAction('inc').run($.state.update((s) => ({ ...s, value: s.value + 1 }))),
+        $.onAction('dec').run($.state.update((s) => ({ ...s, value: s.value - 1 }))),
+      ],
+      { concurrency: 'unbounded' },
+    )
   }),
 )
 
@@ -48,43 +48,12 @@ const CounterManualForkLogic = Counter.logic(($) =>
 )
 
 describe('Watcher patterns (Bound + Flow)', () => {
-  it('runParallelFork should not emit legacy runParallel migration diagnostics', async () => {
-    const diagnostics: Array<Debug.Event> = []
-    const sink: Debug.Sink = {
-      record: (event) =>
-        Effect.sync(() => {
-          diagnostics.push(event)
-        }),
-    }
-
-    const layer = Counter.live({ value: 0 }, CounterRunForkLogic, CounterErrorLogic)
-    const program = Effect.gen(function* () {
-      const context = yield* Layer.build(layer)
-      const runtime = Context.get(context, Counter.tag)
-      yield* Effect.sleep('80 millis')
-      yield* runtime.dispatch({ _tag: 'inc', payload: undefined })
-      yield* Effect.sleep('80 millis')
-    })
-
-    await Effect.runPromise(
-      Effect.scoped(
-        Effect.locally(Debug.internal.currentDebugSinks as any, [sink])(program) as Effect.Effect<void, never, never>,
-      ),
-    )
-
-    const legacyRunDiagnostics = diagnostics.filter(
-      (event): event is Extract<Debug.Event, { readonly type: 'diagnostic' }> =>
-        event.type === 'diagnostic' && event.code === 'flow::legacy_run_alias',
-    )
-    expect(legacyRunDiagnostics).toHaveLength(0)
-  })
-
   it('runParallel-based watcher should update state', async () => {
     const layer = Counter.live({ value: 0 }, CounterRunForkLogic, CounterErrorLogic)
 
     const program = Effect.gen(function* () {
       const context = yield* Layer.build(layer)
-      const runtime = Context.get(context, Counter.tag)
+      const runtime = ServiceMap.get(context, Counter.tag)
 
       // Wait for logic subscriptions.
       yield* Effect.sleep('100 millis')
@@ -110,7 +79,7 @@ describe('Watcher patterns (Bound + Flow)', () => {
 
     const program = Effect.gen(function* () {
       const context = yield* Layer.build(layer)
-      const runtime = Context.get(context, Counter.tag)
+      const runtime = ServiceMap.get(context, Counter.tag)
 
       // Wait for logic subscriptions.
       yield* Effect.sleep('50 millis')
@@ -136,7 +105,7 @@ describe('Watcher patterns (Bound + Flow)', () => {
 
     const program = Effect.gen(function* () {
       const context = yield* Layer.build(layer)
-      const runtime = Context.get(context, Counter.tag)
+      const runtime = ServiceMap.get(context, Counter.tag)
 
       // Wait for logic subscriptions.
       yield* Effect.sleep('100 millis')
@@ -162,7 +131,7 @@ describe('Watcher patterns (Bound + Flow)', () => {
 
     const program = Effect.gen(function* () {
       const context = yield* Layer.build(layer)
-      const runtime = Context.get(context, Counter.tag)
+      const runtime = ServiceMap.get(context, Counter.tag)
 
       // Wait for logic subscriptions.
       yield* Effect.sleep('100 millis')
@@ -182,4 +151,64 @@ describe('Watcher patterns (Bound + Flow)', () => {
 
     await Effect.runPromise(Effect.scoped(program) as Effect.Effect<void, never, never>)
   })
+
+  it.effect('production burst watcher writebacks should collapse into a single state:update commit', () =>
+    Effect.gen(function* () {
+      const previousEnv = process.env.NODE_ENV
+      process.env.NODE_ENV = 'production'
+
+      try {
+        const watcherCount = 8
+        const burstLogic = Counter.logic(($) =>
+          Effect.gen(function* () {
+            for (let index = 0; index < watcherCount; index++) {
+              yield* $.onAction('inc').runParallelFork(
+                $.state.mutate((draft) => {
+                  draft.value += 1
+                }),
+              )
+            }
+          }),
+        )
+
+        const impl = Counter.implement({
+          initial: { value: 0 },
+          logics: [burstLogic, CounterErrorLogic],
+        })
+
+        const ring = Debug.makeRingBufferSink(128)
+        const layer = Layer.mergeAll(Debug.replace([ring.sink]), Debug.diagnosticsLevel('light')) as Layer.Layer<
+          any,
+          never,
+          never
+        >
+
+        const runtime = Logix.Runtime.make(impl, { layer })
+
+        yield* Effect.promise(() =>
+          runtime.runPromise(
+            Effect.gen(function* () {
+              const rt: any = yield* Effect.service(Counter.tag).pipe(Effect.orDie)
+
+              yield* Effect.sleep('50 millis')
+              yield* rt.dispatch({ _tag: 'inc', payload: undefined })
+              yield* Effect.sleep('100 millis')
+
+              const state: any = yield* rt.getState
+              expect(state.value).toBe(watcherCount)
+            }),
+          ),
+        )
+
+        const commits = ring
+          .getSnapshot()
+          .filter((event) => event.type === 'state:update' && (event as any).txnId) as ReadonlyArray<any>
+
+        expect(commits.length).toBe(1)
+        expect(commits[0]?.originName).toBe('dispatch')
+      } finally {
+        process.env.NODE_ENV = previousEnv
+      }
+    }),
+  )
 })

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Context, Effect, Layer, Schema } from 'effect'
+import { Effect, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 import { RuntimeProvider, useImportedModule, useModule, useRuntime, useSelector } from '@logixjs/react'
 import { CounterDef, CounterImpl } from '../modules/counter'
@@ -13,7 +13,7 @@ interface EnvService {
   readonly name: string
 }
 
-const EnvTag = Context.GenericTag<EnvService>('@examples/di-showcase/env')
+const EnvTag = ServiceMap.Service<EnvService>('@examples/di-showcase/env')
 const RootEnvLayer = Layer.succeed(EnvTag, { name: 'RootEnv' })
 const FeatureEnvLayer = Layer.succeed(EnvTag, { name: 'FeatureEnv' })
 
@@ -121,13 +121,15 @@ const RootResolveProbe: React.FC = () => {
     void runtime
       .runPromise(
         Effect.gen(function* () {
-          const env = yield* EnvTag
+          const env = yield* Effect.service(EnvTag).pipe(Effect.orDie)
           return env.name
         }),
       )
       .then(setCurrentEnv)
 
-    void runtime.runPromise(Logix.Root.resolve(EnvTag).pipe(Effect.map((env) => env.name))).then(setRootEnv)
+    void runtime
+      .runPromise(Logix.Root.resolve(EnvTag).pipe(Effect.map((env: EnvService) => env.name)) as Effect.Effect<string, never, never>)
+      .then(setRootEnv)
   }, [runtime])
 
   return (

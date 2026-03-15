@@ -47,7 +47,10 @@ describe('useSelector(shared subscription)', () => {
     )
 
     type CounterAction = { readonly _tag: 'inc'; readonly payload?: void }
-    const baseHandle = runtime.runSync(Counter.tag as any) as Logix.ModuleRuntime<{ count: number }, CounterAction>
+    const baseHandle = runtime.runSync(Effect.service(Counter.tag).pipe(Effect.orDie)) as Logix.ModuleRuntime<
+      { count: number },
+      CounterAction
+    >
 
     const moduleInstanceKey = `${baseHandle.moduleId}::${baseHandle.instanceId}`
     const runtimeStore = Logix.InternalContracts.getRuntimeStore(runtime as any) as any

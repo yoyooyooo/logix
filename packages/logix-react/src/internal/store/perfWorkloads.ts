@@ -79,26 +79,137 @@ export const makePerfListScopeCheckModule = (moduleId: string) =>
           check: {
             uniqueWarehouse: {
               deps: ['warehouseId'],
-              validate: (rows: ReadonlyArray<PerfListScopeRow>) => {
-                const indicesByValue = new Map<string, Array<number>>()
-                for (let i = 0; i < rows.length; i++) {
-                  const v = String(rows[i]?.warehouseId ?? '').trim()
-                  if (!v) continue
-                  const bucket = indicesByValue.get(v) ?? []
-                  bucket.push(i)
-                  indicesByValue.set(v, bucket)
+              validate: (() => {
+                // Incremental list-scope unique check (performance-first, best-effort):
+                // - Keeps per-list-instance caches keyed by stable rowIds (trackBy/store/index).
+                // - Uses ctx.scope.changedIndices when available to avoid full rescans.
+                // - Falls back to full scan on structural changes or missing hints.
+                type RowError = Record<string, unknown>
+
+                type Cache = {
+                  readonly rowCount: number
+                  readonly rowIds: ReadonlyArray<string>
+                  readonly valueByRowId: Map<string, string>
+                  readonly indicesByValue: Map<string, Set<number>>
                 }
 
-                const rowErrors: Array<Record<string, unknown> | undefined> = rows.map(() => undefined)
-                for (const dupIndices of indicesByValue.values()) {
-                  if (dupIndices.length <= 1) continue
-                  for (const i of dupIndices) {
-                    rowErrors[i] = { warehouseId: 'duplicate' }
+                // Cache per concrete list instance.
+                const cacheByKey = new Map<string, Cache>()
+
+                const getRowId = (
+                  rows: ReadonlyArray<PerfListScopeRow>,
+                  index: number,
+                  ctx: any,
+                ): string => {
+                  const fromFn = ctx?.scope?.rowIdAt
+                  if (typeof fromFn === 'function') {
+                    const v = fromFn(index)
+                    if (typeof v === 'string' && v.length > 0) return v
                   }
+                  const row = rows[index]
+                  const trackBy = typeof row?.id === 'string' ? row.id : undefined
+                  return trackBy ? trackBy : String(index)
                 }
 
-                return rowErrors.some(Boolean) ? { rows: rowErrors } : undefined
-              },
+                const normalizeValue = (v: unknown): string => String(v ?? '').trim()
+
+                const removeIndexFromValueBucket = (cache: Cache, value: string, index: number): void => {
+                  const bucket = cache.indicesByValue.get(value)
+                  if (!bucket) return
+                  bucket.delete(index)
+                  if (bucket.size === 0) cache.indicesByValue.delete(value)
+                }
+
+                const addIndexToValueBucket = (cache: Cache, value: string, index: number): void => {
+                  const bucket = cache.indicesByValue.get(value) ?? new Set<number>()
+                  bucket.add(index)
+                  cache.indicesByValue.set(value, bucket)
+                }
+
+                const fullRebuild = (rows: ReadonlyArray<PerfListScopeRow>, ctx: any): Cache => {
+                  const rowIds: string[] = new Array(rows.length)
+                  const valueByRowId = new Map<string, string>()
+                  const indicesByValue = new Map<string, Set<number>>()
+
+                  for (let i = 0; i < rows.length; i++) {
+                    const rowId = getRowId(rows, i, ctx)
+                    rowIds[i] = rowId
+                    const value = normalizeValue(rows[i]?.warehouseId)
+                    valueByRowId.set(rowId, value)
+                    if (!value) continue
+                    const bucket = indicesByValue.get(value) ?? new Set<number>()
+                    bucket.add(i)
+                    indicesByValue.set(value, bucket)
+                  }
+
+                  return { rowCount: rows.length, rowIds, valueByRowId, indicesByValue }
+                }
+
+                const buildErrorsFromCache = (cache: Cache): { readonly rows: Array<RowError | undefined> } | undefined => {
+                  // Sparse errors array; only allocate and touch duplicates.
+                  let hasAny = false
+                  const out: Array<RowError | undefined> = new Array(cache.rowCount)
+                  for (const bucket of cache.indicesByValue.values()) {
+                    if (bucket.size <= 1) continue
+                    hasAny = true
+                    for (const i of bucket) {
+                      if (i < 0 || i >= cache.rowCount) continue
+                      out[i] = { warehouseId: 'duplicate' }
+                    }
+                  }
+                  return hasAny ? { rows: out } : undefined
+                }
+
+                return (rows: ReadonlyArray<PerfListScopeRow>, ctx: any) => {
+                  const listKey = `${String(ctx?.scope?.listPath ?? '')}@@${(ctx?.scope?.listIndexPath ?? []).join(',')}`
+
+                  const prev = cacheByKey.get(listKey)
+                  const changedIndices: ReadonlyArray<number> | undefined = Array.isArray(ctx?.scope?.changedIndices)
+                    ? (ctx.scope.changedIndices as ReadonlyArray<number>)
+                    : undefined
+
+                  // If the caller cannot provide a precise changed-indices hint (e.g. list/root validate),
+                  // we must fall back to a full rebuild to preserve correctness.
+                  // (Perf-only workload: correctness > micro-alloc savings.)
+                  const hasPreciseChangedIndices = !!(changedIndices && changedIndices.length > 0)
+
+                  // Structural changes or missing hints: full rebuild.
+                  const shouldRebuild =
+                    !prev || prev.rowCount !== rows.length || !hasPreciseChangedIndices
+
+                  const cache = shouldRebuild ? fullRebuild(rows, ctx) : (prev as Cache)
+
+                  if (!shouldRebuild) {
+                    for (const index of changedIndices!) {
+                      if (!Number.isInteger(index) || index < 0 || index >= rows.length) continue
+
+                      const rowId = getRowId(rows, index, ctx)
+
+                      // RowId drift (reorder or identity change) => rebuild.
+                      if (cache.rowIds[index] !== rowId) {
+                        const rebuilt = fullRebuild(rows, ctx)
+                        cacheByKey.set(listKey, rebuilt)
+                        return buildErrorsFromCache(rebuilt)
+                      }
+
+                      const nextValue = normalizeValue(rows[index]?.warehouseId)
+                      const prevValue = cache.valueByRowId.get(rowId) ?? ''
+                      if (Object.is(prevValue, nextValue)) continue
+
+                      cache.valueByRowId.set(rowId, nextValue)
+
+                      if (prevValue) removeIndexFromValueBucket(cache, prevValue, index)
+                      if (nextValue) addIndexToValueBucket(cache, nextValue, index)
+                    }
+                  }
+
+                  if (shouldRebuild) {
+                    cacheByKey.set(listKey, cache)
+                  }
+
+                  return buildErrorsFromCache(cache)
+                }
+              })(),
             },
           },
         }),

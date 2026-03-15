@@ -68,11 +68,12 @@ const runtime = Logix.Runtime.make(RootImpl, {
 ### Recipe C: hot switch one module at runtime (diagnosis/rollback)
 
 ```ts
+import { Effect } from "effect"
 import * as Logix from "@logixjs/core"
 
-Logix.Runtime.setConcurrencyPolicyOverride(runtime, "OrderForm", { concurrencyLimit: 4 })
+await Effect.runPromise(Logix.Runtime.setConcurrencyPolicyOverride(runtime, "OrderForm", { concurrencyLimit: 4 }))
 // Remove override: pass undefined
-Logix.Runtime.setConcurrencyPolicyOverride(runtime, "OrderForm", undefined)
+await Effect.runPromise(Logix.Runtime.setConcurrencyPolicyOverride(runtime, "OrderForm", undefined))
 ```
 
 ### Recipe D: override within a Provider subtree (page-level experiment)

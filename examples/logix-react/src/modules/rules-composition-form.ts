@@ -16,7 +16,7 @@ export const LineItemSchema = Schema.Struct({
 export const RulesCompositionValuesSchema = Schema.Struct({
   contact: Schema.Struct({
     email: Schema.String,
-    preferredChannel: Schema.Literal('email', 'phone'),
+    preferredChannel: Schema.Literals(['email', 'phone']),
     phone: Schema.String,
   }),
   items: Schema.Array(LineItemSchema),

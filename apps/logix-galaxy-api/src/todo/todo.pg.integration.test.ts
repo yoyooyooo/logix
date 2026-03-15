@@ -1,4 +1,5 @@
-import { HttpApiBuilder, HttpServer } from '@effect/platform'
+import { HttpRouter, HttpServer } from 'effect/unstable/http'
+import { HttpApiBuilder } from 'effect/unstable/httpapi'
 import { Layer } from 'effect'
 import { Pool } from 'pg'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -56,14 +57,15 @@ describePg('Todo CRUD（PostgreSQL 集成）', () => {
   })
 
   it('create/list/get/update/delete', async () => {
-    const ApiLive = HttpApiBuilder.api(EffectApiBase).pipe(
+    const ApiLive = HttpApiBuilder.layer(EffectApiBase).pipe(
       Layer.provide(HealthLive),
       Layer.provide(TodoLive),
       Layer.provide(TodoRepoLive.pipe(Layer.provide(TodoTableLive))),
       Layer.provide(DbLive),
+      Layer.provide(HttpServer.layerServices),
     )
 
-    const { handler, dispose } = HttpApiBuilder.toWebHandler(Layer.mergeAll(ApiLive, HttpServer.layerContext))
+    const { handler, dispose } = HttpRouter.toWebHandler(Layer.mergeAll(ApiLive), { disableLogger: true })
 
     try {
       const created = await handler(

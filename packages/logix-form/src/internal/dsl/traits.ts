@@ -104,7 +104,7 @@ const normalizeNodeOrListOrEntry = (value: unknown): unknown => {
  * - Form defaults `check.deps=[]`; only declare deps when you need "cross-field linked validation triggers".
  * - Returns a StateTraitSpec fragment that can be spread directly (assembled by Form.make).
  */
-export const traits = <TValues extends object, I>(_valuesSchema: Schema.Schema<TValues, I>) => {
+export const traits = <TValues extends object>(_valuesSchema: Schema.Schema<TValues>) => {
   function run(spec: TraitsSpec<TValues>): Logix.StateTrait.StateTraitSpec<TValues>
   function run(spec: Logix.StateTrait.StateTraitSpec<TValues>): Logix.StateTrait.StateTraitSpec<TValues>
   function run(spec: any): any {

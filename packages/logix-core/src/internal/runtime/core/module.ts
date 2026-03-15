@@ -1,4 +1,4 @@
-import { Context, Effect, Layer, Schema, Stream } from 'effect'
+import { Effect, Layer, Schema, ServiceMap, Stream } from 'effect'
 import type * as Logic from './LogicMiddleware.js'
 import type { StateTransactionInstrumentation, TxnLanesPatch } from './env.js'
 import type { FieldPath } from '../../field-path.js'
@@ -13,10 +13,10 @@ import type { ReadQueryInput } from './ReadQuery.js'
  */
 export type AnySchema = any
 
-type NormalizeSchema<S> = S extends Schema.Schema<infer A, any, any> ? Schema.Schema<A, any, any> : S
+type NormalizeSchema<S> = S extends Schema.Schema<infer A> ? Schema.Schema<A> : S
 
 type NormalizeActionToken<T> = T extends Action.ActionToken<infer Tag, infer Payload, any>
-  ? Action.ActionToken<Tag, Payload, Schema.Schema<any, any, any>>
+  ? Action.ActionToken<Tag, Payload, Schema.Schema<any>>
   : T
 
 type NormalizeActionMap<AMap extends Record<string, Action.AnyActionToken>> = {
@@ -166,7 +166,7 @@ export interface ModuleRuntime<S, A> {
  * - The Id type is not important for this PoC, so we use `any`.
  * - The Service type is fixed to the Runtime for the current Shape.
  */
-export type ModuleRuntimeTag<Sh extends AnyModuleShape> = Context.Tag<any, ModuleRuntimeOfShape<Sh>>
+export type ModuleRuntimeTag<Sh extends AnyModuleShape> = ServiceMap.Key<any, ModuleRuntimeOfShape<Sh>>
 
 /**
  * Module handle union:
@@ -262,7 +262,7 @@ export type ActionForTag<Sh extends AnyModuleShape, K extends keyof Sh['actionMa
 >
 
 export type BoundApiRootApi<Sh extends AnyModuleShape, R = never> = {
-  readonly resolve: <Svc, Id = unknown>(tag: Context.Tag<Id, Svc>) => LogicEffect<Sh, R, Svc, never>
+  readonly resolve: <Svc, Id = unknown>(tag: ServiceMap.Key<Id, Svc>) => LogicEffect<Sh, R, Svc, never>
 }
 
 export type BoundApiStateApi<Sh extends AnyModuleShape, R = never> = {
@@ -280,10 +280,6 @@ export type BoundApiDispatchersApi<Sh extends AnyModuleShape, R = never> = {
     DispatchEffect<Sh, R>
   >
 }
-
-export type BoundApiActionApi<Sh extends AnyModuleShape, R = never> = <K extends keyof Sh['actionMap']>(
-  token: Sh['actionMap'][K],
-) => ActionCallable<ActionPayloadOfToken<Sh['actionMap'][K]>, DispatchEffect<Sh, R>>
 
 export type BoundApiDispatchApi<Sh extends AnyModuleShape, R = never> = {
   (action: ActionOf<Sh>): DispatchEffect<Sh, R>
@@ -318,7 +314,7 @@ export type BoundApiUseApi<Sh extends AnyModuleShape, R = never> = {
     never
   >
   <Sh2 extends AnyModuleShape>(module: ModuleTag<string, Sh2>): LogicEffect<Sh, R, ModuleHandle<Sh2>, never>
-  <Svc, Id = unknown>(tag: Context.Tag<Id, Svc>): LogicEffect<Sh, R, Svc, never>
+  <Svc, Id = unknown>(tag: ServiceMap.Key<Id, Svc>): LogicEffect<Sh, R, Svc, never>
 }
 
 export type BoundApiTraitsApi<Sh extends AnyModuleShape, R = never> = {
@@ -349,7 +345,6 @@ export interface BoundApi<Sh extends AnyModuleShape, R = never> {
   readonly state: BoundApiStateApi<Sh, R>
   readonly actions: Sh['actionMap']
   readonly dispatchers: BoundApiDispatchersApi<Sh, R>
-  readonly action: BoundApiActionApi<Sh, R>
   readonly dispatch: BoundApiDispatchApi<Sh, R>
   /**
    * effect：
@@ -411,7 +406,7 @@ export interface BoundApi<Sh extends AnyModuleShape, R = never> {
  * - Also acts as a Context.Tag; usable as an argument to `$.use(Module)`.
  * - Exposes `logic` and `live` factories for mounting logic programs and building the live Layer.
  */
-export interface ModuleTag<Id extends string, Sh extends AnyModuleShape> extends Context.Tag<
+export interface ModuleTag<Id extends string, Sh extends AnyModuleShape> extends ServiceMap.Key<
   any,
   ModuleRuntimeOfShape<Sh>
 > {
@@ -475,14 +470,14 @@ export interface ModuleImpl<Id extends string, Sh extends AnyModuleShape, REnv =
 /**
  * Helper type: convert an Action Map into a union type.
  */
-type PayloadOfActionDef<V> = V extends Schema.Schema<any, any, any>
+type PayloadOfActionDef<V> = V extends Schema.Schema<any>
   ? Schema.Schema.Type<V>
   : V extends Action.ActionToken<any, infer P, any>
     ? P
     : never
 
 export type ActionsFromMap<M extends Record<string, AnySchema>> = {
-  [K in keyof M]: M[K] extends Schema.Schema<any, any, any>
+  [K in keyof M]: M[K] extends Schema.Schema<any>
     ? PayloadOfActionDef<M[K]> extends void
       ? {
           readonly _tag: K

@@ -18,7 +18,7 @@ const OptionsSnapshot = ResourceSnapshotSchema(Schema.Array(Option))
 
 const Row = Schema.Struct({
   id: Schema.String,
-  country: Schema.Literal('CN', 'US'),
+  country: Schema.Literals(['CN', 'US']),
   province: Schema.String,
   city: Schema.String,
   warehouseId: Schema.String,
@@ -146,21 +146,21 @@ const ProvincesSpec = Logix.Resource.make({
   id: 'demo/form/region/provinces',
   keySchema: ProvinceKey,
   load: (key: { readonly country: string }) =>
-    Effect.sleep(Duration.millis(240)).pipe(Effect.zipRight(Effect.succeed(provincesByCountry[key.country] ?? []))),
+    Effect.sleep(Duration.millis(240)).pipe(Effect.flatMap(() => Effect.succeed(provincesByCountry[key.country] ?? []))),
 })
 
 const CitiesSpec = Logix.Resource.make({
   id: 'demo/form/region/cities',
   keySchema: CityKey,
   load: (key: { readonly province: string }) =>
-    Effect.sleep(Duration.millis(260)).pipe(Effect.zipRight(Effect.succeed(citiesByProvince[key.province] ?? []))),
+    Effect.sleep(Duration.millis(260)).pipe(Effect.flatMap(() => Effect.succeed(citiesByProvince[key.province] ?? []))),
 })
 
 const WarehousesSpec = Logix.Resource.make({
   id: 'demo/form/region/warehouses',
   keySchema: WarehouseKey,
   load: (key: { readonly city: string }) =>
-    Effect.sleep(Duration.millis(320)).pipe(Effect.zipRight(Effect.succeed(warehousesByCity[key.city] ?? []))),
+    Effect.sleep(Duration.millis(320)).pipe(Effect.flatMap(() => Effect.succeed(warehousesByCity[key.city] ?? []))),
 })
 
 const DynamicListCascadingForm = Form.make('FormCase.DynamicListCascadingExclusion', {

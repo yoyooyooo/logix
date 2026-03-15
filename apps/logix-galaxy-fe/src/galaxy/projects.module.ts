@@ -1,4 +1,4 @@
-import { Effect, Schema, Stream } from 'effect'
+import { Effect, Exit, Schema, Stream } from 'effect'
 import * as Logix from '@logixjs/core'
 import { galaxyApi } from '../galaxy-api/client'
 import { AuthDef, AuthImpl } from './auth.module'
@@ -77,19 +77,19 @@ export const ProjectsLogic = ProjectsDef.logic(($) => {
       yield* $.dispatchers.setProjectsLoading(true)
       yield* $.dispatchers.setProjectsError(null)
 
-      const listEither = yield* Effect.tryPromise({
+      const listEither = yield* Effect.exit(Effect.tryPromise({
         try: () => galaxyApi.projectList(token),
         catch: (e) => e,
-      }).pipe(Effect.either)
+      }))
 
-      if (listEither._tag === 'Left') {
+      if (Exit.isFailure(listEither)) {
         yield* $.dispatchers.setProjects([])
-        yield* $.dispatchers.setProjectsError(galaxyApi.toMessage(listEither.left))
+        yield* $.dispatchers.setProjectsError(galaxyApi.toMessage(listEither.cause))
         yield* $.dispatchers.setProjectsLoading(false)
         return
       }
 
-      yield* $.dispatchers.setProjects(listEither.right as any)
+      yield* $.dispatchers.setProjects(listEither.value as any)
       yield* $.dispatchers.setProjectsLoading(false)
     })
 
@@ -99,18 +99,18 @@ export const ProjectsLogic = ProjectsDef.logic(($) => {
       yield* $.dispatchers.setSelectedProjectError(null)
       yield* $.dispatchers.setSelectedProject(null)
 
-      const getEither = yield* Effect.tryPromise({
+      const getEither = yield* Effect.exit(Effect.tryPromise({
         try: () => galaxyApi.projectGet(token, projectId),
         catch: (e) => e,
-      }).pipe(Effect.either)
+      }))
 
-      if (getEither._tag === 'Left') {
-        yield* $.dispatchers.setSelectedProjectError(galaxyApi.toMessage(getEither.left))
+      if (Exit.isFailure(getEither)) {
+        yield* $.dispatchers.setSelectedProjectError(galaxyApi.toMessage(getEither.cause))
         yield* $.dispatchers.setSelectedProjectLoading(false)
         return
       }
 
-      yield* $.dispatchers.setSelectedProject(getEither.right as any)
+      yield* $.dispatchers.setSelectedProject(getEither.value as any)
       yield* $.dispatchers.setSelectedProjectLoading(false)
     })
 
@@ -120,18 +120,18 @@ export const ProjectsLogic = ProjectsDef.logic(($) => {
       yield* $.dispatchers.setAccessError(null)
       yield* $.dispatchers.setAccess(null)
 
-      const accessEither = yield* Effect.tryPromise({
+      const accessEither = yield* Effect.exit(Effect.tryPromise({
         try: () => galaxyApi.projectAccessMe(token, projectId),
         catch: (e) => e,
-      }).pipe(Effect.either)
+      }))
 
-      if (accessEither._tag === 'Left') {
-        yield* $.dispatchers.setAccessError(galaxyApi.toMessage(accessEither.left))
+      if (Exit.isFailure(accessEither)) {
+        yield* $.dispatchers.setAccessError(galaxyApi.toMessage(accessEither.cause))
         yield* $.dispatchers.setAccessLoading(false)
         return
       }
 
-      yield* $.dispatchers.setAccess(accessEither.right as any)
+      yield* $.dispatchers.setAccess(accessEither.value as any)
       yield* $.dispatchers.setAccessLoading(false)
     })
 
@@ -160,54 +160,58 @@ export const ProjectsLogic = ProjectsDef.logic(($) => {
                 : resetAll,
           ),
 
-          $.onAction('refreshProjects').run({ mode: 'latest', effect: () =>
+          $.onAction('refreshProjects').runLatest(() =>
             Effect.gen(function* () {
               const t = yield* auth.read((s) => s.token)
               if (!t) return yield* resetAll
               yield* loadProjects(t)
-            }) }),
+            }),
+          ),
 
-          $.onAction('createProject').run({ mode: 'latest', effect: (action) =>
+          $.onAction('createProject').runLatest((action) =>
             Effect.gen(function* () {
               const t = yield* auth.read((s) => s.token)
               if (!t) return yield* resetAll
-          
+
               yield* $.dispatchers.setProjectsError(null)
               yield* $.dispatchers.setProjectsLoading(true)
-          
-              const createEither = yield* Effect.tryPromise({
+
+              const createEither = yield* Effect.exit(Effect.tryPromise({
                 try: () => galaxyApi.projectCreate(t, { name: action.payload }),
                 catch: (e) => e,
-              }).pipe(Effect.either)
-          
-              if (createEither._tag === 'Left') {
-                yield* $.dispatchers.setProjectsError(galaxyApi.toMessage(createEither.left))
+              }))
+
+              if (Exit.isFailure(createEither)) {
+                yield* $.dispatchers.setProjectsError(galaxyApi.toMessage(createEither.cause))
                 yield* $.dispatchers.setProjectsLoading(false)
                 return
               }
-          
+
               yield* $.dispatchers.setProjectsLoading(false)
               yield* loadProjects(t)
-            }) }),
+            }),
+          ),
 
-          $.onAction('selectProject').run({ mode: 'latest', effect: (action) =>
+          $.onAction('selectProject').runLatest((action) =>
             Effect.gen(function* () {
               const projectId = action.payload
               yield* $.dispatchers.setSelectedProjectId(projectId)
-          
+
               const t = yield* auth.read((s) => s.token)
               if (!t) return yield* resetAll
-          
-              yield* Effect.all([loadSelectedProject(t, projectId), loadAccess(t, projectId)])
-            }) }),
 
-          $.onAction('refreshAccess').run({ mode: 'latest', effect: () =>
+              yield* Effect.all([loadSelectedProject(t, projectId), loadAccess(t, projectId)])
+            }),
+          ),
+
+          $.onAction('refreshAccess').runLatest(() =>
             Effect.gen(function* () {
               const t = yield* auth.read((s) => s.token)
               const projectId = (yield* $.state.read).selectedProjectId
               if (!t || projectId == null) return
               yield* loadAccess(t, projectId)
-            }) }),
+            }),
+          ),
         ],
         { concurrency: 'unbounded' },
       )

@@ -1,20 +1,20 @@
 import { Schema } from 'effect'
 
 export const ConvergeActionSnippetSchema = Schema.Struct({
-  kind: Schema.Literal('provider_override', 'module_override'),
+  kind: Schema.Literals(['provider_override', 'module_override']),
   scope: Schema.String,
-  expectedConfigScope: Schema.Literal('provider', 'runtime_module'),
+  expectedConfigScope: Schema.Literals(['provider', 'runtime_module']),
   text: Schema.String,
 })
 export type ConvergeActionSnippet = Schema.Schema.Type<typeof ConvergeActionSnippetSchema>
 
 export const ConvergeAuditFindingSchema = Schema.Struct({
   id: Schema.String,
-  severity: Schema.Literal('info', 'warning', 'error'),
+  severity: Schema.Literals(['info', 'warning', 'error']),
   summary: Schema.String,
   explanation: Schema.String,
   requires: Schema.Struct({
-    status: Schema.Literal('ok', 'insufficient_evidence'),
+    status: Schema.Literals(['ok', 'insufficient_evidence']),
     missingFields: Schema.optional(Schema.Array(Schema.String)),
   }),
   recommendations: Schema.Array(Schema.String),
@@ -26,10 +26,10 @@ export type ConvergeOrderKey =
   | { readonly kind: 'global'; readonly seq: number }
   | { readonly kind: 'instance'; readonly seq: number }
 
-export const ConvergeOrderKeySchema: Schema.Schema<ConvergeOrderKey> = Schema.Union(
+export const ConvergeOrderKeySchema: Schema.Schema<ConvergeOrderKey> = Schema.Union([
   Schema.Struct({ kind: Schema.Literal('global'), seq: Schema.Number }),
   Schema.Struct({ kind: Schema.Literal('instance'), seq: Schema.Number }),
-)
+])
 
 export const ConvergeTxnRowSchema = Schema.Struct({
   moduleId: Schema.String,

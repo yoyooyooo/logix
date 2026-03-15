@@ -2,10 +2,10 @@ import { Effect, Schema, SubscriptionRef } from 'effect'
 import * as Logix from '@logixjs/core'
 import { I18nSnapshotSchema, I18nTag, type I18nMessageToken } from '@logixjs/i18n'
 
-const I18nTokenOptionsSchema = Schema.Record({
-  key: Schema.String,
-  value: Schema.Union(Schema.String, Schema.Boolean, Schema.Number, Schema.Null),
-})
+const I18nTokenOptionsSchema = Schema.Record(
+  Schema.String,
+  Schema.Union([Schema.String, Schema.Boolean, Schema.Number, Schema.Null]),
+)
 
 const I18nMessageTokenSchema = Schema.Struct({
   _tag: Schema.Literal('i18n'),
@@ -26,7 +26,7 @@ const I18nDemoStateSchema = Schema.Struct({
 
 const I18nDemoActionMap = {
   setName: Schema.String,
-  setLanguage: Schema.Literal('en', 'zh'),
+  setLanguage: Schema.Literals(['en', 'zh']),
 }
 
 export type I18nDemoShape = Logix.Shape<typeof I18nDemoStateSchema, typeof I18nDemoActionMap>
@@ -86,7 +86,7 @@ export const I18nDemoLogic = I18nDemoDef.logic(($) => ({
       effect: (action) => i18n.changeLanguage(action.payload),
     })
 
-    const onSnapshot = $.on(i18n.snapshot.changes).mutate((draft, snapshot) => {
+    const onSnapshot = $.on(SubscriptionRef.changes(i18n.snapshot)).mutate((draft, snapshot) => {
       draft.derived.snapshot = snapshot
       draft.derived.rendered = renderGreeting(draft.name, i18n)
     })

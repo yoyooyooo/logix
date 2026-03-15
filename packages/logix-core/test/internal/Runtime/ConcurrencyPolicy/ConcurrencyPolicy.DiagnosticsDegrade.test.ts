@@ -1,6 +1,7 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Effect, TestClock } from 'effect'
+import { Effect } from 'effect'
+import { TestClock } from 'effect/testing'
 import * as ConcurrencyDiagnostics from '../../../../src/internal/runtime/core/ConcurrencyDiagnostics.js'
 import * as Debug from '../../../../src/Debug.js'
 
@@ -22,39 +23,37 @@ describe('ConcurrencyPolicy (US3): diagnostics degrade', () => {
         allowUnboundedScope: 'runtime_default',
       }
 
-      const program = Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
-        Effect.gen(function* () {
-          const diagnostics = yield* ConcurrencyDiagnostics.make({
-            moduleId: 'DiagnosticsDegrade',
-            instanceId: 'i-diagnostics-degrade',
-          })
-
-          yield* diagnostics.emitPressureIfNeeded({
-            policy,
-            trigger: { kind: 'txnQueue', name: 'enqueueTransaction' },
-            backlogCount: 1,
-            saturatedDurationMs: 10,
-          })
-
-          // Within the same cooldown window: it should be suppressed and increment suppressedCount.
-          yield* diagnostics.emitPressureIfNeeded({
-            policy,
-            trigger: { kind: 'txnQueue', name: 'enqueueTransaction' },
-            backlogCount: 1,
-            saturatedDurationMs: 10,
-          })
-
-          yield* TestClock.adjust('40 millis')
-
-          // After the cooldown window: emit again and carry suppressedCount.
-          yield* diagnostics.emitPressureIfNeeded({
-            policy,
-            trigger: { kind: 'txnQueue', name: 'enqueueTransaction' },
-            backlogCount: 1,
-            saturatedDurationMs: 10,
-          })
-        }),
-      )
+      const program = Effect.provideService(Effect.gen(function* () {
+        const diagnostics = yield* ConcurrencyDiagnostics.make({
+          moduleId: 'DiagnosticsDegrade',
+          instanceId: 'i-diagnostics-degrade',
+        })
+      
+        yield* diagnostics.emitPressureIfNeeded({
+          policy,
+          trigger: { kind: 'txnQueue', name: 'enqueueTransaction' },
+          backlogCount: 1,
+          saturatedDurationMs: 10,
+        })
+      
+        // Within the same cooldown window: it should be suppressed and increment suppressedCount.
+        yield* diagnostics.emitPressureIfNeeded({
+          policy,
+          trigger: { kind: 'txnQueue', name: 'enqueueTransaction' },
+          backlogCount: 1,
+          saturatedDurationMs: 10,
+        })
+      
+        yield* TestClock.adjust('40 millis')
+      
+        // After the cooldown window: emit again and carry suppressedCount.
+        yield* diagnostics.emitPressureIfNeeded({
+          policy,
+          trigger: { kind: 'txnQueue', name: 'enqueueTransaction' },
+          backlogCount: 1,
+          saturatedDurationMs: 10,
+        })
+      }), Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])
 
       yield* program
 
@@ -90,36 +89,34 @@ describe('ConcurrencyPolicy (US3): diagnostics degrade', () => {
         allowUnboundedScope: 'runtime_default',
       }
 
-      const program = Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
-        Effect.gen(function* () {
-          const diagnostics = yield* ConcurrencyDiagnostics.make({
-            moduleId: 'DiagnosticsDegradeTopicIsolation',
-            instanceId: 'i-diagnostics-degrade-topic-isolation',
-          })
-
-          yield* diagnostics.emitPressureIfNeeded({
-            policy,
-            trigger: {
-              kind: 'actionTopicHub',
-              name: 'publish',
-              details: { dispatchEntry: 'dispatch', channel: 'topic', topicTag: 'inc' },
-            },
-            backlogCount: 1,
-            saturatedDurationMs: 10,
-          })
-
-          yield* diagnostics.emitPressureIfNeeded({
-            policy,
-            trigger: {
-              kind: 'actionTopicHub',
-              name: 'publish',
-              details: { dispatchEntry: 'dispatch', channel: 'topic', topicTag: 'dec' },
-            },
-            backlogCount: 1,
-            saturatedDurationMs: 10,
-          })
-        }),
-      )
+      const program = Effect.provideService(Effect.gen(function* () {
+        const diagnostics = yield* ConcurrencyDiagnostics.make({
+          moduleId: 'DiagnosticsDegradeTopicIsolation',
+          instanceId: 'i-diagnostics-degrade-topic-isolation',
+        })
+      
+        yield* diagnostics.emitPressureIfNeeded({
+          policy,
+          trigger: {
+            kind: 'actionTopicHub',
+            name: 'publish',
+            details: { dispatchEntry: 'dispatch', channel: 'topic', topicTag: 'inc' },
+          },
+          backlogCount: 1,
+          saturatedDurationMs: 10,
+        })
+      
+        yield* diagnostics.emitPressureIfNeeded({
+          policy,
+          trigger: {
+            kind: 'actionTopicHub',
+            name: 'publish',
+            details: { dispatchEntry: 'dispatch', channel: 'topic', topicTag: 'dec' },
+          },
+          backlogCount: 1,
+          saturatedDurationMs: 10,
+        })
+      }), Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])
 
       yield* program
 

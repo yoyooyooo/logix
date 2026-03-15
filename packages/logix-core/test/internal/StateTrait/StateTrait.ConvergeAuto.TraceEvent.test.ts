@@ -12,7 +12,7 @@ const lastConvergeEvent = (
 }
 
 describe('StateTrait converge auto trace event', () => {
-  it.scoped('emits JsonValue evidence in light/full; off emits none', () =>
+  it.effect('emits JsonValue evidence in light/full; off emits none', () =>
     Effect.gen(function* () {
       const runOnce = (diagnosticsLevel: Debug.DiagnosticsLevel) =>
         Effect.gen(function* () {
@@ -21,7 +21,7 @@ describe('StateTrait converge auto trace event', () => {
           })
 
           const program = Effect.gen(function* () {
-            const rt: any = yield* M.tag
+            const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
             yield* InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 'trace-evidence' }, () =>
               Effect.gen(function* () {
                 const prev = yield* rt.getState

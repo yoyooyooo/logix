@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../../src/index.js'
@@ -86,18 +86,18 @@ describe('Module-as-Source (recognizability gate)', () => {
 
       const runtime = Logix.Runtime.make(RootImpl, {
         layer: Layer.empty as Layer.Layer<any, never, never>,
-        devtools: { mode: 'light', bufferSize: 256 },
+        devtools: { diagnosticsLevel: 'light', bufferSize: 256 },
       })
 
       try {
         yield* Effect.promise(() =>
           runtime.runPromise(
             Effect.gen(function* () {
-              const store = yield* RuntimeStoreTag
-              const scheduler = yield* TickSchedulerTag
+              const store = yield* Effect.service(RuntimeStoreTag).pipe(Effect.orDie)
+              const scheduler = yield* Effect.service(TickSchedulerTag).pipe(Effect.orDie)
 
-              const sourceRt: any = yield* Source.tag
-              const targetRt: any = yield* Target.tag
+              const sourceRt: any = yield* Effect.service(Source.tag).pipe(Effect.orDie)
+              const targetRt: any = yield* Effect.service(Target.tag).pipe(Effect.orDie)
 
               yield* sourceRt.dispatch({ _tag: 'set', payload: 2 })
               yield* scheduler.flushNow

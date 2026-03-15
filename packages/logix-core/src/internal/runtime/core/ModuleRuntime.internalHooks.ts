@@ -16,6 +16,11 @@ export type TraitState = {
   convergePlanCache: StateTraitConverge.ConvergePlanCache | undefined
   convergeGeneration: TraitConvergeGenerationEvidence
   pendingCacheMissReason: TraitConvergePlanCacheEvidence['missReason'] | undefined
+  /**
+   * Number of times the pending miss reason has been updated since the last txn window.
+   * Used for generation-thrash self-protection (multiple bumps before any txn runs).
+   */
+  pendingCacheMissReasonCount: number
   lastConvergeIrKeys: { readonly writersKey: string; readonly depsKey: string } | undefined
   listConfigs: ReadonlyArray<RowId.ListConfig>
 }

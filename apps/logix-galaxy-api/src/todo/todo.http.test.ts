@@ -1,4 +1,5 @@
-import { HttpApiBuilder, HttpServer } from '@effect/platform'
+import { HttpRouter, HttpServer } from 'effect/unstable/http'
+import { HttpApiBuilder } from 'effect/unstable/httpapi'
 import { Effect, Layer, Option } from 'effect'
 import { describe, expect, it } from 'vitest'
 
@@ -26,7 +27,7 @@ const makeTodoRepoTest = (): Layer.Layer<TodoRepo> => {
         store.set(todo.id, todo)
         return todo
       }),
-    get: (id) => Effect.sync(() => Option.fromNullable(store.get(id))),
+    get: (id) => Effect.sync(() => Option.fromNullishOr(store.get(id))),
     list: Effect.sync(() => Array.from(store.values())),
     update: (id, patch) =>
       Effect.sync(() => {
@@ -48,14 +49,15 @@ const makeTodoRepoTest = (): Layer.Layer<TodoRepo> => {
 
 describe('Todo CRUD', () => {
   it('create/list/get/update/delete', async () => {
-    const ApiTestLive = HttpApiBuilder.api(EffectApiBase).pipe(
+    const ApiTestLive = HttpApiBuilder.layer(EffectApiBase).pipe(
       Layer.provide(HealthLive),
       Layer.provide(TodoLive),
       Layer.provide(makeTodoRepoTest()),
       Layer.provide(DbLive),
+      Layer.provide(HttpServer.layerServices),
     )
 
-    const { handler, dispose } = HttpApiBuilder.toWebHandler(Layer.mergeAll(ApiTestLive, HttpServer.layerContext))
+    const { handler, dispose } = HttpRouter.toWebHandler(Layer.mergeAll(ApiTestLive), { disableLogger: true })
 
     try {
       const created = await handler(
@@ -129,14 +131,15 @@ describe('Todo CRUD', () => {
       remove: () => Effect.fail(DbDisabled),
     })
 
-    const ApiTestLive = HttpApiBuilder.api(EffectApiBase).pipe(
+    const ApiTestLive = HttpApiBuilder.layer(EffectApiBase).pipe(
       Layer.provide(HealthLive),
       Layer.provide(TodoLive),
       Layer.provide(TodoRepoDbDisabledTest),
       Layer.provide(DbLive),
+      Layer.provide(HttpServer.layerServices),
     )
 
-    const { handler, dispose } = HttpApiBuilder.toWebHandler(Layer.mergeAll(ApiTestLive, HttpServer.layerContext))
+    const { handler, dispose } = HttpRouter.toWebHandler(Layer.mergeAll(ApiTestLive), { disableLogger: true })
 
     try {
       const response = await handler(new Request('http://local.test/todos'))
@@ -164,14 +167,15 @@ describe('Todo CRUD', () => {
       remove: () => Effect.fail(DbQuery),
     })
 
-    const ApiTestLive = HttpApiBuilder.api(EffectApiBase).pipe(
+    const ApiTestLive = HttpApiBuilder.layer(EffectApiBase).pipe(
       Layer.provide(HealthLive),
       Layer.provide(TodoLive),
       Layer.provide(TodoRepoDbQueryTest),
       Layer.provide(DbLive),
+      Layer.provide(HttpServer.layerServices),
     )
 
-    const { handler, dispose } = HttpApiBuilder.toWebHandler(Layer.mergeAll(ApiTestLive, HttpServer.layerContext))
+    const { handler, dispose } = HttpRouter.toWebHandler(Layer.mergeAll(ApiTestLive), { disableLogger: true })
 
     try {
       const response = await handler(new Request('http://local.test/todos'))

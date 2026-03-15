@@ -1,6 +1,6 @@
 import React from 'react'
 import * as Logix from '@logixjs/core'
-import { Context, Effect, Layer, Scope } from 'effect'
+import { Effect, Layer, Scope, ServiceMap } from 'effect'
 import type { ActionOfHandle, ReactModuleHandle, StateOfHandle } from './useModuleRuntime.js'
 import { useModuleRuntime } from './useModuleRuntime.js'
 import { useSelector } from './useSelector.js'
@@ -8,6 +8,7 @@ import { useRuntime } from './useRuntime.js'
 import { isDevEnv } from '../provider/env.js'
 import { getModuleCache, type ModuleCacheFactory, stableHash } from '../store/ModuleCache.js'
 import { RuntimeContext } from '../provider/ReactContext.js'
+import { emitRuntimeDebugEventBestEffort, readRuntimeDiagnosticsLevel } from '../provider/runtimeDebugBridge.js'
 import { RuntimeProviderNotFoundError } from '../provider/errors.js'
 import {
   applyHandleExtend,
@@ -192,6 +193,14 @@ export function useModule(
   }
 
   let runtime: Logix.ModuleRuntime<unknown, unknown>
+  const moduleImplResolveTraceRef = React.useRef<
+    | {
+        readonly moduleId: string
+        readonly cacheMode: 'sync' | 'suspend'
+        readonly durationMs: number
+      }
+    | undefined
+  >(undefined)
 
   if (isModuleImpl(normalizedHandle)) {
     // ModuleImpl: build a local ModuleRuntime from the current Runtime's resource cache
@@ -249,9 +258,9 @@ export function useModule(
 
     const baseFactory = React.useMemo<ModuleCacheFactory>(
       () => (scope: Scope.Scope) =>
-        Layer.buildWithScope(normalizedHandle.layer, scope).pipe(
+        Layer.buildWithScope(Layer.fresh(normalizedHandle.layer), scope).pipe(
           Effect.map(
-            (context) => Context.get(context, normalizedHandle.module) as Logix.ModuleRuntime<unknown, unknown>,
+            (context) => ServiceMap.get(context, normalizedHandle.module) as Logix.ModuleRuntime<unknown, unknown>,
           ),
         ),
       [normalizedHandle],
@@ -267,25 +276,33 @@ export function useModule(
       // - on timeout we throw an error and let the caller's ErrorBoundary handle it.
       return (scope: Scope.Scope) =>
         baseFactory(scope).pipe(
-          Effect.timeoutFail({
-            duration: initTimeoutMs,
-            onTimeout: () =>
-              new Error(`[useModule] Module "${ownerId}" initialization timed out after ${initTimeoutMs}ms`),
-          }),
+          Effect.timeoutOption(initTimeoutMs),
+          Effect.flatMap((maybe) =>
+            maybe._tag === 'Some'
+              ? Effect.succeed(maybe.value)
+              : Effect.die(new Error(`[useModule] Module "${ownerId}" initialization timed out after ${initTimeoutMs}ms`)),
+          ),
         )
     }, [baseFactory, suspend, initTimeoutMs, ownerId])
 
+    const moduleResolveStartedAt = performance.now()
     const moduleRuntime = (suspend
       ? cache.read(key, factory, gcTime, ownerId, {
           entrypoint: 'react.useModule',
           policyMode: runtimeContext.policy.mode,
           yield: runtimeContext.policy.yield,
+          optimisticSyncBudgetMs: runtimeContext.policy.syncBudgetMs,
         })
       : cache.readSync(key, factory, gcTime, ownerId, {
           entrypoint: 'react.useModule',
           policyMode: runtimeContext.policy.mode,
           warnSyncBlockingThresholdMs: 5,
         })) as unknown as Logix.ModuleRuntime<unknown, unknown>
+    moduleImplResolveTraceRef.current = {
+      moduleId,
+      cacheMode: suspend ? 'suspend' : 'sync',
+      durationMs: Math.round((performance.now() - moduleResolveStartedAt) * 100) / 100,
+    }
 
     React.useEffect(() => cache.retain(key), [cache, key])
 
@@ -297,6 +314,31 @@ export function useModule(
 
   // Provide an instance label for DevTools: bind key/label to runtime.instanceId via a Debug trace event,
   // then downstream DevTools sinks can parse and render it.
+  React.useEffect(() => {
+    if (!isModuleImpl(normalizedHandle)) {
+      return
+    }
+    const diagnosticsLevel = readRuntimeDiagnosticsLevel(runtimeBase)
+    if (diagnosticsLevel === 'off') {
+      return
+    }
+    const trace = moduleImplResolveTraceRef.current
+    if (!trace) {
+      return
+    }
+    const effect = Logix.Debug.record({
+      type: 'trace:react.moduleImpl.resolve',
+      moduleId: trace.moduleId,
+      instanceId: runtime.instanceId,
+      data: {
+        cacheMode: trace.cacheMode,
+        durationMs: trace.durationMs,
+      },
+    })
+
+    emitRuntimeDebugEventBestEffort(runtimeBase, effect)
+  }, [runtimeBase, runtime, normalizedHandle])
+
   React.useEffect(() => {
     if (!isModuleImpl(normalizedHandle)) {
       return
@@ -315,7 +357,7 @@ export function useModule(
       data: { label },
     })
 
-    runtimeBase.runFork(effect)
+    emitRuntimeDebugEventBestEffort(runtimeBase, effect)
   }, [runtimeBase, runtime, normalizedHandle, options])
 
   // Component-level render trace: record once per commit per component (each useModule call),
@@ -339,7 +381,7 @@ export function useModule(
     })
 
     runtimeBase.runFork(effect)
-  }, [runtimeBase, runtime])
+  })
 
   if (selector) {
     // ModuleImpl path: selector is explicitly based on StateOf<Sh>; subscribe via runtime directly.

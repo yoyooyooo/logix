@@ -79,6 +79,11 @@ export interface ConvergeContext<S> {
   readonly configScope?: TraitConvergeConfigScope
   readonly generation?: TraitConvergeGenerationEvidence
   readonly cacheMissReasonHint?: TraitConvergePlanCacheEvidence['missReason']
+  /**
+   * How many times cacheMissReasonHint has been updated since the last txn window.
+   * Used to detect "generation thrash" (multiple bumps before any txn executes).
+   */
+  readonly cacheMissReasonHintCount?: number
   readonly now: () => number
   readonly budgetMs: number
   readonly decisionBudgetMs?: number
@@ -102,6 +107,14 @@ export interface ConvergeContext<S> {
    * it must explicitly degrade to dirtyAll and provide a stable reason code (for diagnostics & gating).
    */
   readonly dirtyAllReason?: DirtyAllReason
+  /**
+   * dirtyPathsKeyHash / dirtyPathsKeySize:
+   * - Optional incremental key for dirtyPaths when it is a Set of FieldPathIds.
+   * - Used by ultra-hot converge paths (inline_dirty micro-cache) to avoid scanning the Set on cache hits.
+   * - Hash must match FNV-1a (32-bit) over unique ids in Set insertion order.
+   */
+  readonly dirtyPathsKeyHash?: number
+  readonly dirtyPathsKeySize?: number
   readonly dirtyPaths?: ReadonlySet<string | FieldPath | FieldPathId> | ReadonlyArray<string | FieldPath | FieldPathId>
   readonly allowInPlaceDraft?: boolean
   readonly planCache?: ConvergePlanCache

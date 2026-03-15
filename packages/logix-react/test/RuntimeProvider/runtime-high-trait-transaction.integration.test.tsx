@@ -260,10 +260,16 @@ describe('React Runtime high-trait transaction integration', () => {
 
           result.current.bump()
 
-          // Give internal Effects a chance to run and commit the transaction.
-          yield* Effect.sleep('10 millis')
-
-          const after = countStateEventsAndTxn()
+          let after = before
+          for (let i = 0; i < 100; i += 1) {
+            yield* Effect.sleep('5 millis')
+            after = countStateEventsAndTxn()
+            const deltaState = after.stateEvents - before.stateEvents
+            const deltaTxn = after.txnCount - before.txnCount
+            if (deltaTxn > 0 && deltaState === deltaTxn) {
+              break
+            }
+          }
 
           const deltaState = after.stateEvents - before.stateEvents
           const deltaTxn = after.txnCount - before.txnCount

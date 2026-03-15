@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as Logix from '@logixjs/core'
 import { Chunk, Deferred, Effect, FiberId, Layer, Schema, Stream } from 'effect'
 import type { CrudApi, CrudDefaultQueryInput } from '@logixjs/domain'

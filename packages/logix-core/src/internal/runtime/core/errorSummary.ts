@@ -38,7 +38,7 @@ const getMessageFromUnknown = (cause: unknown): string => {
   // Try Effect Cause pretty (best-effort). This may include more details than needed,
   // so callers MUST still treat it as an untrusted/oversized string and truncate.
   try {
-    const pretty = Cause.pretty(cause as Cause.Cause<unknown>, { renderErrorCause: true })
+    const pretty = Cause.pretty(cause as Cause.Cause<unknown>)
     if (typeof pretty === 'string' && pretty.length > 0) return pretty
   } catch {
     // ignore

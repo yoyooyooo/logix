@@ -10,7 +10,7 @@ export const SpecStepSchema = Schema.Struct({
   id: Schema.String,
   label: Schema.String,
   intentScript: Schema.optional(Schema.String),
-  expectations: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Any })),
+  expectations: Schema.optional(Schema.Record(Schema.String, Schema.Any)),
 })
 
 export const SpecScenarioSchema = Schema.Struct({
@@ -40,14 +40,14 @@ export const SpecFeatureSchema = Schema.Struct({
 // State Schema
 // ============================================================================
 
-export const SandboxStatusSchema = Schema.Union(
+export const SandboxStatusSchema = Schema.Union([
   Schema.Literal('idle'),
   Schema.Literal('initializing'),
   Schema.Literal('ready'),
   Schema.Literal('running'),
   Schema.Literal('completed'),
   Schema.Literal('error'),
-)
+])
 
 export type SandboxStatus = Schema.Schema.Type<typeof SandboxStatusSchema>
 
@@ -55,14 +55,14 @@ export type SandboxStatus = Schema.Schema.Type<typeof SandboxStatusSchema>
 // Runtime-related Schemas (aligned with @logixjs/sandbox types)
 // ============================================================================
 
-const LogLevelSchema = Schema.Union(
+const LogLevelSchema = Schema.Union([
   Schema.Literal('debug'),
   Schema.Literal('info'),
   Schema.Literal('warn'),
   Schema.Literal('error'),
-)
+])
 
-const LogSourceSchema = Schema.Union(Schema.Literal('console'), Schema.Literal('effect'), Schema.Literal('logix'))
+const LogSourceSchema = Schema.Union([Schema.Literal('console'), Schema.Literal('effect'), Schema.Literal('logix')])
 
 export const LogEntrySchema = Schema.Struct({
   level: LogLevelSchema,
@@ -81,18 +81,13 @@ export const TraceSpanSchema = Schema.Struct({
   name: Schema.String,
   startTime: Schema.Number,
   endTime: Schema.optional(Schema.Number),
-  status: Schema.Union(
+  status: Schema.Union([
     Schema.Literal('running'),
     Schema.Literal('success'),
     Schema.Literal('error'),
     Schema.Literal('cancelled'),
-  ),
-  attributes: Schema.optional(
-    Schema.Record({
-      key: Schema.String,
-      value: Schema.Any,
-    }),
-  ),
+  ]),
+  attributes: Schema.optional(Schema.Record(Schema.String, Schema.Any)),
   intentId: Schema.optional(Schema.String),
   stepId: Schema.optional(Schema.String),
 })
@@ -100,12 +95,12 @@ export const TraceSpanSchema = Schema.Struct({
 export type TraceSpanState = Schema.Schema.Type<typeof TraceSpanSchema>
 type _TraceSpanCompat = TraceSpan extends TraceSpanState ? true : never
 
-const SandboxErrorCodeSchema = Schema.Union(
+const SandboxErrorCodeSchema = Schema.Union([
   Schema.Literal('INIT_FAILED'),
   Schema.Literal('RUNTIME_ERROR'),
   Schema.Literal('TIMEOUT'),
   Schema.Literal('WORKER_TERMINATED'),
-)
+])
 
 export const SandboxErrorInfoSchema = Schema.Struct({
   code: SandboxErrorCodeSchema,
@@ -135,7 +130,7 @@ export const SandboxState = Schema.Struct({
   semanticWidgets: Schema.Array(
     Schema.Struct({
       id: Schema.String,
-      type: Schema.Union(Schema.Literal('select'), Schema.Literal('button')),
+      type: Schema.Union([Schema.Literal('select'), Schema.Literal('button')]),
       label: Schema.String,
       field: Schema.String,
       stepId: Schema.String,
@@ -158,13 +153,13 @@ export const SandboxState = Schema.Struct({
   defaultKernelId: Schema.optional(Schema.String),
 
   // UI State
-  activeTab: Schema.Union(
+  activeTab: Schema.Union([
     Schema.Literal('console'),
     Schema.Literal('result'),
     Schema.Literal('traces'),
     Schema.Literal('ui'),
     Schema.Literal('http'),
-  ),
+  ]),
   code: Schema.String,
   autoImportLogix: Schema.Boolean,
 
@@ -187,13 +182,13 @@ export const SandboxDef = Logix.Module.make('SandboxModule', {
   actions: {
     init: Schema.Void,
     setCode: Schema.String,
-    setTab: Schema.Union(
+    setTab: Schema.Union([
       Schema.Literal('console'),
       Schema.Literal('result'),
       Schema.Literal('traces'),
       Schema.Literal('ui'),
       Schema.Literal('http'),
-    ),
+    ]),
     run: Schema.Void,
     setAutoImportLogix: Schema.Boolean,
 
@@ -217,7 +212,7 @@ export const SandboxDef = Logix.Module.make('SandboxModule', {
     setSemanticWidgets: Schema.Array(
       Schema.Struct({
         id: Schema.String,
-        type: Schema.Union(Schema.Literal('select'), Schema.Literal('button')),
+          type: Schema.Union([Schema.Literal('select'), Schema.Literal('button')]),
         label: Schema.String,
         field: Schema.String,
         stepId: Schema.String,

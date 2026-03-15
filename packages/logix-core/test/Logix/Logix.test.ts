@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
@@ -17,7 +17,7 @@ const TestModule = Logix.Module.make('LogixTestModule', {
 })
 
 describe('Logix public barrel', () => {
-  it.scoped('should construct a runtime from ModuleImpl via Runtime.make', () =>
+  it.effect('should construct a runtime from ModuleImpl via Runtime.make', () =>
     Effect.gen(function* () {
       const impl = TestModule.implement({
         initial: { count: 0 },
@@ -28,7 +28,7 @@ describe('Logix public barrel', () => {
       })
 
       const program = Effect.gen(function* () {
-        const test = yield* TestModule.tag
+        const test = yield* Effect.service(TestModule.tag).pipe(Effect.orDie)
         expect(test).toBeDefined()
         expect(yield* test.getState).toEqual({ count: 0 })
       })

@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "eval_name": "one-cut-one-commit",
+  "prompt": "按我们现在的方式继续：一刀一提交。先找一个高收益的性能刀，做完后更新 docs/perf、验证并单独提交，失败试探不要混进 commit。",
+  "assertions": [
+    { "text": "强调一刀一改、一刀一验、一刀一提交", "passed": false, "evidence": "待人工评估" },
+    { "text": "明确探索样本不能混进 commit", "passed": false, "evidence": "待人工评估" },
+    { "text": "明确 docs/perf 回写与清单更新", "passed": false, "evidence": "待人工评估" }
+  ]
+}

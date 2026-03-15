@@ -484,7 +484,9 @@ test(
             }
 
       const moduleCount = 10
-      const ticksPerRun = 1
+      // Timer resolution can quantize ultra-fast notify windows to 0ms, which makes relative budgets non-actionable.
+      // Accumulate multiple ticks per measured run to stabilize p95 and keep full/off comparisons meaningful.
+      const ticksPerRun = 500
 
       const moduleDefs = Array.from({ length: moduleCount }, (_, i) =>
         Logix.Module.make(`PerfRuntimeStoreNoTearing.M${i}`, {
@@ -525,13 +527,9 @@ test(
         if (cached) return cached
 
         const instrumentation = args.diagnosticsLevel === 'full' ? 'full' : 'light'
-        const mode: Logix.Debug.DevtoolsProjectionMode = args.diagnosticsLevel
-        const debugLayer = Layer.mergeAll(
-          Logix.Debug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
-            mode,
-          }) as Layer.Layer<any, never, never>,
-          Logix.Debug.diagnosticsLevel(args.diagnosticsLevel),
-        ) as Layer.Layer<any, never, never>
+        const debugLayer = Logix.Debug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
+          diagnosticsLevel: args.diagnosticsLevel,
+        }) as Layer.Layer<any, never, never>
 
         const runtime = Logix.Runtime.make(
           Root.implement({
@@ -546,7 +544,7 @@ test(
         )
 
         const moduleRuntimes = (await runtime.runPromise(
-          Effect.all(moduleDefs.map((m) => m.tag), { concurrency: 'unbounded' }) as any,
+          Effect.all(moduleDefs.map((m) => Effect.service(m.tag).pipe(Effect.orDie)), { concurrency: 'unbounded' }) as any,
         )) as ReadonlyArray<any>
 
         const storeOptions = { lowPriorityDelayMs: 16, lowPriorityMaxDelayMs: 50 }
@@ -632,7 +630,9 @@ test(
               samples.push(await runTick(base + i))
             }
             harness.runSeq += 1
-            return summarizeMs(samples).p95Ms
+            // Return per-tick average for this run; p95 is computed across runs by the harness.
+            const summary = summarizeMs(samples)
+            return summary.n > 0 ? samples.reduce((acc, v) => acc + v, 0) / summary.n : 0
           },
           dispose: async () => {
             for (const u of unsubs) {

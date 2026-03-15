@@ -41,17 +41,20 @@ describe('StateTrait converge dirty-set scheduling', () => {
     logics: [],
   })
 
-  it.scoped('runs only affected writers when dirtyPaths are specific', () =>
+  it.effect('runs only affected writers when dirtyPaths are specific', () =>
     Effect.gen(function* () {
       const ring = Debug.makeRingBufferSink(64)
 
       const runtime = Logix.Runtime.make(impl, {
         stateTransaction: { traitConvergeMode: 'dirty' },
-        layer: Debug.replace([ring.sink]) as Layer.Layer<any, never, never>,
+        layer: Layer.mergeAll(
+          Debug.replace([ring.sink]) as Layer.Layer<any, never, never>,
+          Debug.diagnosticsLevel('light'),
+        ) as Layer.Layer<any, never, never>,
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* M.tag
+        const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
         yield* rt.dispatch({ _tag: 'setA', payload: 1 } as any)
 
         const updates = ring
@@ -80,17 +83,20 @@ describe('StateTrait converge dirty-set scheduling', () => {
     }),
   )
 
-  it.scoped('falls back to full scheduling when only wildcard dirtyPaths exist', () =>
+  it.effect('falls back to full scheduling when only wildcard dirtyPaths exist', () =>
     Effect.gen(function* () {
       const ring = Debug.makeRingBufferSink(64)
 
       const runtime = Logix.Runtime.make(impl, {
         stateTransaction: { traitConvergeMode: 'dirty' },
-        layer: Debug.replace([ring.sink]) as Layer.Layer<any, never, never>,
+        layer: Layer.mergeAll(
+          Debug.replace([ring.sink]) as Layer.Layer<any, never, never>,
+          Debug.diagnosticsLevel('light'),
+        ) as Layer.Layer<any, never, never>,
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* M.tag
+        const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
         yield* Logix.InternalContracts.runWithStateTransaction(
           rt as any,

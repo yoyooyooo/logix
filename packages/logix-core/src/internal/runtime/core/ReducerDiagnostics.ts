@@ -1,4 +1,4 @@
-import { Cause, Chunk, Effect } from 'effect'
+import { Cause, Effect } from 'effect'
 import * as Debug from './DebugSink.js'
 
 /**
@@ -44,7 +44,7 @@ export const emitDiagnosticsFromCause = (
   moduleIdFromContext?: string,
 ): Effect.Effect<void, never, any> =>
   Effect.sync(() => {
-    const defects = Chunk.toReadonlyArray(Cause.defects(cause))
+    const defects = cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)
 
     let duplicate: ReducerDiagnosticError | undefined
     let late: ReducerDiagnosticError | undefined
@@ -95,7 +95,7 @@ export const emitDiagnosticsFromCause = (
 
     let combined: Effect.Effect<void> = Effect.void
     for (const eff of effects) {
-      combined = combined.pipe(Effect.zipRight(eff))
+      combined = combined.pipe(Effect.flatMap(() => eff))
     }
     return combined
   }).pipe(Effect.flatten)

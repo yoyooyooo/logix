@@ -71,7 +71,7 @@ describe('contracts (045): Kernel activation判定', () => {
     }),
   )
 
-  it.scoped('default runtime (core) should be fully activated', () =>
+  it.effect('default runtime (core) should be fully activated', () =>
     Effect.gen(function* () {
       const Root = Logix.Module.make('Contracts.045.KernelActivation.DefaultRuntime.core', {
         state: Schema.Void,
@@ -86,7 +86,7 @@ describe('contracts (045): Kernel activation判定', () => {
       )
 
       const read = Effect.gen(function* () {
-        const moduleRuntime = yield* Root.tag
+        const moduleRuntime = yield* Effect.service(Root.tag).pipe(Effect.orDie)
         return {
           kernel: Logix.Kernel.getKernelImplementationRef(moduleRuntime),
           evidence: Logix.Kernel.getRuntimeServicesEvidence(moduleRuntime),
@@ -99,7 +99,7 @@ describe('contracts (045): Kernel activation判定', () => {
     }),
   )
 
-  it.scoped('explicit core runtime (layer) should be fully activated', () =>
+  it.effect('explicit core runtime (layer) should be fully activated', () =>
     Effect.gen(function* () {
       const Root = Logix.Module.make('Contracts.045.KernelActivation.RollbackRuntime.core', {
         state: Schema.Void,
@@ -121,7 +121,7 @@ describe('contracts (045): Kernel activation判定', () => {
       )
 
       const read = Effect.gen(function* () {
-        const moduleRuntime = yield* Root.tag
+        const moduleRuntime = yield* Effect.service(Root.tag).pipe(Effect.orDie)
         return {
           kernel: Logix.Kernel.getKernelImplementationRef(moduleRuntime),
           evidence: Logix.Kernel.getRuntimeServicesEvidence(moduleRuntime),

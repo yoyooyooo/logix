@@ -48,6 +48,8 @@
         "type": "string",
         "enum": [
           "cold_start",
+          "fast_full",
+          "inline_dirty",
           "cache_hit",
           "cache_miss",
           "budget_cutoff",

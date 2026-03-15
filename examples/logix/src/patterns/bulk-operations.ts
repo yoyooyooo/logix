@@ -5,7 +5,7 @@
  *   抽离为可复用的 `(input) => Effect` 资产。
  */
 
-import { Data, Effect } from 'effect'
+import { Data, Effect, Layer, ServiceMap } from 'effect'
 
 // ---------------------------------------------------------------------------
 // 错误建模：BulkOperationPatternError
@@ -20,11 +20,16 @@ export class BulkOperationPatternError extends Data.TaggedError('BulkOperationPa
 // Services：Selection / BulkOperation / Notification（可在多场景复用）
 // ---------------------------------------------------------------------------
 
-export class SelectionService extends Effect.Service<SelectionService>()('SelectionService', {
-  effect: Effect.gen(function* () {
+export class SelectionService extends ServiceMap.Service<
+  SelectionService,
+  { readonly getSelectedIds: () => Effect.Effect<ReadonlyArray<string>> }
+>()('SelectionService') {}
+
+export const SelectionServiceLive = Layer.effect(
+  SelectionService,
+  Effect.gen(function* () {
     const getSelectedIds = () =>
       Effect.gen(function* () {
-        // PoC 场景：使用固定数据或从外部注入的 selection 中读取
         return ['id-1', 'id-2']
       })
 
@@ -32,10 +37,16 @@ export class SelectionService extends Effect.Service<SelectionService>()('Select
       getSelectedIds,
     }
   }),
-}) {}
+)
 
-export class BulkOperationService extends Effect.Service<BulkOperationService>()('BulkOperationService', {
-  effect: Effect.gen(function* () {
+export class BulkOperationService extends ServiceMap.Service<
+  BulkOperationService,
+  { readonly applyToMany: (input: { ids: ReadonlyArray<string>; operation: string }) => Effect.Effect<void> }
+>()('BulkOperationService') {}
+
+export const BulkOperationServiceLive = Layer.effect(
+  BulkOperationService,
+  Effect.gen(function* () {
     const applyToMany = (input: { ids: ReadonlyArray<string>; operation: string }) =>
       Effect.gen(function* () {
         console.log('[BulkOperationService] apply', input.operation, 'to', input.ids)
@@ -45,10 +56,16 @@ export class BulkOperationService extends Effect.Service<BulkOperationService>()
       applyToMany,
     }
   }),
-}) {}
+)
 
-export class NotificationService extends Effect.Service<NotificationService>()('NotificationService', {
-  effect: Effect.gen(function* () {
+export class NotificationService extends ServiceMap.Service<
+  NotificationService,
+  { readonly info: (message: string) => Effect.Effect<void>; readonly error: (message: string) => Effect.Effect<void> }
+>()('NotificationService') {}
+
+export const NotificationServiceLive = Layer.effect(
+  NotificationService,
+  Effect.gen(function* () {
     const info = (message: string) =>
       Effect.sync(() => {
         console.log('[Notification] info:', message)
@@ -64,7 +81,7 @@ export class NotificationService extends Effect.Service<NotificationService>()('
       error,
     }
   }),
-}) {}
+)
 
 // ---------------------------------------------------------------------------
 // Pattern：封装批量操作的长逻辑
@@ -84,9 +101,9 @@ export interface BulkOperationPatternInput {
  */
 export const runBulkOperationPattern = (input: BulkOperationPatternInput) =>
   Effect.gen(function* () {
-    const selection = yield* SelectionService
-    const bulk = yield* BulkOperationService
-    const notify = yield* NotificationService
+    const selection = yield* Effect.service(SelectionService).pipe(Effect.orDie)
+    const bulk = yield* Effect.service(BulkOperationService).pipe(Effect.orDie)
+    const notify = yield* Effect.service(NotificationService).pipe(Effect.orDie)
 
     const ids = yield* selection.getSelectedIds()
 

@@ -1,11 +1,11 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Deferred, Effect, Layer, Schema } from 'effect'
 import * as Debug from '../../src/Debug.js'
 import * as Logix from '../../src/index.js'
 
 describe('Error handling - expected error', () => {
-  it.scoped('should not emit lifecycle:error or invoke onError when an error is caught locally', () =>
+  it.effect('should not emit lifecycle:error or invoke onError when an error is caught locally', () =>
     Effect.gen(function* () {
       const events: Debug.Event[] = []
       const onErrorCalls: Array<unknown> = []
@@ -25,15 +25,13 @@ describe('Error handling - expected error', () => {
       })
 
       const logic = TestModule.logic(($) => ({
-        setup: Effect.sync(() => {
-          $.lifecycle.onError((cause, context) =>
-            Effect.sync(() => {
-              onErrorCalls.push({ cause, context })
-            }),
-          )
-        }),
+        setup: $.lifecycle.onError((cause, context) =>
+          Effect.sync(() => {
+            onErrorCalls.push({ cause, context })
+          }),
+        ),
         run: Effect.gen(function* () {
-          yield* Effect.fail('expected').pipe(Effect.catchAll(() => Effect.void))
+          yield* Effect.catch(Effect.fail('expected'), () => Effect.void)
           yield* Deferred.succeed(runDone, undefined)
         }),
       }))
@@ -44,14 +42,12 @@ describe('Error handling - expected error', () => {
         never
       >
 
-      yield* Effect.locally(Debug.internal.currentDebugSinks as any, [sink])(
-        Effect.scoped(
-          Effect.gen(function* () {
-            yield* TestModule.tag
-            yield* Deferred.await(runDone)
-          }).pipe(Effect.provide(layer)),
-        ),
-      )
+      yield* Effect.provideService(Effect.scoped(
+        Effect.gen(function* () {
+          yield* Effect.service(TestModule.tag).pipe(Effect.orDie)
+          yield* Deferred.await(runDone)
+        }).pipe(Effect.provide(layer)),
+      ), Debug.internal.currentDebugSinks as any, [sink])
 
       expect(onErrorCalls.length).toBe(0)
       expect(events.some((e) => e.type === 'lifecycle:error')).toBe(false)

@@ -1,4 +1,4 @@
-import { Context, Layer } from 'effect'
+import { Layer, ServiceMap } from 'effect'
 
 export type RuntimeHostKind = 'node' | 'browser' | 'unknown'
 
@@ -26,7 +26,7 @@ export const make = (kind: RuntimeHostKind): RuntimeHostService => ({
   isBrowser: kind === 'browser',
 })
 
-export class RuntimeHost extends Context.Tag('@logixjs/RuntimeHost')<RuntimeHost, RuntimeHostService>() {}
+export class RuntimeHost extends ServiceMap.Service<RuntimeHost, RuntimeHostService>()('@logixjs/RuntimeHost') {}
 
 export const layer = (service: RuntimeHostService): Layer.Layer<RuntimeHost, never, never> =>
   Layer.succeed(RuntimeHost, service)

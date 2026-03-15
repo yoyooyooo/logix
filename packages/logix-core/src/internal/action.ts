@@ -1,6 +1,6 @@
 import { Schema } from 'effect'
 
-export type ActionArgs<P> = [P] extends [void] ? [] | [P] : [P]
+type ActionArgs<P> = [P] extends [void] ? [] | [P] : [P]
 type ActionFn<P, Out> = (...args: ActionArgs<P>) => Out
 
 type DevSource = {
@@ -24,7 +24,7 @@ export type ActionCreator<Tag extends string, Payload> = ActionFn<Payload, Actio
 export type ActionToken<
   Tag extends string,
   Payload,
-  PayloadSchema extends Schema.Schema<any, any, any> = Schema.Schema<any, any, any>,
+  PayloadSchema extends Schema.Schema<any> = Schema.Schema<any>,
 > = ActionCreator<Tag, Payload> & {
   readonly _kind: 'ActionToken'
   readonly tag: Tag
@@ -32,8 +32,7 @@ export type ActionToken<
   readonly source?: DevSource
 }
 
-export type AnyActionToken = ActionToken<string, any, Schema.Schema<any, any, any>>
-export type ActionPayloadOfToken<T> = T extends ActionToken<any, infer P, any> ? P : never
+export type AnyActionToken = ActionToken<string, any, Schema.Schema<any>>
 
 export const isActionToken = (value: unknown): value is AnyActionToken =>
   typeof value === 'function' &&
@@ -41,7 +40,7 @@ export const isActionToken = (value: unknown): value is AnyActionToken =>
   typeof (value as any).tag === 'string' &&
   Schema.isSchema((value as any).schema)
 
-export const make = <Tag extends string, PayloadSchema extends Schema.Schema<any, any, any>>(
+export const make = <Tag extends string, PayloadSchema extends Schema.Schema<any>>(
   tag: Tag,
   schema: PayloadSchema,
   options?: { readonly source?: DevSource },
@@ -61,7 +60,7 @@ export const make = <Tag extends string, PayloadSchema extends Schema.Schema<any
   return fn
 }
 
-export const makeActions = <M extends Record<string, Schema.Schema<any, any, any>>>(
+export const makeActions = <M extends Record<string, Schema.Schema<any>>>(
   schemas: M,
   options?: {
     readonly source?: DevSource
@@ -80,11 +79,11 @@ export const makeActions = <M extends Record<string, Schema.Schema<any, any, any
   return out as any
 }
 
-export type ActionDef = Schema.Schema<any, any, any> | AnyActionToken
+export type ActionDef = Schema.Schema<any> | AnyActionToken
 export type ActionDefs = Record<string, ActionDef>
 
 export type NormalizedActionTokens<M extends ActionDefs> = {
-  readonly [K in keyof M]: M[K] extends Schema.Schema<any, any, any>
+  readonly [K in keyof M]: M[K] extends Schema.Schema<any>
     ? ActionToken<Extract<K, string>, Schema.Schema.Type<M[K]>, M[K]>
     : M[K] extends ActionToken<any, infer P, infer S>
       ? ActionToken<Extract<K, string>, P, S>
@@ -113,81 +112,3 @@ export const normalizeActions = <M extends ActionDefs>(defs: M): NormalizedActio
 
   return out as any
 }
-
-export type ActionIntentEntry = 'dispatchers' | 'action' | 'dispatch'
-export type ActionIntentInput = 'token' | 'type' | 'value'
-
-export type ActionIntentSource = {
-  readonly entry: ActionIntentEntry
-  readonly input: ActionIntentInput
-}
-
-export type ActionIntent<A = unknown> = {
-  readonly action: A
-  readonly actionTag: string
-  readonly source: ActionIntentSource
-}
-
-const resolveActionTag = (action: unknown): string => {
-  const tag = (action as any)?._tag
-  if (typeof tag === 'string' && tag.length > 0) {
-    return tag
-  }
-
-  const type = (action as any)?.type
-  if (typeof type === 'string' && type.length > 0) {
-    return type
-  }
-
-  if (tag != null) {
-    return String(tag)
-  }
-  if (type != null) {
-    return String(type)
-  }
-  return 'unknown'
-}
-
-export const actionTagOf = (action: unknown): string => resolveActionTag(action)
-
-const makeActionIntent = <A>(action: A, source: ActionIntentSource): ActionIntent<A> => ({
-  action,
-  actionTag: resolveActionTag(action),
-  source,
-})
-
-export const intentFromToken = <
-  Tag extends string,
-  Payload,
-  PayloadSchema extends Schema.Schema<any, any, any> = Schema.Schema<any, any, any>,
->(
-  token: ActionToken<Tag, Payload, PayloadSchema>,
-  args: ActionArgs<Payload>,
-  entry: ActionIntentEntry,
-): ActionIntent<ActionValue<Tag, Payload>> =>
-  makeActionIntent((token as any)(...args), {
-    entry,
-    input: 'token',
-  })
-
-export const intentFromType = <A = unknown>(
-  type: string,
-  payload: unknown,
-  entry: ActionIntentEntry,
-): ActionIntent<A> =>
-  makeActionIntent(
-    {
-      _tag: type,
-      payload,
-    } as A,
-    {
-      entry,
-      input: 'type',
-    },
-  )
-
-export const intentFromValue = <A>(action: A, entry: ActionIntentEntry): ActionIntent<A> =>
-  makeActionIntent(action, {
-    entry,
-    input: 'value',
-  })

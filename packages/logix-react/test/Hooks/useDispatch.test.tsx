@@ -19,7 +19,7 @@ describe('useDispatch', () => {
     const CounterLogic = Counter.logic<never>((api) =>
       Effect.gen(function* () {
         // Mount watchers in the run phase to avoid triggering the Phase Guard during setup.
-        yield* api.onAction('increment').run({ effect: () => api.state.update((s) => ({ count: s.count + 1 })) })
+        yield* api.onAction('increment').run(() => api.state.update((s) => ({ count: s.count + 1 })))
       }),
     )
 

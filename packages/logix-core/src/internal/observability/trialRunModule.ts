@@ -95,6 +95,7 @@ const parseMissingConfigKeys = (message: string): ReadonlyArray<string> => {
     /\bMissing (?:data|value) at ([A-Z0-9_./:-]+)\b/g,
     /\bMissing configuration:? "?([A-Z0-9_./:-]+)"?/g,
     /\bConfig\b.*\bmissing\b.*"?([A-Z0-9_./:-]+)"?/gi,
+    /\bat\s*\["([A-Z0-9_./:-]+)"\]/g,
   ]
 
   for (const re of patterns) {
@@ -128,7 +129,9 @@ const parseMissingDependencyFromCause = (
   const missingServices: string[] = []
   const missingConfigKeys: string[] = []
 
-  const candidates = [...Array.from(Cause.failures(cause)), ...Array.from(Cause.defects(cause))]
+  const candidates = cause.reasons
+    .filter((reason) => Cause.isFailReason(reason) || Cause.isDieReason(reason))
+    .map((reason) => (Cause.isFailReason(reason) ? reason.error : reason.defect))
 
   for (const candidate of candidates) {
     if (isRecord(candidate) && (candidate as any)._tag === 'ConstructionGuardError') {
@@ -166,7 +169,7 @@ const parseMissingDependencyFromCause = (
   }
 
   try {
-    messages.push(Cause.pretty(cause, { renderErrorCause: true }))
+    messages.push(Cause.pretty(cause))
   } catch {
     // ignore
   }
@@ -236,25 +239,26 @@ const awaitFiberExitWithTimeout = <A, E>(
 ): Effect.Effect<Exit.Exit<A, E | Error>, never, never> =>
   Effect.gen(function* () {
     const hasTimeout = typeof timeoutMs === 'number' && Number.isFinite(timeoutMs) && timeoutMs > 0
-    const start = hasTimeout ? Date.now() : 0
-
-    while (true) {
-      const exitOpt = yield* Fiber.poll(fiber)
-      if (Option.isSome(exitOpt)) {
-        return exitOpt.value as Exit.Exit<A, E | Error>
-      }
-
-      if (hasTimeout) {
-        const elapsedMs = Date.now() - start
-        if (elapsedMs >= timeoutMs) {
-          yield* Fiber.interruptFork(fiber)
-          return Exit.fail(makeTrialRunTimeoutError())
-        }
-      }
-
-      // NOTE: timer yield (not TestClock-based)
-      yield* Effect.promise(() => new Promise<void>((r) => setTimeout(r, 1)))
+    if (!hasTimeout) {
+      return (yield* Fiber.await(fiber)) as Exit.Exit<A, E | Error>
     }
+
+    const raced = yield* Effect.promise<Exit.Exit<A, E | Error> | { readonly _tag: 'Timeout' }>(() =>
+      new Promise((resolve) => {
+        const timer = setTimeout(() => resolve({ _tag: 'Timeout' as const }), timeoutMs)
+        void Effect.runPromise(Fiber.await(fiber)).then((exit) => {
+          clearTimeout(timer)
+          resolve(exit as Exit.Exit<A, E | Error>)
+        })
+      }),
+    )
+
+    if ((raced as any)._tag !== 'Timeout') {
+      return raced as Exit.Exit<A, E | Error>
+    }
+
+    yield* Fiber.interrupt(fiber).pipe(Effect.asVoid, Effect.forkDetach({ startImmediately: true }))
+    return Exit.fail(makeTrialRunTimeoutError())
   })
 
 export const trialRunModule = <Sh extends AnyModuleShape>(
@@ -313,7 +317,7 @@ export const trialRunModule = <Sh extends AnyModuleShape>(
 
     const identity = kernel.identity
 
-    const bootFiber = kernel.runtime.runFork(rootImpl.module as any)
+    const bootFiber = kernel.runtime.runFork(Effect.service(rootImpl.module as any).pipe(Effect.orDie))
     const bootExit = yield* awaitFiberExitWithTimeout(bootFiber, options?.trialRunTimeoutMs)
 
     let kernelImplementationRef: KernelImplementationRef | undefined
@@ -342,7 +346,7 @@ export const trialRunModule = <Sh extends AnyModuleShape>(
         }
       }
     } else {
-      const failure = Cause.failureOption(bootExit.cause)
+      const failure = Cause.findErrorOption(bootExit.cause)
       if (Option.isSome(failure)) {
         const err: any = failure.value
         const instanceIdFromErr = typeof err?.instanceId === 'string' ? err.instanceId : undefined
@@ -374,11 +378,13 @@ export const trialRunModule = <Sh extends AnyModuleShape>(
     const missingServices = depsFromBootFailure.missingServices
     const missingConfigKeys = depsFromBootFailure.missingConfigKeys
 
-    const closeError = Exit.isFailure(closeExit) ? Option.getOrUndefined(Cause.dieOption(closeExit.cause)) : undefined
+    const closeError = Exit.isFailure(closeExit)
+      ? closeExit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)[0]
+      : undefined
 
     if (!Exit.isSuccess(bootExit)) {
-      const failure = Option.getOrUndefined(Cause.failureOption(bootExit.cause))
-      const defect = Option.getOrUndefined(Cause.dieOption(bootExit.cause))
+      const failure = Option.getOrUndefined(Cause.findErrorOption(bootExit.cause))
+      const defect = bootExit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)[0]
       const base = failure ?? defect ?? bootExit.cause
 
       if (missingServices.length > 0 || missingConfigKeys.length > 0) {
@@ -407,8 +413,8 @@ export const trialRunModule = <Sh extends AnyModuleShape>(
     }
 
     if (Exit.isFailure(closeExit)) {
-      const died = Option.getOrUndefined(Cause.dieOption(closeExit.cause))
-      const failure = Option.getOrUndefined(Cause.failureOption(closeExit.cause))
+      const died = closeExit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)[0]
+      const failure = Option.getOrUndefined(Cause.findErrorOption(closeExit.cause))
       const base = died ?? failure ?? closeExit.cause
 
       const closeErrorSummary = (() => {

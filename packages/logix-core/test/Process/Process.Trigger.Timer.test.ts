@@ -1,10 +1,11 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Effect, Ref, Schema, TestClock } from 'effect'
+import { Effect, Ref, Schema } from 'effect'
+import { TestClock } from 'effect/testing'
 import * as Logix from '../../src/index.js'
 import { collectProcessErrorEvent, withProcessRuntime, withProcessRuntimeScope } from './test-helpers.js'
 
 describe('process: trigger timer', () => {
-  it.scoped('should tick in a controllable interval', () =>
+  it.effect('should tick in a controllable interval', () =>
     Effect.gen(function* () {
       const invoked = yield* Ref.make(0)
 
@@ -35,9 +36,9 @@ describe('process: trigger timer', () => {
         run: () =>
           Effect.gen(function* () {
             const before = yield* Ref.get(invoked)
-            yield* Effect.yieldNow()
+            yield* Effect.yieldNow
             yield* TestClock.adjust('50 millis')
-            yield* Effect.yieldNow()
+            yield* Effect.yieldNow
             const after = yield* Ref.get(invoked)
 
             expect(after).toBeGreaterThan(before)
@@ -46,7 +47,7 @@ describe('process: trigger timer', () => {
     }),
   )
 
-  it.scoped('should fail with actionable error when timerId is invalid', () =>
+  it.effect('should fail with actionable error when timerId is invalid', () =>
     Effect.gen(function* () {
       const invoked = yield* Ref.make(0)
       const Host = Logix.Module.make('ProcessTriggerInvalidTimerHost', {

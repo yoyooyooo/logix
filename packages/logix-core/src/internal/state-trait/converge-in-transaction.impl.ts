@@ -1,14 +1,14 @@
-import { Effect, FiberRef } from 'effect'
+import { Effect } from 'effect'
 import * as Debug from '../runtime/core/DebugSink.js'
 import {
   toSerializableErrorSummary,
 } from '../runtime/core/errorSummary.js'
-import { dirtyPathsToRootIds, type FieldPath } from '../field-path.js'
+import { dirtyPathsToRootIds, type DirtyAllReason, type FieldPath } from '../field-path.js'
 import { getConvergeStaticIrDigest } from './converge-ir.js'
 import { CowDraft, ShallowInPlaceDraft } from './converge-draft.js'
 import { emitSchemaMismatch } from './converge-diagnostics.js'
 import { currentExecVmMode } from './exec-vm-mode.js'
-import { makeConvergeExecIr } from './converge-exec-ir.js'
+import { makeConvergeExecIr, type ConvergeExecIr } from './converge-exec-ir.js'
 import { getMiddlewareStack, runWriterStep, runWriterStepOffFast } from './converge-step.js'
 import {
   StateTraitConfigError,
@@ -34,6 +34,122 @@ import type {
   TraitConvergeStaticIrEvidence,
   TraitConvergeStepStats,
 } from './model.js'
+
+const EMPTY_INT32 = new Int32Array(0)
+
+// Inline dirty plan computation for off-fast-path:
+// - Must remain allocation-free in steady-state (no objects/closures per invocation).
+// - Writes plan ids into execIr.scratch.planStepIds[0..planLen).
+// - Returns:
+//   -1 = invalid/unknown dirty path ids (fallback)
+//   -2 = near-full (run full instead)
+//   >=0 = plan length
+const computeInlineDirtyPlanLenFromDirtyPathIdsSet = (
+  execIr: ConvergeExecIr,
+  dirtyPathIds: ReadonlySet<unknown>,
+  scopeStepIds: Int32Array,
+  scopeStepCount: number,
+  schedulingScope: 'all' | 'immediate' | 'deferred',
+  nearFullPlanRatioThreshold: number,
+): number => {
+  const prefixFieldPathIdsByPathId = execIr.prefixFieldPathIdsByPathId
+  const prefixOffsetsByPathId = execIr.prefixOffsetsByPathId
+  const triggerStepIdsByFieldPathId = execIr.triggerStepIdsByFieldPathId
+  const triggerStepOffsetsByFieldPathId = execIr.triggerStepOffsetsByFieldPathId
+  const stepOutFieldPathIdByStepId = execIr.stepOutFieldPathIdByStepId
+  const stepSchedulingByStepId = execIr.stepSchedulingByStepId
+
+  const dirtyPrefixBitSet = execIr.scratch.dirtyPrefixBitSet
+  const reachableStepBitSet = execIr.scratch.reachableStepBitSet
+  const dirtyPrefixQueue = execIr.scratch.dirtyPrefixQueue
+  const planScratch = execIr.scratch.planStepIds
+
+  dirtyPrefixBitSet.clear()
+  reachableStepBitSet.clear()
+
+  const fieldPathCount = execIr.fieldPathsById.length
+
+  let queueLen = 0
+  for (const raw of dirtyPathIds) {
+    if (typeof raw !== 'number' || !Number.isFinite(raw)) {
+      return -1
+    }
+    const id = Math.floor(raw)
+    if (id < 0 || id >= fieldPathCount) {
+      return -1
+    }
+
+    const start = prefixOffsetsByPathId[id]
+    const end = prefixOffsetsByPathId[id + 1]
+    if (start == null || end == null) continue
+
+    for (let i = start; i < end; i++) {
+      const prefixId = prefixFieldPathIdsByPathId[i]!
+      if (dirtyPrefixBitSet.has(prefixId)) continue
+      dirtyPrefixBitSet.add(prefixId)
+      dirtyPrefixQueue[queueLen] = prefixId
+      queueLen += 1
+    }
+  }
+
+  const nearFullThreshold = Math.ceil(scopeStepCount * nearFullPlanRatioThreshold)
+
+  let cursor = 0
+  let reachableCount = 0
+  while (cursor < queueLen) {
+    const prefixId = dirtyPrefixQueue[cursor]!
+    cursor += 1
+
+    const start = triggerStepOffsetsByFieldPathId[prefixId]
+    const end = triggerStepOffsetsByFieldPathId[prefixId + 1]
+    if (start == null || end == null) continue
+
+    for (let i = start; i < end; i++) {
+      const stepId = triggerStepIdsByFieldPathId[i]!
+      if (schedulingScope !== 'all') {
+        const flag = stepSchedulingByStepId[stepId]
+        if (schedulingScope === 'immediate') {
+          if (flag !== 0) continue
+        } else {
+          if (flag !== 1) continue
+        }
+      }
+      if (reachableStepBitSet.has(stepId)) continue
+      reachableStepBitSet.add(stepId)
+      reachableCount += 1
+
+      // If we're going to run almost everything anyway, bail out early and just run full.
+      if (reachableCount >= nearFullThreshold) {
+        return -2
+      }
+
+      const outId = stepOutFieldPathIdByStepId[stepId]!
+      const start2 = prefixOffsetsByPathId[outId]
+      const end2 = prefixOffsetsByPathId[outId + 1]
+      if (start2 == null || end2 == null) continue
+
+      for (let j = start2; j < end2; j++) {
+        const prefixId2 = prefixFieldPathIdsByPathId[j]!
+        if (dirtyPrefixBitSet.has(prefixId2)) continue
+        dirtyPrefixBitSet.add(prefixId2)
+        dirtyPrefixQueue[queueLen] = prefixId2
+        queueLen += 1
+      }
+    }
+  }
+
+  let planLen = 0
+  for (let i = 0; i < scopeStepIds.length; i++) {
+    const stepId = scopeStepIds[i]!
+    if (!reachableStepBitSet.has(stepId)) continue
+    planScratch[planLen] = stepId
+    planLen += 1
+  }
+
+  // NOTE: plan ids are written into execIr.scratch.planStepIds[0..planLen).
+  // Safe because inline-dirty uses the plan only for the current converge pass.
+  return planLen
+}
 
 const pickTop3Steps = (steps: ReadonlyArray<ConvergeStepSummary>): ReadonlyArray<ConvergeStepSummary> => {
   let first: ConvergeStepSummary | undefined
@@ -120,7 +236,20 @@ export const convergeInTransaction = <S extends object>(
     // 049: Exec IR must be tied to the generation lifecycle and should not be rebuilt on every txn window.
     let execIr = program.convergeExecIr
     if (!execIr || execIr.generation !== ir.generation) {
-      execIr = makeConvergeExecIr(ir)
+      // Carry over off-fast-path perf hints across generation bumps when step count is unchanged.
+      // Motivation: avoid repeated warmup / misclassification after graph-change invalidation,
+      // while still allowing the EWMA to adapt when the actual cost shifts.
+      const prev = execIr
+      const next = makeConvergeExecIr(ir)
+
+      if (prev && prev.topoOrderInt32.length === next.topoOrderInt32.length) {
+        next.perf.fullCommitEwmaOffMs = prev.perf.fullCommitEwmaOffMs
+        next.perf.fullCommitSampleCountOff = prev.perf.fullCommitSampleCountOff
+        next.perf.fullCommitLastTxnSeqOff = prev.perf.fullCommitLastTxnSeqOff
+        // NOTE: do not carry over fullCommitMinOffMs; it never increases and can become stale across rebuilds.
+      }
+
+      execIr = next
       ;(program as any).convergeExecIr = execIr
     }
 
@@ -136,19 +265,19 @@ export const convergeInTransaction = <S extends object>(
     }
 
     const stack = yield* getMiddlewareStack()
-    const diagnosticsLevel: Debug.DiagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
-    const debugSinks = yield* FiberRef.get(Debug.currentDebugSinks)
+    const diagnosticsLevel: Debug.DiagnosticsLevel = yield* Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie)
+    const debugSinks = yield* Effect.service(Debug.currentDebugSinks).pipe(Effect.orDie)
     // Decision / TraitSummary gate is based on "will it be consumed" (sinks), not diagnosticsLevel.
     // diagnosticsLevel only controls exportable/heavy details (trace payload, hotspots, static IR export, etc.).
     const shouldCollectDecision = debugSinks.length > 0 && !Debug.isErrorOnlyOnlySinks(debugSinks)
-    const shouldCollectDecisionDetails = shouldCollectDecision
+    const shouldCollectDecisionDetails = shouldCollectDecision && diagnosticsLevel !== 'off'
     const shouldCollectDecisionHeavyDetails = shouldCollectDecision && diagnosticsLevel !== 'off'
-    const execVmMode = yield* FiberRef.get(currentExecVmMode)
+    const execVmMode = yield* currentExecVmMode
 
     // 044: deterministic sampling for sampled mode (uses txnSeq as a stable anchor by default).
     let diagnosticsSampling: TraitConvergeDiagnosticsSamplingSummary | undefined
     if (diagnosticsLevel === 'sampled') {
-      const cfg = yield* FiberRef.get(Debug.currentTraitConvergeDiagnosticsSampling)
+      const cfg = yield* Effect.service(Debug.currentTraitConvergeDiagnosticsSampling).pipe(Effect.orDie)
       const sampleEveryN = normalizePositiveInt(cfg.sampleEveryN) ?? 32
       const topK = normalizePositiveInt(cfg.topK) ?? 3
       const txnSeq = ctx.txnSeq
@@ -215,10 +344,42 @@ export const convergeInTransaction = <S extends object>(
       : typeof (dirtyPaths as any)?.size === 'number'
         ? ((dirtyPaths as any).size as number)
         : undefined
-    let dirtyRootIds: ReturnType<typeof dirtyPathsToRootIds> | undefined
+
+    type DirtyRootIds = {
+      readonly dirtyAll: boolean
+      readonly reason?: DirtyAllReason
+      readonly rootIds: Int32Array
+      readonly rootCount: number
+      readonly keySize: number
+      readonly keyHash: number
+    }
+
+    const makeDirtyAll = (reason: DirtyAllReason): DirtyRootIds => ({
+      dirtyAll: true,
+      reason,
+      rootIds: EMPTY_INT32,
+      rootCount: 0,
+      keySize: 0,
+      keyHash: 0,
+    })
+
+    const hashFieldPathIdsInt32 = (ids: Int32Array): number => {
+      // FNV-1a (32-bit)
+      let hash = 2166136261 >>> 0
+      for (let i = 0; i < ids.length; i++) {
+        hash ^= ids[i]! >>> 0
+        hash = Math.imul(hash, 16777619)
+      }
+      return hash >>> 0
+    }
+
+    let dirtyRootIds: DirtyRootIds | undefined
 
     const DIRTY_ROOT_IDS_TOP_K = 3
     const AUTO_FLOOR_RATIO = 1.05
+    const AUTO_FAST_FULL_EWMA_THRESHOLD_MS = 0.6
+    const AUTO_FAST_FULL_WARMUP_FULL_SAMPLES_OFF = 2
+    const AUTO_TINY_GRAPH_FULL_STEP_THRESHOLD = 2
     const MAX_CACHEABLE_ROOT_IDS = 128
     const MAX_CACHEABLE_ROOT_RATIO = 0.5
     const NO_CACHE_NEAR_FULL_STEP_THRESHOLD = 512
@@ -248,10 +409,13 @@ export const convergeInTransaction = <S extends object>(
 
     const prefixFieldPathIdsByPathId = execIr.prefixFieldPathIdsByPathId
     const prefixOffsetsByPathId = execIr.prefixOffsetsByPathId
+    const topoOrderInt32 = execIr.topoOrderInt32
+    const topoIndexByStepId = execIr.topoIndexByStepId
 
     const dirtyPrefixBitSet = execIr.scratch.dirtyPrefixBitSet
     const reachableStepBitSet = execIr.scratch.reachableStepBitSet
     const dirtyPrefixQueue = execIr.scratch.dirtyPrefixQueue
+    const dirtyRootIdsScratch = execIr.scratch.dirtyRootIds
     const planScratch = execIr.scratch.planStepIds
     const triggerStepIdsByFieldPathId = execIr.triggerStepIdsByFieldPathId
     const triggerStepOffsetsByFieldPathId = execIr.triggerStepOffsetsByFieldPathId
@@ -290,7 +454,7 @@ export const convergeInTransaction = <S extends object>(
     }
 
     const computePlanStepIds = (
-      rootIds: ReadonlyArray<number>,
+      rootIds: Int32Array,
       options?: { readonly stopOnDecisionBudget?: boolean },
     ): { readonly plan?: Int32Array; readonly budgetCutoff?: true } => {
       // Small graphs and custom step slices are cheap to scan; keep the simpler logic.
@@ -389,6 +553,8 @@ export const convergeInTransaction = <S extends object>(
         }
       }
 
+      // Materialize plan in topo order by scanning the scope slice.
+      // This avoids TypedArray.sort() tail latency on some platforms.
       let planLen = 0
       for (let i = 0; i < scopeStepIds.length; i++) {
         const stepId = scopeStepIds[i]!
@@ -399,33 +565,116 @@ export const convergeInTransaction = <S extends object>(
 
       const plan = execVmMode ? planScratch.subarray(0, planLen) : new Int32Array(planLen)
       if (!execVmMode && planLen > 0) {
-        plan.set(planScratch.subarray(0, planLen))
+        for (let i = 0; i < planLen; i++) {
+          plan[i] = planScratch[i]!
+        }
       }
       dirtyPrefixBitSet.clear()
       return { plan } as const
     }
 
     const cache = ctx.planCache
-    if (
-      cacheMissReasonHint === 'generation_bumped' &&
-      typeof generationEvidence.generationBumpCount === 'number' &&
-      generationEvidence.generationBumpCount >= 3 &&
-      cache &&
-      !cache.isDisabled()
-    ) {
+    const cacheMissReasonHintCount = ctx.cacheMissReasonHintCount ?? 0
+    if (cacheMissReasonHint === 'generation_bumped' && cacheMissReasonHintCount >= 3 && cache && !cache.isDisabled()) {
       cache.disable('generation_thrash')
     }
     let canUseCache = false
     let planKeyHash = 0
-    let rootIdsKey: ReadonlyArray<number> | undefined = undefined
+    let rootIdsKey: Int32Array | undefined = undefined
 
-    const ensureDirtyRootIds = (): ReturnType<typeof dirtyPathsToRootIds> => {
+    const ensureDirtyRootIds = (): DirtyRootIds => {
       if (dirtyRootIds) return dirtyRootIds
-      dirtyRootIds = dirtyPathsToRootIds({
-        dirtyPaths,
-        registry,
-        dirtyAllReason: ctx.dirtyAllReason,
-      })
+
+      if (ctx.dirtyAllReason) {
+        dirtyRootIds = makeDirtyAll(ctx.dirtyAllReason)
+      } else if (dirtyPaths instanceof Set) {
+        dirtyPrefixBitSet.clear()
+
+        let candidateLen = 0
+        for (const raw of dirtyPaths as ReadonlySet<unknown>) {
+          if (typeof raw !== 'number' || !Number.isFinite(raw)) {
+            dirtyPrefixBitSet.clear()
+            dirtyRootIds = makeDirtyAll('nonTrackablePatch')
+            break
+          }
+
+          const id = Math.floor(raw)
+          if (id < 0 || id >= execIr.fieldPathsById.length) {
+            dirtyPrefixBitSet.clear()
+            dirtyRootIds = makeDirtyAll('fallbackPolicy')
+            break
+          }
+
+          dirtyPrefixBitSet.add(id)
+          dirtyRootIdsScratch[candidateLen] = id
+          candidateLen += 1
+        }
+
+        if (!dirtyRootIds) {
+          if (candidateLen === 0) {
+            dirtyPrefixBitSet.clear()
+            dirtyRootIds = makeDirtyAll('unknownWrite')
+          } else {
+            let rootLen = 0
+            for (let i = 0; i < candidateLen; i++) {
+              const id = dirtyRootIdsScratch[i]!
+              const start = prefixOffsetsByPathId[id]
+              const end = prefixOffsetsByPathId[id + 1]
+              if (start == null || end == null) continue
+
+              // If any proper prefix is also directly dirty, skip this id.
+              let coveredByDirtyPrefix = false
+              for (let j = start; j < end - 1; j++) {
+                const prefixId = prefixFieldPathIdsByPathId[j]!
+                if (dirtyPrefixBitSet.has(prefixId)) {
+                  coveredByDirtyPrefix = true
+                  break
+                }
+              }
+              if (coveredByDirtyPrefix) continue
+
+              dirtyRootIdsScratch[rootLen] = id
+              rootLen += 1
+            }
+
+            if (rootLen === 0) {
+              dirtyPrefixBitSet.clear()
+              dirtyRootIds = makeDirtyAll('unknownWrite')
+            } else {
+              const rootIds = dirtyRootIdsScratch.subarray(0, rootLen)
+              rootIds.sort()
+              const keyHash = hashFieldPathIdsInt32(rootIds)
+
+              dirtyPrefixBitSet.clear()
+
+              dirtyRootIds = {
+                dirtyAll: false,
+                rootIds,
+                rootCount: rootIds.length,
+                keySize: rootIds.length,
+                keyHash,
+              }
+            }
+          }
+        }
+      } else {
+        const dirty = dirtyPathsToRootIds({
+          dirtyPaths,
+          registry,
+          dirtyAllReason: ctx.dirtyAllReason,
+        })
+
+        dirtyRootIds = dirty.dirtyAll
+          ? makeDirtyAll(dirty.reason ?? 'unknownWrite')
+          : {
+              dirtyAll: false,
+              rootIds: Int32Array.from(dirty.rootIds),
+              rootCount: dirty.rootCount,
+              keySize: dirty.keySize,
+              keyHash: dirty.keyHash,
+            }
+      }
+
       const rootRatioForCache =
         !dirtyRootIds.dirtyAll && scopeStepCount > 0 ? dirtyRootIds.rootCount / scopeStepCount : undefined
       const cacheableBySize =
@@ -457,38 +706,79 @@ export const convergeInTransaction = <S extends object>(
 
     let affectedSteps: number | undefined
     let planStepIds: Int32Array | undefined
+    let planStepCount: number | undefined
 
     const getOrComputePlan = (options?: {
       readonly missReason?: TraitConvergePlanCacheEvidence['missReason']
       readonly stopOnDecisionBudget?: boolean
     }): { readonly plan: Int32Array; readonly hit: boolean; readonly budgetCutoff?: true } => {
       const dirty = ensureDirtyRootIds()
-      if (dirty.dirtyAll) {
-        if (cacheEvidence && cache) {
-          cacheEvidence = cache.evidence({
-            hit: false,
-            keySize: dirty.keySize,
-            missReason: options?.missReason ?? 'unknown',
-          })
-        }
-        const fullPlan = scopeStepIds
-        affectedSteps = fullPlan.length
-        return { plan: fullPlan, hit: false }
-      }
+	      if (dirty.dirtyAll) {
+	        if (cacheEvidence && cache) {
+	          cacheEvidence = cache.evidence({
+	            hit: false,
+	            keySize: dirty.keySize,
+	            missReason: options?.missReason ?? 'unknown',
+	          })
+	        }
+	        const fullPlan = scopeStepIds
+	        affectedSteps = fullPlan.length
+	        return { plan: fullPlan, hit: false }
+	      }
 
-      if (canUseCache && cache && rootIdsKey) {
-        const cached = cache.get(planKeyHash, rootIdsKey)
-        if (cached) {
-          if (cacheEvidence) {
-            cacheEvidence = cache.evidence({
-              hit: true,
-              keySize: dirty.keySize,
-            })
-          }
-          affectedSteps = cached.length
-          return { plan: cached, hit: true }
-        }
-      }
+	      // When we cannot reuse a plan (cache disabled / non-cacheable), doing expensive plan computation in auto mode
+	      // tends to be a negative optimization in off-fast-path workloads.
+	      if (requestedMode === 'auto' && diagnosticsLevel === 'off' && stack.length === 0 && (!canUseCache || !cache)) {
+	        if (cacheEvidence && cache) {
+	          cacheEvidence = cache.evidence({
+	            hit: false,
+	            keySize: dirty.keySize,
+	            missReason: options?.missReason ?? 'unknown',
+	          })
+	        }
+	        const fullPlan = scopeStepIds
+	        affectedSteps = fullPlan.length
+	        return { plan: fullPlan, hit: false }
+	      }
+
+	      if (canUseCache && cache && rootIdsKey) {
+	        const cached = cache.get(planKeyHash, rootIdsKey)
+	        if (cached) {
+	          if (cacheEvidence) {
+	            cacheEvidence = cache.evidence({
+	              hit: true,
+	              keySize: dirty.keySize,
+	            })
+	          }
+	          affectedSteps = cached.length
+	          return { plan: cached, hit: true }
+	        }
+
+	        // 2-hit admission for plan computation:
+	        // - On cache miss, do NOT compute a plan until we observe the same key again.
+	        // - Prevents high-cardinality dirty patterns from turning auto into a negative optimization.
+	        if (requestedMode === 'auto' && diagnosticsLevel === 'off' && stack.length === 0) {
+	          const h = planKeyHash
+	          const seen1 = execIr.perf.recentPlanMissHash1
+	          const seen2 = execIr.perf.recentPlanMissHash2
+	          if (h !== seen1 && h !== seen2) {
+	            execIr.perf.recentPlanMissHash2 = seen1
+	            execIr.perf.recentPlanMissHash1 = h
+
+	            if (cacheEvidence) {
+	              cacheEvidence = cache.evidence({
+	                hit: false,
+	                keySize: dirty.keySize,
+	                missReason: options?.missReason ?? 'unknown',
+	              })
+	            }
+
+	            const fullPlan = scopeStepIds
+	            affectedSteps = fullPlan.length
+	            return { plan: fullPlan, hit: false }
+	          }
+	        }
+	      }
 
       // Decision budget is designed to cap worst-case plan computation cost.
       // For small graphs (<32 steps), the plan scan is bounded and the early cutoff
@@ -504,7 +794,7 @@ export const convergeInTransaction = <S extends object>(
         const fullPlan = scopeStepIds
         affectedSteps = fullPlan.length
         if (canUseCache && cache && rootIdsKey) {
-          cache.set(planKeyHash, rootIdsKey, fullPlan)
+          cache.set(planKeyHash, rootIdsKey.slice(), fullPlan)
         }
         return { plan: fullPlan, hit: false, budgetCutoff: true } as const
       }
@@ -523,14 +813,14 @@ export const convergeInTransaction = <S extends object>(
         const fullPlan = scopeStepIds
         affectedSteps = fullPlan.length
         if (canUseCache && cache && rootIdsKey) {
-          cache.set(planKeyHash, rootIdsKey, fullPlan)
+          cache.set(planKeyHash, rootIdsKey.slice(), fullPlan)
         }
         return { plan: fullPlan, hit: false, budgetCutoff: true } as const
       }
 
       const plan = computed.plan ?? new Int32Array(0)
       if (canUseCache && cache && rootIdsKey) {
-        cache.set(planKeyHash, rootIdsKey, execVmMode ? plan.slice() : plan)
+        cache.set(planKeyHash, rootIdsKey.slice(), execVmMode ? plan.slice() : plan)
       }
       if (cacheEvidence && cache) {
         cacheEvidence = cache.evidence({
@@ -554,11 +844,25 @@ export const convergeInTransaction = <S extends object>(
       return 0.9
     }
     const NEAR_FULL_PLAN_RATIO_THRESHOLD = 0.9
+    const isOffFastPath = diagnosticsLevel === 'off' && stack.length === 0
+    const fullCommitEwmaOffMs = execIr.perf.fullCommitEwmaOffMs
+    const fullCommitMinOffMs = execIr.perf.fullCommitMinOffMs
+    const fullCommitSampleCountOff = execIr.perf.fullCommitSampleCountOff ?? 0
+    const nearFullRootRatioThreshold = getNearFullRootRatioThreshold(scopeStepCount)
+    const rootRatioHint =
+      typeof dirtyPathCountHint === 'number' && dirtyPathCountHint > 0
+        ? scopeStepCount > 0
+          ? dirtyPathCountHint / scopeStepCount
+          : 1
+        : undefined
 
     if (requestedMode === 'auto') {
       if (ctx.txnSeq === 1) {
         mode = 'full'
         reasons.push('cold_start')
+      } else if (scopeStepCount <= AUTO_TINY_GRAPH_FULL_STEP_THRESHOLD) {
+        mode = 'full'
+        reasons.push('near_full')
       } else if (ctx.dirtyAllReason) {
         mode = 'full'
         reasons.push('dirty_all')
@@ -566,64 +870,180 @@ export const convergeInTransaction = <S extends object>(
       } else if (dirtyPathCountHint === 0) {
         mode = 'full'
         reasons.push('unknown_write')
-      } else {
-        const nearFullRootRatioThreshold = getNearFullRootRatioThreshold(scopeStepCount)
-        const rootRatio =
-          typeof dirtyPathCountHint === 'number' && Number.isFinite(dirtyPathCountHint) && dirtyPathCountHint >= 0
-            ? scopeStepCount > 0
-              ? dirtyPathCountHint / scopeStepCount
-              : 1
-            : undefined
-        if (rootRatio != null && rootRatio >= nearFullRootRatioThreshold) {
-          mode = 'full'
-          reasons.push('near_full')
-        } else {
-          const dirty = ensureDirtyRootIds()
-          if (dirty.dirtyAll) {
-            mode = 'full'
-            reasons.push('dirty_all')
-            reasons.push('unknown_write')
-          } else if (dirty.rootIds.length === 0) {
-            mode = 'full'
-            reasons.push('unknown_write')
+      } else if (rootRatioHint != null && rootRatioHint >= nearFullRootRatioThreshold) {
+        mode = 'full'
+        reasons.push('near_full')
+      } else if (isOffFastPath) {
+        // Off-fast-path is extremely sensitive to planning/caching overhead (sub-ms full converge).
+        // Use a tiny (O(1)) inline admission strategy:
+        // - If a dirty-pattern doesn't repeat, don't build a reachability plan; just run full.
+        // - If it repeats, compute and (optionally) cache a small plan and run dirty.
+        //
+        // This keeps auto<=full stable under adversarial high-cardinality patterns.
+        const scopeKey = schedulingScope === 'all' ? 0 : schedulingScope === 'immediate' ? 1 : 2
+        const dirtyKeyHash = ctx.dirtyPathsKeyHash
+        const dirtyKeySize = ctx.dirtyPathsKeySize
+        const canUseInlineKey =
+          dirtyPaths instanceof Set &&
+          typeof dirtyKeyHash === 'number' &&
+          Number.isFinite(dirtyKeyHash) &&
+          typeof dirtyKeySize === 'number' &&
+          Number.isFinite(dirtyKeySize) &&
+          dirtyKeySize > 0 &&
+          dirtyKeySize <= 64
+
+        if (canUseInlineKey) {
+          const inlineKeyHash = ((dirtyKeyHash ^ scopeKey) >>> 0) as number
+          const scratch: any = execIr.scratch as any
+
+          // Inline plan cache hit: reuse plan without any decision/plan build work.
+          const h1 = scratch.inlinePlanCacheHash1 as number | undefined
+          const s1 = scratch.inlinePlanCacheSize1 as number | undefined
+          const b1 = scratch.inlinePlanCacheBuf1 as Int32Array | undefined
+          const l1 = scratch.inlinePlanCachePlanLen1 as number | undefined
+          if (inlineKeyHash === h1 && dirtyKeySize === s1 && b1 && typeof l1 === 'number' && l1 > 0) {
+            mode = 'dirty'
+            reasons.push('inline_dirty')
+            reasons.push('cache_hit')
+            planStepIds = b1
+            planStepCount = l1
+            affectedSteps = l1
           } else {
-            const dirtyRootRatio = scopeStepCount > 0 ? dirty.rootCount / scopeStepCount : 1
-            if (dirtyRootRatio >= nearFullRootRatioThreshold) {
-              mode = 'full'
-              reasons.push('near_full')
-            } else if (
-              !canUseCache &&
-              scopeStepCount >= NO_CACHE_NEAR_FULL_STEP_THRESHOLD &&
-              dirtyRootRatio >= nearFullRootRatioThreshold / AUTO_FLOOR_RATIO
-            ) {
-              // No reusable cache path + near-full roots on large graphs tends to pay decision cost without step pruning wins.
+            const h2 = scratch.inlinePlanCacheHash2 as number | undefined
+            const s2 = scratch.inlinePlanCacheSize2 as number | undefined
+            const b2 = scratch.inlinePlanCacheBuf2 as Int32Array | undefined
+            const l2 = scratch.inlinePlanCachePlanLen2 as number | undefined
+            if (inlineKeyHash === h2 && dirtyKeySize === s2 && b2 && typeof l2 === 'number' && l2 > 0) {
+              // Promote to MRU.
+              scratch.inlinePlanCacheHash2 = h1
+              scratch.inlinePlanCacheSize2 = s1
+              scratch.inlinePlanCacheBuf2 = b1
+              scratch.inlinePlanCachePlanLen2 = l1
+              scratch.inlinePlanCacheHash1 = h2
+              scratch.inlinePlanCacheSize1 = s2
+              scratch.inlinePlanCacheBuf1 = b2
+              scratch.inlinePlanCachePlanLen1 = l2
+
+              mode = 'dirty'
+              reasons.push('inline_dirty')
+              reasons.push('cache_hit')
+              planStepIds = b2
+              planStepCount = l2
+              affectedSteps = l2
+            } else {
+              // 2-hit admission for inline plan computation: build plan only after we see the same key again.
+              const seen1 = scratch.inlinePlanCacheRecentMissHash1 as number | undefined
+              const seen2 = scratch.inlinePlanCacheRecentMissHash2 as number | undefined
+
+              if (inlineKeyHash !== seen1 && inlineKeyHash !== seen2) {
+                scratch.inlinePlanCacheRecentMissHash2 = seen1
+                scratch.inlinePlanCacheRecentMissHash1 = inlineKeyHash
+                mode = 'full'
+                reasons.push('low_hit_rate_protection')
+
+                // If we keep seeing new keys with very few repeats, disable inline plan computation to avoid GC spikes.
+                // (Cache hits still work; we only stop computing new plans.)
+                if (scratch.inlinePlanCacheDisabled !== true) {
+                  const prevSkips = scratch.inlinePlanCacheSkipCount as number | undefined
+                  const nextSkips = (typeof prevSkips === 'number' && Number.isFinite(prevSkips) ? prevSkips : 0) + 1
+                  scratch.inlinePlanCacheSkipCount = nextSkips
+
+                  const prevComputes = scratch.inlinePlanCacheComputeCount as number | undefined
+                  const computes = typeof prevComputes === 'number' && Number.isFinite(prevComputes) ? prevComputes : 0
+                  if (nextSkips >= 32 && computes <= 2) {
+                    scratch.inlinePlanCacheDisabled = true
+                  }
+                }
+              } else {
+                if (scratch.inlinePlanCacheDisabled === true) {
+                  mode = 'full'
+                  reasons.push('low_hit_rate_protection')
+                } else {
+                  mode = 'dirty'
+                  reasons.push('inline_dirty')
+                  reasons.push('cache_miss')
+
+                  const prevComputes = scratch.inlinePlanCacheComputeCount as number | undefined
+                  const nextComputes =
+                    (typeof prevComputes === 'number' && Number.isFinite(prevComputes) ? prevComputes : 0) + 1
+                  scratch.inlinePlanCacheComputeCount = nextComputes
+                }
+              }
+            }
+          }
+        } else {
+          // Fallback: if full is already cheap, pick full; otherwise run dirty inline.
+          //
+          // NOTE: we deliberately warm up a couple of full samples under off-fast-path so the EWMA/min can
+          // converge after cold-start/JIT effects. Those warmup samples are typically discarded by perf harness.
+          const fastFullMsCandidate =
+            typeof fullCommitMinOffMs === 'number' && Number.isFinite(fullCommitMinOffMs)
+              ? fullCommitMinOffMs
+              : typeof fullCommitEwmaOffMs === 'number' && Number.isFinite(fullCommitEwmaOffMs)
+                ? fullCommitEwmaOffMs
+                : undefined
+          const shouldWarmupFull =
+            fullCommitSampleCountOff < AUTO_FAST_FULL_WARMUP_FULL_SAMPLES_OFF && scopeStepCount <= 1024
+
+          if (
+            shouldWarmupFull ||
+            (typeof fastFullMsCandidate === 'number' &&
+              Number.isFinite(fastFullMsCandidate) &&
+              fastFullMsCandidate <= AUTO_FAST_FULL_EWMA_THRESHOLD_MS)
+          ) {
+            mode = 'full'
+            reasons.push('fast_full')
+          } else {
+            mode = 'dirty'
+            reasons.push('inline_dirty')
+          }
+        }
+      } else {
+        const dirty = ensureDirtyRootIds()
+        if (dirty.dirtyAll) {
+          mode = 'full'
+          reasons.push('dirty_all')
+          reasons.push('unknown_write')
+        } else if (dirty.rootIds.length === 0) {
+          mode = 'full'
+          reasons.push('unknown_write')
+        } else {
+          const dirtyRootRatio = scopeStepCount > 0 ? dirty.rootCount / scopeStepCount : 1
+          if (dirtyRootRatio >= nearFullRootRatioThreshold) {
+            mode = 'full'
+            reasons.push('near_full')
+          } else if (
+            !canUseCache &&
+            scopeStepCount >= NO_CACHE_NEAR_FULL_STEP_THRESHOLD &&
+            dirtyRootRatio >= nearFullRootRatioThreshold / AUTO_FLOOR_RATIO
+          ) {
+            // No reusable cache path + near-full roots on large graphs tends to pay decision cost without step pruning wins.
+            mode = 'full'
+            reasons.push('near_full')
+          } else {
+            const { plan, hit, budgetCutoff } = getOrComputePlan({
+              missReason: cacheMissReasonHint ?? 'not_cached',
+              stopOnDecisionBudget: decisionBudgetMs != null,
+            })
+            if (budgetCutoff) {
+              markDecisionBudgetCutoff()
+            }
+            planStepIds = plan
+            reasons.push(hit ? 'cache_hit' : 'cache_miss')
+            const ratio = scopeStepCount > 0 ? plan.length / scopeStepCount : 1
+            if (ratio >= NEAR_FULL_PLAN_RATIO_THRESHOLD) {
               mode = 'full'
               reasons.push('near_full')
             } else {
-              const { plan, hit, budgetCutoff } = getOrComputePlan({
-                missReason: cacheMissReasonHint ?? 'not_cached',
-                stopOnDecisionBudget: decisionBudgetMs != null,
-              })
-              if (budgetCutoff) {
-                markDecisionBudgetCutoff()
-              }
-              planStepIds = plan
-              reasons.push(hit ? 'cache_hit' : 'cache_miss')
-              const ratio = scopeStepCount > 0 ? plan.length / scopeStepCount : 1
-              if (ratio >= NEAR_FULL_PLAN_RATIO_THRESHOLD) {
-                mode = 'full'
-                reasons.push('near_full')
-              } else {
-                mode = 'dirty'
-              }
+              mode = 'dirty'
             }
           }
         }
       }
     } else {
       reasons.push('module_override')
-      const dirty = ensureDirtyRootIds()
       if (mode === 'dirty') {
+        const dirty = ensureDirtyRootIds()
         const { plan, hit } = getOrComputePlan({ missReason: cacheMissReasonHint ?? 'not_cached' })
         planStepIds = plan
         if (dirty.dirtyAll) {
@@ -648,12 +1068,26 @@ export const convergeInTransaction = <S extends object>(
       // Diagnostics contract:
       // - light/full: exported evidence expects dirty.rootIds as canonical anchor; rootPaths is materialized only on consumer side.
       // - sampled: keep slim by default (DebugSink strips heavy fields, but we also avoid unnecessary root mapping here).
-      const requiresRootIds =
-        diagnosticsLevel === 'light' ||
-        diagnosticsLevel === 'full' ||
-        requestedMode === 'dirty' ||
-        mode === 'dirty' ||
-        dirtyRootIds != null
+      const requiresRootIds = diagnosticsLevel === 'light' || diagnosticsLevel === 'full'
+
+      if (ctx.dirtyAllReason != null) {
+        return {
+          dirtyAll: true,
+          reason: ctx.dirtyAllReason,
+          rootCount: 0,
+          ...(requiresRootIds ? { rootIds: [], rootIdsTruncated: false } : null),
+        }
+      }
+
+      if (typeof dirtyPathCountHint === 'number' && dirtyPathCountHint === 0) {
+        return {
+          dirtyAll: true,
+          reason: 'unknownWrite',
+          rootCount: 0,
+          ...(requiresRootIds ? { rootIds: [], rootIdsTruncated: false } : null),
+        }
+      }
+
       const dirty =
         requiresRootIds && dirtyRootIds == null && (diagnosticsLevel === 'light' || diagnosticsLevel === 'full')
           ? ensureDirtyRootIds()
@@ -674,18 +1108,10 @@ export const convergeInTransaction = <S extends object>(
           rootCount: dirty.rootCount,
           ...(requiresRootIds
             ? {
-                rootIds: dirty.rootIds.slice(0, DIRTY_ROOT_IDS_TOP_K),
+                rootIds: Array.from(dirty.rootIds.subarray(0, DIRTY_ROOT_IDS_TOP_K)),
                 rootIdsTruncated: dirty.rootIds.length > DIRTY_ROOT_IDS_TOP_K,
               }
             : null),
-        }
-      }
-
-      if (typeof dirtyPathCountHint === 'number' && dirtyPathCountHint === 0) {
-        return {
-          dirtyAll: true,
-          reason: 'unknownWrite',
-          rootCount: 0,
         }
       }
 
@@ -710,21 +1136,26 @@ export const convergeInTransaction = <S extends object>(
     }
 
     let changedCount = 0
+    const shouldCollectNearFullSlimDecision =
+      diagnosticsLevel === 'off' && requestedMode === 'auto' && mode === 'full' && reasons.length === 1 && reasons[0] === 'near_full'
+    const shouldCollectDecisionSummary = shouldCollectDecision && !shouldCollectNearFullSlimDecision
+
+    const buildStepStats = (executedSteps: number): TraitConvergeStepStats => ({
+      totalSteps,
+      executedSteps,
+      skippedSteps: Math.max(0, totalSteps - executedSteps),
+      changedSteps: changedCount,
+      ...(typeof affectedSteps === 'number' ? { affectedSteps } : null),
+    })
 
     const makeDecisionSummary = (params: {
       readonly outcome: TraitConvergeOutcomeTag
       readonly executedSteps: number
       readonly executionDurationMs: number
     }): TraitConvergeDecisionSummary => {
-      const stepStats: TraitConvergeStepStats = {
-        totalSteps,
-        executedSteps: params.executedSteps,
-        skippedSteps: Math.max(0, totalSteps - params.executedSteps),
-        changedSteps: changedCount,
-        ...(typeof affectedSteps === 'number' ? { affectedSteps } : null),
-      }
+      const stepStats = buildStepStats(params.executedSteps)
 
-      const base = {
+      return {
         requestedMode,
         executedMode: mode,
         outcome: params.outcome,
@@ -736,44 +1167,62 @@ export const convergeInTransaction = <S extends object>(
         decisionDurationMs: requestedMode === 'auto' ? decisionDurationMs : undefined,
         reasons,
         stepStats,
-      } satisfies TraitConvergeDecisionSummary
-
-      if (!shouldCollectDecisionDetails) {
-        return base
-      }
-
-      if (!shouldCollectDecisionHeavyDetails) {
-        const dirtySummary = getDirtySummary()
-        return {
-          ...base,
-          dirty: dirtySummary,
-        } satisfies TraitConvergeDecisionSummary
-      }
-
-      const dirtySummary = getDirtySummary()
-      return {
-        ...base,
-        thresholds: { floorRatio: AUTO_FLOOR_RATIO },
-        dirty: dirtySummary,
-        cache: cacheEvidence,
-        generation: generationEvidence,
-        staticIr: {
-          fieldPathCount: ir.fieldPaths.length,
-          stepCount: totalSteps,
-          buildDurationMs: ir.buildDurationMs,
-        },
-        ...(timeSlicingSummary ? { timeSlicing: timeSlicingSummary } : {}),
-        ...(diagnosticsSampling ? { diagnosticsSampling } : {}),
-        ...(hotspots && hotspots.length > 0 ? { top3: hotspots.slice() } : {}),
+        dirty: shouldCollectDecisionDetails ? getDirtySummary() : undefined,
+        thresholds: shouldCollectDecisionHeavyDetails ? { floorRatio: AUTO_FLOOR_RATIO } : undefined,
+        cache: shouldCollectDecisionHeavyDetails ? cacheEvidence : undefined,
+        generation: shouldCollectDecisionHeavyDetails ? generationEvidence : undefined,
+        staticIr: shouldCollectDecisionHeavyDetails
+          ? {
+              fieldPathCount: ir.fieldPaths.length,
+              stepCount: totalSteps,
+              buildDurationMs: ir.buildDurationMs,
+            }
+          : undefined,
+        timeSlicing: shouldCollectDecisionHeavyDetails ? timeSlicingSummary : undefined,
+        diagnosticsSampling: shouldCollectDecisionHeavyDetails ? diagnosticsSampling : undefined,
+        top3:
+          shouldCollectDecisionHeavyDetails && hotspots && hotspots.length > 0
+            ? hotspots.slice()
+            : undefined,
       } satisfies TraitConvergeDecisionSummary
     }
+
+    const makeNearFullSlimDecisionSummary = (params: {
+      readonly outcome: TraitConvergeOutcomeTag
+      readonly executedSteps: number
+      readonly executionDurationMs: number
+    }): TraitConvergeDecisionSummary => ({
+      requestedMode,
+      executedMode: mode,
+      outcome: params.outcome,
+      configScope,
+      staticIrDigest: '',
+      executionBudgetMs: ctx.budgetMs,
+      executionDurationMs: params.executionDurationMs,
+      decisionBudgetMs: requestedMode === 'auto' ? ctx.decisionBudgetMs : undefined,
+      decisionDurationMs: requestedMode === 'auto' ? decisionDurationMs : undefined,
+      reasons,
+      stepStats: buildStepStats(params.executedSteps),
+    })
 
     const steps: Array<ConvergeStepSummary> | undefined = diagnosticsLevel === 'full' ? [] : undefined
     let executedSteps = 0
     const canUseInPlaceDraft = ctx.allowInPlaceDraft === true && execIr.allOutPathsShallow
-    const draft = canUseInPlaceDraft ? new ShallowInPlaceDraft(base) : new CowDraft(base)
+    const draft = (() => {
+      if (!canUseInPlaceDraft) {
+        return new CowDraft(base)
+      }
+      const scratch: any = execIr.scratch as any
+      const cached = scratch.shallowInPlaceDraft as ShallowInPlaceDraft<S> | undefined
+      if (cached) {
+        cached.reset(base)
+        return cached
+      }
+      const next = new ShallowInPlaceDraft(base)
+      scratch.shallowInPlaceDraft = next
+      return next
+    })()
     let budgetChecks = 0
-    const dirtyRootIdsForExecution = mode === 'dirty' ? ensureDirtyRootIds() : undefined
     const rollbackDraft = (): void => {
       if (draft instanceof ShallowInPlaceDraft) {
         draft.rollback()
@@ -782,19 +1231,183 @@ export const convergeInTransaction = <S extends object>(
     }
 
     try {
-      let dirtyPrefixSet: typeof dirtyPrefixBitSet | undefined
-      if (mode === 'dirty' && !planStepIds && dirtyRootIdsForExecution && !dirtyRootIdsForExecution.dirtyAll) {
-        dirtyPrefixBitSet.clear()
-        const roots = dirtyRootIdsForExecution.rootIds
-        for (let i = 0; i < roots.length; i++) {
-          addPathPrefixes(roots[i]!)
+      if (mode === 'dirty' && !planStepIds) {
+        // Inline dirty: build an actual plan (reachability) without hashing/caching.
+        // This keeps decisionDurationMs ~0 but avoids scanning every step with shouldRunStepById,
+        // and it supports transitive dirty propagation (out -> deps closure).
+        let ok = false
+        if (dirtyPaths instanceof Set) {
+          const dirtyPathIds = dirtyPaths as ReadonlySet<unknown>
+          const dirtyCount =
+            typeof ctx.dirtyPathsKeySize === 'number'
+              ? ctx.dirtyPathsKeySize
+              : ((dirtyPathIds as any).size as number | undefined)
+
+          // Micro-cache for inline_dirty:
+          // - Avoids repeated reachability plan builds for stable dirty patterns (e.g. alternatingTwoStable),
+          //   which can trigger p95 tail spikes due to JIT/GC timing in ultra-fast off-fast-path workloads.
+          //
+          // NOTE: This is deliberately tiny (2-entry) and has 2-hit admission to avoid thrashing on high-cardinality patterns.
+          let inlineKeyHash: number | undefined
+          if (typeof dirtyCount === 'number' && dirtyCount > 0 && dirtyCount <= 64) {
+            const scopeKey = schedulingScope === 'all' ? 0 : schedulingScope === 'immediate' ? 1 : 2
+            const preHash = ctx.dirtyPathsKeyHash
+
+            if (typeof preHash === 'number') {
+              inlineKeyHash = (preHash ^ scopeKey) >>> 0
+            } else {
+              let h = 2166136261 >>> 0
+              let okKey = true
+              for (const raw of dirtyPathIds) {
+                if (typeof raw !== 'number' || !Number.isFinite(raw)) {
+                  okKey = false
+                  break
+                }
+                const id = Math.floor(raw)
+                h ^= id >>> 0
+                h = Math.imul(h, 16777619)
+              }
+              if (okKey) {
+                inlineKeyHash = (h ^ scopeKey) >>> 0
+              }
+            }
+
+            if (inlineKeyHash !== undefined) {
+              const scratch: any = execIr.scratch as any
+              const h1 = scratch.inlinePlanCacheHash1 as number | undefined
+              const s1 = scratch.inlinePlanCacheSize1 as number | undefined
+              const b1 = scratch.inlinePlanCacheBuf1 as Int32Array | undefined
+              const l1 = scratch.inlinePlanCachePlanLen1 as number | undefined
+              if (inlineKeyHash === h1 && dirtyCount === s1 && b1 && typeof l1 === 'number' && l1 > 0) {
+                planStepIds = b1
+                planStepCount = l1
+                affectedSteps = l1
+                ok = true
+              } else {
+                const h2 = scratch.inlinePlanCacheHash2 as number | undefined
+                const s2 = scratch.inlinePlanCacheSize2 as number | undefined
+                const b2 = scratch.inlinePlanCacheBuf2 as Int32Array | undefined
+                const l2 = scratch.inlinePlanCachePlanLen2 as number | undefined
+                if (inlineKeyHash === h2 && dirtyCount === s2 && b2 && typeof l2 === 'number' && l2 > 0) {
+                  // Promote to MRU.
+                  scratch.inlinePlanCacheHash2 = h1
+                  scratch.inlinePlanCacheSize2 = s1
+                  scratch.inlinePlanCacheBuf2 = b1
+                  scratch.inlinePlanCachePlanLen2 = l1
+                  scratch.inlinePlanCacheHash1 = h2
+                  scratch.inlinePlanCacheSize1 = s2
+                  scratch.inlinePlanCacheBuf1 = b2
+                  scratch.inlinePlanCachePlanLen1 = l2
+
+                  planStepIds = b2
+                  planStepCount = l2
+                  affectedSteps = l2
+                  ok = true
+                }
+              }
+            }
+          }
+
+          if (!ok) {
+            const planLen = computeInlineDirtyPlanLenFromDirtyPathIdsSet(
+              execIr,
+              dirtyPathIds,
+              scopeStepIds,
+              scopeStepCount,
+              schedulingScope,
+              NEAR_FULL_PLAN_RATIO_THRESHOLD,
+            )
+            if (planLen === -2) {
+              mode = 'full'
+              affectedSteps = scopeStepCount
+              if (!reasons.includes('near_full')) reasons.push('near_full')
+              ok = true
+            } else if (planLen >= 0) {
+              planStepCount = planLen
+              affectedSteps = planLen
+              ok = true
+
+              // 2-hit admission: cache only if the same pattern repeats.
+              if (
+                inlineKeyHash !== undefined &&
+                typeof dirtyCount === 'number' &&
+                dirtyCount > 0 &&
+                dirtyCount <= 64 &&
+                planLen > 0 &&
+                planLen <= 256
+              ) {
+                const scratch: any = execIr.scratch as any
+                const seen1 = scratch.inlinePlanCacheRecentMissHash1 as number | undefined
+                const seen2 = scratch.inlinePlanCacheRecentMissHash2 as number | undefined
+                const admit = inlineKeyHash === seen1 || inlineKeyHash === seen2
+
+                if (admit) {
+                  // Insert as MRU (shift existing entry1 to entry2) without allocating:
+                  // - Reuse a fixed 2-slot typed buffer to avoid GC spikes under adversarial patterns.
+                  const oldHash1 = scratch.inlinePlanCacheHash1 as number | undefined
+                  const oldSize1 = scratch.inlinePlanCacheSize1 as number | undefined
+                  const oldBuf1 = scratch.inlinePlanCacheBuf1 as Int32Array | undefined
+                  const oldLen1 = scratch.inlinePlanCachePlanLen1 as number | undefined
+
+                  const oldBuf2 = scratch.inlinePlanCacheBuf2 as Int32Array | undefined
+                  const buf = oldBuf2 ?? new Int32Array(256)
+
+                  for (let i = 0; i < planLen; i++) {
+                    buf[i] = planScratch[i]!
+                  }
+
+                  scratch.inlinePlanCacheHash2 = oldHash1
+                  scratch.inlinePlanCacheSize2 = oldSize1
+                  scratch.inlinePlanCacheBuf2 = oldBuf1
+                  scratch.inlinePlanCachePlanLen2 = oldLen1
+                  scratch.inlinePlanCacheHash1 = inlineKeyHash
+                  scratch.inlinePlanCacheSize1 = dirtyCount
+                  scratch.inlinePlanCacheBuf1 = buf
+                  scratch.inlinePlanCachePlanLen1 = planLen
+                } else {
+                  scratch.inlinePlanCacheRecentMissHash2 = seen1
+                  scratch.inlinePlanCacheRecentMissHash1 = inlineKeyHash
+                }
+              }
+            } else {
+              // Fallback: cannot derive a reliable dirty plan from the Set.
+              // Use the canonical dirty-root path (which may degrade to full) to preserve correctness.
+              ok = false
+            }
+          }
         }
-        dirtyPrefixSet = dirtyPrefixBitSet
+
+        if (!ok) {
+          const dirty = ensureDirtyRootIds()
+          if (dirty.dirtyAll) {
+            mode = 'full'
+            if (!reasons.includes('dirty_all')) reasons.push('dirty_all')
+            if (!reasons.includes('unknown_write')) reasons.push('unknown_write')
+          } else {
+            const computed = computePlanStepIds(dirty.rootIds)
+            const plan = computed.plan ?? new Int32Array(0)
+            affectedSteps = plan.length
+            const ratio = scopeStepCount > 0 ? plan.length / scopeStepCount : 1
+            if (ratio >= NEAR_FULL_PLAN_RATIO_THRESHOLD) {
+              mode = 'full'
+              if (!reasons.includes('near_full')) reasons.push('near_full')
+            } else {
+              planStepIds = plan
+            }
+          }
+        }
       }
 
-      const stepIds = mode === 'dirty' && planStepIds ? planStepIds : scopeStepIds
+      const stepIds =
+        mode === 'dirty'
+          ? planStepIds ?? (planStepCount != null ? planScratch : scopeStepIds)
+          : scopeStepIds
+      const stepCount =
+        mode === 'dirty'
+          ? planStepCount ?? (planStepIds ? planStepIds.length : scopeStepCount)
+          : scopeStepCount
 
-      for (let i = 0; i < stepIds.length; i++) {
+      for (let i = 0; i < stepCount; i++) {
         const stepId = stepIds[i]!
         const entry = stepsInTopoOrder[stepId]
         if (!entry) continue
@@ -856,13 +1469,6 @@ export const convergeInTransaction = <S extends object>(
                 ...(decision ? { decision } : null),
               } as const
             }
-          }
-        }
-
-        if (mode === 'dirty' && dirtyPrefixSet) {
-          const shouldRun = shouldRunStepById(stepId)
-          if (!shouldRun) {
-            continue
           }
         }
 
@@ -932,9 +1538,6 @@ export const convergeInTransaction = <S extends object>(
           }
           if (exit.value) {
             changedCount += 1
-            if (mode === 'dirty' && dirtyPrefixSet) {
-              addPathPrefixes(execIr.stepOutFieldPathIdByStepId[stepId]!)
-            }
           }
           continue
         }
@@ -983,9 +1586,6 @@ export const convergeInTransaction = <S extends object>(
 
           if (changed) {
             changedCount += 1
-            if (mode === 'dirty' && dirtyPrefixSet) {
-              addPathPrefixes(execIr.stepOutFieldPathIdByStepId[stepId]!)
-            }
           }
 
           continue
@@ -997,9 +1597,6 @@ export const convergeInTransaction = <S extends object>(
           try {
             if (runWriterStepOffFast(ctx, execIr, draft, stepId, entry)) {
               changedCount += 1
-              if (mode === 'dirty' && dirtyPrefixSet) {
-                addPathPrefixes(execIr.stepOutFieldPathIdByStepId[stepId]!)
-              }
             }
           } catch (e) {
             const error = toSerializableErrorSummary(e)
@@ -1049,9 +1646,6 @@ export const convergeInTransaction = <S extends object>(
         }
         if (exit.value) {
           changedCount += 1
-          if (mode === 'dirty' && dirtyPrefixSet) {
-            addPathPrefixes(execIr.stepOutFieldPathIdByStepId[stepId]!)
-          }
         }
       }
     } catch (e) {
@@ -1093,15 +1687,50 @@ export const convergeInTransaction = <S extends object>(
       } as const
     }
 
+    if (draft instanceof ShallowInPlaceDraft) {
+      // On success, keep the in-place writes but clear rollback bookkeeping (reuse scratch draft).
+      draft.commit()
+    }
+
     const totalDurationMs = Math.max(0, ctx.now() - executionStartedAt)
     const outcome: TraitConvergeOutcomeTag = changedCount > 0 ? 'Converged' : 'Noop'
-    const decision = shouldCollectDecision
+
+    if (mode === 'dirty' && affectedSteps === undefined) {
+      affectedSteps = executedSteps
+    }
+
+    if (mode === 'full' && diagnosticsLevel === 'off' && stack.length === 0) {
+      // Skip cold-start samples: dominated by JIT/module init and poison the EWMA.
+      if (ctx.txnSeq !== 1) {
+        const perf = execIr.perf
+        const prev = perf.fullCommitEwmaOffMs
+        // Keep it O(1): a tiny EWMA is enough to decide if planning is worth trying at all.
+        perf.fullCommitEwmaOffMs =
+          typeof prev === 'number' && Number.isFinite(prev) ? prev * 0.8 + totalDurationMs * 0.2 : totalDurationMs
+        const prevMin = perf.fullCommitMinOffMs
+        perf.fullCommitMinOffMs =
+          typeof prevMin === 'number' && Number.isFinite(prevMin) ? Math.min(prevMin, totalDurationMs) : totalDurationMs
+        const prevCount = perf.fullCommitSampleCountOff ?? 0
+        perf.fullCommitSampleCountOff = prevCount + 1
+        if (typeof ctx.txnSeq === 'number' && Number.isFinite(ctx.txnSeq)) {
+          perf.fullCommitLastTxnSeqOff = ctx.txnSeq
+        }
+      }
+    }
+
+    const decision = shouldCollectDecisionSummary
       ? makeDecisionSummary({
           outcome,
           executedSteps,
           executionDurationMs: totalDurationMs,
         })
-      : undefined
+      : shouldCollectNearFullSlimDecision
+        ? makeNearFullSlimDecisionSummary({
+            outcome,
+            executedSteps,
+            executionDurationMs: totalDurationMs,
+          })
+        : undefined
     if (decision && diagnosticsLevel !== 'off') yield* emitTraitConvergeTraceEvent(decision)
 
     return changedCount > 0

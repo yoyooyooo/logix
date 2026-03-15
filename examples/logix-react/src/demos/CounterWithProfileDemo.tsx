@@ -28,7 +28,7 @@ const counterWithProfileRuntime = Logix.Runtime.make(CounterWithProfileModule, {
 // 应用启动时预热一次 Runtime，确保 Devtools 能看到该 Module 的初始状态与事件。
 counterWithProfileRuntime.runFork(
   Effect.gen(function* () {
-    const runtime = yield* CounterWithProfileDef.tag
+    const runtime = yield* Effect.service(CounterWithProfileDef.tag).pipe(Effect.orDie)
     const state = yield* runtime.getState
     // 简单变更一次状态，触发 state:update + StateTrait 计算链路。
     yield* runtime.setState({

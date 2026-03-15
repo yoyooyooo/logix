@@ -77,6 +77,14 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/no-unused-vars': 'off',
       'no-unused-vars': 'off',
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.object.name='Context'][callee.property.name='GenericTag']",
+          message:
+            'Context.GenericTag is disallowed in source code. Use Context.Tag class or an explicit registry-backed resolver.',
+        },
+      ],
     },
   },
   // 当前仓库仍处在积极演进阶段，允许在边界/胶水层使用 any / namespace 等写法；

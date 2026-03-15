@@ -18,7 +18,7 @@ describe('Runtime (048): default kernel', () => {
     const runtime = Logix.Runtime.make(program)
 
     const readEvidence = Effect.gen(function* () {
-      const moduleRuntime = yield* Root.tag
+      const moduleRuntime = yield* Effect.service(Root.tag).pipe(Effect.orDie)
       return {
         kernel: Logix.Kernel.getKernelImplementationRef(moduleRuntime),
         evidence: Logix.Kernel.getRuntimeServicesEvidence(moduleRuntime),

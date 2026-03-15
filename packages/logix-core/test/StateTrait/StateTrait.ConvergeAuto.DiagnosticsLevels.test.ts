@@ -52,19 +52,13 @@ const makeRuntimeWithDevtoolsHub = (options: {
 
   Debug.clearDevtoolsEvents()
 
-  const mode: Debug.DevtoolsProjectionMode =
-    options.diagnosticsLevel === 'off' ? 'off' : options.diagnosticsLevel === 'full' ? 'full' : 'light'
-
-  const layer = Layer.mergeAll(
-    Debug.devtoolsHubLayer({
-      bufferSize: 256,
-      mode,
-      ...(options.traitConvergeDiagnosticsSampling
-        ? { traitConvergeDiagnosticsSampling: options.traitConvergeDiagnosticsSampling }
-        : null),
-    }),
-    Debug.diagnosticsLevel(options.diagnosticsLevel),
-  )
+  const layer = Debug.devtoolsHubLayer({
+    bufferSize: 256,
+    diagnosticsLevel: options.diagnosticsLevel,
+    ...(options.traitConvergeDiagnosticsSampling
+      ? { traitConvergeDiagnosticsSampling: options.traitConvergeDiagnosticsSampling }
+      : null),
+  })
 
   const runtime = Logix.Runtime.make(impl, {
     stateTransaction: options.stateTransaction,
@@ -82,7 +76,7 @@ const runTxn = (
   Effect.promise(() =>
     runtime.runPromise(
       Effect.gen(function* () {
-        const rt = yield* M.tag
+        const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
         void name
         yield* rt.dispatch({ _tag: 'incA', payload: undefined } as any)
       }),
@@ -96,7 +90,7 @@ const pickTraitConvergeRefs = (pkg: Logix.Observability.EvidencePackage): any[] 
     .filter((p) => p && typeof p === 'object' && p.kind === 'trait:converge')
 
 describe('StateTrait converge diagnostics levels', () => {
-  it.scoped('off: no exportable trait:converge event nor summary', () =>
+  it.effect('off: no exportable trait:converge event nor summary', () =>
     Effect.gen(function* () {
       const moduleId = 'StateTraitConvergeAuto_DiagnosticsLevels_Off'
       const { M, runtime } = makeRuntimeWithDevtoolsHub({
@@ -116,7 +110,7 @@ describe('StateTrait converge diagnostics levels', () => {
     }),
   )
 
-  it.scoped('light: trait:converge exported with slim dirty + rootIds mapping + minimal staticIrByDigest summary', () =>
+  it.effect('light: trait:converge exported with slim dirty + rootIds mapping + minimal staticIrByDigest summary', () =>
     Effect.gen(function* () {
       const moduleId = 'StateTraitConvergeAuto_DiagnosticsLevels_Light'
       const { M, runtime } = makeRuntimeWithDevtoolsHub({
@@ -158,7 +152,7 @@ describe('StateTrait converge diagnostics levels', () => {
     }),
   )
 
-  it.scoped('full: trait:converge exported with controlled roots summary and staticIrByDigest summary', () =>
+  it.effect('full: trait:converge exported with controlled roots summary and staticIrByDigest summary', () =>
     Effect.gen(function* () {
       const moduleId = 'StateTraitConvergeAuto_DiagnosticsLevels_Full'
       const { M, runtime } = makeRuntimeWithDevtoolsHub({
@@ -198,7 +192,7 @@ describe('StateTrait converge diagnostics levels', () => {
     }),
   )
 
-  it.scoped(
+  it.effect(
     'sampled: trait:converge exported with slim dirty + diagnosticsSampling summary + optional top3 hotspots',
     () =>
       Effect.gen(function* () {
@@ -226,17 +220,15 @@ describe('StateTrait converge diagnostics levels', () => {
         expect(dirty).toBeDefined()
         expect(typeof dirty.dirtyAll).toBe('boolean')
         expect('rootCount' in dirty).toBe(false)
-        expect(Array.isArray(dirty.rootIds)).toBe(true)
-        expect(dirty.rootIds.length).toBeLessThanOrEqual(3)
-        expect(typeof dirty.rootIdsTruncated).toBe('boolean')
+        expect('rootIds' in dirty).toBe(false)
+        expect('rootIdsTruncated' in dirty).toBe(false)
 
         const sampling = meta.diagnosticsSampling as any
-        if (sampling != null) {
-          expect(sampling.strategy).toBe('txnSeq_interval')
-          expect(sampling.sampleEveryN).toBe(1)
-          expect(sampling.topK).toBe(3)
-          expect(sampling.sampled).toBe(true)
-        }
+        expect(sampling).toBeDefined()
+        expect(sampling.strategy).toBe('txnSeq_interval')
+        expect(sampling.sampleEveryN).toBe(1)
+        expect(sampling.topK).toBe(3)
+        expect(sampling.sampled).toBe(true)
 
         const summary = pkg.summary as any
         expect(summary).toBeDefined()
@@ -247,18 +239,16 @@ describe('StateTrait converge diagnostics levels', () => {
         expect((summary.converge.staticIrByDigest as any)[meta.staticIrDigest]).toBeDefined()
 
         const top3 = meta.top3 as any
-        if (top3 != null) {
-          expect(Array.isArray(top3)).toBe(true)
-          expect(top3.length).toBeGreaterThan(0)
-          expect(top3.length).toBeLessThanOrEqual(3)
-          expect(typeof top3[0]?.stepId).toBe('number')
-          expect(typeof top3[0]?.durationMs).toBe('number')
-          expect(typeof top3[0]?.changed).toBe('boolean')
-        }
+        expect(Array.isArray(top3)).toBe(true)
+        expect(top3.length).toBeGreaterThan(0)
+        expect(top3.length).toBeLessThanOrEqual(3)
+        expect(typeof top3[0]?.stepId).toBe('number')
+        expect(typeof top3[0]?.durationMs).toBe('number')
+        expect(typeof top3[0]?.changed).toBe('boolean')
       }),
   )
 
-  it.scoped('mixed tiers: staticIrByDigest should keep full/minimal shape per digest without cross-tier pollution', () =>
+  it.effect('mixed tiers: staticIrByDigest should keep full/minimal shape per digest without cross-tier pollution', () =>
     Effect.gen(function* () {
       Debug.clearDevtoolsEvents()
 
@@ -292,7 +282,7 @@ describe('StateTrait converge diagnostics levels', () => {
         stateTransaction: { traitConvergeMode: 'auto' },
         layer: Debug.devtoolsHubLayer({
           bufferSize: 256,
-          mode: 'full',
+          diagnosticsLevel: 'full',
         }) as Layer.Layer<any, never, never>,
       })
 
@@ -327,14 +317,14 @@ describe('StateTrait converge diagnostics levels', () => {
         stateTransaction: { traitConvergeMode: 'auto' },
         layer: Debug.devtoolsHubLayer({
           bufferSize: 256,
-          mode: 'light',
+          diagnosticsLevel: 'light',
         }) as Layer.Layer<any, never, never>,
       })
 
       yield* Effect.promise(() =>
         fullRuntime.runPromise(
           Effect.gen(function* () {
-            const rt = yield* FullModule.tag
+            const rt = yield* Effect.service(FullModule.tag).pipe(Effect.orDie)
             yield* rt.dispatch({ _tag: 'inc', payload: undefined } as any)
           }),
         ),
@@ -343,7 +333,7 @@ describe('StateTrait converge diagnostics levels', () => {
       yield* Effect.promise(() =>
         lightRuntime.runPromise(
           Effect.gen(function* () {
-            const rt = yield* LightModule.tag
+            const rt = yield* Effect.service(LightModule.tag).pipe(Effect.orDie)
             yield* rt.dispatch({ _tag: 'inc', payload: undefined } as any)
           }),
         ),

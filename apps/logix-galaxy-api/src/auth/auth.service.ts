@@ -1,4 +1,4 @@
-import { Context, Effect, Schema } from 'effect'
+import { ServiceMap, Effect, Schema } from 'effect'
 
 import {
   AuthLoginRequest,
@@ -99,4 +99,4 @@ export interface AuthService {
   >
 }
 
-export class Auth extends Context.Tag('Auth')<Auth, AuthService>() {}
+export class Auth extends ServiceMap.Service<Auth, AuthService>()('Auth') {}

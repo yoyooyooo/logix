@@ -1,40 +1,39 @@
-import { HttpApiBuilder } from '@effect/platform'
+import { HttpApiBuilder } from 'effect/unstable/httpapi'
 import { Effect } from 'effect'
 
 import { EffectApi } from '../app/effect-api.js'
 import { Specboard } from './specboard.service.js'
 
-export const SpecboardLive = HttpApiBuilder.group(EffectApi, 'Specboard', (handlers) =>
-  handlers
+export const SpecboardLive = HttpApiBuilder.group(EffectApi, 'Specboard', Effect.fn(function* (handlers) {
+  return handlers
     .handle('specList', () =>
       Effect.gen(function* () {
-        const specboard = yield* Specboard
+        const specboard = yield* Effect.service(Specboard)
         return yield* specboard.listSpecs
       }),
     )
-    .handle('taskList', ({ path }) =>
+    .handle('taskList', ({ params }) =>
       Effect.gen(function* () {
-        const specboard = yield* Specboard
-        return yield* specboard.listTasks(path.specId)
+        const specboard = yield* Effect.service(Specboard)
+        return yield* specboard.listTasks(params.specId)
       }),
     )
-    .handle('taskToggle', ({ path, payload }) =>
+    .handle('taskToggle', ({ params, payload }) =>
       Effect.gen(function* () {
-        const specboard = yield* Specboard
-        return yield* specboard.toggleTask({ specId: path.specId, line: payload.line, checked: payload.checked })
+        const specboard = yield* Effect.service(Specboard)
+        return yield* specboard.toggleTask({ specId: params.specId, line: payload.line, checked: payload.checked })
       }),
     )
-    .handle('fileRead', ({ path }) =>
+    .handle('fileRead', ({ params }) =>
       Effect.gen(function* () {
-        const specboard = yield* Specboard
-        return yield* specboard.readFile({ specId: path.specId, name: path.name })
+        const specboard = yield* Effect.service(Specboard)
+        return yield* specboard.readFile({ specId: params.specId, name: params.name })
       }),
     )
-    .handle('fileWrite', ({ path, payload }) =>
+    .handle('fileWrite', ({ params, payload }) =>
       Effect.gen(function* () {
-        const specboard = yield* Specboard
-        return yield* specboard.writeFile({ specId: path.specId, name: path.name, content: payload.content })
+        const specboard = yield* Effect.service(Specboard)
+        return yield* specboard.writeFile({ specId: params.specId, name: params.name, content: payload.content })
       }),
-    ),
-)
-
+    )
+}))

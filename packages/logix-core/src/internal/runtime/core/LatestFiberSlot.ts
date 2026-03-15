@@ -1,7 +1,7 @@
 import { Fiber, Ref } from 'effect'
 
 export type LatestFiberSlotState<E = never> = {
-  fiber: Fiber.RuntimeFiber<void, E> | undefined
+  fiber: Fiber.Fiber<void, E> | undefined
   runningId: number
   nextId: number
 }
@@ -26,7 +26,7 @@ export const beginRun = <E>(slotRef: Ref.Ref<LatestFiberSlotState<E>>) =>
 export const setFiberIfCurrent = <E>(
   slotRef: Ref.Ref<LatestFiberSlotState<E>>,
   runId: number,
-  fiber: Fiber.RuntimeFiber<void, E>,
+  fiber: Fiber.Fiber<void, E>,
 ) =>
   Ref.update(slotRef, (state) => {
     if (state.runningId === runId) {

@@ -5,7 +5,14 @@ import * as ModuleRuntimeImpl from '../../../src/internal/runtime/ModuleRuntime.
 import * as BoundApiRuntime from '../../../src/internal/runtime/BoundApiRuntime.js'
 
 const flushMicrotasks = (times = 2): Effect.Effect<void> =>
-  Effect.forEach(Array.from({ length: Math.max(0, times) }), () => Effect.promise(() => new Promise<void>((r) => queueMicrotask(r))))
+  Effect.forEach(
+    Array.from({ length: Math.max(0, times) }),
+    () =>
+      Effect.gen(function* () {
+        yield* Effect.promise(() => new Promise<void>((r) => queueMicrotask(r)))
+        yield* Effect.yieldNow
+      }),
+  )
     .pipe(Effect.asVoid)
 
 const makeManualStore = <T>(initial: T) => {
@@ -50,7 +57,7 @@ describe('StateTrait.externalStore external-owned governance', () => {
     expect(program.convergeIr?.configError?.fields).toEqual(['value'])
   })
 
-  it.scoped('fails fast on non-trait writes overlapping external-owned fields', () =>
+  it.effect('fails fast on non-trait writes overlapping external-owned fields', () =>
     Effect.gen(function* () {
       const StateSchema = Schema.Struct({ value: Schema.Number, other: Schema.Number })
       type State = Schema.Schema.Type<typeof StateSchema>
@@ -105,14 +112,14 @@ describe('StateTrait.externalStore external-owned governance', () => {
       )
       expect(mutateExternalOwned._tag).toBe('Failure')
       if (mutateExternalOwned._tag === 'Failure') {
-        const defects = Array.from(Cause.defects(mutateExternalOwned.cause))
+        const defects = mutateExternalOwned.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)
         expect(defects.some((d: unknown) => (d as any)?.name === 'ExternalOwnedWriteError')).toBe(true)
       }
 
       const rootWrite = yield* Effect.exit(runtime.setState({ value: 3, other: 2 } as any))
       expect(rootWrite._tag).toBe('Failure')
       if (rootWrite._tag === 'Failure') {
-        const defects = Array.from(Cause.defects(rootWrite.cause))
+        const defects = rootWrite.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)
         expect(defects.some((d: unknown) => (d as any)?.name === 'ExternalOwnedWriteError')).toBe(true)
       }
 
@@ -124,7 +131,7 @@ describe('StateTrait.externalStore external-owned governance', () => {
     }),
   )
 
-  it.scoped('fails fast with external-owned fields containing special key characters', () =>
+  it.effect('fails fast with external-owned fields containing special key characters', () =>
     Effect.gen(function* () {
       const ownedKey = 'value|pipe:😀'
       const StateSchema = Schema.Struct({ [ownedKey]: Schema.Number, other: Schema.Number })
@@ -180,14 +187,14 @@ describe('StateTrait.externalStore external-owned governance', () => {
       )
       expect(mutateExternalOwned._tag).toBe('Failure')
       if (mutateExternalOwned._tag === 'Failure') {
-        const defects = Array.from(Cause.defects(mutateExternalOwned.cause))
+        const defects = mutateExternalOwned.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)
         expect(defects.some((d: unknown) => (d as any)?.name === 'ExternalOwnedWriteError')).toBe(true)
       }
 
       const rootWrite = yield* Effect.exit(runtime.setState({ [ownedKey]: 3, other: 2 } as any))
       expect(rootWrite._tag).toBe('Failure')
       if (rootWrite._tag === 'Failure') {
-        const defects = Array.from(Cause.defects(rootWrite.cause))
+        const defects = rootWrite.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)
         expect(defects.some((d: unknown) => (d as any)?.name === 'ExternalOwnedWriteError')).toBe(true)
       }
 

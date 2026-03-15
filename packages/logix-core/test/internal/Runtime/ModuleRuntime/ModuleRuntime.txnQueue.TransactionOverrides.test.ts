@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Option } from 'effect'
 import type { ConcurrencyDiagnostics } from '../../../../src/internal/runtime/core/ConcurrencyDiagnostics.js'
@@ -7,7 +7,7 @@ import type { ResolvedConcurrencyPolicy } from '../../../../src/internal/runtime
 import { makeEnqueueTransaction } from '../../../../src/internal/runtime/ModuleRuntime.txnQueue.js'
 
 describe('ModuleRuntime.txnQueue (StateTransactionOverrides propagation)', () => {
-  it.scoped('enqueueTransaction should preserve StateTransactionOverrides across queue boundary', () =>
+  it.effect('enqueueTransaction should preserve StateTransactionOverrides across queue boundary', () =>
     Effect.gen(function* () {
       const policy: ResolvedConcurrencyPolicy = {
         concurrencyLimit: 16,

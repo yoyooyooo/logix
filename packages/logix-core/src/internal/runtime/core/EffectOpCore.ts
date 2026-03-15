@@ -2,14 +2,11 @@
 // For higher-level Runtime / Devtools integration, see:
 // specs/000-module-traits-runtime/references/effectop-and-middleware.md
 
-import { Context, Effect, FiberRef } from 'effect'
+import { Effect, ServiceMap } from 'effect'
 
-/**
- * currentLinkId：
- * - Stores the current operation chain id (linkId) in a FiberRef.
- * - Used to correlate multiple boundary ops within the same chain (can be shared across modules via the same FiberRef).
- */
-export const currentLinkId = FiberRef.unsafeMake<string | undefined>(undefined)
+export const currentLinkId = ServiceMap.Reference<string | undefined>('@logixjs/core/CurrentLinkId', {
+  defaultValue: () => undefined,
+})
 
 /**
  * OperationPolicy：
@@ -127,10 +124,10 @@ export interface EffectOpMiddlewareEnv {
   readonly stack: MiddlewareStack
 }
 
-export class EffectOpMiddlewareTag extends Context.Tag('Logix/EffectOpMiddleware')<
+export class EffectOpMiddlewareTag extends ServiceMap.Service<
   EffectOpMiddlewareTag,
   EffectOpMiddlewareEnv
->() {}
+>()('Logix/EffectOpMiddleware') {}
 
 /**
  * composeMiddleware：
@@ -161,7 +158,7 @@ export const composeMiddleware = (stack: MiddlewareStack): Middleware => {
  */
 export const runWithMiddleware = <A, E, R>(op: EffectOp<A, E, R>, stack: MiddlewareStack): Effect.Effect<A, E, R> => {
   return Effect.gen(function* () {
-    const existing = yield* FiberRef.get(currentLinkId)
+    const existing = yield* Effect.service(currentLinkId)
     const metaLinkId = (op.meta as any)?.linkId
     const linkId = typeof metaLinkId === 'string' && metaLinkId.length > 0 ? metaLinkId : (existing ?? op.id)
 
@@ -177,6 +174,6 @@ export const runWithMiddleware = <A, E, R>(op: EffectOp<A, E, R>, stack: Middlew
 
     // linkId is created at the boundary root and reused for nested ops (the FiberRef is the global single source of truth).
     // NOTE: middleware may explicitly reject with OperationRejected.
-    return yield* Effect.locally(currentLinkId, linkId)(program as any)
+    return yield* Effect.provideService(program as any, currentLinkId, linkId)
   }) as Effect.Effect<A, E, R>
 }

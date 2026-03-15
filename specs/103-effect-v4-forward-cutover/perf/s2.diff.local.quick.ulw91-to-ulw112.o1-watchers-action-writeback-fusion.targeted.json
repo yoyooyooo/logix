@@ -1,0 +1,241 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-03-06T01:32:14.835Z",
+    "from": {
+      "file": "specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw91.i1-state-writeback-batched.watchers.json",
+      "commit": "da2a189bf5405cbc29622656b9c82e1e4c1831c8"
+    },
+    "to": {
+      "file": "specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw112.watchers-action-writeback-fusion.targeted.json",
+      "commit": "62a4db949b1168430b5c8da318321cc1b1a8ee46"
+    },
+    "comparability": {
+      "comparable": false,
+      "allowConfigDrift": true,
+      "allowEnvDrift": true,
+      "configMismatches": [
+        "matrixHash: before=506a5c14a0dcbb86ff2b6b8ba1f4e4ba81eba9fc14b4dc4f0e94462f3051bff1 after=cea713e478201c1e24f4180106ec7dc85ab59c031e8c90dbc039507404a510f3"
+      ],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.before=true",
+        "git.dirty.after=true",
+        "git.commit: before=da2a189bf5405cbc29622656b9c82e1e4c1831c8 after=62a4db949b1168430b5c8da318321cc1b1a8ee46"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 1,
+    "budgetViolations": 0,
+    "slices": {
+      "total": 6,
+      "compared": 6,
+      "skippedCoverage": 0,
+      "skippedData": 0,
+      "beforeOnly": 0,
+      "afterOnly": 0
+    }
+  },
+  "suites": [
+    {
+      "id": "watchers.clickToPaint",
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "p95<=50ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "reactStrictMode": true
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 32,
+          "message": "[category=e2e] p95<=50ms {reactStrictMode=true}: before=null after=32 (after:budgetExceeded) (before:budgetExceeded)"
+        }
+      ],
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 14,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 14,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=14 unavailable=0 missing=0] after[value=core ok=14 unavailable=0 missing=0]"
+        }
+      ],
+      "metricDeltas": [
+        {
+          "metric": "e2e.clickToPaintMs",
+          "unit": "ms",
+          "compared": 14,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [
+            {
+              "params": {
+                "watchers": 1,
+                "reactStrictMode": false
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 44.20000000298023,
+                "p95Ms": 56.6000000089407
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 36.1000000089407,
+                "p95Ms": 59.5
+              },
+              "deltaMs": {
+                "medianMs": -8.099999994039536,
+                "p95Ms": 2.8999999910593033
+              },
+              "ratio": {
+                "median": 0.8167420815951723,
+                "p95": 1.0512367489505514
+              }
+            }
+          ],
+          "topImprovements": [
+            {
+              "params": {
+                "watchers": 512,
+                "reactStrictMode": false
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 76.90000000596046,
+                "p95Ms": 94.5
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 36.5,
+                "p95Ms": 55.3999999910593
+              },
+              "deltaMs": {
+                "medianMs": -40.400000005960464,
+                "p95Ms": -39.1000000089407
+              },
+              "ratio": {
+                "median": 0.47464239268102615,
+                "p95": 0.5862433861487757
+              }
+            },
+            {
+              "params": {
+                "watchers": 512,
+                "reactStrictMode": true
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 74,
+                "p95Ms": 85.59999999403954
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 32.900000005960464,
+                "p95Ms": 50.3999999910593
+              },
+              "deltaMs": {
+                "medianMs": -41.099999994039536,
+                "p95Ms": -35.20000000298023
+              },
+              "ratio": {
+                "median": 0.4445945946751414,
+                "p95": 0.5887850466655226
+              }
+            },
+            {
+              "params": {
+                "watchers": 256,
+                "reactStrictMode": true
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 54.400000005960464,
+                "p95Ms": 72.59999999403954
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 36.099999994039536,
+                "p95Ms": 48.19999998807907
+              },
+              "deltaMs": {
+                "medianMs": -18.30000001192093,
+                "p95Ms": -24.400000005960464
+              },
+              "ratio": {
+                "median": 0.663602940994194,
+                "p95": 0.6639118456203347
+              }
+            },
+            {
+              "params": {
+                "watchers": 8,
+                "reactStrictMode": false
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 48.5,
+                "p95Ms": 65.19999998807907
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 32.80000001192093,
+                "p95Ms": 44.20000000298023
+              },
+              "deltaMs": {
+                "medianMs": -15.699999988079071,
+                "p95Ms": -20.99999998509884
+              },
+              "ratio": {
+                "median": 0.6762886600396067,
+                "p95": 0.6779141105991042
+              }
+            },
+            {
+              "params": {
+                "watchers": 32,
+                "reactStrictMode": false
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 49.70000000298023,
+                "p95Ms": 66.80000001192093
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 34.79999999701977,
+                "p95Ms": 47
+              },
+              "deltaMs": {
+                "medianMs": -14.900000005960464,
+                "p95Ms": -19.80000001192093
+              },
+              "ratio": {
+                "median": 0.7002012071415091,
+                "p95": 0.7035928142456964
+              }
+            }
+          ]
+        }
+      ],
+      "notes": "stabilityWarning: metric=e2e.clickToPaintMs {reactStrictMode=true&watchers=1} baselineP95=50.50ms afterP95=41.90ms diff=8.60ms limit=5.05ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    }
+  ]
+}

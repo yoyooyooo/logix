@@ -20,6 +20,12 @@ type PerfDiff = {
   readonly summary?: {
     readonly regressions?: number
     readonly improvements?: number
+    readonly highlights?: ReadonlyArray<{
+      readonly kind?: string
+      readonly suiteId?: string
+      readonly headline?: string
+      readonly guidance?: string
+    }>
   }
   readonly suites?: ReadonlyArray<{
     readonly id: string
@@ -43,6 +49,10 @@ type PerfDiff = {
         readonly ratio: { readonly median: number; readonly p95: number }
       }>
     }>
+    readonly watchersPhaseDisplay?: {
+      readonly headline?: string
+      readonly guidance?: string
+    }
   }>
 }
 
@@ -151,6 +161,7 @@ const renderFromDiff = (diff: PerfDiff): string => {
   const warnings = diff.meta?.comparability?.warnings ?? []
   const regressions = diff.summary?.regressions ?? 0
   const improvements = diff.summary?.improvements ?? 0
+  const highlights = (diff.summary?.highlights ?? []).filter((highlight) => Boolean(highlight?.headline))
 
   const lines: string[] = []
   lines.push(`### logix-perf artifact 解读`)
@@ -159,6 +170,15 @@ const renderFromDiff = (diff: PerfDiff): string => {
   }
   lines.push(`- comparable: \`${String(comparable)}\` (allowConfigDrift=${String(allowConfigDrift)}, allowEnvDrift=${String(allowEnvDrift)})`)
   lines.push(`- regressions: \`${String(regressions)}\`  improvements: \`${String(improvements)}\``)
+
+  if (highlights.length > 0) {
+    lines.push('')
+    lines.push('**triage highlights**')
+    for (const highlight of highlights) {
+      const guidance = highlight.guidance ? ` | guidance: ${highlight.guidance}` : ''
+      lines.push(`- ${highlight.headline}${guidance}`)
+    }
+  }
 
   if (warnings.length > 0) {
     lines.push('')

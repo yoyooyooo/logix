@@ -5,7 +5,7 @@ import * as ModuleRuntimeImpl from '../../../src/internal/runtime/ModuleRuntime.
 import * as BoundApiRuntime from '../../../src/internal/runtime/BoundApiRuntime.js'
 
 describe('StateTrait meta diagnostics (dev-mode)', () => {
-  it.scoped('TraitMeta sanitize emits diagnostic when dropping/ignoring values', () =>
+  it.effect('TraitMeta sanitize emits diagnostic when dropping/ignoring values', () =>
     Effect.gen(function* () {
       const ring = Logix.Debug.makeRingBufferSink(64)
 
@@ -51,36 +51,29 @@ describe('StateTrait meta diagnostics (dev-mode)', () => {
         out: undefined,
       }
 
-      yield* Effect.locally(Logix.Debug.internal.currentDebugSinks, [ring.sink])(
-        Effect.locally(
-          Logix.Debug.internal.currentDiagnosticsLevel,
-          'light',
-        )(
-          Effect.gen(function* () {
-            type Shape = Logix.Module.Shape<typeof StateSchema, { noop: typeof Schema.Void }>
-            type Action = Logix.Module.ActionOf<Shape>
-
-            const runtime = yield* ModuleRuntimeImpl.make<State, Action>(initial, {
-              moduleId: 'StateTraitMetaSanitizeDiagnostics',
-            })
-
-            const bound = BoundApiRuntime.make<Shape, never>(
-              {
-                stateSchema: StateSchema,
-                actionSchema: Schema.Never as any,
-                actionMap: { noop: Schema.Void } as any,
-              } as any,
-              runtime as any,
-              {
-                getPhase: () => 'run',
-                moduleId: 'StateTraitMetaSanitizeDiagnostics',
-              },
-            )
-
-            yield* Logix.StateTrait.install(bound as any, program)
-          }),
-        ),
-      )
+      yield* Effect.provideService(Effect.provideService(Effect.gen(function* () {
+        type Shape = Logix.Module.Shape<typeof StateSchema, { noop: typeof Schema.Void }>
+        type Action = Logix.Module.ActionOf<Shape>
+            
+        const runtime = yield* ModuleRuntimeImpl.make<State, Action>(initial, {
+          moduleId: 'StateTraitMetaSanitizeDiagnostics',
+        })
+            
+        const bound = BoundApiRuntime.make<Shape, never>(
+          {
+            stateSchema: StateSchema,
+            actionSchema: Schema.Never as any,
+            actionMap: { noop: Schema.Void } as any,
+          } as any,
+          runtime as any,
+          {
+            getPhase: () => 'run',
+            moduleId: 'StateTraitMetaSanitizeDiagnostics',
+          },
+        )
+            
+        yield* Logix.StateTrait.install(bound as any, program)
+      }), Logix.Debug.internal.currentDiagnosticsLevel, 'light'), Logix.Debug.internal.currentDebugSinks, [ring.sink])
 
       const diags = ring
         .getSnapshot()

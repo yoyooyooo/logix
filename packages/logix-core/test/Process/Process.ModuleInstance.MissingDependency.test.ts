@@ -1,11 +1,11 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Context, Effect, Exit, Layer, Scope, Schema } from 'effect'
+import {Effect, Exit, Layer, Scope, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../src/index.js'
 import * as ProcessRuntime from '../../src/internal/runtime/core/process/ProcessRuntime.js'
 
 describe('process: moduleInstance missing dependency', () => {
-  it.scoped('should not fall back to outer scope dependencies', () =>
+  it.effect('should not fall back to outer scope dependencies', () =>
     Effect.gen(function* () {
       const Host = Logix.Module.make('ProcessModuleInstanceMissingDepHost', {
         state: Schema.Void,
@@ -32,10 +32,7 @@ describe('process: moduleInstance missing dependency', () => {
         const outerLayer = Layer.provideMerge(ProcessRuntime.layer())(DepImpl.impl.layer)
         const outerEnv = yield* Layer.buildWithScope(outerLayer, outerScope)
 
-        const processRuntime = Context.get(
-          outerEnv as Context.Context<any>,
-          ProcessRuntime.ProcessRuntimeTag as any,
-        ) as ProcessRuntime.ProcessRuntime
+        const processRuntime = ServiceMap.get(outerEnv as ServiceMap.ServiceMap<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
 
         const innerScope = yield* Scope.make()
         try {

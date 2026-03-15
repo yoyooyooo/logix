@@ -1,4 +1,4 @@
-import { Cause, Effect, FiberRef, Stream } from 'effect'
+import { Cause, Effect, ServiceMap, Stream } from 'effect'
 import * as Debug from './DebugSink.js'
 import { isDevEnv } from './env.js'
 import type * as Logic from './LogicMiddleware.js'
@@ -13,7 +13,9 @@ import * as ModeRunner from './ModeRunner.js'
  * - ModuleRuntime locally marks it as true while executing each transaction (dispatch/source-refresh/devtools/...).
  * - run*Task checks the flag on start: when true, it emits diagnostics only in dev/test and then no-ops.
  */
-export const inSyncTransactionFiber = FiberRef.unsafeMake(false)
+export const inSyncTransactionFiber = ServiceMap.Reference<boolean>('@logixjs/core/TaskRunner.inSyncTransactionFiber', {
+  defaultValue: () => false,
+})
 
 /**
  * Force source.refresh:
@@ -23,26 +25,31 @@ export const inSyncTransactionFiber = FiberRef.unsafeMake(false)
  *
  * Note: use a FiberRef to locally pass "whether this refresh is forced", avoiding expanding the source refresh handler signature.
  */
-export const forceSourceRefresh = FiberRef.unsafeMake(false)
+export const forceSourceRefresh = ServiceMap.Reference<boolean>('@logixjs/core/TaskRunner.forceSourceRefresh', {
+  defaultValue: () => false,
+})
 
-/**
- * Synchronous transaction window (process-level) marker:
- * - Used as a hard guard in "non-Effect API" entry points (e.g. Promise/async functions).
- * - FiberRef cannot reliably read the "current fiber" in such entry points, so we need a synchronous callstack-level marker.
- *
- * Note: if a transaction body incorrectly crosses async boundaries, this marker will be held longer; that is a severe violation.
- */
-let inSyncTransactionGlobalDepth = 0
+let inSyncTransactionShadowDepth = 0
+
+export const enterSyncTransactionShadow = (): void => {
+  inSyncTransactionShadowDepth += 1
+}
+
+export const exitSyncTransactionShadow = (): void => {
+  inSyncTransactionShadowDepth = Math.max(0, inSyncTransactionShadowDepth - 1)
+}
+
+export const isInSyncTransactionShadow = (): boolean => inSyncTransactionShadowDepth > 0
 
 export const enterSyncTransaction = (): void => {
-  inSyncTransactionGlobalDepth += 1
+  enterSyncTransactionShadow()
 }
 
 export const exitSyncTransaction = (): void => {
-  inSyncTransactionGlobalDepth = Math.max(0, inSyncTransactionGlobalDepth - 1)
+  exitSyncTransactionShadow()
 }
 
-export const isInSyncTransaction = (): boolean => inSyncTransactionGlobalDepth > 0
+export const isInSyncTransaction = (): boolean => isInSyncTransactionShadow()
 
 export type TaskRunnerMode = ModeRunner.ModeRunnerMode
 
@@ -154,7 +161,7 @@ export const shouldNoopInSyncTransactionFiber = (options: {
   readonly kind?: string
 }): Effect.Effect<boolean> =>
   Effect.gen(function* () {
-    const inTxn = yield* FiberRef.get(inSyncTransactionFiber)
+    const inTxn = yield* Effect.service(inSyncTransactionFiber)
     if (!inTxn) {
       return false
     }
@@ -239,7 +246,7 @@ const runTaskLifecycle = <Payload, Sh extends AnyModuleShape, R, A, E>(
 
     // Failure: interruptions do not trigger failure writeback (e.g. runLatestTask cancellation, Scope ending).
     const cause = exit.cause as Cause.Cause<E>
-    if (Cause.isInterrupted(cause)) {
+    if (Cause.hasInterruptsOnly(cause)) {
       return
     }
 
@@ -249,7 +256,7 @@ const runTaskLifecycle = <Payload, Sh extends AnyModuleShape, R, A, E>(
     }
   }).pipe(
     // Watchers must not crash as a whole due to a single task failure: swallow errors, but keep them diagnosable.
-    Effect.catchAllCause((cause) =>
+    Effect.catchCause((cause) =>
       Debug.record({
         type: 'diagnostic',
         moduleId: runtime.moduleId,
@@ -264,8 +271,7 @@ const runTaskLifecycle = <Payload, Sh extends AnyModuleShape, R, A, E>(
           kind: 'task',
           name: config.triggerName,
         },
-      }).pipe(Effect.zipRight(Effect.logError('TaskRunner error', cause))),
-    ),
+      }).pipe(Effect.flatMap(() => Effect.logError('TaskRunner error', cause)))),
   ) as Effect.Effect<void, never, Logic.Env<Sh, R>>
 
 /**

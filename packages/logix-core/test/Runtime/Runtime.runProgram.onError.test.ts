@@ -1,10 +1,10 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('Runtime.runProgram/openProgram onError passthrough (US1)', () => {
-  it.scoped('calls RuntimeOptions.onError for process failures (does not change exit strategy)', () =>
+  it.effect('calls RuntimeOptions.onError for process failures (does not change exit strategy)', () =>
     Effect.gen(function* () {
       let calls = 0
       let last: unknown | null = null
@@ -17,7 +17,7 @@ describe('Runtime.runProgram/openProgram onError passthrough (US1)', () => {
       const impl = Root.implement({
         initial: undefined,
         logics: [],
-        processes: [Effect.dieMessage('process failed')],
+        processes: [Effect.die(new Error('process failed'))],
       })
 
       yield* Effect.promise(() =>

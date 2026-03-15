@@ -23,7 +23,7 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "effect": "^3.19.8",
+    "effect": "4.0.0-beta.28",
     "esbuild-wasm": "^0.27.1",
     "monaco-editor": "^0.55.1",
     "react": "^19.2.0",
@@ -32,7 +32,7 @@
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
-    "@effect/vitest": "^0.27.0",
+    "@effect/vitest": "4.0.0-beta.28",
     "@locator/runtime": "^0.5.1",
     "@tailwindcss/vite": "^4.1.17",
     "@types/react": "^19.2.2",

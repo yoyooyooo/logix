@@ -1,40 +1,40 @@
 import { Effect, Logger } from 'effect'
 
-import { makeCliError } from './internal/errors.js'
-import type { CommandResultV2 } from './internal/protocol/types.js'
+import type { SerializableErrorSummary } from './internal/errors.js'
+import { asSerializableErrorSummary, exitCodeFromErrorSummary, makeCliError } from './internal/errors.js'
 import type { ArtifactOutput, CommandResult } from './internal/result.js'
+import { makeErrorCommandResult, sortArtifactsByOutputKey } from './internal/result.js'
 import { stableStringifyJson } from './internal/stableJson.js'
-import type { CliInvocation } from './internal/args.js'
-import { COMMAND_REGISTRY, COMMAND_REGISTRY_MAP } from './internal/commandRegistry.js'
-import { runUnsupportedCommand } from './internal/commands/unsupported.js'
-import type { PipelineCommandContext, PipelineRunOutcome, PipelineRuntimeOptions } from './internal/runtime/pipeline.js'
-import { runCliPipeline } from './internal/runtime/pipeline.js'
+import { parseCliInvocation, type CliHelpResult, type CliInvocation } from './internal/args.js'
+import type { CliConfigArgvPrefixResolution } from './internal/cliConfig.js'
+import { resolveCliConfigArgvPrefix, resolveCliConfigArgvPrefixResolution } from './internal/cliConfig.js'
 
-export type RunOutcome = PipelineRunOutcome
+export type RunOutcome =
+  | { readonly kind: 'help'; readonly text: string; readonly exitCode: 0 }
+  | { readonly kind: 'result'; readonly result: CommandResult; readonly exitCode: 0 | 1 | 2 }
 
-export const formatCommandResult = (result: CommandResult | CommandResultV2): string => stableStringifyJson(result)
+export const formatCommandResult = (result: CommandResult): string => stableStringifyJson(result)
 
-export const printHelp = (): string => {
-  const primaryUsage = COMMAND_REGISTRY.filter((entry) => entry.visibility === 'primary')
-    .map((entry) => `  ${entry.usage}`)
-    .join('\n')
-  const migrationUsage = COMMAND_REGISTRY.filter((entry) => entry.visibility === 'migration')
-    .map((entry) => `  ${entry.usage}`)
-    .join('\n')
-  return `logix
+export const printHelp = (): string => `logix
 
 用法:
-${primaryUsage}
-
-迁移入口（兼容保留，不建议新调用）:
-${migrationUsage}
+  logix describe --runId <id> --json [--out <dir>]
+  logix ir export --runId <id> --entry <modulePath>#<exportName> [--out <dir>]
+  logix ir validate --runId <id> --in <dir> [--out <dir>]
+  logix ir diff --runId <id> --before <dir|file> --after <dir|file> [--out <dir>]
+  logix trialrun --runId <id> --entry <modulePath>#<exportName> [--out <dir>] [--diagnosticsLevel off|light|full] [--maxEvents <n>] [--timeout <ms>] [--includeTrace]
+  logix contract-suite run --runId <id> --entry <modulePath>#<exportName> [--baseline <dir>] [--out <dir>] [--allowWarn] [--includeContextPack] [--inputs <file|->] [--includeUiKitRegistry] [--packMaxBytes <n>] [--requireRulesManifest] [--includeAnchorAutofill] [--repoRoot <dir>] [--diagnosticsLevel off|light|full] [--maxEvents <n>] [--timeout <ms>] [--includeTrace]
+  logix spy evidence --runId <id> --entry <modulePath>#<exportName> [--out <dir>] [--maxUsedServices <n>] [--maxRawMode <n>] [--timeout <ms>]
+  logix anchor index --runId <id> [--repoRoot <dir>] [--out <dir>]
+  logix anchor autofill --runId <id> [--repoRoot <dir>] [--mode report|write] [--tsconfig <path>] [--out <dir>]
+  logix transform module --runId <id> --ops <delta.json|-> [--mode report|write] [--repoRoot <dir>] [--tsconfig <path>] [--out <dir>]
 
 全局参数:
   --runId <string>     必须显式提供（用于确定性工件命名与关联）
   --out <dir>          可选：稳定落盘目录（stdout 仍输出 CommandResult@v1）
   --outRoot <dir>      可选：当未显式 --out 时，自动落盘到 <outRoot>/<command>/<runId>
   --budgetBytes <n>    可选：stdout inline artifact 的预算上限（超限会截断并标记）
-  --mode report|write  可选：写回模式（默认 report；仅对可写回命令生效；verify-loop 命令使用 run|resume）
+  --mode report|write  可选：写回模式（默认 report；仅对可写回命令生效）
   --tsconfig <path>    可选：ts-morph 解析/改写所用 tsconfig（默认自动探测/降级）
   --host <name>        可选：执行宿主（node|browser-mock；默认 node；影响入口加载/试跑）
   --cliConfig <path>   可选：显式指定 logix.cli.json（不提供则从 cwd 向上查找）
@@ -42,26 +42,29 @@ ${migrationUsage}
   --config <K=V>       可选：注入运行环境 config（可重复；仅 trialrun/contract-suite 消费）
   -h, --help           显示帮助
 `
-}
 
 type IrExportInvocation = Extract<CliInvocation, { readonly command: 'ir.export' }>
 type IrValidateInvocation = Extract<CliInvocation, { readonly command: 'ir.validate' }>
 type IrDiffInvocation = Extract<CliInvocation, { readonly command: 'ir.diff' }>
-type ExtensionValidateInvocation = Extract<CliInvocation, { readonly command: 'extension.validate' }>
-type ExtensionLoadInvocation = Extract<CliInvocation, { readonly command: 'extension.load' }>
-type ExtensionReloadInvocation = Extract<CliInvocation, { readonly command: 'extension.reload' }>
-type ExtensionStatusInvocation = Extract<CliInvocation, { readonly command: 'extension.status' }>
 type DescribeInvocation = Extract<CliInvocation, { readonly command: 'describe' }>
 type TrialRunInvocation = Extract<CliInvocation, { readonly command: 'trialrun' }>
 type ContractSuiteRunInvocation = Extract<CliInvocation, { readonly command: 'contract-suite.run' }>
-type VerifyLoopInvocation = Extract<CliInvocation, { readonly command: 'verify-loop' }>
-type NextActionsExecInvocation = Extract<CliInvocation, { readonly command: 'next-actions.exec' }>
 type SpyEvidenceInvocation = Extract<CliInvocation, { readonly command: 'spy.evidence' }>
 type AnchorIndexInvocation = Extract<CliInvocation, { readonly command: 'anchor.index' }>
 type AnchorAutofillInvocation = Extract<CliInvocation, { readonly command: 'anchor.autofill' }>
 type TransformModuleInvocation = Extract<CliInvocation, { readonly command: 'transform.module' }>
 
-type RunCommandContext = PipelineCommandContext
+type RunCommandContext = {
+  readonly argv: ReadonlyArray<string>
+  readonly argvWithConfigPrefix: ReadonlyArray<string>
+  readonly cliConfig: CliConfigArgvPrefixResolution
+}
+
+const EMPTY_CLI_CONFIG_RESOLUTION: CliConfigArgvPrefixResolution = {
+  prefix: [],
+  layers: [],
+  discovery: { found: false },
+}
 
 const runIrExport = (inv: IrExportInvocation): Effect.Effect<CommandResult, unknown> =>
   Effect.tryPromise({
@@ -88,10 +91,7 @@ const runDescribe = (inv: DescribeInvocation, ctx: RunCommandContext): Effect.Ef
       mod.runDescribe(inv, {
         argv: ctx.argv,
         argvWithConfigPrefix: ctx.argvWithConfigPrefix,
-        env: ctx.runtimeEnv,
         cliConfig: ctx.cliConfig,
-        envLayer: ctx.envLayer,
-        configTrace: ctx.configTrace,
       }),
     ),
   )
@@ -117,28 +117,6 @@ const runContractSuiteRun = (inv: ContractSuiteRunInvocation): Effect.Effect<Com
         cause,
       }),
   }).pipe(Effect.flatMap((mod) => mod.runContractSuiteRun(inv)))
-
-const runVerifyLoop = (inv: VerifyLoopInvocation): Effect.Effect<CommandResult, unknown> =>
-  Effect.tryPromise({
-    try: () => import('./internal/commands/verifyLoop.js'),
-    catch: (cause) =>
-      makeCliError({
-        code: 'CLI_COMMAND_IMPORT_FAILED',
-        message: '[Logix][CLI] 加载命令失败：verify-loop',
-        cause,
-      }),
-  }).pipe(Effect.flatMap((mod) => mod.runVerifyLoop(inv)))
-
-const runNextActionsExec = (inv: NextActionsExecInvocation): Effect.Effect<CommandResult, unknown> =>
-  Effect.tryPromise({
-    try: () => import('./internal/commands/nextActionsExec.js'),
-    catch: (cause) =>
-      makeCliError({
-        code: 'CLI_COMMAND_IMPORT_FAILED',
-        message: '[Logix][CLI] 加载命令失败：next-actions.exec',
-        cause,
-      }),
-  }).pipe(Effect.flatMap((mod) => mod.runNextActionsExec(inv)))
 
 const runSpyEvidence = (inv: SpyEvidenceInvocation): Effect.Effect<CommandResult, unknown> =>
   Effect.tryPromise({
@@ -173,50 +151,6 @@ const runIrDiff = (inv: IrDiffInvocation): Effect.Effect<CommandResult, unknown>
       }),
   }).pipe(Effect.flatMap((mod) => mod.runIrDiff(inv)))
 
-const runExtensionValidate = (inv: ExtensionValidateInvocation): Effect.Effect<CommandResult, unknown> =>
-  Effect.tryPromise({
-    try: () => import('./internal/commands/extensionValidate.js'),
-    catch: (cause) =>
-      makeCliError({
-        code: 'CLI_COMMAND_IMPORT_FAILED',
-        message: '[Logix][CLI] 加载命令失败：extension.validate',
-        cause,
-      }),
-  }).pipe(Effect.flatMap((mod) => mod.runExtensionValidate(inv)))
-
-const runExtensionLoad = (inv: ExtensionLoadInvocation): Effect.Effect<CommandResult, unknown> =>
-  Effect.tryPromise({
-    try: () => import('./internal/commands/extensionLoad.js'),
-    catch: (cause) =>
-      makeCliError({
-        code: 'CLI_COMMAND_IMPORT_FAILED',
-        message: '[Logix][CLI] 加载命令失败：extension.load',
-        cause,
-      }),
-  }).pipe(Effect.flatMap((mod) => mod.runExtensionLoad(inv)))
-
-const runExtensionReload = (inv: ExtensionReloadInvocation): Effect.Effect<CommandResult, unknown> =>
-  Effect.tryPromise({
-    try: () => import('./internal/commands/extensionReload.js'),
-    catch: (cause) =>
-      makeCliError({
-        code: 'CLI_COMMAND_IMPORT_FAILED',
-        message: '[Logix][CLI] 加载命令失败：extension.reload',
-        cause,
-      }),
-  }).pipe(Effect.flatMap((mod) => mod.runExtensionReload(inv)))
-
-const runExtensionStatus = (inv: ExtensionStatusInvocation): Effect.Effect<CommandResult, unknown> =>
-  Effect.tryPromise({
-    try: () => import('./internal/commands/extensionStatus.js'),
-    catch: (cause) =>
-      makeCliError({
-        code: 'CLI_COMMAND_IMPORT_FAILED',
-        message: '[Logix][CLI] 加载命令失败：extension.status',
-        cause,
-      }),
-  }).pipe(Effect.flatMap((mod) => mod.runExtensionStatus(inv)))
-
 const runAnchorIndex = (inv: AnchorIndexInvocation): Effect.Effect<CommandResult, unknown> =>
   Effect.tryPromise({
     try: () => import('./internal/commands/anchorIndex.js'),
@@ -250,39 +184,50 @@ const runTransformModule = (inv: TransformModuleInvocation): Effect.Effect<Comma
       }),
   }).pipe(Effect.flatMap((mod) => mod.runTransformModule(inv)))
 
-type CommandRunner = (inv: CliInvocation, ctx: RunCommandContext) => Effect.Effect<CommandResult | CommandResultV2, unknown>
-
-const COMMAND_RUNNERS: Record<CliInvocation['command'], CommandRunner> = {
-  describe: (inv, ctx) => runDescribe(inv as DescribeInvocation, ctx),
-  'ir.export': (inv) => runIrExport(inv as IrExportInvocation),
-  'ir.validate': (inv) => runIrValidate(inv as IrValidateInvocation),
-  'ir.diff': (inv) => runIrDiff(inv as IrDiffInvocation),
-  'extension.validate': (inv) => runExtensionValidate(inv as ExtensionValidateInvocation),
-  'extension.load': (inv) => runExtensionLoad(inv as ExtensionLoadInvocation),
-  'extension.reload': (inv) => runExtensionReload(inv as ExtensionReloadInvocation),
-  'extension.status': (inv) => runExtensionStatus(inv as ExtensionStatusInvocation),
-  trialrun: (inv) => runTrialRun(inv as TrialRunInvocation),
-  'contract-suite.run': (inv) => runContractSuiteRun(inv as ContractSuiteRunInvocation),
-  'verify-loop': (inv) => runVerifyLoop(inv as VerifyLoopInvocation),
-  'next-actions.exec': (inv) => runNextActionsExec(inv as NextActionsExecInvocation),
-  'spy.evidence': (inv) => runSpyEvidence(inv as SpyEvidenceInvocation),
-  'anchor.index': (inv) => runAnchorIndex(inv as AnchorIndexInvocation),
-  'anchor.autofill': (inv) => runAnchorAutofill(inv as AnchorAutofillInvocation),
-  'transform.module': (inv) => runTransformModule(inv as TransformModuleInvocation),
+const runCommand = (inv: CliInvocation, ctx: RunCommandContext): Effect.Effect<CommandResult, unknown> => {
+  switch (inv.command) {
+    case 'describe':
+      return runDescribe(inv, ctx)
+    case 'ir.export':
+      return runIrExport(inv)
+    case 'ir.validate':
+      return runIrValidate(inv)
+    case 'ir.diff':
+      return runIrDiff(inv)
+    case 'trialrun':
+      return runTrialRun(inv)
+    case 'contract-suite.run':
+      return runContractSuiteRun(inv)
+    case 'spy.evidence':
+      return runSpyEvidence(inv)
+    case 'anchor.index':
+      return runAnchorIndex(inv)
+    case 'anchor.autofill':
+      return runAnchorAutofill(inv)
+    case 'transform.module':
+      return runTransformModule(inv)
+  }
 }
 
-export const listRegisteredCommands = (): ReadonlyArray<string> => COMMAND_REGISTRY.map((entry) => entry.command)
+const isHelp = (x: CliHelpResult | CliInvocation): x is CliHelpResult => (x as any).kind === 'help'
 
-const runCommand = (inv: CliInvocation, ctx: RunCommandContext): Effect.Effect<CommandResult | CommandResultV2, unknown> => {
-  const entry = COMMAND_REGISTRY_MAP.get(inv.command)
-  if (!entry || entry.availability === 'unavailable') {
-    return runUnsupportedCommand({
-      runId: inv.global.runId,
-      command: inv.command,
-      message: `[Logix][CLI] 命令当前不可用：${inv.command}`,
-    })
-  }
-  return COMMAND_RUNNERS[inv.command](inv, ctx)
+const tryGetRunId = (argv: ReadonlyArray<string>): string | undefined => {
+  const idx = argv.lastIndexOf('--runId')
+  if (idx < 0) return undefined
+  const next = argv[idx + 1]
+  if (!next || next.startsWith('--')) return undefined
+  return typeof next === 'string' && next.length > 0 ? next : undefined
+}
+
+const resolveRunIdForFailure = (argv: ReadonlyArray<string>): Effect.Effect<string, never> => {
+  const fromArgv = tryGetRunId(argv)
+  if (fromArgv) return Effect.succeed(fromArgv)
+
+  return resolveCliConfigArgvPrefix(argv).pipe(
+    Effect.map((prefix) => (prefix.length > 0 ? [...prefix, ...argv] : argv)),
+    Effect.map((argv2) => tryGetRunId(argv2) ?? 'missing-runId'),
+    Effect.catch(() => Effect.succeed('missing-runId')),
+  )
 }
 
 const isHostErrorCode = (code: string | undefined): code is 'CLI_HOST_MISSING_BROWSER_GLOBAL' | 'CLI_HOST_MISMATCH' =>
@@ -332,12 +277,9 @@ const makeCliDiagnosticsArtifact = (args: {
   }
 }
 
-const withHostDiagnosticsIfNeeded = (
-  result: CommandResult | CommandResultV2,
-  argv: ReadonlyArray<string>,
-): CommandResult | CommandResultV2 => {
+const withHostDiagnosticsIfNeeded = (result: CommandResult, argv: ReadonlyArray<string>): CommandResult => {
   if (result.ok) return result
-  const code = 'error' in result ? result.error?.code : undefined
+  const code = result.error?.code
   if (!isHostErrorCode(code)) return result
   if (result.artifacts.some((a) => a.outputKey === 'cliDiagnostics')) return result
   return {
@@ -346,16 +288,94 @@ const withHostDiagnosticsIfNeeded = (
   }
 }
 
-export const runCli = (argv: ReadonlyArray<string>, runtime?: PipelineRuntimeOptions): Effect.Effect<RunOutcome, never> =>
-  runCliPipeline({
-    argv,
-    helpText: printHelp(),
-    runtime,
-    runCommand,
-    decorateResult: (result, context) => withHostDiagnosticsIfNeeded(result, context.argvWithConfigPrefix),
-  }).pipe(
+export const runCli = (argv: ReadonlyArray<string>): Effect.Effect<RunOutcome, never> =>
+  (argv.includes('-h') || argv.includes('--help') || argv.length === 0
+    ? Effect.succeed({
+        argv2: argv,
+        cliConfig: EMPTY_CLI_CONFIG_RESOLUTION,
+      })
+    : resolveCliConfigArgvPrefixResolution(argv).pipe(
+        Effect.map((resolved) => ({
+          argv2: resolved.prefix.length > 0 ? [...resolved.prefix, ...argv] : argv,
+          cliConfig: resolved,
+        })),
+      )
+  ).pipe(
+    Effect.flatMap(({ argv2, cliConfig }) =>
+      parseCliInvocation(argv2, {
+        helpText: printHelp(),
+      }).pipe(Effect.map((parsed) => ({ argv2, parsed, cliConfig }))),
+    ),
+    Effect.matchEffect({
+      onFailure: (cause) => {
+        const error = asSerializableErrorSummary(cause)
+        return resolveRunIdForFailure(argv).pipe(
+          Effect.map((runId) => ({
+            kind: 'result',
+            result: makeErrorCommandResult({ runId, command: 'unknown', error }),
+            exitCode: exitCodeFromErrorSummary(error),
+          }) as RunOutcome),
+        )
+      },
+      onSuccess: ({ argv2, parsed, cliConfig }) => {
+        if (isHelp(parsed)) {
+          return Effect.succeed({ kind: 'help', text: parsed.text, exitCode: 0 } as RunOutcome)
+        }
+
+        return runCommand(parsed, {
+          argv,
+          argvWithConfigPrefix: argv2,
+          cliConfig,
+        }).pipe(
+          Effect.map(
+            (result) => {
+              const result2 = withHostDiagnosticsIfNeeded(result, argv2)
+              return {
+                kind: 'result' as const,
+                result: {
+                  ...result2,
+                  artifacts: sortArtifactsByOutputKey(result2.artifacts),
+                },
+                exitCode: result2.ok ? 0 : exitCodeFromErrorSummary(result2.error),
+              } as RunOutcome
+            },
+          ),
+          Effect.catchCause((cause) => {
+            const error: SerializableErrorSummary = asSerializableErrorSummary(
+              makeCliError({
+                code: 'CLI_COMMAND_FAILED',
+                message: `[Logix][CLI] 命令执行失败：${parsed.command}`,
+                cause,
+              }),
+            )
+            const result = makeErrorCommandResult({
+              runId: parsed.global.runId,
+              command: parsed.command,
+              error,
+            })
+            return Effect.succeed({ kind: 'result', result, exitCode: 1 } as RunOutcome)
+          }),
+        )
+      },
+    }),
+    Effect.catchCause((cause) => {
+      const error: SerializableErrorSummary = asSerializableErrorSummary(
+        makeCliError({
+          code: 'CLI_INTERNAL',
+          message: '[Logix][CLI] 入口执行失败',
+          cause,
+        }),
+      )
+      return resolveRunIdForFailure(argv).pipe(
+        Effect.map((runId) => ({
+          kind: 'result',
+          result: makeErrorCommandResult({ runId, command: 'unknown', error }),
+          exitCode: 1,
+        }) as RunOutcome),
+      )
+    }),
     // CLI stdout is a strict protocol (CommandResult@v1); silence Effect logs to avoid polluting stdout/stderr.
-    Effect.provide(Logger.replace(Logger.defaultLogger, Logger.make(() => {}))),
+    Effect.provide(Logger.layer([Logger.make(() => {})])),
   )
 
 export const main = runCli

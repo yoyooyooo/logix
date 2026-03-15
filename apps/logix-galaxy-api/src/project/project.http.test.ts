@@ -1,24 +1,25 @@
-import { HttpApi, HttpApiBuilder, HttpServer } from '@effect/platform'
+import { HttpRouter, HttpServer } from 'effect/unstable/http'
+import { HttpApiBuilder } from 'effect/unstable/httpapi'
 import { Layer } from 'effect'
 import { describe, expect, it } from 'vitest'
 
 import { makeProjectHarness } from '../test/project-harness.js'
-import { ProjectGroup } from './project.contract.js'
+import { ProjectApi } from './project.contract.js'
 import { ProjectLive } from './project.http.live.js'
 
 describe('Project Governance (066)', () => {
   it('Project endpoints always require auth (401)', async () => {
     const harness = makeProjectHarness()
 
-    const ProjectApi = HttpApi.make('EffectApi').add(ProjectGroup)
-    const ApiTestLive = HttpApiBuilder.api(ProjectApi).pipe(
+    const ApiTestLive = HttpApiBuilder.layer(ProjectApi).pipe(
       Layer.provide(ProjectLive),
       Layer.provide(harness.AuthTest),
       Layer.provide(harness.ProjectRepoTest),
       Layer.provide(harness.ProjectAuditRepoTest),
+      Layer.provide(HttpServer.layerServices),
     )
 
-    const { handler, dispose } = HttpApiBuilder.toWebHandler(Layer.mergeAll(ApiTestLive, HttpServer.layerContext))
+    const { handler, dispose } = HttpRouter.toWebHandler(Layer.mergeAll(ApiTestLive), { disableLogger: true })
 
     const expectUnauthorized = async (request: Request) => {
       const res = await handler(request)
@@ -138,15 +139,15 @@ describe('Project Governance (066)', () => {
       roles: ['user'],
     })
 
-    const ProjectApi = HttpApi.make('EffectApi').add(ProjectGroup)
-    const ApiTestLive = HttpApiBuilder.api(ProjectApi).pipe(
+    const ApiTestLive = HttpApiBuilder.layer(ProjectApi).pipe(
       Layer.provide(ProjectLive),
       Layer.provide(harness.AuthTest),
       Layer.provide(harness.ProjectRepoTest),
       Layer.provide(harness.ProjectAuditRepoTest),
+      Layer.provide(HttpServer.layerServices),
     )
 
-    const { handler, dispose } = HttpApiBuilder.toWebHandler(Layer.mergeAll(ApiTestLive, HttpServer.layerContext))
+    const { handler, dispose } = HttpRouter.toWebHandler(Layer.mergeAll(ApiTestLive), { disableLogger: true })
 
     try {
       const authJson = (userId: string) => ({ authorization: `Bearer ${userId}`, 'content-type': 'application/json' })

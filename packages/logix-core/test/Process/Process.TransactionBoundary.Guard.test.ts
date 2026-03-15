@@ -6,7 +6,7 @@ import * as ModuleRuntime from '../../src/internal/runtime/ModuleRuntime.js'
 import * as ProcessRuntime from '../../src/internal/runtime/core/process/ProcessRuntime.js'
 
 describe('process: transaction boundary guard', () => {
-  it.scoped('should noop + emit diagnostic when platformEvent is delivered inside a transaction', () =>
+  it.effect('should noop + emit diagnostic when platformEvent is delivered inside a transaction', () =>
     Effect.gen(function* () {
       const ring = Debug.makeRingBufferSink(32)
 
@@ -15,24 +15,22 @@ describe('process: transaction boundary guard', () => {
         actions: { inc: Schema.Void },
       })
 
-      const program = Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink])(
-        Effect.provide(
-          Effect.gen(function* () {
-            const rt = yield* ModuleRuntime.make(
-              { n: 0 },
-              {
-                moduleId: 'ProcessTxnGuard',
-                tag: Mod.tag,
-              },
-            )
-
-            yield* Logix.InternalContracts.runWithStateTransaction(rt as any, { kind: 'test', name: 'txn' }, () =>
-              Logix.InternalContracts.deliverProcessPlatformEvent({ eventName: 'test' }),
-            )
-          }),
-          ProcessRuntime.layer(),
-        ),
-      )
+      const program = Effect.provideService(Effect.provide(
+        Effect.gen(function* () {
+          const rt = yield* ModuleRuntime.make(
+            { n: 0 },
+            {
+              moduleId: 'ProcessTxnGuard',
+              tag: Mod.tag,
+            },
+          )
+      
+          yield* Logix.InternalContracts.runWithStateTransaction(rt as any, { kind: 'test', name: 'txn' }, () =>
+            Logix.InternalContracts.deliverProcessPlatformEvent({ eventName: 'test' }),
+          )
+        }),
+        ProcessRuntime.layer(),
+      ), Debug.internal.currentDebugSinks as any, [ring.sink])
 
       yield* program
 

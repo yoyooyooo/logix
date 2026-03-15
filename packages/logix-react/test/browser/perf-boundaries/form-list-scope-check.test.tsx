@@ -3,7 +3,7 @@ import { Effect, Layer } from 'effect'
 import * as Logix from '@logixjs/core'
 import matrix from '@logixjs/perf-evidence/assets/matrix.json'
 import { emitPerfReport, type PerfReport } from './protocol.js'
-import { getProfileConfig, makePerfKernelLayer, runMatrixSuite, silentDebugLayer, withNodeEnv } from './harness.js'
+import { getProfileConfig, makePerfKernelLayer, runMatrixSuite, withNodeEnv } from './harness.js'
 import { readConvergeControlPlaneFromEnv } from './converge-runtime.js'
 import {
   makePerfListScopeCheckModule,
@@ -18,6 +18,15 @@ const requestedModeLevels = suite.axes.requestedMode as Array<'full' | 'auto'>
 const diagnosticsLevels = suite.axes.diagnosticsLevel as Array<'off' | 'light' | 'full'>
 
 const { runs, warmupDiscard, timeoutMs } = getProfileConfig(matrix)
+
+const readBoolEnv = (raw: unknown): boolean => {
+  if (raw === true) return true
+  if (typeof raw !== 'string') return false
+  const trimmed = raw.trim().toLowerCase()
+  return trimmed === '1' || trimmed === 'true' || trimmed === 'yes' || trimmed === 'on'
+}
+
+const OUTLIER_CAPTURE_ENABLED = readBoolEnv(import.meta.env.VITE_LOGIX_PERF_OUTLIER_CAPTURE)
 
 const resolveProfileId = (): string => {
   const profile = import.meta.env.VITE_LOGIX_PERF_PROFILE
@@ -58,6 +67,10 @@ type ListScopeRuntime = {
   readonly flipDuplicates: () => boolean
   readonly getLastConvergeDecision: () => unknown | undefined
   readonly clearLastConvergeDecision: () => void
+  readonly getLastTraitValidateTrace: () => unknown | undefined
+  readonly getLastTraitCheckTrace: () => unknown | undefined
+  readonly getLastTraitConvergeTrace: () => unknown | undefined
+  readonly clearLastTraitTraces: () => void
 }
 
 const makeListScopeRuntime = (
@@ -87,29 +100,48 @@ const makeListScopeRuntime = (
   }
   const getLastConvergeDecision = (): unknown | undefined => lastDecision
 
+  let lastTraitValidateTrace: unknown | undefined
+  let lastTraitCheckTrace: unknown | undefined
+  let lastTraitConvergeTrace: unknown | undefined
+
+  const clearLastTraitTraces = (): void => {
+    lastTraitValidateTrace = undefined
+    lastTraitCheckTrace = undefined
+    lastTraitConvergeTrace = undefined
+  }
+
+  const getLastTraitValidateTrace = (): unknown | undefined => lastTraitValidateTrace
+  const getLastTraitCheckTrace = (): unknown | undefined => lastTraitCheckTrace
+  const getLastTraitConvergeTrace = (): unknown | undefined => lastTraitConvergeTrace
+
   const captureSink: Logix.Debug.Sink = {
     record: (event: Logix.Debug.Event) =>
       Effect.sync(() => {
-        if (event.type !== 'state:update') return
-        const decision = (event as any)?.traitSummary?.converge
-        if (decision != null) {
-          lastDecision = decision
+        if (event.type === 'state:update') {
+          const decision = (event as any)?.traitSummary?.converge
+          if (decision != null) {
+            lastDecision = decision
+          }
+        }
+
+        if (!OUTLIER_CAPTURE_ENABLED) return
+
+        // Minimal trace capture for outlier forensics (off by default to avoid perturbing perf).
+        if (event.type === 'trace:trait:validate') {
+          lastTraitValidateTrace = (event as any)?.data
+        } else if (event.type === 'trace:trait:check') {
+          lastTraitCheckTrace = (event as any)?.data
+        } else if (event.type === 'trace:trait:converge') {
+          lastTraitConvergeTrace = (event as any)?.data
         }
       }),
   }
 
-  const baseDebugLayer =
-    requestedMode === 'auto'
-      ? (Logix.Debug.replace([captureSink]) as Layer.Layer<any, never, never>)
-      : (silentDebugLayer as Layer.Layer<any, never, never>)
+  const baseDebugLayer = Logix.Debug.replace([captureSink]) as Layer.Layer<any, never, never>
 
-  const mode: Logix.Debug.DevtoolsProjectionMode = diagnosticsLevel === 'full' ? 'full' : diagnosticsLevel
-  const debugLayer = Layer.mergeAll(
-    Logix.Debug.devtoolsHubLayer(baseDebugLayer, {
-      mode,
-    }) as Layer.Layer<any, never, never>,
-    Logix.Debug.diagnosticsLevel(diagnosticsLevel),
-  ) as Layer.Layer<any, never, never>
+  const debugLayer = Logix.Debug.devtoolsHubLayer(baseDebugLayer, {
+    diagnosticsLevel,
+  }) as Layer.Layer<any, never, never>
 
   const runtime = Logix.Runtime.make(impl, {
     stateTransaction: {
@@ -132,6 +164,10 @@ const makeListScopeRuntime = (
     flipDuplicates,
     getLastConvergeDecision,
     clearLastConvergeDecision,
+    getLastTraitValidateTrace,
+    getLastTraitCheckTrace,
+    getLastTraitConvergeTrace,
+    clearLastTraitTraces,
   }
 }
 
@@ -143,6 +179,14 @@ test(
       const controlPlane = readConvergeControlPlaneFromEnv()
       const runtimeByKey = new Map<string, ListScopeRuntime>()
       const lastEvictsByKey = new Map<string, number>()
+      const runStateByKey = new Map<
+        string,
+        {
+          runIndex: number
+          maxTxnCommitMs: number
+          maxDetail: string | undefined
+        }
+      >()
 
       try {
         const { points, thresholds } = await runMatrixSuite(
@@ -156,12 +200,28 @@ test(
             const cached = runtimeByKey.get(key) ?? makeListScopeRuntime(rows, requestedMode, diagnosticsLevel)
             runtimeByKey.set(key, cached)
 
+            const state =
+              runStateByKey.get(key) ??
+              (() => {
+                const created = { runIndex: 0, maxTxnCommitMs: -Infinity, maxDetail: undefined }
+                runStateByKey.set(key, created)
+                return created
+              })()
+            const runIndex = state.runIndex
+            state.runIndex += 1
+
             cached.clearLastConvergeDecision()
+            cached.clearLastTraitTraces()
+
+            const duplicatesOn = cached.flipDuplicates()
+            // Evidence sampling: keep at most (warmupDiscard+1) samples so evidence survives trimming,
+            // but avoid retaining per-run evidence arrays that can perturb txnCommitMs via GC.
+            const evidenceStart = Math.max(0, runs - (warmupDiscard + 1))
+            const emitEvidence = runIndex >= evidenceStart
 
             const program = Effect.gen(function* () {
               const moduleScope = (yield* cached.module.tag) as any
               const duplicateIndices = pickDuplicateIndices(rows)
-              const duplicatesOn = cached.flipDuplicates()
               const duplicateValue = 'WH-DUP'
 
               yield* Logix.InternalContracts.runWithStateTransaction(
@@ -182,21 +242,23 @@ test(
                       }
                     }
 
-                    Logix.InternalContracts.recordStatePatch(
-                      moduleScope,
-                      'items',
-                      'perf',
-                    )
+                    // Record per-row dirty evidence so list-scope checks can use incremental hints.
+                    for (const idx of duplicateIndices) {
+                      Logix.InternalContracts.recordStatePatch(moduleScope, `items.${idx}.warehouseId`, 'perf')
+                    }
 
                     yield* moduleScope.setState({
                       ...(prev as any),
                       items: nextItems,
                     })
 
-                    yield* Logix.TraitLifecycle.scopedValidate(moduleScope as any, {
-                      mode: 'valueChange',
-                      target: Logix.TraitLifecycle.Ref.list('items'),
-                    })
+                    // Validate only the touched rows (realistic onChange path) instead of list-level validate.
+                    for (const idx of duplicateIndices) {
+                      yield* Logix.TraitLifecycle.scopedValidate(moduleScope as any, {
+                        mode: 'valueChange',
+                        target: Logix.TraitLifecycle.Ref.item('items', idx, { field: 'warehouseId' }),
+                      })
+                    }
                   }),
               )
             })
@@ -204,28 +266,90 @@ test(
             const start = performance.now()
             await cached.runtime.runPromise(program as Effect.Effect<void, never, any>)
             const end = performance.now()
+            const txnCommitMs = end - start
 
             const decision = cached.getLastConvergeDecision() as any
+
+            if (OUTLIER_CAPTURE_ENABLED && runIndex >= warmupDiscard && txnCommitMs > state.maxTxnCommitMs) {
+              state.maxTxnCommitMs = txnCommitMs
+
+              const converge = cached.getLastTraitConvergeTrace() as any
+              const validate = cached.getLastTraitValidateTrace() as any
+              const check = cached.getLastTraitCheckTrace() as any
+
+              const pickConverge = (d: any): unknown => {
+                if (!d || typeof d !== 'object') return undefined
+                return {
+                  requestedMode: d.requestedMode,
+                  executedMode: d.executedMode,
+                  outcome: d.outcome,
+                  reasons: Array.isArray(d.reasons) ? d.reasons.slice(0, 8) : d.reasons,
+                  decisionBudgetMs: d.decisionBudgetMs,
+                  decisionDurationMs: d.decisionDurationMs,
+                  executionBudgetMs: d.executionBudgetMs,
+                  executionDurationMs: d.executionDurationMs,
+                  stepStats: d.stepStats,
+                  dirty: d.dirty,
+                  cache: d.cache,
+                }
+              }
+
+              try {
+                state.maxDetail = JSON.stringify({
+                  txnCommitMs: Number(txnCommitMs.toFixed(3)),
+                  runIndex,
+                  rows,
+                  diagnosticsLevel,
+                  requestedMode,
+                  duplicatesOn,
+                  converge: pickConverge(converge ?? decision),
+                  traitValidate: validate,
+                  traitCheck: check
+                    ? {
+                        ruleId: check.ruleId,
+                        summary: check.summary,
+                      }
+                    : undefined,
+                })
+              } catch {
+                state.maxDetail = `unserializable_outlier txnCommitMs=${Number(txnCommitMs.toFixed(3))} runIndex=${runIndex}`
+              }
+            }
 
             if (requestedMode !== 'auto') {
               return {
                 metrics: {
-                  'runtime.txnCommitMs': end - start,
+                  'runtime.txnCommitMs': txnCommitMs,
                   'runtime.decisionMs': { unavailableReason: 'notApplicable' },
                 },
-                evidence: {
-                  'converge.requestedMode': requestedMode,
-                  'converge.executedMode': 'full',
-                  'converge.outcome': { unavailableReason: 'notApplicable' },
-                  'converge.reasons': { unavailableReason: 'notApplicable' },
-                  'converge.decisionBudgetMs': { unavailableReason: 'notApplicable' },
-                  'converge.decisionDurationMs': { unavailableReason: 'notApplicable' },
-                  'cache.size': { unavailableReason: 'notApplicable' },
-                  'cache.hit': { unavailableReason: 'notApplicable' },
-                  'cache.miss': { unavailableReason: 'notApplicable' },
-                  'cache.evict': { unavailableReason: 'notApplicable' },
-                  'cache.invalidate': { unavailableReason: 'notApplicable' },
-                  'diagnostics.level': diagnosticsLevel,
+                evidence: emitEvidence
+                  ? {
+                      'converge.requestedMode': requestedMode,
+                      'converge.executedMode': 'full',
+                      'converge.outcome': { unavailableReason: 'notApplicable' },
+                      'converge.reasons': { unavailableReason: 'notApplicable' },
+                      'converge.decisionBudgetMs': { unavailableReason: 'notApplicable' },
+                      'converge.decisionDurationMs': { unavailableReason: 'notApplicable' },
+                      'cache.size': { unavailableReason: 'notApplicable' },
+                      'cache.hit': { unavailableReason: 'notApplicable' },
+                      'cache.miss': { unavailableReason: 'notApplicable' },
+                      'cache.evict': { unavailableReason: 'notApplicable' },
+                      'cache.invalidate': { unavailableReason: 'notApplicable' },
+                      'diagnostics.level': diagnosticsLevel,
+                      ...(OUTLIER_CAPTURE_ENABLED ? { 'outlier.max': state.maxDetail ?? '' } : {}),
+                    }
+                  : undefined,
+              }
+            }
+
+            if (!emitEvidence) {
+              return {
+                metrics: {
+                  'runtime.txnCommitMs': txnCommitMs,
+                  'runtime.decisionMs':
+                    typeof decision?.decisionDurationMs === 'number'
+                      ? decision.decisionDurationMs
+                      : { unavailableReason: 'decisionMissing' },
                 },
               }
             }
@@ -239,7 +363,7 @@ test(
 
             return {
               metrics: {
-                'runtime.txnCommitMs': end - start,
+                'runtime.txnCommitMs': txnCommitMs,
                 'runtime.decisionMs':
                   typeof decision?.decisionDurationMs === 'number'
                     ? decision.decisionDurationMs
@@ -272,6 +396,7 @@ test(
                 'cache.evict': cache ? evictDelta : { unavailableReason: 'cacheMissing' },
                 'cache.invalidate': cache && cache.missReason === 'generation_bumped' ? 1 : 0,
                 'diagnostics.level': diagnosticsLevel,
+                ...(OUTLIER_CAPTURE_ENABLED ? { 'outlier.max': state.maxDetail ?? '' } : {}),
               },
             }
           },

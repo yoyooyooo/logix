@@ -26,17 +26,16 @@ const AppCounterDef = Module.make('AppCounter', {
 const AppCounterLogic = AppCounterDef.logic(($) => {
   return Effect.gen(function* () {
     yield* Effect.log('AppCounterLogic setup')
-    yield* $.onAction('increment').run({
-      effect: () =>
-        Effect.gen(function* () {
-          yield* Effect.log('increment dispatched from AppCounterLogic')
-          yield* Debug.record({
-            type: 'trace:increment',
-            moduleId: AppCounterDef.id,
-            data: { source: 'AppDemoLayout', at: 'onAction(increment)' },
-          })
-        }),
-    })
+    yield* $.onAction('increment').run(() =>
+      Effect.gen(function* () {
+        yield* Effect.log('increment dispatched from AppCounterLogic')
+        yield* Debug.record({
+          type: 'trace:increment',
+          moduleId: AppCounterDef.id,
+          data: { source: 'AppDemoLayout', at: 'onAction(increment)' },
+        })
+      }),
+    )
   })
 })
 

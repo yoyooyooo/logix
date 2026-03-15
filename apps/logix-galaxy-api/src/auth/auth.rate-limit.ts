@@ -1,4 +1,4 @@
-import { Context, Effect, Layer, Schema } from 'effect'
+import { ServiceMap, Effect, Layer, Schema } from 'effect'
 
 import { TooManyRequestsError } from './auth.contract.js'
 
@@ -15,7 +15,7 @@ export interface AuthRateLimitService {
   readonly recordSuccess: (key: AuthRateLimitKey) => Effect.Effect<void>
 }
 
-export class AuthRateLimit extends Context.Tag('AuthRateLimit')<AuthRateLimit, AuthRateLimitService>() {}
+export class AuthRateLimit extends ServiceMap.Service<AuthRateLimit, AuthRateLimitService>()('AuthRateLimit') {}
 
 const readInt = (name: string, fallback: number): number => {
   const raw = process.env[name]

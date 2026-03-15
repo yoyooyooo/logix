@@ -1,4 +1,4 @@
-import type { Context, Layer as EffectLayer } from 'effect'
+import type { Layer as EffectLayer, ServiceMap } from 'effect'
 
 /**
  * State namespace (module-level):
@@ -7,5 +7,5 @@ import type { Context, Layer as EffectLayer } from 'effect'
  *
  * Type-level only; no additional runtime dependency.
  */
-export type Tag<S> = Context.Tag<any, S>
+export type Tag<S> = ServiceMap.Key<any, S>
 export type Layer<S> = EffectLayer.Layer<Tag<S>, never, never>

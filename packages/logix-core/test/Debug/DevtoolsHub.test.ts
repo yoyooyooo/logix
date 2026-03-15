@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer } from 'effect'
 import * as Logix from '../../src/index.js'
@@ -17,10 +17,11 @@ describe('DevtoolsHub (core)', () => {
           }),
       }
 
-      const layer = Logix.Debug.devtoolsHubLayer(Logix.Debug.replace([userSink]), {
-        bufferSize: 10,
-        mode: 'full',
-      }) as Layer.Layer<any, never, never>
+      const layer = Logix.Debug.devtoolsHubLayer(Logix.Debug.replace([userSink]), { bufferSize: 10 }) as Layer.Layer<
+        any,
+        never,
+        never
+      >
 
       // Record a few different event kinds.
       yield* Logix.Debug.record({
@@ -87,7 +88,7 @@ describe('DevtoolsHub (core)', () => {
 
       const layer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 10,
-        mode: 'full',
+        diagnosticsLevel: 'full',
       }) as Layer.Layer<any, never, never>
 
       yield* Logix.Debug.record({
@@ -112,13 +113,13 @@ describe('DevtoolsHub (core)', () => {
 
       Logix.Debug.devtoolsHubLayer({
         bufferSize: 5,
-        mode: 'light',
+        diagnosticsLevel: 'light',
       })
       Logix.Debug.clearDevtoolsEvents()
 
       Logix.Debug.devtoolsHubLayer({
         bufferSize: 6,
-        mode: 'light',
+        diagnosticsLevel: 'light',
       })
 
       const events = Logix.Debug.getDevtoolsSnapshot().events
@@ -134,7 +135,7 @@ describe('DevtoolsHub (core)', () => {
       Logix.Debug.clearDevtoolsEvents()
       Logix.Debug.devtoolsHubLayer({
         bufferSize: 7,
-        mode: 'off',
+        diagnosticsLevel: 'off',
       })
       expect(Logix.Debug.getDevtoolsSnapshot().events.length).toBe(0)
     }),
@@ -146,7 +147,7 @@ describe('DevtoolsHub (core)', () => {
 
       const layer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 20,
-        mode: 'full',
+        diagnosticsLevel: 'full',
       }) as Layer.Layer<any, never, never>
 
       yield* Logix.Debug.record({
@@ -203,7 +204,7 @@ describe('DevtoolsHub (core)', () => {
 
       const layer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 20,
-        mode: 'full',
+        diagnosticsLevel: 'full',
       }) as Layer.Layer<any, never, never>
 
       yield* Logix.Debug.record({
@@ -279,7 +280,7 @@ describe('DevtoolsHub (core)', () => {
 
       const layer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 3,
-        mode: 'light',
+        diagnosticsLevel: 'light',
       }) as Layer.Layer<any, never, never>
 
       for (let i = 1; i <= 5; i++) {
@@ -318,7 +319,7 @@ describe('DevtoolsHub (core)', () => {
     Effect.gen(function* () {
       const layer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 5,
-        mode: 'light',
+        diagnosticsLevel: 'light',
       }) as Layer.Layer<any, never, never>
 
       Logix.Debug.startDevtoolsRun('run-test-1')

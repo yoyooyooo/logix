@@ -276,6 +276,35 @@ const buildSpecificDirtySetFromIds = (
   }
 }
 
+const buildSpecificDirtySetFromIdsShallowFast = (ids: ReadonlyArray<number>): DirtySet => {
+  // Fast path: if all dirty paths are single-segment (no structural prefixes possible),
+  // roots are just the unique ids in numeric order.
+  const sorted = Array.from(ids)
+  sorted.sort((a, b) => a - b)
+
+  const rootIds: Array<number> = []
+  let prev: number | undefined
+  for (let i = 0; i < sorted.length; i++) {
+    const id = sorted[i]!
+    if (prev === id) continue
+    rootIds.push(id)
+    prev = id
+  }
+
+  if (rootIds.length === 0) {
+    return makeDirtyAllSet('unknownWrite')
+  }
+
+  const keyHash = hashFieldPathIds(rootIds)
+  return {
+    dirtyAll: false,
+    rootIds,
+    rootCount: rootIds.length,
+    keySize: rootIds.length,
+    keyHash,
+  }
+}
+
 export const dirtyPathIdsToRootIds = (options: {
   readonly dirtyPathIds?: Iterable<FieldPathId>
   readonly registry: FieldPathIdRegistry
@@ -287,6 +316,7 @@ export const dirtyPathIdsToRootIds = (options: {
 
   let hasInvalid = false
   let missing = false
+  let allShallow = true
   const ids: Array<number> = []
 
   for (const raw of options.dirtyPathIds ?? []) {
@@ -299,9 +329,13 @@ export const dirtyPathIdsToRootIds = (options: {
       hasInvalid = true
       continue
     }
-    if (!options.registry.fieldPaths[id]) {
+    const fieldPath = options.registry.fieldPaths[id]
+    if (!fieldPath) {
       missing = true
       continue
+    }
+    if (allShallow && fieldPath.length !== 1) {
+      allShallow = false
     }
     ids.push(id)
   }
@@ -312,6 +346,10 @@ export const dirtyPathIdsToRootIds = (options: {
 
   if (missing) {
     return makeDirtyAllSet('fallbackPolicy')
+  }
+
+  if (allShallow) {
+    return buildSpecificDirtySetFromIdsShallowFast(ids)
   }
 
   return buildSpecificDirtySetFromIds(ids, options.registry.fieldPaths)
@@ -329,6 +367,7 @@ export const dirtyPathsToRootIds = (options: {
   let sawStar = false
   let hasInvalid = false
   let missing = false
+  let allShallow = true
 
   const ids: Array<number> = []
   for (const raw of options.dirtyPaths ?? []) {
@@ -347,9 +386,13 @@ export const dirtyPathsToRootIds = (options: {
         hasInvalid = true
         continue
       }
-      if (!options.registry.fieldPaths[id]) {
+      const fieldPath = options.registry.fieldPaths[id]
+      if (!fieldPath) {
         missing = true
         continue
+      }
+      if (allShallow && fieldPath.length !== 1) {
+        allShallow = false
       }
       ids.push(id)
       continue
@@ -358,6 +401,9 @@ export const dirtyPathsToRootIds = (options: {
     if (typeof raw === 'string') {
       const direct = options.registry.pathStringToId?.get(raw)
       if (direct != null) {
+        if (allShallow && options.registry.fieldPaths[direct]?.length !== 1) {
+          allShallow = false
+        }
         ids.push(direct)
         continue
       }
@@ -379,6 +425,9 @@ export const dirtyPathsToRootIds = (options: {
       missing = true
       continue
     }
+    if (allShallow && options.registry.fieldPaths[id]?.length !== 1) {
+      allShallow = false
+    }
     ids.push(id)
   }
 
@@ -393,6 +442,10 @@ export const dirtyPathsToRootIds = (options: {
   // Any non-trackable write must explicitly degrade (do not "ignore *" when roots exist).
   if (sawStar) {
     return makeDirtyAllSet('unknownWrite')
+  }
+
+  if (allShallow) {
+    return buildSpecificDirtySetFromIdsShallowFast(ids)
   }
 
   return buildSpecificDirtySetFromIds(ids, options.registry.fieldPaths)

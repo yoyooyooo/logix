@@ -10,14 +10,14 @@ type Fx<Sh, R, A, E> = Effect.Effect<A, E, Env<Sh, R>>;
 ## 2.1 Logic 程序（标准范式）
 
 当前主线推荐的 Logic 形态是：在 `Logic.Env<Sh,R>` 上运行的一段 `Effect.gen` 程序，
-通常通过 `ModuleDef.logic`（或由 `ModuleDef.build` 创建的 `Module` 对象上的 `.logic` 方法）注入 Bound API `$`：
+通常通过 `ModuleDef.logic`（或带 `.impl` 的 `Module.logic`）注入 Bound API `$`：
 
 在推荐范式下，Logic 作者通常通过 `ModuleDef.logic(($)=>Effect.gen(...))` 直接在回调中使用注入的 `$`；
 对于 Pattern / Namespace 等二次封装场景，建议直接使用 `Logix.Bound.make(shape, runtime)` 在实现层构造 `$`，并让调用方显式注入 `$`。
 
 ## 2.2 两阶段 Logic Bootstrap（setup/run）
 
-> 目标：消除初始化期的 “Service not found” 噪音，保证 Env 就绪后才运行需要依赖的逻辑；在不改变 `ModuleDef.logic(($)=>Effect)`（或 `Module.logic(($)=>Effect)`）形态的前提下，明确 setup / run 分层语义。
+> 目标：消除初始化期的 “Service not found” 噪音，保证 Env 就绪后才运行需要依赖的逻辑；在不改变 `ModuleDef.logic(($)=>Effect)`（或带 `.impl` 的 `Module.logic(($)=>Effect)`）形态的前提下，明确 setup / run 分层语义。
 
 - **builder 闭包的一次性执行 = 构造 LogicPlan**
   - 闭包体内的同步注册调用归入 **setup 段**：只允许注册 reducer、lifecycle、Debug/Devtools hook，不访问 Env/Service，不做 IO。
@@ -102,14 +102,14 @@ const ToggleLogic = ToggleModule.logic<ToggleService>(($) =>
   }),
 )
 
-// 3) Module(program module) 保留 Env 依赖
-const ToggleBuilt = ToggleModule.build<ToggleService>({
+// 3) ModuleImpl 保留 Env 依赖
+const ToggleImpl = ToggleModule.implement<ToggleService>({
   initial,
   logics: [ToggleLogic],
 })
 
 // 4) Runtime 侧通过 Layer 闭合 Env
-const AppRuntime = Logix.Runtime.make(ToggleBuilt.createInstance(), {
+const AppRuntime = Logix.Runtime.make(ToggleImpl, {
   layer: Layer.mergeAll(
     ToggleService.Live as Layer.Layer<ToggleService, never, never>,
     AppInfraLayer,
@@ -117,7 +117,7 @@ const AppRuntime = Logix.Runtime.make(ToggleBuilt.createInstance(), {
 })
 ```
 
-> 规则：\*\*没有额外依赖 → 用默认 `R = never` 即可；有额外依赖 → 在 `ModuleDef.logic<R>` 与 `ModuleDef.build<R>` 上显式标出 Env，并在 Runtime 层通过 Layer 收敛到 `R = never` 后再交给 `Runtime.make` / `ManagedRuntime.make`。
+> 规则：\*\*没有额外依赖 → 用默认 `R = never` 即可；有额外依赖 → 在 `ModuleDef.logic<R>` 与 `ModuleDef.implement<R>` 上显式标出 Env，并在 Runtime 层通过 Layer 收敛到 `R = never` 后再交给 `Runtime.make` / `ManagedRuntime.make`。
 
 ## 2.5 `$.onAction / $.onState` 与 watcher 生命周期
 

@@ -1,4 +1,4 @@
-import { Cause, Context, Effect, Ref } from 'effect'
+import { Cause, Effect, Ref, ServiceMap } from 'effect'
 import { toSerializableErrorSummary } from './errorSummary.js'
 import * as Debug from './DebugSink.js'
 
@@ -138,7 +138,7 @@ export interface LifecycleManager {
   >
 }
 
-export const LifecycleContext = Context.GenericTag<LifecycleManager>('@logixjs/LifecycleManager')
+export class LifecycleContext extends ServiceMap.Service<LifecycleContext, LifecycleManager>()('@logixjs/LifecycleManager') {}
 
 const safeRun = (label: string, eff: Effect.Effect<void, any, any>) =>
   eff.pipe(
@@ -281,7 +281,7 @@ export const makeLifecycleManager = (identity: ModuleRuntimeIdentity): Effect.Ef
 
     const notifyError = (cause: Cause.Cause<unknown>, context: ErrorContext) => {
       // Interrupt/cancel should not be reported as an error.
-      if (Cause.isInterrupted(cause)) {
+      if (Cause.hasInterruptsOnly(cause)) {
         return Effect.void
       }
 
@@ -297,12 +297,12 @@ export const makeLifecycleManager = (identity: ModuleRuntimeIdentity): Effect.Ef
         opSeq: context.opSeq,
         origin: context.origin,
       }).pipe(
-        Effect.zipRight(
+        Effect.flatMap(() =>
           Effect.forEach(
             onErrorHandlers,
             (handler) =>
               handler(cause, context).pipe(
-                Effect.catchAllCause((inner) => Effect.logError(`[lifecycle.onError] failed: ${Cause.pretty(inner)}`)),
+                Effect.catchCause((inner) => Effect.logError(`[lifecycle.onError] failed: ${Cause.pretty(inner)}`)),
               ),
             { discard: true },
           ),
@@ -371,13 +371,13 @@ export const makeLifecycleManager = (identity: ModuleRuntimeIdentity): Effect.Ef
     const runStart: Effect.Effect<void, never, any> = recordPhase('run', 'start:schedule', {
       total: start.length,
     }).pipe(
-      Effect.zipRight(
+      Effect.flatMap(() =>
         Effect.forEach(
           start,
           (task) =>
             Effect.forkScoped(
               task.effect.pipe(
-                Effect.catchAllCause((cause) =>
+                Effect.catchCause((cause) =>
                   notifyError(cause, {
                     phase: 'run',
                     hook: 'start',
@@ -385,8 +385,7 @@ export const makeLifecycleManager = (identity: ModuleRuntimeIdentity): Effect.Ef
                     instanceId: identity.instanceId,
                     taskId: task.taskId,
                     origin: 'start',
-                  }),
-                ),
+                  })),
               ),
             ).pipe(Effect.asVoid),
           { discard: true, concurrency: 'unbounded' },
@@ -404,7 +403,7 @@ export const makeLifecycleManager = (identity: ModuleRuntimeIdentity): Effect.Ef
         yield* safeRun(
           'lifecycle.onDestroy',
           task.effect.pipe(
-            Effect.catchAllCause((cause) =>
+            Effect.catchCause((cause) =>
               notifyError(cause, {
                 phase: 'destroy',
                 hook: 'destroy',
@@ -412,8 +411,7 @@ export const makeLifecycleManager = (identity: ModuleRuntimeIdentity): Effect.Ef
                 instanceId: identity.instanceId,
                 taskId: task.taskId,
                 origin: 'destroy',
-              }),
-            ),
+              })),
           ),
         )
       }
@@ -430,7 +428,7 @@ export const makeLifecycleManager = (identity: ModuleRuntimeIdentity): Effect.Ef
         yield* safeRun(
           'lifecycle.onSuspend',
           task.effect.pipe(
-            Effect.catchAllCause((cause) =>
+            Effect.catchCause((cause) =>
               notifyError(cause, {
                 phase: 'platform',
                 hook: 'suspend',
@@ -438,8 +436,7 @@ export const makeLifecycleManager = (identity: ModuleRuntimeIdentity): Effect.Ef
                 instanceId: identity.instanceId,
                 taskId: task.taskId,
                 origin: 'platform.suspend',
-              }),
-            ),
+              })),
           ),
         )
       }
@@ -453,7 +450,7 @@ export const makeLifecycleManager = (identity: ModuleRuntimeIdentity): Effect.Ef
         yield* safeRun(
           'lifecycle.onResume',
           task.effect.pipe(
-            Effect.catchAllCause((cause) =>
+            Effect.catchCause((cause) =>
               notifyError(cause, {
                 phase: 'platform',
                 hook: 'resume',
@@ -461,8 +458,7 @@ export const makeLifecycleManager = (identity: ModuleRuntimeIdentity): Effect.Ef
                 instanceId: identity.instanceId,
                 taskId: task.taskId,
                 origin: 'platform.resume',
-              }),
-            ),
+              })),
           ),
         )
       }
@@ -476,7 +472,7 @@ export const makeLifecycleManager = (identity: ModuleRuntimeIdentity): Effect.Ef
         yield* safeRun(
           'lifecycle.onReset',
           task.effect.pipe(
-            Effect.catchAllCause((cause) =>
+            Effect.catchCause((cause) =>
               notifyError(cause, {
                 phase: 'platform',
                 hook: 'reset',
@@ -484,8 +480,7 @@ export const makeLifecycleManager = (identity: ModuleRuntimeIdentity): Effect.Ef
                 instanceId: identity.instanceId,
                 taskId: task.taskId,
                 origin: 'platform.reset',
-              }),
-            ),
+              })),
           ),
         )
       }

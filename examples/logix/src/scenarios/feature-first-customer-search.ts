@@ -23,34 +23,30 @@ const main = Effect.gen(function* () {
     yield* Effect.promise(() =>
       runtime.runPromise(
         Effect.gen(function* () {
-          const search = yield* CustomerSearchDef.tag
-          const detail = yield* CustomerDetailDef.tag
+          const search = yield* Effect.service(CustomerSearchDef.tag).pipe(Effect.orDie)
+          const detail = yield* Effect.service(CustomerDetailDef.tag).pipe(Effect.orDie)
 
-          yield* Effect.fork(
-            search
-              .changes((s) => s)
-              .pipe(
-                Stream.runForEach((s) =>
-                  Effect.sync(() => {
-                    // eslint-disable-next-line no-console
-                    console.log('[Search]', s)
-                  }),
-                ),
+          yield* Effect.forkChild(search
+            .changes((s) => s)
+            .pipe(
+              Stream.runForEach((s) =>
+                Effect.sync(() => {
+                  // eslint-disable-next-line no-console
+                  console.log('[Search]', s)
+                }),
               ),
-          )
+            ))
 
-          yield* Effect.fork(
-            detail
-              .changes((s) => s)
-              .pipe(
-                Stream.runForEach((s) =>
-                  Effect.sync(() => {
-                    // eslint-disable-next-line no-console
-                    console.log('[Detail]', s)
-                  }),
-                ),
+          yield* Effect.forkChild(detail
+            .changes((s) => s)
+            .pipe(
+              Stream.runForEach((s) =>
+                Effect.sync(() => {
+                  // eslint-disable-next-line no-console
+                  console.log('[Detail]', s)
+                }),
               ),
-          )
+            ))
 
           yield* search.dispatch({ _tag: 'customerSearch/setKeyword', payload: 'alice' })
           yield* Effect.sleep('400 millis')

@@ -48,33 +48,26 @@ const resolveActionMap = (tag: ModuleTag<string, AnyModuleShape> | undefined): R
 
 const resolveStateSchema = (tag: ModuleTag<string, AnyModuleShape> | undefined): unknown => (tag as any)?.stateSchema
 
+const resolveAstNode = (ast: SchemaAST.AST, seen: Set<SchemaAST.AST>): SchemaAST.AST | undefined => {
+  let current = SchemaAST.toType(ast)
+
+  while (SchemaAST.isSuspend(current)) {
+    if (seen.has(current)) return undefined
+    seen.add(current)
+    current = SchemaAST.toType(current.thunk())
+  }
+
+  return current
+}
+
 const resolveAstForPath = (
   ast: SchemaAST.AST,
   segments: ReadonlyArray<string>,
   seen: Set<SchemaAST.AST>,
 ): SchemaAST.AST | undefined => {
-  if (segments.length === 0) return ast
-
-  let current = ast
-  while (true) {
-    if (SchemaAST.isSuspend(current)) {
-      if (seen.has(current)) return undefined
-      seen.add(current)
-      current = current.f()
-      continue
-    }
-    if (SchemaAST.isRefinement(current)) {
-      current = current.from
-      continue
-    }
-    break
-  }
-
-  if (SchemaAST.isTransformation(current)) {
-    const from = resolveAstForPath(current.from, segments, seen)
-    if (from) return from
-    return resolveAstForPath(current.to, segments, seen)
-  }
+  const current = resolveAstNode(ast, seen)
+  if (!current) return undefined
+  if (segments.length === 0) return current
 
   if (SchemaAST.isUnion(current)) {
     for (const node of current.types) {
@@ -84,11 +77,11 @@ const resolveAstForPath = (
     return undefined
   }
 
-  if (SchemaAST.isTupleType(current)) {
+  if (SchemaAST.isArrays(current)) {
     return undefined
   }
 
-  if (SchemaAST.isTypeLiteral(current)) {
+  if (SchemaAST.isObjects(current)) {
     const [head, ...tail] = segments
     if (!head) return undefined
     for (const ps of current.propertySignatures) {
@@ -96,10 +89,7 @@ const resolveAstForPath = (
       return resolveAstForPath(ps.type, tail, seen)
     }
     for (const sig of current.indexSignatures) {
-      let param: SchemaAST.AST = sig.parameter as unknown as SchemaAST.AST
-      while (SchemaAST.isRefinement(param)) {
-        param = param.from
-      }
+      const param = SchemaAST.toType(sig.parameter as unknown as SchemaAST.AST)
       const tag = (param as any)?._tag
       if (tag === 'StringKeyword' || tag === 'TemplateLiteral') {
         return resolveAstForPath(sig.type, tail, seen)

@@ -1,9 +1,8 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Chunk, Effect, Fiber, Schema, Stream } from 'effect'
 import * as Logix from '../../../src/index.js'
 import * as EffectOp from '../../../src/EffectOp.js'
-import * as Debug from '../../../src/Debug.js'
 import * as ModuleRuntimeImpl from '../../../src/internal/runtime/ModuleRuntime.js'
 import * as EffectOpCore from '../../../src/internal/runtime/core/EffectOpCore.js'
 import * as FlowRuntimeImpl from '../../../src/internal/runtime/FlowRuntime.js'
@@ -40,7 +39,7 @@ describe('FlowRuntime.make (internal kernel)', () => {
         }),
       )
 
-      const fiber = yield* Effect.fork(effect)
+      const fiber = yield* Effect.forkChild(effect)
 
       yield* runtime.dispatch({ _tag: 'inc', payload: undefined })
       yield* runtime.dispatch({ _tag: 'dec', payload: undefined })
@@ -63,12 +62,11 @@ describe('FlowRuntime.make (internal kernel)', () => {
 
       const base = Stream.fromIterable([1, 2, 3])
 
-      yield* flow.run({
-        effect: (n: number) =>
-          Effect.sync(() => {
-            sum += n
-          }),
-      })(base)
+      yield* flow.run((n: number) =>
+        Effect.sync(() => {
+          sum += n
+        }),
+      )(base)
     })
 
     await Effect.runPromise(program as Effect.Effect<void, never, never>)
@@ -98,15 +96,15 @@ describe('FlowRuntime.make (internal kernel)', () => {
       startedAt: 1,
     })
 
-    const program = flow.run({
-      effect: (_n: number) => Effect.void,
-      options: {
+    const program = flow.run(
+      (_n: number) => Effect.void,
+      {
         policy: { disableObservers: true },
         tags: ['flow-tag'],
         trace: ['flow-trace'],
         meta: { custom: 'value' },
       },
-    })(Stream.fromIterable([1, 2]))
+    )(Stream.fromIterable([1, 2]))
 
     await Effect.runPromise(
       Effect.scoped(
@@ -135,7 +133,7 @@ describe('FlowRuntime.make (internal kernel)', () => {
     expect(second.meta?.opSeq).toBe(2)
   })
 
-  it('run(config) should keep metadata semantics and stable opSeq anchors (parallel/latest/exhaust)', async () => {
+  it('runParallel/runLatest/runExhaust should keep metadata semantics and stable opSeq anchors', async () => {
     const runtime = {
       moduleId: 'FlowRuntimeMeta',
       instanceId: 'FlowRuntimeMeta#1',
@@ -198,46 +196,43 @@ describe('FlowRuntime.make (internal kernel)', () => {
     }
 
     const parallelEvents = await runWithCapture('run-flow-metadata-parallel', (flow) =>
-      flow.run({
-        mode: 'parallel',
-        effect: () =>
+      flow.runParallel(
+        () =>
           Effect.gen(function* () {
             yield* Effect.sleep('2 millis')
           }),
         options,
-      })(Stream.fromIterable([1, 2, 3])),
+      )(Stream.fromIterable([1, 2, 3])),
     )
     expect(parallelEvents).toHaveLength(3)
     expectMetaAndOpSeq(parallelEvents, 'flow.runParallel')
 
     const latestEvents = await runWithCapture('run-flow-metadata-latest', (flow) =>
-      flow.run({
-        mode: 'latest',
-        effect: () =>
+      flow.runLatest(
+        () =>
           Effect.gen(function* () {
             yield* Effect.sleep('20 millis')
           }),
         options,
-      })(Stream.fromIterable([1, 2, 3])),
+      )(Stream.fromIterable([1, 2, 3])),
     )
-    expect(latestEvents).toHaveLength(3)
+    expect(latestEvents).toHaveLength(1)
     expectMetaAndOpSeq(latestEvents, 'flow.runLatest')
 
     const exhaustEvents = await runWithCapture('run-flow-metadata-exhaust', (flow) =>
-      flow.run({
-        mode: 'exhaust',
-        effect: () =>
+      flow.runExhaust(
+        () =>
           Effect.gen(function* () {
             yield* Effect.sleep('20 millis')
           }),
         options,
-      })(Stream.fromIterable([1, 2, 3])),
+      )(Stream.fromIterable([1, 2, 3])),
     )
     expect(exhaustEvents).toHaveLength(1)
     expectMetaAndOpSeq(exhaustEvents, 'flow.runExhaust')
   })
 
-  it("run({ mode: 'parallel' }) should process all elements (order not guaranteed)", async () => {
+  it('runParallel should process all elements (order not guaranteed)', async () => {
     let sum = 0
 
     const program: Effect.Effect<void, never, any> = Effect.gen(function* () {
@@ -245,13 +240,11 @@ describe('FlowRuntime.make (internal kernel)', () => {
 
       const base = Stream.fromIterable([1, 2, 3])
 
-      yield* flow.run({
-        mode: 'parallel',
-        effect: (n: number) =>
-          Effect.sync(() => {
-            sum += n
-          }),
-      })(base)
+      yield* flow.runParallel((n: number) =>
+        Effect.sync(() => {
+          sum += n
+        }),
+      )(base)
     })
 
     await Effect.runPromise(program as Effect.Effect<void, never, never>)
@@ -259,7 +252,7 @@ describe('FlowRuntime.make (internal kernel)', () => {
     expect(sum).toBe(6)
   })
 
-  it("run({ mode: 'latest' }) should keep only the latest effect result", async () => {
+  it('runLatest should keep only the latest effect result', async () => {
     const events: Array<number> = []
 
     const base = Stream.fromIterable([1, 2, 3])
@@ -267,14 +260,12 @@ describe('FlowRuntime.make (internal kernel)', () => {
     const program: Effect.Effect<void, never, any> = Effect.gen(function* () {
       const flow = FlowRuntimeImpl.make<CounterShape, never>(undefined as any)
 
-      const effect = flow.run({
-        mode: 'latest',
-        effect: (n: number) =>
-          Effect.gen(function* () {
-            yield* Effect.sleep('20 millis')
-            events.push(n)
-          }),
-      })(base)
+      const effect = flow.runLatest((n: number) =>
+        Effect.gen(function* () {
+          yield* Effect.sleep('20 millis')
+          events.push(n)
+        }),
+      )(base)
 
       yield* effect
     })
@@ -284,7 +275,7 @@ describe('FlowRuntime.make (internal kernel)', () => {
     expect(events).toEqual([3])
   })
 
-  it("run({ mode: 'exhaust' }) should drop new events while effect is running", async () => {
+  it('runExhaust should drop new events while effect is running', async () => {
     const events: Array<number> = []
 
     const base = Stream.fromIterable([1, 2, 3])
@@ -292,14 +283,12 @@ describe('FlowRuntime.make (internal kernel)', () => {
     const program: Effect.Effect<void, never, any> = Effect.gen(function* () {
       const flow = FlowRuntimeImpl.make<CounterShape, never>(undefined as any)
 
-      const effect = flow.run({
-        mode: 'exhaust',
-        effect: (n: number) =>
-          Effect.gen(function* () {
-            events.push(n)
-            yield* Effect.sleep('20 millis')
-          }),
-      })(base)
+      const effect = flow.runExhaust((n: number) =>
+        Effect.gen(function* () {
+          events.push(n)
+          yield* Effect.sleep('20 millis')
+        }),
+      )(base)
 
       yield* effect
     })
@@ -309,51 +298,48 @@ describe('FlowRuntime.make (internal kernel)', () => {
     expect(events).toEqual([1])
   })
 
-  it('run(config) should support static effect inputs for all modes', async () => {
+  it('run/runParallel/runLatest/runExhaust should support static effect inputs', async () => {
     const payloads = Stream.fromIterable([1, 2, 3])
 
     let sequentialCount = 0
     await Effect.runPromise(
-      FlowRuntimeImpl.make<CounterShape, never>(undefined as any).run({
-        effect: Effect.sync(() => {
+      FlowRuntimeImpl.make<CounterShape, never>(undefined as any).run(
+        Effect.sync(() => {
           sequentialCount += 1
         }),
-      })(payloads) as Effect.Effect<void, never, never>,
+      )(payloads) as Effect.Effect<void, never, never>,
     )
     expect(sequentialCount).toBe(3)
 
     let parallelCount = 0
     await Effect.runPromise(
-      FlowRuntimeImpl.make<CounterShape, never>(undefined as any).run({
-        mode: 'parallel',
-        effect: Effect.sync(() => {
+      FlowRuntimeImpl.make<CounterShape, never>(undefined as any).runParallel(
+        Effect.sync(() => {
           parallelCount += 1
         }),
-      })(Stream.fromIterable([1, 2, 3])) as Effect.Effect<void, never, never>,
+      )(Stream.fromIterable([1, 2, 3])) as Effect.Effect<void, never, never>,
     )
     expect(parallelCount).toBe(3)
 
     let latestCount = 0
     await Effect.runPromise(
-      FlowRuntimeImpl.make<CounterShape, never>(undefined as any).run({
-        mode: 'latest',
-        effect: Effect.gen(function* () {
+      FlowRuntimeImpl.make<CounterShape, never>(undefined as any).runLatest(
+        Effect.gen(function* () {
           yield* Effect.sleep('20 millis')
           latestCount += 1
         }),
-      })(Stream.fromIterable([1, 2, 3])) as Effect.Effect<void, never, never>,
+      )(Stream.fromIterable([1, 2, 3])) as Effect.Effect<void, never, never>,
     )
     expect(latestCount).toBe(1)
 
     let exhaustCount = 0
     await Effect.runPromise(
-      FlowRuntimeImpl.make<CounterShape, never>(undefined as any).run({
-        mode: 'exhaust',
-        effect: Effect.gen(function* () {
+      FlowRuntimeImpl.make<CounterShape, never>(undefined as any).runExhaust(
+        Effect.gen(function* () {
           exhaustCount += 1
           yield* Effect.sleep('20 millis')
         }),
-      })(Stream.fromIterable([1, 2, 3])) as Effect.Effect<void, never, never>,
+      )(Stream.fromIterable([1, 2, 3])) as Effect.Effect<void, never, never>,
     )
     expect(exhaustCount).toBe(1)
   })
@@ -418,71 +404,14 @@ describe('FlowRuntime.make (internal kernel)', () => {
     expect(exhaustCount).toBe(1)
   })
 
-  it('run(config) should fail fast for malformed config objects', () => {
-    const runtime = {
-      moduleId: 'FlowRuntimeInvalidRunConfig',
-      instanceId: 'FlowRuntimeInvalidRunConfig#1',
-      actions$: Stream.empty,
-      changes: () => Stream.empty,
-    } as any
-
-    const flow = FlowRuntimeImpl.make<CounterShape, never>(runtime)
-
-    expect(() =>
-      flow.run({
-        mode: 'invalid',
-        effect: Effect.void,
-      } as any)(Stream.fromIterable([1])),
-    ).toThrowError(/\[InvalidFlowRunConfig]/)
-
-    expect(() =>
-      flow.run({
-        mode: 'latest',
-      } as any)(Stream.fromIterable([1])),
-    ).toThrowError(/\[InvalidFlowRunConfig]/)
-
-    expect(() =>
-      flow.run({
-        mode: 'task',
-        effect: undefined,
-      } as any)(Stream.fromIterable([1])),
-    ).toThrowError(/\[InvalidFlowRunConfig]/)
-
-    expect(() =>
-      flow.run({
-        mode: 'task',
-        effect: 42,
-      } as any)(Stream.fromIterable([1])),
-    ).toThrowError(/\[InvalidFlowRunConfig]/)
-
-    expect(() =>
-      flow.run({
-        mode: 'task',
-        effect: Effect.void,
-        extra: true,
-      } as any)(Stream.fromIterable([1])),
-    ).toThrowError(/\[InvalidFlowRunConfig]/)
-
-    expect(() =>
-      ((flow.run as any)(
-        {
-          effect: Effect.void,
-        },
-        {
-          tags: ['forbidden-second-arg'],
-        },
-      ) as any)(Stream.fromIterable([1])),
-    ).toThrowError(/\[InvalidFlowRunConfig]/)
-  })
-
-  it('run(config) should resolve stack and run session once per invocation (per mode)', async () => {
-    type InvocationKind = 'task' | 'parallel' | 'latest' | 'exhaust'
+  it('run/runParallel/runLatest/runExhaust should resolve stack and run session once per invocation', async () => {
+    type InvocationKind = 'run' | 'runParallel' | 'runLatest' | 'runExhaust'
 
     const makeCounter = (): Record<InvocationKind, number> => ({
-      task: 0,
-      parallel: 0,
-      latest: 0,
-      exhaust: 0,
+      run: 0,
+      runParallel: 0,
+      runLatest: 0,
+      runExhaust: 0,
     })
 
     const stackReads = makeCounter()
@@ -540,44 +469,35 @@ describe('FlowRuntime.make (internal kernel)', () => {
 
     await Effect.runPromise(
       Effect.gen(function* () {
-        yield* runWithContext('task', flow.run({ effect: (n: number) => Effect.succeed(n) })(payloads()))
-        yield* runWithContext(
-          'parallel',
-          flow.run({ mode: 'parallel', effect: (n: number) => Effect.succeed(n) })(payloads()),
-        )
-        yield* runWithContext(
-          'latest',
-          flow.run({ mode: 'latest', effect: (n: number) => Effect.succeed(n) })(payloads()),
-        )
-        yield* runWithContext(
-          'exhaust',
-          flow.run({ mode: 'exhaust', effect: (n: number) => Effect.succeed(n) })(payloads()),
-        )
+        yield* runWithContext('run', flow.run((n: number) => Effect.succeed(n))(payloads()))
+        yield* runWithContext('runParallel', flow.runParallel((n: number) => Effect.succeed(n))(payloads()))
+        yield* runWithContext('runLatest', flow.runLatest((n: number) => Effect.succeed(n))(payloads()))
+        yield* runWithContext('runExhaust', flow.runExhaust((n: number) => Effect.succeed(n))(payloads()))
       }) as Effect.Effect<void, never, never>,
     )
 
     expect(stackReads).toEqual({
-      task: 1,
-      parallel: 1,
-      latest: 1,
-      exhaust: 1,
+      run: 1,
+      runParallel: 1,
+      runLatest: 1,
+      runExhaust: 1,
     })
     expect(sessionLocalReads).toEqual({
-      task: 1,
-      parallel: 1,
-      latest: 1,
-      exhaust: 1,
+      run: 1,
+      runParallel: 1,
+      runLatest: 1,
+      runExhaust: 1,
     })
   })
 
-  it('run(config) should skip opSeq allocation when middleware stack is empty (per mode)', async () => {
-    type InvocationKind = 'task' | 'parallel' | 'latest' | 'exhaust'
+  it('run/runParallel/runLatest/runExhaust should skip opSeq allocation when middleware stack is empty', async () => {
+    type InvocationKind = 'run' | 'runParallel' | 'runLatest' | 'runExhaust'
 
     const makeCounter = (): Record<InvocationKind, number> => ({
-      task: 0,
-      parallel: 0,
-      latest: 0,
-      exhaust: 0,
+      run: 0,
+      runParallel: 0,
+      runLatest: 0,
+      runExhaust: 0,
     })
 
     const nextSeqCalls = makeCounter()
@@ -627,33 +547,24 @@ describe('FlowRuntime.make (internal kernel)', () => {
 
     await Effect.runPromise(
       Effect.gen(function* () {
-        yield* runWithContext('task', flow.run({ effect: (n: number) => Effect.succeed(n) })(payloads()))
-        yield* runWithContext(
-          'parallel',
-          flow.run({ mode: 'parallel', effect: (n: number) => Effect.succeed(n) })(payloads()),
-        )
-        yield* runWithContext(
-          'latest',
-          flow.run({ mode: 'latest', effect: (n: number) => Effect.succeed(n) })(payloads()),
-        )
-        yield* runWithContext(
-          'exhaust',
-          flow.run({ mode: 'exhaust', effect: (n: number) => Effect.succeed(n) })(payloads()),
-        )
+        yield* runWithContext('run', flow.run((n: number) => Effect.succeed(n))(payloads()))
+        yield* runWithContext('runParallel', flow.runParallel((n: number) => Effect.succeed(n))(payloads()))
+        yield* runWithContext('runLatest', flow.runLatest((n: number) => Effect.succeed(n))(payloads()))
+        yield* runWithContext('runExhaust', flow.runExhaust((n: number) => Effect.succeed(n))(payloads()))
       }) as Effect.Effect<void, never, never>,
     )
 
     expect(nextSeqCalls).toEqual({
-      task: 0,
-      parallel: 0,
-      latest: 0,
-      exhaust: 0,
+      run: 0,
+      runParallel: 0,
+      runLatest: 0,
+      runExhaust: 0,
     })
     expect(sessionLocalReads).toEqual({
-      task: 0,
-      parallel: 0,
-      latest: 0,
-      exhaust: 0,
+      run: 0,
+      runParallel: 0,
+      runLatest: 0,
+      runExhaust: 0,
     })
   })
 
@@ -677,12 +588,12 @@ describe('FlowRuntime.make (internal kernel)', () => {
       // fromAction: select inc only.
       const incStream = flow.fromAction((a: Action): a is Action => (a as any)._tag === 'inc')
       const incChunk = yield* Stream.runCollect(incStream)
-      expect(Chunk.toReadonlyArray(incChunk).map((a) => (a as any)._tag)).toEqual(['inc', 'inc'])
+      expect(Array.from(incChunk as Iterable<Action>).map((a) => (a as any)._tag)).toEqual(['inc', 'inc'])
 
       // fromState: project count into a number stream.
       const countStream = flow.fromState((s) => s.count)
       const countChunk = yield* Stream.runCollect(countStream)
-      expect(Chunk.toReadonlyArray(countChunk)).toEqual([1, 2])
+      expect(Array.from(countChunk as Iterable<number>)).toEqual([1, 2])
 
       // debounce/throttle/filter: only validate composition does not throw.
       const base = Stream.fromIterable([1, 1, 2, 3])
@@ -693,7 +604,7 @@ describe('FlowRuntime.make (internal kernel)', () => {
       yield* Stream.runDrain(debounced)
       yield* Stream.runDrain(throttled)
       const filteredChunk = yield* Stream.runCollect(filtered)
-      expect(Chunk.toReadonlyArray(filteredChunk)).toEqual([2, 3])
+      expect(Array.from(filteredChunk as Iterable<number>)).toEqual([2, 3])
     })
 
     await Effect.runPromise(program as Effect.Effect<void, never, never>)

@@ -1,4 +1,5 @@
-import { HttpApiBuilder, HttpServer } from '@effect/platform'
+import { HttpRouter, HttpServer } from 'effect/unstable/http'
+import { HttpApiBuilder } from 'effect/unstable/httpapi'
 import { Layer } from 'effect'
 import fs from 'node:fs/promises'
 import os from 'node:os'
@@ -19,13 +20,14 @@ describe('GET /health', () => {
     process.env.SPECKIT_KANBAN_REPO_ROOT = tmpRepo
 
     try {
-      const ApiTestLive = HttpApiBuilder.api(EffectApi).pipe(
+      const ApiTestLive = HttpApiBuilder.layer(EffectApi).pipe(
         Layer.provide(HealthLive),
         Layer.provide(SpecboardLive),
         Layer.provide(SpecboardServiceLive),
+        Layer.provide(HttpServer.layerServices),
       )
 
-      const { handler, dispose } = HttpApiBuilder.toWebHandler(Layer.mergeAll(ApiTestLive, HttpServer.layerContext))
+      const { handler, dispose } = HttpRouter.toWebHandler(Layer.mergeAll(ApiTestLive), { disableLogger: true })
 
       try {
         const response = await handler(new Request('http://local.test/health'))

@@ -104,7 +104,7 @@ export const TaskRunnerDemoLogic = TaskRunnerDemoDef.logic(($) => ({
         })),
     })
 
-    const reset = $.onAction('reset').run({ effect: $.state.update(() => initialState) })
+    const reset = $.onAction('reset').run($.state.update(() => initialState))
 
     // watcher 合并启动
     yield* Effect.all([latest, exhaust, reset], { concurrency: 'unbounded' })

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Context, Effect, Layer } from 'effect'
+import { Effect, Layer, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 import { useLocalModule } from './useLocalModule.js'
 import type { ModuleRef } from '../store/ModuleRef.js'
@@ -20,7 +20,7 @@ export function useLayerModule<Id extends string, Sh extends Logix.AnyModuleShap
     () =>
       Layer.build(layer).pipe(
         Effect.scoped,
-        Effect.map((context) => Context.get(context, module)),
+        Effect.map((context) => ServiceMap.get(context, module)),
       ),
     // layer/module are typically constants; deps lets callers opt into rebuilding when needed.
     [layer, module],

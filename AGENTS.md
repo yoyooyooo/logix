@@ -1,10 +1,20 @@
-当前仓库仍处在积极演进阶段，可以不计成本地重构与试验，不需要考虑向历史版本兼容。
+当前仓库仍处于 forward-only 演进阶段，没有历史兼容负担。可以不计成本地重构与试验，不需要考虑向历史版本兼容。
 任何一个地方都可以为了追求完美而推翻：本仓库采用「向前兼容（forward-only evolution）」策略，拒绝向后兼容。
 当一个新的规划和已有实现产生交集甚至冲突时，需要寻求新的完美点，而不是坚持向后兼容。
 性能与可诊断性优先：任何触及 Logix Runtime 核心路径的改动，都必须给出可复现的性能基线/测量，
 并同步完善诊断事件与 Devtools 可解释链路；破坏性变更用迁移说明替代兼容层（无兼容层/无弃用期）。
 同时强制：统一最小 IR（Static IR + Dynamic Trace）、标识去随机化（稳定 instanceId/txnSeq/opSeq）、
 事务窗口禁止 IO、业务不可写 SubscriptionRef、诊断事件必须 Slim 且可序列化。
+
+## 零存量用户（大胆破坏式改造）
+
+当明确“当前没有任何存量用户/生产依赖/外部集成”时，本仓库进入 **零存量用户模式**：
+
+- 可以直接重做对外 API/协议/默认行为，以追求更好的性能、可诊断性与一致性（尤其是运行时核心路径）。
+- 不写兼容层/弃用期；用迁移说明 + 决策日志替代（`plan.md` 的 Constitution Check / `specs/*` / `docs/perf/*`）。
+- 允许推倒重来：重排模块边界、合并/删掉历史分支、统一旋钮；只要最终 API 设计不比旧的差（更小、更一致、更可推导、更易被 LLM 生成与验证）。
+- 仍需满足本文件开头的不变量：统一最小 IR、稳定标识、事务窗口禁 IO、诊断事件 Slim 且可序列化，并提供可复现的性能证据。
+- “零存量用户”是显式假设：所有破坏式改动应在对应 spec/plan 写清楚该假设；一旦出现存量用户或外部依赖，需要先更新假设再重新裁决方案。
 
 ## 并行开发安全（强约束）
 
@@ -24,8 +34,6 @@
 2. 当做完一个特性时，需要跑通测试用例和所有类型检测；文档同步按 `project-guide` 的 spec→ 产物落点执行。
 3. 若改动触及核心路径 / 诊断协议 / 对外 API，必须在 plan.md 的 Constitution Check 中补齐性能预算、
    诊断代价、IR/锚点漂移点、稳定标识与迁移说明，并同步更新对应 SSoT 与用户文档 （开发阶段只考虑中文文档，忽略 .en.md）。
-4. 涉及 CLI 能力演进时，默认走 **scenario-driven**：先定义业务场景与可验证产物，再补 CLI 命令；禁止“无场景先堆命令”。
-5. 遵循 **core-first / cli-thin**：基础能力先落 `packages/logix-core`（或已存在 core 公共能力），`packages/logix-cli` 只做命令包装、参数绑定与结构化输出，不复制 runtime 语义。
 
 ## 规划对齐（简版）
 
@@ -52,8 +60,6 @@
 - **引擎优先**：先把 Intent/Flow/Logix/Effect 的契约和幂等出码引擎打磨稳定，再考虑 Studio/画布等交互体验；遇到冲突，一律保证引擎正确、可回放、可追踪。
 - **Effect 作为统一运行时**：默认使用 `effect`（effect-ts v3 系列）承载行为与流程执行，出码后的业务流程应以 `.flow.ts` + Effect/Logix 程序为落点；其他运行时只作为 PoC，而不是第二套正式栈。
 - **Logix dogfooding（简称 Logix fooding）**：本仓所有上层应用（如 `examples/*`、`packages/logix-devtools-react` 等）在可行范围内，一律以 Logix Runtime（Flow/Effect/Logix）作为主要运行时与状态管理方式，不再引入第二套 ad-hoc 状态机或流程引擎，以便在真实场景中持续“吃自己狗粮”、验证和打磨 Logix 本身。
-- **CLI 角色边界（core-first / cli-thin）**：CLI 是支撑 Agent 的工具平面（Tool Plane），不是第二套 runtime；优先暴露 primitives（可组合基础命令），高阶 loop/策略保持可选且外置。
-- **场景驱动 CLI 演进**：CLI 新能力必须绑定至少一个真实或近真实业务场景（优先 `examples/*`），并提供结构化产物与可自动验收路径（非日志驱动）。
 - **文档先行**：任何会影响 Intent 模型、Flow DSL、Logix/Effect 契约的决定，应优先在 `docs/ssot/platform` 与 `docs/ssot/runtime` 中拍板，再在子包中实现，避免“代码先跑偏、文档跟不上的事实源漂移”。
   - 对于已经确定、但实现细节容易跑偏的技术决策（例如 Store.Spec / Universal Bound API / Fluent DSL / Parser 约束），**需要同时在实现备忘中固化**：
     - 平台侧：`docs/specs/sdd-platform/impl/README.md`；
@@ -89,61 +95,50 @@
 > 详细设计与最新约定以代码里的 d.ts / TS 提示为准，如有冲突一律以本地类型定义为主。
 
 - **知识源与冲突处理**
-
   - 当固有认知与当前项目的类型错误 / TS 提示冲突时，一律以本地 `effect` d.ts 和编译器为准。
   - 如遇“看起来对但 TS 报错”的写法，优先查官方源码/文档，必要时把结论沉淀回本节。
   - 在本仓库内执行测试时，**禁止使用 watch 模式**（例如 `pnpm test -- <pattern>` 这种会退化为交互模式的调用）；优先使用包内的 `vitest run <pattern>` 或一次性 `pnpm test`（已配置为非 watch 模式），避免阻塞用户终端。
 
 - **核心签名与别名**
-
   - 固定认知：`Effect.Effect<A, E = never, R = never>` 三个泛型依次是 **成功值 / 业务错误类型 / 依赖环境**，不得调换。
   - 自定义别名可以用调用方顺序：`type Fx<R, E, A> = Effect.Effect<A, E, R>`，但底层永远是 `Effect.Effect<A, E, R>`。
   - 设计公共 Flow 时，推荐签名 `<R>() => Effect.Effect<A, E, R>`，由调用方通过 Layer 扩展环境。
 
 - **环境 `R` 与 Tag 模式**
-
   - 把 `R` 理解为“按需注入的服务集合”，在类型上是逆变位：依赖更少的 Effect 可以赋给依赖更多的地方，反之不行。
   - 本仓统一用 Tag class：`class X extends Context.Tag("X")<X, Service>() {}`，不要新写 `Context.GenericTag`。
   - Tag 本身就是 `Effect.Effect<Service, never, Id>`，可在 `Effect.gen` 中 `const svc = yield* ServiceTag` 取实现，实现通过 `Layer.succeed(ServiceTag, impl)` 或 `Effect.provideService` 提供。
 
 - **Context / Env 使用边界**
-
   - 运行时内核 / 中间件层（约束管道、调试工具）可以用 `Effect.context<R>()` 操作上下文。
   - 业务 Flow / Service 层避免显式构造/传递 `Context.Context`，“胖 Env 对象”一律用 Tag 方式按需取服务：`yield* LoggerTag`、`yield* RegionService`。
 
 - **超时与重试 API（以 v3 签名为准）**
-
   - 使用对象参数 + `pipe`：`effect.pipe(Effect.timeoutFail({ duration, onTimeout }))`，不要再用旧版三参数形式。
   - `Effect.retry` 接收配置对象（如 `{ times: 3 }`），不会改变环境类型 `R`，优先在通用约束层包装重试，而不是散落在每个 Flow 内。
 
 - **Promise 集成与错误语义**
-
   - `Effect.promise(evaluate)` 的错误通道类型为 `never`，Promise reject 被视为 defect；需要业务错误通道时使用 `Effect.tryPromise` 并在 `catch` 中构造领域错误。
   - Flow 层的 `E` 应尽量是语义化错误（领域/校验/可透出给上层），不要直接冒泡 `unknown` 或裸 `Error`。
 
 - **运行入口与 Layer 组合**
-
   - 默认假设：`Effect.runPromise` 等 run API 期望环境为 `never`；带依赖的 Flow 必须先通过 `Effect.provide` / `Effect.provideService` 注入完整 Layer，再运行。
   - Layer 组合：用 `Layer.succeed(Tag, impl)` 提供实现，`Layer.mergeAll(...)` / `pipe(layer, Layer.provide(...))` 组合，最终聚合为 `RuntimeLayer` 提供给运行时。
   - `ManagedRuntime.make` 签名：`make<R, E>(layer: Layer.Layer<R, E, never>)`，第三个泛型必须是 `never`，不要把仍带依赖的 Layer 直接交给它。
 
 - **Cache / 环境泛型解读**
-
   - `Cache.make<Key, Value, Error = never, Environment = never>` 里的 `Environment` 表示 lookup 过程中额外需要的环境；通过闭包捕获 Service 时应保持为 `never`，不要写成 `typeof SomeService`。
   - 若 `Value` 的错误类型是领域错误（如 `ApiError`），而对外希望暴露“永不失败”的流，可在边界用 `Effect.catchAll(() => Effect.succeed(default))` 收敛错误，再对外暴露 `Stream<_, never, _>`。
 
 - **SubscriptionRef v3 用法**
-
   - 认知为“可订阅 Ref”：读写都用模块函数，而不是实例方法。
   - 写入：`yield* SubscriptionRef.set(ref, value)` / `SubscriptionRef.update(ref, f)`；订阅变化：`ref.changes`，不要假设有 `ref.set` / `ref.get`。
 
 - **Effect.gen 推荐写法**
-
   - 在业务 Flow 中统一用 Tag 形式 `yield*`：`Effect.gen(function* () { const svc = yield* ServiceTag; ... })`。
   - 不再使用 `_` 适配器等 `yield* _(Tag)` 风格，以获得更干净的 `R` 推导，避免不必要的 `unknown` / `never`。
 
 - **Schema / Config / HTTP 解码**
-
   - Schema 一律从 `effect` 导入：`import { Schema } from "effect"`，搭配 `@effect/platform` 的 Schema API 使用。
   - 领域模型推荐：`const RegionSchema = Schema.Struct({ ... })`，类型通过 `Schema.Schema.Type<typeof RegionSchema>` 或 `typeof RegionSchema.Type` 推导。
   - Config 读取：`Config.xxx("KEY").pipe(Config.withDefault(...))`，在 `Effect.gen` 中 `const value = yield* Config.xxx(...)`，不要使用旧的 `Effect.config(...)`。
@@ -161,7 +156,6 @@
     - `Store.make("id", { ... })`
     - `Pattern.make("id", { ... }, ($) => ...)`
 - 关键设计原则：
-
   - Intent 只表达业务/交互/信息结构的 **What**，不写组件/API/文件级 **How**；
   - Flow/Effect 层负责“步骤链 + 服务调用 + 质量约束”，领域算法细节保留在自定义服务实现里；
   - 平台 UI/CLI/Studio 是未来消费者，本仓库优先保证运行时契约与典型场景写法清晰可用。
@@ -214,12 +208,10 @@
 ## 测试栈与 @effect/vitest 约定（logix-\*）
 
 - 总体原则：
-
   - Vitest 仍作为统一的测试 runner；在所有 Effect-heavy 场景中，`@effect/vitest` 视为一等公民测试 API。
   - 能用“自动挡”（`it.effect` / `it.scoped` / `it.layer`）就不用到处手写 `Effect.runPromise` + `Effect.provide`；极端/特殊场景可以退回“手动挡”，但应是少数。
 
 - 分包约定：
-
   - `packages/logix-core`：
     - 默认从 `@effect/vitest` 导入 `describe` / `it` / `expect`。
     - 涉及 Runtime / Layer / 并发 / 时间语义的测试（如 ModuleRuntime / Runtime.make / FlowRuntime / Lifecycle / Debug 等），优先使用 `it.effect` / `it.scoped` / `it.layer` 管理环境与 Scope，禁止在这类用例里散落手写 `Effect.runPromise(...)`。
@@ -245,7 +237,6 @@
 ## 文档编写规范 （apps/docs）
 
 - **渐进式示例展示 (Progressive Examples)**
-
   - 在编写场景化教程或示例时，应使用 Fumadocs Tabs 展示不同层次的实现，帮助用户理解本质：
     1.  **Logic DSL**: 推荐的高层声明式写法 (e.g., `$.onState`)。
     2.  **Flow API**: 底层流式写法 (e.g., `$.flow.fromState`)。
@@ -253,7 +244,6 @@
   - Tab 标题应简洁，如 "Logic DSL", "Flow API", "Raw Effect"。
 
 - **文档定位与分层 (SSoT vs User Docs)**
-
   - **内部规范 (SSoT)** -> `docs/specs/`:
     - 面向：架构师、核心贡献者、Agent。
     - 内容：架构决策、核心逻辑、设计约束、Drafts。

@@ -5,7 +5,7 @@
  *   由消费方在场景中通过 Effect.provideService / Layer 提供具体实现。
  */
 
-import { Context, Effect } from 'effect'
+import { Effect, ServiceMap } from 'effect'
 
 // ---------------------------------------------------------------------------
 // Service 契约：NotificationServiceTag 只描述接口，不内置实现
@@ -16,10 +16,7 @@ export interface NotificationService {
   error: (message: string) => Effect.Effect<void>
 }
 
-export class NotificationServiceTag extends Context.Tag('@svc/Notification')<
-  NotificationServiceTag,
-  NotificationService
->() {}
+export class NotificationServiceTag extends ServiceMap.Service<NotificationServiceTag, NotificationService>()('@svc/Notification') {}
 
 // ---------------------------------------------------------------------------
 // Pattern：根据结果类型发送对应通知
@@ -40,7 +37,7 @@ export const runNotifyOnResultPattern = (
   input: NotifyOnResultPatternInput,
 ): Effect.Effect<void, never, NotificationServiceTag> =>
   Effect.gen(function* () {
-    const svc = yield* NotificationServiceTag
+    const svc = yield* Effect.service(NotificationServiceTag).pipe(Effect.orDie)
 
     if (input.kind === 'success') {
       yield* svc.info(input.message)

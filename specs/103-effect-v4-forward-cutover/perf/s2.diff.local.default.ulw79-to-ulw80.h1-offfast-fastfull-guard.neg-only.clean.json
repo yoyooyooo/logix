@@ -1,0 +1,550 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-03-05T15:35:32.280Z",
+    "from": {
+      "file": "specs/103-effect-v4-forward-cutover/perf/s2.before.local.default.ulw79.h1-offfast-fastfull-baseline.neg-only.clean.json",
+      "commit": "c148734b60c91ba4fd4b9bf5252d8072f8c4d9d2"
+    },
+    "to": {
+      "file": "specs/103-effect-v4-forward-cutover/perf/s2.after.local.default.ulw80.h1-offfast-fastfull-guard.neg-only.clean.json",
+      "commit": "c148734b60c91ba4fd4b9bf5252d8072f8c4d9d2"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.after=true"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 2,
+    "improvements": 2,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "negativeBoundaries.dirtyPattern",
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "mostlyStableWithNoise"
+          },
+          "beforeMaxLevel": 4096,
+          "afterMaxLevel": 8,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.05&patternKind=mostlyStableWithNoise&seed=1337&steps=800}: before=4096 after=8 (after:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.negativeBoundaries.inspect-dirty-pattern",
+              "title": "收紧 dirty-pattern 基数或调整缓存策略",
+              "detail": "负优化边界回归，多数与高基数/低命中率 dirty-pattern 相关，可优先检查写入 pattern 与缓存配置。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "slidingWindowOverlap"
+          },
+          "beforeMaxLevel": 8,
+          "afterMaxLevel": 4096,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.05&patternKind=slidingWindowOverlap&seed=1337&steps=800}: before=8 after=4096 (before:budgetExceeded)"
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "graphChangeInvalidation"
+          },
+          "beforeMaxLevel": 4096,
+          "afterMaxLevel": null,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.05&patternKind=graphChangeInvalidation&seed=1337&steps=800}: before=4096 after=null (after:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.negativeBoundaries.inspect-dirty-pattern",
+              "title": "收紧 dirty-pattern 基数或调整缓存策略",
+              "detail": "负优化边界回归，多数与高基数/低命中率 dirty-pattern 相关，可优先检查写入 pattern 与缓存配置。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "steps": 800,
+            "dirtyRootsRatio": 0.05,
+            "seed": 1337,
+            "patternKind": "listIndexExplosion"
+          },
+          "beforeMaxLevel": 8,
+          "afterMaxLevel": 4096,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=0.05&patternKind=listIndexExplosion&seed=1337&steps=800}: before=8 after=4096 (before:budgetExceeded)"
+        }
+      ],
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 18,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 18,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=0 ok=18 unavailable=0 missing=0] after[value=0 ok=18 unavailable=0 missing=0]"
+        },
+        {
+          "name": "cache.evict",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 72,
+            "missing": 0
+          },
+          "after": {
+            "ok": 0,
+            "unavailable": 72,
+            "missing": 0
+          },
+          "message": "cache.evict(points) unit=count: before[value=undefined ok=0 unavailable=72 missing=0] after[value=undefined ok=0 unavailable=72 missing=0]"
+        },
+        {
+          "name": "cache.hit",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 72,
+            "missing": 0
+          },
+          "after": {
+            "ok": 0,
+            "unavailable": 72,
+            "missing": 0
+          },
+          "message": "cache.hit(points) unit=count: before[value=undefined ok=0 unavailable=72 missing=0] after[value=undefined ok=0 unavailable=72 missing=0]"
+        },
+        {
+          "name": "cache.invalidate",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 36,
+            "unavailable": 36,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 36,
+            "unavailable": 36,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "cache.invalidate(points) unit=count: before[value=0 ok=36 unavailable=36 missing=0] after[value=0 ok=36 unavailable=36 missing=0]"
+        },
+        {
+          "name": "cache.miss",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 72,
+            "missing": 0
+          },
+          "after": {
+            "ok": 0,
+            "unavailable": 72,
+            "missing": 0
+          },
+          "message": "cache.miss(points) unit=count: before[value=undefined ok=0 unavailable=72 missing=0] after[value=undefined ok=0 unavailable=72 missing=0]"
+        },
+        {
+          "name": "cache.size",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 72,
+            "missing": 0
+          },
+          "after": {
+            "ok": 0,
+            "unavailable": 72,
+            "missing": 0
+          },
+          "message": "cache.size(points) unit=count: before[value=undefined ok=0 unavailable=72 missing=0] after[value=undefined ok=0 unavailable=72 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 72,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 72,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=72 unavailable=0 missing=0] after[value=core ok=72 unavailable=0 missing=0]"
+        }
+      ],
+      "metricDeltas": [
+        {
+          "metric": "runtime.decisionMs",
+          "unit": "ms",
+          "compared": 0,
+          "missing": 0,
+          "unavailable": 72,
+          "topRegressions": [],
+          "topImprovements": []
+        },
+        {
+          "metric": "runtime.txnCommitMs",
+          "unit": "ms",
+          "compared": 72,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [
+            {
+              "params": {
+                "convergeMode": "full",
+                "steps": 800,
+                "dirtyRootsRatio": 0.05,
+                "seed": 1337,
+                "uniquePatternPoolSize": 512,
+                "patternKind": "graphChangeInvalidation"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.20000000298023224,
+                "p95Ms": 0.29999999701976776
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.29999999701976776,
+                "p95Ms": 0.5999999940395355
+              },
+              "deltaMs": {
+                "medianMs": 0.09999999403953552,
+                "p95Ms": 0.29999999701976776
+              },
+              "ratio": {
+                "median": 1.4999999627470975,
+                "p95": 2
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "auto",
+                "steps": 800,
+                "dirtyRootsRatio": 0.05,
+                "seed": 1337,
+                "uniquePatternPoolSize": 4096,
+                "patternKind": "mostlyStableWithNoise"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.20000000298023224,
+                "p95Ms": 0.20000000298023224
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.20000000298023224,
+                "p95Ms": 0.3999999910593033
+              },
+              "deltaMs": {
+                "medianMs": 0,
+                "p95Ms": 0.19999998807907104
+              },
+              "ratio": {
+                "median": 1,
+                "p95": 1.9999999254941951
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "full",
+                "steps": 800,
+                "dirtyRootsRatio": 0.05,
+                "seed": 1337,
+                "uniquePatternPoolSize": 512,
+                "patternKind": "alternatingTwoStable"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.29999999701976776,
+                "p95Ms": 0.3999999910593033
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.29999999701976776,
+                "p95Ms": 0.5
+              },
+              "deltaMs": {
+                "medianMs": 0,
+                "p95Ms": 0.10000000894069672
+              },
+              "ratio": {
+                "median": 1,
+                "p95": 1.250000027939678
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "auto",
+                "steps": 800,
+                "dirtyRootsRatio": 0.05,
+                "seed": 1337,
+                "uniquePatternPoolSize": 8,
+                "patternKind": "alternatingTwoStable"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.20000000298023224,
+                "p95Ms": 0.29999999701976776
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.29999999701976776,
+                "p95Ms": 0.4000000059604645
+              },
+              "deltaMs": {
+                "medianMs": 0.09999999403953552,
+                "p95Ms": 0.10000000894069672
+              },
+              "ratio": {
+                "median": 1.4999999627470975,
+                "p95": 1.3333333664470253
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "auto",
+                "steps": 800,
+                "dirtyRootsRatio": 0.05,
+                "seed": 1337,
+                "uniquePatternPoolSize": 64,
+                "patternKind": "alternatingTwoStable"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.20000000298023224,
+                "p95Ms": 0.20000000298023224
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.29999999701976776,
+                "p95Ms": 0.30000001192092896
+              },
+              "deltaMs": {
+                "medianMs": 0.09999999403953552,
+                "p95Ms": 0.10000000894069672
+              },
+              "ratio": {
+                "median": 1.4999999627470975,
+                "p95": 1.5000000372529025
+              }
+            }
+          ],
+          "topImprovements": [
+            {
+              "params": {
+                "convergeMode": "full",
+                "steps": 800,
+                "dirtyRootsRatio": 0.05,
+                "seed": 1337,
+                "uniquePatternPoolSize": 8,
+                "patternKind": "graphChangeInvalidation"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.20000000298023224,
+                "p95Ms": 0.5
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.29999999701976776,
+                "p95Ms": 0.30000001192092896
+              },
+              "deltaMs": {
+                "medianMs": 0.09999999403953552,
+                "p95Ms": -0.19999998807907104
+              },
+              "ratio": {
+                "median": 1.4999999627470975,
+                "p95": 0.6000000238418579
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "full",
+                "steps": 800,
+                "dirtyRootsRatio": 0.05,
+                "seed": 1337,
+                "uniquePatternPoolSize": 64,
+                "patternKind": "repeatedStable"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.29999999701976776,
+                "p95Ms": 0.5
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.29999999701976776,
+                "p95Ms": 0.4000000059604645
+              },
+              "deltaMs": {
+                "medianMs": 0,
+                "p95Ms": -0.09999999403953552
+              },
+              "ratio": {
+                "median": 1,
+                "p95": 0.800000011920929
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "full",
+                "steps": 800,
+                "dirtyRootsRatio": 0.05,
+                "seed": 1337,
+                "uniquePatternPoolSize": 64,
+                "patternKind": "warmupPhaseShift"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.29999999701976776,
+                "p95Ms": 0.4000000059604645
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.20000000298023224,
+                "p95Ms": 0.30000001192092896
+              },
+              "deltaMs": {
+                "medianMs": -0.09999999403953552,
+                "p95Ms": -0.09999999403953552
+              },
+              "ratio": {
+                "median": 0.6666666832235126,
+                "p95": 0.7500000186264513
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "full",
+                "steps": 800,
+                "dirtyRootsRatio": 0.05,
+                "seed": 1337,
+                "uniquePatternPoolSize": 4096,
+                "patternKind": "randomHighCardinality"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.20000000298023224,
+                "p95Ms": 0.3999999910593033
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.20000000298023224,
+                "p95Ms": 0.29999999701976776
+              },
+              "deltaMs": {
+                "medianMs": 0,
+                "p95Ms": -0.09999999403953552
+              },
+              "ratio": {
+                "median": 1,
+                "p95": 0.750000009313226
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "full",
+                "steps": 800,
+                "dirtyRootsRatio": 0.05,
+                "seed": 1337,
+                "uniquePatternPoolSize": 4096,
+                "patternKind": "graphChangeInvalidation"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.20000000298023224,
+                "p95Ms": 0.4000000059604645
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.29999999701976776,
+                "p95Ms": 0.30000001192092896
+              },
+              "deltaMs": {
+                "medianMs": 0.09999999403953552,
+                "p95Ms": -0.09999999403953552
+              },
+              "ratio": {
+                "median": 1.4999999627470975,
+                "p95": 0.7500000186264513
+              }
+            }
+          ]
+        }
+      ],
+      "notes": "mostSignificantRegression: auto<=full*1.05 {dirtyRootsRatio=0.05&patternKind=graphChangeInvalidation&seed=1337&steps=800} (before=4096, after=null)"
+    }
+  ]
+}

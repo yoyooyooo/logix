@@ -116,16 +116,8 @@ export const runWriterStep = <S extends object>(
   const fromPathId = execIr.stepFromFieldPathIdByStepId[stepId]
   const fromPath = fromPathId >= 0 ? execIr.fieldPathsById[fromPathId] : undefined
 
-  return Effect.gen(function* () {
-    const stepLabel = diagnosticsLevel === 'off' ? undefined : (execIr.stepLabelByStepId[stepId] ?? String(stepId))
-
-    let shouldTraceDeps = false
-    if (kind === 'computed' && shouldCollectDecision && isDevEnv()) {
-      const traceKey = `${moduleId ?? 'unknown'}::${instanceId ?? 'unknown'}::computed::${fieldPath}`
-      shouldTraceDeps = yield* onceInRunSession(`deps_trace:settled:${traceKey}`)
-    }
-
-    const body: Effect.Effect<boolean> = Effect.sync(() => {
+  const runBody = (shouldTraceDeps: boolean): Effect.Effect<boolean> =>
+    Effect.sync(() => {
       const current = draft.getRoot() as any
 
       const prev = draft.getAt(outPath)
@@ -172,6 +164,28 @@ export const runWriterStep = <S extends object>(
       ),
     )
 
+  if (stack.length === 0) {
+    if (!(kind === 'computed' && shouldCollectDecision && isDevEnv())) {
+      return runBody(false)
+    }
+    return Effect.gen(function* () {
+      const traceKey = `${moduleId ?? 'unknown'}::${instanceId ?? 'unknown'}::computed::${fieldPath}`
+      const shouldTraceDeps = yield* onceInRunSession(`deps_trace:settled:${traceKey}`)
+      return yield* runBody(shouldTraceDeps)
+    })
+  }
+
+  return Effect.gen(function* () {
+    const stepLabel = diagnosticsLevel === 'off' ? undefined : (execIr.stepLabelByStepId[stepId] ?? String(stepId))
+
+    let shouldTraceDeps = false
+    if (kind === 'computed' && shouldCollectDecision && isDevEnv()) {
+      const traceKey = `${moduleId ?? 'unknown'}::${instanceId ?? 'unknown'}::computed::${fieldPath}`
+      shouldTraceDeps = yield* onceInRunSession(`deps_trace:settled:${traceKey}`)
+    }
+
+    const body = runBody(shouldTraceDeps)
+
     const meta: any = {
       moduleId,
       instanceId,
@@ -202,10 +216,6 @@ export const runWriterStep = <S extends object>(
       effect: body,
       meta,
     })
-
-    if (stack.length === 0) {
-      return yield* body
-    }
 
     return yield* EffectOp.run(op, stack)
   })

@@ -1,11 +1,10 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer } from 'effect'
 import * as Logix from '@logixjs/core'
 import { makeFormModule } from '../fixtures/listScopeCheck.js'
 
 describe('Form list-scope reValidate gate (submitCount)', () => {
-  it.scoped('pre-submit skips auto validate; post-submit re-validates onChange', () =>
+  it.effect('pre-submit skips auto validate; post-submit re-validates onChange', () =>
     Effect.gen(function* () {
       const form = makeFormModule({
         rowCount: 3,
@@ -18,7 +17,7 @@ describe('Form list-scope reValidate gate (submitCount)', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* form.tag
+        const rt = yield* Effect.service(form.tag).pipe(Effect.orDie)
         const controller = form.controller.make(rt)
 
         // Pre-submit: `onChange` does not auto-validate (no cross-row errors).

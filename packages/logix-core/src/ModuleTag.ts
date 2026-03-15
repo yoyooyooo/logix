@@ -1,4 +1,4 @@
-import { Effect, FiberRef, Layer, Schema } from 'effect'
+import { Effect, Layer, Schema } from 'effect'
 import * as Logic from './Logic.js'
 import * as Action from './internal/action.js'
 import * as ModuleFactory from './internal/runtime/ModuleFactory.js'
@@ -209,7 +209,7 @@ export const make = <Id extends string, SSchema extends AnySchema, ADefs extends
 
   type Sh = Shape<SSchema, ADefs>
 
-  const stateSchema = def.state as Schema.Schema<any, any>
+  const stateSchema = def.state as Schema.Schema<any>
   const moduleTraitsSpec = def.traits as StateTrait.StateTraitSpec<any> | undefined
   const baseProgram: StateTraitProgram<any> | undefined = moduleTraitsSpec
     ? StateTrait.build(stateSchema as any, moduleTraitsSpec as any)
@@ -260,7 +260,7 @@ export const make = <Id extends string, SSchema extends AnySchema, ADefs extends
     const logic = moduleTag.logic(($) => ({
       setup: Effect.gen(function* () {
         const internals = getBoundInternals($ as any)
-        const diagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
+        const diagnosticsLevel = yield* Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie)
 
         const contributions = internals.traits.getModuleTraitsContributions()
         let merged: ModuleTraits.TraitSpec

@@ -1,6 +1,7 @@
 import './env/load-env.js'
 
-import { HttpApiBuilder, HttpMiddleware, HttpServer } from '@effect/platform'
+import { HttpRouter, HttpServer } from 'effect/unstable/http'
+import { HttpApiBuilder } from 'effect/unstable/httpapi'
 import { NodeHttpServer, NodeRuntime } from '@effect/platform-node'
 import { Effect, Layer } from 'effect'
 import { createServer } from 'node:http'
@@ -25,7 +26,7 @@ import { UserLive } from './user/user.http.live.js'
 
 const port = Number.parseInt(process.env.PORT ?? '', 10)
 
-const ApiLive = HttpApiBuilder.api(EffectApi).pipe(
+const ApiLive = HttpApiBuilder.layer(EffectApi).pipe(
   Layer.provide(HealthLive),
   Layer.provide(TodoLive),
   Layer.provide(TodoRepoLive.pipe(Layer.provide(TodoTableLive))),
@@ -45,13 +46,6 @@ const NodeServerLive = NodeHttpServer.layer(createServer, {
   port: Number.isNaN(port) ? 5500 : port,
 }).pipe(HttpServer.withLogAddress)
 
-const ServerLive = ApiLive.pipe(
-  Layer.flatMap((apiContext) =>
-    HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
-      Layer.provide(Layer.succeedContext(apiContext)),
-      Layer.provide(NodeServerLive),
-    ),
-  ),
-)
+const ServerLive = HttpRouter.serve(ApiLive, { disableListenLog: true }).pipe(Layer.provideMerge(NodeServerLive))
 
-seedAdminIfEnabled.pipe(Effect.zipRight(Layer.launch(ServerLive))).pipe(NodeRuntime.runMain)
+seedAdminIfEnabled.pipe(Effect.orDie, Effect.andThen(Layer.launch(ServerLive))).pipe(NodeRuntime.runMain)

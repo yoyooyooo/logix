@@ -88,7 +88,7 @@ describe('ModuleScope.Bridge', () => {
       </Scope.Provider>
     )
 
-    const registry = runtime.runSync(Logix.ScopeRegistry.ScopeRegistryTag)
+    const registry = runtime.runSync(Effect.service(Logix.ScopeRegistry.ScopeRegistryTag).pipe(Effect.orDie))
 
     const provider = render(<ProviderRoot />, { wrapper: Wrapper })
 
@@ -136,7 +136,7 @@ describe('ModuleScope.Bridge', () => {
     )
 
     const scopeId = 'route:dispose'
-    const registry = runtime.runSync(Logix.ScopeRegistry.ScopeRegistryTag)
+    const registry = runtime.runSync(Effect.service(Logix.ScopeRegistry.ScopeRegistryTag).pipe(Effect.orDie))
 
     const provider = render(
       <Scope.Provider options={{ scopeId }}>

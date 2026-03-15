@@ -1,11 +1,11 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Cause, Deferred, Effect, Layer, Schema } from 'effect'
 import * as Debug from '../../src/Debug.js'
 import * as Logix from '../../src/index.js'
 
 describe('Error handling - assembly failure', () => {
-  it.scoped('should provide actionable MissingModuleRuntimeError when provider is missing', () =>
+  it.effect('should provide actionable MissingModuleRuntimeError when provider is missing', () =>
     Effect.gen(function* () {
       const events: Debug.Event[] = []
       const errorSeen = yield* Deferred.make<void>()
@@ -42,14 +42,12 @@ describe('Error handling - assembly failure', () => {
         never
       >
 
-      yield* Effect.locally(Debug.internal.currentDebugSinks as any, [sink])(
-        Effect.scoped(
-          Effect.gen(function* () {
-            yield* Parent.tag
-            yield* Deferred.await(errorSeen)
-          }).pipe(Effect.provide(layer)),
-        ),
-      )
+      yield* Effect.provideService(Effect.scoped(
+        Effect.gen(function* () {
+          yield* Effect.service(Parent.tag).pipe(Effect.orDie)
+          yield* Deferred.await(errorSeen)
+        }).pipe(Effect.provide(layer)),
+      ), Debug.internal.currentDebugSinks as any, [sink])
 
       const lifecycleError = events.find((e) => e.type === 'lifecycle:error') as
         | Extract<Debug.Event, { type: 'lifecycle:error' }>
@@ -58,7 +56,9 @@ describe('Error handling - assembly failure', () => {
       expect(lifecycleError).toBeDefined()
       if (!lifecycleError) return
 
-      const defects = [...Cause.defects(lifecycleError.cause as Cause.Cause<unknown>)]
+      const defects = (lifecycleError.cause as Cause.Cause<unknown>).reasons
+        .filter(Cause.isDieReason)
+        .map((reason) => reason.defect)
       const err = defects.find((e) => (e as any)?.name === 'MissingModuleRuntimeError') as any
 
       expect(err).toBeDefined()

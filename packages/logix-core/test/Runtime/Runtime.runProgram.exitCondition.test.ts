@@ -1,10 +1,10 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema, Stream } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('Runtime.runProgram exit strategy (US1)', () => {
-  it.scoped('main can express exit condition via observation without modifying the module', () =>
+  it.effect('main can express exit condition via observation without modifying the module', () =>
     Effect.gen(function* () {
       const Root = Logix.Module.make('Runtime.runProgram.exitCondition', {
         state: Schema.Struct({ value: Schema.Number }),

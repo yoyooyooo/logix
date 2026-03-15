@@ -1,4 +1,4 @@
-import { HttpApi } from '@effect/platform'
+import { HttpApi } from 'effect/unstable/httpapi'
 
 import { AuthGroup } from '../auth/auth.contract.js'
 import { HealthGroup } from '../health/health.contract.js'

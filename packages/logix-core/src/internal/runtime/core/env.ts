@@ -1,4 +1,4 @@
-import { Context, Effect, Layer } from 'effect'
+import { Effect, Layer, ServiceMap } from 'effect'
 import type { TraitConvergeRequestedMode } from '../../state-trait/model.js'
 import type { ReadQueryStrictGateConfig } from './ReadQuery.js'
 import { getGlobalHostScheduler, type HostScheduler } from './HostScheduler.js'
@@ -81,19 +81,19 @@ export interface StateTransactionRuntimeConfig {
   readonly txnLanesOverridesByModuleId?: Readonly<Record<string, TxnLanesPatch>>
 }
 
-class StateTransactionConfigTagImpl extends Context.Tag('@logixjs/core/StateTransactionRuntimeConfig')<
+class StateTransactionConfigTagImpl extends ServiceMap.Service<
   StateTransactionConfigTagImpl,
   StateTransactionRuntimeConfig
->() {}
+>()('@logixjs/core/StateTransactionRuntimeConfig') {}
 
 export const StateTransactionConfigTag = StateTransactionConfigTagImpl
 
 export type ReadQueryStrictGateRuntimeConfig = ReadQueryStrictGateConfig
 
-class ReadQueryStrictGateConfigTagImpl extends Context.Tag('@logixjs/core/ReadQueryStrictGateRuntimeConfig')<
+class ReadQueryStrictGateConfigTagImpl extends ServiceMap.Service<
   ReadQueryStrictGateConfigTagImpl,
   ReadQueryStrictGateRuntimeConfig
->() {}
+>()('@logixjs/core/ReadQueryStrictGateRuntimeConfig') {}
 
 export const ReadQueryStrictGateConfigTag = ReadQueryStrictGateConfigTagImpl
 
@@ -103,10 +103,10 @@ export interface ReplayModeConfig {
   readonly mode: ReplayMode
 }
 
-class ReplayModeConfigTagImpl extends Context.Tag('@logixjs/core/ReplayModeConfig')<
+class ReplayModeConfigTagImpl extends ServiceMap.Service<
   ReplayModeConfigTagImpl,
   ReplayModeConfig
->() {}
+>()('@logixjs/core/ReplayModeConfig') {}
 
 export const ReplayModeConfigTag = ReplayModeConfigTagImpl
 
@@ -188,10 +188,10 @@ export interface StateTransactionOverrides {
   readonly txnLanesOverridesByModuleId?: Readonly<Record<string, TxnLanesPatch>>
 }
 
-class StateTransactionOverridesTagImpl extends Context.Tag('@logixjs/core/StateTransactionOverrides')<
+class StateTransactionOverridesTagImpl extends ServiceMap.Service<
   StateTransactionOverridesTagImpl,
   StateTransactionOverrides
->() {}
+>()('@logixjs/core/StateTransactionOverrides') {}
 
 export const StateTransactionOverridesTag = StateTransactionOverridesTagImpl
 
@@ -221,10 +221,10 @@ export interface SchedulingPolicySurface extends SchedulingPolicySurfacePatch {
   readonly overridesByModuleId?: Readonly<Record<string, SchedulingPolicySurfacePatch>>
 }
 
-class SchedulingPolicySurfaceTagImpl extends Context.Tag('@logixjs/core/SchedulingPolicySurface')<
+class SchedulingPolicySurfaceTagImpl extends ServiceMap.Service<
   SchedulingPolicySurfaceTagImpl,
   SchedulingPolicySurface
->() {}
+>()('@logixjs/core/SchedulingPolicySurface') {}
 
 export const SchedulingPolicySurfaceTag = SchedulingPolicySurfaceTagImpl
 
@@ -237,10 +237,10 @@ export interface SchedulingPolicySurfaceOverrides extends SchedulingPolicySurfac
   readonly overridesByModuleId?: Readonly<Record<string, SchedulingPolicySurfacePatch>>
 }
 
-class SchedulingPolicySurfaceOverridesTagImpl extends Context.Tag('@logixjs/core/SchedulingPolicySurfaceOverrides')<
+class SchedulingPolicySurfaceOverridesTagImpl extends ServiceMap.Service<
   SchedulingPolicySurfaceOverridesTagImpl,
   SchedulingPolicySurfaceOverrides
->() {}
+>()('@logixjs/core/SchedulingPolicySurfaceOverrides') {}
 
 export const SchedulingPolicySurfaceOverridesTag = SchedulingPolicySurfaceOverridesTagImpl
 
@@ -260,9 +260,9 @@ export const ConcurrencyPolicyOverridesTag = SchedulingPolicySurfaceOverridesTag
 
 export interface RuntimeStoreService extends RuntimeStore {}
 
-export class RuntimeStoreTag extends Context.Tag('@logixjs/core/RuntimeStore')<RuntimeStoreTag, RuntimeStoreService>() {}
+export class RuntimeStoreTag extends ServiceMap.Service<RuntimeStoreTag, RuntimeStoreService>()('@logixjs/core/RuntimeStore') {}
 
-export const runtimeStoreLayer: Layer.Layer<any, never, never> = Layer.scoped(
+export const runtimeStoreLayer: Layer.Layer<any, never, never> = Layer.effect(
   RuntimeStoreTag,
   Effect.acquireRelease(
     Effect.sync(() => makeRuntimeStore() as RuntimeStoreService),
@@ -275,10 +275,10 @@ export const runtimeStoreTestStubLayer = (store: RuntimeStoreService): Layer.Lay
 
 export interface HostSchedulerService extends HostScheduler {}
 
-export class HostSchedulerTag extends Context.Tag('@logixjs/core/HostScheduler')<
+export class HostSchedulerTag extends ServiceMap.Service<
   HostSchedulerTag,
   HostSchedulerService
->() {}
+>()('@logixjs/core/HostScheduler') {}
 
 export const hostSchedulerLayer: Layer.Layer<any, never, never> = Layer.succeed(
   HostSchedulerTag,
@@ -290,10 +290,10 @@ export const hostSchedulerTestStubLayer = (scheduler: HostSchedulerService): Lay
 
 export interface DeclarativeLinkRuntimeService extends DeclarativeLinkRuntime {}
 
-export class DeclarativeLinkRuntimeTag extends Context.Tag('@logixjs/core/DeclarativeLinkRuntime')<
+export class DeclarativeLinkRuntimeTag extends ServiceMap.Service<
   DeclarativeLinkRuntimeTag,
   DeclarativeLinkRuntimeService
->() {}
+>()('@logixjs/core/DeclarativeLinkRuntime') {}
 
 export const declarativeLinkRuntimeLayer: Layer.Layer<any, never, never> = Layer.succeed(
   DeclarativeLinkRuntimeTag,
@@ -306,15 +306,15 @@ export const declarativeLinkRuntimeTestStubLayer = (
 
 export interface TickSchedulerService extends TickScheduler {}
 
-export class TickSchedulerTag extends Context.Tag('@logixjs/core/TickScheduler')<TickSchedulerTag, TickSchedulerService>() {}
+export class TickSchedulerTag extends ServiceMap.Service<TickSchedulerTag, TickSchedulerService>()('@logixjs/core/TickScheduler') {}
 
 export const tickSchedulerLayer = (config?: TickSchedulerConfig): Layer.Layer<any, never, never> =>
   Layer.effect(
     TickSchedulerTag,
     Effect.gen(function* () {
-      const store = yield* RuntimeStoreTag
-      const declarativeLinkRuntime = yield* DeclarativeLinkRuntimeTag
-      const hostScheduler = yield* HostSchedulerTag
+      const store = yield* Effect.service(RuntimeStoreTag).pipe(Effect.orDie)
+      const declarativeLinkRuntime = yield* Effect.service(DeclarativeLinkRuntimeTag).pipe(Effect.orDie)
+      const hostScheduler = yield* Effect.service(HostSchedulerTag).pipe(Effect.orDie)
       return makeTickScheduler({ runtimeStore: store, declarativeLinkRuntime, hostScheduler, config }) as TickSchedulerService
     }),
   ) as Layer.Layer<any, never, never>

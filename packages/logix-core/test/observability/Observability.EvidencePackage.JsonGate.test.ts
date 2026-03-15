@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
 import * as Logix from '../../src/index.js'
@@ -10,7 +10,7 @@ describe('Observability.EvidencePackage JSON hard gate', () => {
 
       const layer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 10,
-        mode: 'full',
+        diagnosticsLevel: 'full',
       })
 
       const cause: any = { bigint: 1n, fn: () => undefined }

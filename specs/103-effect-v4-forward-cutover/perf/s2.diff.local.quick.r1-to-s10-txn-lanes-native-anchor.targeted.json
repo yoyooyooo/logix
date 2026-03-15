@@ -1,0 +1,1000 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-03-06T13:47:19.818Z",
+    "from": {
+      "file": "specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.r1-late-enqueue-v5.invoke-observation.txn-lanes.targeted.json",
+      "commit": "2cadb7881d8e3d5014ee8e892f57bc1aafcdee6a"
+    },
+    "to": {
+      "file": "specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.s10-txn-lanes-native-anchor.recheck.targeted.json",
+      "commit": "493e61b203f60b2602dbccd46f06d98fa68db438"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.before=true",
+        "git.dirty.after=true",
+        "git.branch: before=agent/r1-txn-lanes-late-enqueue-v5 after=agent/s10-txn-lanes-native-anchor",
+        "git.commit: before=2cadb7881d8e3d5014ee8e892f57bc1aafcdee6a after=493e61b203f60b2602dbccd46f06d98fa68db438"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 2,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "txnLanes.urgentBacklog",
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "urgent.p95<=50ms",
+            "type": "absolute",
+            "metric": "e2e.urgentToStableMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "mode": "default"
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 2000,
+          "message": "[category=e2e] urgent.p95<=50ms {mode=default}: before=null after=2000 (before:budgetExceeded)"
+        },
+        {
+          "budget": {
+            "id": "urgent.p95<=50ms",
+            "type": "absolute",
+            "metric": "e2e.urgentToStableMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "mode": "off"
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 2000,
+          "message": "[category=e2e] urgent.p95<=50ms {mode=off}: before=null after=2000 (before:budgetExceeded)"
+        }
+      ],
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=0 ok=2 unavailable=0 missing=0] after[value=0 ok=2 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=6 unavailable=0 missing=0] after[value=core ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnLanes.backlogAnchor",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 6
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "nativeCapture"
+          },
+          "message": "txnLanes.backlogAnchor(points) unit=count: before[value=undefined ok=0 unavailable=0 missing=6] after[value=nativeCapture ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnLanes.budgetMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1
+          },
+          "message": "txnLanes.budgetMs(points) unit=count: before[value=1 ok=6 unavailable=0 missing=0] after[value=1 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnLanes.domStableWait",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 6
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "mutationObserver"
+          },
+          "message": "txnLanes.domStableWait(points) unit=count: before[value=undefined ok=0 unavailable=0 missing=6] after[value=mutationObserver ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnLanes.maxLagMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 50
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 50
+          },
+          "message": "txnLanes.maxLagMs(points) unit=count: before[value=50 ok=6 unavailable=0 missing=0] after[value=50 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnLanes.mode",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "off"
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "off"
+          },
+          "message": "txnLanes.mode(points) unit=count: before[value=off ok=6 unavailable=0 missing=0] after[value=off ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnLanes.urgentAnchor",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 6
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "nativeCapture"
+          },
+          "message": "txnLanes.urgentAnchor(points) unit=count: before[value=undefined ok=0 unavailable=0 missing=6] after[value=nativeCapture ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnLanes.yieldStrategy",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "baseline"
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "baseline"
+          },
+          "message": "txnLanes.yieldStrategy(points) unit=ratio: before[value=baseline ok=6 unavailable=0 missing=0] after[value=baseline ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnQueue.backlog.firstNonUrgent.enqueueDelayFromInvokeMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 3,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 0.699999988079071
+          },
+          "after": {
+            "ok": 3,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 0.699999988079071
+          },
+          "message": "txnQueue.backlog.firstNonUrgent.enqueueDelayFromInvokeMs(points) unit=count: before[value=0.699999988079071 ok=3 unavailable=3 missing=0] after[value=0.699999988079071 ok=3 unavailable=3 missing=0]"
+        },
+        {
+          "name": "txnQueue.backlog.firstNonUrgent.enqueueDelayFromNativeCaptureMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 6
+          },
+          "after": {
+            "ok": 3,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 0.7000000178813934
+          },
+          "message": "txnQueue.backlog.firstNonUrgent.enqueueDelayFromNativeCaptureMs(points) unit=count: before[value=undefined ok=0 unavailable=0 missing=6] after[value=0.7000000178813934 ok=3 unavailable=3 missing=0]"
+        },
+        {
+          "name": "txnQueue.backlog.firstNonUrgent.enqueueOffsetFromBacklogMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 3,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 29.80000001192093
+          },
+          "after": {
+            "ok": 3,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 37
+          },
+          "message": "txnQueue.backlog.firstNonUrgent.enqueueOffsetFromBacklogMs(points) unit=count: before[value=29.80000001192093 ok=3 unavailable=3 missing=0] after[value=37 ok=3 unavailable=3 missing=0]"
+        },
+        {
+          "name": "txnQueue.backlog.firstNonUrgent.invokeDelayFromNativeBubbleMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 6
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "txnQueue.backlog.firstNonUrgent.invokeDelayFromNativeBubbleMs(points) unit=count: before[value=undefined ok=0 unavailable=0 missing=6] after[value=0 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnQueue.backlog.firstNonUrgent.invokeDelayFromNativeCaptureMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 6
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "txnQueue.backlog.firstNonUrgent.invokeDelayFromNativeCaptureMs(points) unit=count: before[value=undefined ok=0 unavailable=0 missing=6] after[value=0 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnQueue.backlog.firstNonUrgent.invokeOffsetFromBacklogMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 30.099999994039536
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 29.5
+          },
+          "message": "txnQueue.backlog.firstNonUrgent.invokeOffsetFromBacklogMs(points) unit=count: before[value=30.099999994039536 ok=6 unavailable=0 missing=0] after[value=29.5 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnQueue.backlog.firstNonUrgent.nativeBubbleOffsetFromBacklogMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 6
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 29.5
+          },
+          "message": "txnQueue.backlog.firstNonUrgent.nativeBubbleOffsetFromBacklogMs(points) unit=count: before[value=undefined ok=0 unavailable=0 missing=6] after[value=29.5 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnQueue.backlog.firstNonUrgent.nativeCaptureOffsetFromBacklogMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 6
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 29.5
+          },
+          "message": "txnQueue.backlog.firstNonUrgent.nativeCaptureOffsetFromBacklogMs(points) unit=count: before[value=undefined ok=0 unavailable=0 missing=6] after[value=29.5 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnQueue.backlog.firstNonUrgent.queueWaitMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 3,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 3,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "txnQueue.backlog.firstNonUrgent.queueWaitMs(points) unit=count: before[value=0 ok=3 unavailable=3 missing=0] after[value=0 ok=3 unavailable=3 missing=0]"
+        },
+        {
+          "name": "txnQueue.backlog.firstNonUrgent.startDelayFromBacklogMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 3,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 29.80000001192093
+          },
+          "after": {
+            "ok": 3,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 37
+          },
+          "message": "txnQueue.backlog.firstNonUrgent.startDelayFromBacklogMs(points) unit=count: before[value=29.80000001192093 ok=3 unavailable=3 missing=0] after[value=37 ok=3 unavailable=3 missing=0]"
+        },
+        {
+          "name": "txnQueue.backlog.firstNonUrgent.startDelayFromInvokeMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 3,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 0.699999988079071
+          },
+          "after": {
+            "ok": 3,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 0.699999988079071
+          },
+          "message": "txnQueue.backlog.firstNonUrgent.startDelayFromInvokeMs(points) unit=count: before[value=0.699999988079071 ok=3 unavailable=3 missing=0] after[value=0.699999988079071 ok=3 unavailable=3 missing=0]"
+        },
+        {
+          "name": "txnQueue.backlog.firstNonUrgent.startDelayFromNativeCaptureMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 6
+          },
+          "after": {
+            "ok": 3,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 0.7000000178813934
+          },
+          "message": "txnQueue.backlog.firstNonUrgent.startDelayFromNativeCaptureMs(points) unit=count: before[value=undefined ok=0 unavailable=0 missing=6] after[value=0.7000000178813934 ok=3 unavailable=3 missing=0]"
+        },
+        {
+          "name": "txnQueue.backlog.firstNonUrgent.startOffsetFromBacklogMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 3,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 29.80000001192093
+          },
+          "after": {
+            "ok": 3,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 37
+          },
+          "message": "txnQueue.backlog.firstNonUrgent.startOffsetFromBacklogMs(points) unit=count: before[value=29.80000001192093 ok=3 unavailable=3 missing=0] after[value=37 ok=3 unavailable=3 missing=0]"
+        },
+        {
+          "name": "txnQueue.urgent.enqueueDelayFromNativeCaptureMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 6
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "txnQueue.urgent.enqueueDelayFromNativeCaptureMs(points) unit=count: before[value=undefined ok=0 unavailable=0 missing=6] after[value=0 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnQueue.urgent.enqueueDelayFromScheduleMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 9.700000017881393
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 9.900000005960464
+          },
+          "message": "txnQueue.urgent.enqueueDelayFromScheduleMs(points) unit=count: before[value=9.700000017881393 ok=6 unavailable=0 missing=0] after[value=9.900000005960464 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnQueue.urgent.enqueueOffsetFromBacklogMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 53.10000002384186
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 50.5
+          },
+          "message": "txnQueue.urgent.enqueueOffsetFromBacklogMs(points) unit=count: before[value=53.10000002384186 ok=6 unavailable=0 missing=0] after[value=50.5 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnQueue.urgent.enqueueVsFirstNonUrgentStartMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 3,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 41.099999994039536
+          },
+          "after": {
+            "ok": 3,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 50.5
+          },
+          "message": "txnQueue.urgent.enqueueVsFirstNonUrgentStartMs(points) unit=count: before[value=41.099999994039536 ok=3 unavailable=3 missing=0] after[value=50.5 ok=3 unavailable=3 missing=0]"
+        },
+        {
+          "name": "txnQueue.urgent.invokeDelayFromNativeBubbleMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 6
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "txnQueue.urgent.invokeDelayFromNativeBubbleMs(points) unit=count: before[value=undefined ok=0 unavailable=0 missing=6] after[value=0 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnQueue.urgent.invokeDelayFromNativeCaptureMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 6
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "txnQueue.urgent.invokeDelayFromNativeCaptureMs(points) unit=count: before[value=undefined ok=0 unavailable=0 missing=6] after[value=0 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnQueue.urgent.invokeDelayFromScheduleMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 28.100000023841858
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 27.5
+          },
+          "message": "txnQueue.urgent.invokeDelayFromScheduleMs(points) unit=count: before[value=28.100000023841858 ok=6 unavailable=0 missing=0] after[value=27.5 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnQueue.urgent.invokeVsFirstNonUrgentStartMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 3,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 41.099999994039536
+          },
+          "after": {
+            "ok": 3,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 50.39999997615814
+          },
+          "message": "txnQueue.urgent.invokeVsFirstNonUrgentStartMs(points) unit=count: before[value=41.099999994039536 ok=3 unavailable=3 missing=0] after[value=50.39999997615814 ok=3 unavailable=3 missing=0]"
+        },
+        {
+          "name": "txnQueue.urgent.nativeBubbleDelayFromScheduleMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 6
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 27.5
+          },
+          "message": "txnQueue.urgent.nativeBubbleDelayFromScheduleMs(points) unit=count: before[value=undefined ok=0 unavailable=0 missing=6] after[value=27.5 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnQueue.urgent.nativeBubbleVsFirstNonUrgentStartMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 6
+          },
+          "after": {
+            "ok": 3,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 50.39999997615814
+          },
+          "message": "txnQueue.urgent.nativeBubbleVsFirstNonUrgentStartMs(points) unit=count: before[value=undefined ok=0 unavailable=0 missing=6] after[value=50.39999997615814 ok=3 unavailable=3 missing=0]"
+        },
+        {
+          "name": "txnQueue.urgent.nativeCaptureDelayFromScheduleMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 6
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 27.5
+          },
+          "message": "txnQueue.urgent.nativeCaptureDelayFromScheduleMs(points) unit=count: before[value=undefined ok=0 unavailable=0 missing=6] after[value=27.5 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnQueue.urgent.nativeCaptureVsFirstNonUrgentStartMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 6
+          },
+          "after": {
+            "ok": 3,
+            "unavailable": 3,
+            "missing": 0,
+            "value": 50.39999997615814
+          },
+          "message": "txnQueue.urgent.nativeCaptureVsFirstNonUrgentStartMs(points) unit=count: before[value=undefined ok=0 unavailable=0 missing=6] after[value=50.39999997615814 ok=3 unavailable=3 missing=0]"
+        },
+        {
+          "name": "txnQueue.urgent.startDelayFromNativeCaptureMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 0,
+            "unavailable": 0,
+            "missing": 6
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "txnQueue.urgent.startDelayFromNativeCaptureMs(points) unit=count: before[value=undefined ok=0 unavailable=0 missing=6] after[value=0 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnQueue.urgent.startDelayFromScheduleMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 9.700000017881393
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 9.900000005960464
+          },
+          "message": "txnQueue.urgent.startDelayFromScheduleMs(points) unit=count: before[value=9.700000017881393 ok=6 unavailable=0 missing=0] after[value=9.900000005960464 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnQueue.urgent.startMode.directHandoff",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1
+          },
+          "message": "txnQueue.urgent.startMode.directHandoff(points) unit=count: before[value=1 ok=6 unavailable=0 missing=0] after[value=1 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnQueue.urgent.startOffsetFromBacklogMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 53.10000002384186
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 50.5
+          },
+          "message": "txnQueue.urgent.startOffsetFromBacklogMs(points) unit=count: before[value=53.10000002384186 ok=6 unavailable=0 missing=0] after[value=50.5 ok=6 unavailable=0 missing=0]"
+        }
+      ],
+      "metricDeltas": [
+        {
+          "metric": "e2e.urgentToStableMs",
+          "unit": "ms",
+          "compared": 6,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [],
+          "topImprovements": [
+            {
+              "params": {
+                "steps": 800,
+                "mode": "off"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 45.80000001192093,
+                "p95Ms": 67.10000002384186
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 0.7999999821186066,
+                "p95Ms": 1.2000000178813934
+              },
+              "deltaMs": {
+                "medianMs": -45.00000002980232,
+                "p95Ms": -65.90000000596046
+              },
+              "ratio": {
+                "median": 0.01746724851332709,
+                "p95": 0.01788375584880792
+              }
+            },
+            {
+              "params": {
+                "steps": 2000,
+                "mode": "off"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 50.29999998211861,
+                "p95Ms": 64.80000001192093
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 0.9000000059604645,
+                "p95Ms": 1.2000000178813934
+              },
+              "deltaMs": {
+                "medianMs": -49.39999997615814,
+                "p95Ms": -63.599999994039536
+              },
+              "ratio": {
+                "median": 0.01789264426004791,
+                "p95": 0.018518518791059188
+              }
+            },
+            {
+              "params": {
+                "steps": 200,
+                "mode": "off"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 37.60000002384186,
+                "p95Ms": 55.80000001192093
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 0.699999988079071,
+                "p95Ms": 1
+              },
+              "deltaMs": {
+                "medianMs": -36.90000003576279,
+                "p95Ms": -54.80000001192093
+              },
+              "ratio": {
+                "median": 0.01861702094774486,
+                "p95": 0.017921146949576403
+              }
+            },
+            {
+              "params": {
+                "steps": 200,
+                "mode": "default"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 39.69999998807907,
+                "p95Ms": 54.20000001788139
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 1.199999988079071,
+                "p95Ms": 1.300000011920929
+              },
+              "deltaMs": {
+                "medianMs": -38.5,
+                "p95Ms": -52.900000005960464
+              },
+              "ratio": {
+                "median": 0.03022669996069021,
+                "p95": 0.023985240064428773
+              }
+            },
+            {
+              "params": {
+                "steps": 2000,
+                "mode": "default"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 44.20000001788139,
+                "p95Ms": 53.599999994039536
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 1.0999999940395355,
+                "p95Ms": 1.300000011920929
+              },
+              "deltaMs": {
+                "medianMs": -43.10000002384186,
+                "p95Ms": -52.29999998211861
+              },
+              "ratio": {
+                "median": 0.024886877683134016,
+                "p95": 0.024253731568386054
+              }
+            }
+          ]
+        },
+        {
+          "metric": "runtime.backlogCatchUpMs",
+          "unit": "ms",
+          "compared": 6,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [],
+          "topImprovements": [
+            {
+              "params": {
+                "steps": 2000,
+                "mode": "off"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 90.5,
+                "p95Ms": 122.2000000178814
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 22.799999982118607,
+                "p95Ms": 25.099999994039536
+              },
+              "deltaMs": {
+                "medianMs": -67.7000000178814,
+                "p95Ms": -97.10000002384186
+              },
+              "ratio": {
+                "median": 0.2519337014598741,
+                "p95": 0.20540098191789427
+              }
+            },
+            {
+              "params": {
+                "steps": 800,
+                "mode": "default"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 84.09999999403954,
+                "p95Ms": 103.40000000596046
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 5.4000000059604645,
+                "p95Ms": 6.800000011920929
+              },
+              "deltaMs": {
+                "medianMs": -78.69999998807907,
+                "p95Ms": -96.59999999403954
+              },
+              "ratio": {
+                "median": 0.0642092747484326,
+                "p95": 0.06576402332233022
+              }
+            },
+            {
+              "params": {
+                "steps": 200,
+                "mode": "default"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 89.39999997615814,
+                "p95Ms": 103.90000000596046
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 6.199999988079071,
+                "p95Ms": 7.9000000059604645
+              },
+              "deltaMs": {
+                "medianMs": -83.19999998807907,
+                "p95Ms": -96
+              },
+              "ratio": {
+                "median": 0.0693512303102073,
+                "p95": 0.07603464875367914
+              }
+            },
+            {
+              "params": {
+                "steps": 800,
+                "mode": "off"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 92,
+                "p95Ms": 110.10000002384186
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 20.5,
+                "p95Ms": 24.30000001192093
+              },
+              "deltaMs": {
+                "medianMs": -71.5,
+                "p95Ms": -85.80000001192093
+              },
+              "ratio": {
+                "median": 0.22282608695652173,
+                "p95": 0.22070844692696484
+              }
+            },
+            {
+              "params": {
+                "steps": 2000,
+                "mode": "default"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 90.5,
+                "p95Ms": 97.7000000178814
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 12.400000005960464,
+                "p95Ms": 14.800000011920929
+              },
+              "deltaMs": {
+                "medianMs": -78.09999999403954,
+                "p95Ms": -82.90000000596046
+              },
+              "ratio": {
+                "median": 0.13701657465149686,
+                "p95": 0.15148413520176235
+              }
+            }
+          ]
+        }
+      ],
+      "notes": "stabilityWarning: metric=e2e.urgentToStableMs {mode=default&steps=200} baselineP95=54.20ms afterP95=1.30ms diff=52.90ms limit=5.42ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    }
+  ]
+}

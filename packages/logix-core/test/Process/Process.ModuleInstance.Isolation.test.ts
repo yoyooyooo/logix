@@ -1,6 +1,7 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Context, Effect, Exit, Layer, Scope, Schema, Stream, TestClock } from 'effect'
+import { Effect, Exit, Layer, Scope, Schema, Stream, ServiceMap } from 'effect'
+import { TestClock } from 'effect/testing'
 import * as Logix from '../../src/index.js'
 import * as ProcessRuntime from '../../src/internal/runtime/core/process/ProcessRuntime.js'
 
@@ -22,19 +23,18 @@ const TargetModule = Logix.Module.make('ProcessModuleInstanceTarget', {
 
 const SourceLogic = SourceModule.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction('increment').run({ effect: () => $.state.update((s) => ({ ...s, count: s.count + 1 })) })
+    yield* $.onAction('increment').run(() => $.state.update((s) => ({ ...s, count: s.count + 1 })))
   }),
 )
 
 const TargetLogic = TargetModule.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction('log').run({
-      effect: (action: any) =>
-        $.state.update((s) => ({
-          ...s,
-          logs: [...s.logs, action.payload],
-        })),
-    })
+    yield* $.onAction('log').run((action) =>
+      $.state.update((s) => ({
+        ...s,
+        logs: [...s.logs, action.payload],
+      })),
+    )
   }),
 )
 
@@ -61,38 +61,37 @@ const InstanceProcess = Logix.Process.link(
 )
 
 describe('process: moduleInstance isolation', () => {
-  it.scoped('should not cross between instance scopes', () =>
+  it.effect('should not cross between instance scopes', () =>
     Effect.gen(function* () {
-      const TargetImpl = TargetModule.implement({
-        initial: { logs: [] },
-        logics: [TargetLogic],
-      })
+      const makeLayer = () => {
+        const targetImpl = TargetModule.implement({
+          initial: { logs: [] },
+          logics: [TargetLogic],
+        })
 
-      const SourceImpl = SourceModule.implement({
-        initial: { count: 0 },
-        logics: [SourceLogic],
-        imports: [TargetImpl.impl],
-        processes: [InstanceProcess],
-      })
+        const sourceImpl = SourceModule.implement({
+          initial: { count: 0 },
+          logics: [SourceLogic],
+          imports: [targetImpl.impl],
+          processes: [InstanceProcess],
+        })
 
-      const layer = Layer.provideMerge(ProcessRuntime.layer())(SourceImpl.impl.layer)
+        return Layer.provideMerge(ProcessRuntime.layer())(sourceImpl.impl.layer)
+      }
 
       const scopeA = yield* Scope.make()
       const scopeB = yield* Scope.make()
 
       try {
-        const envA = yield* Layer.buildWithScope(layer, scopeA)
-        const envB = yield* Layer.buildWithScope(layer, scopeB)
+        const envA = yield* Layer.buildWithScope(makeLayer(), scopeA)
+        const envB = yield* Layer.buildWithScope(makeLayer(), scopeB)
 
-        const sourceA = Context.get(envA, SourceModule.tag)
-        const targetA = Context.get(envA, TargetModule.tag)
-        const sourceB = Context.get(envB, SourceModule.tag)
-        const targetB = Context.get(envB, TargetModule.tag)
+        const sourceA = ServiceMap.get(envA, SourceModule.tag)
+        const targetA = ServiceMap.get(envA, TargetModule.tag)
+        const sourceB = ServiceMap.get(envB, SourceModule.tag)
+        const targetB = ServiceMap.get(envB, TargetModule.tag)
 
-        const processRuntimeA = Context.get(
-          envA as Context.Context<any>,
-          ProcessRuntime.ProcessRuntimeTag as any,
-        ) as ProcessRuntime.ProcessRuntime
+        const processRuntimeA = ServiceMap.get(envA as any, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
 
         const events0 = yield* processRuntimeA.getEventsSnapshot()
         const error0 = events0.find((e) => e.type === 'process:error')
@@ -108,13 +107,13 @@ describe('process: moduleInstance isolation', () => {
           )
         }
 
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
         yield* TestClock.adjust('30 millis')
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
         yield* sourceA.dispatch({ _tag: 'increment', payload: undefined } as any)
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
         yield* TestClock.adjust('80 millis')
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
 
         expect(yield* sourceA.getState).toEqual({ count: 1 })
         expect((yield* targetA.getState).logs).toEqual(['Source incremented'])
@@ -122,9 +121,9 @@ describe('process: moduleInstance isolation', () => {
         expect((yield* targetB.getState).logs).toEqual([])
 
         yield* sourceB.dispatch({ _tag: 'increment', payload: undefined } as any)
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
         yield* TestClock.adjust('80 millis')
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
 
         expect(yield* sourceA.getState).toEqual({ count: 1 })
         expect((yield* targetA.getState).logs).toEqual(['Source incremented'])

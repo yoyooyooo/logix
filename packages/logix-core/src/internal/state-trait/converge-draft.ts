@@ -91,13 +91,20 @@ export class CowDraft<S extends object> {
 }
 
 export class ShallowInPlaceDraft<S extends object> {
-  private readonly root: S
+  private root: S
   private readonly keys: Array<string> = []
   private readonly prev: Array<unknown> = []
   private readonly had: Array<boolean> = []
 
   constructor(base: S) {
     this.root = base
+  }
+
+  reset(base: S): void {
+    this.root = base
+    this.keys.length = 0
+    this.prev.length = 0
+    this.had.length = 0
   }
 
   getRoot(): S {
@@ -124,6 +131,12 @@ export class ShallowInPlaceDraft<S extends object> {
     root[key] = value
   }
 
+  commit(): void {
+    this.keys.length = 0
+    this.prev.length = 0
+    this.had.length = 0
+  }
+
   rollback(): void {
     const root: any = this.root
     for (let i = this.keys.length - 1; i >= 0; i--) {
@@ -139,4 +152,3 @@ export class ShallowInPlaceDraft<S extends object> {
     this.had.length = 0
   }
 }
-

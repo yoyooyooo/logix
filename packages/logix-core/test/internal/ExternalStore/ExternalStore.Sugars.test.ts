@@ -1,6 +1,6 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Context, Effect, Stream, SubscriptionRef } from 'effect'
+import { Effect, ServiceMap, Stream, SubscriptionRef } from 'effect'
 import * as Logix from '../../../src/index.js'
 import * as ModuleRuntime from '../../../src/internal/runtime/ModuleRuntime.js'
 import { getExternalStoreDescriptor } from '../../../src/internal/external-store-descriptor.js'
@@ -9,7 +9,7 @@ import { flushAllHostScheduler, makeTestHostScheduler } from '../testkit/hostSch
 
 describe('ExternalStore sugars', () => {
   it('fromService: accepts Tag.key fallback and builds stable descriptor', () => {
-    const KeyOnlyTag = { key: 'ExternalStoreSugars.KeyOnlyTag' } as any as Context.Tag<any, any>
+    const KeyOnlyTag = { key: 'ExternalStoreSugars.KeyOnlyTag' } as any as ServiceMap.Key<any, any>
 
     const s1 = Logix.ExternalStore.fromService(KeyOnlyTag, () => ({
       getSnapshot: () => 1,
@@ -40,7 +40,7 @@ describe('ExternalStore sugars', () => {
   })
 
   it('fromService: prefers Tag.id when present', () => {
-    const IdAndKeyTag = { id: 'ExternalStoreSugars.TagId', key: 'ExternalStoreSugars.TagKey' } as any as Context.Tag<any, any>
+    const IdAndKeyTag = { id: 'ExternalStoreSugars.TagId', key: 'ExternalStoreSugars.TagKey' } as any as ServiceMap.Key<any, any>
 
     const store = Logix.ExternalStore.fromService(IdAndKeyTag, () => ({
       getSnapshot: () => 1,
@@ -97,7 +97,7 @@ describe('ExternalStore sugars', () => {
     }),
   )
 
-  it.scoped('fromSubscriptionRef: runtime.ref() root view keeps stable storeId across calls', () =>
+  it.effect('fromSubscriptionRef: runtime.ref() root view keeps stable storeId across calls', () =>
     Effect.gen(function* () {
       const runtime = yield* ModuleRuntime.make({ count: 0 })
 

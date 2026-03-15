@@ -1,10 +1,10 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Deferred, Effect, Fiber, Layer, Schema } from 'effect'
 import * as Logix from '../../../src/index.js'
 
 describe('ModuleRuntime destroy LIFO', () => {
-  it.scoped('should run destroy tasks in LIFO order on normal completion', () =>
+  it.effect('should run destroy tasks in LIFO order on normal completion', () =>
     Effect.gen(function* () {
       const calls: Array<string> = []
 
@@ -37,7 +37,7 @@ describe('ModuleRuntime destroy LIFO', () => {
 
       yield* Effect.scoped(
         Effect.gen(function* () {
-          yield* TestModule.tag
+          yield* Effect.service(TestModule.tag).pipe(Effect.orDie)
         }).pipe(Effect.provide(layer)),
       )
 
@@ -45,7 +45,7 @@ describe('ModuleRuntime destroy LIFO', () => {
     }),
   )
 
-  it.scoped('should run destroy tasks exactly once on failure', () =>
+  it.effect('should run destroy tasks exactly once on failure', () =>
     Effect.gen(function* () {
       const calls: Array<string> = []
 
@@ -79,7 +79,7 @@ describe('ModuleRuntime destroy LIFO', () => {
       const exit = yield* Effect.exit(
         Effect.scoped(
           Effect.gen(function* () {
-            yield* TestModule.tag
+            yield* Effect.service(TestModule.tag).pipe(Effect.orDie)
             return yield* Effect.fail('boom')
           }).pipe(Effect.provide(layer)),
         ),
@@ -90,7 +90,7 @@ describe('ModuleRuntime destroy LIFO', () => {
     }),
   )
 
-  it.scoped('should run destroy tasks exactly once on interrupt', () =>
+  it.effect('should run destroy tasks exactly once on interrupt', () =>
     Effect.gen(function* () {
       const calls: Array<string> = []
       const acquired = yield* Deferred.make<void>()
@@ -124,13 +124,13 @@ describe('ModuleRuntime destroy LIFO', () => {
 
       const program = Effect.scoped(
         Effect.gen(function* () {
-          yield* TestModule.tag
+          yield* Effect.service(TestModule.tag).pipe(Effect.orDie)
           yield* Deferred.succeed(acquired, undefined)
           yield* Effect.never
         }).pipe(Effect.provide(layer)),
       )
 
-      const fiber = yield* Effect.fork(program)
+      const fiber = yield* Effect.forkChild(program)
       yield* Deferred.await(acquired)
       yield* Fiber.interrupt(fiber)
 

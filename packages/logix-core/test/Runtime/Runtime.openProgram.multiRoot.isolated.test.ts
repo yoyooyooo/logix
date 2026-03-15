@@ -4,7 +4,7 @@ import { Effect, Exit, Layer, Scope, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('Runtime.openProgram multi-root isolation (US1)', () => {
-  it.scoped('multiple roots are isolated and $.use does not fallback to process-global registry', () =>
+  it.effect('multiple roots are isolated and $.use does not fallback to process-global registry', () =>
     Effect.gen(function* () {
       const Shared = Logix.Module.make('Runtime.openProgram.multiRoot.Shared', {
         state: Schema.Struct({ value: Schema.Number }),
@@ -44,14 +44,18 @@ describe('Runtime.openProgram multi-root isolation (US1)', () => {
       const scope = yield* Scope.make()
 
       const [ctxA, ctxB] = yield* Effect.all([
-        Logix.Runtime.openProgram(RootAImpl, {
-          layer: Layer.empty as Layer.Layer<any, never, never>,
-          handleSignals: false,
-        }).pipe(Scope.extend(scope)),
-        Logix.Runtime.openProgram(RootBImpl, {
-          layer: Layer.empty as Layer.Layer<any, never, never>,
-          handleSignals: false,
-        }).pipe(Scope.extend(scope)),
+        Scope.provide(scope)(
+          Logix.Runtime.openProgram(RootAImpl, {
+            layer: Layer.empty as Layer.Layer<any, never, never>,
+            handleSignals: false,
+          }),
+        ),
+        Scope.provide(scope)(
+          Logix.Runtime.openProgram(RootBImpl, {
+            layer: Layer.empty as Layer.Layer<any, never, never>,
+            handleSignals: false,
+          }),
+        ),
       ])
 
       const aSharedValue = yield* Effect.promise(() =>
@@ -93,7 +97,8 @@ describe('Runtime.openProgram multi-root isolation (US1)', () => {
         expect(pretty).toContain('mode: strict')
       }
 
-      yield* Scope.close(scope, Exit.void)
+      yield* Effect.promise(() => ctxA.runtime.dispose())
+      yield* Effect.promise(() => ctxB.runtime.dispose())
     }),
   )
 })

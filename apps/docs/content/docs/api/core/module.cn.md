@@ -7,7 +7,7 @@ description: Module 定义与实现的 API 参考。
 
 > **业务开发者提示**：
 >
-> - 日常编码只需记住：`Logix.Module.make` 生成 `ModuleDef` → `ModuleDef.logic(($)=>...)` 写逻辑 → `ModuleDef.build({ initial, logics, ... })` 得到 program module（运行时通过 `createInstance()` 实例化），或直接用 `ModuleDef.layer({ ... })` 走 Layer-first；
+> - 日常编码只需记住：`Logix.Module.make` 生成 `ModuleDef` → `ModuleDef.logic(($)=>...)` 写逻辑 → `ModuleDef.implement({ initial, logics, ... })` 得到 program module（wrap module，含 `.impl`）；
 > - 完整签名与高级用法（如 `imports` / `processes`）主要面向架构师与库作者。
 
 ## 1. Module Definition
@@ -113,54 +113,31 @@ export const CounterLogic = CounterDef.logic(($) =>
 - 需要对方的 `ModuleRuntime`（escape hatch）时，用 `yield* OtherModule.tag`
 - 需要固定 root provider 单例时，用 `yield* Logix.Root.resolve(OtherModule.tag)`
 
-## 3. Module 实例化（推荐）
+## 3. Module Implementation
 
-使用 `ModuleDef.build` 将模块定义与具体的初始状态和逻辑绑定，得到可运行的 program module。需要底层蓝图时，再通过 `createInstance()` 取出 `ModuleImpl`。  
-如果你在做 Effect Layer 组合，也可以直接使用 `ModuleDef.layer(config)`（语义等价于 `build(...).createInstance().layer`）。
+使用 `ModuleDef.implement` 将模块定义与具体的初始状态和逻辑绑定，生成可运行的 program module（wrap module，含 `.impl`；其中 `.impl` 是底层 `ModuleImpl` 蓝图）。
 
 ```ts
-export const CounterModule = CounterDef.build({
+export const CounterModule = CounterDef.implement({
   initial: { count: 0, isLoading: false },
   logics: [CounterLogic],
 })
 
-export const CounterImpl = CounterModule.createInstance()
-
-export const CounterLayer = CounterDef.layer({
-  initial: { count: 0, isLoading: false },
-  logics: [CounterLogic],
-})
+export const CounterImpl = CounterModule.impl
 ```
 
 ### API
 
-#### `ModuleDef.build(config)`
+#### `ModuleDef.implement(config)`
 
-- **`config`**: `ModuleInstanceConfig`
+- **`config`**: `ModuleImplConfig`
   - **`initial`**: `State` - 模块的初始状态。
   - **`logics`**: `Array<Logic>` - 要挂载的逻辑列表。
-  - **`imports`**: `Array<Layer | ModuleImpl>` - (可选) 静态注入依赖与子模块蓝图。
-  - **`processes`**: `Array<Effect>` - (可选) 要挂载的长驻流程。
-  - **`stateTransaction`**: `ModuleImplementStateTransactionOptions` - (可选) 状态事务配置。
-
-#### `ModuleDef.layer(config)`
-
-- **Type**: `Layer<ModuleRuntime, never, REnv>`
-- **Description**: Layer-first 入口，语义等价于 `ModuleDef.build(config).createInstance().layer`。
-- **推荐场景**: 需要直接与 `Layer.mergeAll / Layer.provide` 做组合时。
-
-#### `ModuleDef.createInstance(config)` / `Module.createInstance()`
-
-- 前者一步返回 `ModuleImpl`，后者从已 build 的 module 生成 `ModuleImpl`。
-
-#### Legacy 兼容口（不推荐）
-
-- `ModuleDef.implement(config)` 与 `module.impl` 仅保留迁移兼容。
-- 命中 legacy 路径会发射 `module_instantiation::legacy_entry` 诊断，并携带 `source`/`hint`。
+  - **`imports`**: `Array<Layer>` - (可选) 静态注入的依赖层。
 
 ## 4. Module Runtime
 
-模块对象本身只是静态定义。要在 React 或其他环境中使用，可将其转换为 `ModuleImpl` 后交给 Runtime，或直接走 Layer-first；推荐通过 `createInstance()` / `layer(config)` 完成，不再以 `.impl` 作为主入口。
+模块对象（以及其 `.impl`）本身只是静态定义。要在 React 或其他环境中使用，需要将其实例化为 `ModuleRuntime`。
 
 在 React 中，通常通过 `useModule` 自动处理：
 
@@ -171,7 +148,7 @@ const counter = useModule(CounterDef)
 在纯 TS 环境中（先用 `Logix.Runtime.make` 构造运行环境）：
 
 ```ts
-const runtime = Logix.Runtime.make(CounterModule.createInstance(), { layer: Layer.empty })
+const runtime = Logix.Runtime.make(CounterModule, { layer: Layer.empty })
 
 const program = Effect.gen(function* () {
   const counter = yield* CounterDef.tag
@@ -183,12 +160,12 @@ void runtime.runPromise(program)
 
 ### API
 
-#### `module.createInstance().layer`
+#### `module.impl.layer`
 
 - **Type**: `Layer<ModuleRuntime, never, REnv>`
 - **Description**: 一个 Effect Layer，用于构建模块运行时。
 
-#### `module.createInstance().withLayer(layer)` / `module.withLayer(layer)`
+#### `module.impl.withLayer(layer)` / `module.withLayer(layer)`
 
 ### See Also
 

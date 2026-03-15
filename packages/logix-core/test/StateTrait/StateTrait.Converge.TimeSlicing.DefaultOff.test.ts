@@ -33,7 +33,7 @@ describe('StateTrait converge time-slicing default off (043)', () => {
     logics: [],
   })
 
-  it.scoped('does not change behavior when time-slicing is disabled', () =>
+  it.effect('does not change behavior when time-slicing is disabled', () =>
     Effect.gen(function* () {
       const runtime = Logix.Runtime.make(impl, {
         stateTransaction: {
@@ -47,7 +47,7 @@ describe('StateTrait converge time-slicing default off (043)', () => {
       yield* Effect.promise(() =>
         runtime.runPromise(
           Effect.gen(function* () {
-            const rt: any = yield* M.tag
+            const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
             yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 't1' }, () =>
               Effect.gen(function* () {

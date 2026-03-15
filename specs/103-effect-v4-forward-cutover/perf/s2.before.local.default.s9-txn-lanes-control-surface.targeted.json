@@ -1,0 +1,1713 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-03-06T13:27:44.470Z",
+    "generator": ".codex/skills/logix-perf-evidence/scripts/collect.ts",
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "matrixUpdatedAt": "2026-01-19",
+    "matrixHash": "7657ccb18acf5943c132c0a42e2ffffb6f02d276791c45dfa6325b66b4c90fc2",
+    "git": {
+      "branch": "agent/s9-txn-lanes-control-surface",
+      "commit": "14602ff414fb1759fe1c05b4542d029db7083c05",
+      "dirty": false
+    },
+    "config": {
+      "runs": 30,
+      "warmupDiscard": 5,
+      "timeoutMs": 20000,
+      "headless": true,
+      "profile": "default",
+      "stability": {
+        "maxP95DeltaRatio": 0.1,
+        "maxP95DeltaMs": 5
+      }
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M4 Pro",
+      "memoryGb": 24,
+      "node": "v22.19.0",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "chromium",
+        "headless": true,
+        "version": "143.0.7499.4"
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "txnLanes.urgentBacklog",
+      "title": "txn lanes: urgent interaction under non-urgent backlog (mode matrix)",
+      "priority": "P1",
+      "primaryAxis": "steps",
+      "budgets": [
+        {
+          "id": "urgent.p95<=50ms",
+          "type": "absolute",
+          "metric": "e2e.urgentToStableMs",
+          "p95Ms": 50
+        },
+        {
+          "id": "urgent.p95<=100ms",
+          "type": "absolute",
+          "metric": "e2e.urgentToStableMs",
+          "p95Ms": 100
+        },
+        {
+          "id": "catchUp.p95<=200ms",
+          "type": "absolute",
+          "metric": "runtime.backlogCatchUpMs",
+          "p95Ms": 200
+        },
+        {
+          "id": "catchUp.p95<=500ms",
+          "type": "absolute",
+          "metric": "runtime.backlogCatchUpMs",
+          "p95Ms": 500
+        }
+      ],
+      "requiredEvidence": [
+        "txnLanes.mode",
+        "txnLanes.budgetMs",
+        "txnLanes.maxLagMs",
+        "budget.cutOffCount"
+      ],
+      "metricCategories": {
+        "e2e.urgentToStableMs": "e2e",
+        "runtime.backlogCatchUpMs": "runtime"
+      },
+      "points": [
+        {
+          "params": {
+            "mode": "default",
+            "steps": 200
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.urgentToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 38.80000001192093,
+                "p95Ms": 50.099999994039536
+              }
+            },
+            {
+              "name": "runtime.backlogCatchUpMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 84.69999998807907,
+                "p95Ms": 89.59999999403954
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "txnLanes.budgetMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnLanes.maxLagMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 50
+            },
+            {
+              "name": "txnLanes.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "default"
+            },
+            {
+              "name": "txnLanes.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "baseline"
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.activeLaneAtEnqueue.urgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.enqueueDelayFromInvokeMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.5
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.enqueueOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 28.599999994039536
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.invokeOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 28.099999994039536
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.previousCompletedLane.urgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.queueWaitMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startDelayFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 28.599999994039536
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startDelayFromInvokeMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.5
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startMode.directHandoff",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 28.599999994039536
+            },
+            {
+              "name": "txnQueue.urgent.activeLaneAtEnqueue.nonUrgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.diagnosis.idleDirect",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.diagnosis.lateEnqueue",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnQueue.urgent.diagnosis.queuedWaiter",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.enqueueDelayFromInvokeMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.09999999403953552
+            },
+            {
+              "name": "txnQueue.urgent.enqueueDelayFromScheduleMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 28.30000001192093
+            },
+            {
+              "name": "txnQueue.urgent.enqueueOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 72
+            },
+            {
+              "name": "txnQueue.urgent.enqueueVsFirstNonUrgentStartMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 44
+            },
+            {
+              "name": "txnQueue.urgent.invokeDelayFromScheduleMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 28.200000017881393
+            },
+            {
+              "name": "txnQueue.urgent.invokeVsFirstNonUrgentStartMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 43.89999997615814
+            },
+            {
+              "name": "txnQueue.urgent.previousCompletedLane.nonUrgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnQueue.urgent.queueDepthAtStart.nonUrgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.queueDepthAtStart.urgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.queueWaitMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.startDelayFromInvokeMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.09999999403953552
+            },
+            {
+              "name": "txnQueue.urgent.startDelayFromScheduleMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 28.30000001192093
+            },
+            {
+              "name": "txnQueue.urgent.startMode.directHandoff",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnQueue.urgent.startMode.directIdle",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.startMode.postVisibilityWindow",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.startOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 72
+            },
+            {
+              "name": "txnQueue.urgent.visibilityWindowMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "mode": "default",
+            "steps": 800
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.urgentToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 39.20000001788139,
+                "p95Ms": 51.599999994039536
+              }
+            },
+            {
+              "name": "runtime.backlogCatchUpMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 81.90000000596046,
+                "p95Ms": 94.19999998807907
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "txnLanes.budgetMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnLanes.maxLagMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 50
+            },
+            {
+              "name": "txnLanes.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "default"
+            },
+            {
+              "name": "txnLanes.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "baseline"
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.activeLaneAtEnqueue.urgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.enqueueDelayFromInvokeMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.699999988079071
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.enqueueOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 28
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.invokeOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 27.30000001192093
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.previousCompletedLane.urgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.queueWaitMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startDelayFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 28
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startDelayFromInvokeMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.699999988079071
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startMode.directHandoff",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 28
+            },
+            {
+              "name": "txnQueue.urgent.activeLaneAtEnqueue.nonUrgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.diagnosis.idleDirect",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.diagnosis.lateEnqueue",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnQueue.urgent.diagnosis.queuedWaiter",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.enqueueDelayFromInvokeMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.09999999403953552
+            },
+            {
+              "name": "txnQueue.urgent.enqueueDelayFromScheduleMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 27.400000005960464
+            },
+            {
+              "name": "txnQueue.urgent.enqueueOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 70.2000000178814
+            },
+            {
+              "name": "txnQueue.urgent.enqueueVsFirstNonUrgentStartMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 41.80000001192093
+            },
+            {
+              "name": "txnQueue.urgent.invokeDelayFromScheduleMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 27.30000001192093
+            },
+            {
+              "name": "txnQueue.urgent.invokeVsFirstNonUrgentStartMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 41.69999998807907
+            },
+            {
+              "name": "txnQueue.urgent.previousCompletedLane.nonUrgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnQueue.urgent.queueDepthAtStart.nonUrgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.queueDepthAtStart.urgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.queueWaitMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.startDelayFromInvokeMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.09999999403953552
+            },
+            {
+              "name": "txnQueue.urgent.startDelayFromScheduleMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 27.400000005960464
+            },
+            {
+              "name": "txnQueue.urgent.startMode.directHandoff",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnQueue.urgent.startMode.directIdle",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.startMode.postVisibilityWindow",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.startOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 70.2000000178814
+            },
+            {
+              "name": "txnQueue.urgent.visibilityWindowMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "mode": "default",
+            "steps": 2000
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.urgentToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 34.599999994039536,
+                "p95Ms": 51.10000002384186
+              }
+            },
+            {
+              "name": "runtime.backlogCatchUpMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 82.19999998807907,
+                "p95Ms": 90.40000000596046
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "txnLanes.budgetMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnLanes.maxLagMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 50
+            },
+            {
+              "name": "txnLanes.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "default"
+            },
+            {
+              "name": "txnLanes.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "baseline"
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.activeLaneAtEnqueue.urgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.enqueueDelayFromInvokeMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.800000011920929
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.enqueueOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 27.80000001192093
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.invokeOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 27.099999994039536
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.previousCompletedLane.urgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.queueWaitMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startDelayFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 27.80000001192093
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startDelayFromInvokeMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.800000011920929
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startMode.directHandoff",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 27.80000001192093
+            },
+            {
+              "name": "txnQueue.urgent.activeLaneAtEnqueue.nonUrgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.diagnosis.idleDirect",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.diagnosis.lateEnqueue",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnQueue.urgent.diagnosis.queuedWaiter",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.enqueueDelayFromInvokeMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.09999999403953552
+            },
+            {
+              "name": "txnQueue.urgent.enqueueDelayFromScheduleMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 24.200000017881393
+            },
+            {
+              "name": "txnQueue.urgent.enqueueOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 68.90000000596046
+            },
+            {
+              "name": "txnQueue.urgent.enqueueVsFirstNonUrgentStartMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 35.80000001192093
+            },
+            {
+              "name": "txnQueue.urgent.invokeDelayFromScheduleMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 24
+            },
+            {
+              "name": "txnQueue.urgent.invokeVsFirstNonUrgentStartMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 35.80000001192093
+            },
+            {
+              "name": "txnQueue.urgent.previousCompletedLane.nonUrgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnQueue.urgent.queueDepthAtStart.nonUrgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.queueDepthAtStart.urgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.queueWaitMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.startDelayFromInvokeMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0.09999999403953552
+            },
+            {
+              "name": "txnQueue.urgent.startDelayFromScheduleMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 24.200000017881393
+            },
+            {
+              "name": "txnQueue.urgent.startMode.directHandoff",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnQueue.urgent.startMode.directIdle",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.startMode.postVisibilityWindow",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.startOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 68.90000000596046
+            },
+            {
+              "name": "txnQueue.urgent.visibilityWindowMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "mode": "off",
+            "steps": 200
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.urgentToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 34.900000005960464,
+                "p95Ms": 51.5
+              }
+            },
+            {
+              "name": "runtime.backlogCatchUpMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 78.59999999403954,
+                "p95Ms": 95.5
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "txnLanes.budgetMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnLanes.maxLagMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 50
+            },
+            {
+              "name": "txnLanes.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "txnLanes.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "baseline"
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.activeLaneAtEnqueue.urgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.enqueueDelayFromInvokeMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.enqueueOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.invokeOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 28.30000001192093
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.previousCompletedLane.urgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.queueWaitMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startDelayFromBacklogMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startDelayFromInvokeMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startMode.directHandoff",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.urgent.activeLaneAtEnqueue.nonUrgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.diagnosis.idleDirect",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.diagnosis.lateEnqueue",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.diagnosis.queuedWaiter",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.enqueueDelayFromInvokeMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.enqueueDelayFromScheduleMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 7.9000000059604645
+            },
+            {
+              "name": "txnQueue.urgent.enqueueOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 47.5
+            },
+            {
+              "name": "txnQueue.urgent.enqueueVsFirstNonUrgentStartMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.urgent.invokeDelayFromScheduleMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 28.19999998807907
+            },
+            {
+              "name": "txnQueue.urgent.invokeVsFirstNonUrgentStartMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.urgent.previousCompletedLane.nonUrgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.queueDepthAtStart.nonUrgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.queueDepthAtStart.urgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.queueWaitMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.startDelayFromInvokeMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.startDelayFromScheduleMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 7.9000000059604645
+            },
+            {
+              "name": "txnQueue.urgent.startMode.directHandoff",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnQueue.urgent.startMode.directIdle",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.startMode.postVisibilityWindow",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.startOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 47.5
+            },
+            {
+              "name": "txnQueue.urgent.visibilityWindowMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "mode": "off",
+            "steps": 800
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.urgentToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 33.60000002384186,
+                "p95Ms": 46.70000001788139
+              }
+            },
+            {
+              "name": "runtime.backlogCatchUpMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 75.7999999821186,
+                "p95Ms": 94
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "txnLanes.budgetMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnLanes.maxLagMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 50
+            },
+            {
+              "name": "txnLanes.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "txnLanes.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "baseline"
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.activeLaneAtEnqueue.urgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.enqueueDelayFromInvokeMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.enqueueOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.invokeOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 27.899999976158142
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.previousCompletedLane.urgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.queueWaitMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startDelayFromBacklogMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startDelayFromInvokeMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startMode.directHandoff",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.urgent.activeLaneAtEnqueue.nonUrgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.diagnosis.idleDirect",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.diagnosis.lateEnqueue",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.diagnosis.queuedWaiter",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.enqueueDelayFromInvokeMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.enqueueDelayFromScheduleMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 9
+            },
+            {
+              "name": "txnQueue.urgent.enqueueOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 48
+            },
+            {
+              "name": "txnQueue.urgent.enqueueVsFirstNonUrgentStartMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.urgent.invokeDelayFromScheduleMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 24.200000017881393
+            },
+            {
+              "name": "txnQueue.urgent.invokeVsFirstNonUrgentStartMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.urgent.previousCompletedLane.nonUrgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.queueDepthAtStart.nonUrgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.queueDepthAtStart.urgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.queueWaitMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.startDelayFromInvokeMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.startDelayFromScheduleMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 9
+            },
+            {
+              "name": "txnQueue.urgent.startMode.directHandoff",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnQueue.urgent.startMode.directIdle",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.startMode.postVisibilityWindow",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.startOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 48
+            },
+            {
+              "name": "txnQueue.urgent.visibilityWindowMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "mode": "off",
+            "steps": 2000
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.urgentToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 38.099999994039536,
+                "p95Ms": 47.79999998211861
+              }
+            },
+            {
+              "name": "runtime.backlogCatchUpMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 80,
+                "p95Ms": 95.2999999821186
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "txnLanes.budgetMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnLanes.maxLagMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 50
+            },
+            {
+              "name": "txnLanes.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "txnLanes.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "baseline"
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.activeLaneAtEnqueue.urgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.enqueueDelayFromInvokeMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.enqueueOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.invokeOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 28.30000001192093
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.previousCompletedLane.urgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.queueWaitMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startDelayFromBacklogMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startDelayFromInvokeMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startMode.directHandoff",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.backlog.firstNonUrgent.startOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.urgent.activeLaneAtEnqueue.nonUrgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.diagnosis.idleDirect",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.diagnosis.lateEnqueue",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.diagnosis.queuedWaiter",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.enqueueDelayFromInvokeMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.enqueueDelayFromScheduleMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 9.400000005960464
+            },
+            {
+              "name": "txnQueue.urgent.enqueueOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 47.599999994039536
+            },
+            {
+              "name": "txnQueue.urgent.enqueueVsFirstNonUrgentStartMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.urgent.invokeDelayFromScheduleMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 27.5
+            },
+            {
+              "name": "txnQueue.urgent.invokeVsFirstNonUrgentStartMs",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "firstNonUrgentQueueStartMissing"
+            },
+            {
+              "name": "txnQueue.urgent.previousCompletedLane.nonUrgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.queueDepthAtStart.nonUrgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.queueDepthAtStart.urgent",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.queueWaitMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.startDelayFromInvokeMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.startDelayFromScheduleMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 9.400000005960464
+            },
+            {
+              "name": "txnQueue.urgent.startMode.directHandoff",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnQueue.urgent.startMode.directIdle",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.startMode.postVisibilityWindow",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "txnQueue.urgent.startOffsetFromBacklogMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 47.599999994039536
+            },
+            {
+              "name": "txnQueue.urgent.visibilityWindowMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "thresholds": [
+        {
+          "budget": {
+            "id": "urgent.p95<=50ms",
+            "type": "absolute",
+            "metric": "e2e.urgentToStableMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "mode": "default"
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "urgent.p95<=50ms",
+            "type": "absolute",
+            "metric": "e2e.urgentToStableMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "mode": "off"
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "urgent.p95<=100ms",
+            "type": "absolute",
+            "metric": "e2e.urgentToStableMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "mode": "default"
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "urgent.p95<=100ms",
+            "type": "absolute",
+            "metric": "e2e.urgentToStableMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "mode": "off"
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "catchUp.p95<=200ms",
+            "type": "absolute",
+            "metric": "runtime.backlogCatchUpMs",
+            "p95Ms": 200
+          },
+          "where": {
+            "mode": "default"
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "catchUp.p95<=200ms",
+            "type": "absolute",
+            "metric": "runtime.backlogCatchUpMs",
+            "p95Ms": 200
+          },
+          "where": {
+            "mode": "off"
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "catchUp.p95<=500ms",
+            "type": "absolute",
+            "metric": "runtime.backlogCatchUpMs",
+            "p95Ms": 500
+          },
+          "where": {
+            "mode": "default"
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "catchUp.p95<=500ms",
+            "type": "absolute",
+            "metric": "runtime.backlogCatchUpMs",
+            "p95Ms": 500
+          },
+          "where": {
+            "mode": "off"
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        }
+      ]
+    }
+  ]
+}

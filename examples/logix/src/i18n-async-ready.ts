@@ -81,7 +81,7 @@ const DemoLogic = DemoDef.logic(($) => ({
     const snap0 = yield* SubscriptionRef.get(i18n.snapshot)
 
     // 展示：snapshot 变化会触发订阅；这里用 state 承接，UI 侧可直接订阅 state。
-    yield* $.on(i18n.snapshot.changes).runFork((snap) =>
+    yield* $.on(SubscriptionRef.changes(i18n.snapshot)).runFork((snap) =>
       $.state.mutate((draft) => {
         ;(draft as any).snapshot = snap
       }),
@@ -113,9 +113,9 @@ const runtime = Logix.Runtime.make(DemoImpl, {
 export const main = Effect.scoped(
   Effect.gen(function* () {
     const i18n = yield* Logix.Root.resolve(I18nTag)
-    const demo = yield* DemoDef.tag
+    const demo = yield* Effect.service(DemoDef.tag).pipe(Effect.orDie)
 
-    yield* Effect.yieldNow()
+    yield* Effect.yieldNow
     const s0: any = yield* demo.getState
     console.log('[pending] snapshot:', s0.snapshot)
     console.log('[pending] state.nowValue:', s0.nowValue)

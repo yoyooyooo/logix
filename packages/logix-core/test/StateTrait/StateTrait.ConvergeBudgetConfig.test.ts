@@ -11,7 +11,7 @@ const lastConvergeData = (ring: Debug.RingBufferSink): any => {
 
 const makeTxnProgram = (M: any, name: string) =>
   Effect.gen(function* () {
-    const rt = yield* M.tag
+    const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
     yield* Logix.InternalContracts.runWithStateTransaction(rt as any, { kind: 'test', name }, () =>
       Effect.gen(function* () {
         const prev = yield* rt.getState
@@ -24,7 +24,7 @@ const runTxn = (M: any, runtime: ReturnType<typeof Logix.Runtime.make>, name: st
   Effect.promise(() => runtime.runPromise(makeTxnProgram(M, name)))
 
 describe('StateTrait converge budget config', () => {
-  it.scoped('uses Runtime.stateTransaction.traitConvergeBudgetMs as budgetMs', () =>
+  it.effect('uses Runtime.stateTransaction.traitConvergeBudgetMs as budgetMs', () =>
     Effect.gen(function* () {
       const State = Schema.Struct({
         base: Schema.Number,
@@ -64,7 +64,7 @@ describe('StateTrait converge budget config', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* M.tag
+        const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
         yield* rt.dispatch({ _tag: 'bump', payload: undefined } as any)
 
         const updates = ring
@@ -82,7 +82,7 @@ describe('StateTrait converge budget config', () => {
   )
 
   describe('priority: provider > runtime_module > runtime_default > builtin', () => {
-    it.scoped('defaults to executionBudgetMs=200 (builtin)', () =>
+    it.effect('defaults to executionBudgetMs=200 (builtin)', () =>
       Effect.gen(function* () {
         const { M, ring, runtime } = makeConvergeAutoFixture({
           diagnosticsLevel: 'light',
@@ -97,7 +97,7 @@ describe('StateTrait converge budget config', () => {
       }),
     )
 
-    it.scoped('defaults to decisionBudgetMs=0.5 (builtin)', () =>
+    it.effect('defaults to decisionBudgetMs=0.5 (builtin)', () =>
       Effect.gen(function* () {
         const { M, ring, runtime } = makeConvergeAutoFixture({
           diagnosticsLevel: 'light',
@@ -112,7 +112,7 @@ describe('StateTrait converge budget config', () => {
       }),
     )
 
-    it.scoped('runtime default beats builtin (executionBudgetMs)', () =>
+    it.effect('runtime default beats builtin (executionBudgetMs)', () =>
       Effect.gen(function* () {
         const { M, ring, runtime } = makeConvergeAutoFixture({
           diagnosticsLevel: 'light',
@@ -128,7 +128,7 @@ describe('StateTrait converge budget config', () => {
       }),
     )
 
-    it.scoped('runtime moduleId override beats runtime default (executionBudgetMs)', () =>
+    it.effect('runtime moduleId override beats runtime default (executionBudgetMs)', () =>
       Effect.gen(function* () {
         const moduleId = 'StateTraitConvergeBudgetConfig_ModuleOverride'
         const { M, ring, runtime } = makeConvergeAutoFixture({
@@ -151,7 +151,7 @@ describe('StateTrait converge budget config', () => {
       }),
     )
 
-    it.scoped('provider override beats runtime moduleId override (executionBudgetMs)', () =>
+    it.effect('provider override beats runtime moduleId override (executionBudgetMs)', () =>
       Effect.gen(function* () {
         const moduleId = 'StateTraitConvergeBudgetConfig_ProviderOverride'
         const providerOverride = Logix.Runtime.stateTransactionOverridesLayer({
@@ -186,7 +186,7 @@ describe('StateTrait converge budget config', () => {
       }),
     )
 
-    it.scoped('runtime moduleId override can hot switch (executionBudgetMs)', () =>
+    it.effect('runtime moduleId override can hot switch (executionBudgetMs)', () =>
       Effect.gen(function* () {
         const moduleId = 'StateTraitConvergeBudgetConfig_ModuleHotSwitch'
         const { M, ring, runtime } = makeConvergeAutoFixture({
@@ -195,21 +195,21 @@ describe('StateTrait converge budget config', () => {
           stateTransaction: { traitConvergeBudgetMs: 111 },
         })
 
-        Logix.Runtime.setTraitConvergeOverride(runtime, moduleId, { traitConvergeBudgetMs: 222 })
+        yield* Logix.Runtime.setTraitConvergeOverride(runtime, moduleId, { traitConvergeBudgetMs: 222 })
         yield* runTxn(M, runtime, 't1')
         const t1 = lastConvergeData(ring)
         expect(t1).toBeDefined()
         expect(t1.configScope).toBe('runtime_module')
         expect(t1.executionBudgetMs).toBe(222)
 
-        Logix.Runtime.setTraitConvergeOverride(runtime, moduleId, { traitConvergeBudgetMs: 333 })
+        yield* Logix.Runtime.setTraitConvergeOverride(runtime, moduleId, { traitConvergeBudgetMs: 333 })
         yield* runTxn(M, runtime, 't2')
         const t2 = lastConvergeData(ring)
         expect(t2).toBeDefined()
         expect(t2.configScope).toBe('runtime_module')
         expect(t2.executionBudgetMs).toBe(333)
 
-        Logix.Runtime.setTraitConvergeOverride(runtime, moduleId, undefined)
+        yield* Logix.Runtime.setTraitConvergeOverride(runtime, moduleId, undefined)
         yield* runTxn(M, runtime, 't3')
         const t3 = lastConvergeData(ring)
         expect(t3).toBeDefined()
@@ -218,7 +218,7 @@ describe('StateTrait converge budget config', () => {
       }),
     )
 
-    it.scoped('runtime default beats builtin (decisionBudgetMs)', () =>
+    it.effect('runtime default beats builtin (decisionBudgetMs)', () =>
       Effect.gen(function* () {
         const { M, ring, runtime } = makeConvergeAutoFixture({
           diagnosticsLevel: 'light',
@@ -234,7 +234,7 @@ describe('StateTrait converge budget config', () => {
       }),
     )
 
-    it.scoped('runtime moduleId override beats runtime default (decisionBudgetMs)', () =>
+    it.effect('runtime moduleId override beats runtime default (decisionBudgetMs)', () =>
       Effect.gen(function* () {
         const moduleId = 'StateTraitConvergeBudgetConfig_Decision_ModuleOverride'
         const { M, ring, runtime } = makeConvergeAutoFixture({
@@ -257,7 +257,7 @@ describe('StateTrait converge budget config', () => {
       }),
     )
 
-    it.scoped('provider override beats runtime moduleId override (decisionBudgetMs)', () =>
+    it.effect('provider override beats runtime moduleId override (decisionBudgetMs)', () =>
       Effect.gen(function* () {
         const moduleId = 'StateTraitConvergeBudgetConfig_Decision_ProviderOverride'
         const providerOverride = Logix.Runtime.stateTransactionOverridesLayer({

@@ -1,6 +1,6 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Effect, Layer, Schema } from 'effect'
+import { Effect, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('Observability.trialRunModule (scope dispose)', () => {
@@ -15,11 +15,15 @@ describe('Observability.trialRunModule (scope dispose)', () => {
 
       const program = Root.implement({ initial: undefined, logics: [] })
 
-      const layer = Layer.scopedDiscard(
-        Effect.addFinalizer(() =>
-          Effect.sync(() => {
-            disposed = true
-          }),
+      const DummyTag = ServiceMap.Service<{}>('@test/TrialRunModule.ScopeDispose/Dummy')
+      const layer = Layer.effect(
+        DummyTag,
+        Effect.acquireRelease(
+          Effect.succeed({}),
+          () =>
+            Effect.sync(() => {
+              disposed = true
+            }),
         ),
       ) as unknown as Layer.Layer<any, never, never>
 

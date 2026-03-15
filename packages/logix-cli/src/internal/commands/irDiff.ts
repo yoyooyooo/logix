@@ -132,7 +132,7 @@ type ReadJsonResult = { readonly ok: true; readonly value: unknown } | { readonl
 const readJsonForSide = (fileAbs: string): Effect.Effect<ReadJsonResult, never> =>
   readJsonFile(fileAbs).pipe(
     Effect.map((value) => ({ ok: true as const, value })),
-    Effect.catchAll((cause) => Effect.succeed({ ok: false as const, error: asSerializableErrorSummary(cause) })),
+    Effect.catch((cause) => Effect.succeed({ ok: false as const, error: asSerializableErrorSummary(cause) })),
   )
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -431,7 +431,7 @@ export const runIrDiff = (inv: IrDiffInvocation): Effect.Effect<CommandResult, n
       error: topError,
     })
   }).pipe(
-    Effect.catchAll((cause) =>
+    Effect.catch((cause) =>
       Effect.succeed(
         makeCommandResult({
           runId,
@@ -440,7 +440,6 @@ export const runIrDiff = (inv: IrDiffInvocation): Effect.Effect<CommandResult, n
           artifacts: [],
           error: asSerializableErrorSummary(cause),
         }),
-      ),
-    ),
+      )),
   )
 }

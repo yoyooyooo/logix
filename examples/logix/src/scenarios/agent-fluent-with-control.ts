@@ -7,11 +7,11 @@
  *
  *   代码遵守 v3 的硬约束：
  *   - 使用 Bound API (`$`) 作为唯一入口；
- *   - Fluent 链写成单条 `yield* $.onState/$.onAction(...).debounce(...).run({ mode: 'latest', effect: Effect.gen(...) })`；
+ *   - Fluent 链写成单条 `yield* $.onState/$.onAction(...).debounce(...).runLatest(Effect.gen(...))`；
  *   - handler 内仅使用 Effect.gen + yield*，不使用 async/await。
  */
 
-import { Context, Effect, Schema } from 'effect'
+import { Effect, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 
 // ---------------------------------------------------------------------------
@@ -31,7 +31,7 @@ const SearchActionMap = {
 type SearchShape = Logix.Shape<typeof SearchStateSchema, typeof SearchActionMap>
 
 // Service Tag：由上层 Runtime 提供实现
-export class SearchService extends Context.Tag('@poc/SearchService')<SearchService, SearchService.Service>() {}
+export class SearchService extends ServiceMap.Service<SearchService, SearchService.Service>()('@poc/SearchService') {}
 
 export namespace SearchService {
   export interface Service {
@@ -49,15 +49,14 @@ export const SearchLogicAgent = AgentDef.logic<SearchService>(($) =>
   Effect.gen(function* () {
     yield* $.onState((s) => s.keyword)
       .debounce(500)
-      .run({
-        mode: 'latest',
-        effect: Effect.gen(function* () {
+      .runLatest(
+        Effect.gen(function* () {
           const api = yield* $.use(SearchService)
           const { keyword } = yield* $.state.read
           const results = yield* api.search(keyword)
           yield* $.state.update((d) => ({ ...d, results }))
         }),
-      })
+      )
   }),
 )
 
@@ -90,7 +89,7 @@ const ProfileActionMap = {
 
 type ProfileShape = Logix.Shape<typeof ProfileStateSchema, typeof ProfileActionMap>
 
-export class LocationService extends Context.Tag('@poc/LocationService')<LocationService, LocationService.Service>() {}
+export class LocationService extends ServiceMap.Service<LocationService, LocationService.Service>()('@poc/LocationService') {}
 
 export namespace LocationService {
   export interface Service {
@@ -105,8 +104,8 @@ export const ProfileDef = Logix.Module.make('ProfileModule', {
 
 export const ProfileLogicAgent = ProfileDef.logic<LocationService>(($) =>
   Effect.gen(function* () {
-    yield* $.onState((s) => s.country).run({
-      effect: Effect.gen(function* () {
+    yield* $.onState((s) => s.country).run(
+      Effect.gen(function* () {
         // 1. 国家变化时重置 city
         yield* $.state.update((d) => ({ ...d, city: '' }))
 
@@ -119,9 +118,9 @@ export const ProfileLogicAgent = ProfileDef.logic<LocationService>(($) =>
           yield* $.state.update((d) => ({ ...d, cities }))
         })
 
-        yield* loadCities.pipe(Effect.catchAll(() => $.state.update((d) => ({ ...d, toast: '加载城市失败' }))))
+        yield* loadCities.pipe(Effect.catch(() => $.state.update((d) => ({ ...d, toast: '加载城市失败' }))))
       }),
-    })
+    )
   }),
 )
 

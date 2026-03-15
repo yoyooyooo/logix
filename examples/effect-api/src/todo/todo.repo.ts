@@ -1,4 +1,4 @@
-import { Context, Effect, Option } from 'effect'
+import { Effect, Option, ServiceMap } from 'effect'
 
 import { DbError } from '../db/db.js'
 import type { Todo, TodoCreateInput, TodoUpdateInput } from './todo.model.js'
@@ -11,4 +11,4 @@ export interface TodoRepoService {
   readonly remove: (id: number) => Effect.Effect<boolean, DbError>
 }
 
-export class TodoRepo extends Context.Tag('TodoRepo')<TodoRepo, TodoRepoService>() {}
+export class TodoRepo extends ServiceMap.Service<TodoRepo, TodoRepoService>()('TodoRepo') {}

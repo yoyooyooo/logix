@@ -3,7 +3,7 @@ import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('StateTrait converge degrade (runtime error rollback)', () => {
-  it.scoped('runtime error should rollback all derived writes (no partial commit)', () =>
+  it.effect('runtime error should rollback all derived writes (no partial commit)', () =>
     Effect.gen(function* () {
       const events: Array<Logix.Debug.Event> = []
       const sink: Logix.Debug.Sink = {
@@ -55,7 +55,7 @@ describe('StateTrait converge degrade (runtime error rollback)', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt: any = yield* M.tag
+        const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
         yield* rt.dispatch({ _tag: 'bump', payload: undefined } as any)
 
         const state = (yield* rt.getState) as any as S

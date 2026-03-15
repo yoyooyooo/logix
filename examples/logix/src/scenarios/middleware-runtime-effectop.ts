@@ -54,7 +54,7 @@ const runtime = Logix.Runtime.make(CounterModule, {
 
 export const main = Effect.gen(function* () {
   const program = Effect.gen(function* () {
-    const rt = yield* CounterDef.tag
+    const rt = yield* Effect.service(CounterDef.tag).pipe(Effect.orDie)
 
     // 初始状态
     // eslint-disable-next-line no-console

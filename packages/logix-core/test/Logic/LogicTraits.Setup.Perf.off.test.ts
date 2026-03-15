@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
@@ -102,7 +102,7 @@ describe('LogicTraits setup · perf baseline (Diagnostics=off)', () => {
         return runtime
           .runPromise(
             Effect.gen(function* () {
-              yield* M.tag
+              yield* Effect.service(M.tag).pipe(Effect.orDie)
             }) as Effect.Effect<void, never, any>,
           )
           .finally(() => runtime.dispose())

@@ -35,7 +35,7 @@ const patchNowToTick = () =>
   )
 
 describe('StateTrait converge degrade (budget rollback)', () => {
-  it.scoped('execution budget exceeded should rollback derived writes (no partial commit)', () =>
+  it.effect('execution budget exceeded should rollback derived writes (no partial commit)', () =>
     Effect.gen(function* () {
       const originalNow = yield* patchNowToTick()
       void originalNow
@@ -94,7 +94,7 @@ describe('StateTrait converge degrade (budget rollback)', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt: any = yield* M.tag
+        const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
         yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 'budget' }, () =>
           Effect.gen(function* () {

@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Deferred, Effect, Fiber } from 'effect'
 import * as LifecycleCore from '../../../../src/internal/runtime/core/Lifecycle.js'
@@ -22,7 +22,7 @@ describe('LifecycleStatus.initProgress', () => {
       )
       manager.registerInitRequired(Effect.void)
 
-      const fiber = yield* Effect.fork(manager.runInitRequired)
+      const fiber = yield* Effect.forkChild(manager.runInitRequired)
 
       yield* Deferred.await(firstStarted)
 

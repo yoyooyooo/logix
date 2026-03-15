@@ -1,8 +1,50 @@
 import { describe, it, expect } from '@effect/vitest'
 import { Effect, Fiber, Option, PubSub, Queue } from 'effect'
 import * as Logix from '../../../src/index.js'
-import { dirtyPathsToRootIds, makeFieldPathIdRegistry } from '../../../src/internal/field-path.js'
+import { makeFieldPathIdRegistry } from '../../../src/internal/field-path.js'
+import type { TxnDirtyEvidenceSnapshot } from '../../../src/internal/runtime/core/StateTransaction.js'
 import * as SelectorGraph from '../../../src/internal/runtime/core/SelectorGraph.js'
+
+const makeDirty = (args: {
+  readonly registry: ReturnType<typeof makeFieldPathIdRegistry>
+  readonly paths?: ReadonlyArray<string>
+  readonly dirtyAll?: boolean
+}): TxnDirtyEvidenceSnapshot => {
+  if (args.dirtyAll) {
+    return {
+      dirtyAll: true,
+      dirtyAllReason: 'unknownWrite',
+      dirtyPathIds: [],
+      dirtyPathsKeyHash: 0,
+      dirtyPathsKeySize: 0,
+    }
+  }
+
+  const ids = (args.paths ?? []).map((path) => {
+    const id = args.registry.pathStringToId?.get(path)
+    if (id == null) {
+      throw new Error(`Missing pathStringToId for ${path}`)
+    }
+    return id
+  })
+
+  if (ids.length === 0) {
+    return {
+      dirtyAll: true,
+      dirtyAllReason: 'unknownWrite',
+      dirtyPathIds: [],
+      dirtyPathsKeyHash: 0,
+      dirtyPathsKeySize: 0,
+    }
+  }
+
+  return {
+    dirtyAll: false,
+    dirtyPathIds: ids,
+    dirtyPathsKeyHash: 0,
+    dirtyPathsKeySize: ids.length,
+  }
+}
 
 describe('SelectorGraph', () => {
   it.effect('does not recompute/notify when dirtyRoots do not overlap selector reads', () =>
@@ -29,17 +71,17 @@ describe('SelectorGraph', () => {
         entry.subscriberCount = 1
 
         const subscription = yield* PubSub.subscribe(entry.hub)
-        const takeOneFiber = yield* Effect.fork(Queue.take(subscription))
+        const takeOneFiber = yield* Effect.forkChild(PubSub.take(subscription))
 
         yield* graph.onCommit(
           { count: 0, other: 1 },
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-          dirtyPathsToRootIds({ dirtyPaths: [['other']], registry }),
+          makeDirty({ registry, paths: ['other'] }),
           'off',
         )
 
-        yield* Effect.yieldNow()
-        const polled = yield* Fiber.poll(takeOneFiber)
+        yield* Effect.yieldNow
+        const polled = yield* Fiber.await(takeOneFiber).pipe(Effect.timeoutOption(0))
 
         yield* Fiber.interrupt(takeOneFiber)
 
@@ -77,11 +119,11 @@ describe('SelectorGraph', () => {
         yield* graph.onCommit(
           { count: 1, other: 0 },
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-          dirtyPathsToRootIds({ dirtyPaths: [['count']], registry }),
+          makeDirty({ registry, paths: ['count'] }),
           'off',
         )
 
-        const first = yield* Queue.take(subscription)
+        const first = yield* PubSub.take(subscription)
         expect(calls).toBe(1)
         expect((first as any).value).toBe(1)
         expect((first as any).meta.txnSeq).toBe(1)
@@ -129,18 +171,18 @@ describe('SelectorGraph', () => {
 
         const countSubscription = yield* PubSub.subscribe(countEntry.hub)
         const otherSubscription = yield* PubSub.subscribe(otherEntry.hub)
-        const takeOtherFiber = yield* Effect.fork(Queue.take(otherSubscription))
+        const takeOtherFiber = yield* Effect.forkChild(PubSub.take(otherSubscription))
 
         yield* graph.onCommit(
           { count: 1, other: 10 },
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-          dirtyPathsToRootIds({ dirtyPaths: [['count']], registry }),
+          makeDirty({ registry, paths: ['count'] }),
           'off',
         )
 
-        const countEvent = yield* Queue.take(countSubscription)
-        yield* Effect.yieldNow()
-        const otherPolled = yield* Fiber.poll(takeOtherFiber)
+        const countEvent = yield* PubSub.take(countSubscription)
+        yield* Effect.yieldNow
+        const otherPolled = yield* Fiber.await(takeOtherFiber).pipe(Effect.timeoutOption(0))
         yield* Fiber.interrupt(takeOtherFiber)
 
         expect((countEvent as any).value).toBe(1)
@@ -190,18 +232,18 @@ describe('SelectorGraph', () => {
 
         const themeSubscription = yield* PubSub.subscribe(themeEntry.hub)
         const localeSubscription = yield* PubSub.subscribe(localeEntry.hub)
-        const takeThemeFiber = yield* Effect.fork(Queue.take(themeSubscription))
+        const takeThemeFiber = yield* Effect.forkChild(PubSub.take(themeSubscription))
 
         yield* graph.onCommit(
           { settings: { theme: 'dark', locale: 'en-US' } },
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-          dirtyPathsToRootIds({ dirtyPaths: [['settings', 'locale']], registry }),
+          makeDirty({ registry, paths: ['settings.locale'] }),
           'off',
         )
 
-        const localeEvent = yield* Queue.take(localeSubscription)
-        yield* Effect.yieldNow()
-        const themePolled = yield* Fiber.poll(takeThemeFiber)
+        const localeEvent = yield* PubSub.take(localeSubscription)
+        yield* Effect.yieldNow
+        const themePolled = yield* Fiber.await(takeThemeFiber).pipe(Effect.timeoutOption(0))
         yield* Fiber.interrupt(takeThemeFiber)
 
         expect((localeEvent as any).value).toBe('en-US')
@@ -255,12 +297,12 @@ describe('SelectorGraph', () => {
         yield* graph.onCommit(
           { settings: { theme: 'dark', locale: 'en-US' } },
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-          dirtyPathsToRootIds({ dirtyPaths: [['settings']], registry }),
+          makeDirty({ registry, paths: ['settings'] }),
           'off',
         )
 
-        const themeEvent = yield* Queue.take(themeSubscription)
-        const localeEvent = yield* Queue.take(localeSubscription)
+        const themeEvent = yield* PubSub.take(themeSubscription)
+        const localeEvent = yield* PubSub.take(localeSubscription)
 
         expect((themeEvent as any).value).toBe('dark')
         expect((localeEvent as any).value).toBe('en-US')
@@ -311,13 +353,7 @@ describe('SelectorGraph', () => {
         yield* graph.onCommit(
           { settings: { theme: 'dark', locale: 'en-US' } },
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-          dirtyPathsToRootIds({
-            dirtyPaths: [
-              ['settings', 'locale'],
-              ['settings'],
-            ],
-            registry,
-          }),
+          makeDirty({ registry, paths: ['settings.locale', 'settings'] }),
           'off',
           (selectorId) => changedSelectors.push(selectorId),
         )
@@ -370,13 +406,7 @@ describe('SelectorGraph', () => {
         yield* graph.onCommit(
           { settings: { theme: 'dark', locale: 'en-US' } },
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-          dirtyPathsToRootIds({
-            dirtyPaths: [
-              ['settings'],
-              ['settings', 'locale'],
-            ],
-            registry,
-          }),
+          makeDirty({ registry, paths: ['settings', 'settings.locale'] }),
           'off',
           (selectorId) => changedSelectors.push(selectorId),
         )
@@ -424,18 +454,18 @@ describe('SelectorGraph', () => {
 
         const dynamicSubscription = yield* PubSub.subscribe(dynamicEntry.hub)
         const staticSubscription = yield* PubSub.subscribe(staticEntry.hub)
-        const takeStaticFiber = yield* Effect.fork(Queue.take(staticSubscription))
+        const takeStaticFiber = yield* Effect.forkChild(PubSub.take(staticSubscription))
 
         yield* graph.onCommit(
           { count: 1, other: 0 },
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-          dirtyPathsToRootIds({ dirtyPaths: [['count']], registry }),
+          makeDirty({ registry, paths: ['count'] }),
           'off',
         )
 
-        const dynamicEvent = yield* Queue.take(dynamicSubscription)
-        yield* Effect.yieldNow()
-        const staticPolled = yield* Fiber.poll(takeStaticFiber)
+        const dynamicEvent = yield* PubSub.take(dynamicSubscription)
+        yield* Effect.yieldNow
+        const staticPolled = yield* Fiber.await(takeStaticFiber).pipe(Effect.timeoutOption(0))
         yield* Fiber.interrupt(takeStaticFiber)
 
         expect(dynamicQuery.reads.length).toBe(0)
@@ -479,17 +509,17 @@ describe('SelectorGraph', () => {
         entry.subscriberCount = 1
 
         const subscription = yield* PubSub.subscribe(entry.hub)
-        const takeOneFiber = yield* Effect.fork(Queue.take(subscription))
+        const takeOneFiber = yield* Effect.forkChild(PubSub.take(subscription))
 
         yield* graph.onCommit(
           { user: { name: 'A' }, settings: { theme: 'dark', locale: 'en-US' } },
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-          dirtyPathsToRootIds({ dirtyPaths: [['settings', 'locale']], registry }),
+          makeDirty({ registry, paths: ['settings.locale'] }),
           'off',
         )
 
-        yield* Effect.yieldNow()
-        const polled = yield* Fiber.poll(takeOneFiber)
+        yield* Effect.yieldNow
+        const polled = yield* Fiber.await(takeOneFiber).pipe(Effect.timeoutOption(0))
         yield* Fiber.interrupt(takeOneFiber)
 
         expect(calls).toBe(0)
@@ -533,23 +563,18 @@ describe('SelectorGraph', () => {
         yield* graph.onCommit(
           { user: { name: 'A' }, settings: { theme: 'dark' } },
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-          dirtyPathsToRootIds({
-            dirtyPaths: [
-              ['user', 'name'],
-              ['settings', 'theme'],
-            ],
-            registry,
-          }),
+          makeDirty({ registry, paths: ['user.name', 'settings.theme'] }),
           'off',
         )
 
-        const event = yield* Queue.take(subscription)
-        yield* Effect.yieldNow()
-        const maybeSecond = yield* Queue.poll(subscription)
+        const event = yield* PubSub.take(subscription)
+        yield* Effect.yieldNow
+        const maybeSecond = yield* PubSub.takeUpTo(subscription, 1).pipe(Effect.timeoutOption(0))
 
         expect((event as any).value).toBe('A:dark')
         expect(calls).toBe(1)
-        expect(Option.isNone(maybeSecond)).toBe(true)
+        const remaining = Option.isSome(maybeSecond) ? maybeSecond.value.length : 0
+        expect(remaining).toBe(0)
       }),
     ),
   )
@@ -616,18 +641,18 @@ describe('SelectorGraph', () => {
 
         const mixedSubscription = yield* PubSub.subscribe(mixedEntry.hub)
         const otherSubscription = yield* PubSub.subscribe(otherEntry.hub)
-        const takeOtherFiber = yield* Effect.fork(Queue.take(otherSubscription))
+        const takeOtherFiber = yield* Effect.forkChild(PubSub.take(otherSubscription))
 
         yield* graph.onCommit(
           { count: 1, settings: { theme: 'dark', locale: 'en-US' }, other: 7 },
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-          dirtyPathsToRootIds({ dirtyPaths: [['settings', 'locale']], registry }),
+          makeDirty({ registry, paths: ['settings.locale'] }),
           'off',
         )
 
-        const mixedEvent = yield* Queue.take(mixedSubscription)
-        yield* Effect.yieldNow()
-        const otherPolled = yield* Fiber.poll(takeOtherFiber)
+        const mixedEvent = yield* PubSub.take(mixedSubscription)
+        yield* Effect.yieldNow
+        const otherPolled = yield* Fiber.await(takeOtherFiber).pipe(Effect.timeoutOption(0))
         yield* Fiber.interrupt(takeOtherFiber)
 
         expect((mixedEvent as any).value).toBe('1:dark')
@@ -663,14 +688,12 @@ describe('SelectorGraph', () => {
         const entry = yield* graph.ensureEntry(readQuery as any)
         entry.subscriberCount = 1
 
-        yield* Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any])(
-          graph.onCommit(
-            { count: 1, other: 0 },
-            { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-            dirtyPathsToRootIds({ dirtyPaths: [['count']], registry }),
-            'light',
-          ),
-        )
+        yield* Effect.provideService(graph.onCommit(
+          { count: 1, other: 0 },
+          { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
+          makeDirty({ registry, paths: ['count'] }),
+          'light',
+        ), Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any])
 
         expect(calls).toBe(1)
 
@@ -727,41 +750,35 @@ describe('SelectorGraph', () => {
         const entry = yield* graph.ensureEntry(readQuery as any)
         entry.subscriberCount = 1
 
-        yield* Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any])(
-          graph.onCommit(
-            { count: 1, other: 0 },
-            { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
-            dirtyPathsToRootIds({ dirtyPaths: [['count']], registry }),
-            'sampled',
-          ),
-        )
+        yield* Effect.provideService(graph.onCommit(
+          { count: 1, other: 0 },
+          { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
+          makeDirty({ registry, paths: ['count'] }),
+          'sampled',
+        ), Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any])
 
         let evalEvents = ring.getSnapshot().filter((e) => (e as any).type === 'trace:selector:eval') as Array<any>
         expect(evalEvents).toHaveLength(1)
         expect(evalEvents[0]?.data?.changed).toBe(true)
 
-        yield* Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any])(
-          graph.onCommit(
-            { count: 1, other: 0 },
-            { txnSeq: 2, txnId: 'i-test::t2', commitMode: 'normal', priority: 'normal' },
-            dirtyPathsToRootIds({ dirtyPaths: [['count']], registry }),
-            'sampled',
-          ),
-        )
+        yield* Effect.provideService(graph.onCommit(
+          { count: 1, other: 0 },
+          { txnSeq: 2, txnId: 'i-test::t2', commitMode: 'normal', priority: 'normal' },
+          makeDirty({ registry, paths: ['count'] }),
+          'sampled',
+        ), Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any])
 
         evalEvents = ring.getSnapshot().filter((e) => (e as any).type === 'trace:selector:eval') as Array<any>
         expect(evalEvents).toHaveLength(1)
 
         shouldDelayOnce = true
 
-        yield* Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any])(
-          graph.onCommit(
-            { count: 1, other: 0 },
-            { txnSeq: 3, txnId: 'i-test::t3', commitMode: 'normal', priority: 'normal' },
-            dirtyPathsToRootIds({ dirtyPaths: [['count']], registry }),
-            'sampled',
-          ),
-        )
+        yield* Effect.provideService(graph.onCommit(
+          { count: 1, other: 0 },
+          { txnSeq: 3, txnId: 'i-test::t3', commitMode: 'normal', priority: 'normal' },
+          makeDirty({ registry, paths: ['count'] }),
+          'sampled',
+        ), Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any])
 
         expect(calls).toBe(3)
         evalEvents = ring.getSnapshot().filter((e) => (e as any).type === 'trace:selector:eval') as Array<any>

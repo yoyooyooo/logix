@@ -1,17 +1,17 @@
-import { Config, Data, Duration, Effect, Schema } from 'effect'
+import { Config, Data, Duration, Effect, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 
 // ---------------------------------------------------------------------------
 // Schema → Shape：审批场景的 State / Action
 // ---------------------------------------------------------------------------
 
-const ApprovalDecisionSchema = Schema.Union(Schema.Literal('APPROVE'), Schema.Literal('REJECT'))
+const ApprovalDecisionSchema = Schema.Union([Schema.Literal('APPROVE'), Schema.Literal('REJECT')])
 
 const ApprovalStateSchema = Schema.Struct({
   taskId: Schema.String,
   comment: Schema.String,
   decision: ApprovalDecisionSchema,
-  status: Schema.Literal('idle', 'submitting', 'done', 'error'),
+  status: Schema.Literals(['idle', 'submitting', 'done', 'error']),
   errorMessage: Schema.optional(Schema.String),
 })
 
@@ -37,9 +37,19 @@ export class ApprovalServiceError extends Data.TaggedError('ApprovalServiceError
 // Service：对齐 EffectPatterns 的 Effect.Service + Config 模式
 // ---------------------------------------------------------------------------
 
-export class ApprovalService extends Effect.Service<ApprovalService>()('ApprovalService', {
-  effect: Effect.gen(function* () {
-    // 从 Config 中读取行为配置
+export class ApprovalService extends ServiceMap.Service<
+  ApprovalService,
+  {
+    readonly decide: (input: { taskId: string; comment?: string; decision: 'APPROVE' | 'REJECT' }) => Effect.Effect<void, ApprovalServiceError>
+    readonly recordAudit: (input: { taskId: string; decision: 'APPROVE' | 'REJECT'; comment?: string }) => Effect.Effect<void>
+    readonly refreshTasks: () => Effect.Effect<void>
+    readonly log: (message: string) => Effect.Effect<void>
+  }
+>()('ApprovalService') {}
+
+export const ApprovalServiceLive = Layer.effect(
+  ApprovalService,
+  Effect.gen(function* () {
     const failOnReject = yield* Config.boolean('APPROVAL_FAIL_ON_REJECT').pipe(Config.withDefault(false))
     const logPrefix = yield* Config.string('APPROVAL_LOG_PREFIX').pipe(Config.withDefault('[Approval]'))
     const simulatedDelayMs = yield* Config.number('APPROVAL_SIMULATED_DELAY_MS').pipe(Config.withDefault(200))
@@ -73,7 +83,7 @@ export class ApprovalService extends Effect.Service<ApprovalService>()('Approval
       log,
     }
   }),
-}) {}
+)
 
 // ---------------------------------------------------------------------------
 // 长逻辑封装：封装「审批决策 + 审计 + 刷新列表」的 Effect
@@ -84,8 +94,8 @@ export interface ApprovalEffectInput {
 }
 
 export const runApprovalFlowEffect = (input: ApprovalEffectInput) =>
-  Effect.gen(function* (_) {
-    const api = yield* ApprovalService
+  Effect.gen(function* () {
+    const api = yield* Effect.service(ApprovalService).pipe(Effect.orDie)
     const state = yield* input.readState
 
     const { taskId, comment, decision } = state
@@ -155,8 +165,8 @@ export const ApprovalLogic = ApprovalDef.logic<ApprovalService>(($: Logix.BoundA
       comment: '',
     }))
 
-    yield* $.onAction('submit').run({ mode: 'exhaust', effect: startApproval })
-    yield* $.onAction('reset').run({ effect: resetEffect })
+    yield* $.onAction('submit').runExhaust(startApproval)
+    yield* $.onAction('reset').run(resetEffect)
   }),
 )
 
