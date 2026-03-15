@@ -1,5 +1,7 @@
 # @logixjs/sandbox
 
+## 1.0.2-beta.1
+
 ## 1.0.2-beta.0
 
 ### Patch Changes
