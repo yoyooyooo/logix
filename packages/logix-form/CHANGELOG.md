@@ -1,5 +1,12 @@
 # @logixjs/form
 
+## 1.0.2-beta.1
+
+### Patch Changes
+
+- @logixjs/core@1.0.2-beta.1
+- @logixjs/react@1.0.2-beta.1
+
 ## 1.0.2-beta.0
 
 ### Patch Changes

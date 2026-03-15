@@ -1,5 +1,12 @@
 # @logixjs/cli
 
+## 1.0.2-beta.1
+
+### Patch Changes
+
+- fb38032: Trigger one additional prerelease cycle to verify that `@logixjs/cli` now publishes through the repository's npm Trusted Publisher path without manual intervention.
+  - @logixjs/core@1.0.2-beta.1
+
 ## 1.0.2-beta.0
 
 ### Patch Changes
