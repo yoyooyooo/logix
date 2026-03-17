@@ -1,0 +1,351 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-03-06T02:45:54.060Z",
+    "from": {
+      "file": "specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw112.watchers-action-writeback-fusion.targeted.json",
+      "commit": "62a4db949b1168430b5c8da318321cc1b1a8ee46"
+    },
+    "to": {
+      "file": "specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw120.watchers-direct-writeback.targeted.json",
+      "commit": "04132a534071f914a8526ee2a0f7e44b47df20f1"
+    },
+    "comparability": {
+      "comparable": false,
+      "allowConfigDrift": true,
+      "allowEnvDrift": true,
+      "configMismatches": [
+        "matrixHash: before=cea713e478201c1e24f4180106ec7dc85ab59c031e8c90dbc039507404a510f3 after=5e7c604c80f9ef262a069045299e41a94acd380b187e4cd3abed7eda15441481"
+      ],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.before=true",
+        "git.dirty.after=true",
+        "git.commit: before=62a4db949b1168430b5c8da318321cc1b1a8ee46 after=04132a534071f914a8526ee2a0f7e44b47df20f1"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 2,
+    "budgetViolations": 0,
+    "slices": {
+      "total": 6,
+      "compared": 6,
+      "skippedCoverage": 0,
+      "skippedData": 0,
+      "beforeOnly": 0,
+      "afterOnly": 0
+    }
+  },
+  "suites": [
+    {
+      "id": "watchers.clickToPaint",
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "p95<=50ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "reactStrictMode": false
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 1,
+          "message": "[category=e2e] p95<=50ms {reactStrictMode=false}: before=null after=1 (after:budgetExceeded) (before:budgetExceeded)"
+        },
+        {
+          "budget": {
+            "id": "p95<=50ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "reactStrictMode": true
+          },
+          "beforeMaxLevel": 32,
+          "afterMaxLevel": 512,
+          "message": "[category=e2e] p95<=50ms {reactStrictMode=true}: before=32 after=512 (before:budgetExceeded)"
+        }
+      ],
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 14,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 14,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=14 unavailable=0 missing=0] after[value=core ok=14 unavailable=0 missing=0]"
+        }
+      ],
+      "metricDeltas": [
+        {
+          "metric": "e2e.clickToPaintMs",
+          "unit": "ms",
+          "compared": 14,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [
+            {
+              "params": {
+                "watchers": 32,
+                "reactStrictMode": false
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 34.79999999701977,
+                "p95Ms": 47
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 38.70000000298023,
+                "p95Ms": 60.20000000298023
+              },
+              "deltaMs": {
+                "medianMs": 3.9000000059604645,
+                "p95Ms": 13.200000002980232
+              },
+              "ratio": {
+                "median": 1.1120689656981166,
+                "p95": 1.2808510638931965
+              }
+            },
+            {
+              "params": {
+                "watchers": 8,
+                "reactStrictMode": false
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 32.80000001192093,
+                "p95Ms": 44.20000000298023
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 37.099999994039536,
+                "p95Ms": 50.8999999910593
+              },
+              "deltaMs": {
+                "medianMs": 4.299999982118607,
+                "p95Ms": 6.699999988079071
+              },
+              "ratio": {
+                "median": 1.1310975603827989,
+                "p95": 1.1515837101273148
+              }
+            },
+            {
+              "params": {
+                "watchers": 64,
+                "reactStrictMode": false
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 35.20000000298023,
+                "p95Ms": 47.099999994039536
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 29.600000008940697,
+                "p95Ms": 51.5
+              },
+              "deltaMs": {
+                "medianMs": -5.5999999940395355,
+                "p95Ms": 4.4000000059604645
+              },
+              "ratio": {
+                "median": 0.8409090910918918,
+                "p95": 1.0934182591617256
+              }
+            },
+            {
+              "params": {
+                "watchers": 1,
+                "reactStrictMode": true
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 29.80000001192093,
+                "p95Ms": 41.900000005960464
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 33.79999999701977,
+                "p95Ms": 43.1000000089407
+              },
+              "deltaMs": {
+                "medianMs": 3.999999985098839,
+                "p95Ms": 1.2000000029802322
+              },
+              "ratio": {
+                "median": 1.1342281873657287,
+                "p95": 1.028639618205478
+              }
+            },
+            {
+              "params": {
+                "watchers": 256,
+                "reactStrictMode": true
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 36.099999994039536,
+                "p95Ms": 48.19999998807907
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 32.599999994039536,
+                "p95Ms": 49.20000000298023
+              },
+              "deltaMs": {
+                "medianMs": -3.5,
+                "p95Ms": 1.0000000149011612
+              },
+              "ratio": {
+                "median": 0.9030470913967346,
+                "p95": 1.0207468882810888
+              }
+            }
+          ],
+          "topImprovements": [
+            {
+              "params": {
+                "watchers": 128,
+                "reactStrictMode": true
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 31.200000002980232,
+                "p95Ms": 57.70000000298023
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 31.900000005960464,
+                "p95Ms": 37.79999999701977
+              },
+              "deltaMs": {
+                "medianMs": 0.7000000029802322,
+                "p95Ms": -19.900000005960464
+              },
+              "ratio": {
+                "median": 1.0224358975292747,
+                "p95": 0.6551126515609598
+              }
+            },
+            {
+              "params": {
+                "watchers": 1,
+                "reactStrictMode": false
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 36.1000000089407,
+                "p95Ms": 59.5
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 33.29999999701977,
+                "p95Ms": 45.5
+              },
+              "deltaMs": {
+                "medianMs": -2.800000011920929,
+                "p95Ms": -14
+              },
+              "ratio": {
+                "median": 0.9224376728191838,
+                "p95": 0.7647058823529411
+              }
+            },
+            {
+              "params": {
+                "watchers": 512,
+                "reactStrictMode": true
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 32.900000005960464,
+                "p95Ms": 50.3999999910593
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 27,
+                "p95Ms": 36.599999994039536
+              },
+              "deltaMs": {
+                "medianMs": -5.9000000059604645,
+                "p95Ms": -13.799999997019768
+              },
+              "ratio": {
+                "median": 0.8206686928604388,
+                "p95": 0.7261904762010354
+              }
+            },
+            {
+              "params": {
+                "watchers": 512,
+                "reactStrictMode": false
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 36.5,
+                "p95Ms": 55.3999999910593
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 31.400000005960464,
+                "p95Ms": 42.80000001192093
+              },
+              "deltaMs": {
+                "medianMs": -5.0999999940395355,
+                "p95Ms": -12.599999979138374
+              },
+              "ratio": {
+                "median": 0.8602739727660401,
+                "p95": 0.7725631772351658
+              }
+            },
+            {
+              "params": {
+                "watchers": 64,
+                "reactStrictMode": true
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 32.79999999701977,
+                "p95Ms": 53.5
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 34.30000001192093,
+                "p95Ms": 43.400000005960464
+              },
+              "deltaMs": {
+                "medianMs": 1.5000000149011612,
+                "p95Ms": -10.099999994039536
+              },
+              "ratio": {
+                "median": 1.0457317077755321,
+                "p95": 0.8112149533824385
+              }
+            }
+          ]
+        }
+      ],
+      "notes": "stabilityWarning: metric=e2e.clickToPaintMs {reactStrictMode=false&watchers=1} baselineP95=59.50ms afterP95=45.50ms diff=14.00ms limit=5.95ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    }
+  ]
+}

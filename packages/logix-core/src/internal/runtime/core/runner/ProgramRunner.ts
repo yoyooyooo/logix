@@ -1,4 +1,4 @@
-import { Cause, Effect, FiberRef, Option, Scope } from 'effect'
+import { Cause, Effect, Exit, Option, Scope } from 'effect'
 import type { ManagedRuntime } from 'effect'
 import type { AnyModuleShape, ModuleImpl } from '../module.js'
 import { make as makeBoundApi } from '../BoundApiRuntime.js'
@@ -22,11 +22,9 @@ export const openProgram = <Sh extends AnyModuleShape>(
   options?: unknown,
 ): Effect.Effect<ProgramRunContext<Sh>, unknown, Scope.Scope> =>
   Effect.gen(function* () {
-    const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
+    const inTxn = yield* Effect.service(TaskRunner.inSyncTransactionFiber).pipe(Effect.orDie)
     if (inTxn) {
-      return yield* Effect.dieMessage(
-        '[Logix] Runtime.openProgram/runProgram is not allowed inside a synchronous StateTransaction body',
-      )
+      return yield* Effect.die(new Error('[Logix] Runtime.openProgram/runProgram is not allowed inside a synchronous StateTransaction body'))
     }
 
     const runnerOptions = resolveProgramRunnerOptions(options)
@@ -45,7 +43,7 @@ export const openProgram = <Sh extends AnyModuleShape>(
 
     // boot: touch the program module tag to ensure instantiation and logics/processes start.
     const moduleRuntime = yield* Effect.tryPromise({
-      try: () => kernel.runtime.runPromise(rootImpl.module as any),
+      try: () => kernel.runtime.runPromise(Effect.service(rootImpl.module as any).pipe(Effect.orDie)),
       catch: (error) => new BootError(kernel.identity, error),
     })
 
@@ -59,7 +57,7 @@ export const runProgram = async <Sh extends AnyModuleShape, Args, A, E, R>(
   main: (ctx: ProgramRunContext<Sh>, args: Args) => Effect.Effect<A, E, R>,
   options?: unknown,
 ): Promise<A> => {
-  if (TaskRunner.isInSyncTransaction()) {
+  if (TaskRunner.isInSyncTransactionShadow()) {
     throw new Error('[Logix] Runtime.openProgram/runProgram is not allowed inside a synchronous StateTransaction body')
   }
 
@@ -85,15 +83,38 @@ export const runProgram = async <Sh extends AnyModuleShape, Args, A, E, R>(
     | undefined
 
   try {
-    // Runtime resource disposal: bind runtime.dispose to ctx.scope.
-    Effect.runSync(Scope.addFinalizer(scope, Effect.promise(() => runtime.dispose()).pipe(Effect.asVoid)))
-
     // Node-only: signals trigger graceful shutdown (closing ctx.scope).
     if (runnerOptions.handleSignals) {
       Effect.runSync(
         installGracefulShutdownHandlers({
           scope,
           enabled: true,
+          onSignal: () =>
+            Effect.gen(function* () {
+              yield* Effect.exit(
+                closeProgramScope({
+                  scope,
+                  timeoutMs: runnerOptions.closeScopeTimeout,
+                  identity,
+                  onError: (options as any)?.onError,
+                }),
+              )
+
+              const disposeResult = yield* Effect.promise<
+                { readonly _tag: 'Success' } | { readonly _tag: 'Failure' }
+              >(() =>
+                new Promise((resolve) => {
+                  void runtime.dispose().then(
+                    () => resolve({ _tag: 'Success' as const }),
+                    () => resolve({ _tag: 'Failure' as const }),
+                  )
+                }),
+              )
+
+              if (disposeResult._tag === 'Failure') {
+                return yield* Effect.void
+              }
+            }).pipe(Effect.catchCause(() => Effect.void)),
         }),
       )
     }
@@ -101,7 +122,7 @@ export const runProgram = async <Sh extends AnyModuleShape, Args, A, E, R>(
     // boot: touch the program module tag to ensure instantiation and logics/processes start.
     let moduleRuntime: any
     try {
-      moduleRuntime = await runtime.runPromise(rootImpl.module as any)
+      moduleRuntime = await runtime.runPromise(Effect.service(rootImpl.module as any).pipe(Effect.orDie))
     } catch (error) {
       setFailureExitCodeIfEnabled(runnerOptions.exitCode)
       reportErrorIfEnabled(runnerOptions.exitCode && runnerOptions.reportError, error)
@@ -136,16 +157,28 @@ export const runProgram = async <Sh extends AnyModuleShape, Args, A, E, R>(
     }
   } finally {
     const exit = await Effect.runPromiseExit(
-      closeProgramScope({
-        scope,
-        timeoutMs: runnerOptions.closeScopeTimeout,
-        identity,
-        onError: (options as any)?.onError,
+      Effect.gen(function* () {
+        const closeExit = yield* Effect.exit(
+          closeProgramScope({
+            scope,
+            timeoutMs: runnerOptions.closeScopeTimeout,
+            identity,
+            onError: (options as any)?.onError,
+          }),
+        )
+
+        if (Exit.isSuccess(closeExit)) {
+          yield* Effect.promise(() => runtime.dispose()).pipe(Effect.asVoid)
+          return
+        }
+
+        void runtime.dispose()
+        return yield* Effect.failCause(closeExit.cause)
       }),
     )
 
     if (exit._tag === 'Failure') {
-      const failureOpt = Cause.failureOption(exit.cause)
+      const failureOpt = Cause.findErrorOption(exit.cause)
       if (Option.isSome(failureOpt)) {
         const error: any = failureOpt.value
         if (mainError !== undefined && error && typeof error === 'object') {
@@ -153,9 +186,9 @@ export const runProgram = async <Sh extends AnyModuleShape, Args, A, E, R>(
         }
         closeError = error
       } else {
-        const defectOpt = Cause.dieOption(exit.cause)
-        if (Option.isSome(defectOpt) && defectOpt.value instanceof Error) {
-          const error: any = defectOpt.value
+        const defect = exit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)[0]
+        if (defect instanceof Error) {
+          const error: any = defect
           if (mainError !== undefined && error && typeof error === 'object') {
             error.mainError = mainError
           }

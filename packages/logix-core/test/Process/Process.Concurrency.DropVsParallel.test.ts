@@ -1,10 +1,10 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Context, Deferred, Effect, Exit, Layer, Ref, Scope, Schema } from 'effect'
+import {Deferred, Effect, Exit, Layer, Ref, Scope, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../src/index.js'
 import * as ProcessRuntime from '../../src/internal/runtime/core/process/ProcessRuntime.js'
 
 describe('process: concurrency drop vs parallel', () => {
-  it.scoped('drop should ignore re-entry while running', () =>
+  it.effect('drop should ignore re-entry while running', () =>
     Effect.gen(function* () {
       const started = yield* Ref.make(0)
       const completed = yield* Ref.make(0)
@@ -43,10 +43,7 @@ describe('process: concurrency drop vs parallel', () => {
       const scope = yield* Scope.make()
       try {
         const env = yield* Layer.buildWithScope(layer, scope)
-        const rt = Context.get(
-          env as Context.Context<any>,
-          ProcessRuntime.ProcessRuntimeTag as any,
-        ) as ProcessRuntime.ProcessRuntime
+        const rt = ServiceMap.get(env as ServiceMap.ServiceMap<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
 
         yield* rt.deliverPlatformEvent({ eventName: 'test:drop' })
         yield* rt.deliverPlatformEvent({ eventName: 'test:drop' })
@@ -58,13 +55,13 @@ describe('process: concurrency drop vs parallel', () => {
             yield* Deferred.succeed(gates[0]!, undefined)
             break
           }
-          yield* Effect.yieldNow()
+          yield* Effect.yieldNow
         }
 
         for (let i = 0; i < 50; i++) {
           const n = yield* Ref.get(completed)
           if (n === 1) break
-          yield* Effect.yieldNow()
+          yield* Effect.yieldNow
         }
 
         events = (yield* rt.getEventsSnapshot()) as any
@@ -82,7 +79,7 @@ describe('process: concurrency drop vs parallel', () => {
     }),
   )
 
-  it.scoped('parallel should respect maxParallel', () =>
+  it.effect('parallel should respect maxParallel', () =>
     Effect.gen(function* () {
       const completed = yield* Ref.make(0)
       const active = yield* Ref.make(0)
@@ -122,10 +119,7 @@ describe('process: concurrency drop vs parallel', () => {
       const scope = yield* Scope.make()
       try {
         const env = yield* Layer.buildWithScope(layer, scope)
-        const rt = Context.get(
-          env as Context.Context<any>,
-          ProcessRuntime.ProcessRuntimeTag as any,
-        ) as ProcessRuntime.ProcessRuntime
+        const rt = ServiceMap.get(env as ServiceMap.ServiceMap<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
 
         yield* rt.deliverPlatformEvent({ eventName: 'test:parallel' })
         yield* rt.deliverPlatformEvent({ eventName: 'test:parallel' })
@@ -137,7 +131,7 @@ describe('process: concurrency drop vs parallel', () => {
         for (let i = 0; i < 50; i++) {
           const gates = yield* Ref.get(gatesRef)
           if (gates.length >= 2) break
-          yield* Effect.yieldNow()
+          yield* Effect.yieldNow
         }
 
         let released = 0
@@ -145,7 +139,7 @@ describe('process: concurrency drop vs parallel', () => {
           const gates = yield* Ref.get(gatesRef)
           const available = gates.slice(released, released + 2)
           if (available.length === 0) {
-            yield* Effect.yieldNow()
+            yield* Effect.yieldNow
             continue
           }
           for (const gate of available) {
@@ -155,7 +149,7 @@ describe('process: concurrency drop vs parallel', () => {
 
           for (let i = 0; i < 50; i++) {
             if ((yield* Ref.get(completed)) >= released) break
-            yield* Effect.yieldNow()
+            yield* Effect.yieldNow
           }
         }
       } finally {

@@ -2,7 +2,7 @@
 
 ## 3.1 基本形态
 
-`ModuleDef.logic`（以及由 `ModuleDef.build` 创建的 `Module` 对象上的 `.logic` 方法）是“在该领域上挂载一段 Logic 程序”的入口：
+`ModuleDef.logic`（以及带 `.impl` 的 `Module.logic`）是“在该领域上挂载一段 Logic 程序”的入口：
 
 ```ts
 export const CounterLogic = CounterDef.logic(($) =>
@@ -21,25 +21,23 @@ export const CounterLogic = CounterDef.logic(($) =>
 特征：
 
 - 由 ModuleDef 注入一个 Bound API `$`（见第 4 节），Env 类型自动推导为 `Logic.Env<Sh,R>`；
-- 返回值就是一段 Logic 程序（`Logic.Of<Sh,R>`），可以在 `ModuleDef.build` 中挂载，或作为 Pattern/模板返回值复用；
-- 一个 ModuleDef 可以有多段 Logic（多次 `.logic` 调用），但通常约定在 Module 定义文件导出一个“主逻辑”，其余作为 Pattern/插件逻辑组合到 `build({ logics })` 中。
+- 返回值就是一段 Logic 程序（`Logic.Of<Sh,R>`），可以在 `ModuleDef.live` 中挂载，或作为 Pattern/模板返回值复用；
+- 一个 ModuleDef 可以有多段 Logic（多次 `.logic` 调用），但通常约定在 Module 定义文件导出一个“主逻辑”，其余作为 Pattern/插件逻辑组合到 `.live` 中。
 
 ## 3.2 组合多个 Logic 程序
 
-ModuleDef 本身不限制 Logic 的个数，`ModuleDef.build` 会将它们统一挂在该 Module 对应的 `Logix.ModuleRuntime` 上：
+ModuleDef 本身不限制 Logic 的个数，`ModuleDef.live` 会将它们统一挂在该 Module 对应的 `Logix.ModuleRuntime` 上：
 
 ```ts
 export const AuditLogic = CounterDef.logic($ => /* ... */);
 export const MetricsLogic = CounterDef.logic($ => /* ... */);
 
-export const CounterModule = CounterDef.build({
-  initial: { count: 0 },
-  logics: [
-    CounterLogic, // 主逻辑
-    AuditLogic, // 审计插件
-    MetricsLogic, // 监控插件
-  ],
-})
+export const CounterLive = CounterDef.live(
+  { count: 0 },
+  CounterLogic,   // 主逻辑
+  AuditLogic,     // 审计插件
+  MetricsLogic,   // 监控插件
+);
 ```
 
 ## 3.3 两阶段写法与约束（setup / run）
@@ -65,7 +63,7 @@ export const SomeLogic = SomeDef.logic<MyService>(($) => ({
 常见踩坑：
 
 - `setup: Effect.gen(function* () { yield* $.use(MyService) })` → `LogicPhaseError(kind="use_in_setup")`（把 `$.use` 移到 `run`）。
-- `SomeDef.logic<typeof MyService>(...)` / `SomeDef.build<typeof MyService>(...)` → Env/Tag 推导错误：`R` 应填写 **Tag 类型本身**（`MyService`），不要写 `typeof`。
+- `SomeDef.logic<typeof MyService>(...)` / `SomeDef.implement<typeof MyService>(...)` → Env/Tag 推导错误：`R` 应填写 **Tag 类型本身**（`MyService`），不要写 `typeof`。
 
 ## 3.4 Phase Guard 与诊断（API 行为矩阵）
 
@@ -78,7 +76,7 @@ export const SomeLogic = SomeDef.logic<MyService>(($) => ({
 - **Phase Guard 规则**：下列 API 视为 run-only，若在 setup 段调用会抛出 `LogicPhaseError(kind=\"use_in_setup\", api=...)` 并被转换为 `diagnostic code=logic::invalid_phase severity=error`：`$.use / $.onAction* / $.onState* / $.flow.from*` 及基于 IntentBuilder 的 `.run* / .run*Task / .update / .mutate`。
 - **Setup-only（023）**：`$.traits.declare(traits)` 只允许在 setup 段调用；在 run 段调用会抛出 `LogicPhaseError(kind=\"traits_declare_in_run\", api=\"$.traits.declare\")`，并被转换为 `diagnostic code=logic::invalid_phase severity=error`（提示“traits 已冻结”）。
 - **诊断字段**：`LogicPhaseError` 暴露 `kind/api/phase/moduleId`，DevTools 与平台可直接依赖结构化字段，无需字符串解析；其他诊断同样通过 `DebugSink` 以 `logic::* / reducer::* / lifecycle::*` code 形式对外广播。
-- **Env 缺失与 runSync 不变量**：Logic 构造阶段的错误（含 phase 违规）统一被收敛为诊断，不会破坏 `ModuleDef.build` / `Runtime.make` 的同步构造路径；只有在 Env 铺满后仍发生的 `Service not found` 才被视为硬错误。
+- **Env 缺失与 runSync 不变量**：Logic 构造阶段的错误（含 phase 违规）统一被收敛为诊断，不会破坏 `ModuleDef.live` / `Runtime.make` 的同步构造路径；只有在 Env 铺满后仍发生的 `Service not found` 才被视为硬错误。
 
 ## 3.5 Field Capabilities 与 State Graph（StateTrait / `@logixjs/core` 的角色）
 
@@ -94,7 +92,7 @@ export const SomeLogic = SomeDef.logic<MyService>(($) => ({
     - `StateTrait.link({ from })`
   - 这些声明被统一收集为 `StateTraitSpec`，并在 build 阶段生成 `StateTraitProgram`，其中包含 StateTraitGraph（字段与能力拓扑）与 StateTraitPlan（运行计划）。
 - **Runtime 层（Layer 2）**：
-  - 运行时需要在初始化阶段调用 `StateTrait.install($, program)` 才会激活 Trait 行为（并将 Program 注册到 Runtime 内核以便在事务窗口内 converge）；当前实现中：带 `traits` 的 ModuleDef 在 `ModuleDef.build` 路径会自动注入安装逻辑；若使用 `ModuleDef.live` legacy 入口直出 Layer，则需显式在 logics 中调用 `StateTrait.install`（推荐迁移到 `ModuleDef.build`）。
+  - 运行时需要在初始化阶段调用 `StateTrait.install($, program)` 才会激活 Trait 行为（并将 Program 注册到 Runtime 内核以便在事务窗口内 converge）；当前实现中：带 `traits` 的 ModuleDef 在 `ModuleDef.implement` 路径会自动注入安装逻辑；若使用 `ModuleDef.live` 直出 Layer，则需显式在 logics 中调用 `StateTrait.install`（或改用 `ModuleDef.implement`）。
   - **023：Logic setup traits**：除 Module-level `traits` 外，Logic 也可以在 `LogicPlan.setup` 中通过 `$.traits.declare(StateTraitSpec)` 贡献 traits；Runtime 会在初始化阶段收集 module/logic 的 contributions，完成确定性合并与一致性校验（`requires/excludes`），随后冻结并在 finalize 阶段一次性 build/install Program。
   - 安装后，Logix ModuleRuntime 会在事务提交前基于 StateTraitPlan 执行派生收敛（如“哪些字段依赖哪些字段”“哪些字段由外部资源驱动”），并通过 Bound API `$` 与 EffectOp/Middleware 暴露标准入口与诊断事件。
   - 长期目标是让典型的 Computed / Source / Link 写法都通过 StateTrait Program 驱动，而不是在每个 Module 中手写胶水逻辑。

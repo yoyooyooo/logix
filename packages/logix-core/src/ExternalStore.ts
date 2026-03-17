@@ -1,5 +1,5 @@
-import { Effect, Fiber, Stream } from 'effect'
-import type { Context } from 'effect'
+import { Effect, Fiber, Layer, ManagedRuntime, Stream, SubscriptionRef } from 'effect'
+import type { ServiceMap } from 'effect'
 import * as ReadQuery from './ReadQuery.js'
 import { fnv1a32, stableStringify } from './internal/digest.js'
 import { attachExternalStoreDescriptor, type ExternalStoreDescriptor } from './internal/external-store-descriptor.js'
@@ -48,7 +48,7 @@ const makeNotifyScheduler = (listeners: Set<() => void>): (() => void) => {
   }
 }
 
-const resolveTagId = (tag: Context.Tag<any, any>): string | undefined => {
+const resolveTagId = (tag: ServiceMap.Key<any, any>): string | undefined => {
   const id = (tag as any).id
   if (typeof id === 'string' && id.length > 0) return id
 
@@ -89,7 +89,7 @@ const resolveModuleIdOrThrow = (module: unknown): string => {
  * - `map(service)` must return a sync `getSnapshot()` (no IO) and a `subscribe(listener)` that signals change.
  */
 export const fromService = <Id, Svc, T>(
-  tag: Context.Tag<Id, Svc>,
+  tag: ServiceMap.Key<Id, Svc>,
   map: (service: Svc) => ExternalStore<T>,
 ): ExternalStore<T> => {
   const tagId = resolveTagId(tag as any)
@@ -132,6 +132,37 @@ const getOrAssignAnonStoreId = (key: object, prefix: string): string => {
   return storeId
 }
 
+type DetachedRuntime = ManagedRuntime.ManagedRuntime<never, never>
+
+const makeDetachedRuntimeController = () => {
+  let runtime: DetachedRuntime | undefined
+
+  const ensureRuntime = (): DetachedRuntime => {
+    if (!runtime) {
+      runtime = ManagedRuntime.make(Layer.empty as Layer.Layer<never, never, never>)
+    }
+    return runtime
+  }
+
+  const runSync = <A>(effect: Effect.Effect<A, never, never>): A => ensureRuntime().runSync(effect)
+
+  const runFork = <A, E>(effect: Effect.Effect<A, E, never>): Fiber.Fiber<A, E> => ensureRuntime().runFork(effect)
+
+  const interruptAndDispose = (fiber: Fiber.Fiber<void, any> | undefined): void => {
+    const current = runtime
+    runtime = undefined
+    if (!current) return
+    const stop = fiber ? Fiber.interrupt(fiber).pipe(Effect.asVoid) : Effect.void
+    void current.runPromise(stop).catch(() => undefined).finally(() => current.dispose())
+  }
+
+  return {
+    runSync,
+    runFork,
+    interruptAndDispose,
+  } as const
+}
+
 /**
  * Create an ExternalStore from a SubscriptionRef.
  *
@@ -139,8 +170,15 @@ const getOrAssignAnonStoreId = (key: object, prefix: string): string => {
  * - `getSnapshot()` is implemented via `ref.get` (must be a synchronous pure read; do not hide IO inside).
  * - change notifications are batched via microtask (multiple updates in the same microtask trigger a single notify).
  */
-export const fromSubscriptionRef = <T>(ref: LogixModule.ReadonlySubscriptionRef<T>): ExternalStore<T> => {
+export const fromSubscriptionRef = <T>(ref: LogixModule.ReadonlySubscriptionRef<T> | SubscriptionRef.SubscriptionRef<T>): ExternalStore<T> => {
   const storeId = getOrAssignAnonStoreId(ref as any, 'es_ref')
+  const readonlyRef = ref as LogixModule.ReadonlySubscriptionRef<T>
+  const getEffect: Effect.Effect<T, never, never> = SubscriptionRef.isSubscriptionRef(ref)
+    ? (SubscriptionRef.get(ref) as Effect.Effect<T, never, never>)
+    : (readonlyRef.get as Effect.Effect<T, never, never>)
+  const changes: Stream.Stream<T, never, never> = SubscriptionRef.isSubscriptionRef(ref)
+    ? (SubscriptionRef.changes(ref) as Stream.Stream<T, never, never>)
+    : readonlyRef.changes
 
   let hasSnapshot = false
   let current: T | undefined
@@ -148,11 +186,12 @@ export const fromSubscriptionRef = <T>(ref: LogixModule.ReadonlySubscriptionRef<
   const scheduleNotify = makeNotifyScheduler(listeners)
 
   let fiber: Fiber.Fiber<void, any> | undefined
+  const runtime = makeDetachedRuntimeController()
 
   const ensureSubscription = () => {
     if (fiber) return
-    fiber = Effect.runFork(
-      Stream.runForEach(ref.changes, (value) =>
+    fiber = runtime.runFork(
+      Stream.runForEach(changes, (value) =>
         Effect.sync(() => {
           current = value
           hasSnapshot = true
@@ -165,7 +204,7 @@ export const fromSubscriptionRef = <T>(ref: LogixModule.ReadonlySubscriptionRef<
   const refreshSnapshotIfStale = () => {
     if (!hasSnapshot) return
     try {
-      const latest = Effect.runSync(ref.get) as T
+      const latest = runtime.runSync(getEffect) as T
       if (!Object.is(current, latest)) {
         current = latest
         scheduleNotify()
@@ -178,7 +217,7 @@ export const fromSubscriptionRef = <T>(ref: LogixModule.ReadonlySubscriptionRef<
   const store: ExternalStore<T> = {
     getSnapshot: () => {
       if (hasSnapshot) return current as T
-      current = Effect.runSync(ref.get) as T
+      current = runtime.runSync(getEffect) as T
       hasSnapshot = true
       return current
     },
@@ -192,7 +231,7 @@ export const fromSubscriptionRef = <T>(ref: LogixModule.ReadonlySubscriptionRef<
         const running = fiber
         if (!running) return
         fiber = undefined
-        Effect.runFork(Fiber.interrupt(running))
+        runtime.interruptAndDispose(running)
       }
     },
   }
@@ -231,10 +270,11 @@ export const fromStream = <A, E>(
   const scheduleNotify = makeNotifyScheduler(listeners)
 
   let fiber: Fiber.Fiber<void, any> | undefined
+  const runtime = makeDetachedRuntimeController()
 
   const ensureSubscription = () => {
     if (fiber) return
-    fiber = Effect.runFork(
+    fiber = runtime.runFork(
       Stream.runForEach(stream, (value) =>
         Effect.sync(() => {
           current = value
@@ -255,7 +295,7 @@ export const fromStream = <A, E>(
         const running = fiber
         if (!running) return
         fiber = undefined
-        Effect.runFork(Fiber.interrupt(running))
+        runtime.interruptAndDispose(running)
       }
     },
   }

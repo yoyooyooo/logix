@@ -1,13 +1,13 @@
-import { describe, beforeEach, afterEach, vi } from 'vitest'
-import { it, expect } from '@effect/vitest'
-import { Context, Effect } from 'effect'
+import { describe, it, expect } from '@effect/vitest'
+import { beforeEach, afterEach, vi } from 'vitest'
+import { Effect, ServiceMap } from 'effect'
 import * as Logix from '../src/index.js'
 
-class TokenString extends Context.Tag('test/ScopeRegistry/TokenString')<TokenString, string>() {}
-class TokenNumber extends Context.Tag('test/ScopeRegistry/TokenNumber')<TokenNumber, number>() {}
+class TokenString extends ServiceMap.Service<TokenString, string>()('test/ScopeRegistry/TokenString') {}
+class TokenNumber extends ServiceMap.Service<TokenNumber, number>()('test/ScopeRegistry/TokenNumber') {}
 
 const makeRegistry = (): Logix.ScopeRegistry.ScopeRegistry =>
-  Effect.runSync(Logix.ScopeRegistry.ScopeRegistryTag.pipe(Effect.provide(Logix.ScopeRegistry.layer())))
+  Effect.runSync(Effect.service(Logix.ScopeRegistry.ScopeRegistryTag).pipe(Effect.orDie, Effect.provide(Logix.ScopeRegistry.layer())))
 
 describe('ScopeRegistry', () => {
   beforeEach(() => {

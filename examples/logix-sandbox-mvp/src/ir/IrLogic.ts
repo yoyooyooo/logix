@@ -133,16 +133,15 @@ const buildSandboxIrWrapper = (options: {
   ].join('\n')
 }
 
-export const IrLogic = IrDef.logic(($) => ({
+export const IrLogic = IrDef.logic<SandboxClientTag>(($) => ({
   setup: Effect.void,
   run: Effect.gen(function* () {
     const client = yield* $.use(SandboxClientTag)
 
     yield* Effect.all(
       [
-        $.onAction('init').run({
-          effect: () =>
-            Effect.gen(function* () {
+        $.onAction('init').run(() =>
+          Effect.gen(function* () {
             const { kernels, defaultKernelId } = yield* client.listKernels()
             yield* $.dispatchers.setKernelCatalog({ kernels: kernels as any, defaultKernelId: defaultKernelId as any })
 
@@ -156,13 +155,11 @@ export const IrLogic = IrDef.logic(($) => ({
             }
 
             yield* client.init()
-            }),
-        }),
+          }),
+        ),
 
-        $.onAction('run').run({
-          mode: 'latest',
-          effect: () =>
-            Effect.gen(function* () {
+        $.onAction('run').runLatest(() =>
+          Effect.gen(function* () {
             const state = yield* $.state.read
 
             const wrapper = buildSandboxIrWrapper({
@@ -235,11 +232,11 @@ export const IrLogic = IrDef.logic(($) => ({
 
             yield* $.dispatchers.setBundle(incoming as any)
             yield* $.dispatchers.setActiveTab(incoming.trialRunReport ? 'trialRun' : 'manifest')
-            }).pipe(
-              Effect.catchAll((e) => $.dispatchers.setRunError(String(e))),
-              Effect.ensuring($.dispatchers.setIsRunning(false)),
-            ),
-        }),
+          }).pipe(
+            Effect.catch((e) => $.dispatchers.setRunError(String(e))),
+            Effect.ensuring($.dispatchers.setIsRunning(false)),
+          ),
+        ),
       ],
       { concurrency: 'unbounded' },
     )

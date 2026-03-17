@@ -1,9 +1,9 @@
-import { Effect, Scope } from 'effect'
+import { Cause, Effect, Exit, Scope } from 'effect'
 import type { ManagedRuntime } from 'effect'
 import type { AnyModuleShape, ModuleImpl } from '../module.js'
 import { make as makeBoundApi } from '../BoundApiRuntime.js'
 import { closeProgramScope } from './ProgramRunner.closeScope.js'
-import type { ProgramIdentity } from './ProgramRunner.errors.js'
+import { DisposeError, DisposeTimeoutError, type ProgramIdentity } from './ProgramRunner.errors.js'
 import { installGracefulShutdownHandlers } from './ProgramRunner.signals.js'
 import type { ProgramRunContext } from './ProgramRunner.context.js'
 
@@ -13,7 +13,7 @@ export type RuntimeFactory = (
 ) => ManagedRuntime.ManagedRuntime<any, never>
 
 export interface ProgramRunnerKernel<Sh extends AnyModuleShape> {
-  readonly scope: Scope.CloseableScope
+  readonly scope: Scope.Closeable
   readonly runtime: ManagedRuntime.ManagedRuntime<any, never>
   readonly identity: ProgramIdentity
   readonly installSignals: (enabled: boolean) => Effect.Effect<void>
@@ -39,8 +39,6 @@ export const makeProgramRunnerKernel = <Sh extends AnyModuleShape>(
     const scope = yield* Scope.make()
     const runtime = makeRuntime(rootImpl as unknown as ModuleImpl<any, AnyModuleShape, any>, options)
 
-    yield* Scope.addFinalizer(scope, Effect.promise(() => runtime.dispose()).pipe(Effect.asVoid))
-
     const setInstanceId = (value: unknown) => {
       identity.instanceId = typeof value === 'string' && value.length > 0 ? value : String(value ?? 'unknown')
     }
@@ -49,12 +47,56 @@ export const makeProgramRunnerKernel = <Sh extends AnyModuleShape>(
       readonly timeoutMs: number
       readonly onError?: (cause: import('effect').Cause.Cause<unknown>) => Effect.Effect<void, never, never>
     }) =>
-      closeProgramScope({
-        scope,
-        timeoutMs: params.timeoutMs,
-        identity,
-        onError: params.onError,
-      })
+      Effect.gen(function* () {
+        const exit = yield* Effect.exit(
+          closeProgramScope({
+            scope,
+            timeoutMs: params.timeoutMs,
+            identity,
+            onError: params.onError,
+          }),
+        )
+
+        if (Exit.isSuccess(exit)) {
+          const disposeResult = yield* Effect.promise<
+            | { readonly _tag: 'Success' }
+            | { readonly _tag: 'Failure'; readonly error: unknown }
+            | { readonly _tag: 'Timeout' }
+          >(() =>
+            new Promise((resolve) => {
+              const timer = setTimeout(() => resolve({ _tag: 'Timeout' as const }), params.timeoutMs)
+              void runtime.dispose().then(
+                () => {
+                  clearTimeout(timer)
+                  resolve({ _tag: 'Success' as const })
+                },
+                (error) => {
+                  clearTimeout(timer)
+                  resolve({ _tag: 'Failure' as const, error })
+                },
+              )
+            }),
+          )
+
+          if (disposeResult._tag === 'Timeout') {
+            return yield* Effect.die(
+              new DisposeTimeoutError(identity, {
+                timeoutMs: params.timeoutMs,
+                elapsedMs: params.timeoutMs,
+              }),
+            )
+          }
+
+          if (disposeResult._tag === 'Failure') {
+            return yield* Effect.die(new DisposeError(identity, Cause.die(disposeResult.error)))
+          }
+
+          return
+        }
+
+        void runtime.dispose()
+        return yield* Effect.failCause(exit.cause)
+      }) as Effect.Effect<void, never, never>
 
     const installSignals = (enabled: boolean) => installGracefulShutdownHandlers({ scope, enabled })
 

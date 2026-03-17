@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react'
-import { Context, Effect, Layer, ManagedRuntime, Schema } from 'effect'
+import { Effect, Layer, ManagedRuntime, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 import { RuntimeProvider, useModule } from '@logixjs/react'
 
@@ -7,7 +7,7 @@ import { RuntimeProvider, useModule } from '@logixjs/react'
 interface HeavyService {
   readonly perform: () => Effect.Effect<void>
 }
-const HeavyService = Context.GenericTag<HeavyService>('HeavyService')
+const HeavyService = ServiceMap.Service<HeavyService>('HeavyService')
 
 // 2. 模拟一个耗时 2 秒才能就绪的 Layer
 // 注意：Effect.sleep 在 Layer 构建阶段执行，这会阻塞依赖它的 ModuleRuntime 创建
@@ -37,7 +37,7 @@ const SuspenseLogic = SuspenseDef.logic<HeavyService>(($) =>
   Effect.gen(function* () {
     // 注入依赖：虽然 Logic 内部没用到，但 ModuleImpl 声明了依赖，
     // 所以 Runtime 构建时必须等待 Layer 就绪。
-    yield* HeavyService
+    yield* Effect.service(HeavyService).pipe(Effect.orDie)
 
     yield* $.onAction('increment').runParallelFork(
       $.state.mutate((s) => {

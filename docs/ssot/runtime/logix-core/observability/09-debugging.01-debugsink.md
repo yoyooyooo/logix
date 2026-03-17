@@ -100,7 +100,6 @@ export type Event =
       readonly severity: "error" | "warning" | "info"
       readonly message: string
       readonly hint?: string
-      readonly source?: string
       readonly actionTag?: string
       readonly kind?: string
       readonly txnId?: string

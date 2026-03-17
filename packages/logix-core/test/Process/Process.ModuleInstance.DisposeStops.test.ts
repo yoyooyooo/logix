@@ -1,12 +1,13 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
-import { Deferred, Effect, Exit, Layer, Scope, Schema, TestClock } from 'effect'
+import { describe, it, expect } from '@effect/vitest'
+import { Deferred, Effect, Exit, Layer, Scope, Schema, ServiceMap } from 'effect'
+import { TestClock } from 'effect/testing'
 import * as Logix from '../../src/index.js'
 import * as ProcessRuntime from '../../src/internal/runtime/core/process/ProcessRuntime.js'
 
 describe('process: moduleInstance dispose stops', () => {
-  it.scoped('should stop moduleInstance process when scope is disposed', () =>
+  it.effect('should stop moduleInstance process when scope is disposed', () =>
     Effect.gen(function* () {
+      const started = yield* Deferred.make<void>()
       const stopped = yield* Deferred.make<void>()
 
       const Host = Logix.Module.make('ProcessModuleInstanceDisposeHost', {
@@ -16,7 +17,11 @@ describe('process: moduleInstance dispose stops', () => {
 
       const Proc = Logix.Process.make(
         'ProcessModuleInstanceDisposeStops',
-        Effect.never.pipe(Effect.ensuring(Deferred.succeed(stopped, undefined).pipe(Effect.asVoid))),
+        Deferred.succeed(started, undefined).pipe(
+          Effect.asVoid,
+          Effect.flatMap(() => Effect.never),
+          Effect.ensuring(Effect.uninterruptible(Deferred.succeed(stopped, undefined).pipe(Effect.asVoid))),
+        ),
       )
 
       const HostImpl = Host.implement({
@@ -28,21 +33,22 @@ describe('process: moduleInstance dispose stops', () => {
 
       const scope = yield* Scope.make()
       try {
-        yield* Layer.buildWithScope(layer, scope)
+        const env = yield* Layer.buildWithScope(layer, scope)
+        ServiceMap.get(env as ServiceMap.ServiceMap<any>, Host.tag as any)
         yield* TestClock.adjust('20 millis')
+
+        yield* Effect.promise(() => Effect.runPromise(Deferred.await(started)))
       } finally {
         yield* Scope.close(scope, Exit.succeed(undefined))
       }
 
-      const result = yield* Deferred.await(stopped).pipe(
-        Effect.timeoutFail({
-          duration: '1 second',
-          onTimeout: () => new Error('process did not stop after scope.close'),
-        }),
-        Effect.either,
+      yield* Effect.promise(
+        () =>
+          Promise.race([
+            Effect.runPromise(Deferred.await(stopped)),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error('process did not stop after scope.close')), 1000)),
+          ]),
       )
-
-      expect(result._tag).toBe('Right')
     }),
   )
 })

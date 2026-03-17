@@ -4,7 +4,7 @@ import { Effect, Exit, Layer, Scope, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('Dual runtime isolation (core vs core-ng)', () => {
-  it.scoped('two runtimes can coexist without state/dispatch interference', () =>
+  it.effect('two runtimes can coexist without state/dispatch interference', () =>
     Effect.gen(function* () {
       const Counter = Logix.Module.make('DualRuntimeIsolation.Counter', {
         state: Schema.Struct({ value: Schema.Number }),
@@ -22,17 +22,21 @@ describe('Dual runtime isolation (core vs core-ng)', () => {
       const scope = yield* Scope.make()
 
       const [ctxCore, ctxCoreNg] = yield* Effect.all([
-        Logix.Runtime.openProgram(ProgramCore, {
-          layer: Layer.empty as Layer.Layer<any, never, never>,
-          handleSignals: false,
-        }).pipe(Scope.extend(scope)),
-        Logix.Runtime.openProgram(ProgramCoreNg, {
-          layer: Layer.mergeAll(
-            Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logixjs/core-ng' }),
-            Logix.Kernel.fullCutoverGateModeLayer('trial'),
-          ) as Layer.Layer<any, never, never>,
-          handleSignals: false,
-        }).pipe(Scope.extend(scope)),
+        Scope.provide(scope)(
+          Logix.Runtime.openProgram(ProgramCore, {
+            layer: Layer.empty as Layer.Layer<any, never, never>,
+            handleSignals: false,
+          }),
+        ),
+        Scope.provide(scope)(
+          Logix.Runtime.openProgram(ProgramCoreNg, {
+            layer: Layer.mergeAll(
+              Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logixjs/core-ng' }),
+              Logix.Kernel.fullCutoverGateModeLayer('trial'),
+            ) as Layer.Layer<any, never, never>,
+            handleSignals: false,
+          }),
+        ),
       ])
 
       expect(Logix.Kernel.getKernelImplementationRef(ctxCore.module).kernelId).toBe('core')
@@ -57,7 +61,8 @@ describe('Dual runtime isolation (core vs core-ng)', () => {
       expect((core2 as any).value).toBe(2)
       expect((ng2 as any).value).toBe(11)
 
-      yield* Scope.close(scope, Exit.void)
+      yield* Effect.promise(() => ctxCore.runtime.dispose())
+      yield* Effect.promise(() => ctxCoreNg.runtime.dispose())
     }),
   )
 })

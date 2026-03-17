@@ -29,7 +29,7 @@ describe('Runtime (048): no implicit fallback', () => {
 
     const boot = Effect.gen(function* () {
       // Force module assembly (and thus fullCutover gate evaluation).
-      yield* Root.tag
+      yield* Effect.service(Root.tag).pipe(Effect.orDie)
     })
 
     try {
@@ -73,7 +73,7 @@ describe('Runtime (048): no implicit fallback', () => {
     })
 
     const boot = Effect.gen(function* () {
-      yield* Root.tag
+      yield* Effect.service(Root.tag).pipe(Effect.orDie)
     })
 
     try {
@@ -115,7 +115,7 @@ describe('Runtime (048): no implicit fallback', () => {
     })
 
     const boot = Effect.gen(function* () {
-      const moduleRuntime = yield* Root.tag
+      const moduleRuntime = yield* Effect.service(Root.tag).pipe(Effect.orDie)
       const runtimeServicesEvidence = Logix.Kernel.getRuntimeServicesEvidence(moduleRuntime)
       const gate = Logix.Kernel.evaluateFullCutoverGate({
         mode: 'trial',
@@ -157,7 +157,7 @@ describe('Runtime (048): no implicit fallback', () => {
     })
 
     const boot = Effect.gen(function* () {
-      const moduleRuntime = yield* Root.tag
+      const moduleRuntime = yield* Effect.service(Root.tag).pipe(Effect.orDie)
       const runtimeServicesEvidence = Logix.Kernel.getRuntimeServicesEvidence(moduleRuntime)
       const gate = Logix.Kernel.evaluateFullCutoverGate({
         mode: 'fullCutover',

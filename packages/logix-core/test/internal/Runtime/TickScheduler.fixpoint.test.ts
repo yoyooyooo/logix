@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
 import * as Logix from '../../../src/index.js'
@@ -48,8 +48,7 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
       })
       queue.markTopicDirty(bKey, 'low')
 
-      yield* scheduler.flushNow.pipe(
-        Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel as any, 'light'),
+      yield* Effect.provideService(scheduler.flushNow, Logix.Debug.internal.currentDiagnosticsLevel as any, 'light').pipe(
         Effect.provide(Logix.Debug.devtoolsHubLayer({ bufferSize: 64 })),
       )
 
@@ -253,8 +252,7 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
       })
       queue.markTopicDirty(slowKey, 'low')
 
-      yield* scheduler.flushNow.pipe(
-        Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel as any, 'light'),
+      yield* Effect.provideService(scheduler.flushNow, Logix.Debug.internal.currentDiagnosticsLevel as any, 'light').pipe(
         Effect.provide(Logix.Debug.devtoolsHubLayer({ bufferSize: 128 })),
       )
 
@@ -281,8 +279,7 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
 
       // Second tick should catch up the deferred backlog.
       Logix.Debug.clearDevtoolsEvents()
-      yield* scheduler.flushNow.pipe(
-        Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel as any, 'light'),
+      yield* Effect.provideService(scheduler.flushNow, Logix.Debug.internal.currentDiagnosticsLevel as any, 'light').pipe(
         Effect.provide(Logix.Debug.devtoolsHubLayer({ bufferSize: 128 })),
       )
 
@@ -343,8 +340,7 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
       })
       queue.markTopicDirty(lowKey, 'low')
 
-      yield* scheduler.flushNow.pipe(
-        Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel as any, 'light'),
+      yield* Effect.provideService(scheduler.flushNow, Logix.Debug.internal.currentDiagnosticsLevel as any, 'light').pipe(
         Effect.provide(Logix.Debug.devtoolsHubLayer({ bufferSize: 128 })),
       )
 
@@ -364,8 +360,7 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
 
       // Next tick should finish the deferred urgent backlog.
       Logix.Debug.clearDevtoolsEvents()
-      yield* scheduler.flushNow.pipe(
-        Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel as any, 'light'),
+      yield* Effect.provideService(scheduler.flushNow, Logix.Debug.internal.currentDiagnosticsLevel as any, 'light').pipe(
         Effect.provide(Logix.Debug.devtoolsHubLayer({ bufferSize: 128 })),
       )
 

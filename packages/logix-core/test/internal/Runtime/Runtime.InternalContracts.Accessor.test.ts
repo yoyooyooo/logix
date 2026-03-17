@@ -55,6 +55,10 @@ const makeInternals = (instanceId: string): RuntimeInternals => ({
   txn: {
     instrumentation: 'light',
     registerReducer: () => {},
+    registerActionStateWriteback: () => {},
+    dispatchWithOriginOverride: () => Effect.void,
+    dispatchLowPriorityWithOriginOverride: () => Effect.void,
+    dispatchBatchWithOriginOverride: () => Effect.void,
     runWithStateTransaction: () => Effect.void,
     updateDraft: () => {},
     recordStatePatch: () => {},

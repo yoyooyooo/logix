@@ -1,11 +1,22 @@
 import { create, type Patches } from 'mutative'
 import type { FieldPath } from '../../field-path.js'
-import { isFieldPathSegment } from '../../field-path.js'
+import { isFieldPathSegment, toKey } from '../../field-path.js'
 
 export type PatchPath = FieldPath
 
 export const mutateWithoutPatches = <S>(base: S, mutator: (draft: S) => void): S => {
   return create(base, mutator as any) as unknown as S
+}
+
+// Patch path evidence (from mutative) is allowed to include list indices (number / digit strings).
+// Field-level dirty ids are still derived by filtering out index segments via normalizeFieldPath.
+const isNonNegativeIntString = (text: string): boolean => {
+  if (!text) return false
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i)
+    if (c < 48 /* '0' */ || c > 57 /* '9' */) return false
+  }
+  return true
 }
 
 const toPatchFieldPath = (path: unknown): PatchPath | '*' | undefined => {
@@ -16,16 +27,39 @@ const toPatchFieldPath = (path: unknown): PatchPath | '*' | undefined => {
 
   if (!Array.isArray(path)) return undefined
 
+  // Fast path: patch path is already a pure string path evidence array.
+  let allValidString = true
+  for (let i = 0; i < path.length; i++) {
+    const seg = path[i]
+    if (typeof seg !== 'string' || !(isFieldPathSegment(seg) || isNonNegativeIntString(seg))) {
+      allValidString = false
+      break
+    }
+  }
+  if (allValidString) return path as PatchPath
+
+  // Structural path:
+  // - keep valid field segments (non-numeric), and
+  // - keep list indices (numbers / digit strings) for listIndexEvidence (C-1 / D-1).
   const parts: Array<string> = []
-  for (const seg of path) {
+  for (let i = 0; i < path.length; i++) {
+    const seg = path[i]
     if (typeof seg === 'string') {
-      if (isFieldPathSegment(seg)) parts.push(seg)
+      if (isFieldPathSegment(seg) || isNonNegativeIntString(seg)) {
+        parts.push(seg)
+      }
       continue
+    }
+
+    if (typeof seg === 'number' && Number.isFinite(seg)) {
+      const n = Math.floor(seg)
+      if (n >= 0 && n <= 2_147_483_647) {
+        parts.push(String(n))
+      }
     }
   }
 
-  if (parts.length === 0) return '*'
-  return parts
+  return parts.length === 0 ? '*' : parts
 }
 
 export const mutateWithPatchPaths = <S>(
@@ -46,16 +80,64 @@ export const mutateWithPatchPaths = <S>(
   const nextState = out[0] as S
   const patches = (out[1] ?? []) as Patches<{ pathAsArray: true; arrayLengthAssignment: false }>
 
-  const dedup = new Map<string, PatchPath | '*'>()
-  for (const patch of patches) {
+  // Large patch bursts (e.g. reducers mutating hundreds/thousands of flat fields) are typically prefix-free and
+  // already unique. In this case, string-key dedup becomes pure overhead and can cause GC jitter in perf workloads.
+  // We keep only the '*' guard and let downstream dirty-set tracking handle any rare duplicates.
+  if (patches.length > 256) {
+    let sawStar = false
+    const patchPaths: Array<PatchPath | '*'> = []
+    for (let i = 0; i < patches.length; i++) {
+      const patch = patches[i]
+      const p = toPatchFieldPath((patch as any)?.path)
+      if (!p) continue
+      if (p === '*') {
+        if (sawStar) continue
+        sawStar = true
+      }
+      patchPaths.push(p)
+    }
+    return {
+      nextState,
+      patchPaths,
+    }
+  }
+
+  // Perf note:
+  // - Avoid JSON.stringify-based dedup keys (alloc-heavy, can cause GC spikes in perf workloads).
+  // - Use segment keys for single-segment paths; fall back to a stable toKey() digest for multi-segment paths.
+  let sawStar = false
+  const singleSeg = new Set<string>()
+  const multiSeg = new Set<string>()
+  const patchPaths: Array<PatchPath | '*'> = []
+
+  for (let i = 0; i < patches.length; i++) {
+    const patch = patches[i]
     const p = toPatchFieldPath((patch as any)?.path)
     if (!p) continue
-    const key = p === '*' ? '*' : JSON.stringify(p)
-    if (!dedup.has(key)) dedup.set(key, p)
+
+    if (p === '*') {
+      if (sawStar) continue
+      sawStar = true
+      patchPaths.push(p)
+      continue
+    }
+
+    if (p.length === 1) {
+      const seg = p[0]!
+      if (singleSeg.has(seg)) continue
+      singleSeg.add(seg)
+      patchPaths.push(p)
+      continue
+    }
+
+    const key = toKey(p)
+    if (multiSeg.has(key)) continue
+    multiSeg.add(key)
+    patchPaths.push(p)
   }
 
   return {
     nextState,
-    patchPaths: Array.from(dedup.values()),
+    patchPaths,
   }
 }

@@ -7,12 +7,28 @@ export const makeConvergeAutoFixture = (options?: {
   readonly moduleId?: string
   readonly stateTransaction?: RuntimeOptions['stateTransaction']
   readonly diagnosticsLevel?: Debug.DiagnosticsLevel
+  /**
+   * Add extra computed steps on `a` to ensure auto-mode has a non-tiny graph,
+   * so tests can still cover the dirty-path decision branch.
+   */
+  readonly extraADerivedCount?: number
 }) => {
+  const extraADerivedCount =
+    typeof options?.extraADerivedCount === 'number' && Number.isFinite(options.extraADerivedCount)
+      ? Math.max(0, Math.floor(options.extraADerivedCount))
+      : 0
+
+  const extraFields: Record<string, typeof Schema.Number> = {}
+  for (let i = 0; i < extraADerivedCount; i++) {
+    extraFields[`derivedA${i + 2}`] = Schema.Number
+  }
+
   const State = Schema.Struct({
     a: Schema.Number,
     b: Schema.Number,
     derivedA: Schema.Number,
     derivedB: Schema.Number,
+    ...extraFields,
   })
 
   type S = Schema.Schema.Type<typeof State>
@@ -49,11 +65,25 @@ export const makeConvergeAutoFixture = (options?: {
         deps: ['b'],
         get: (b) => b + 1,
       }),
+      ...(Object.fromEntries(
+        Array.from({ length: extraADerivedCount }, (_, i) => [
+          `derivedA${i + 2}`,
+          Logix.StateTrait.computed<any, any, any>({
+            deps: ['a'],
+            get: (a) => (a as number) + 1,
+          }),
+        ]),
+      ) as any),
     }),
   })
 
+  const initial: any = { a: 0, b: 0, derivedA: 1, derivedB: 1 }
+  for (let i = 0; i < extraADerivedCount; i++) {
+    initial[`derivedA${i + 2}`] = 1
+  }
+
   const impl = M.implement({
-    initial: { a: 0, b: 0, derivedA: 1, derivedB: 1 },
+    initial,
     logics: [],
   })
 

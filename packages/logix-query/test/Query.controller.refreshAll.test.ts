@@ -1,30 +1,30 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from 'vitest'
 import { Duration, Effect, Layer, Schema } from 'effect'
 import { QueryClient } from '@tanstack/query-core'
 import * as Logix from '@logixjs/core'
 import * as Query from '../src/index.js'
 
 describe('Query.controller.refreshAll', () => {
-  it.scoped('should refresh all queries and skip key-unavailable ones', () =>
-    Effect.gen(function* () {
-      const waitUntil = <A>(
-        read: Effect.Effect<A, never, any>,
-        predicate: (value: A) => boolean,
-      ): Effect.Effect<A, Error, any> =>
-        Effect.gen(function* () {
-          while (true) {
-            const value = yield* read
-            if (predicate(value)) return value
-            yield* Effect.sleep(Duration.millis(5))
-          }
-        }).pipe(
-          Effect.timeoutFail({
-            duration: Duration.seconds(1),
-            onTimeout: () => new Error('timeout waiting for condition'),
-          }),
-        )
+  it('should refresh all queries and skip key-unavailable ones', async () => {
+    const waitUntil = <A>(
+      read: Effect.Effect<A, never, any>,
+      predicate: (value: A) => boolean,
+    ): Effect.Effect<A, Error, any> =>
+      Effect.gen(function* () {
+        for (let i = 0; i < 200; i += 1) {
+          const value = yield* read
+          if (predicate(value)) return value
+          yield* Effect.promise(
+            () =>
+              new Promise<void>((resolve) => {
+                setTimeout(resolve, 5)
+              }),
+          )
+        }
+        return yield* Effect.fail(new Error('timeout waiting for condition'))
+      })
 
+    await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
       let searchCalls = 0
       const SearchSpec = Logix.Resource.make({
         id: 'demo/query-refresh-all/search',
@@ -82,8 +82,14 @@ describe('Query.controller.refreshAll', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* module.tag
+        const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const controller = module.controller.make(rt)
+        yield* Effect.promise(
+          () =>
+            new Promise<void>((resolve) => {
+              setTimeout(resolve, 20)
+            }),
+        )
 
         // refreshAll: search key is available; detail key is not.
         yield* controller.controller.refresh()
@@ -97,6 +103,6 @@ describe('Query.controller.refreshAll', () => {
       })
 
       yield* Effect.promise(() => runtime.runPromise(program as any))
-    }),
-  )
+    })))
+  })
 })

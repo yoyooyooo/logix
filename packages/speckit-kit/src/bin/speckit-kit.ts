@@ -1,10 +1,11 @@
 import fs from 'node:fs'
+import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createServer } from 'node:http'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { HttpApiBuilder, HttpMiddleware, HttpServer, HttpServerRequest, HttpServerResponse } from '@effect/platform'
-import { NodeFileSystem, NodeHttpServer, NodePath, NodeRuntime } from '@effect/platform-node'
+import { HttpRouter, HttpServer } from 'effect/unstable/http'
+import { HttpApiBuilder } from 'effect/unstable/httpapi'
 import { Effect, Layer } from 'effect'
 import open from 'open'
 
@@ -111,21 +112,34 @@ function assertUiDistExists(): void {
   }
 }
 
-function stripApiPrefix(req: HttpServerRequest.HttpServerRequest): HttpServerRequest.HttpServerRequest {
-  let url: URL
-  try {
-    url = new URL(req.url, 'http://localhost')
-  } catch {
-    return req
+function stripApiPrefix(pathname: string): string {
+  return pathname.replace(/^\/api/, '') || '/'
+}
+
+function toWebRequest(req: IncomingMessage, origin: string): Request {
+  const url = new URL(req.url ?? '/', origin)
+  const body = req.method === 'GET' || req.method === 'HEAD' ? undefined : (req as any)
+  return new Request(url, {
+    method: req.method,
+    headers: req.headers as Record<string, string>,
+    body,
+    duplex: body ? 'half' : undefined,
+  } as RequestInit)
+}
+
+async function writeWebResponse(response: Response, res: ServerResponse): Promise<void> {
+  res.statusCode = response.status
+  response.headers.forEach((value, key) => {
+    res.setHeader(key, value)
+  })
+
+  if (!response.body) {
+    res.end()
+    return
   }
 
-  if (!(url.pathname === '/api' || url.pathname.startsWith('/api/'))) {
-    return req
-  }
-
-  url.pathname = url.pathname.replace(/^\/api/, '') || '/'
-  const nextUrl = `${url.pathname}${url.search}`
-  return req.modify({ url: nextUrl })
+  const buffer = Buffer.from(await response.arrayBuffer())
+  res.end(buffer)
 }
 
 function resolveUiFilePath(pathname: string): string | null {
@@ -152,89 +166,107 @@ function resolveUiFilePath(pathname: string): string | null {
   return candidate
 }
 
-function runKanban(opts: CliOptions): void {
+function contentTypeFor(filePath: string): string {
+  switch (path.extname(filePath)) {
+    case '.html':
+      return 'text/html; charset=utf-8'
+    case '.js':
+      return 'text/javascript; charset=utf-8'
+    case '.css':
+      return 'text/css; charset=utf-8'
+    case '.json':
+      return 'application/json; charset=utf-8'
+    case '.svg':
+      return 'image/svg+xml'
+    case '.png':
+      return 'image/png'
+    case '.jpg':
+    case '.jpeg':
+      return 'image/jpeg'
+    default:
+      return 'application/octet-stream'
+  }
+}
+
+async function runKanban(opts: CliOptions): Promise<void> {
   if (opts.repoRoot) {
     process.env.SPECKIT_KIT_REPO_ROOT = path.resolve(opts.repoRoot)
   }
 
   assertUiDistExists()
 
-  const ApiLive = HttpApiBuilder.api(EffectApi).pipe(
+  const ApiLive = HttpApiBuilder.layer(EffectApi).pipe(
     Layer.provide(HealthLive),
     Layer.provide(SpecboardLive),
     Layer.provide(SpecboardServiceLive),
+    Layer.provide(HttpServer.layerServices),
   )
 
-  const NodeServerLive = NodeHttpServer.layer(createServer, {
-    port: opts.port === null || Number.isNaN(opts.port) ? 0 : opts.port,
-    host: opts.host,
-  })
+  const { handler: apiHandler, dispose } = HttpRouter.toWebHandler(Layer.mergeAll(ApiLive), { disableLogger: true })
 
-  const RuntimeLive = Layer.mergeAll(
-    ApiLive,
-    HttpApiBuilder.Router.Live,
-    HttpApiBuilder.Middleware.layer,
-    NodeFileSystem.layer,
-    NodePath.layer,
-    NodeServerLive,
-  )
-
-  const program = Effect.gen(function* () {
-    const apiApp = yield* HttpApiBuilder.httpApp
-
-    const httpApp = Effect.gen(function* () {
-      const req = yield* HttpServerRequest.HttpServerRequest
-      let url: URL
-      try {
-        url = new URL(req.url, 'http://localhost')
-      } catch {
-        url = new URL('http://localhost/')
-      }
+  const server = createServer(async (req, res) => {
+    try {
+      const origin = `http://${opts.host}`
+      const url = new URL(req.url ?? '/', origin)
 
       if (url.pathname === '/api' || url.pathname.startsWith('/api/')) {
-        const rewritten = stripApiPrefix(req)
-        return yield* apiApp.pipe(Effect.provideService(HttpServerRequest.HttpServerRequest, rewritten))
+        url.pathname = stripApiPrefix(url.pathname)
+        const apiRequest = new Request(url, toWebRequest(req, origin))
+        const apiResponse = await apiHandler(apiRequest)
+        await writeWebResponse(apiResponse, res)
+        return
       }
 
       if (req.method !== 'GET' && req.method !== 'HEAD') {
-        return HttpServerResponse.text('Not Found', { status: 404 })
+        res.statusCode = 404
+        res.end('Not Found')
+        return
       }
 
       const filePath = resolveUiFilePath(url.pathname)
       if (!filePath) {
-        return HttpServerResponse.text('Not Found', { status: 404 })
+        res.statusCode = 404
+        res.end('Not Found')
+        return
       }
 
-      return yield* HttpServerResponse.file(filePath).pipe(
-        Effect.catchAll(() => Effect.succeed(HttpServerResponse.text('Not Found', { status: 404 }))),
-      )
-    })
-
-    yield* HttpServer.serveEffect(httpApp, HttpMiddleware.logger)
-
-    const address = yield* HttpServer.addressWith(Effect.succeed)
-    if (address._tag === 'TcpAddress') {
-      const publicUrl = `http://localhost:${address.port}`
-      yield* Effect.sync(() => {
-        console.log(`Server running at ${publicUrl}`)
-      })
-
-      if (opts.open) {
-        yield* Effect.tryPromise({
-          try: () => open(publicUrl),
-          catch: () => undefined,
-        }).pipe(Effect.ignore)
-      }
-    } else {
-      yield* Effect.sync(() => {
-        console.log(`Server running at ${HttpServer.formatAddress(address)}`)
-      })
+      const body = await fs.promises.readFile(filePath)
+      res.statusCode = 200
+      res.setHeader('content-type', contentTypeFor(filePath))
+      res.end(body)
+    } catch (error) {
+      res.statusCode = 500
+      res.end(error instanceof Error ? error.message : 'Internal Server Error')
     }
+  })
 
-    return yield* Effect.never
-  }).pipe(Effect.provide(RuntimeLive), Effect.scoped)
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(opts.port === null || Number.isNaN(opts.port) ? 0 : opts.port, opts.host, () => resolve())
+  })
 
-  NodeRuntime.runMain(program)
+  const address = server.address()
+  if (address && typeof address === 'object') {
+    const publicUrl = `http://localhost:${address.port}`
+    console.log(`Server running at ${publicUrl}`)
+    if (opts.open) {
+      await open(publicUrl).catch(() => undefined)
+    }
+  }
+
+  const shutdown = async () => {
+    await new Promise<void>((resolve) => server.close(() => resolve()))
+    await dispose()
+  }
+
+  process.once('SIGINT', () => {
+    void shutdown().finally(() => process.exit(0))
+  })
+  process.once('SIGTERM', () => {
+    void shutdown().finally(() => process.exit(0))
+  })
+
+  await new Promise<never>(() => {})
 }
 
 async function main(): Promise<void> {
@@ -245,7 +277,7 @@ async function main(): Promise<void> {
   }
 
   if (parsed.command === 'kanban') {
-    runKanban(parsed)
+    await runKanban(parsed)
     return
   }
 }

@@ -1,0 +1,516 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-03-06T08:53:33.035Z",
+    "from": {
+      "file": "specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.r1handoff-lite.currenthead.txn-lanes-urgent-aware.targeted.json",
+      "commit": "a17095288bab2cd8e3d968dcbe2ae4b0aed0b673"
+    },
+    "to": {
+      "file": "specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.r1handoff-lite.run2.txn-lanes-urgent-aware.targeted.json",
+      "commit": "a17095288bab2cd8e3d968dcbe2ae4b0aed0b673"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.after=true"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 2,
+    "improvements": 1,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "txnLanes.urgentBacklog",
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "urgent.p95<=50ms",
+            "type": "absolute",
+            "metric": "e2e.urgentToStableMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "mode": "default"
+          },
+          "beforeMaxLevel": 200,
+          "afterMaxLevel": null,
+          "message": "[category=e2e] urgent.p95<=50ms {mode=default}: before=200 after=null (after:budgetExceeded) (before:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.general.narrow-load",
+              "title": "缩小负载维度或回退更保守配置",
+              "detail": "边界回归可先通过缩小主加压轴档位或回退更保守配置验证是否与最近改动相关"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "urgent.p95<=50ms",
+            "type": "absolute",
+            "metric": "e2e.urgentToStableMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "mode": "off"
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 200,
+          "message": "[category=e2e] urgent.p95<=50ms {mode=off}: before=null after=200 (after:budgetExceeded) (before:budgetExceeded)"
+        },
+        {
+          "budget": {
+            "id": "catchUp.p95<=200ms",
+            "type": "absolute",
+            "metric": "runtime.backlogCatchUpMs",
+            "p95Ms": 200
+          },
+          "where": {
+            "mode": "default"
+          },
+          "beforeMaxLevel": 2000,
+          "afterMaxLevel": 800,
+          "message": "[category=runtime] catchUp.p95<=200ms {mode=default}: before=2000 after=800 (after:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.general.narrow-load",
+              "title": "缩小负载维度或回退更保守配置",
+              "detail": "边界回归可先通过缩小主加压轴档位或回退更保守配置验证是否与最近改动相关（优先检查 runtime 维度配置，如 steps/dirty-roots/收敛策略。）"
+            }
+          ]
+        }
+      ],
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=0 ok=2 unavailable=0 missing=0] after[value=0 ok=2 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=6 unavailable=0 missing=0] after[value=core ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnLanes.budgetMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1
+          },
+          "message": "txnLanes.budgetMs(points) unit=count: before[value=1 ok=6 unavailable=0 missing=0] after[value=1 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnLanes.maxLagMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 50
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 50
+          },
+          "message": "txnLanes.maxLagMs(points) unit=count: before[value=50 ok=6 unavailable=0 missing=0] after[value=50 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnLanes.mode",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "off"
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "off"
+          },
+          "message": "txnLanes.mode(points) unit=count: before[value=off ok=6 unavailable=0 missing=0] after[value=off ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnLanes.yieldStrategy",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "baseline"
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "baseline"
+          },
+          "message": "txnLanes.yieldStrategy(points) unit=ratio: before[value=baseline ok=6 unavailable=0 missing=0] after[value=baseline ok=6 unavailable=0 missing=0]"
+        }
+      ],
+      "metricDeltas": [
+        {
+          "metric": "e2e.urgentToStableMs",
+          "unit": "ms",
+          "compared": 6,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [
+            {
+              "params": {
+                "steps": 2000,
+                "mode": "default"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 41,
+                "p95Ms": 53
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 90,
+                "p95Ms": 99.5
+              },
+              "deltaMs": {
+                "medianMs": 49,
+                "p95Ms": 46.5
+              },
+              "ratio": {
+                "median": 2.1951219512195124,
+                "p95": 1.8773584905660377
+              }
+            },
+            {
+              "params": {
+                "steps": 800,
+                "mode": "default"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 41.099999994039536,
+                "p95Ms": 50.20000001788139
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 53.5,
+                "p95Ms": 58.20000001788139
+              },
+              "deltaMs": {
+                "medianMs": 12.400000005960464,
+                "p95Ms": 8
+              },
+              "ratio": {
+                "median": 1.3017031632058091,
+                "p95": 1.1593625497440314
+              }
+            },
+            {
+              "params": {
+                "steps": 800,
+                "mode": "off"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 37.099999994039536,
+                "p95Ms": 50.19999998807907
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 36.599999994039536,
+                "p95Ms": 54.099999994039536
+              },
+              "deltaMs": {
+                "medianMs": -0.5,
+                "p95Ms": 3.9000000059604645
+              },
+              "ratio": {
+                "median": 0.9865229110490478,
+                "p95": 1.0776892431650715
+              }
+            },
+            {
+              "params": {
+                "steps": 200,
+                "mode": "default"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 39.69999998807907,
+                "p95Ms": 49.70000001788139
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 43.599999994039536,
+                "p95Ms": 53.20000001788139
+              },
+              "deltaMs": {
+                "medianMs": 3.9000000059604645,
+                "p95Ms": 3.5
+              },
+              "ratio": {
+                "median": 1.0982367759982756,
+                "p95": 1.0704225351859304
+              }
+            }
+          ],
+          "topImprovements": [
+            {
+              "params": {
+                "steps": 2000,
+                "mode": "off"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 41.79999998211861,
+                "p95Ms": 62.29999998211861
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 40.5,
+                "p95Ms": 49.30000001192093
+              },
+              "deltaMs": {
+                "medianMs": -1.2999999821186066,
+                "p95Ms": -12.999999970197678
+              },
+              "ratio": {
+                "median": 0.9688995219455807,
+                "p95": 0.7913322636608515
+              }
+            },
+            {
+              "params": {
+                "steps": 200,
+                "mode": "off"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 36,
+                "p95Ms": 52.10000002384186
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 36.599999994039536,
+                "p95Ms": 48.400000005960464
+              },
+              "deltaMs": {
+                "medianMs": 0.5999999940395355,
+                "p95Ms": -3.7000000178813934
+              },
+              "ratio": {
+                "median": 1.0166666665010982,
+                "p95": 0.9289827252171169
+              }
+            }
+          ]
+        },
+        {
+          "metric": "runtime.backlogCatchUpMs",
+          "unit": "ms",
+          "compared": 6,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [
+            {
+              "params": {
+                "steps": 2000,
+                "mode": "default"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 84,
+                "p95Ms": 99.40000000596046
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 389.90000000596046,
+                "p95Ms": 410.2000000178814
+              },
+              "deltaMs": {
+                "medianMs": 305.90000000596046,
+                "p95Ms": 310.80000001192093
+              },
+              "ratio": {
+                "median": 4.641666666737625,
+                "p95": 4.1267605633127165
+              }
+            },
+            {
+              "params": {
+                "steps": 800,
+                "mode": "default"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 80.80000001192093,
+                "p95Ms": 91.5
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 112.80000001192093,
+                "p95Ms": 124.90000000596046
+              },
+              "deltaMs": {
+                "medianMs": 32,
+                "p95Ms": 33.400000005960464
+              },
+              "ratio": {
+                "median": 1.3960396039019658,
+                "p95": 1.3650273224695133
+              }
+            },
+            {
+              "params": {
+                "steps": 200,
+                "mode": "default"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 81.59999999403954,
+                "p95Ms": 97.5
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 85.2999999821186,
+                "p95Ms": 103
+              },
+              "deltaMs": {
+                "medianMs": 3.699999988079071,
+                "p95Ms": 5.5
+              },
+              "ratio": {
+                "median": 1.0453431371121242,
+                "p95": 1.0564102564102564
+              }
+            }
+          ],
+          "topImprovements": [
+            {
+              "params": {
+                "steps": 2000,
+                "mode": "off"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 84.2999999821186,
+                "p95Ms": 114.59999999403954
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 80.60000002384186,
+                "p95Ms": 101.09999999403954
+              },
+              "deltaMs": {
+                "medianMs": -3.6999999582767487,
+                "p95Ms": -13.5
+              },
+              "ratio": {
+                "median": 0.9561091345307049,
+                "p95": 0.8821989528734542
+              }
+            },
+            {
+              "params": {
+                "steps": 200,
+                "mode": "off"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 79.5,
+                "p95Ms": 108.39999997615814
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 79.80000001192093,
+                "p95Ms": 95.2000000178814
+              },
+              "deltaMs": {
+                "medianMs": 0.30000001192092896,
+                "p95Ms": -13.199999958276749
+              },
+              "ratio": {
+                "median": 1.003773585055609,
+                "p95": 0.878228782645941
+              }
+            },
+            {
+              "params": {
+                "steps": 800,
+                "mode": "off"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 80.10000002384186,
+                "p95Ms": 99.09999999403954
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 87.90000000596046,
+                "p95Ms": 96.69999998807907
+              },
+              "deltaMs": {
+                "medianMs": 7.799999982118607,
+                "p95Ms": -2.4000000059604645
+              },
+              "ratio": {
+                "median": 1.097378276901335,
+                "p95": 0.9757820382835034
+              }
+            }
+          ]
+        }
+      ],
+      "notes": "mostSignificantRegression: urgent.p95<=50ms {mode=default} (before=200, after=null); stabilityWarning: metric=e2e.urgentToStableMs {mode=default&steps=800} baselineP95=50.20ms afterP95=58.20ms diff=8.00ms limit=5.02ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    }
+  ]
+}

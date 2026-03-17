@@ -124,12 +124,12 @@ export const runProcessTriggerStream = (args: {
           const [prevFiber, prevRunningId, runId] = yield* LatestFiberSlot.beginRun(stateRef)
 
           if (prevFiber && prevRunningId !== 0) {
-            yield* Fiber.interruptFork(prevFiber)
+            yield* Fiber.interrupt(prevFiber)
           }
 
-          const fiber = yield* Effect.forkScoped(
-            args.run(trigger).pipe(Effect.ensuring(LatestFiberSlot.clearIfCurrent(stateRef, runId))),
-          )
+          const fiber = yield* args
+            .run(trigger)
+            .pipe(Effect.ensuring(LatestFiberSlot.clearIfCurrent(stateRef, runId)), Effect.forkScoped)
 
           yield* LatestFiberSlot.setFiberIfCurrent(stateRef, runId, fiber)
         })
@@ -185,7 +185,7 @@ export const runProcessTriggerStream = (args: {
                           return s
                         }),
                       ),
-                      Effect.zipRight(drainSerial()),
+                      Effect.flatMap(() => drainSerial()),
                     ),
                 ).pipe(Effect.asVoid),
             }),
@@ -218,9 +218,9 @@ export const runProcessTriggerStream = (args: {
                         return s
                       }),
                     ),
-                    Effect.zipRight(drainParallel()),
+                    Effect.flatMap(() => drainParallel()),
                   ),
-                ).pipe(Effect.asVoid, Effect.zipRight(drainParallel())),
+                ).pipe(Effect.asVoid, Effect.flatMap(() => drainParallel())),
             }),
           ),
         ),

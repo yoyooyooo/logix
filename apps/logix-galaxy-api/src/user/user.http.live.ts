@@ -1,34 +1,34 @@
-import { HttpApiBuilder } from '@effect/platform'
-import * as Headers from '@effect/platform/Headers'
-import * as HttpServerRequest from '@effect/platform/HttpServerRequest'
+import * as Headers from 'effect/unstable/http/Headers'
+import * as HttpServerRequest from 'effect/unstable/http/HttpServerRequest'
+import { HttpApiBuilder } from 'effect/unstable/httpapi'
 import { Effect, Option } from 'effect'
 
-import { EffectApi } from '../app/effect-api.js'
+import { EffectApiAuth } from '../app/effect-api.js'
 import { AuthEventRepo } from '../auth/auth-event.repo.js'
 import { Auth, type AuthHeaders } from '../auth/auth.service.js'
 
 const getRequestMeta = Effect.gen(function* () {
   const req = yield* HttpServerRequest.HttpServerRequest
-  const userAgent = Option.getOrUndefined(Headers.get(req.headers, 'user-agent')) ?? undefined
-  const xff = Option.getOrUndefined(Headers.get(req.headers, 'x-forwarded-for'))
-  const xri = Option.getOrUndefined(Headers.get(req.headers, 'x-real-ip'))
+  const userAgent = Headers.get(req.headers, 'user-agent')
+  const xff = Headers.get(req.headers, 'x-forwarded-for')
+  const xri = Headers.get(req.headers, 'x-real-ip')
   const ipFromForwarded = xff?.split(',')[0]?.trim()
-  const ip = (ipFromForwarded || xri?.trim() || Option.getOrUndefined(req.remoteAddress) || undefined) ?? undefined
+  const ip = (ipFromForwarded || xri?.trim() || req.remoteAddress || undefined) ?? undefined
   return { ip, userAgent }
 })
 
 const getAuthHeaders = Effect.gen(function* () {
   const req = yield* HttpServerRequest.HttpServerRequest
-  const authorization = Option.getOrUndefined(Headers.get(req.headers, 'authorization')) ?? undefined
+  const authorization = Headers.get(req.headers, 'authorization')
   return { authorization } satisfies AuthHeaders
 })
 
-export const UserLive = HttpApiBuilder.group(EffectApi, 'User', (handlers) =>
+export const UserLive = HttpApiBuilder.group(EffectApiAuth, 'User', (handlers) =>
   handlers
     .handle('userCreate', ({ payload }) =>
       Effect.gen(function* () {
-        const auth = yield* Auth
-        const events = yield* AuthEventRepo
+        const auth = yield* Effect.service(Auth)
+        const events = yield* Effect.service(AuthEventRepo)
         const meta = yield* getRequestMeta
         const headers = yield* getAuthHeaders
 
@@ -44,93 +44,93 @@ export const UserLive = HttpApiBuilder.group(EffectApi, 'User', (handlers) =>
             ip: meta.ip,
             userAgent: meta.userAgent,
           })
-          .pipe(Effect.catchAll(() => Effect.void))
+          .pipe(Effect.catch(() => Effect.void))
 
         return created
       }),
     )
-    .handle('userList', ({ urlParams }) =>
+    .handle('userList', ({ query }) =>
       Effect.gen(function* () {
-        const auth = yield* Auth
+        const auth = yield* Effect.service(Auth)
         const headers = yield* getAuthHeaders
-        return yield* auth.listUsers(headers, urlParams)
+        return yield* auth.listUsers(headers, query)
       }),
     )
-    .handle('userGet', ({ path }) =>
+    .handle('userGet', ({ params }) =>
       Effect.gen(function* () {
-        const auth = yield* Auth
+        const auth = yield* Effect.service(Auth)
         const headers = yield* getAuthHeaders
-        return yield* auth.getUser(headers, path.id)
+        return yield* auth.getUser(headers, params.id)
       }),
     )
-    .handle('userUpdate', ({ path, payload }) =>
+    .handle('userUpdate', ({ params, payload }) =>
       Effect.gen(function* () {
-        const auth = yield* Auth
+        const auth = yield* Effect.service(Auth)
         const headers = yield* getAuthHeaders
-        return yield* auth.updateUser(headers, path.id, payload)
+        return yield* auth.updateUser(headers, params.id, payload)
       }),
     )
-    .handle('userDisable', ({ path }) =>
+    .handle('userDisable', ({ params }) =>
       Effect.gen(function* () {
-        const auth = yield* Auth
-        const events = yield* AuthEventRepo
+        const auth = yield* Effect.service(Auth)
+        const events = yield* Effect.service(AuthEventRepo)
         const meta = yield* getRequestMeta
         const headers = yield* getAuthHeaders
 
         const actor = yield* auth.requireAdmin(headers)
-        yield* auth.disableUser(headers, path.id)
+        yield* auth.disableUser(headers, params.id)
 
         yield* events
           .write({
             eventType: 'user_disabled',
             actorUserId: actor.id,
-            subjectUserId: path.id,
+            subjectUserId: params.id,
             ip: meta.ip,
             userAgent: meta.userAgent,
           })
-          .pipe(Effect.catchAll(() => Effect.void))
+          .pipe(Effect.catch(() => Effect.void))
       }),
     )
-    .handle('userEnable', ({ path }) =>
+    .handle('userEnable', ({ params }) =>
       Effect.gen(function* () {
-        const auth = yield* Auth
-        const events = yield* AuthEventRepo
+        const auth = yield* Effect.service(Auth)
+        const events = yield* Effect.service(AuthEventRepo)
         const meta = yield* getRequestMeta
         const headers = yield* getAuthHeaders
 
         const actor = yield* auth.requireAdmin(headers)
-        yield* auth.enableUser(headers, path.id)
+        yield* auth.enableUser(headers, params.id)
 
         yield* events
           .write({
             eventType: 'user_enabled',
             actorUserId: actor.id,
-            subjectUserId: path.id,
+            subjectUserId: params.id,
             ip: meta.ip,
             userAgent: meta.userAgent,
           })
-          .pipe(Effect.catchAll(() => Effect.void))
+          .pipe(Effect.catch(() => Effect.void))
       }),
     )
-    .handle('userResetPassword', ({ path, payload }) =>
+    .handle('userResetPassword', ({ params, payload }) =>
       Effect.gen(function* () {
-        const auth = yield* Auth
-        const events = yield* AuthEventRepo
+        const auth = yield* Effect.service(Auth)
+        const events = yield* Effect.service(AuthEventRepo)
         const meta = yield* getRequestMeta
         const headers = yield* getAuthHeaders
 
         const actor = yield* auth.requireAdmin(headers)
-        yield* auth.resetPassword(headers, path.id, payload)
+        yield* auth.resetPassword(headers, params.id, payload)
 
         yield* events
           .write({
             eventType: 'password_reset',
             actorUserId: actor.id,
-            subjectUserId: path.id,
+            subjectUserId: params.id,
             ip: meta.ip,
             userAgent: meta.userAgent,
           })
-          .pipe(Effect.catchAll(() => Effect.void))
+          .pipe(Effect.catch(() => Effect.void))
       }),
     ),
 )

@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
 import * as Logix from '../../../src/index.js'
@@ -33,8 +33,7 @@ describe('TickScheduler (diagnostics gate)', () => {
       })
       queue.markTopicDirty(key, 'normal')
 
-      yield* scheduler.flushNow.pipe(
-        Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel as any, 'off'),
+      yield* Effect.provideService(scheduler.flushNow, Logix.Debug.internal.currentDiagnosticsLevel as any, 'off').pipe(
         Effect.provide(Logix.Debug.devtoolsHubLayer({ bufferSize: 64 })),
       )
 

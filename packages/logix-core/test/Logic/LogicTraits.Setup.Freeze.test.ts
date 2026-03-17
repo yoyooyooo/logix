@@ -52,9 +52,9 @@ describe('LogicTraits (setup) - freeze / phase guard', () => {
     })
 
     const readErrorCount = Effect.gen(function* () {
-      const rt = yield* M.tag
+      const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
       // Give the forked run fiber a chance to be scheduled (ModuleRuntime.make also yields at the end, but this is more robust).
-      yield* Effect.yieldNow()
+      yield* Effect.yieldNow
       const state = yield* rt.getState
       return (state as any).errorCount as number
     }) as Effect.Effect<number, never, any>

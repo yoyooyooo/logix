@@ -1,4 +1,4 @@
-import { Cause, Effect, FiberRef, Layer, Logger } from 'effect'
+import { Cause, Effect, Layer, Logger, Option, ServiceMap } from 'effect'
 import {
   projectJsonValue,
   type DowngradeReason as JsonDowngradeReason,
@@ -34,32 +34,6 @@ type GenericTraceEventType = Exclude<
 export type ReplayEventRef = ReplayLog.ReplayLogEvent & {
   readonly txnId?: string
   readonly trigger?: TriggerRef
-}
-
-export type TraceDigestReasonCode = 'digest_missing' | 'lookup_key_missing' | 'digest_mismatch'
-
-export type TraceDigestAnchor = {
-  readonly moduleId: string
-  readonly instanceId: string
-  readonly txnSeq: number
-  readonly txnId?: string
-  readonly opSeq?: number
-}
-
-export const TRACE_DIGEST_PAYLOAD_SCHEMA_VERSION = 1 as const
-export const TRACE_DIGEST_PAYLOAD_DIGEST_ALGO_VERSION = 'converge_ir_v2' as const
-
-export type TraceDigestPayload = {
-  readonly schemaVersion: typeof TRACE_DIGEST_PAYLOAD_SCHEMA_VERSION
-  readonly digestAlgoVersion: typeof TRACE_DIGEST_PAYLOAD_DIGEST_ALGO_VERSION
-  readonly lookupKey: ReplayLog.StaticIrLookupKey
-  readonly anchor: TraceDigestAnchor
-}
-
-export type TraceDigestDegradeRecord = {
-  readonly reasonCode: TraceDigestReasonCode
-  readonly fallbackMode: 'legacy_payload' | 'id_first'
-  readonly anchor: TraceDigestAnchor
 }
 
 export type Event =
@@ -158,10 +132,6 @@ export type Event =
        * - Populated by Runtime only on StateTransaction-based paths.
        */
       readonly originName?: string
-      readonly originDetails?: unknown
-      readonly traceLookupKey?: ReplayLog.StaticIrLookupKey
-      readonly traceDigestPayload?: TraceDigestPayload
-      readonly traceDigestDegrade?: TraceDigestDegradeRecord
       /**
        * Reserved: Trait converge summary (for Devtools window-level stats / TopN costs / degrade reasons, etc.).
        * - Phase 2: field slot only; structure is not fixed.
@@ -227,7 +197,6 @@ export type Event =
       readonly severity: 'error' | 'warning' | 'info'
       readonly message: string
       readonly hint?: string
-      readonly source?: string
       readonly actionTag?: string
       readonly kind?: string
       readonly txnSeq?: number
@@ -305,15 +274,44 @@ export type Event =
 export interface Sink {
   readonly record: (event: Event) => Effect.Effect<void>
 }
-export const currentDebugSinks = FiberRef.unsafeMake<ReadonlyArray<Sink>>([])
-export const currentRuntimeLabel = FiberRef.unsafeMake<string | undefined>(undefined)
-export const currentTxnId = FiberRef.unsafeMake<string | undefined>(undefined)
-export const currentOpSeq = FiberRef.unsafeMake<number | undefined>(undefined)
+export const currentDebugSinks = ServiceMap.Reference<ReadonlyArray<Sink>>('@logixjs/core/Debug.currentDebugSinks', {
+  defaultValue: () => [],
+})
+export const currentRuntimeLabel = ServiceMap.Reference<string | undefined>('@logixjs/core/Debug.currentRuntimeLabel', {
+  defaultValue: () => undefined,
+})
+export const currentTxnId = ServiceMap.Reference<string | undefined>('@logixjs/core/Debug.currentTxnId', {
+  defaultValue: () => undefined,
+})
+export const currentOpSeq = ServiceMap.Reference<number | undefined>('@logixjs/core/Debug.currentOpSeq', {
+  defaultValue: () => undefined,
+})
 export type DiagnosticsLevel = 'off' | 'light' | 'sampled' | 'full'
-export const currentDiagnosticsLevel = FiberRef.unsafeMake<DiagnosticsLevel>('off')
+export const currentDiagnosticsLevel = ServiceMap.Reference<DiagnosticsLevel>('@logixjs/core/Debug.currentDiagnosticsLevel', {
+  defaultValue: () => 'off',
+})
 
 export const diagnosticsLevel = (level: DiagnosticsLevel): Layer.Layer<any, never, never> =>
-  Layer.fiberRefLocallyScopedWith(currentDiagnosticsLevel as any, () => level) as Layer.Layer<any, never, never>
+  Layer.succeed(currentDiagnosticsLevel, level) as Layer.Layer<any, never, never>
+
+export type DiagnosticsMaterialization = 'eager' | 'lazy'
+export const currentDiagnosticsMaterialization = ServiceMap.Reference<DiagnosticsMaterialization>(
+  '@logixjs/core/Debug.currentDiagnosticsMaterialization',
+  {
+    defaultValue: () => 'eager',
+  },
+)
+
+export const diagnosticsMaterialization = (mode: DiagnosticsMaterialization): Layer.Layer<any, never, never> =>
+  Layer.succeed(currentDiagnosticsMaterialization, mode) as Layer.Layer<any, never, never>
+
+export type TraceMode = 'off' | 'on'
+export const currentTraceMode = ServiceMap.Reference<TraceMode>('@logixjs/core/Debug.currentTraceMode', {
+  defaultValue: () => 'on',
+})
+
+export const traceMode = (mode: TraceMode): Layer.Layer<any, never, never> =>
+  Layer.succeed(currentTraceMode, mode) as Layer.Layer<any, never, never>
 
 export interface TraitConvergeDiagnosticsSamplingConfig {
   /**
@@ -327,26 +325,29 @@ export interface TraitConvergeDiagnosticsSamplingConfig {
   readonly topK: number
 }
 
-export const currentTraitConvergeDiagnosticsSampling = FiberRef.unsafeMake<TraitConvergeDiagnosticsSamplingConfig>({
-  sampleEveryN: 32,
-  topK: 3,
-})
+export const currentTraitConvergeDiagnosticsSampling = ServiceMap.Reference<TraitConvergeDiagnosticsSamplingConfig>(
+  '@logixjs/core/Debug.currentTraitConvergeDiagnosticsSampling',
+  {
+    defaultValue: () => ({
+      sampleEveryN: 32,
+      topK: 3,
+    }),
+  },
+)
 
 export const traitConvergeDiagnosticsSampling = (
   config: TraitConvergeDiagnosticsSamplingConfig,
 ): Layer.Layer<any, never, never> =>
-  Layer.fiberRefLocallyScopedWith(currentTraitConvergeDiagnosticsSampling as any, () => config) as Layer.Layer<
-    any,
-    never,
-    never
-  >
+  Layer.succeed(currentTraitConvergeDiagnosticsSampling, config) as Layer.Layer<any, never, never>
 
 export const appendSinks = (sinks: ReadonlyArray<Sink>): Layer.Layer<any, never, never> =>
-  Layer.fiberRefLocallyScopedWith(currentDebugSinks, (current) => [...current, ...sinks]) as Layer.Layer<
-    any,
-    never,
-    never
-  >
+  Layer.effect(
+    currentDebugSinks,
+    Effect.gen(function* () {
+      const current = yield* Effect.service(currentDebugSinks)
+      return [...current, ...sinks]
+    }),
+  ) as Layer.Layer<any, never, never>
 
 export type RuntimeDebugEventKind =
   | 'action'
@@ -534,9 +535,40 @@ const stripTraitCheckLight = (value: JsonValue): JsonValue => {
   const degraded = anyValue.degraded
   const degradedSlim =
     degraded && typeof degraded === 'object' && !Array.isArray(degraded) ? { kind: (degraded as any).kind } : undefined
+  const summary = anyValue.summary
+  let summarySlim: Record<string, number> | undefined
+  if (summary && typeof summary === 'object' && !Array.isArray(summary)) {
+    const candidate: Record<string, number> = {}
+    let hasSummaryField = false
+    if (typeof (summary as any).scannedRows === 'number') {
+      candidate.scannedRows = (summary as any).scannedRows
+      hasSummaryField = true
+    }
+    if (typeof (summary as any).affectedRows === 'number') {
+      candidate.affectedRows = (summary as any).affectedRows
+      hasSummaryField = true
+    }
+    if (typeof (summary as any).changedRows === 'number') {
+      candidate.changedRows = (summary as any).changedRows
+      hasSummaryField = true
+    }
+    if (hasSummaryField) {
+      summarySlim = candidate
+    }
+  }
 
-  const { degraded: _degraded, ...rest } = anyValue
-  return (degradedSlim ? { ...rest, degraded: degradedSlim } : rest) as JsonValue
+  const slim: Record<string, unknown> = {}
+  if (typeof anyValue.ruleId === 'string') slim.ruleId = anyValue.ruleId
+  if (Array.isArray(anyValue.scopeFieldPath)) slim.scopeFieldPath = anyValue.scopeFieldPath
+  if (typeof anyValue.mode === 'string') slim.mode = anyValue.mode
+  if (anyValue.trigger && typeof anyValue.trigger === 'object' && !Array.isArray(anyValue.trigger)) {
+    slim.trigger = anyValue.trigger
+  }
+  if (typeof anyValue.rowIdMode === 'string') slim.rowIdMode = anyValue.rowIdMode
+  if (summarySlim) slim.summary = summarySlim
+  if (degradedSlim) slim.degraded = degradedSlim
+
+  return slim as JsonValue
 }
 
 // In browsers, to reduce duplicated noise caused by React StrictMode, etc.,
@@ -590,9 +622,7 @@ const lifecycleErrorLog = (event: Extract<Event, { readonly type: 'lifecycle:err
   const moduleId = event.moduleId ?? 'unknown'
   const causePretty = (() => {
     try {
-      return Cause.pretty(event.cause as Cause.Cause<unknown>, {
-        renderErrorCause: true,
-      })
+        return Cause.pretty(event.cause as Cause.Cause<unknown>)
     } catch {
       try {
         return JSON.stringify(event.cause, null, 2)
@@ -617,8 +647,6 @@ const diagnosticLog = (event: Extract<Event, { readonly type: 'diagnostic' }>) =
   const moduleId = event.moduleId ?? 'unknown'
   const header = `[Logix][module=${moduleId}] diagnostic(${event.severity})`
   const detail = `code=${event.code} message=${event.message}${
-    event.source ? ` source=${event.source}` : ''
-  }${
     event.actionTag ? ` action=${event.actionTag}` : ''
   }${event.hint ? `\nhint: ${event.hint}` : ''}`
   const msg = `${header}\n${detail}`
@@ -639,9 +667,6 @@ const diagnosticLog = (event: Extract<Event, { readonly type: 'diagnostic' }>) =
   if (event.hint) {
     annotations['logix.diagnostic.hint'] = event.hint
   }
-  if (event.source) {
-    annotations['logix.diagnostic.source'] = event.source
-  }
   if (event.actionTag) {
     annotations['logix.diagnostic.actionTag'] = event.actionTag
   }
@@ -654,7 +679,7 @@ const diagnosticLog = (event: Extract<Event, { readonly type: 'diagnostic' }>) =
  * - Uses Layer.locallyScoped to inject Debug sinks via FiberRef state.
  * - Avoids misusing FiberRef as a Context.Tag.
  */
-export const noopLayer = Layer.locallyScoped(currentDebugSinks, [])
+export const noopLayer = Layer.succeed(currentDebugSinks, [])
 
 /**
  * errorOnlyLayer：
@@ -671,7 +696,7 @@ const errorOnlySink: Sink = {
         : Effect.void,
 }
 
-export const errorOnlyLayer = Layer.locallyScoped(currentDebugSinks, [errorOnlySink])
+export const errorOnlyLayer = Layer.succeed(currentDebugSinks, [errorOnlySink])
 
 export const isErrorOnlyOnlySinks = (sinks: ReadonlyArray<Sink>): boolean => sinks.length === 1 && sinks[0] === errorOnlySink
 
@@ -689,7 +714,7 @@ const consoleSink: Sink = {
         : Effect.logDebug({ debugEvent: event }),
 }
 
-export const consoleLayer = Layer.locallyScoped(currentDebugSinks, [consoleSink])
+export const consoleLayer = Layer.succeed(currentDebugSinks, [consoleSink])
 
 const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined'
 
@@ -720,7 +745,7 @@ const renderBrowserConsoleEvent = (event: Event): Effect.Effect<void> => {
     const moduleId = event.moduleId ?? 'unknown'
     const causePretty = (() => {
       try {
-        return Cause.pretty(event.cause as Cause.Cause<unknown>, { renderErrorCause: true })
+        return Cause.pretty(event.cause as Cause.Cause<unknown>)
       } catch {
         try {
           return JSON.stringify(event.cause, null, 2)
@@ -754,8 +779,6 @@ const renderBrowserConsoleEvent = (event: Event): Effect.Effect<void> => {
   if (event.type === 'diagnostic') {
     const moduleId = event.moduleId ?? 'unknown'
     const detail = `code=${event.code} message=${event.message}${
-      event.source ? ` source=${event.source}` : ''
-    }${
       event.actionTag ? ` action=${event.actionTag}` : ''
     }${event.hint ? `\nhint: ${event.hint}` : ''}`
 
@@ -769,7 +792,7 @@ const renderBrowserConsoleEvent = (event: Event): Effect.Effect<void> => {
           ? 'diagnostic(info)'
           : 'diagnostic(error)'
 
-    const key = `${moduleId}|${event.code}|${event.message}|${event.source ?? ''}`
+    const key = `${moduleId}|${event.code}|${event.message}`
     if (browserDiagnosticSeen.has(key)) {
       return Effect.void
     }
@@ -823,7 +846,7 @@ const browserConsoleSink: Sink = {
   },
 }
 
-export const browserConsoleLayer = Layer.locallyScoped(currentDebugSinks, [browserConsoleSink])
+export const browserConsoleLayer = Layer.succeed(currentDebugSinks, [browserConsoleSink])
 
 /**
  * Browser diagnostic-only debug layer:
@@ -847,16 +870,21 @@ const browserDiagnosticConsoleSink: Sink = {
   },
 }
 
-export const browserDiagnosticConsoleLayer = Layer.locallyScoped(currentDebugSinks, [browserDiagnosticConsoleSink])
+export const browserDiagnosticConsoleLayer = Layer.succeed(currentDebugSinks, [browserDiagnosticConsoleSink])
 
 /**
  * Browser-friendly Logger layer: replaces the default logger with Effect's pretty logger (browser mode).
  * - Avoids hand-written console styles; reuses Effect's colored/grouped formatting.
  * - Safely degrades to the default logger in server environments.
  */
-export const browserPrettyLoggerLayer = Logger.replace(
-  Logger.defaultLogger,
-  Logger.prettyLogger({ mode: 'browser', colors: true }),
+export const browserPrettyLoggerLayer = Layer.effect(
+  Logger.CurrentLoggers,
+  Effect.gen(function* () {
+    const current = yield* Effect.service(Logger.CurrentLoggers)
+    return new Set(
+      [...current].filter((logger) => logger !== Logger.defaultLogger).concat(Logger.consolePretty({ mode: 'browser', colors: true })),
+    )
+  }),
 )
 
 /**
@@ -868,7 +896,7 @@ export const defaultLayer = errorOnlyLayer
 
 export const record = (event: Event) =>
   Effect.gen(function* () {
-    const sinks = yield* FiberRef.get(currentDebugSinks)
+    const sinks = yield* Effect.service(currentDebugSinks)
 
     // Fast path: production default installs errorOnlyLayer (sinks=1).
     // Avoid paying diagnostics FiberRef + enrichment costs for high-frequency events that are always dropped by errorOnly.
@@ -903,20 +931,16 @@ export const record = (event: Event) =>
       return
     }
 
+    // Trace events are performance-sensitive and should be explicitly enabled.
+    // Keep the check scoped to trace:* only so non-trace events stay on the fast path.
+    if (typeof event.type === 'string' && event.type.startsWith('trace:')) {
+      const mode = yield* Effect.service(currentTraceMode)
+      if (mode === 'off') return
+    }
+
     const enriched = event as Event
 
-    const diagnosticsLevel = yield* FiberRef.get(currentDiagnosticsLevel)
-
-    if (
-      diagnosticsLevel !== 'off' &&
-      (enriched.type === 'state:update' || (enriched as any).type === 'trace:trait:converge') &&
-      (enriched as any).opSeq === undefined
-    ) {
-      const opSeqRaw = yield* FiberRef.get(currentOpSeq)
-      if (typeof opSeqRaw === 'number' && Number.isFinite(opSeqRaw) && opSeqRaw >= 0) {
-        ;(enriched as any).opSeq = Math.floor(opSeqRaw)
-      }
-    }
+    const diagnosticsLevel = yield* Effect.service(currentDiagnosticsLevel)
 
     // Enrich Debug.Event with basic fields (enabled only when diagnosticsLevel!=off):
     // - timestamp: for Devtools/Timeline/Overview time aggregation; avoids UI-side "first observed time" distortion.
@@ -936,27 +960,27 @@ export const record = (event: Event) =>
       ;(enriched as any).timestamp = getNow()
     }
     if (diagnosticsLevel !== 'off' && enriched.runtimeLabel === undefined) {
-      const runtimeLabel = yield* FiberRef.get(currentRuntimeLabel)
+      const runtimeLabel = yield* Effect.service(currentRuntimeLabel)
       if (runtimeLabel) {
         ;(enriched as any).runtimeLabel = runtimeLabel
       }
     }
 
     if (enriched.type === 'diagnostic' && (enriched as any).txnId === undefined) {
-      const txnId = yield* FiberRef.get(currentTxnId)
+      const txnId = yield* Effect.service(currentTxnId)
       if (txnId) {
         ;(enriched as any).txnId = txnId
       }
     }
-    // linkId is meaningful only for EffectOp events: avoid extra FiberRef reads on high-frequency events (state:update, etc.).
+
     if (
       diagnosticsLevel !== 'off' &&
       (enriched as any).type === 'trace:effectop' &&
       (enriched as any).linkId === undefined
     ) {
-      const linkId = yield* FiberRef.get(EffectOpCore.currentLinkId)
-      if (linkId) {
-        ;(enriched as any).linkId = linkId
+      const maybeLinkId = yield* Effect.serviceOption(EffectOpCore.currentLinkId)
+      if (Option.isSome(maybeLinkId) && maybeLinkId.value) {
+        ;(enriched as any).linkId = maybeLinkId.value
       }
     }
 
@@ -965,7 +989,7 @@ export const record = (event: Event) =>
       return
     }
 
-    yield* Effect.forEach(sinks, (sink) => sink.record(enriched), { discard: true })
+    yield* Effect.forEach(sinks as ReadonlyArray<Sink>, (sink) => sink.record(enriched), { discard: true })
   })
 
 /**
@@ -977,6 +1001,7 @@ export const toRuntimeDebugEventRef = (
   event: Event,
   options?: {
     readonly diagnosticsLevel?: DiagnosticsLevel
+    readonly materialization?: DiagnosticsMaterialization
     readonly eventSeq?: number
     readonly onMetaProjection?: (projection: {
       readonly stats: JsonValueProjectionStats
@@ -990,6 +1015,8 @@ export const toRuntimeDebugEventRef = (
   }
 
   const isLightLike = diagnosticsLevel === 'light' || diagnosticsLevel === 'sampled'
+  const materialization = options?.materialization ?? 'eager'
+  const isLazyMaterialization = materialization === 'lazy'
 
   const timestamp =
     typeof event.timestamp === 'number' && Number.isFinite(event.timestamp) ? event.timestamp : Date.now()
@@ -1058,11 +1085,6 @@ export const toRuntimeDebugEventRef = (
     return { ...ref, downgrade: { reason: downgrade } }
   }
 
-  const readStableOpSeq = (value: unknown): number | undefined => {
-    const raw = (value as any)?.opSeq
-    return typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 ? Math.floor(raw) : undefined
-  }
-
   switch (event.type) {
     case 'module:init':
       return withDowngrade({
@@ -1123,157 +1145,32 @@ export const toRuntimeDebugEventRef = (
     case 'state:update': {
       const e = event as Extract<Event, { readonly type: 'state:update' }>
       const dirtySetCanonical = stripDirtyRootPaths(e.dirtySet)
-      const opSeq =
-        readStableOpSeq(event) ??
-        readStableOpSeq((e as any).traceDigestPayload?.anchor) ??
-        readStableOpSeq((e as any).traceDigestDegrade?.anchor)
-      const traceAnchor: TraceDigestAnchor = {
-        moduleId,
-        instanceId,
-        txnSeq,
-        ...(txnId ? { txnId } : null),
-        ...(opSeq !== undefined ? { opSeq } : null),
-      }
-
-      const readLookupKey = (value: unknown): ReplayLog.StaticIrLookupKey | undefined => {
-        if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
-        const staticIrDigestRaw = (value as any).staticIrDigest
-        if (typeof staticIrDigestRaw !== 'string' || staticIrDigestRaw.length === 0) return undefined
-        const nodeIdRaw = (value as any).nodeId
-        const stepIdRaw = (value as any).stepId
-        return {
-          staticIrDigest: staticIrDigestRaw,
-          ...(typeof nodeIdRaw === 'number' && Number.isFinite(nodeIdRaw) && nodeIdRaw >= 0
-            ? { nodeId: Math.floor(nodeIdRaw) }
-            : null),
-          ...(typeof stepIdRaw === 'string' && stepIdRaw.length > 0 ? { stepId: stepIdRaw } : null),
-        }
-      }
-
-      const fallbackNodeId = (() => {
-        if (!dirtySetCanonical || typeof dirtySetCanonical !== 'object' || Array.isArray(dirtySetCanonical)) {
-          return undefined
-        }
-        const rootIds = (dirtySetCanonical as any).rootIds
-        if (!Array.isArray(rootIds)) return undefined
-        for (const id of rootIds) {
-          if (typeof id === 'number' && Number.isFinite(id) && id >= 0) {
-            return Math.floor(id)
-          }
-        }
-        return undefined
-      })()
-
-      const lookupKeyFromEvent = readLookupKey((e as any).traceLookupKey)
-      const lookupKeyFromReplayEvent = readLookupKey((e.replayEvent as any)?.lookupKey)
-      const staticIrDigestFromEvent = typeof e.staticIrDigest === 'string' && e.staticIrDigest.length > 0 ? e.staticIrDigest : undefined
-      const staticIrDigestFromLookup = lookupKeyFromEvent?.staticIrDigest ?? lookupKeyFromReplayEvent?.staticIrDigest
-      const nodeIdFromLookup = lookupKeyFromEvent?.nodeId ?? lookupKeyFromReplayEvent?.nodeId
-      const stepIdFromLookup = lookupKeyFromEvent?.stepId ?? lookupKeyFromReplayEvent?.stepId
-      const digestMismatch =
-        staticIrDigestFromEvent !== undefined &&
-        staticIrDigestFromLookup !== undefined &&
-        staticIrDigestFromEvent !== staticIrDigestFromLookup
-      const staticIrDigest = staticIrDigestFromEvent ?? staticIrDigestFromLookup
-      const nodeId = (digestMismatch ? undefined : nodeIdFromLookup) ?? fallbackNodeId
-      const stepId = digestMismatch ? undefined : stepIdFromLookup
-
-      const traceLookupKey =
-        staticIrDigest != null
-          ? ({
-              staticIrDigest,
-              ...(nodeId !== undefined ? { nodeId } : null),
-              ...(stepId ? { stepId } : null),
-            } as ReplayLog.StaticIrLookupKey)
-          : undefined
-
-      const traceDigestPayload =
-        traceLookupKey != null
-          ? ({
-              schemaVersion: TRACE_DIGEST_PAYLOAD_SCHEMA_VERSION,
-              digestAlgoVersion: TRACE_DIGEST_PAYLOAD_DIGEST_ALGO_VERSION,
-              lookupKey: { ...traceLookupKey },
-              anchor: traceAnchor,
-            } as TraceDigestPayload)
-          : undefined
-
-      const explicitDegrade = (() => {
-        const raw = (e as any).traceDigestDegrade
-        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
-        const reasonCode = (raw as any).reasonCode
-        if (reasonCode !== 'digest_missing' && reasonCode !== 'lookup_key_missing' && reasonCode !== 'digest_mismatch') {
-          return undefined
-        }
-        const fallbackMode = (raw as any).fallbackMode === 'legacy_payload' ? 'legacy_payload' : 'id_first'
-        return {
-          reasonCode,
-          fallbackMode,
-          anchor: traceAnchor,
-        } satisfies TraceDigestDegradeRecord
-      })()
-
-      const traceDigestDegrade = (() => {
-        if (explicitDegrade) return explicitDegrade
-        if (digestMismatch) {
-          return {
-            reasonCode: 'digest_mismatch',
-            fallbackMode: 'legacy_payload',
-            anchor: traceAnchor,
-          } satisfies TraceDigestDegradeRecord
-        }
-        if (staticIrDigest == null) {
-          return {
-            reasonCode: 'digest_missing',
-            fallbackMode: 'legacy_payload',
-            anchor: traceAnchor,
-          } satisfies TraceDigestDegradeRecord
-        }
-        if ((staticIrDigestFromEvent || lookupKeyFromEvent || lookupKeyFromReplayEvent) && staticIrDigest && nodeId === undefined && !stepId) {
-          return {
-            reasonCode: 'lookup_key_missing',
-            fallbackMode: 'id_first',
-            anchor: traceAnchor,
-          } satisfies TraceDigestDegradeRecord
-        }
-        return undefined
-      })()
+      const slimMetaInput: Record<string, unknown> = {}
+      if (dirtySetCanonical !== undefined) slimMetaInput.dirtySet = dirtySetCanonical
+      if (e.patchCount !== undefined) slimMetaInput.patchCount = e.patchCount
+      if (e.patchesTruncated !== undefined) slimMetaInput.patchesTruncated = e.patchesTruncated
+      if (e.patchesTruncatedReason !== undefined) slimMetaInput.patchesTruncatedReason = e.patchesTruncatedReason
+      if (e.staticIrDigest !== undefined) slimMetaInput.staticIrDigest = e.staticIrDigest
+      if (e.commitMode !== undefined) slimMetaInput.commitMode = e.commitMode
+      if (e.priority !== undefined) slimMetaInput.priority = e.priority
+      if (e.originKind !== undefined) slimMetaInput.originKind = e.originKind
+      if (e.originName !== undefined) slimMetaInput.originName = e.originName
 
       const metaInput = isLightLike
+        ? isLazyMaterialization
+          ? slimMetaInput
+          : { state: e.state, ...slimMetaInput }
+        : isLazyMaterialization
+          ? slimMetaInput
+          : { state: e.state, ...slimMetaInput, traitSummary: e.traitSummary, replayEvent: e.replayEvent }
+
+      const metaProjection = isLazyMaterialization
         ? {
-            state: e.state,
-            dirtySet: dirtySetCanonical,
-            patchCount: e.patchCount,
-            patchesTruncated: e.patchesTruncated,
-            patchesTruncatedReason: e.patchesTruncatedReason,
-            staticIrDigest,
-            commitMode: e.commitMode,
-            priority: e.priority,
-            originKind: e.originKind,
-            originName: e.originName,
-            traceLookupKey,
-            traceDigestPayload,
-            traceDigestDegrade,
-            originDetails: e.originDetails,
+            value: metaInput as unknown as JsonValue,
+            stats: { dropped: 0, oversized: 0, nonSerializable: 0 } satisfies JsonValueProjectionStats,
+            downgrade: undefined,
           }
-        : {
-            state: e.state,
-            dirtySet: dirtySetCanonical,
-            patchCount: e.patchCount,
-            patchesTruncated: e.patchesTruncated,
-            patchesTruncatedReason: e.patchesTruncatedReason,
-            staticIrDigest,
-            commitMode: e.commitMode,
-            priority: e.priority,
-            originKind: e.originKind,
-            originName: e.originName,
-            traceLookupKey,
-            traceDigestPayload,
-            traceDigestDegrade,
-            originDetails: e.originDetails,
-            traitSummary: e.traitSummary,
-            replayEvent: e.replayEvent,
-          }
-      const metaProjection = projectJsonValue(metaInput)
+        : projectJsonValue(metaInput)
       options?.onMetaProjection?.({
         stats: metaProjection.stats,
         downgrade: metaProjection.downgrade,
@@ -1392,7 +1289,6 @@ export const toRuntimeDebugEventRef = (
         severity: e.severity,
         message: e.message,
         hint: e.hint,
-        source: e.source,
         actionTag: e.actionTag,
         kind: e.kind,
         opSeq: e.opSeq,
@@ -1555,6 +1451,64 @@ export const toRuntimeDebugEventRef = (
         })
       }
 
+      if (event.type === 'trace:txn-phase') {
+        const data: any = (event as any).data
+        const metaInput = isLightLike
+          ? {
+              kind: data?.kind,
+              originKind: data?.originKind,
+              originName: data?.originName,
+              commitMode: data?.commitMode,
+              priority: data?.priority,
+              txnPreludeMs: data?.txnPreludeMs,
+              queue: data?.queue
+                ? {
+                    lane: data.queue.lane,
+                    contextLookupMs: data.queue.contextLookupMs,
+                    resolvePolicyMs: data.queue.resolvePolicyMs,
+                    backpressureMs: data.queue.backpressureMs,
+                    enqueueBookkeepingMs: data.queue.enqueueBookkeepingMs,
+                    queueWaitMs: data.queue.queueWaitMs,
+                    startHandoffMs: data.queue.startHandoffMs,
+                    startMode: data.queue.startMode,
+                  }
+                : undefined,
+              dispatchActionRecordMs: data?.dispatchActionRecordMs,
+              dispatchActionCommitHubMs: data?.dispatchActionCommitHubMs,
+              dispatchActionCount: data?.dispatchActionCount,
+              bodyShellMs: data?.bodyShellMs,
+              asyncEscapeGuardMs: data?.asyncEscapeGuardMs,
+              traitConvergeMs: data?.traitConvergeMs,
+              scopedValidateMs: data?.scopedValidateMs,
+              sourceSyncMs: data?.sourceSyncMs,
+              commit: data?.commit
+                ? {
+                    totalMs: data.commit.totalMs,
+                    rowIdSyncMs: data.commit.rowIdSyncMs,
+                    publishCommitMs: data.commit.publishCommitMs,
+                    stateUpdateDebugRecordMs: data.commit.stateUpdateDebugRecordMs,
+                    onCommitBeforeStateUpdateMs: data.commit.onCommitBeforeStateUpdateMs,
+                    onCommitAfterStateUpdateMs: data.commit.onCommitAfterStateUpdateMs,
+                  }
+                : undefined,
+            }
+          : data
+
+        const metaProjection = projectJsonValue(metaInput)
+        options?.onMetaProjection?.({
+          stats: metaProjection.stats,
+          downgrade: metaProjection.downgrade,
+        })
+        downgrade = mergeDowngrade(downgrade, metaProjection.downgrade)
+
+        return withDowngrade({
+          ...base,
+          kind: 'devtools',
+          label: event.type,
+          meta: metaProjection.value,
+        })
+      }
+
       // trace:react-render / trace:react-selector: keep slim meta only (field trimming is handled by JsonValue projection).
       if (event.type === 'trace:react-render' || event.type === 'trace:react-selector') {
         const data: any = (event as any).data
@@ -1684,83 +1638,12 @@ export const toRuntimeDebugEventRef = (
       // trace:trait:converge: converge evidence must be exportable (JsonValue hard gate) and trims heavy fields in light tier.
       if (event.type === 'trace:trait:converge') {
         const data = (event as Extract<Event, { readonly type: 'trace:trait:converge' }>).data
-        const metaInputBase =
+        const metaInput =
           diagnosticsLevel === 'light'
             ? stripTraitConvergeLight(data)
             : diagnosticsLevel === 'sampled'
               ? stripTraitConvergeSampled(data)
               : stripTraitConvergeLegacyFields(data)
-        const opSeq =
-          readStableOpSeq(event) ??
-          readStableOpSeq((event as any).traceDigestPayload?.anchor) ??
-          readStableOpSeq((event as any).traceDigestDegrade?.anchor)
-        const traceAnchor: TraceDigestAnchor = {
-          moduleId,
-          instanceId,
-          txnSeq,
-          ...(txnId ? { txnId } : null),
-          ...(opSeq !== undefined ? { opSeq } : null),
-        }
-        const traceLookupKey = (() => {
-          if (!metaInputBase || typeof metaInputBase !== 'object' || Array.isArray(metaInputBase)) return undefined
-          const staticIrDigestRaw = (metaInputBase as any).staticIrDigest
-          if (typeof staticIrDigestRaw !== 'string' || staticIrDigestRaw.length === 0) return undefined
-          const dirty = (metaInputBase as any).dirty
-          const rootIds = dirty && typeof dirty === 'object' && !Array.isArray(dirty) ? (dirty as any).rootIds : undefined
-          const nodeId =
-            Array.isArray(rootIds) &&
-            typeof rootIds[0] === 'number' &&
-            Number.isFinite(rootIds[0]) &&
-            rootIds[0] >= 0
-              ? Math.floor(rootIds[0])
-              : undefined
-          const top3 = (metaInputBase as any).top3
-          const firstTopStep = Array.isArray(top3) ? top3[0] : undefined
-          const stepIdRaw = firstTopStep && typeof firstTopStep === 'object' ? (firstTopStep as any).stepId : undefined
-          const stepId = typeof stepIdRaw === 'string' && stepIdRaw.length > 0 ? stepIdRaw : undefined
-          return {
-            staticIrDigest: staticIrDigestRaw,
-            ...(nodeId !== undefined ? { nodeId } : null),
-            ...(stepId ? { stepId } : null),
-          } satisfies ReplayLog.StaticIrLookupKey
-        })()
-        const traceDigestPayload =
-          traceLookupKey != null
-            ? ({
-                schemaVersion: TRACE_DIGEST_PAYLOAD_SCHEMA_VERSION,
-                digestAlgoVersion: TRACE_DIGEST_PAYLOAD_DIGEST_ALGO_VERSION,
-                lookupKey: { ...traceLookupKey },
-                anchor: traceAnchor,
-              } satisfies TraceDigestPayload)
-            : undefined
-        const traceDigestDegrade = (() => {
-          if (!metaInputBase || typeof metaInputBase !== 'object' || Array.isArray(metaInputBase)) return undefined
-          const staticIrDigestRaw = (metaInputBase as any).staticIrDigest
-          if (typeof staticIrDigestRaw !== 'string' || staticIrDigestRaw.length === 0) {
-            return {
-              reasonCode: 'digest_missing',
-              fallbackMode: 'legacy_payload',
-              anchor: traceAnchor,
-            } satisfies TraceDigestDegradeRecord
-          }
-          if (traceLookupKey && traceLookupKey.nodeId === undefined && !traceLookupKey.stepId) {
-            return {
-              reasonCode: 'lookup_key_missing',
-              fallbackMode: 'id_first',
-              anchor: traceAnchor,
-            } satisfies TraceDigestDegradeRecord
-          }
-          return undefined
-        })()
-        const metaInput =
-          metaInputBase && typeof metaInputBase === 'object' && !Array.isArray(metaInputBase)
-            ? ({
-                ...(metaInputBase as Record<string, unknown>),
-                ...(traceLookupKey ? { traceLookupKey } : null),
-                ...(traceDigestPayload ? { traceDigestPayload } : null),
-                ...(traceDigestDegrade ? { traceDigestDegrade } : null),
-              } as JsonValue)
-            : metaInputBase
         const metaProjection = projectJsonValue(metaInput)
         options?.onMetaProjection?.({
           stats: metaProjection.stats,

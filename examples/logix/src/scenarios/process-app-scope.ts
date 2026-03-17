@@ -25,7 +25,7 @@ const Target = Logix.Module.make('ProcessAppScopeTarget', {
 
 const TargetLogic = Target.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction('inc').run({ effect: () => $.state.update((s) => ({ ...s, count: s.count + 1 })) })
+    yield* $.onAction('inc').run(() => $.state.update((s) => ({ ...s, count: s.count + 1 })))
   }),
 )
 
@@ -69,8 +69,8 @@ const main = Effect.gen(function* () {
     const result = yield* Effect.promise(() =>
       runtime.runPromise(
         Effect.gen(function* () {
-          const source: any = yield* Source.tag
-          const target: any = yield* Target.tag
+          const source: any = yield* Effect.service(Source.tag).pipe(Effect.orDie)
+          const target: any = yield* Effect.service(Target.tag).pipe(Effect.orDie)
 
           yield* source.dispatch({ _tag: 'ping', payload: undefined } as any)
           yield* Effect.sleep('20 millis')

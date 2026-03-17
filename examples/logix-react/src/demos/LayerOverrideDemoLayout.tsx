@@ -1,5 +1,5 @@
 import React from 'react'
-import { Context, Effect, Layer, ManagedRuntime } from 'effect'
+import { Effect, Layer, ManagedRuntime, ServiceMap } from 'effect'
 import { RuntimeProvider, useModule, useRuntime } from '@logixjs/react'
 import * as Logix from '@logixjs/core'
 import { StepCounterDef, StepCounterModule } from '../modules/stepCounter'
@@ -8,7 +8,7 @@ interface StepConfig {
   readonly step: number
 }
 
-const StepConfigTag = Context.GenericTag<StepConfig>('@examples/StepConfig')
+const StepConfigTag = ServiceMap.Service<StepConfig>('@examples/StepConfig')
 
 const BaseStepLayer = Layer.succeed(StepConfigTag, { step: 1 })
 const BigStepLayer = Layer.succeed(StepConfigTag, { step: 5 })
@@ -28,8 +28,8 @@ const StepCounterPanel: React.FC<{ label: string }> = ({ label }) => {
   const handleStepIncrement = React.useCallback(() => {
     void runtime.runPromise(
       Effect.gen(function* () {
-        const cfg = yield* StepConfigTag
-        const counter = yield* StepCounterDef.tag
+        const cfg = yield* Effect.service(StepConfigTag).pipe(Effect.orDie)
+        const counter = yield* Effect.service(StepCounterDef.tag).pipe(Effect.orDie)
         for (let i = 0; i < cfg.step; i++) {
           yield* counter.dispatch({ _tag: 'inc', payload: undefined })
         }

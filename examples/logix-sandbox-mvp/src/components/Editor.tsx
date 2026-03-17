@@ -20,10 +20,10 @@ type MonacoBootstrap = {
   readonly monaco: typeof MonacoTypes
 }
 
-const EditorUiModeSchema = Schema.Union(Schema.Literal('textarea'), Schema.Literal('monaco'))
+const EditorUiModeSchema = Schema.Union([Schema.Literal('textarea'), Schema.Literal('monaco')])
 type EditorUiMode = Schema.Schema.Type<typeof EditorUiModeSchema>
 
-const EditorUiFallbackUiSchema = Schema.Union(Schema.Literal('skeleton'), Schema.Literal('textarea'))
+const EditorUiFallbackUiSchema = Schema.Union([Schema.Literal('skeleton'), Schema.Literal('textarea')])
 type EditorUiFallbackUi = Schema.Schema.Type<typeof EditorUiFallbackUiSchema>
 
 const EditorUiStateSchema = Schema.Struct({

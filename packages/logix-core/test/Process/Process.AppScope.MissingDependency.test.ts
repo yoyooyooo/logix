@@ -3,7 +3,7 @@ import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('process: app-scope missing dependency', () => {
-  it.scoped('should fail with actionable error when dependency is missing in scope', () =>
+  it.effect('should fail with actionable error when dependency is missing in scope', () =>
     Effect.gen(function* () {
       const SourceModule = Logix.Module.make('ProcessMissingDepSource', {
         state: Schema.Void,

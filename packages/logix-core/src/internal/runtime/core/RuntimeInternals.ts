@@ -1,10 +1,11 @@
-import { Cause, Context, Effect } from 'effect'
+import { Cause, Effect, ServiceMap } from 'effect'
 import type { ModuleRuntime as PublicModuleRuntime } from './module.js'
 import type * as Lifecycle from './Lifecycle.js'
 import type * as StateTransaction from './StateTransaction.js'
 import type { ResolvedTxnLanePolicy } from './ModuleRuntime.txnLanePolicy.js'
 import type { ConcurrencyLimit, StateTransactionInstrumentation } from './env.js'
 import type * as ModuleTraits from './ModuleTraits.js'
+import type { TxnOriginOverride } from './TxnOriginOverride.js'
 
 export type RuntimeInternalsEffects = {
   readonly registerEffect: (args: {
@@ -21,7 +22,7 @@ export type RuntimeInternalsEffects = {
 
 export type ImportsScope = {
   readonly kind: 'imports-scope'
-  readonly get: (module: Context.Tag<any, PublicModuleRuntime<any, any>>) => PublicModuleRuntime<any, any> | undefined
+  readonly get: (module: ServiceMap.Key<any, PublicModuleRuntime<any, any>>) => PublicModuleRuntime<any, any> | undefined
 }
 
 export type RuntimeInternalsLifecycle = {
@@ -42,6 +43,19 @@ export type RuntimeInternalsLifecycle = {
 export type RuntimeInternalsTxn = {
   readonly instrumentation: StateTransactionInstrumentation
   readonly registerReducer: (tag: string, fn: (state: unknown, action: unknown) => unknown) => void
+  readonly registerActionStateWriteback: (tag: string, handler: unknown) => void
+  readonly dispatchWithOriginOverride: (
+    action: unknown,
+    override?: TxnOriginOverride,
+  ) => Effect.Effect<void, never, any>
+  readonly dispatchLowPriorityWithOriginOverride: (
+    action: unknown,
+    override?: TxnOriginOverride,
+  ) => Effect.Effect<void, never, any>
+  readonly dispatchBatchWithOriginOverride: (
+    actions: ReadonlyArray<unknown>,
+    override?: TxnOriginOverride,
+  ) => Effect.Effect<void, never, any>
   readonly runWithStateTransaction: (
     origin: StateTransaction.StateTxnOrigin,
     body: () => Effect.Effect<void, never, any>,

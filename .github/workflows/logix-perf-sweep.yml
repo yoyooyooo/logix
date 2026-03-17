@@ -1649,6 +1649,10 @@ jobs:
             echo "skip capacity model: missing report $REPORT"
             exit 0
           fi
+          if ! jq -e '.suites[]? | select(.id=="converge.txnCommit")' "$REPORT" >/dev/null; then
+            echo "skip capacity model: suite converge.txnCommit not present in report"
+            exit 0
+          fi
           mkdir -p "$PERF_CAPACITY_HISTORY_DIR"
           node "$PERF_CAPACITY_MODEL_SCRIPT" record \
             --report "$REPORT" \

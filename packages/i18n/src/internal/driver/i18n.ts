@@ -1,11 +1,11 @@
 import {
-  Context,
   Duration,
   Effect,
   Fiber,
   Layer,
+  ManagedRuntime,
   Option,
-  Runtime,
+  ServiceMap,
   Scope,
   Schema,
   Stream,
@@ -36,7 +36,7 @@ export type I18nSnapshot = {
 
 export const I18nSnapshotSchema = Schema.Struct({
   language: Schema.String,
-  init: Schema.Literal('pending', 'ready', 'failed'),
+  init: Schema.Literals(['pending', 'ready', 'failed']),
   seq: Schema.Number,
 })
 
@@ -53,15 +53,13 @@ export type I18nService = {
   ) => Effect.Effect<string, never, never>
 }
 
-export class I18nTag extends Context.Tag('@logixjs/i18n/I18n')<I18nTag, I18nService>() {}
+export class I18nTag extends ServiceMap.Service<I18nTag, I18nService>()('@logixjs/i18n/I18n') {}
 
 const asNonEmptyString = (value: unknown): string | undefined =>
   typeof value === 'string' && value.length > 0 ? value : undefined
 
 const makeI18nService = (driver: I18nDriver): Effect.Effect<I18nService, never, Scope.Scope> =>
   Effect.gen(function* () {
-    const runtime = yield* Effect.runtime<never>()
-
     const init: I18nInitState = driver.isInitialized ? 'ready' : 'pending'
     let currentSnapshot: I18nSnapshot = {
       language: driver.language,
@@ -88,7 +86,7 @@ const makeI18nService = (driver: I18nDriver): Effect.Effect<I18nService, never, 
         seq: currentSnapshot.seq + 1,
       }
       currentSnapshot = next
-      Runtime.runFork(runtime, SubscriptionRef.set(snapshotRef, next).pipe(Effect.catchAllCause(() => Effect.void)))
+      void Effect.runPromise(SubscriptionRef.set(snapshotRef, next).pipe(Effect.catchCause(() => Effect.void)))
     }
 
     const onInitialized = (): void => {
@@ -157,20 +155,17 @@ const makeI18nService = (driver: I18nDriver): Effect.Effect<I18nService, never, 
         if (snap0.init === 'ready') return t(key, options)
         if (snap0.init === 'failed') return fallback(key, options)
 
-        const wait = Stream.filter(snapshotRef.changes, (s) => s.init !== 'pending').pipe(
+        const wait = Stream.filter(SubscriptionRef.changes(snapshotRef), (s) => s.init !== 'pending').pipe(
           Stream.runHead,
-          Effect.timeoutFail({
-            duration: Duration.millis(cap),
-            onTimeout: () => undefined,
-          }),
-          Effect.catchAll(() => Effect.succeed(Option.none())),
+          Effect.timeoutOption(Duration.millis(cap)),
+          Effect.map((maybe) => (Option.isSome(maybe) ? maybe.value : Option.none())),
         )
 
-        const fiber = yield* Effect.fork(wait)
+        const fiber = yield* wait.pipe(Effect.forkChild)
 
         const snap1 = yield* SubscriptionRef.get(snapshotRef)
         if (snap1.init !== 'pending') {
-          yield* Fiber.interruptFork(fiber)
+          yield* Fiber.interrupt(fiber)
           return snap1.init === 'ready' ? t(key, options) : fallback(key, options)
         }
 
@@ -192,5 +187,5 @@ const makeI18nService = (driver: I18nDriver): Effect.Effect<I18nService, never, 
   })
 
 export const I18n = {
-  layer: (driver: I18nDriver): Layer.Layer<I18nTag, never, never> => Layer.scoped(I18nTag, makeI18nService(driver)),
+  layer: (driver: I18nDriver): Layer.Layer<I18nTag, never, never> => Layer.effect(I18nTag, makeI18nService(driver)),
 } as const

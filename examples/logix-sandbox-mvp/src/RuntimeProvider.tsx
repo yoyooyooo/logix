@@ -12,8 +12,8 @@ const SandboxLayer = SandboxImpl.layer.pipe(Layer.provide(ClientLayer))
 const IrLayer = IrImpl.layer.pipe(Layer.provide(ClientLayer))
 const ThemeLayer = ThemeImpl.layer
 
-const ReactConfigLayer = Layer.setConfigProvider(
-  ConfigProvider.fromMap(new Map<string, string>([['logix.react.gc_time', String(5 * 60_000)]])),
+const ReactConfigLayer = ConfigProvider.layer(
+  ConfigProvider.fromUnknown({ 'logix.react.gc_time': String(5 * 60_000) }),
 )
 
 const AppLayer = Layer.mergeAll(

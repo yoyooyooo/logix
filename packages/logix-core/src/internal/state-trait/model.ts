@@ -321,7 +321,7 @@ export interface StateTraitSchemaPathRef {
  * - stateSchema and spec preserve original inputs; graph/plan are internal IR.
  */
 export interface StateTraitProgram<S> {
-  readonly stateSchema: Schema.Schema<S, any>
+  readonly stateSchema: Schema.Schema<S>
   readonly spec: StateTraitSpec<S>
   /**
    * Program.entries：
@@ -581,6 +581,8 @@ export type TraitConvergeConfigScope = 'provider' | 'runtime_module' | 'runtime_
 
 export type TraitConvergeReason =
   | 'cold_start'
+  | 'fast_full'
+  | 'inline_dirty'
   | 'cache_hit'
   | 'cache_miss'
   | 'budget_cutoff'

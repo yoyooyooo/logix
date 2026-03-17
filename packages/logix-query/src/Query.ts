@@ -38,17 +38,17 @@ type ForbidQueryNames = {
 }
 
 export type QueryActions<TParams, TUI = unknown, TQueries extends Record<string, any> = {}> = {
-  readonly setParams: Schema.Schema<TParams, any>
-  readonly setUi: Schema.Schema<TUI, any>
-  readonly refresh: Schema.Schema<QueryName<TQueries> | undefined, any>
-  readonly invalidate: Schema.Schema<InvalidateRequest, any>
+  readonly setParams: Schema.Schema<TParams>
+  readonly setUi: Schema.Schema<TUI>
+  readonly refresh: Schema.Schema<QueryName<TQueries> | undefined>
+  readonly invalidate: Schema.Schema<InvalidateRequest>
 }
 
 export type QueryShape<
   TParams,
   TUI = unknown,
   TQueries extends Record<string, AnyQuerySourceConfig<TParams, TUI>> = {},
-> = Logix.Shape<Schema.Schema<QueryState<TParams, TUI, TQueries>, any>, QueryActions<TParams, TUI, TQueries>>
+> = Logix.Shape<Schema.Schema<QueryState<TParams, TUI, TQueries>>, QueryActions<TParams, TUI, TQueries>>
 
 export type QueryAction<
   TParams,
@@ -61,7 +61,7 @@ export interface QueryMakeConfig<
   TUI = unknown,
   TQueries = {},
 > {
-  readonly params: Schema.Schema<TParams, any>
+  readonly params: Schema.Schema<TParams>
   readonly initialParams: TParams
   readonly ui?: TUI
   readonly queries?: (q: QueryBuilder<TParams, TUI>) => TQueries & ForbidQueryNames
@@ -112,7 +112,7 @@ export type QueryModule<
   readonly controller: QueryModuleController<TParams, TUI, TQueries>
 }
 
-const InvalidateRequestSchema = Schema.Union(
+const InvalidateRequestSchema = Schema.Union([
   Schema.Struct({
     kind: Schema.Literal('byResource'),
     resourceId: Schema.String,
@@ -126,7 +126,7 @@ const InvalidateRequestSchema = Schema.Union(
     kind: Schema.Literal('byTag'),
     tag: Schema.String,
   }),
-) as Schema.Schema<InvalidateRequest, any>
+]) as Schema.Schema<InvalidateRequest>
 
 const assertQueryName = (name: string): void => {
   if (!name) {
@@ -140,31 +140,22 @@ const assertQueryName = (name: string): void => {
   }
 }
 
-const asUnionMembers = <A>(items: ReadonlyArray<A>): readonly [A, A, ...Array<A>] => {
-  if (items.length < 2) {
-    throw new Error(`[Query.make] internal error: expected at least 2 query names for union`)
-  }
-  return items as unknown as readonly [A, A, ...Array<A>]
-}
 
 const buildRefreshTargetSchema = <TQueries extends Record<string, AnyQuerySourceConfig<any, any>>>(
   names: ReadonlyArray<QueryName<TQueries>>,
-): Schema.Schema<QueryName<TQueries>, any> => {
+): Schema.Schema<QueryName<TQueries>> => {
   if (names.length === 0) {
-    return Schema.Never as unknown as Schema.Schema<QueryName<TQueries>, any>
+    return Schema.Never as unknown as Schema.Schema<QueryName<TQueries>>
   }
-  if (names.length === 1) {
-    return Schema.Literal(names[0] as any) as unknown as Schema.Schema<QueryName<TQueries>, any>
-  }
-  const members = names.map((name) => Schema.Literal(name as any))
-  return Schema.Union(...asUnionMembers(members)) as unknown as Schema.Schema<QueryName<TQueries>, any>
+
+  return Schema.Literals(names as [QueryName<TQueries>, ...Array<QueryName<TQueries>>]) as unknown as Schema.Schema<QueryName<TQueries>>
 }
 
 const buildQueriesSchema = <TQueries extends Record<string, AnyQuerySourceConfig<any, any>>>(queries: TQueries) =>
   Schema.Struct(
     Object.fromEntries((Object.keys(queries) as Array<keyof TQueries>).map((key) => [key, Schema.Unknown])) as Record<
       string,
-      Schema.Schema<any, any>
+      Schema.Schema<any>
     >,
   )
 
@@ -197,7 +188,7 @@ export const make = <
 
   const RefreshTargetSchema = buildRefreshTargetSchema<Queries>(queryNames)
 
-  const UiSchema = Schema.Unknown as Schema.Schema<TUI, any>
+  const UiSchema = Schema.Unknown as Schema.Schema<TUI>
 
   const QueriesSchema = buildQueriesSchema<Queries>(queries)
 
@@ -205,7 +196,7 @@ export const make = <
     params: config.params,
     ui: UiSchema,
     queries: QueriesSchema,
-  }) as unknown as Schema.Schema<QueryState<TParams, TUI, Queries>, any>
+  }) as unknown as Schema.Schema<QueryState<TParams, TUI, Queries>>
 
   const Actions = {
     setParams: config.params,

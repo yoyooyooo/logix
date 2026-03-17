@@ -1,4 +1,4 @@
-import { Config, Data, Duration, Effect, Schema } from 'effect'
+import { Config, Data, Duration, Effect, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 
 // ---------------------------------------------------------------------------
@@ -7,7 +7,7 @@ import * as Logix from '@logixjs/core'
 
 const JobStateSchema = Schema.Struct({
   jobId: Schema.String,
-  status: Schema.Literal('idle', 'running', 'success', 'error'),
+  status: Schema.Literals(['idle', 'running', 'success', 'error']),
   errorMessage: Schema.optional(Schema.String),
 })
 
@@ -33,14 +33,18 @@ export class JobFailedError extends Data.TaggedError('JobFailedError')<{
 // 3. Service 模式：Effect.Service + Config 读取
 // ---------------------------------------------------------------------------
 
-export class JobRunner extends Effect.Service<JobRunner>()('JobRunner', {
-  effect: Effect.gen(function* (_) {
-    // 从 Config 中读取超时时间，带默认值
+export class JobRunner extends ServiceMap.Service<
+  JobRunner,
+  { readonly runJob: (input: { id: string }) => Effect.Effect<void, JobFailedError> }
+>()('JobRunner') {}
+
+export const JobRunnerLive = Layer.effect(
+  JobRunner,
+  Effect.gen(function* () {
     const timeoutMs = yield* Config.number('JOB_TIMEOUT_MS').pipe(Config.withDefault(1000))
 
     const runJob = (input: { id: string }): Effect.Effect<void, JobFailedError> =>
-      Effect.gen(function* (_) {
-        // 简单示意：id 为 "fail" 时触发领域错误
+      Effect.gen(function* () {
         if (input.id === 'fail') {
           return yield* Effect.fail(
             new JobFailedError({
@@ -50,7 +54,6 @@ export class JobRunner extends Effect.Service<JobRunner>()('JobRunner', {
           )
         }
 
-        // 正常情况下模拟一个耗时任务
         yield* Effect.sleep(Duration.millis(timeoutMs))
       })
 
@@ -58,7 +61,7 @@ export class JobRunner extends Effect.Service<JobRunner>()('JobRunner', {
       runJob,
     }
   }),
-}) {}
+)
 
 // ---------------------------------------------------------------------------
 // 4. Module：定义 Job 模块
@@ -74,7 +77,7 @@ export const JobDef = Logix.Module.make('JobModule', {
 
 export const JobLogic = JobDef.logic<JobRunner>(($: Logix.BoundApi<JobShape, JobRunner>) =>
   Effect.gen(function* () {
-    const runEffect = Effect.gen(function* () {
+      const runEffect = Effect.gen(function* () {
       const runner = yield* $.use(JobRunner)
       const current = yield* $.state.read
       const jobId = current.jobId
@@ -113,8 +116,8 @@ export const JobLogic = JobDef.logic<JobRunner>(($: Logix.BoundApi<JobShape, Job
       errorMessage: undefined,
     }))
 
-    yield* $.onAction('run').run({ mode: 'exhaust', effect: runEffect })
-    yield* $.onAction('reset').run({ effect: resetEffect })
+    yield* $.onAction('run').runExhaust(runEffect)
+    yield* $.onAction('reset').run(resetEffect)
   }),
 )
 
@@ -127,7 +130,7 @@ export const JobModule = JobDef.implement<JobRunner>({
     jobId: '',
     status: 'idle',
     errorMessage: undefined,
-  },
+  } as JobState,
   logics: [JobLogic],
 })
 

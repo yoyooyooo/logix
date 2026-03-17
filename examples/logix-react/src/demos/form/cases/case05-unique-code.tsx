@@ -26,7 +26,7 @@ const CodeAvailabilitySpec = Logix.Resource.make({
   keySchema: CodeAvailabilityKey,
   load: (key: { readonly code: string }) =>
     Effect.sleep(Duration.millis(500)).pipe(
-      Effect.zipRight(
+      Effect.flatMap(() =>
         Effect.succeed({
           available: !TakenCodes.has(key.code.toUpperCase()),
         }),

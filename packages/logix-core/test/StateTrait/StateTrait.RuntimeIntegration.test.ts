@@ -23,7 +23,7 @@ describe('StateTrait runtime integration', () => {
     })
 
     const program = Effect.gen(function* () {
-      const runtime = yield* CounterWithProfile.tag
+      const runtime = yield* Effect.service(CounterWithProfile.tag).pipe(Effect.orDie)
 
       // Update a/b to trigger sum recomputation.
       let state = (yield* runtime.getState) as CounterState

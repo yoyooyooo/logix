@@ -1,4 +1,4 @@
-import { Context, Effect, Option } from 'effect'
+import { Effect, Option, ServiceMap } from 'effect'
 import { isDevEnv } from './env.js'
 import {
   makeRuntimeServicesEvidence as makeRuntimeServicesEvidenceImpl,
@@ -28,10 +28,10 @@ export interface RuntimeServicesRuntimeConfig {
   readonly servicesByModuleId?: Readonly<Record<string, RuntimeServicesOverrides>>
 }
 
-class RuntimeServicesRuntimeConfigTagImpl extends Context.Tag('@logixjs/core/RuntimeServicesRuntimeConfig')<
+class RuntimeServicesRuntimeConfigTagImpl extends ServiceMap.Service<
   RuntimeServicesRuntimeConfigTagImpl,
   RuntimeServicesRuntimeConfig
->() {}
+>()('@logixjs/core/RuntimeServicesRuntimeConfig') {}
 
 export const RuntimeServicesRuntimeConfigTag = RuntimeServicesRuntimeConfigTagImpl
 
@@ -42,17 +42,17 @@ export interface RuntimeServicesProviderOverrides {
   readonly servicesByModuleId?: Readonly<Record<string, RuntimeServicesOverrides>>
 }
 
-class RuntimeServicesProviderOverridesTagImpl extends Context.Tag('@logixjs/core/RuntimeServicesProviderOverrides')<
+class RuntimeServicesProviderOverridesTagImpl extends ServiceMap.Service<
   RuntimeServicesProviderOverridesTagImpl,
   RuntimeServicesProviderOverrides
->() {}
+>()('@logixjs/core/RuntimeServicesProviderOverrides') {}
 
 export const RuntimeServicesProviderOverridesTag = RuntimeServicesProviderOverridesTagImpl
 
-class RuntimeServicesInstanceOverridesTagImpl extends Context.Tag('@logixjs/core/RuntimeServicesInstanceOverrides')<
+class RuntimeServicesInstanceOverridesTagImpl extends ServiceMap.Service<
   RuntimeServicesInstanceOverridesTagImpl,
   RuntimeServicesOverrides
->() {}
+>()('@logixjs/core/RuntimeServicesInstanceOverrides') {}
 
 export const RuntimeServicesInstanceOverridesTag = RuntimeServicesInstanceOverridesTagImpl
 
@@ -66,10 +66,10 @@ export const RuntimeServicesInstanceOverridesTag = RuntimeServicesInstanceOverri
  */
 export type FullCutoverGateMode = 'trial' | 'fullCutover'
 
-class FullCutoverGateModeTagImpl extends Context.Tag('@logixjs/core/FullCutoverGateMode')<
+class FullCutoverGateModeTagImpl extends ServiceMap.Service<
   FullCutoverGateModeTagImpl,
   FullCutoverGateMode
->() {}
+>()('@logixjs/core/FullCutoverGateMode') {}
 
 export const FullCutoverGateModeTag = FullCutoverGateModeTagImpl
 
@@ -186,10 +186,10 @@ export interface RuntimeServicesRegistry {
   readonly implsByServiceId: Readonly<Record<string, ReadonlyArray<RuntimeServiceImpl<any>>>>
 }
 
-class RuntimeServicesRegistryTagImpl extends Context.Tag('@logixjs/core/RuntimeServicesRegistry')<
+class RuntimeServicesRegistryTagImpl extends ServiceMap.Service<
   RuntimeServicesRegistryTagImpl,
   RuntimeServicesRegistry
->() {}
+>()('@logixjs/core/RuntimeServicesRegistry') {}
 
 export const RuntimeServicesRegistryTag = RuntimeServicesRegistryTagImpl
 

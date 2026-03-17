@@ -30,9 +30,7 @@ describe('Middleware.DebugObserver', () => {
       }),
     )
 
-    const program = Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [sink])(
-      Effect.forEach(ops, (op) => EffectOp.run(op, stack) as Effect.Effect<number, never, never>, { discard: true }),
-    )
+    const program = Effect.provideService(Effect.forEach(ops, (op) => EffectOp.run(op, stack) as Effect.Effect<number, never, never>, { discard: true }), Logix.Debug.internal.currentDebugSinks as any, [sink])
 
     await Effect.runPromise(program)
 
@@ -88,9 +86,7 @@ describe('Middleware.DebugObserver', () => {
       },
     })
 
-    const program = Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [sink])(
-      EffectOp.run(op, stack) as Effect.Effect<number, never, never>,
-    )
+    const program = Effect.provideService(EffectOp.run(op, stack) as Effect.Effect<number, never, never>, Logix.Debug.internal.currentDebugSinks as any, [sink])
 
     await Effect.runPromise(program)
 
@@ -141,9 +137,7 @@ describe('Middleware.DebugObserver', () => {
       },
     })
 
-    const program = Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [sink])(
-      EffectOp.run(op, stack) as Effect.Effect<number, never, never>,
-    )
+    const program = Effect.provideService(EffectOp.run(op, stack) as Effect.Effect<number, never, never>, Logix.Debug.internal.currentDebugSinks as any, [sink])
 
     await Effect.runPromise(program)
 
@@ -183,9 +177,7 @@ describe('Middleware.DebugObserver', () => {
       },
     })
 
-    const program = Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [sink])(
-      EffectOp.run(op, stack) as Effect.Effect<number, never, never>,
-    )
+    const program = Effect.provideService(EffectOp.run(op, stack) as Effect.Effect<number, never, never>, Logix.Debug.internal.currentDebugSinks as any, [sink])
 
     await Effect.runPromise(program)
 

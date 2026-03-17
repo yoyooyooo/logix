@@ -42,7 +42,7 @@ export namespace FormCore {
 
   export interface FormConfig<TValues> {
     readonly initialValues: TValues
-    readonly schema?: Schema.Schema<TValues, any, any>
+    readonly schema?: Schema.Schema<TValues>
     readonly mode?: ValidationMode
     readonly reValidateMode?: ValidationMode
     readonly debounceMs?: number
@@ -68,9 +68,9 @@ export namespace FormCore {
     | { _tag: 'form/validate'; payload?: { paths?: string[] } }
     | { _tag: 'form/setValues'; payload: { values: unknown } }
 
-  export type AnySchema = Schema.Schema<any, any, any>
+  export type AnySchema = Schema.Schema<any>
 
-  export type SchemaOf<T> = Schema.Schema<T, any, any>
+  export type SchemaOf<T> = Schema.Schema<T>
 
   export type FormShape<TValues, TActionMap extends Record<string, AnySchema>> = LogixCore.Shape<
     SchemaOf<FormState<TValues>>,

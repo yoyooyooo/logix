@@ -172,7 +172,7 @@ export const runAnchorAutofill = (inv: AnchorAutofillInvocation): Effect.Effect<
       ),
     })
   }).pipe(
-    Effect.catchAllCause((cause) =>
+    Effect.catchCause((cause) =>
       Effect.succeed(
         makeCommandResult({
           runId,
@@ -182,7 +182,6 @@ export const runAnchorAutofill = (inv: AnchorAutofillInvocation): Effect.Effect<
           artifacts: [],
           error: asSerializableErrorSummary(cause),
         }),
-      ),
-    ),
+      )),
   )
 }

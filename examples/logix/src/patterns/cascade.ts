@@ -26,10 +26,8 @@ export const runCascadePattern = <Sh extends Logix.AnyModuleShape, R, T, Data>(
     onLoading?: (prev: Logix.StateOf<Sh>, isLoading: boolean) => Logix.StateOf<Sh>
   },
 ) => {
-  return $.onState(config.source).run({
-    mode: 'latest',
-    effect: (val: T | undefined | null) =>
-      Effect.gen(function* () {
+  return $.onState(config.source).runLatest((val: T | undefined | null) =>
+    Effect.gen(function* () {
       // 1. 立即重置下游
       yield* $.state.update(config.onReset)
 
@@ -53,6 +51,6 @@ export const runCascadePattern = <Sh extends Logix.AnyModuleShape, R, T, Data>(
         }
         return next
       })
-      }),
-  })
+    }),
+  )
 }

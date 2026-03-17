@@ -55,7 +55,7 @@ describe('LogicTraits - conflicts & consistency checks', () => {
     })
 
     const start = Effect.gen(function* () {
-      yield* M.tag
+      yield* Effect.service(M.tag).pipe(Effect.orDie)
     }) as Effect.Effect<void, never, any>
 
     try {
@@ -110,7 +110,7 @@ describe('LogicTraits - conflicts & consistency checks', () => {
     })
 
     const start = Effect.gen(function* () {
-      yield* M.tag
+      yield* Effect.service(M.tag).pipe(Effect.orDie)
     }) as Effect.Effect<void, never, any>
 
     try {
@@ -173,7 +173,7 @@ describe('LogicTraits - conflicts & consistency checks', () => {
     })
 
     const start = Effect.gen(function* () {
-      yield* M.tag
+      yield* Effect.service(M.tag).pipe(Effect.orDie)
     }) as Effect.Effect<void, never, any>
 
     try {

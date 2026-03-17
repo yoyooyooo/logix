@@ -1,11 +1,10 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
 
 describe('Form controller default actions', () => {
-  it.scoped('validatePaths/reset/setError/clearErrors/handleSubmit', () =>
+  it.effect('validatePaths/reset/setError/clearErrors/handleSubmit', () =>
     Effect.gen(function* () {
       const ValuesSchema = Schema.Struct({
         name: Schema.String,
@@ -34,7 +33,7 @@ describe('Form controller default actions', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* module.tag
+        const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const form = module.controller.make(rt)
 
         // scoped validate: hit the `name` rule.

@@ -10,7 +10,7 @@
  *   pnpm -C examples/logix exec tsx src/scenarios/process-instance-scope.ts
  */
 
-import { Context, Effect, Exit, Layer, Scope, Schema, Stream } from 'effect'
+import { Effect, Exit, Layer, Scope, Schema, ServiceMap, Stream } from 'effect'
 import * as Logix from '@logixjs/core'
 
 const Source = Logix.Module.make('ProcessInstanceScopeSource', {
@@ -25,15 +25,13 @@ const Target = Logix.Module.make('ProcessInstanceScopeTarget', {
 
 const SourceLogic = Source.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction('increment').run({ effect: () => $.state.update((s) => ({ ...s, count: s.count + 1 })) })
+    yield* $.onAction('increment').run(() => $.state.update((s) => ({ ...s, count: s.count + 1 })))
   }),
 )
 
 const TargetLogic = Target.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction('log').run({
-      effect: (action: any) => $.state.update((s) => ({ ...s, logs: [...s.logs, action.payload] })),
-    })
+    yield* $.onAction('log').run((action) => $.state.update((s) => ({ ...s, logs: [...s.logs, action.payload] })))
   }),
 )
 
@@ -77,19 +75,19 @@ const main = Effect.gen(function* () {
     const envA = yield* Layer.buildWithScope(layer, scopeA)
     const envB = yield* Layer.buildWithScope(layer, scopeB)
 
-    const sourceA: any = Context.get(envA, Source.tag)
-    const targetA: any = Context.get(envA, Target.tag)
-    const sourceB: any = Context.get(envB, Source.tag)
-    const targetB: any = Context.get(envB, Target.tag)
+    const sourceA: any = ServiceMap.get(envA, Source.tag)
+    const targetA: any = ServiceMap.get(envA, Target.tag)
+    const sourceB: any = ServiceMap.get(envB, Source.tag)
+    const targetB: any = ServiceMap.get(envB, Target.tag)
 
-    yield* Effect.yieldNow()
+    yield* Effect.yieldNow
     yield* Effect.sleep('30 millis')
-    yield* Effect.yieldNow()
+    yield* Effect.yieldNow
 
     yield* sourceA.dispatch({ _tag: 'increment', payload: undefined } as any)
-    yield* Effect.yieldNow()
+    yield* Effect.yieldNow
     yield* Effect.sleep('80 millis')
-    yield* Effect.yieldNow()
+    yield* Effect.yieldNow
 
     // eslint-disable-next-line no-console
     console.log('[A] source.count =', (yield* sourceA.getState).count)
@@ -101,9 +99,9 @@ const main = Effect.gen(function* () {
     console.log('[B] target.logs =', (yield* targetB.getState).logs)
 
     yield* sourceB.dispatch({ _tag: 'increment', payload: undefined } as any)
-    yield* Effect.yieldNow()
+    yield* Effect.yieldNow
     yield* Effect.sleep('80 millis')
-    yield* Effect.yieldNow()
+    yield* Effect.yieldNow
 
     // eslint-disable-next-line no-console
     console.log('[A] source.count =', (yield* sourceA.getState).count)

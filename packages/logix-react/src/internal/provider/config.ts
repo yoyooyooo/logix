@@ -1,4 +1,4 @@
-import { Config, Context, Effect, Layer, Option } from 'effect'
+import { Config, Effect, Layer, Option, ServiceMap } from 'effect'
 
 export interface ReactRuntimeConfigShape {
   readonly gcTime: number
@@ -15,11 +15,10 @@ export interface ReactConfigSnapshot {
   readonly source: 'runtime' | 'config' | 'default'
 }
 
-// Runtime-grade Config Tag for overriding default React runtime behavior via Layer.
-export class ReactRuntimeConfigTag extends Context.Tag('@logixjs/react/RuntimeConfig')<
+export class ReactRuntimeConfigTag extends ServiceMap.Service<
   ReactRuntimeConfigTag,
   ReactRuntimeConfigShape
->() {}
+>()('@logixjs/react/RuntimeConfig') {}
 
 const DEFAULT_CONFIG: ReactRuntimeConfigShape = {
   gcTime: 500,

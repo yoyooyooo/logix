@@ -2,13 +2,13 @@ import type { TraitConvergePlanCacheEvidence } from './model.js'
 
 interface ConvergePlanCacheEntry {
   readonly hash: number
-  readonly rootIds: ReadonlyArray<number>
+  readonly rootIds: Int32Array
   planStepIds: Int32Array
   prev?: ConvergePlanCacheEntry
   next?: ConvergePlanCacheEntry
 }
 
-const rootIdsEquals = (a: ReadonlyArray<number>, b: ReadonlyArray<number>): boolean => {
+const rootIdsEquals = (a: Int32Array, b: Int32Array): boolean => {
   if (a.length !== b.length) return false
   for (let i = 0; i < a.length; i++) {
     if (a[i] !== b[i]) return false
@@ -48,7 +48,7 @@ export class ConvergePlanCache {
     this.disableInternal(reason)
   }
 
-  get(hash: number, rootIds: ReadonlyArray<number>): Int32Array | undefined {
+  get(hash: number, rootIds: Int32Array): Int32Array | undefined {
     if (this.capacity <= 0) return undefined
     if (this.disabled_) return undefined
 
@@ -67,7 +67,7 @@ export class ConvergePlanCache {
     return undefined
   }
 
-  set(hash: number, rootIds: ReadonlyArray<number>, planStepIds: Int32Array): void {
+  set(hash: number, rootIds: Int32Array, planStepIds: Int32Array): void {
     if (this.capacity <= 0) {
       return
     }

@@ -129,11 +129,11 @@ export const AppLayer = Layer.mergeAll(SourceImpl.layer, TargetImpl.layer, Audit
 // 一个简单的 main：派发一次 ping，观察 Target / Audit 状态变化
 export const main = Effect.gen(function* () {
   // 启动 Link（作为长驻 watcher）
-  yield* MultiModuleLink.pipe(Effect.fork)
+  yield* MultiModuleLink.pipe(Effect.forkChild)
 
-  const source = yield* SourceDef.tag
-  const target = yield* TargetDef.tag
-  const audit = yield* AuditDef.tag
+  const source = yield* Effect.service(SourceDef.tag).pipe(Effect.orDie)
+  const target = yield* Effect.service(TargetDef.tag).pipe(Effect.orDie)
+  const audit = yield* Effect.service(AuditDef.tag).pipe(Effect.orDie)
 
   // 触发一次 ping
   yield* source.dispatch({ _tag: 'ping', payload: undefined })

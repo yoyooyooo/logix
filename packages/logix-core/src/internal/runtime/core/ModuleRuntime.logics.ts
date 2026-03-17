@@ -1,4 +1,4 @@
-import { Cause, Context, Deferred, Effect, Option } from 'effect'
+import { Cause, Deferred, Effect, Option, ServiceMap } from 'effect'
 import type { LogicPlan, ModuleRuntime as PublicModuleRuntime } from './module.js'
 import * as Lifecycle from './Lifecycle.js'
 import * as ReducerDiagnostics from './ReducerDiagnostics.js'
@@ -14,7 +14,7 @@ type PhaseRef = LogicPlanMarker.PhaseRef
 const createPhaseRef = (): PhaseRef => ({ current: 'run' })
 
 export const runModuleLogics = <S, A, R>(args: {
-  readonly tag: Context.Tag<any, PublicModuleRuntime<S, A>>
+  readonly tag: ServiceMap.Key<any, PublicModuleRuntime<S, A>>
   readonly logics: ReadonlyArray<Effect.Effect<any, any, R> | LogicPlan<any, R, any>>
   readonly runtime: PublicModuleRuntime<S, A>
   readonly lifecycle: Lifecycle.LifecycleManager
@@ -71,10 +71,10 @@ export const runModuleLogics = <S, A, R>(args: {
         // - rootEnv contains the fully-assembled app Env (all modules/services), preventing "missing service due to early Env capture".
         // - currentEnv contains Provider overlays (e.g. React RuntimeProvider.layer / useRuntime layers) and module-local overrides.
         // Merge order: currentEnv overrides rootEnv for overlapping tags.
-        const currentEnv = (yield* Effect.context<R2>()) as Context.Context<any>
-        const mergedEnv = Context.merge(rootEnv as Context.Context<any>, currentEnv)
+        const currentEnv = (yield* Effect.services<R2>()) as ServiceMap.ServiceMap<any>
+        const mergedEnv = ServiceMap.merge(rootEnv as ServiceMap.ServiceMap<any>, currentEnv)
 
-        return yield* Effect.provide(eff as any, mergedEnv as any)
+        return yield* Effect.provideServices(eff as any, mergedEnv as any)
       }) as any
 
     const formatSource = (source?: {
@@ -106,13 +106,14 @@ export const runModuleLogics = <S, A, R>(args: {
     }
 
     const handleLogicFailure = (cause: any) => {
-      if (Cause.isInterrupted(cause)) {
+      if (Cause.hasInterruptsOnly(cause)) {
         return Effect.failCause(cause)
       }
 
-      const phaseErrorMarker = [...Cause.failures(cause), ...Cause.defects(cause)].some(
-        (err) => (err as any)?._tag === 'LogicPhaseError',
-      )
+      const phaseErrorMarker = cause.reasons
+        .filter((reason: any) => Cause.isFailReason(reason) || Cause.isDieReason(reason))
+        .map((reason: any) => (Cause.isFailReason(reason) ? reason.error : reason.defect))
+        .some((err: any) => err?._tag === 'LogicPhaseError')
 
       const base = lifecycle
         .notifyError(cause, {
@@ -140,7 +141,7 @@ export const runModuleLogics = <S, A, R>(args: {
     }
 
     const handleInitFailure = (cause: Cause.Cause<unknown>) =>
-      Cause.isInterrupted(cause)
+      Cause.hasInterruptsOnly(cause)
         ? Effect.failCause(cause)
         : Effect.void.pipe(
             Effect.tap(() => LifecycleDiagnostics.emitMissingOnErrorDiagnosticIfNeeded(lifecycle, moduleId)),
@@ -148,14 +149,17 @@ export const runModuleLogics = <S, A, R>(args: {
             Effect.tap(() => ReducerDiagnostics.emitDiagnosticsFromCause(cause, moduleId)),
             Effect.tap(() => LogicDiagnostics.emitEnvServiceNotFoundDiagnosticIfNeeded(cause, moduleId)),
             Effect.tap(() => LogicDiagnostics.emitInvalidPhaseDiagnosticIfNeeded(cause, moduleId)),
-            Effect.zipRight(Effect.failCause(cause)),
+            Effect.flatMap(() => Effect.failCause(cause)),
           )
 
     const isLogicPlan = (value: unknown): value is LogicPlan<any, any, any> =>
       Boolean(value && typeof value === 'object' && 'run' in (value as any) && 'setup' in (value as any))
 
     const hasLogicPhaseError = (cause: Cause.Cause<unknown>): boolean =>
-      [...Cause.failures(cause), ...Cause.defects(cause)].some((err) => (err as any)?._tag === 'LogicPhaseError')
+      cause.reasons
+        .filter((reason: any) => Cause.isFailReason(reason) || Cause.isDieReason(reason))
+        .map((reason: any) => (Cause.isFailReason(reason) ? reason.error : reason.defect))
+        .some((err: any) => err?._tag === 'LogicPhaseError')
 
     const normalizeToPlan = (value: unknown, defaultPhaseRef?: PhaseRef): LogicPlan<any, any, any> => {
       const phaseRef = LogicPlanMarker.getPhaseRef(value) ?? defaultPhaseRef ?? createPhaseRef()
@@ -202,14 +206,14 @@ export const runModuleLogics = <S, A, R>(args: {
 
       phaseRef.current = 'setup'
       return setupPhase.pipe(
-        Effect.catchAllCause(handleLogicFailure),
-        Effect.zipRight(
+        Effect.catchCause(handleLogicFailure),
+        Effect.flatMap(() =>
           LogicPlanMarker.isSkipRun(plan)
             ? Effect.void
             : Effect.sync(() => {
                 phaseRef.current = 'run'
               }).pipe(
-                Effect.zipRight(Effect.forkScoped(runPhase.pipe(Effect.catchAllCause(handleLogicFailure)))),
+                Effect.flatMap(() => Effect.forkScoped(runPhase.pipe(Effect.catchCause(handleLogicFailure)))),
                 Effect.asVoid,
               ),
         ),
@@ -238,7 +242,10 @@ export const runModuleLogics = <S, A, R>(args: {
             if (hasLogicPhaseError(cause)) {
               return handleLogicFailure(cause).pipe(Effect.as(makeNoopPlan(phaseRef)))
             }
-            return handleLogicFailure(cause).pipe(Effect.zipRight(Effect.failCause(cause)))
+            return Effect.gen(function* () {
+              yield* handleLogicFailure(cause)
+              return yield* Effect.failCause(cause)
+            })
           },
         }),
       )
@@ -286,7 +293,10 @@ export const runModuleLogics = <S, A, R>(args: {
             if (hasLogicPhaseError(cause)) {
               return handleLogicFailure(cause).pipe(Effect.as(makeNoopPlan(phaseRef)))
             }
-            return handleLogicFailure(cause).pipe(Effect.zipRight(Effect.failCause(cause)))
+            return Effect.gen(function* () {
+              yield* handleLogicFailure(cause)
+              return yield* Effect.failCause(cause)
+            })
           },
         }),
       )
@@ -307,7 +317,7 @@ export const runModuleLogics = <S, A, R>(args: {
         const runPhase = withRootEnvIfAvailable(withRuntimeAndLifecycle(plan.run, phaseRef, logicUnit))
 
         phaseRef.current = 'setup'
-        yield* setupPhase.pipe(Effect.catchAllCause(handleLogicFailure))
+        yield* setupPhase.pipe(Effect.catchCause(handleLogicFailure))
 
         if (LogicPlanMarker.isSkipRun(plan)) {
           return
@@ -317,7 +327,7 @@ export const runModuleLogics = <S, A, R>(args: {
           Effect.sync(() => {
             phaseRef.current = 'run'
           }).pipe(
-            Effect.zipRight(Effect.forkScoped(runPhase.pipe(Effect.catchAllCause(handleLogicFailure)))),
+            Effect.flatMap(() => Effect.forkScoped(runPhase.pipe(Effect.catchCause(handleLogicFailure)))),
             Effect.asVoid,
           ),
         )
@@ -335,7 +345,7 @@ export const runModuleLogics = <S, A, R>(args: {
     }
 
     // lifecycle initRequired: blocking gate (must complete before forking run fibers).
-    yield* lifecycle.runInitRequired.pipe(Effect.catchAllCause(handleInitFailure))
+    yield* lifecycle.runInitRequired.pipe(Effect.catchCause(handleInitFailure))
 
     // platform signals: read Platform only after initRequired succeeds (avoid reading Env during setup).
     const platformOpt = yield* Effect.serviceOption(Platform.Tag)
@@ -379,15 +389,14 @@ export const runModuleLogics = <S, A, R>(args: {
                   : lifecycle.runPlatformReset,
             ).pipe(Effect.asVoid),
           ).pipe(
-            Effect.catchAllCause((cause) =>
+            Effect.catchCause((cause) =>
               lifecycle.notifyError(cause, {
                 phase: 'platform',
                 hook: label,
                 moduleId,
                 instanceId,
                 origin: 'platform.subscribe',
-              }),
-            ),
+              })),
           ),
         ).pipe(Effect.asVoid)
 
@@ -409,6 +418,6 @@ export const runModuleLogics = <S, A, R>(args: {
     yield* lifecycle.runStart
 
     // Give forked logics a scheduling chance so upper layers (e.g. Root processes) don't dispatch actions before logics are ready.
-    yield* Effect.yieldNow()
+    yield* Effect.yieldNow
   })
 }

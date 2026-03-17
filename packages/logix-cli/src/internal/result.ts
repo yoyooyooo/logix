@@ -30,7 +30,6 @@ export interface CommandResult {
   readonly command: string
   readonly mode?: 'report' | 'write'
   readonly ok: boolean
-  readonly exitCode?: 0 | 1 | 2 | 3 | 4 | 5
   readonly artifacts: ReadonlyArray<ArtifactOutput>
   readonly error?: SerializableErrorSummary
 }
@@ -41,7 +40,6 @@ type MakeCommandResultInput =
       readonly command: string
       readonly mode?: 'report' | 'write'
       readonly ok: true
-      readonly exitCode?: 0 | 1 | 2 | 3 | 4 | 5
       readonly artifacts: ReadonlyArray<ArtifactOutput>
     }
   | {
@@ -49,7 +47,6 @@ type MakeCommandResultInput =
       readonly command: string
       readonly mode?: 'report' | 'write'
       readonly ok: false
-      readonly exitCode?: 0 | 1 | 2 | 3 | 4 | 5
       readonly artifacts: ReadonlyArray<ArtifactOutput>
       readonly error: SerializableErrorSummary
     }
@@ -64,7 +61,6 @@ export const makeCommandResult = (input: MakeCommandResultInput): CommandResult 
   command: input.command,
   ...(input.mode ? { mode: input.mode } : null),
   ok: input.ok,
-  ...(typeof input.exitCode === 'number' ? { exitCode: input.exitCode } : null),
   artifacts: input.artifacts,
   ...(input.ok ? null : { error: input.error }),
 })

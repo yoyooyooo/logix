@@ -79,8 +79,8 @@ export const BulkLogic = BulkDef.logic<SelectionService | BulkOperationService |
         lastMessage: undefined,
       }))
 
-      yield* $.onAction('bulk/run').run({ mode: 'exhaust', effect: handleRun })
-      yield* $.onAction('bulk/resetMessage').run({ effect: handleReset })
+      yield* $.onAction('bulk/run').runExhaust(handleRun)
+      yield* $.onAction('bulk/resetMessage').run(handleReset)
     }),
 )
 

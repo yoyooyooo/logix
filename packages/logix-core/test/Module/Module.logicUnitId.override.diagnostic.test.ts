@@ -44,7 +44,7 @@ describe('Module.logicUnitId override diagnostics', () => {
     try {
       await runtime.runPromise(
         Effect.gen(function* () {
-          const rt = yield* M.tag
+          const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
           yield* Effect.sleep('120 millis')
           expect((yield* rt.getState).value).toBe(2)
         }) as Effect.Effect<void, never, any>,

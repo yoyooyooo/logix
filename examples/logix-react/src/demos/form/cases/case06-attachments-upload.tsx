@@ -14,7 +14,7 @@ const UploadSpec = Logix.Resource.make({
   keySchema: UploadKeySchema,
   load: (key: { readonly fileKey: string }) =>
     Effect.sleep(Duration.millis(700)).pipe(
-      Effect.zipRight(
+      Effect.flatMap(() =>
         Effect.succeed({
           url: `https://example.local/files/${encodeURIComponent(key.fileKey)}.png`,
         }),

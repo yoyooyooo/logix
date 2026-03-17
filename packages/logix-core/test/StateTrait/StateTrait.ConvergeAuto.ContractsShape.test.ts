@@ -31,6 +31,8 @@ describe('StateTrait ConvergeAuto contracts shape', () => {
     const reasonsEnum = schema?.properties?.reasons?.items?.enum
     expect(reasonsEnum).toEqual([
       'cold_start',
+      'fast_full',
+      'inline_dirty',
       'cache_hit',
       'cache_miss',
       'budget_cutoff',

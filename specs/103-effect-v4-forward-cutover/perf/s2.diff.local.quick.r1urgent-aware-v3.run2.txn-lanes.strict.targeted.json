@@ -1,0 +1,474 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-03-06T10:55:42.939Z",
+    "from": {
+      "file": "specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.r1urgent-aware-v3.currenthead.txn-lanes.targeted.json",
+      "commit": "7213aee6838aa3199edb4990ccb63d7aeac393ff"
+    },
+    "to": {
+      "file": "specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.r1urgent-aware-v3.run2.txn-lanes.targeted.json",
+      "commit": "7213aee6838aa3199edb4990ccb63d7aeac393ff"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.after=true"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 1,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "txnLanes.urgentBacklog",
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "urgent.p95<=50ms",
+            "type": "absolute",
+            "metric": "e2e.urgentToStableMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "mode": "default"
+          },
+          "beforeMaxLevel": null,
+          "afterMaxLevel": 200,
+          "message": "[category=e2e] urgent.p95<=50ms {mode=default}: before=null after=200 (after:budgetExceeded) (before:budgetExceeded)"
+        }
+      ],
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=0 ok=2 unavailable=0 missing=0] after[value=0 ok=2 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=6 unavailable=0 missing=0] after[value=core ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnLanes.budgetMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1
+          },
+          "message": "txnLanes.budgetMs(points) unit=count: before[value=1 ok=6 unavailable=0 missing=0] after[value=1 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnLanes.maxLagMs",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 50
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 50
+          },
+          "message": "txnLanes.maxLagMs(points) unit=count: before[value=50 ok=6 unavailable=0 missing=0] after[value=50 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnLanes.mode",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "off"
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "off"
+          },
+          "message": "txnLanes.mode(points) unit=count: before[value=off ok=6 unavailable=0 missing=0] after[value=off ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "txnLanes.yieldStrategy",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "baseline"
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "baseline"
+          },
+          "message": "txnLanes.yieldStrategy(points) unit=ratio: before[value=baseline ok=6 unavailable=0 missing=0] after[value=baseline ok=6 unavailable=0 missing=0]"
+        }
+      ],
+      "metricDeltas": [
+        {
+          "metric": "e2e.urgentToStableMs",
+          "unit": "ms",
+          "compared": 6,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [
+            {
+              "params": {
+                "steps": 800,
+                "mode": "off"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 36.80000001192093,
+                "p95Ms": 50.5
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 38.400000005960464,
+                "p95Ms": 54.19999998807907
+              },
+              "deltaMs": {
+                "medianMs": 1.5999999940395355,
+                "p95Ms": 3.699999988079071
+              },
+              "ratio": {
+                "median": 1.0434782606935118,
+                "p95": 1.0732673264966153
+              }
+            },
+            {
+              "params": {
+                "steps": 200,
+                "mode": "off"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 36.69999998807907,
+                "p95Ms": 51.599999994039536
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 37.80000001192093,
+                "p95Ms": 54.5
+              },
+              "deltaMs": {
+                "medianMs": 1.100000023841858,
+                "p95Ms": 2.9000000059604645
+              },
+              "ratio": {
+                "median": 1.0299727527029745,
+                "p95": 1.0562015505096018
+              }
+            },
+            {
+              "params": {
+                "steps": 2000,
+                "mode": "default"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 41,
+                "p95Ms": 48.900000005960464
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 36.400000005960464,
+                "p95Ms": 50
+              },
+              "deltaMs": {
+                "medianMs": -4.5999999940395355,
+                "p95Ms": 1.0999999940395355
+              },
+              "ratio": {
+                "median": 0.8878048781941577,
+                "p95": 1.0224948874009296
+              }
+            }
+          ],
+          "topImprovements": [
+            {
+              "params": {
+                "steps": 200,
+                "mode": "default"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 42.80000001192093,
+                "p95Ms": 56.5
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 41.29999998211861,
+                "p95Ms": 48.79999998211861
+              },
+              "deltaMs": {
+                "medianMs": -1.5000000298023224,
+                "p95Ms": -7.700000017881393
+              },
+              "ratio": {
+                "median": 0.9649532703414829,
+                "p95": 0.8637168138428072
+              }
+            },
+            {
+              "params": {
+                "steps": 2000,
+                "mode": "off"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 38.30000001192093,
+                "p95Ms": 60.10000002384186
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 35.400000005960464,
+                "p95Ms": 56.29999998211861
+              },
+              "deltaMs": {
+                "medianMs": -2.9000000059604645,
+                "p95Ms": -3.8000000417232513
+              },
+              "ratio": {
+                "median": 0.9242819842021452,
+                "p95": 0.9367720459198705
+              }
+            },
+            {
+              "params": {
+                "steps": 800,
+                "mode": "default"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 39.29999998211861,
+                "p95Ms": 52.19999998807907
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 40.70000001788139,
+                "p95Ms": 51.20000001788139
+              },
+              "deltaMs": {
+                "medianMs": 1.4000000357627869,
+                "p95Ms": -0.9999999701976776
+              },
+              "ratio": {
+                "median": 1.0356234105954143,
+                "p95": 0.9808429124439454
+              }
+            }
+          ]
+        },
+        {
+          "metric": "runtime.backlogCatchUpMs",
+          "unit": "ms",
+          "compared": 6,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [
+            {
+              "params": {
+                "steps": 200,
+                "mode": "off"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 77.5,
+                "p95Ms": 89.59999999403954
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 81.30000001192093,
+                "p95Ms": 103.5
+              },
+              "deltaMs": {
+                "medianMs": 3.800000011920929,
+                "p95Ms": 13.900000005960464
+              },
+              "ratio": {
+                "median": 1.0490322582183345,
+                "p95": 1.1551339286482716
+              }
+            },
+            {
+              "params": {
+                "steps": 2000,
+                "mode": "off"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 84.90000000596046,
+                "p95Ms": 115.2000000178814
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 80.5,
+                "p95Ms": 118.90000000596046
+              },
+              "deltaMs": {
+                "medianMs": -4.4000000059604645,
+                "p95Ms": 3.699999988079071
+              },
+              "ratio": {
+                "median": 0.9481743226660594,
+                "p95": 1.03211805544709
+              }
+            }
+          ],
+          "topImprovements": [
+            {
+              "params": {
+                "steps": 200,
+                "mode": "default"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 88,
+                "p95Ms": 108.19999998807907
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 90.19999998807907,
+                "p95Ms": 103.69999998807907
+              },
+              "deltaMs": {
+                "medianMs": 2.199999988079071,
+                "p95Ms": -4.5
+              },
+              "ratio": {
+                "median": 1.024999999864535,
+                "p95": 0.9584103511968967
+              }
+            },
+            {
+              "params": {
+                "steps": 800,
+                "mode": "default"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 84.5,
+                "p95Ms": 99.7000000178814
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 81,
+                "p95Ms": 95.30000001192093
+              },
+              "deltaMs": {
+                "medianMs": -3.5,
+                "p95Ms": -4.4000000059604645
+              },
+              "ratio": {
+                "median": 0.9585798816568047,
+                "p95": 0.9558676027565565
+              }
+            },
+            {
+              "params": {
+                "steps": 2000,
+                "mode": "default"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 82.30000001192093,
+                "p95Ms": 93.80000001192093
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 80.90000000596046,
+                "p95Ms": 89.7000000178814
+              },
+              "deltaMs": {
+                "medianMs": -1.4000000059604645,
+                "p95Ms": -4.0999999940395355
+              },
+              "ratio": {
+                "median": 0.9829890643285822,
+                "p95": 0.9562899787471378
+              }
+            },
+            {
+              "params": {
+                "steps": 800,
+                "mode": "off"
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 84.30000001192093,
+                "p95Ms": 107.60000002384186
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 83.2999999821186,
+                "p95Ms": 105.89999997615814
+              },
+              "deltaMs": {
+                "medianMs": -1.0000000298023224,
+                "p95Ms": -1.7000000476837158
+              },
+              "ratio": {
+                "median": 0.9881376034441173,
+                "p95": 0.9842007430547673
+              }
+            }
+          ]
+        }
+      ],
+      "notes": "stabilityWarning: metric=e2e.urgentToStableMs {mode=default&steps=200} baselineP95=56.50ms afterP95=48.80ms diff=7.70ms limit=5.65ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    }
+  ]
+}

@@ -15,9 +15,7 @@ const Counter = Logix.Module.make('Counter', {
 
 const CounterLogic = Counter.logic((api) =>
   Effect.gen(function* () {
-    yield* api.onAction('increment').run({
-      effect: () => api.state.update((s) => ({ ...s, count: s.count + 1 })),
-    })
+    yield* api.onAction('increment').run(() => api.state.update((s) => ({ ...s, count: s.count + 1 })))
   }),
 )
 
@@ -46,12 +44,8 @@ describe('TestProgram (new model: program module)', () => {
   it('should support forked onAction watchers inside a single Logic', async () => {
     const ForkCounterLogic = Counter.logic(($) =>
       Effect.gen(function* () {
-        yield* Effect.fork(
-          $.onAction('increment').run({ effect: () => $.state.update((s) => ({ ...s, count: s.count + 1 })) }),
-        )
-        yield* Effect.fork(
-          $.onAction('decrement').run({ effect: () => $.state.update((s) => ({ ...s, count: s.count - 1 })) }),
-        )
+        yield* Effect.forkChild($.onAction('increment').run(() => $.state.update((s) => ({ ...s, count: s.count + 1 }))))
+        yield* Effect.forkChild($.onAction('decrement').run(() => $.state.update((s) => ({ ...s, count: s.count - 1 }))))
       }),
     )
 
@@ -105,16 +99,12 @@ describe('TestProgram (new model: program module)', () => {
       actions: {
         updateName: Schema.String,
       },
+      reducers: {
+        updateName: Logix.Module.Reducer.mutate((draft, payload: string) => {
+          draft.name = payload
+        }),
+      },
     })
-
-    const UserLogic = User.logic((api) =>
-      Effect.gen(function* () {
-        yield* api.onAction('updateName').update((s, a) => ({
-          ...s,
-          name: a.payload,
-        }))
-      }),
-    )
 
     const Auth = Logix.Module.make('Auth', {
       state: Schema.Struct({ loggedIn: Schema.Boolean }),
@@ -122,23 +112,19 @@ describe('TestProgram (new model: program module)', () => {
         login: Schema.Void,
         logout: Schema.Void,
       },
+      reducers: {
+        login: Logix.Module.Reducer.mutate((draft) => {
+          draft.loggedIn = true
+        }),
+        logout: Logix.Module.Reducer.mutate((draft) => {
+          draft.loggedIn = false
+        }),
+      },
     })
-
-    const AuthLogic = Auth.logic((api) =>
-      Effect.gen(function* () {
-        yield* Effect.all(
-          [
-            api.onAction('login').update((s) => ({ ...s, loggedIn: true })),
-            api.onAction('logout').update((s) => ({ ...s, loggedIn: false })),
-          ],
-          { concurrency: 'unbounded' },
-        )
-      }),
-    )
 
     const AuthImpl = Auth.implement({
       initial: { loggedIn: true },
-      logics: [AuthLogic],
+      logics: [],
     })
 
     const LinkProcess = Logix.Link.make(
@@ -150,55 +136,58 @@ describe('TestProgram (new model: program module)', () => {
           const userHandle = $[User.id]
           const authHandle = $[Auth.id]
 
-          yield* userHandle.actions$.pipe(
-            Stream.runForEach((action) =>
-              Effect.gen(function* () {
-                if (action._tag === 'updateName' && action.payload === 'clear') {
-                  yield* authHandle.dispatch({
-                    _tag: 'login',
-                    payload: undefined,
-                  })
-                  yield* authHandle.dispatch({
-                    _tag: 'logout',
-                    payload: undefined,
-                  })
-                }
-              }),
-            ),
-            Effect.forkScoped,
-          )
-
-          yield* authHandle.actions$.pipe(
-            Stream.runForEach((action) =>
-              Effect.gen(function* () {
-                if (action._tag === 'logout') {
-                  yield* userHandle.dispatch({
-                    _tag: 'updateName',
-                    payload: '',
-                  })
-                }
-              }),
-            ),
-            Effect.forkScoped,
+          yield* Effect.all(
+            [
+              userHandle.actions$.pipe(
+                Stream.runForEach((action) =>
+                  Effect.gen(function* () {
+                    if (action._tag === 'updateName' && action.payload === 'clear') {
+                      yield* authHandle.dispatch({
+                        _tag: 'login',
+                        payload: undefined,
+                      })
+                      yield* authHandle.dispatch({
+                        _tag: 'logout',
+                        payload: undefined,
+                      })
+                    }
+                  }),
+                ),
+              ),
+              authHandle.actions$.pipe(
+                Stream.runForEach((action) =>
+                  Effect.gen(function* () {
+                    if (action._tag === 'logout') {
+                      yield* userHandle.dispatch({
+                        _tag: 'updateName',
+                        payload: '',
+                      })
+                    }
+                  }),
+                ),
+              ),
+            ],
+            { concurrency: 'unbounded' },
           )
         }),
     )
 
     const program = User.implement({
       initial: { name: 'Alice' },
-      logics: [UserLogic],
+      logics: [],
       imports: [AuthImpl.impl],
       processes: [LinkProcess],
     })
 
-    const result = await runTest(
-      TestProgram.runProgram(program.impl, (api) =>
-        Effect.gen(function* () {
-          yield* api.dispatch({ _tag: 'updateName', payload: 'clear' })
-          yield* api.assert.state((s) => s.name === '')
-        }),
-      ),
-    )
+      const result = await runTest(
+        TestProgram.runProgram(program.impl, (api) =>
+          Effect.gen(function* () {
+            yield* api.advance('50 millis')
+            yield* api.dispatch({ _tag: 'updateName', payload: 'clear' })
+            yield* api.assert.state((s) => s.name === '')
+          }),
+        ),
+      )
 
     expect(result.state).toEqual({ name: '' })
     Execution.expectActionTag(result, 'updateName')

@@ -3,7 +3,7 @@ import * as Logix from '@logixjs/core'
 
 import type { SpecListItem, TaskItem } from '../../api/client'
 
-const ArtifactNameSchema = Schema.Literal('spec.md', 'plan.md', 'tasks.md', 'quickstart.md', 'data-model.md', 'research.md')
+const ArtifactNameSchema = Schema.Literals(['spec.md', 'plan.md', 'tasks.md', 'quickstart.md', 'data-model.md', 'research.md'])
 
 const SpecTaskStatsSchema = Schema.Struct({
   total: Schema.Number,
@@ -39,7 +39,7 @@ const SpecDetailStateSchema = Schema.Struct({
   open: Schema.Boolean,
   specId: Schema.NullOr(Schema.String),
   fileName: ArtifactNameSchema,
-  viewMode: Schema.Literal('preview', 'edit'),
+  viewMode: Schema.Literals(['preview', 'edit']),
   loadingFile: Schema.Boolean,
   fileError: Schema.NullOr(Schema.String),
   content: Schema.String,
@@ -50,7 +50,7 @@ const SpecDetailStateSchema = Schema.Struct({
   loadingSpec: Schema.Boolean,
   specError: Schema.NullOr(Schema.String),
   specMarkdown: Schema.String,
-  artifactExists: Schema.Record({ key: Schema.String, value: Schema.Boolean }),
+  artifactExists: Schema.Record(Schema.String, Schema.Boolean),
 })
 
 const TaskDetailStateSchema = Schema.Struct({
@@ -58,7 +58,7 @@ const TaskDetailStateSchema = Schema.Struct({
   specId: Schema.NullOr(Schema.String),
   taskLine: Schema.NullOr(Schema.Number),
   fileName: ArtifactNameSchema,
-  viewMode: Schema.Literal('preview', 'edit'),
+  viewMode: Schema.Literals(['preview', 'edit']),
   loading: Schema.Boolean,
   error: Schema.NullOr(Schema.String),
   content: Schema.String,
@@ -71,15 +71,15 @@ const FocusedTaskSchema = Schema.Struct({
 
 const KanbanStateSchema = Schema.Struct({
   hideDoneTasks: Schema.Boolean,
-  viewMode: Schema.Literal('task', 'us'),
-  viewModeBySpec: Schema.Record({ key: Schema.String, value: Schema.Literal('task', 'us') }),
+  viewMode: Schema.Literals(['task', 'us']),
+  viewModeBySpec: Schema.Record(Schema.String, Schema.Literals(['task', 'us'])),
   refreshSeq: Schema.Number,
   error: Schema.NullOr(Schema.String),
   specs: Schema.Array(SpecListItemSchema),
-  tasksBySpec: Schema.Record({ key: Schema.String, value: Schema.Array(TaskItemSchema) }),
-  loadingBySpec: Schema.Record({ key: Schema.String, value: Schema.Boolean }),
-  storiesBySpec: Schema.Record({ key: Schema.String, value: Schema.Array(UserStoryDefSchema) }),
-  loadingStoriesBySpec: Schema.Record({ key: Schema.String, value: Schema.Boolean }),
+  tasksBySpec: Schema.Record(Schema.String, Schema.Array(TaskItemSchema)),
+  loadingBySpec: Schema.Record(Schema.String, Schema.Boolean),
+  storiesBySpec: Schema.Record(Schema.String, Schema.Array(UserStoryDefSchema)),
+  loadingStoriesBySpec: Schema.Record(Schema.String, Schema.Boolean),
   specDetail: SpecDetailStateSchema,
   taskDetail: TaskDetailStateSchema,
   focusedTask: Schema.NullOr(FocusedTaskSchema),
@@ -90,10 +90,10 @@ export type KanbanState = Schema.Schema.Type<typeof KanbanStateSchema>
 const KanbanActions = {
   'board/refresh': Schema.Void,
   'board/setHideDone': Schema.Boolean,
-  'board/setViewMode': Schema.Literal('task', 'us'),
+  'board/setViewMode': Schema.Literals(['task', 'us']),
   'board/setSpecViewMode': Schema.Struct({
     specId: Schema.String,
-    mode: Schema.Literal('task', 'us'),
+    mode: Schema.Literals(['task', 'us']),
   }),
   'board/clearSpecViewMode': Schema.String,
   'board/toggleTask': Schema.Struct({
@@ -105,7 +105,7 @@ const KanbanActions = {
   'specDetail/open': Schema.String,
   'specDetail/close': Schema.Void,
   'specDetail/selectFile': ArtifactNameSchema,
-  'specDetail/setViewMode': Schema.Literal('preview', 'edit'),
+  'specDetail/setViewMode': Schema.Literals(['preview', 'edit']),
   'specDetail/setContent': Schema.String,
   'specDetail/save': Schema.Void,
   'specDetail/toggleStory': Schema.String,
@@ -121,7 +121,7 @@ const KanbanActions = {
   }),
   'taskDetail/close': Schema.Void,
   'taskDetail/selectFile': ArtifactNameSchema,
-  'taskDetail/setViewMode': Schema.Literal('preview', 'edit'),
+  'taskDetail/setViewMode': Schema.Literals(['preview', 'edit']),
   'taskDetail/setContent': Schema.String,
   'taskDetail/save': Schema.Void,
 

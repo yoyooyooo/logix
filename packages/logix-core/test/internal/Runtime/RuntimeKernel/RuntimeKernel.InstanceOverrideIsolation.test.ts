@@ -4,7 +4,7 @@ import * as ModuleRuntime from '../../../../src/internal/runtime/ModuleRuntime.j
 import * as RuntimeKernel from '../../../../src/internal/runtime/core/RuntimeKernel.js'
 
 describe('RuntimeKernel.InstanceOverrideIsolation (US2)', () => {
-  it.scoped('instance override only affects that instance', () =>
+  it.effect('instance override only affects that instance', () =>
     Effect.gen(function* () {
       const a = yield* Effect.provideService(
         ModuleRuntime.make({ n: 0 }, { moduleId: 'M', instanceId: 'i-a' }),

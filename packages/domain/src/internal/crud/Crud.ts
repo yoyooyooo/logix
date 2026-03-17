@@ -1,5 +1,5 @@
 import * as Logix from '@logixjs/core'
-import { Context, Effect, Option, Schema } from 'effect'
+import { Effect, Option, Schema, ServiceMap } from 'effect'
 
 const DefaultQueryInputSchema = Schema.Struct({
   pageSize: Schema.Number,
@@ -75,7 +75,7 @@ export type CrudShape<
 > = Logix.Shape<Schema.Schema<CrudState<Entity, QueryInput>>, CrudActionMap<Entity, QueryInput, Id, ExtraActions>>
 
 export type CrudServices<Entity extends object, QueryInput, Id> = {
-  readonly api: Logix.State.Tag<CrudApi<Entity, QueryInput, Id>>
+  readonly api: ServiceMap.Key<any, CrudApi<Entity, QueryInput, Id>>
 }
 
 export type CrudHandleExt<
@@ -204,7 +204,7 @@ const defineCrud = <
 
   const idField = spec.idField ?? 'id'
 
-  class Api extends Context.Tag(`${id}/crud/api`)<Api, CrudApi<Entity, QueryInput, EntityId>>() {}
+  class Api extends ServiceMap.Service<Api, CrudApi<Entity, QueryInput, EntityId>>()( `${id}/crud/api`) {}
 
   const services = { api: Api } as const satisfies CrudServices<Entity, QueryInput, EntityId>
 
@@ -365,14 +365,14 @@ const defineCrud = <
           run: (api: CrudApi<Entity, QueryInput, EntityId>) => Effect.Effect<unknown, unknown, any>,
         ): Effect.Effect<void, never, any> =>
           Effect.gen(function* () {
-            const apiOpt = yield* Effect.serviceOption(services.api)
+            const apiOpt = yield* Effect.serviceOption(services.api as ServiceMap.Key<any, CrudApi<Entity, QueryInput, EntityId>>)
             if (Option.isNone(apiOpt)) {
               yield* dispatchFailed(missingApiMessage)
               return
             }
             yield* run(apiOpt.value)
           }).pipe(
-            Effect.catchAll((error) => dispatchFailed(toErrorMessage(error))),
+            Effect.catch((error) => dispatchFailed(toErrorMessage(error))),
             Effect.asVoid,
           )
 
@@ -391,7 +391,7 @@ const defineCrud = <
         yield* $.onAction('remove').runFork((action) =>
           runWithApi($.dispatchers.removeFailed, (api) =>
             api.remove(action.payload as EntityId).pipe(
-              Effect.zipRight($.dispatchers.removeSucceeded(action.payload as EntityId)),
+              Effect.flatMap(() => $.dispatchers.removeSucceeded(action.payload as EntityId)),
             ),
           ),
         )

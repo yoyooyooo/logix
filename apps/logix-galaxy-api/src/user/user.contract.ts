@@ -1,4 +1,4 @@
-import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from '@effect/platform'
+import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/unstable/httpapi'
 import { Schema } from 'effect'
 
 import {
@@ -33,60 +33,74 @@ export const UserResetPasswordRequest = Schema.Struct({
   password: Schema.String,
 })
 
+const UserCommonErrors = [
+  ValidationError.pipe(HttpApiSchema.status(400)),
+  UnauthorizedError.pipe(HttpApiSchema.status(401)),
+  ForbiddenError.pipe(HttpApiSchema.status(403)),
+  NotFoundError.pipe(HttpApiSchema.status(404)),
+  ConflictError.pipe(HttpApiSchema.status(409)),
+  ServiceUnavailableError.pipe(HttpApiSchema.status(503)),
+] as const
+
 export const UserGroup = HttpApiGroup.make('User')
-  .addError(ServiceUnavailableError, { status: 503 })
   .add(
-    HttpApiEndpoint.post('userCreate')`/users`
-      .setPayload(UserCreateRequest)
-      .addSuccess(UserDto, { status: 201 })
-      .addError(ValidationError, { status: 400 })
-      .addError(UnauthorizedError, { status: 401 })
-      .addError(ForbiddenError, { status: 403 })
-      .addError(ConflictError, { status: 409 }),
-  )
-  .add(
-    HttpApiEndpoint.get('userList')`/users`
-      .setUrlParams(UserListUrlParams)
-      .addSuccess(Schema.Array(UserDto))
-      .addError(UnauthorizedError, { status: 401 })
-      .addError(ForbiddenError, { status: 403 }),
-  )
-  .add(
-    HttpApiEndpoint.get('userGet')`/users/${HttpApiSchema.param('id', Schema.String)}`
-      .addSuccess(UserDto)
-      .addError(UnauthorizedError, { status: 401 })
-      .addError(ForbiddenError, { status: 403 })
-      .addError(NotFoundError, { status: 404 }),
-  )
-  .add(
-    HttpApiEndpoint.patch('userUpdate')`/users/${HttpApiSchema.param('id', Schema.String)}`
-      .setPayload(UserUpdateRequest)
-      .addSuccess(UserDto)
-      .addError(ValidationError, { status: 400 })
-      .addError(UnauthorizedError, { status: 401 })
-      .addError(ForbiddenError, { status: 403 })
-      .addError(NotFoundError, { status: 404 }),
-  )
-  .add(
-    HttpApiEndpoint.post('userDisable')`/users/${HttpApiSchema.param('id', Schema.String)}/disable`
-      .addSuccess(Schema.Void, { status: 204 })
-      .addError(UnauthorizedError, { status: 401 })
-      .addError(ForbiddenError, { status: 403 })
-      .addError(NotFoundError, { status: 404 }),
-  )
-  .add(
-    HttpApiEndpoint.post('userEnable')`/users/${HttpApiSchema.param('id', Schema.String)}/enable`
-      .addSuccess(Schema.Void, { status: 204 })
-      .addError(UnauthorizedError, { status: 401 })
-      .addError(ForbiddenError, { status: 403 })
-      .addError(NotFoundError, { status: 404 }),
-  )
-  .add(
-    HttpApiEndpoint.post('userResetPassword')`/users/${HttpApiSchema.param('id', Schema.String)}/reset-password`
-      .setPayload(UserResetPasswordRequest)
-      .addSuccess(Schema.Void, { status: 204 })
-      .addError(ValidationError, { status: 400 })
-      .addError(UnauthorizedError, { status: 401 })
-      .addError(ForbiddenError, { status: 403 })
-      .addError(NotFoundError, { status: 404 }),
+    HttpApiEndpoint.post('userCreate', '/users', {
+      payload: UserCreateRequest,
+      success: UserDto.pipe(HttpApiSchema.status(201)),
+      error: UserCommonErrors,
+    }),
+    HttpApiEndpoint.get('userList', '/users', {
+      query: {
+        q: Schema.optional(Schema.String),
+        status: Schema.optional(UserStatus),
+      },
+      success: Schema.Array(UserDto),
+      error: [
+        UnauthorizedError.pipe(HttpApiSchema.status(401)),
+        ForbiddenError.pipe(HttpApiSchema.status(403)),
+        ServiceUnavailableError.pipe(HttpApiSchema.status(503)),
+      ],
+    }),
+    HttpApiEndpoint.get('userGet', '/users/:id', {
+      params: { id: Schema.String },
+      success: UserDto,
+      error: [
+        UnauthorizedError.pipe(HttpApiSchema.status(401)),
+        ForbiddenError.pipe(HttpApiSchema.status(403)),
+        NotFoundError.pipe(HttpApiSchema.status(404)),
+        ServiceUnavailableError.pipe(HttpApiSchema.status(503)),
+      ],
+    }),
+    HttpApiEndpoint.patch('userUpdate', '/users/:id', {
+      params: { id: Schema.String },
+      payload: UserUpdateRequest,
+      success: UserDto,
+      error: UserCommonErrors,
+    }),
+    HttpApiEndpoint.post('userDisable', '/users/:id/disable', {
+      params: { id: Schema.String },
+      success: HttpApiSchema.NoContent,
+      error: [
+        UnauthorizedError.pipe(HttpApiSchema.status(401)),
+        ForbiddenError.pipe(HttpApiSchema.status(403)),
+        NotFoundError.pipe(HttpApiSchema.status(404)),
+        ServiceUnavailableError.pipe(HttpApiSchema.status(503)),
+      ],
+    }),
+    HttpApiEndpoint.post('userEnable', '/users/:id/enable', {
+      params: { id: Schema.String },
+      success: HttpApiSchema.NoContent,
+      error: [
+        UnauthorizedError.pipe(HttpApiSchema.status(401)),
+        ForbiddenError.pipe(HttpApiSchema.status(403)),
+        NotFoundError.pipe(HttpApiSchema.status(404)),
+        ServiceUnavailableError.pipe(HttpApiSchema.status(503)),
+      ],
+    }),
+    HttpApiEndpoint.post('userResetPassword', '/users/:id/reset-password', {
+      params: { id: Schema.String },
+      payload: UserResetPasswordRequest,
+      success: HttpApiSchema.NoContent,
+      error: UserCommonErrors,
+    }),
   )

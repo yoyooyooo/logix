@@ -68,11 +68,7 @@ const runLatestSwitch = <Payload, E, R>(
       })
 
     return yield* Stream.runDrain(
-      Stream.map(stream, makeEffect).pipe(
-        Stream.flatMap((effect) => Stream.fromEffect(effect), {
-          switch: true,
-        }),
-      ),
+      Stream.map(stream, makeEffect).pipe(Stream.switchMap((effect) => Stream.fromEffect(effect))),
     )
   })
 
@@ -90,11 +86,11 @@ const runLatestFiberSlot = <Payload, E, R>(
 
         if (prevFiber && prevRunningId !== 0) {
           // Do not wait for full shutdown of old work; stale writes are guarded by runId.
-          yield* Fiber.interruptFork(prevFiber)
+          yield* Fiber.interrupt(prevFiber)
         }
 
         const isCurrent = Ref.get(stateRef).pipe(Effect.map((state) => state.runningId === runId))
-        const fiber = yield* Effect.fork(
+        const fiber = yield* Effect.forkChild(
           runLatest(payload, { runId, isCurrent }).pipe(Effect.ensuring(LatestFiberSlot.clearIfCurrent(stateRef, runId))),
         )
         yield* LatestFiberSlot.setFiberIfCurrent(stateRef, runId, fiber)

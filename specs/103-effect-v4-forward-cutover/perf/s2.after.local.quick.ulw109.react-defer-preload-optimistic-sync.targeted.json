@@ -1,0 +1,197 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-03-06T01:00:28.206Z",
+    "generator": ".codex/skills/logix-perf-evidence/scripts/collect.ts",
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "matrixUpdatedAt": "2026-01-19",
+    "matrixHash": "cea713e478201c1e24f4180106ec7dc85ab59c031e8c90dbc039507404a510f3",
+    "git": {
+      "branch": "effect-v4",
+      "commit": "7728c3003193f77b94331bfd88c2aedfcc5a3761",
+      "dirty": true
+    },
+    "config": {
+      "runs": 25,
+      "warmupDiscard": 5,
+      "timeoutMs": 15000,
+      "headless": true,
+      "profile": "quick",
+      "stability": {
+        "maxP95DeltaRatio": 0.1,
+        "maxP95DeltaMs": 5
+      }
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M4 Pro",
+      "memoryGb": 24,
+      "node": "v22.22.0",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "chromium",
+        "headless": true,
+        "version": "143.0.7499.4"
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "react.deferPreload",
+      "title": "react: defer+preload (no double fallback)",
+      "priority": "P3",
+      "primaryAxis": "mountCycles",
+      "requiredEvidence": [
+        "react.policy.mode",
+        "react.policy.yieldStrategy",
+        "react.module.keyMode",
+        "react.defer.gatingFallbackRenders",
+        "react.defer.suspenseFallbackRenders",
+        "budget.cutOffCount"
+      ],
+      "metricCategories": {
+        "e2e.bootToReadyMs": "e2e"
+      },
+      "points": [
+        {
+          "params": {
+            "reactStrictMode": false,
+            "policyMode": "defer",
+            "preloadEnabled": true,
+            "yieldStrategy": "microtask",
+            "keyMode": "auto",
+            "mountCycles": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.bootToReadyMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 54.5,
+                "p95Ms": 60.5
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "react.defer.gatingFallbackRenders",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "react.defer.suspenseFallbackRenders",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "react.module.keyMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "auto"
+            },
+            {
+              "name": "react.policy.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "defer"
+            },
+            {
+              "name": "react.policy.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "microtask"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "reactStrictMode": false,
+            "policyMode": "defer",
+            "preloadEnabled": false,
+            "yieldStrategy": "microtask",
+            "keyMode": "auto",
+            "mountCycles": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.bootToReadyMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 336.40000000596046,
+                "p95Ms": 344.80000001192093
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "react.defer.gatingFallbackRenders",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "react.defer.suspenseFallbackRenders",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "react.module.keyMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "auto"
+            },
+            {
+              "name": "react.policy.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "defer"
+            },
+            {
+              "name": "react.policy.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "microtask"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "thresholds": []
+    }
+  ]
+}

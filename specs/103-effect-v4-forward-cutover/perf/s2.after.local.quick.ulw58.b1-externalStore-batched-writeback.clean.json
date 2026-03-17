@@ -1,0 +1,454 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-03-04T17:14:11.303Z",
+    "generator": ".codex/skills/logix-perf-evidence/scripts/collect.ts",
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "matrixUpdatedAt": "2026-01-19",
+    "matrixHash": "1daf9e2f127f0080aa681e1e39c923f20df0cc7c18d851483197faa15eb1021a",
+    "git": {
+      "branch": "effect-v4",
+      "commit": "4d0886075c4df3b85cf947c051ae99133a86873f",
+      "dirty": false
+    },
+    "config": {
+      "runs": 10,
+      "warmupDiscard": 2,
+      "timeoutMs": 30000,
+      "headless": true,
+      "profile": "quick",
+      "stability": {
+        "maxP95DeltaRatio": 0.1,
+        "maxP95DeltaMs": 5
+      }
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M4 Pro",
+      "memoryGb": 24,
+      "node": "v22.22.0",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "chromium",
+        "headless": true,
+        "version": "143.0.7499.4"
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "externalStore.ingest.tickNotify",
+      "title": "externalStore: ingest→notify baseline (external input workload)",
+      "priority": "P1",
+      "primaryAxis": "watchers",
+      "budgets": [
+        {
+          "id": "p95<=3.00ms",
+          "type": "absolute",
+          "metric": "timePerIngestMs",
+          "p95Ms": 3
+        },
+        {
+          "id": "full/off<=1.25",
+          "type": "relative",
+          "metric": "timePerIngestMs",
+          "maxRatio": 1.25,
+          "minDeltaMs": 0.02,
+          "numeratorRef": "diagnosticsLevel=full",
+          "denominatorRef": "diagnosticsLevel=off"
+        }
+      ],
+      "metricCategories": {
+        "timePerIngestMs": "runtimeStore"
+      },
+      "points": [
+        {
+          "params": {
+            "diagnosticsLevel": "off",
+            "watchers": 128
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "timePerIngestMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 1.200000001117587,
+                "p95Ms": 1.400000000372529
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "workload.externalStores",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.modules",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.ticksPerRun",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "diagnosticsLevel": "full",
+            "watchers": 128
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "timePerIngestMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 1.200000001117587,
+                "p95Ms": 1.400000000372529
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "full"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "workload.externalStores",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.modules",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.ticksPerRun",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "diagnosticsLevel": "off",
+            "watchers": 256
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "timePerIngestMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 1,
+                "p95Ms": 1.1000000014901161
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "workload.externalStores",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.modules",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.ticksPerRun",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "diagnosticsLevel": "full",
+            "watchers": 256
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "timePerIngestMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.900000000372529,
+                "p95Ms": 1.1000000014901161
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "full"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "workload.externalStores",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.modules",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.ticksPerRun",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "diagnosticsLevel": "off",
+            "watchers": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "timePerIngestMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 1,
+                "p95Ms": 1.099999999627471
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "workload.externalStores",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.modules",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.ticksPerRun",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "diagnosticsLevel": "full",
+            "watchers": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "timePerIngestMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 1,
+                "p95Ms": 1.200000001117587
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "full"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "workload.externalStores",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.modules",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.ticksPerRun",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "thresholds": [
+        {
+          "budget": {
+            "id": "p95<=3.00ms",
+            "type": "absolute",
+            "metric": "timePerIngestMs",
+            "p95Ms": 3
+          },
+          "where": {
+            "diagnosticsLevel": "off"
+          },
+          "maxLevel": 512,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "p95<=3.00ms",
+            "type": "absolute",
+            "metric": "timePerIngestMs",
+            "p95Ms": 3
+          },
+          "where": {
+            "diagnosticsLevel": "full"
+          },
+          "maxLevel": 512,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "full/off<=1.25",
+            "type": "relative",
+            "metric": "timePerIngestMs",
+            "maxRatio": 1.25,
+            "minDeltaMs": 0.02,
+            "numeratorRef": "diagnosticsLevel=full",
+            "denominatorRef": "diagnosticsLevel=off"
+          },
+          "maxLevel": 512,
+          "firstFailLevel": null
+        }
+      ]
+    }
+  ]
+}

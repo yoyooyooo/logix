@@ -3,7 +3,7 @@ import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('contracts (047): Full Cutover Gate (fallback)', () => {
-  it.scoped('fullCutover: any fallback MUST FAIL and include serviceId in missingServiceIds', () =>
+  it.effect('fullCutover: any fallback MUST FAIL and include serviceId in missingServiceIds', () =>
     Effect.gen(function* () {
       const Root = Logix.Module.make('Contracts.047.FullCutoverGate.Fallback', {
         state: Schema.Struct({ count: Schema.Number }),

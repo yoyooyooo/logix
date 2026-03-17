@@ -55,21 +55,20 @@ const SchemaDecodeCase: React.FC = () => {
       endDate: String(state?.endDate ?? ''),
     }
 
-    const result = Schema.decodeUnknownEither(DecodeTarget)(input as any) as any
-    if (result._tag === 'Right') {
+    try {
+      Schema.decodeUnknownSync(DecodeTarget as any)(input as any)
       form.actions.setValue({ path: 'errors', value: {} })
       return
-    }
+    } catch (schemaError) {
+      const writes = Form.SchemaErrorMapping.toSchemaErrorWrites(schemaError, {
+        rename,
+        toLeaf: () => '字段不合法（来自 schema decode）',
+      })
 
-    const schemaError = result.left
-    const writes = Form.SchemaErrorMapping.toSchemaErrorWrites(schemaError, {
-      rename,
-      toLeaf: () => '字段不合法（来自 schema decode）',
-    })
-
-    form.actions.setValue({ path: 'errors', value: {} })
-    for (const w of writes) {
-      form.actions.setValue({ path: w.errorPath, value: w.error })
+      form.actions.setValue({ path: 'errors', value: {} })
+      for (const w of writes) {
+        form.actions.setValue({ path: w.errorPath, value: w.error })
+      }
     }
   }
 

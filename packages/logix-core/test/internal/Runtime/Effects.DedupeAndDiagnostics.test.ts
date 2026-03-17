@@ -4,7 +4,7 @@ import * as Logix from '../../../src/index.js'
 import * as Debug from '../../../src/Debug.js'
 
 describe('Runtime effects (US4)', () => {
-  it.scoped('should de-duplicate by (actionTag, sourceKey) and emit duplicate_registration', () =>
+  it.effect('should de-duplicate by (actionTag, sourceKey) and emit duplicate_registration', () =>
     Effect.gen(function* () {
       const State = Schema.Struct({ value: Schema.Number })
 
@@ -37,7 +37,7 @@ describe('Runtime effects (US4)', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* M.tag
+        const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
         yield* Effect.sleep('50 millis')
         yield* rt.dispatch({ _tag: 'ping', payload: 1 } as any)
         yield* Effect.sleep('50 millis')
@@ -54,7 +54,7 @@ describe('Runtime effects (US4)', () => {
     }),
   )
 
-  it.scoped('should emit dynamic_registration and only affect future actions', () =>
+  it.effect('should emit dynamic_registration and only affect future actions', () =>
     Effect.gen(function* () {
       const State = Schema.Struct({ value: Schema.Number })
 
@@ -88,7 +88,7 @@ describe('Runtime effects (US4)', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* M.tag
+        const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
         yield* Effect.sleep('50 millis')
 
         yield* rt.dispatch({ _tag: 'ping', payload: 1 } as any)
@@ -112,7 +112,7 @@ describe('Runtime effects (US4)', () => {
     }),
   )
 
-  it.scoped('should route handlers by actionTag without cross-triggering', () =>
+  it.effect('should route handlers by actionTag without cross-triggering', () =>
     Effect.gen(function* () {
       const State = Schema.Struct({ value: Schema.Number })
 
@@ -144,7 +144,7 @@ describe('Runtime effects (US4)', () => {
       const runtime = Logix.Runtime.make(impl)
 
       const program = Effect.gen(function* () {
-        const rt = yield* M.tag
+        const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
         yield* Effect.sleep('50 millis')
         yield* rt.dispatch({ _tag: 'ping', payload: 1 } as any)
         yield* rt.dispatch({ _tag: 'pong', payload: 'A' } as any)
@@ -161,7 +161,7 @@ describe('Runtime effects (US4)', () => {
     }),
   )
 
-  it.scoped('should isolate handler failures and emit handler_failure diagnostics', () =>
+  it.effect('should isolate handler failures and emit handler_failure diagnostics', () =>
     Effect.gen(function* () {
       const State = Schema.Struct({ value: Schema.Number })
 
@@ -194,7 +194,7 @@ describe('Runtime effects (US4)', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* M.tag
+        const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
         yield* Effect.sleep('50 millis')
         yield* rt.dispatch({ _tag: 'ping', payload: 1 } as any)
         yield* Effect.sleep('50 millis')

@@ -45,12 +45,12 @@ export const CounterDef = Logix.Module.make('CounterModule', {
 export const CounterLogic = CounterDef.logic(($) =>
   Effect.gen(function* () {
     // 监听 results.length 变化，并维护 hasResults
-    yield* $.onState((s) => s.results.length).run({
-      effect: $.state.update((prev) => ({
+    yield* $.onState((s) => s.results.length).run(
+      $.state.update((prev) => ({
         ...prev,
         hasResults: prev.results.length > 0,
       })),
-    })
+    )
   }),
 )
 
@@ -74,14 +74,12 @@ export const DerivedLive = DerivedModule.impl.layer
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const program = Effect.gen(function* () {
-    const runtime = yield* CounterDef.tag
+    const runtime = yield* Effect.service(CounterDef.tag).pipe(Effect.orDie)
 
     // Log state changes
-    yield* Effect.fork(
-      runtime
-        .changes((s) => s)
-        .pipe(Stream.runForEach((s) => Effect.log(`[State] results=[${s.results}], hasResults=${s.hasResults}`))),
-    )
+    yield* Effect.forkChild(runtime
+      .changes((s: any) => s)
+      .pipe(Stream.runForEach((s: any) => Effect.log(`[State] results=[${s.results}], hasResults=${s.hasResults}`))))
 
     yield* Effect.log('--- Start ---')
 

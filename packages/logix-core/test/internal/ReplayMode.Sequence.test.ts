@@ -32,8 +32,6 @@ describe('ReplayMode · Sequence', () => {
   })
 
   type Key = Schema.Schema.Type<typeof KeySchema>
-  const recordModuleId = 'ReplayMode-Seq-Record'
-  const replayModuleId = 'ReplayMode-Seq-Replay'
 
   const makeProgram = () => {
     const traits = Logix.StateTrait.from(StateSchema)({
@@ -53,7 +51,7 @@ describe('ReplayMode · Sequence', () => {
     const spec = Logix.Resource.make<Key, { readonly name: string }, never, never>({
       id: 'user/profile',
       keySchema: KeySchema,
-      load: (key) => Effect.sleep('10 millis').pipe(Effect.zipRight(Effect.succeed({ name: `payload:${key.userId}` }))),
+      load: (key) => Effect.sleep('10 millis').pipe(Effect.flatMap(() => Effect.succeed({ name: `payload:${key.userId}` }))),
     })
 
     const recordEffect = Effect.scoped(
@@ -67,7 +65,7 @@ describe('ReplayMode · Sequence', () => {
         }
 
         const runtime = yield* ModuleRuntimeImpl.make<State, Action>(initial, {
-          moduleId: recordModuleId,
+          moduleId: 'ReplayMode-Seq-Record',
         })
 
         const bound = BoundApiRuntime.make<Shape, never>(
@@ -79,7 +77,7 @@ describe('ReplayMode · Sequence', () => {
           runtime as any,
           {
             getPhase: () => 'run',
-            moduleId: recordModuleId,
+            moduleId: 'ReplayMode-Seq-Record',
           },
         )
 
@@ -134,7 +132,7 @@ describe('ReplayMode · Sequence', () => {
         }
 
         const runtime = yield* ModuleRuntimeImpl.make<State, Action>(initial, {
-          moduleId: replayModuleId,
+          moduleId: 'ReplayMode-Seq-Replay',
         })
 
         const bound = BoundApiRuntime.make<Shape, never>(
@@ -146,7 +144,7 @@ describe('ReplayMode · Sequence', () => {
           runtime as any,
           {
             getPhase: () => 'run',
-            moduleId: replayModuleId,
+            moduleId: 'ReplayMode-Seq-Replay',
           },
         )
 

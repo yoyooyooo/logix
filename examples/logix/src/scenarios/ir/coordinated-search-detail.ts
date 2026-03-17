@@ -7,7 +7,7 @@
  *
  *   在 v3 最终形态下，业务代码更推荐使用 Fluent DSL：
  *     - 通过 `$.use(Search)` / `$.use(Detail)` 获取 Store 句柄；
- *     - 使用 `$.on($Search.changes(...)).run({ effect: (results) => $Detail.dispatch(...) })` 编排跨 Store 联动；
+ *     - 使用 `$.on($Search.changes(...)).run((results) => $Detail.dispatch(...))` 编排跨 Store 联动；
  *   本文件保留作为跨 Store Fluent Intent 的 IR 级示例，而非推荐业务写法。
  * @requirement
  *   1. SearchStore: 位于全局 Layout，负责根据用户点击按钮触发搜索，并存储结果列表。
@@ -16,7 +16,7 @@
  * @architecture_pattern Decoupled Stores with Coordinator Logic
  */
 
-import { Effect, Schema, Context, Stream } from 'effect'
+import { Effect, Schema, ServiceMap, Stream } from 'effect'
 import * as Logix from '@logixjs/core'
 
 // ---------------------------------------------------------------------------
@@ -28,12 +28,9 @@ interface SearchResult {
   id: string
   name: string
 }
-class SearchApi extends Context.Tag('SearchApi')<
-  SearchApi,
-  {
-    readonly search: (keyword: string) => Effect.Effect<SearchResult[], Error>
-  }
->() {}
+class SearchApi extends ServiceMap.Service<SearchApi, {
+  readonly search: (keyword: string) => Effect.Effect<SearchResult[], Error>
+}>()('SearchApi') { }
 
 // 1.2. Schema 定义
 const SearchStateSchema = Schema.Struct({
@@ -57,28 +54,28 @@ export const SearchDef = Logix.Module.make('SearchModule', {
 
 const SearchLogic = SearchDef.logic<SearchApi>(($Search) =>
   Effect.gen(function* () {
-    const searchEffect = Effect.gen(function* (_) {
+    const searchEffect = Effect.gen(function* () {
       const api = yield* $Search.use(SearchApi)
       const { keyword } = yield* $Search.state.read
 
       yield* $Search.state.update((prev) => ({ ...prev, isSearching: true }))
-      const result = yield* Effect.either(api.search(keyword))
+      const result = yield* Effect.exit(api.search(keyword))
 
-      if (result._tag === 'Left') {
+      if (result._tag === 'Failure') {
         yield* $Search.state.update((prev) => ({ ...prev, isSearching: false }))
       } else {
         yield* $Search.state.update((prev) => ({
           ...prev,
           isSearching: false,
-          results: result.right,
+          results: result.value,
         }))
       }
     })
 
-    yield* $Search.onAction('search/trigger').run({ mode: 'exhaust', effect: searchEffect })
+    yield* $Search.onAction('search/trigger').runExhaust(searchEffect)
   }).pipe(
     // 收敛错误通道，方便作为 ModuleLogic 使用
-    Effect.catchAll(() => Effect.void),
+    Effect.catch(() => Effect.void),
   ),
 )
 
@@ -115,15 +112,14 @@ export const DetailDef = Logix.Module.make('DetailModule', {
 const DetailLogic = DetailDef.logic(($Detail) =>
   Effect.gen(function* () {
     // 监听到初始化动作，就更新自己的状态
-    yield* $Detail.onAction('detail/initialize').run({
-      effect: (action: any) =>
-        $Detail.state.update((prev) => ({
-          ...prev,
-          selectedItem: {
-            ...action.payload,
-          },
-        })),
-    })
+    yield* $Detail.onAction('detail/initialize').run((action) =>
+      $Detail.state.update((prev) => ({
+        ...prev,
+        selectedItem: {
+          ...action.payload,
+        },
+      })),
+    )
   }),
 )
 
@@ -162,16 +158,15 @@ export const CoordinatorLogic = CoordinatorDef.logic(($) =>
 
     yield* $.on(results$)
       .filter((results: readonly { id: string; name: string }[]) => results.length > 0)
-      .run({
-        effect: (results: readonly { id: string; name: string }[]) =>
-          $DetailHandle.dispatch({
-            _tag: 'detail/initialize',
-            payload: {
-              id: results[0]!.id,
-              name: results[0]!.name,
-            },
-          }),
-      })
+      .run((results: readonly { id: string; name: string }[]) =>
+        $DetailHandle.dispatch({
+          _tag: 'detail/initialize',
+          payload: {
+            id: results[0]!.id,
+            name: results[0]!.name,
+          },
+        }),
+      )
   }),
 )
 

@@ -1,17 +1,26 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
-import { Cause, Chunk, Effect, Fiber, Stream } from 'effect'
+import { describe, it, expect } from 'vitest'
+import { Cause, Effect, Fiber, Stream } from 'effect'
 import * as Debug from '../../src/Debug.js'
 import * as ModuleRuntime from '../../src/internal/runtime/ModuleRuntime.js'
 import * as Logix from '../../src/index.js'
 
+const waitForStartup = () =>
+  Effect.promise(
+    () =>
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, 10)
+      }),
+  )
+
 describe('ReadQuery.strictGate', () => {
-  it.scoped('build-grade error is enforced at runtime without re-evaluating runtime strict-gate config', () =>
-    Effect.gen(function* () {
+  it('build-grade error is enforced at runtime without re-evaluating runtime strict-gate config', async () => {
+    await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
       const ring = Debug.makeRingBufferSink(64)
 
-      const runtime = yield* Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
+      const runtime = yield* Effect.provideService(
         ModuleRuntime.make({ count: 0 }, { moduleId: 'M', instanceId: 'i' } as any),
+        Debug.internal.currentDebugSinks as any,
+        [ring.sink as Debug.Sink],
       )
 
       const selector = (s: { count: number }) => (s.count > 0 ? s.count : 0)
@@ -22,22 +31,22 @@ describe('ReadQuery.strictGate', () => {
       })
       const stream = runtime.changesReadQueryWithMeta(graded.compiled)
 
-      const fiber = yield* Effect.fork(
-        Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
-          Stream.runCollect(Stream.take(stream, 1)),
-        ),
+      const fiber = yield* Effect.forkChild(
+        Effect.provideService(Stream.runCollect(Stream.take(stream, 1)), Debug.internal.currentDebugSinks as any, [
+          ring.sink as Debug.Sink,
+        ]),
       )
-      yield* Effect.yieldNow()
 
-      yield* Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
-        runtime.setState({ count: 1 }),
-      )
+      yield* waitForStartup()
+      yield* Effect.provideService(runtime.setState({ count: 1 }), Debug.internal.currentDebugSinks as any, [
+        ring.sink as Debug.Sink,
+      ])
 
       const exit = yield* Fiber.await(fiber)
       expect(exit._tag).toBe('Failure')
       if (exit._tag !== 'Failure') return
 
-      const defects = [...Cause.defects(exit.cause)]
+      const defects = exit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)
       const err = defects.find((e) => (e as any)?._tag === 'ReadQueryStrictGateError') as any
       expect(err).toBeDefined()
 
@@ -60,15 +69,17 @@ describe('ReadQuery.strictGate', () => {
       expect(diag).toBeDefined()
       expect(diag.severity).toBe('error')
       expect(diag.trigger?.details?.rule).toBe('requireStatic:global')
-    }),
-  )
+    })))
+  })
 
-  it.scoped('build-grade warn emits serializable diagnostic and keeps stream behavior', () =>
-    Effect.gen(function* () {
+  it('build-grade warn emits serializable diagnostic and keeps stream behavior', async () => {
+    await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
       const ring = Debug.makeRingBufferSink(64)
 
-      const runtime = yield* Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
+      const runtime = yield* Effect.provideService(
         ModuleRuntime.make({ count: 0 }, { moduleId: 'M', instanceId: 'i' } as any),
+        Debug.internal.currentDebugSinks as any,
+        [ring.sink as Debug.Sink],
       )
 
       const selector = (s: { count: number }) => (s.count > 0 ? s.count : 0)
@@ -80,19 +91,20 @@ describe('ReadQuery.strictGate', () => {
 
       const stream = Stream.take(runtime.changesReadQueryWithMeta(graded.compiled), 1)
 
-      const fiber = yield* Effect.fork(
-        Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(Stream.runCollect(stream)),
+      const fiber = yield* Effect.forkChild(
+        Effect.provideService(Stream.runCollect(stream), Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink]),
       )
-      yield* Effect.yieldNow()
-      yield* Effect.locally(Debug.internal.currentDebugSinks as any, [ring.sink as Debug.Sink])(
-        runtime.setState({ count: 1 }),
-      )
+
+      yield* waitForStartup()
+      yield* Effect.provideService(runtime.setState({ count: 1 }), Debug.internal.currentDebugSinks as any, [
+        ring.sink as Debug.Sink,
+      ])
 
       const exit = yield* Fiber.await(fiber)
       expect(exit._tag).toBe('Success')
       if (exit._tag !== 'Success') return
 
-      const changes = Chunk.toReadonlyArray(exit.value)
+      const changes = Array.from(exit.value as Iterable<any>)
       expect(changes.length).toBe(1)
       expect(changes[0]?.value).toBe(1)
 
@@ -112,6 +124,6 @@ describe('ReadQuery.strictGate', () => {
       )
       expect(details?.rule).toBe('requireStatic:global')
       expect(() => JSON.stringify(details)).not.toThrow()
-    }),
-  )
+    })))
+  })
 })

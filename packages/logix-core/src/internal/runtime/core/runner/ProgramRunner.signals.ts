@@ -21,8 +21,9 @@ const removeListener = (proc: any, event: string, handler: () => void): void => 
 }
 
 export const installGracefulShutdownHandlers = (params: {
-  readonly scope: Scope.CloseableScope
+  readonly scope: Scope.Closeable
   readonly enabled: boolean
+  readonly onSignal?: () => Effect.Effect<void, never, never>
 }): Effect.Effect<void> => {
   if (!params.enabled) {
     return Effect.void
@@ -34,7 +35,8 @@ export const installGracefulShutdownHandlers = (params: {
   }
 
   const handler = (): void => {
-    void Effect.runPromise(Scope.close(params.scope, Exit.void))
+    const effect = params.onSignal ? params.onSignal() : Scope.close(params.scope, Exit.void).pipe(Effect.asVoid)
+    void Effect.runPromise(effect)
   }
 
   return Effect.gen(function* () {

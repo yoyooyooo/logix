@@ -3,7 +3,7 @@ import * as Logix from '@logixjs/core'
 import { IR_PRESETS } from './IrPresets'
 import { sandboxKernelRegistry } from '../sandboxClientConfig'
 
-export const IrActiveTabSchema = Schema.Union(
+export const IrActiveTabSchema = Schema.Union([
   Schema.Literal('manifest'),
   Schema.Literal('diff'),
   Schema.Literal('staticIr'),
@@ -11,15 +11,15 @@ export const IrActiveTabSchema = Schema.Union(
   Schema.Literal('trialRun'),
   Schema.Literal('controlPlane'),
   Schema.Literal('timeline'),
-)
+])
 
 export type IrActiveTab = Schema.Schema.Type<typeof IrActiveTabSchema>
 
-export const IrDiagnosticsLevelSchema = Schema.Union(
+export const IrDiagnosticsLevelSchema = Schema.Union([
   Schema.Literal('off'),
   Schema.Literal('light'),
   Schema.Literal('full'),
-)
+])
 
 export type IrDiagnosticsLevel = Schema.Schema.Type<typeof IrDiagnosticsLevelSchema>
 

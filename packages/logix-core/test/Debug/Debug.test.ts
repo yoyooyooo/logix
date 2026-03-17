@@ -1,6 +1,6 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Effect, Layer, FiberRef, Logger, HashSet } from 'effect'
+import { Effect, Layer, Logger } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('Debug (public API)', () => {
@@ -22,17 +22,17 @@ describe('Debug (public API)', () => {
           }),
       }
 
-      // Attach DebugSink on the current Fiber via FiberRef (avoid misusing Layer / Context).
-      yield* Effect.locally(
-        Logix.Debug.internal.currentDiagnosticsLevel as any,
-        'full',
-      )(
-        Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [sink])(
+      yield* Effect.provideService(
+        Effect.provideService(
           Logix.Debug.record({
             type: 'module:init',
             moduleId: 'test-module',
           }),
+          Logix.Debug.internal.currentDebugSinks,
+          [sink],
         ),
+        Logix.Debug.internal.currentDiagnosticsLevel,
+        'full',
       )
 
       expect(events).toHaveLength(1)
@@ -63,16 +63,17 @@ describe('Debug (public API)', () => {
       }
 
       const exit = yield* Effect.exit(
-        Effect.locally(
-          Logix.Debug.internal.currentDiagnosticsLevel as any,
-          'full',
-        )(
-          Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [brokenSink, healthySink])(
+        Effect.provideService(
+          Effect.provideService(
             Logix.Debug.record({
               type: 'module:init',
               moduleId: 'test-module',
             }),
+            Logix.Debug.internal.currentDebugSinks,
+            [brokenSink, healthySink],
           ),
+          Logix.Debug.internal.currentDiagnosticsLevel,
+          'full',
         ),
       )
 
@@ -85,13 +86,13 @@ describe('Debug (public API)', () => {
     Effect.gen(function* () {
       const layer = Logix.Debug.layer({ mode: 'dev' })
       expect(layer).toBeDefined()
-      expect(Layer.LayerTypeId in (layer as any)).toBe(true)
+      expect(Layer.isLayer(layer)).toBe(true)
     }),
   )
 
   it.effect('Debug.layer should accept diagnosticsLevel option', () =>
     Effect.gen(function* () {
-      const level = yield* FiberRef.get(Logix.Debug.internal.currentDiagnosticsLevel as any).pipe(
+      const level = yield* Effect.service(Logix.Debug.internal.currentDiagnosticsLevel).pipe(
         Effect.provide(Logix.Debug.layer({ mode: 'dev', diagnosticsLevel: 'full' })),
       )
       expect(level).toBe('full')
@@ -100,10 +101,10 @@ describe('Debug (public API)', () => {
 
   it.effect('withPrettyLogger should replace default logger', () =>
     Effect.gen(function* () {
-      const before = yield* FiberRef.get(FiberRef.currentLoggers)
-      const sizeBefore = HashSet.size(before)
+      const before = yield* Effect.service(Logger.CurrentLoggers)
+      const sizeBefore = before.size
 
-      const after = yield* FiberRef.get(FiberRef.currentLoggers).pipe(
+      const after = yield* Effect.service(Logger.CurrentLoggers).pipe(
         Effect.provide(
           Logix.Debug.withPrettyLogger(Layer.empty as unknown as Layer.Layer<any, any, any>) as Layer.Layer<
             any,
@@ -112,8 +113,8 @@ describe('Debug (public API)', () => {
           >,
         ),
       )
-      const hasDefaultAfter = HashSet.some(after, (logger) => logger === Logger.defaultLogger)
-      const sizeAfter = HashSet.size(after)
+      const hasDefaultAfter = [...after].some((logger) => logger === Logger.defaultLogger)
+      const sizeAfter = after.size
 
       // After providing, default logger should be removed and the logger set should be non-empty (effectively replaced).
       expect(hasDefaultAfter).toBe(false)

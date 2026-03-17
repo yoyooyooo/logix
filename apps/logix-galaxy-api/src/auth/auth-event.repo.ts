@@ -1,4 +1,4 @@
-import { Context, Effect, Schema } from 'effect'
+import { ServiceMap, Effect, Schema } from 'effect'
 
 import { DbError } from '../db/db.js'
 import { AuthEventDto, AuthEventType } from './auth.contract.js'
@@ -29,4 +29,4 @@ export interface AuthEventRepoService {
   readonly list: (query: AuthEventListQuery) => Effect.Effect<ReadonlyArray<AuthEventDtoDto>, DbError>
 }
 
-export class AuthEventRepo extends Context.Tag('AuthEventRepo')<AuthEventRepo, AuthEventRepoService>() {}
+export class AuthEventRepo extends ServiceMap.Service<AuthEventRepo, AuthEventRepoService>()('AuthEventRepo') {}

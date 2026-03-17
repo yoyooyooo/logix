@@ -1,5 +1,5 @@
 import React from 'react'
-import { Effect, Schema } from 'effect'
+import { Effect, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 import { RuntimeProvider, useRuntime } from '@logixjs/react'
 import { ComplexTraitFormDemoLayout } from './form/ComplexTraitFormDemoLayout'
@@ -103,7 +103,7 @@ type BenchBundle = {
 }
 
 type BenchTxnScope = Pick<Logix.Module.ModuleRuntime<any, any>, 'getState' | 'setState'>
-type BenchModule = Effect.Effect<BenchTxnScope, never, any>
+type BenchModule = ServiceMap.Key<any, Logix.Module.ModuleRuntime<any, any>>
 
 const makeBenchBundle = (steps: number): BenchBundle => {
   const fields: Record<string, unknown> = {}
@@ -255,7 +255,7 @@ const BenchInner: React.FC<{
         clearLastDecision()
 
         const op = Effect.gen(function* () {
-          const scope = yield* module
+          const scope = (yield* Effect.service(module).pipe(Effect.orDie)) as BenchTxnScope
 
           yield* Logix.InternalContracts.runWithStateTransaction(
             scope,
@@ -280,7 +280,7 @@ const BenchInner: React.FC<{
         clearLastDecision()
 
         const op = Effect.gen(function* () {
-          const scope = yield* module
+          const scope = (yield* Effect.service(module).pipe(Effect.orDie)) as BenchTxnScope
 
           yield* Logix.InternalContracts.runWithStateTransaction(
             scope,

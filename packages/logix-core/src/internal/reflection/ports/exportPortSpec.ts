@@ -175,6 +175,18 @@ const normalizeExportPath = (path: string): string | undefined => {
   return normalized ? toPathString(normalized) : undefined
 }
 
+const resolveAstNode = (ast: SchemaAST.AST, seen: Set<SchemaAST.AST>): SchemaAST.AST | undefined => {
+  let current = SchemaAST.toType(ast)
+
+  while (SchemaAST.isSuspend(current)) {
+    if (seen.has(current)) return undefined
+    seen.add(current)
+    current = SchemaAST.toType(current.thunk())
+  }
+
+  return current
+}
+
 const collectExportPathsFromAst = (
   ast: SchemaAST.AST,
   options: {
@@ -186,27 +198,8 @@ const collectExportPathsFromAst = (
 ): void => {
   if (options.maxDepth <= 0) return
 
-  let current = ast
-
-  while (true) {
-    if (SchemaAST.isSuspend(current)) {
-      if (options.seen.has(current)) return
-      options.seen.add(current)
-      current = current.f()
-      continue
-    }
-    if (SchemaAST.isRefinement(current)) {
-      current = current.from
-      continue
-    }
-    break
-  }
-
-  if (SchemaAST.isTransformation(current)) {
-    collectExportPathsFromAst(current.to, options)
-    collectExportPathsFromAst(current.from, options)
-    return
-  }
+  const current = resolveAstNode(ast, options.seen)
+  if (!current) return
 
   if (SchemaAST.isUnion(current)) {
     for (const node of current.types) {
@@ -215,12 +208,12 @@ const collectExportPathsFromAst = (
     return
   }
 
-  if (SchemaAST.isTupleType(current)) {
+  if (SchemaAST.isArrays(current)) {
     // Arrays/tuples are treated as leaf nodes for export paths.
     return
   }
 
-  if (SchemaAST.isTypeLiteral(current)) {
+  if (SchemaAST.isObjects(current)) {
     for (const ps of current.propertySignatures) {
       const name = normalizeText(ps.name)
       if (!name) continue

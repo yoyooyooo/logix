@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../src/index.js'
@@ -41,7 +41,7 @@ describe('Platform integration (public API)', () => {
 
     const program = Effect.gen(function* () {
       // Trigger ModuleRuntime initialization and logic registration.
-      yield* TestModule.tag
+      yield* Effect.service(TestModule.tag).pipe(Effect.orDie)
       yield* Effect.sleep('10 millis')
     }).pipe(Effect.provide(layer))
 
@@ -87,7 +87,7 @@ describe('Platform integration (public API)', () => {
     >
 
     const program = Effect.gen(function* () {
-      yield* TestModule.tag
+      yield* Effect.service(TestModule.tag).pipe(Effect.orDie)
       yield* Effect.sleep('10 millis')
     }).pipe(Effect.provide(layer))
 
@@ -103,27 +103,21 @@ describe('Platform integration (public API)', () => {
       readonly lifecycle = {
         onSuspend: (eff: Effect.Effect<void, never, any>) =>
           eff.pipe(
-            Effect.zipRight(
-              Effect.sync(() => {
-                calls.push('suspend')
-              }),
-            ),
+            Effect.flatMap(() => Effect.sync(() => {
+              calls.push('suspend')
+            })),
           ),
         onResume: (eff: Effect.Effect<void, never, any>) =>
           eff.pipe(
-            Effect.zipRight(
-              Effect.sync(() => {
-                calls.push('resume')
-              }),
-            ),
+            Effect.flatMap(() => Effect.sync(() => {
+              calls.push('resume')
+            })),
           ),
         onReset: (eff: Effect.Effect<void, never, any>) =>
           eff.pipe(
-            Effect.zipRight(
-              Effect.sync(() => {
-                calls.push('reset')
-              }),
-            ),
+            Effect.flatMap(() => Effect.sync(() => {
+              calls.push('reset')
+            })),
           ),
       }
 
@@ -156,7 +150,7 @@ describe('Platform integration (public API)', () => {
     >
 
     const program = Effect.gen(function* () {
-      yield* TestModule.tag
+      yield* Effect.service(TestModule.tag).pipe(Effect.orDie)
       yield* Effect.sleep('10 millis')
     }).pipe(Effect.provide(layer))
 

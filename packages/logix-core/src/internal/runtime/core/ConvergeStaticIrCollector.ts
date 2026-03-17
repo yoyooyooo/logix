@@ -1,4 +1,4 @@
-import { FiberRef, Layer } from 'effect'
+import { Effect, Layer, ServiceMap } from 'effect'
 import type { ConvergeStaticIrExport } from '../../state-trait/converge-ir.js'
 
 /**
@@ -14,12 +14,20 @@ export interface ConvergeStaticIrCollector {
   readonly register: (ir: ConvergeStaticIrExport) => void
 }
 
-export const currentConvergeStaticIrCollectors = FiberRef.unsafeMake<ReadonlyArray<ConvergeStaticIrCollector>>([])
+export const currentConvergeStaticIrCollectors = ServiceMap.Reference<ReadonlyArray<ConvergeStaticIrCollector>>(
+  '@logixjs/core/ConvergeStaticIrCollectors',
+  {
+    defaultValue: () => [],
+  },
+)
 
 export const appendConvergeStaticIrCollectors = (
   collectors: ReadonlyArray<ConvergeStaticIrCollector>,
 ): Layer.Layer<any, never, never> =>
-  Layer.fiberRefLocallyScopedWith(currentConvergeStaticIrCollectors, (current) => [
-    ...current,
-    ...collectors,
-  ]) as Layer.Layer<any, never, never>
+  Layer.effect(
+    currentConvergeStaticIrCollectors,
+    Effect.gen(function* () {
+      const current = yield* Effect.service(currentConvergeStaticIrCollectors)
+      return [...current, ...collectors]
+    }),
+  ) as Layer.Layer<any, never, never>

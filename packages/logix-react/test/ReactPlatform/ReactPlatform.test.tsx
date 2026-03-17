@@ -47,7 +47,7 @@ describe('ReactPlatform', () => {
     await act(async () => {
       await runtime.runPromise(
         Effect.gen(function* () {
-          const rt: any = yield* Counter.tag
+          const rt: any = yield* Effect.service(Counter.tag).pipe(Effect.orDie)
           yield* rt.dispatch({ _tag: 'inc', payload: undefined } as any)
         }),
       )

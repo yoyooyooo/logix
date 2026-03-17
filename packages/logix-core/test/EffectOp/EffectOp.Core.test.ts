@@ -58,7 +58,7 @@ describe('EffectOp core', () => {
       effect: Effect.fail('boom'),
     })
 
-    const program = EffectOp.run(op, stack).pipe(Effect.catchAll((err) => Effect.succeed(err)))
+    const program = Effect.catch(EffectOp.run(op, stack), (err) => Effect.succeed(err))
 
     const result = await Effect.runPromise(program as Effect.Effect<unknown, never, never>)
 

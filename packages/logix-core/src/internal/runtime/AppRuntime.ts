@@ -1,4 +1,4 @@
-import { Context, Effect, Exit, Layer, ManagedRuntime } from 'effect'
+import { Effect, Exit, Layer, ManagedRuntime, ServiceMap } from 'effect'
 import {
   ConcurrencyPolicyTag,
   ReadQueryStrictGateConfigTag,
@@ -47,7 +47,7 @@ export interface AppModuleEntry {
    * - Internally, AppRuntime assembly can declare this explicitly via provideWithTags.
    * - Does not affect runtime behavior; if omitted, the module layer is treated as "no explicit service tags declared".
    */
-  readonly serviceTags?: ReadonlyArray<Context.Tag<any, any>>
+  readonly serviceTags?: ReadonlyArray<ServiceMap.Key<any, any>>
 }
 
 export interface LogixAppConfig<R> {
@@ -98,7 +98,7 @@ export interface AppDefinition<R> {
 
 interface TagInfo {
   readonly key: string
-  readonly tag: Context.Tag<any, any>
+  readonly tag: ServiceMap.Key<any, any>
   readonly ownerModuleId: string
   readonly source: 'module' | 'service'
 }
@@ -113,7 +113,7 @@ interface TagCollisionError extends Error {
   readonly collisions: ReadonlyArray<TagCollision>
 }
 
-const getTagKey = (tag: Context.Tag<any, any>): string => {
+const getTagKey = (tag: ServiceMap.Key<any, any>): string => {
   const anyTag = tag as any
   if (typeof anyTag.key === 'string') {
     return anyTag.key
@@ -134,7 +134,7 @@ const buildTagIndex = (entries: ReadonlyArray<AppModuleEntry>): Map<string, TagI
     const ownerId = String(entry.module.id)
 
     // Record the Module tag itself.
-    const moduleTag = entry.module as unknown as Context.Tag<any, any>
+    const moduleTag = entry.module as unknown as ServiceMap.Key<any, any>
     const moduleKey = getTagKey(moduleTag)
     const moduleInfo: TagInfo = {
       key: moduleKey,
@@ -323,7 +323,7 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
       return yield* Effect.failCause(exit.cause)
     })
 
-  const finalLayer = Layer.unwrapScoped(
+  const finalLayer = Layer.unwrap(
     Effect.gen(function* () {
       // AppDefinition can be used to create multiple runtimes; reset graph state before each boot.
       assemblyGraph.reset()
@@ -337,117 +337,96 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
 
       const scope = yield* Effect.scope
 
-      // buildWithScope builds layers within the current scope and patches FiberRefs (e.g. Debug sinks).
-      // We wrap it with diffFiberRefs to capture FiberRef patch changes, then feed the patch back as a Layer,
-      // so FiberRef modifications are not "washed out" during assembly.
-      //
       // IMPORTANT (073):
       // - Build baseLayer first, then build module layers under baseEnv.
       // - Otherwise, module initialization may fork long-lived fibers (txnQueue/logics) before TickScheduler/RuntimeStore
       //   is available, and those fibers will permanently miss the runtime services due to Env capture semantics.
-      const [patch, env] = yield* Effect.diffFiberRefs(
-        Effect.gen(function* () {
-          const baseEnv = yield* runStage(
-            'build.baseEnv',
-            'boot::base_layer_build_failed',
-            Layer.buildWithScope(baseLayer, scope),
-          )
+      const env = yield* Effect.gen(function* () {
+        const baseEnv = yield* runStage(
+          'build.baseEnv',
+          'boot::base_layer_build_failed',
+          Layer.buildWithScope(baseLayer, scope),
+        )
 
-          const moduleEnv = yield* runStage(
-            'build.moduleEnvs',
-            'boot::module_layer_build_failed',
-            config.modules.length > 0
-              ? Effect.provide(
-                  Layer.buildWithScope(
-                    config.modules.length === 1
-                      ? config.modules[0]!.layer
-                      : config.modules
-                          .slice(1)
-                          .reduce((acc, entry) => Layer.merge(acc, entry.layer), config.modules[0]!.layer),
-                    scope,
-                  ),
-                  baseEnv as Context.Context<any>,
+        const moduleEnv = yield* runStage(
+          'build.moduleEnvs',
+          'boot::module_layer_build_failed',
+          config.modules.length > 0
+            ? Effect.provide(
+                Layer.buildWithScope(
+                  config.modules.length === 1
+                    ? config.modules[0]!.layer
+                    : config.modules.slice(1).reduce((acc, entry) => Layer.merge(acc, entry.layer), config.modules[0]!.layer),
+                  scope,
+                ),
+                baseEnv,
+              )
+            : Effect.succeed(undefined),
+        )
+
+        const mergedEnv = yield* runStage(
+          'merge.env',
+          'boot::env_merge_failed',
+          Effect.sync(() => (moduleEnv ? ServiceMap.merge(baseEnv, moduleEnv) : baseEnv)),
+        )
+
+        const rootContext = yield* runStage(
+          'rootContext.merge',
+          'boot::root_context_merge_failed',
+          Effect.flatMap(
+            Effect.sync(() => ServiceMap.get(mergedEnv, RootContextTag as ServiceMap.Key<any, RootContext>)),
+            (root) => mergeRootContext(root, mergedEnv as ServiceMap.ServiceMap<any>),
+          ),
+        )
+        assemblyGraph.markRootContextMerged()
+
+        yield* runStage(
+          'rootContext.ready',
+          'boot::root_context_ready_failed',
+          readyRootContext(rootContext),
+        )
+        assemblyGraph.markRootContextReady()
+
+        const processRuntime = ServiceMap.get(
+          mergedEnv,
+          ProcessRuntime.ProcessRuntimeTag as ServiceMap.Key<any, ProcessRuntime.ProcessRuntime>,
+        )
+
+        yield* runStage(
+          'process.install',
+          'boot::process_install_failed',
+          Effect.forEach(
+            config.processes,
+            (process) =>
+              Effect.gen(function* () {
+                const installation = yield* Effect.provide(
+                  processRuntime.install(process as any, {
+                    scope: { type: 'app', appId },
+                    enabled: true,
+                    installedAt: 'appRuntime',
+                  }),
+                  mergedEnv,
                 )
-              : Effect.succeed(undefined),
-          )
 
-          const mergedEnv = yield* runStage(
-            'merge.env',
-            'boot::env_merge_failed',
-            Effect.sync(() =>
-              moduleEnv
-                ? (Context.merge(baseEnv as Context.Context<any>, moduleEnv as Context.Context<any>) as Context.Context<any>)
-                : (baseEnv as Context.Context<any>),
-            ),
-          )
-
-          // After env is built, complete RootContext (single source of truth for the root provider).
-          // Note: module logics may already be forked and waiting for RootContext in the run phase; completing it here unblocks them.
-          // RootContextTag is an internal service injected by AppRuntime (should not leak into external R types);
-          // keep types minimal to avoid incorrect generic inference in Context.get.
-          const rootContext = yield* runStage(
-            'rootContext.merge',
-            'boot::root_context_merge_failed',
-            Effect.flatMap(
-              Effect.sync(() => Context.get(mergedEnv as Context.Context<any>, RootContextTag as any) as RootContext),
-              (root) => mergeRootContext(root, mergedEnv as Context.Context<any>),
-            ),
-          )
-          assemblyGraph.markRootContextMerged()
-
-          yield* runStage(
-            'rootContext.ready',
-            'boot::root_context_ready_failed',
-            readyRootContext(rootContext),
-          )
-          assemblyGraph.markRootContextReady()
-
-          const processRuntime = Context.get(
-            mergedEnv as Context.Context<any>,
-            ProcessRuntime.ProcessRuntimeTag as any,
-          ) as ProcessRuntime.ProcessRuntime
-
-          // After Env is fully ready, start app-level long-lived processes (Process / Link / watchers / host bridges, etc.).
-          yield* runStage(
-            'process.install',
-            'boot::process_install_failed',
-            Effect.forEach(
-              config.processes,
-              (process) =>
-                Effect.gen(function* () {
-                  const installation = yield* Effect.provide(
-                    processRuntime.install(process as any, {
-                      scope: { type: 'app', appId },
-                      enabled: true,
-                      installedAt: 'appRuntime',
-                    }),
+                if (installation === undefined) {
+                  yield* Effect.provide(
+                    config.onError ? Effect.catchCause(process, config.onError) : process,
                     mergedEnv,
-                  )
+                  ).pipe(Effect.forkScoped())
+                }
+              }),
+            { discard: true },
+          ),
+        )
 
-                  // Legacy fallback: a raw Effect is still allowed as a process host, but it has no Process static surface/diagnostics.
-                  if (installation === undefined) {
-                    yield* Effect.forkScoped(
-                      Effect.provide(
-                        config.onError ? Effect.catchAllCause(process, config.onError) : process,
-                        mergedEnv,
-                      ),
-                    )
-                  }
-                }),
-              { discard: true },
-            ),
-          )
+        return mergedEnv
+      })
 
-          return mergedEnv
-        }),
-      )
-
-      const fiberRefsLayer = Layer.scopedDiscard(Effect.patchFiberRefs(patch))
       latestAssemblyReport = assemblyGraph.buildReport(true)
 
-      return Layer.mergeAll(Layer.succeedContext(env), fiberRefsLayer)
+      return Layer.effectServices(Effect.succeed(env))
     }).pipe(
-      Effect.catchAllCause((cause) =>
+      Effect.catchCause((cause) =>
         Effect.gen(function* () {
           assemblyGraph.ensureFailure('boot::unknown', cause)
           latestAssemblyReport = assemblyGraph.buildReport(false)
@@ -490,7 +469,7 @@ export const provide = <Sh extends AnyModuleShape, R, E>(
 export const provideWithTags = <Sh extends AnyModuleShape, R, E>(
   module: ModuleTag<any, Sh>,
   resource: Layer.Layer<ModuleRuntime<StateOf<Sh>, ActionOf<Sh>>, E, R> | ModuleRuntime<StateOf<Sh>, ActionOf<Sh>>,
-  serviceTags: ReadonlyArray<Context.Tag<any, any>>,
+  serviceTags: ReadonlyArray<ServiceMap.Key<any, any>>,
 ): AppModuleEntry => {
   const base = provide(module, resource)
   return {
@@ -499,5 +478,4 @@ export const provideWithTags = <Sh extends AnyModuleShape, R, E>(
   }
 }
 
-const isLayer = (value: unknown): value is Layer.Layer<any, any, any> =>
-  typeof value === 'object' && value !== null && Layer.LayerTypeId in value
+const isLayer = (value: unknown): value is Layer.Layer<any, any, any> => Layer.isLayer(value)

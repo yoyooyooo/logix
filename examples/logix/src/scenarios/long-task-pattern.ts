@@ -24,7 +24,7 @@ export const LongTaskDef = Logix.Module.make('LongTaskModule', {
 export const LongTaskLogic = LongTaskDef.logic<Scope.Scope>(($) =>
   Effect.gen(function* () {
     // 启动长任务：如果已经在 running，runExhaust 会丢弃后续触发，避免重复启动
-    const startEffect = Effect.gen(function* (_) {
+    const startEffect = Effect.gen(function* () {
       yield* runLongTaskPattern({
         updateState: $.state.update,
       })
@@ -36,8 +36,8 @@ export const LongTaskLogic = LongTaskDef.logic<Scope.Scope>(($) =>
       progress: 0,
     }))
 
-    yield* $.onAction('start').run({ mode: 'exhaust', effect: startEffect })
-    yield* $.onAction('reset').run({ effect: resetEffect })
+    yield* $.onAction('start').runExhaust(startEffect)
+    yield* $.onAction('reset').run(resetEffect)
   }),
 )
 
@@ -49,7 +49,7 @@ export const LongTaskModule = LongTaskDef.implement<Scope.Scope>({
   initial: {
     status: 'idle',
     progress: 0,
-  },
+  } as LongTaskState,
   logics: [LongTaskLogic],
 })
 

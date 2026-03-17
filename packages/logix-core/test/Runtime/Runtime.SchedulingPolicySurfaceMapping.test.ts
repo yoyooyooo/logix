@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Option, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
@@ -41,7 +41,7 @@ const readResolvedOverrides = (runtime: ReturnType<typeof Logix.Runtime.make>) =
   )
 
 describe('Runtime.make scheduling policy surface mapping', () => {
-  it.scoped('maps new schedulingPolicy to both unified and legacy service views', () =>
+  it.effect('maps new schedulingPolicy to both unified and legacy service views', () =>
     Effect.gen(function* () {
       const runtime = Logix.Runtime.make(RootImpl, {
         layer: Layer.empty as Layer.Layer<any, never, never>,
@@ -70,7 +70,7 @@ describe('Runtime.make scheduling policy surface mapping', () => {
     }),
   )
 
-  it.scoped('keeps legacy concurrencyPolicy option behavior by mapping to unified surface', () =>
+  it.effect('keeps legacy concurrencyPolicy option behavior by mapping to unified surface', () =>
     Effect.gen(function* () {
       const runtime = Logix.Runtime.make(RootImpl, {
         layer: Layer.empty as Layer.Layer<any, never, never>,
@@ -98,7 +98,7 @@ describe('Runtime.make scheduling policy surface mapping', () => {
     }),
   )
 
-  it.scoped('prefers schedulingPolicy when both new and legacy options are provided', () =>
+  it.effect('prefers schedulingPolicy when both new and legacy options are provided', () =>
     Effect.gen(function* () {
       const runtime = Logix.Runtime.make(RootImpl, {
         layer: Layer.empty as Layer.Layer<any, never, never>,
@@ -135,7 +135,7 @@ describe('Runtime.make scheduling policy surface mapping', () => {
     }),
   )
 
-  it.scoped('legacy concurrencyPolicyOverridesLayer maps directly to unified overrides service', () =>
+  it.effect('legacy concurrencyPolicyOverridesLayer maps directly to unified overrides service', () =>
     Effect.gen(function* () {
       const runtime = Logix.Runtime.make(RootImpl, {
         layer: Logix.Runtime.concurrencyPolicyOverridesLayer({
@@ -156,7 +156,7 @@ describe('Runtime.make scheduling policy surface mapping', () => {
     }),
   )
 
-  it.scoped('legacy setConcurrencyPolicyOverride writes into unified scheduling policy surface', () =>
+  it.effect('legacy setConcurrencyPolicyOverride writes into unified scheduling policy surface', () =>
     Effect.gen(function* () {
       const moduleId = 'RuntimeSchedulingPolicySurfaceRoot'
       const runtime = Logix.Runtime.make(RootImpl, {
@@ -167,7 +167,7 @@ describe('Runtime.make scheduling policy surface mapping', () => {
         },
       })
 
-      Logix.Runtime.setConcurrencyPolicyOverride(runtime, moduleId, {
+      yield* Logix.Runtime.setConcurrencyPolicyOverride(runtime, moduleId, {
         concurrencyLimit: 13,
         warningCooldownMs: 130,
       })

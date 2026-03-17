@@ -45,16 +45,10 @@ const makeRuntimeWithDevtoolsHub = (options: {
 
   Debug.clearDevtoolsEvents()
 
-  const mode: Debug.DevtoolsProjectionMode =
-    options.diagnosticsLevel === 'off' ? 'off' : options.diagnosticsLevel === 'full' ? 'full' : 'light'
-
-  const layer = Layer.mergeAll(
-    Debug.devtoolsHubLayer({
-      bufferSize: 256,
-      mode,
-    }),
-    Debug.diagnosticsLevel(options.diagnosticsLevel),
-  )
+  const layer = Debug.devtoolsHubLayer({
+    bufferSize: 256,
+    diagnosticsLevel: options.diagnosticsLevel,
+  })
 
   const runtime = Logix.Runtime.make(impl, {
     stateTransaction: options.stateTransaction,
@@ -71,7 +65,7 @@ const pickTraitConvergeRefs = (pkg: Logix.Observability.EvidencePackage): any[] 
     .filter((p) => p && typeof p === 'object' && p.kind === 'trait:converge')
 
 describe('StateTrait converge auto evidence shape', () => {
-  it.scoped('full: EvidencePackage is JSON-serializable and exports ConvergeStaticIR by digest', () =>
+  it.effect('full: EvidencePackage is JSON-serializable and exports ConvergeStaticIR by digest', () =>
     Effect.gen(function* () {
       const moduleId = 'StateTraitConvergeAuto_EvidenceShape_Full'
       const { M, runtime } = makeRuntimeWithDevtoolsHub({
@@ -84,7 +78,7 @@ describe('StateTrait converge auto evidence shape', () => {
 
       const makeTxn = (name: string) =>
         Effect.gen(function* () {
-          const rt = yield* M.tag
+          const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
           yield* Logix.InternalContracts.runWithStateTransaction(rt as any, { kind: 'test', name }, () =>
             Effect.gen(function* () {
               const prev = yield* rt.getState
@@ -139,7 +133,7 @@ describe('StateTrait converge auto evidence shape', () => {
     }),
   )
 
-  it.scoped('light: EvidencePackage keeps staticIrDigest and exports fieldPaths-only ConvergeStaticIR summary', () =>
+  it.effect('light: EvidencePackage keeps staticIrDigest and exports fieldPaths-only ConvergeStaticIR summary', () =>
     Effect.gen(function* () {
       const moduleId = 'StateTraitConvergeAuto_EvidenceShape_Light'
       const { M, runtime } = makeRuntimeWithDevtoolsHub({
@@ -151,7 +145,7 @@ describe('StateTrait converge auto evidence shape', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* M.tag
+        const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
         yield* Logix.InternalContracts.runWithStateTransaction(rt as any, { kind: 'test', name: 't1' }, () =>
           Effect.gen(function* () {
             const prev = yield* rt.getState

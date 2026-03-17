@@ -1,5 +1,4 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
 import * as EffectOp from '@logixjs/core/EffectOp'
 import type { Engine as QueryEngine } from '../src/Engine.js'
@@ -58,7 +57,7 @@ describe('Query.Engine combinations (layer × middleware)', () => {
             fetch: ({ effect }) =>
               Effect.sync(() => {
                 fetchCalls += 1
-              }).pipe(Effect.zipRight(effect)),
+              }).pipe(Effect.andThen(effect)),
             invalidate: () => Effect.void,
           } satisfies QueryEngine),
         ),

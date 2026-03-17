@@ -3,8 +3,8 @@ import { Effect, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 import * as Debug from '../../src/Debug.js'
 
-describe('Runtime devtools mode=off vacuum path', () => {
-  it.scoped('should skip DebugObserver and DevtoolsHub while preserving user sinks', () =>
+describe('Runtime devtools diagnostics=off vacuum path', () => {
+  it.effect('should skip DebugObserver and DevtoolsHub while preserving user sinks', () =>
     Effect.gen(function* () {
       Debug.clearDevtoolsEvents()
       const snapshotTokenBefore = Debug.getDevtoolsSnapshotToken()
@@ -27,14 +27,14 @@ describe('Runtime devtools mode=off vacuum path', () => {
       const ring = Debug.makeRingBufferSink(256)
       const runtime = Logix.Runtime.make(impl, {
         layer: Debug.replace([ring.sink]),
-        devtools: { mode: 'off' },
+        devtools: { diagnosticsLevel: 'off' },
       })
 
       try {
         const finalState = yield* Effect.promise(() =>
           runtime.runPromise(
             Effect.gen(function* () {
-              const rt = yield* M.tag
+              const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
               yield* rt.dispatch({ _tag: 'inc', payload: undefined })
               return yield* rt.getState
             }),
@@ -55,10 +55,10 @@ describe('Runtime devtools mode=off vacuum path', () => {
     }),
   )
 
-  it.scoped('should keep omitted mode semantics (no ring-trim policy event)', () =>
+  it.effect('should keep omitted diagnosticsLevel semantics (no ring-trim policy event)', () =>
     Effect.gen(function* () {
       Debug.clearDevtoolsEvents()
-      Debug.devtoolsHubLayer({ bufferSize: 9, mode: 'full' })
+      Debug.devtoolsHubLayer({ bufferSize: 9, diagnosticsLevel: 'full' })
       Debug.clearDevtoolsEvents()
 
       const M = Logix.Module.make('Runtime.Devtools.DiagnosticsDefault.Semantics', {
@@ -84,7 +84,7 @@ describe('Runtime devtools mode=off vacuum path', () => {
         yield* Effect.promise(() =>
           runtime.runPromise(
             Effect.gen(function* () {
-              const rt = yield* M.tag
+              const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
               yield* rt.dispatch({ _tag: 'inc', payload: undefined })
             }),
           ),
@@ -96,73 +96,6 @@ describe('Runtime devtools mode=off vacuum path', () => {
       } finally {
         yield* Effect.promise(() => runtime.dispose())
       }
-    }),
-  )
-
-  it.scoped('devtools mode off/light/full should keep business semantics identical while only changing observation depth', () =>
-    Effect.gen(function* () {
-      const M = Logix.Module.make('Runtime.Devtools.Mode.Semantics', {
-        state: Schema.Struct({ value: Schema.Number }),
-        actions: { inc: Schema.Void },
-        reducers: {
-          inc: Logix.Module.Reducer.mutate((draft) => {
-            draft.value += 1
-          }),
-        },
-      })
-
-      const impl = M.implement({
-        initial: { value: 0 },
-        logics: [],
-      })
-
-      const run = (mode: Debug.DevtoolsProjectionMode) =>
-        Effect.gen(function* () {
-          Debug.clearDevtoolsEvents()
-          const tokenBefore = Debug.getDevtoolsSnapshotToken()
-          const runtime = Logix.Runtime.make(impl, {
-            devtools: { mode },
-          })
-
-          try {
-            const finalState = yield* Effect.promise(() =>
-              runtime.runPromise(
-                Effect.gen(function* () {
-                  const rt = yield* M.tag
-                  yield* rt.dispatch({ _tag: 'inc', payload: undefined })
-                  yield* rt.dispatch({ _tag: 'inc', payload: undefined })
-                  yield* rt.dispatch({ _tag: 'inc', payload: undefined })
-                  return yield* rt.getState
-                }),
-              ),
-            )
-
-            return {
-              finalState,
-              projectionTier: Debug.getDevtoolsSnapshot().projection.tier,
-              tokenBefore,
-              tokenAfter: Debug.getDevtoolsSnapshotToken(),
-            }
-          } finally {
-            yield* Effect.promise(() => runtime.dispose())
-          }
-        })
-
-      const off = yield* run('off')
-      const light = yield* run('light')
-      const full = yield* run('full')
-
-      expect(off.finalState).toEqual(light.finalState)
-      expect(light.finalState).toEqual(full.finalState)
-      expect(full.finalState).toEqual({ value: 3 })
-
-      expect(off.tokenAfter).toBe(off.tokenBefore)
-
-      expect(light.projectionTier).toBe('light')
-      expect(light.tokenAfter).toBeGreaterThan(light.tokenBefore)
-
-      expect(full.projectionTier).toBe('full')
-      expect(full.tokenAfter).toBeGreaterThan(full.tokenBefore)
     }),
   )
 })

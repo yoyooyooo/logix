@@ -1,4 +1,5 @@
-import { HttpApiBuilder, HttpServer } from '@effect/platform'
+import { HttpRouter, HttpServer } from 'effect/unstable/http'
+import { HttpApiBuilder } from 'effect/unstable/httpapi'
 import { Effect, Layer, Option } from 'effect'
 import { describe, expect, it } from 'vitest'
 
@@ -25,7 +26,7 @@ const makeTodoRepoTest = (): Layer.Layer<TodoRepo> => {
         store.set(todo.id, todo)
         return todo
       }),
-    get: (id) => Effect.sync(() => Option.fromNullable(store.get(id))),
+    get: (id) => Effect.sync(() => Option.fromNullishOr(store.get(id))),
     list: Effect.sync(() => Array.from(store.values())),
     update: (id, patch) =>
       Effect.sync(() => {
@@ -47,14 +48,15 @@ const makeTodoRepoTest = (): Layer.Layer<TodoRepo> => {
 
 describe('Todo CRUD', () => {
   it('create/list/get/update/delete', async () => {
-    const ApiTestLive = HttpApiBuilder.api(EffectApi).pipe(
+    const ApiTestLive = HttpApiBuilder.layer(EffectApi).pipe(
       Layer.provide(HealthLive),
       Layer.provide(TodoLive),
       Layer.provide(makeTodoRepoTest()),
       Layer.provide(DbLive),
+      Layer.provide(HttpServer.layerServices),
     )
 
-    const { handler, dispose } = HttpApiBuilder.toWebHandler(Layer.mergeAll(ApiTestLive, HttpServer.layerContext))
+    const { handler, dispose } = HttpRouter.toWebHandler(Layer.mergeAll(ApiTestLive), { disableLogger: true })
 
     try {
       const created = await handler(

@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Cause, Effect } from 'effect'
 import * as LifecycleCore from '../../../../src/internal/runtime/core/Lifecycle.js'

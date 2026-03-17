@@ -9,7 +9,7 @@ import type { FormCaseLink } from './types'
 import { JsonCard, SectionTitle, PrimaryButton, GhostButton } from './shared'
 
 const RegionValues = Schema.Struct({
-  country: Schema.Literal('CN', 'US'),
+  country: Schema.Literals(['CN', 'US']),
   province: Schema.String,
   city: Schema.String,
 })
@@ -41,7 +41,7 @@ const ProvinceSpec = Logix.Resource.make({
   keySchema: ProvincesKey,
   load: (key: { readonly country: string }) =>
     Effect.sleep(Duration.millis(300)).pipe(
-      Effect.zipRight(
+      Effect.flatMap(() =>
         Effect.succeed(key.country === 'CN' ? ['北京', '上海', '浙江', '广东'] : ['California', 'New York', 'Texas']),
       ),
     ),
@@ -52,7 +52,7 @@ const CitySpec = Logix.Resource.make({
   keySchema: CitiesKey,
   load: (key: { readonly country: string; readonly province: string }) =>
     Effect.sleep(Duration.millis(350)).pipe(
-      Effect.zipRight(
+      Effect.flatMap(() =>
         Effect.succeed(
           key.country === 'CN'
             ? key.province === '浙江'

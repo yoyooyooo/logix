@@ -1,8 +1,8 @@
 ---
 title: 优化机会条目索引
 status: active
-updatedAt: 2026-02-27
-owner: pr/o021-module-api-unification
+updatedAt: 2026-02-26
+owner: pr/o014-doc-impl-bidirectional-convergence
 ---
 
 # 优化机会条目索引
@@ -16,7 +16,6 @@ owner: pr/o021-module-api-unification
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | O-014 | P2 | done | [spec](../../../specs/102-o014-doc-impl-bidirectional-convergence/spec.md) | [docs](../README.md) | N/A（文档流程） | [specs 索引](../../specs/README.md) | [`O-014-doc-impl-bidirectional-convergence.md`](./O-014-doc-impl-bidirectional-convergence.md) |
 | O-016 | P1 | done | N/A（direct task） | [core](../../../packages/logix-core/src/internal/runtime/core/module.ts) | N/A（非热路径） | [runtime SSoT](../../ssot/runtime/logix-core/runtime/05-runtime-implementation.01-module-runtime-make.md) | [`O-016-readonly-subscription-ref.md`](./O-016-readonly-subscription-ref.md) |
-| O-021 | P1 | writeback | [spec](../../../specs/102-o021-module-api-unification/spec.md) | [core](../../../packages/logix-core/src/Module.ts) | [perf](../../../specs/102-o021-module-api-unification/perf/README.md) | [module API SSoT](../../ssot/runtime/logix-core/api/02-module-and-logic-api.00-quick-overview.md) | [`O-021-module-instantiation-api-unification.md`](./O-021-module-instantiation-api-unification.md) |
 
 ## 回写要求
 

@@ -8,7 +8,7 @@ import { CounterMultiImpl } from '../src/modules/counterMulti'
 import { StepCounterImpl } from '../src/modules/stepCounter'
 
 describe('examples/logix-react · module flows (integration)', () => {
-  it.scoped('CounterModule + CounterLogic · inc / dec sequence', () =>
+  it.effect('CounterModule + CounterLogic · inc / dec sequence', () =>
     TestProgram.runProgram(CounterImpl, ($) =>
       Effect.gen(function* () {
         yield* $.dispatch({ _tag: 'inc', payload: undefined })
@@ -29,7 +29,7 @@ describe('examples/logix-react · module flows (integration)', () => {
     ),
   )
 
-  it.scoped('CounterMultiModule · multiple increments', () =>
+  it.effect('CounterMultiModule · multiple increments', () =>
     TestProgram.runProgram(CounterMultiImpl, ($) =>
       Effect.gen(function* () {
         yield* $.dispatch({ _tag: 'increment', payload: undefined })
@@ -48,7 +48,7 @@ describe('examples/logix-react · module flows (integration)', () => {
     ),
   )
 
-  it.scoped('StepCounterModule · inc once', () =>
+  it.effect('StepCounterModule · inc once', () =>
     TestProgram.runProgram(StepCounterImpl, ($) =>
       Effect.gen(function* () {
         yield* $.dispatch({ _tag: 'inc', payload: undefined })

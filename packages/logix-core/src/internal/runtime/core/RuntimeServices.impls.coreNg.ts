@@ -11,7 +11,7 @@ const makeBuiltinAlias = (
   implId: CORE_NG_IMPL_ID,
   implVersion: 'v0',
   make: Effect.gen(function* () {
-    const builtins = yield* RuntimeServiceBuiltinsTag
+    const builtins = yield* Effect.service(RuntimeServiceBuiltinsTag).pipe(Effect.orDie)
     const builtinMake = builtins.getBuiltinMake(serviceId)
     return (yield* builtinMake) as any
   }) as any,

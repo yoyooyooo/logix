@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Schema, Layer } from 'effect'
 import * as Logix from '../../src/index.js'
@@ -21,7 +21,7 @@ const Impl = Mod.implement({
 })
 
 describe('Runtime.make · devtools option', () => {
-  it.scoped('should enable DevtoolsHub + DebugObserver even when isDevEnv() = false', () =>
+  it.effect('should enable DevtoolsHub + DebugObserver even when isDevEnv() = false', () =>
     Effect.gen(function* () {
       const prevEnv = process.env.NODE_ENV
       process.env.NODE_ENV = 'production'
@@ -38,7 +38,7 @@ describe('Runtime.make · devtools option', () => {
         })
 
         const program = Effect.gen(function* () {
-          const rt = yield* Mod.tag
+          const rt = yield* Effect.service(Mod.tag).pipe(Effect.orDie)
           yield* rt.dispatch({ _tag: 'bump', payload: undefined })
           yield* Effect.sleep('10 millis')
         })
@@ -50,7 +50,13 @@ describe('Runtime.make · devtools option', () => {
         const byLabel = snapshot.events.filter((e) => (e as any).runtimeLabel === runtimeLabel)
 
         expect(byLabel.length).toBeGreaterThan(0)
-        expect(byLabel.some((e) => e.kind === 'action' && e.label === 'action:dispatch')).toBe(true)
+        const sawBump = byLabel.some((e) => {
+          if (e.kind !== 'action') return false
+          if (e.label === 'bump') return true
+          const metaAny = e.meta as any
+          return metaAny && typeof metaAny === 'object' && metaAny.actionTag === 'bump'
+        })
+        expect(sawBump).toBe(true)
       } finally {
         process.env.NODE_ENV = prevEnv
       }
@@ -75,7 +81,7 @@ describe('Runtime.make · devtools option', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* Mod.tag
+        const rt = yield* Effect.service(Mod.tag).pipe(Effect.orDie)
         yield* rt.dispatch({ _tag: 'bump', payload: undefined })
         yield* Effect.sleep('10 millis')
       })

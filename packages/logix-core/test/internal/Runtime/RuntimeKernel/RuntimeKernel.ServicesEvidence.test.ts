@@ -7,7 +7,7 @@ import * as RuntimeKernel from '../../../../src/internal/runtime/core/RuntimeKer
 const readJson = (url: URL): any => JSON.parse(readFileSync(url, 'utf8'))
 
 describe('RuntimeKernel.ServicesEvidence (contracts 020)', () => {
-  it.scoped('exports JSON-serializable RuntimeServicesEvidence matching schema', () =>
+  it.effect('exports JSON-serializable RuntimeServicesEvidence matching schema', () =>
     Effect.gen(function* () {
       const schema = readJson(
         new URL(

@@ -1,5 +1,3 @@
-import { ParseResult } from 'effect'
-
 export const ERROR_VALUE_MAX_BYTES = 256
 
 const textEncoder = new TextEncoder()
@@ -167,7 +165,7 @@ export const pattern = (decl: PatternDecl): ((value: unknown) => unknown | undef
 export const schemaErrorMessage = (schemaError: unknown): string => {
   let message: string
   try {
-    message = ParseResult.TreeFormatter.formatErrorSync(schemaError as any)
+    message = schemaError instanceof Error ? (schemaError.message || 'schema invalid') : String(schemaError)
   } catch {
     message = 'schema invalid'
   }

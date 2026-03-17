@@ -1,4 +1,4 @@
-import { Effect, FiberRef } from 'effect'
+import { Effect } from 'effect'
 import * as Logix from '@logixjs/core'
 
 export const EXEC_VM_EVIDENCE_TRACE_TYPE = 'trace:exec-vm' as const
@@ -34,7 +34,7 @@ export interface ExecVmEvidence {
 
 export const recordExecVmEvidence = (evidence: ExecVmEvidence): Effect.Effect<void, never, any> =>
   Effect.gen(function* () {
-    const level = yield* FiberRef.get(Logix.Debug.internal.currentDiagnosticsLevel)
+    const level = yield* Effect.service(Logix.Debug.internal.currentDiagnosticsLevel).pipe(Effect.orDie)
     if (level === 'off') {
       return
     }

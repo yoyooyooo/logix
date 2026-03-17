@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Deferred, Effect } from 'effect'
 import * as Logix from '../../../../src/index.js'
@@ -23,7 +23,7 @@ const makeRuntimeRefCollector = () => {
 const asObject = (value: unknown): any => (value && typeof value === 'object' && !Array.isArray(value) ? value : null)
 
 describe('Lifecycle diagnostics serialization', () => {
-  it.scoped('initRequired failure should emit serializable lifecycle events', () =>
+  it.effect('initRequired failure should emit serializable lifecycle events', () =>
     Effect.gen(function* () {
       const manager = yield* LifecycleCore.makeLifecycleManager({
         moduleId: 'Lifecycle.DiagnosticsSerialization.Init',
@@ -34,9 +34,7 @@ describe('Lifecycle diagnostics serialization', () => {
 
       const { refs, sink } = makeRuntimeRefCollector()
 
-      yield* Effect.exit(
-        manager.runInitRequired.pipe(Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [sink])),
-      )
+      yield* Effect.exit(Effect.provideService(manager.runInitRequired, Logix.Debug.internal.currentDebugSinks as any, [sink]))
 
       expect(refs.some((r) => r.kind === 'lifecycle')).toBe(true)
       for (const ref of refs) {
@@ -54,7 +52,7 @@ describe('Lifecycle diagnostics serialization', () => {
     }),
   )
 
-  it.scoped('start failure should emit serializable lifecycle events', () =>
+  it.effect('start failure should emit serializable lifecycle events', () =>
     Effect.gen(function* () {
       const manager = yield* LifecycleCore.makeLifecycleManager({
         moduleId: 'Lifecycle.DiagnosticsSerialization.Start',
@@ -68,7 +66,7 @@ describe('Lifecycle diagnostics serialization', () => {
 
       const { refs, sink } = makeRuntimeRefCollector()
 
-      yield* manager.runStart.pipe(Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [sink]))
+      yield* Effect.provideService(manager.runStart, Logix.Debug.internal.currentDebugSinks as any, [sink])
 
       yield* Deferred.await(onErrorSeen)
 
@@ -88,7 +86,7 @@ describe('Lifecycle diagnostics serialization', () => {
     }),
   )
 
-  it.scoped('destroy failure should emit serializable lifecycle events', () =>
+  it.effect('destroy failure should emit serializable lifecycle events', () =>
     Effect.gen(function* () {
       const manager = yield* LifecycleCore.makeLifecycleManager({
         moduleId: 'Lifecycle.DiagnosticsSerialization.Destroy',
@@ -99,7 +97,7 @@ describe('Lifecycle diagnostics serialization', () => {
 
       const { refs, sink } = makeRuntimeRefCollector()
 
-      yield* manager.runDestroy.pipe(Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [sink]))
+      yield* Effect.provideService(manager.runDestroy, Logix.Debug.internal.currentDebugSinks as any, [sink])
 
       expect(refs.some((r) => r.kind === 'lifecycle')).toBe(true)
       for (const ref of refs) {

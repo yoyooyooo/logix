@@ -1,11 +1,10 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer } from 'effect'
 import * as Logix from '@logixjs/core'
 import { makeFormModule } from '../fixtures/listScopeCheck.js'
 
 describe('Form list-scope uniqueWarehouse (onChange, no submit)', () => {
-  it.scoped('writes cross-row errors into $list/rows[] and keeps them in sync', () =>
+  it.effect('writes cross-row errors into $list/rows[] and keeps them in sync', () =>
     Effect.gen(function* () {
       const form = makeFormModule({
         rowCount: 3,
@@ -18,7 +17,7 @@ describe('Form list-scope uniqueWarehouse (onChange, no submit)', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* form.tag
+        const rt = yield* Effect.service(form.tag).pipe(Effect.orDie)
         const controller = form.controller.make(rt)
 
         // Initial: no errors

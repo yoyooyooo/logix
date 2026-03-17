@@ -1,4 +1,4 @@
-import { Context, Effect, FiberRef, Option, Schema, Stream } from 'effect'
+import { Deferred, Effect, Exit, Option, Schema, ServiceMap, Stream } from 'effect'
 import { create } from 'mutative'
 import type * as Logix from './module.js'
 import * as Logic from './LogicMiddleware.js'
@@ -12,14 +12,38 @@ import * as Lifecycle from './Lifecycle.js'
 import * as Debug from './DebugSink.js'
 import * as LogicDiagnostics from './LogicDiagnostics.js'
 import { isDevEnv } from './env.js'
-import { currentTxnOriginOverride } from './TxnOriginOverride.js'
 import type { JsonValue } from '../../observability/jsonValue.js'
-import { RunSessionTag } from '../../observability/runSession.js'
+import { RunSessionTag, type RunSession } from '../../observability/runSession.js'
 import * as Root from '../../root.js'
 import type { RuntimeInternals } from './RuntimeInternals.js'
 import type * as ModuleTraits from './ModuleTraits.js'
 import { getRuntimeInternals, setBoundInternals } from './runtimeInternalsAccessor.js'
 import type { AnyModuleShape, ModuleRuntime, StateOf, ActionOf } from './module.js'
+
+const DIRECT_STATE_WRITE_EFFECT = Symbol.for('logix.directStateWriteEffect')
+
+type DirectStateWriteMetadata<Sh extends AnyModuleShape> =
+  | { readonly kind: 'update'; readonly run: (prev: StateOf<Sh>) => StateOf<Sh> }
+  | { readonly kind: 'mutate'; readonly run: (draft: Logic.Draft<StateOf<Sh>>) => void }
+
+type DirectStateWriteEffect<Sh extends AnyModuleShape> = Effect.Effect<void, never, any> & {
+  [DIRECT_STATE_WRITE_EFFECT]?: DirectStateWriteMetadata<Sh>
+}
+
+const markDirectStateWriteEffect = <Sh extends AnyModuleShape, A extends Effect.Effect<void, never, any>>(
+  effect: A,
+  metadata: DirectStateWriteMetadata<Sh>,
+): A => {
+  ;(effect as DirectStateWriteEffect<Sh>)[DIRECT_STATE_WRITE_EFFECT] = metadata
+  return effect
+}
+
+const getDirectStateWriteMetadata = <Sh extends AnyModuleShape>(
+  value: unknown,
+): DirectStateWriteMetadata<Sh> | undefined => {
+  if (!value || (typeof value !== 'object' && typeof value !== 'function')) return undefined
+  return (value as DirectStateWriteEffect<Sh>)[DIRECT_STATE_WRITE_EFFECT]
+}
 
 // Local IntentBuilder factory; equivalent to the old internal/dsl/LogicBuilder.makeIntentBuilderFactory.
 const LogicBuilderFactory = <Sh extends AnyModuleShape, R = never>(
@@ -48,27 +72,72 @@ const LogicBuilderFactory = <Sh extends AnyModuleShape, R = never>(
         LogicBuilderFactory<Sh, R>(runtime, runtimeInternals)(flowApi.filter(predicate)(stream), triggerName),
       map: <U>(f: (value: T) => U) =>
         LogicBuilderFactory<Sh, R>(runtime, runtimeInternals)(stream.pipe(Stream.map(f)), triggerName),
-      run: (function (config: unknown) {
-        if (arguments.length !== 1) {
-          throw new Error(
-            "[InvalidFlowRunConfig] run(config) expects a single argument. Put all options inside config.options; do not pass a second argument.",
-          )
-        }
-        return flowApi.run<T, any, any, any>(config as any)(stream)
-      }) as Logic.IntentBuilder<T, Sh, R>['run'],
+      run<A = void, E = never, R2 = unknown>(
+        eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
+        options?: Logic.OperationOptions,
+      ): Logic.Of<Sh, R & R2, void, E> {
+        return flowApi.run<T, A, E, R2>(eff, options)(stream)
+      },
+      runLatest<A = void, E = never, R2 = unknown>(
+        eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
+        options?: Logic.OperationOptions,
+      ): Logic.Of<Sh, R & R2, void, E> {
+        return flowApi.runLatest<T, A, E, R2>(eff, options)(stream)
+      },
+      runExhaust<A = void, E = never, R2 = unknown>(
+        eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
+        options?: Logic.OperationOptions,
+      ): Logic.Of<Sh, R & R2, void, E> {
+        return flowApi.runExhaust<T, A, E, R2>(eff, options)(stream)
+      },
+      runParallel<A = void, E = never, R2 = unknown>(
+        eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
+        options?: Logic.OperationOptions,
+      ): Logic.Of<Sh, R & R2, void, E> {
+        return flowApi.runParallel<T, A, E, R2>(eff, options)(stream)
+      },
       runFork: <A = void, E = never, R2 = unknown>(
         eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
-      ): Logic.Of<Sh, R & R2, void, E> =>
-        Effect.forkScoped(flowApi.run<T, A, E, R2>({ effect: eff } as any)(stream)).pipe(Effect.asVoid) as Logic.Of<Sh, R & R2, void, E>,
+      ): Logic.Of<Sh, R & R2, void, E> => {
+        if (runtimeInternals && triggerName && typeof eff !== 'function' && getDirectStateWriteMetadata<Sh>(eff) != null) {
+          return Effect.sync(() => {
+            const metadata = getDirectStateWriteMetadata<Sh>(eff)!
+            runtimeInternals.txn.registerActionStateWriteback(
+              triggerName,
+              metadata.kind === 'update'
+                ? ({ kind: 'update', run: metadata.run } as any)
+                : ({ kind: 'mutate', run: metadata.run } as any),
+            )
+          }) as Logic.Of<Sh, R & R2, void, E>
+        }
+        return Effect.forkScoped(flowApi.run<T, A, E, R2>(eff)(stream)).pipe(Effect.asVoid) as Logic.Of<
+          Sh,
+          R & R2,
+          void,
+          E
+        >
+      },
       runParallelFork: <A = void, E = never, R2 = unknown>(
         eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
-      ): Logic.Of<Sh, R & R2, void, E> =>
-        Effect.forkScoped(
-          flowApi.run<T, A, E, R2>({
-            mode: 'parallel',
-            effect: eff,
-          })(stream),
-        ).pipe(Effect.asVoid) as Logic.Of<Sh, R & R2, void, E>,
+      ): Logic.Of<Sh, R & R2, void, E> => {
+        if (runtimeInternals && triggerName && typeof eff !== 'function' && getDirectStateWriteMetadata<Sh>(eff) != null) {
+          return Effect.sync(() => {
+            const metadata = getDirectStateWriteMetadata<Sh>(eff)!
+            runtimeInternals.txn.registerActionStateWriteback(
+              triggerName,
+              metadata.kind === 'update'
+                ? ({ kind: 'update', run: metadata.run } as any)
+                : ({ kind: 'mutate', run: metadata.run } as any),
+            )
+          }) as Logic.Of<Sh, R & R2, void, E>
+        }
+        return Effect.forkScoped(flowApi.runParallel<T, A, E, R2>(eff)(stream)).pipe(Effect.asVoid) as Logic.Of<
+          Sh,
+          R & R2,
+          void,
+          E
+        >
+      },
       runTask: <A = void, E = never, R2 = unknown>(
         config: TaskRunner.TaskRunnerConfig<T, Sh, R & R2, A, E>,
       ): Logic.Of<Sh, R & R2, void, never> =>
@@ -123,7 +192,7 @@ const LogicBuilderFactory = <Sh extends AnyModuleShape, R = never>(
                 yield* runtime.setState(next as StateOf<Sh>)
               }),
           ),
-        ).pipe(Effect.catchAllCause((cause) => Effect.logError('Flow error', cause))) as Logic.Of<Sh, R, void, never>,
+        ).pipe(Effect.catchCause((cause) => Effect.logError('Flow error', cause))) as Logic.Of<Sh, R, void, never>,
       mutate: (reducer: (draft: Logic.Draft<StateOf<Sh>>, payload: T) => void): Logic.Of<Sh, R, void, never> =>
         Stream.runForEach(stream, (payload) =>
           taskRunnerRuntime.runWithStateTransaction(
@@ -148,7 +217,7 @@ const LogicBuilderFactory = <Sh extends AnyModuleShape, R = never>(
                 updateDraft(nextState)
               }),
           ),
-        ).pipe(Effect.catchAllCause((cause) => Effect.logError('Flow error', cause))) as Logic.Of<Sh, R, void, never>,
+        ).pipe(Effect.catchCause((cause) => Effect.logError('Flow error', cause))) as Logic.Of<Sh, R, void, never>,
     } as Omit<Logic.IntentBuilder<T, Sh, R>, 'pipe'>
 
     const pipe: Logic.IntentBuilder<T, Sh, R>['pipe'] = function (this: unknown) {
@@ -206,16 +275,15 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
     available: (manager: Lifecycle.LifecycleManager) => Effect.Effect<A, never, any>,
     missing: () => Effect.Effect<A, never, any>,
   ) =>
-    Effect.serviceOption(Lifecycle.LifecycleContext).pipe(
+    Effect.serviceOption(Lifecycle.LifecycleContext as ServiceMap.Key<any, Lifecycle.LifecycleManager>).pipe(
       Effect.flatMap((maybe) =>
         Option.match(maybe, {
           onSome: available,
           onNone: missing,
-        }),
-      ),
+        })),
     )
   const withPlatform = (invoke: (platform: Platform.Service) => Effect.Effect<void, never, any>) =>
-    Effect.serviceOption(Platform.Tag).pipe(
+    Effect.serviceOption(Platform.Tag as ServiceMap.Key<any, Platform.Service>).pipe(
       Effect.flatMap((maybe) =>
         Option.match(maybe, {
           onSome: invoke,
@@ -236,7 +304,7 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
         'Move $.lifecycle.* calls to the synchronous part of Module.logic builder (before return) for registration; ' +
         'for dynamic resource cleanup in the run phase, use Effect.acquireRelease / Scope finalizer instead of registering onDestroy late.',
       kind: 'lifecycle_in_run',
-    })
+    }).pipe(Effect.orDie)
 
   const createIntentBuilder = <T>(stream: Stream.Stream<T>, triggerName?: string) =>
     makeIntentBuilder(runtime)(stream, triggerName)
@@ -259,7 +327,7 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
   }
 
   const onceInRunSession = (key: string): Effect.Effect<boolean, never, any> =>
-    Effect.serviceOption(RunSessionTag).pipe(
+    Effect.serviceOption(RunSessionTag as unknown as ServiceMap.Key<any, RunSession>).pipe(
       Effect.map((maybe) => (Option.isSome(maybe) ? maybe.value.local.once(key) : true)),
     )
 
@@ -270,7 +338,7 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
   ): value is {
     readonly _kind: 'ModuleDef' | 'Module'
     readonly id: string
-    readonly tag: Context.Tag<any, Logix.ModuleRuntime<any, any>>
+  readonly tag: ServiceMap.Key<any, Logix.ModuleRuntime<any, any>>
     readonly schemas?: Record<string, unknown>
     readonly meta?: Record<string, JsonValue>
     readonly dev?: { readonly source?: { readonly file: string; readonly line: number; readonly column: number } }
@@ -280,11 +348,11 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
       typeof value === 'object' &&
       ((value as any)._kind === 'ModuleDef' || (value as any)._kind === 'Module') &&
       'tag' in (value as object) &&
-      Context.isTag((value as any).tag),
+  ServiceMap.isKey((value as any).tag),
     )
 
   const buildModuleHandle = (
-    tag: Context.Tag<any, Logix.ModuleRuntime<any, any>>,
+  tag: ServiceMap.Key<any, Logix.ModuleRuntime<any, any>>,
     rt: Logix.ModuleRuntime<any, any>,
   ): unknown => {
     const actionsProxy: Logix.ModuleHandle<any>['actions'] = new Proxy(
@@ -386,7 +454,7 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
    * - A missing provider is a wiring error: fail deterministically and provide actionable hints (more details in dev/test).
    */
   const resolveModuleRuntime = (
-    tag: Context.Tag<any, Logix.ModuleRuntime<any, any>>,
+  tag: ServiceMap.Key<any, Logix.ModuleRuntime<any, any>>,
   ): Effect.Effect<Logix.ModuleRuntime<any, any>, never, any> =>
     Effect.gen(function* () {
       const requestedModuleId = typeof (tag as any)?.id === 'string' ? ((tag as any).id as string) : undefined
@@ -397,7 +465,7 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
         return runtime as unknown as Logix.ModuleRuntime<any, any>
       }
 
-      const fromImports = runtimeInternals.imports.get(tag as unknown as Context.Tag<any, any>)
+  const fromImports = runtimeInternals.imports.get(tag as unknown as ServiceMap.Key<any, any>)
       if (fromImports) {
         return fromImports as unknown as Logix.ModuleRuntime<any, any>
       }
@@ -452,44 +520,201 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
       return yield* Effect.die(err)
     })
 
-  const stateApi: BoundApi<Sh, R>['state'] = {
-    read: runtime.getState,
-    update: (f) =>
+  type BatchedStateWritebackOutcome =
+    | { readonly _tag: 'ok' }
+    | { readonly _tag: 'failure'; readonly cause: unknown }
+
+  type BatchedStateWritebackRequest =
+    | {
+        readonly kind: 'update'
+        readonly update: (prev: Logix.StateOf<Sh>) => Logix.StateOf<Sh>
+        readonly done: Deferred.Deferred<BatchedStateWritebackOutcome>
+      }
+    | {
+        readonly kind: 'mutate'
+        readonly mutate: (draft: Logic.Draft<Logix.StateOf<Sh>>) => void
+        readonly done: Deferred.Deferred<BatchedStateWritebackOutcome>
+      }
+
+  type BatchedStateWritebackCoordinator = {
+    readonly enqueueUpdate: (update: (prev: Logix.StateOf<Sh>) => Logix.StateOf<Sh>) => Effect.Effect<void, never, any>
+    readonly enqueueMutate: (mutate: (draft: Logic.Draft<Logix.StateOf<Sh>>) => void) => Effect.Effect<void, never, any>
+  }
+
+  // Perf-first batching for `$.state.update/$.state.mutate` called *outside* a transaction:
+  // - Many watchers may write back on the same tick; running N transactions is dominated by fixed txn cost.
+  // - Batch them into a single StateTransaction (still sequentially applies reducers), reducing queue/commit overhead.
+  //
+  // Notes:
+  // - Enabled only when runtimeInternals exists and NODE_ENV=production (perf mode).
+  // - Semantics change: multiple state writebacks may share the same txnSeq/txnId (forward-only evolution).
+  let batchedStateWritebackCoordinator: BatchedStateWritebackCoordinator | undefined
+
+  const getOrCreateBatchedStateWritebackCoordinator = (): BatchedStateWritebackCoordinator => {
+    if (batchedStateWritebackCoordinator) return batchedStateWritebackCoordinator
+    if (!runtimeInternals) {
+      throw new Error('[BatchedStateWritebackCoordinator] Missing runtimeInternals (expected in ModuleRuntime-backed $).')
+    }
+
+    let inFlight = false
+    const pending: Array<BatchedStateWritebackRequest> = []
+
+    const drain = (): ReadonlyArray<BatchedStateWritebackRequest> => {
+      if (pending.length === 0) return []
+      return pending.splice(0, pending.length)
+    }
+
+    const ok: BatchedStateWritebackOutcome = { _tag: 'ok' }
+    const fail = (cause: unknown): BatchedStateWritebackOutcome => ({ _tag: 'failure', cause })
+
+    const applyBatch = (batch: ReadonlyArray<BatchedStateWritebackRequest>): Effect.Effect<void, never, any> =>
       Effect.gen(function* () {
-        const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
-        if (inTxn) {
-          const prev = yield* runtime.getState
-          return yield* runtime.setState(f(prev))
-        }
+        if (batch.length === 0) return
 
-        const body = () => Effect.flatMap(runtime.getState, (prev) => runtime.setState(f(prev)))
+        let current = (yield* runtime.getState) as Logix.StateOf<Sh>
 
-        return yield* runtimeInternals
-          ? runtimeInternals.txn.runWithStateTransaction({ kind: 'state', name: 'update' } as any, body)
-          : body()
-      }),
-    mutate: (f) =>
-      Effect.gen(function* () {
-        const recordPatch = runtimeInternals?.txn.recordStatePatch
-        const updateDraft = runtimeInternals?.txn.updateDraft
+        for (let i = 0; i < batch.length; i++) {
+          const req = batch[i]!
+          if (req.kind === 'update') {
+            const next = req.update(current)
+            current = next
+            yield* runtime.setState(next)
+            continue
+          }
 
-        const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
-        if (inTxn) {
-          const prev = yield* runtime.getState
-          const { nextState, patchPaths } = mutateWithPatchPaths(prev as Logix.StateOf<Sh>, (draft) => {
-            f(draft as Logic.Draft<Logix.StateOf<Sh>>)
+          const { nextState, patchPaths } = mutateWithPatchPaths(current as Logix.StateOf<Sh>, (draft) => {
+            req.mutate(draft as Logic.Draft<Logix.StateOf<Sh>>)
           })
 
           for (const path of patchPaths) {
-            recordPatch?.(path, 'unknown')
+            runtimeInternals.txn.recordStatePatch(path, 'unknown')
           }
 
-          updateDraft?.(nextState)
-          return
+          runtimeInternals.txn.updateDraft(nextState)
+          current = nextState as Logix.StateOf<Sh>
         }
+      })
 
-        const body = () =>
-          Effect.gen(function* () {
+    const flushInFlight = (): Effect.Effect<void, never, any> =>
+      Effect.uninterruptible(
+        Effect.gen(function* () {
+          if (inFlight) return
+          inFlight = true
+          try {
+            while (true) {
+              const batch = drain()
+              if (batch.length === 0) {
+                // Release the inFlight lock, then re-check pending to avoid the "enqueue while exiting" race.
+                inFlight = false
+                if (pending.length === 0) return
+                inFlight = true
+                continue
+              }
+
+              const originName =
+                batch.length === 1 ? (batch[0]!.kind === 'update' ? 'update' : 'mutate') : 'writeback:batched'
+
+              const exit = yield* Effect.exit(
+                runtimeInternals.txn.runWithStateTransaction(
+                  {
+                    kind: 'state',
+                    name: originName,
+                    details: { batched: true, count: batch.length },
+                  } as any,
+                  () => applyBatch(batch).pipe(Effect.asVoid),
+                ),
+              )
+
+              const outcome: BatchedStateWritebackOutcome = exit._tag === 'Success' ? ok : fail(exit.cause)
+
+              for (let i = 0; i < batch.length; i++) {
+                yield* Deferred.succeed(batch[i]!.done, outcome)
+              }
+
+              // Unexpected failures are treated as fatal; unblock waiters and stop the drain loop.
+              if (outcome._tag === 'failure') {
+                return
+              }
+            }
+          } finally {
+            inFlight = false
+          }
+        }),
+      )
+
+    const waitForMicrotask = (): Effect.Effect<void, never, never> =>
+      Effect.promise(
+        () =>
+          new Promise<void>((resolve) => {
+            if (typeof queueMicrotask === 'function') {
+              queueMicrotask(resolve)
+              return
+            }
+            Promise.resolve().then(resolve)
+          }),
+      )
+
+    const enqueueAndAwait = (req: BatchedStateWritebackRequest): Effect.Effect<void, never, any> =>
+      Effect.gen(function* () {
+        pending.push(req)
+        if (!inFlight) {
+          yield* waitForMicrotask()
+        }
+        yield* flushInFlight()
+        const outcome = yield* Deferred.await(req.done)
+        if (outcome._tag === 'failure') {
+          return yield* Effect.die(outcome.cause)
+        }
+      })
+
+    const coordinator: BatchedStateWritebackCoordinator = {
+      enqueueUpdate: (update) =>
+        Effect.gen(function* () {
+          const done = yield* Deferred.make<BatchedStateWritebackOutcome>()
+          yield* enqueueAndAwait({ kind: 'update', update, done })
+        }),
+      enqueueMutate: (mutate) =>
+        Effect.gen(function* () {
+          const done = yield* Deferred.make<BatchedStateWritebackOutcome>()
+          yield* enqueueAndAwait({ kind: 'mutate', mutate, done })
+        }),
+    }
+
+    batchedStateWritebackCoordinator = coordinator
+    return coordinator
+  }
+
+  const stateApi: BoundApi<Sh, R>['state'] = {
+    read: runtime.getState,
+    update: (f) =>
+      markDirectStateWriteEffect<Sh, Effect.Effect<void, never, any>>(
+        Effect.gen(function* () {
+          const inTxn = yield* Effect.service(TaskRunner.inSyncTransactionFiber).pipe(Effect.orDie)
+          if (inTxn) {
+            const prev = yield* runtime.getState
+            return yield* runtime.setState(f(prev))
+          }
+
+          const body = () => Effect.flatMap(runtime.getState, (prev) => runtime.setState(f(prev)))
+
+          if (runtimeInternals && !isDevEnv()) {
+            return yield* getOrCreateBatchedStateWritebackCoordinator().enqueueUpdate(f as any)
+          }
+
+          return yield* runtimeInternals
+            ? runtimeInternals.txn.runWithStateTransaction({ kind: 'state', name: 'update' } as any, body)
+            : body()
+        }),
+        { kind: 'update', run: f as any },
+      ),
+    mutate: (f) =>
+      markDirectStateWriteEffect<Sh, Effect.Effect<void, never, any>>(
+        Effect.gen(function* () {
+          const recordPatch = runtimeInternals?.txn.recordStatePatch
+          const updateDraft = runtimeInternals?.txn.updateDraft
+
+          const inTxn = yield* Effect.service(TaskRunner.inSyncTransactionFiber).pipe(Effect.orDie)
+          if (inTxn) {
             const prev = yield* runtime.getState
             const { nextState, patchPaths } = mutateWithPatchPaths(prev as Logix.StateOf<Sh>, (draft) => {
               f(draft as Logic.Draft<Logix.StateOf<Sh>>)
@@ -500,74 +725,78 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
             }
 
             updateDraft?.(nextState)
-          })
+            return
+          }
 
-        return yield* runtimeInternals
-          ? runtimeInternals.txn.runWithStateTransaction({ kind: 'state', name: 'mutate' } as any, body)
-          : body()
-      }),
+          const body = () =>
+            Effect.gen(function* () {
+              const prev = yield* runtime.getState
+              const { nextState, patchPaths } = mutateWithPatchPaths(prev as Logix.StateOf<Sh>, (draft) => {
+                f(draft as Logic.Draft<Logix.StateOf<Sh>>)
+              })
+
+              for (const path of patchPaths) {
+                recordPatch?.(path, 'unknown')
+              }
+
+              updateDraft?.(nextState)
+            })
+
+          if (runtimeInternals && !isDevEnv()) {
+            return yield* getOrCreateBatchedStateWritebackCoordinator().enqueueMutate(f as any)
+          }
+
+          return yield* runtimeInternals
+            ? runtimeInternals.txn.runWithStateTransaction({ kind: 'state', name: 'mutate' } as any, body)
+            : body()
+        }),
+        { kind: 'mutate', run: f as any },
+      ),
     ref: runtime.ref,
   }
 
+
   const actions = shape.actionMap as BoundApi<Sh, R>['actions']
 
-  const actionCache = new WeakMap<Action.AnyActionToken, (...args: any[]) => Effect.Effect<void, any, any>>()
+  const dispatcherCache = new Map<string, (...args: any[]) => Effect.Effect<void, any, any>>()
 
-  const dispatchActionIntent = (intent: Action.ActionIntent<Logix.ActionOf<Sh>>): Logix.DispatchEffect<Sh, R> =>
-    Effect.locally(currentTxnOriginOverride, {
-      kind: 'action-intent',
-      name: intent.source.entry,
-      details: {
-        actionIntent: true,
-        entry: intent.source.entry,
-        input: intent.source.input,
-        actionTag: intent.actionTag,
-      },
-    })(runtime.dispatch(intent.action as Logix.ActionOf<Sh>)) as Logix.DispatchEffect<Sh, R>
+  const hasAction = (key: string): boolean => Object.prototype.hasOwnProperty.call(actions as any, key)
 
-  const dispatchers = Object.freeze(
-    Object.fromEntries(
-      Object.entries(actions as Record<string, Action.AnyActionToken>).map(([key, token]) => [
-        key,
-        (...args: any[]) =>
-          dispatchActionIntent(Action.intentFromToken(token as any, args as any, 'dispatchers') as Action.ActionIntent<
-            Logix.ActionOf<Sh>
-          >),
-      ]),
-    ),
-  ) as unknown as BoundApi<Sh, R>['dispatchers']
+  const dispatchers: BoundApi<Sh, R>['dispatchers'] = new Proxy({} as any, {
+    get: (_target, prop) => {
+      if (typeof prop !== 'string') return undefined
+      if (!hasAction(prop)) return undefined
 
-  const action: BoundApi<Sh, R>['action'] = ((token: Action.AnyActionToken) => {
-    const cached = actionCache.get(token)
-    if (cached) {
-      return cached as any
-    }
+      const cached = dispatcherCache.get(prop)
+      if (cached) return cached
 
-    const run = (...args: any[]) =>
-      dispatchActionIntent(Action.intentFromToken(token as any, args as any, 'action') as Action.ActionIntent<Logix.ActionOf<Sh>>)
+      const token = (actions as any)[prop] as Action.AnyActionToken
+      const fn = (...args: any[]) => runtime.dispatch((token as any)(...args))
 
-    actionCache.set(token, run)
-    return run as any
-  }) as BoundApi<Sh, R>['action']
+      dispatcherCache.set(prop, fn)
+      return fn
+    },
+    has: (_target, prop) => typeof prop === 'string' && hasAction(prop),
+    ownKeys: () => Object.keys(actions as any),
+    getOwnPropertyDescriptor: (_target, prop) => {
+      if (typeof prop !== 'string') return undefined
+      if (!hasAction(prop)) return undefined
+      return { enumerable: true, configurable: true }
+    },
+  }) as unknown as BoundApi<Sh, R>['dispatchers']
 
   const dispatch: BoundApi<Sh, R>['dispatch'] = (...args: any[]) => {
     const [first, second] = args
 
     if (typeof first === 'string') {
-      return dispatchActionIntent(
-        Action.intentFromType<Logix.ActionOf<Sh>>(first, second, 'dispatch') as Action.ActionIntent<Logix.ActionOf<Sh>>,
-      )
+      return runtime.dispatch({ _tag: first, payload: second } as Logix.ActionOf<Sh>)
     }
 
     if (Action.isActionToken(first)) {
-      return dispatchActionIntent(
-        Action.intentFromToken(first as any, [second] as any, 'dispatch') as Action.ActionIntent<Logix.ActionOf<Sh>>,
-      )
+      return runtime.dispatch((first as any)(second))
     }
 
-    return dispatchActionIntent(
-      Action.intentFromValue(first as Logix.ActionOf<Sh>, 'dispatch') as Action.ActionIntent<Logix.ActionOf<Sh>>,
-    )
+    return runtime.dispatch(first as Logix.ActionOf<Sh>)
   }
 
   const matchApi = <V>(value: V): Logic.FluentMatch<V> => MatchBuilder.makeMatch(value)
@@ -585,7 +814,7 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
   const effect: BoundApi<Sh, R>['effect'] = (token, handler) =>
     Effect.gen(function* () {
       if (!Action.isActionToken(token)) {
-        return yield* Effect.dieMessage('[BoundApi.effect] token must be an ActionToken')
+        return yield* Effect.die(new Error('[BoundApi.effect] token must be an ActionToken'))
       }
 
       const phase = getCurrentPhase()
@@ -620,7 +849,6 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
     state: stateApi,
     actions,
     dispatchers,
-    action,
     dispatch,
     flow: flowApi,
     match: matchApi,
@@ -735,12 +963,12 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
 
             const force = options?.force === true
             const runHandler = (state: Logix.StateOf<Sh>) =>
-              force ? Effect.locally(TaskRunner.forceSourceRefresh, true)(handler(state)) : handler(state)
+              force ? Effect.provideService(handler(state), TaskRunner.forceSourceRefresh, true) : handler(state)
 
             // Never call enqueueTransaction inside the transaction window (it can deadlock):
             // - Run the handler inside the current transaction so it writes to the draft via bound.state.mutate.
             // - The outer transaction window is responsible for commit + debug aggregation.
-            const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
+            const inTxn = yield* Effect.service(TaskRunner.inSyncTransactionFiber).pipe(Effect.orDie)
             if (inTxn) {
               const state = (yield* runtime.getState) as Logix.StateOf<Sh>
               return yield* runHandler(state)
@@ -768,7 +996,7 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
         guardRunOnly('use_in_setup', '$.use')
         if (isModuleLike(arg)) {
           const domain = arg
-          const tag = domain.tag as unknown as Context.Tag<any, Logix.ModuleRuntime<any, any>>
+          const tag = domain.tag as unknown as ServiceMap.Key<any, Logix.ModuleRuntime<any, any>>
 
           const resolveAndBuild = resolveModuleRuntime(tag).pipe(Effect.map((rt) => buildModuleHandle(tag, rt)))
 
@@ -777,9 +1005,10 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
             Effect.map((rt) => buildModuleHandle(tag, rt)),
           )
 
-          const detectAndSelect = FiberRef.get(Debug.currentDiagnosticsLevel).pipe(
-            Effect.tap((level) => {
+          const detectAndSelect = Effect.service(Debug.currentDiagnosticsLevel).pipe(
+            Effect.map((level) => {
               cachedDiagnosticsLevel = level
+              return level
             }),
             Effect.flatMap((level) => (level === 'off' ? resolveAndBuild : resolveWithDescriptor)),
           )
@@ -798,7 +1027,7 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
             return detectAndSelect
           }) as unknown as Logic.Of<Sh, R, any, never>
         }
-        if (Context.isTag(arg)) {
+        if (ServiceMap.isKey(arg)) {
           const candidate = arg as { _kind?: unknown }
 
           // Module: return a read-only ModuleHandle view.
@@ -809,7 +1038,7 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
           }
 
           // Regular service tag: read the service from Env.
-          return arg as unknown as Logic.Of<Sh, R, any, never>
+          return Effect.service(arg as ServiceMap.Key<any, any>).pipe(Effect.orDie) as unknown as Logic.Of<Sh, R, any, never>
         }
         return Effect.die('BoundApi.use: unsupported argument') as unknown as Logic.Of<Sh, R, any, never>
       },
@@ -822,6 +1051,21 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
           const tag = arg.tag
           return createIntentBuilder(actionStreamByTag(tag).pipe(Stream.map((action: any) => action.payload)), tag)
         }
+        if (Schema.isSchema(arg)) {
+          const decode = Schema.decodeUnknownSync(arg as any)
+          return createIntentBuilder(
+            runtime.actions$.pipe(
+              Stream.filter((a: any) => {
+                try {
+                  decode(a)
+                  return true
+                } catch {
+                  return false
+                }
+              }),
+            ),
+          )
+        }
         if (typeof arg === 'function') {
           return createIntentBuilder(runtime.actions$.pipe(Stream.filter(arg)))
         }
@@ -832,16 +1076,6 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
           if ('_tag' in arg) {
             const tag = String((arg as any)._tag)
             return createIntentBuilder(actionStreamByTag(tag), tag)
-          }
-          if (Schema.isSchema(arg)) {
-            return createIntentBuilder(
-              runtime.actions$.pipe(
-                Stream.filter((a: any) => {
-                  const result = Schema.decodeUnknownSync(arg as Schema.Schema<any, any, never>)(a)
-                  return !!result
-                }),
-              ),
-            )
           }
         }
         return createIntentBuilder(runtime.actions$)

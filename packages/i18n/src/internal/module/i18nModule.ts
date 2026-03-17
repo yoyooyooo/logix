@@ -23,7 +23,7 @@ const I18nModuleLogic = I18nModuleDef.logic(($) => ({
   run: Effect.gen(function* () {
     const i18n = yield* $.root.resolve(I18nTag)
 
-    yield* $.on(i18n.snapshot.changes).runFork((snap) =>
+    yield* $.on(SubscriptionRef.changes(i18n.snapshot)).runFork((snap) =>
       $.state.mutate((draft) => {
         ;(draft as any).snapshot = snap
       }),

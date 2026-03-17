@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Schema } from 'effect'
 import * as Logix from '../../../../src/index.js'
@@ -14,16 +14,16 @@ const computeValue = (a: number, offset: number): number => {
 const waitUntil = (cond: Effect.Effect<boolean>): Effect.Effect<void> =>
   Effect.gen(function* () {
     while (!(yield* cond)) {
-      yield* Effect.yieldNow()
+      yield* Effect.yieldNow
     }
   })
 
 describe('ModuleRuntime time-slicing (lanes enabled)', () => {
-  it.scoped('deferred flush should not block an urgent transaction when txnLanes is enabled', () =>
+  it.effect('deferred flush should not block an urgent transaction when txnLanes is enabled', () =>
     Effect.gen(function* () {
       const DEFERRED = 512
 
-      const fields: Record<string, Schema.Schema.Any> = {
+      const fields: Record<string, Schema.Top> = {
         a: Schema.Number,
         b: Schema.Number,
       }
@@ -84,7 +84,7 @@ describe('ModuleRuntime time-slicing (lanes enabled)', () => {
       yield* Effect.promise(() =>
         runtime.runPromise(
           Effect.gen(function* () {
-            const rt: any = yield* M.tag
+            const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
             yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 't1' }, () =>
               Effect.gen(function* () {

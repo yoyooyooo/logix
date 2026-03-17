@@ -58,7 +58,8 @@ export const makeFormModule = (options?: {
                   indicesByValue.set(v, bucket)
                 }
 
-                const rowErrors: Array<Record<string, unknown> | undefined> = items.map(() => undefined)
+                // Sparse array: avoid per-row callback overhead on large lists.
+                const rowErrors: Array<Record<string, unknown> | undefined> = new Array(items.length)
                 for (const dupIndices of indicesByValue.values()) {
                   if (dupIndices.length <= 1) continue
                   for (const i of dupIndices) {

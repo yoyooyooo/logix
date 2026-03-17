@@ -21,6 +21,7 @@ export interface ModuleCacheLoadOptions {
   readonly policyMode?: ModuleCachePolicyMode
   readonly yield?: YieldPolicy
   readonly warnSyncBlockingThresholdMs?: number
+  readonly optimisticSyncBudgetMs?: number
 }
 
 export interface ModuleCachePreloadOptions extends ModuleCacheLoadOptions {
@@ -29,10 +30,10 @@ export interface ModuleCachePreloadOptions extends ModuleCacheLoadOptions {
 }
 
 interface ResourceEntry {
-  scope: Scope.CloseableScope
+  scope: Scope.Closeable
   status: 'pending' | 'success' | 'error'
   promise: Promise<ModuleRuntimeLike>
-  fiber?: Fiber.RuntimeFiber<ModuleRuntimeLike, unknown>
+  fiber?: Fiber.Fiber<ModuleRuntimeLike, unknown>
   value?: ModuleRuntimeLike
   error?: unknown
   refCount: number
@@ -88,9 +89,9 @@ const debugBestEffortFailure = (label: string, error: unknown): void => {
 }
 
 const causeToUnknown = (cause: Cause.Cause<unknown>): unknown => {
-  const failure = Option.getOrUndefined(Cause.failureOption(cause))
+  const failure = Option.getOrUndefined(Cause.findErrorOption(cause))
   if (failure !== undefined) return failure
-  const defect = Option.getOrUndefined(Cause.dieOption(cause))
+  const defect = cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)[0]
   if (defect !== undefined) return defect
   return cause
 }
@@ -100,7 +101,7 @@ const yieldEffect = (strategy: YieldStrategy): Effect.Effect<void> => {
     case 'none':
       return Effect.void
     case 'microtask':
-      return Effect.yieldNow()
+      return Effect.yieldNow
     case 'macrotask':
       return Effect.promise(
         () =>
@@ -262,10 +263,82 @@ export class ModuleCache {
     // - Does not depend on React Runtime Env.
     // - Uses the global default Runtime, avoiding early ManagedRuntime.runSync in suspend:true scenarios
     //   (may encounter async Layer building).
-    const scope = Effect.runSync(Scope.make()) as Scope.CloseableScope
+    const scope = Effect.runSync(Scope.make()) as Scope.Closeable
 
     const workloadKey = `${options?.entrypoint ?? 'unknown'}::${ownerId ?? 'unknown'}`
     const yieldDecision = decideYieldStrategy(this.runtime as unknown as object, workloadKey, options?.yield)
+    const optimisticSyncBudgetMs = options?.optimisticSyncBudgetMs ?? 0
+    const shouldTryOptimisticSync = options?.policyMode === 'suspend' && optimisticSyncBudgetMs > 0
+
+    if (shouldTryOptimisticSync) {
+      const startedAt = performance.now()
+      try {
+        const value = this.runtime.runSync(factory(scope)) as A
+        const durationMs = performance.now() - startedAt
+        YieldBudgetMemory.record({ runtime: this.runtime as unknown as object, workloadKey, durationMs })
+
+        const entry: ResourceEntry = {
+          scope,
+          status: 'success',
+          promise: Promise.resolve(value),
+          value,
+          refCount: 0,
+          preloadRefCount: 0,
+          gcTime: gcTime ?? this.gcDelayMs,
+          ownerId,
+          createdBy: 'read',
+          workloadKey,
+          yieldStrategy: 'none',
+        }
+
+        this.scheduleGC(key, entry)
+        this.entries.set(key, entry)
+
+        if (isDevEnv() || Logix.Debug.isDevtoolsEnabled()) {
+          void this.runtime
+            .runPromise(
+              Logix.Debug.record({
+                type: 'trace:react.module.init',
+                moduleId: ownerId,
+                instanceId: value.instanceId,
+                data: {
+                  mode: 'suspend',
+                  key,
+                  durationMs: Math.round(durationMs * 100) / 100,
+                  yieldStrategy: 'none',
+                  fastPath: 'sync',
+                },
+              }) as unknown as Effect.Effect<void, never, never>,
+            )
+            .catch((error) => {
+              debugBestEffortFailure('[ModuleCache] Debug.record failed', error)
+            })
+
+          void this.runtime
+            .runPromise(
+              Logix.Debug.record({
+                type: 'trace:react.module-instance',
+                moduleId: ownerId,
+                instanceId: value.instanceId,
+                data: {
+                  event: 'attach',
+                  key,
+                  mode: 'suspend',
+                  gcTime: entry.gcTime,
+                  fastPath: 'sync',
+                },
+              }) as unknown as Effect.Effect<void, never, never>,
+            )
+            .catch((error) => {
+              debugBestEffortFailure('[ModuleCache] Debug.record failed', error)
+            })
+        }
+
+        return value
+      } catch {
+        // Fall through to the async Suspense path.
+      }
+    }
 
     const entry: ResourceEntry = {
       scope,
@@ -287,9 +360,9 @@ export class ModuleCache {
 
     const startedAt = performance.now()
 
-    const buildEffect = yieldEffect(yieldDecision.strategy).pipe(Effect.zipRight(factory(scope)))
+    const buildEffect = yieldEffect(yieldDecision.strategy).pipe(Effect.flatMap(() => factory(scope)))
 
-    const fiber = this.runtime.runFork(buildEffect) as Fiber.RuntimeFiber<ModuleRuntimeLike, unknown>
+    const fiber = this.runtime.runFork(buildEffect) as Fiber.Fiber<ModuleRuntimeLike, unknown>
     entry.fiber = fiber
 
     const promise: Promise<A> = this.runtime.runPromise(Fiber.await(fiber)).then((exit) => {
@@ -439,7 +512,7 @@ export class ModuleCache {
       return existing.value as A
     }
 
-    const scope = this.runtime.runSync(Scope.make()) as Scope.CloseableScope
+    const scope = this.runtime.runSync(Scope.make()) as Scope.Closeable
 
     const startedAt = performance.now()
 
@@ -570,6 +643,63 @@ export class ModuleCache {
     }
   }
 
+  warmSync<A extends ModuleRuntimeLike>(
+    key: ResourceKey,
+    factory: ModuleCacheFactory<A>,
+    gcTime?: number,
+    ownerId?: string,
+    options?: ModuleCacheLoadOptions,
+  ): A | undefined {
+    const existing = this.entries.get(key)
+
+    if (existing) {
+      if (isDevEnv() && existing.ownerId !== undefined && ownerId !== undefined && existing.ownerId !== ownerId) {
+        throw new Error(
+          `[ModuleCache.warmSync] resource key "${key}" has already been claimed by module "${existing.ownerId}", ` +
+            `but is now requested by module "${ownerId}".`,
+        )
+      }
+
+      if (existing.status === 'success') {
+        return existing.value as A
+      }
+      return undefined
+    }
+
+    const scope = this.runtime.runSync(Scope.make()) as Scope.Closeable
+    const startedAt = performance.now()
+    const workloadKey = `${options?.entrypoint ?? 'unknown'}::${ownerId ?? 'unknown'}`
+
+    try {
+      const value = this.runtime.runSync(factory(scope)) as A
+      const durationMs = performance.now() - startedAt
+      YieldBudgetMemory.record({ runtime: this.runtime as unknown as object, workloadKey, durationMs })
+
+      const entry: ResourceEntry = {
+        scope,
+        status: 'success',
+        promise: Promise.resolve(value),
+        value,
+        refCount: 0,
+        preloadRefCount: 0,
+        gcTime: gcTime ?? this.gcDelayMs,
+        ownerId,
+        createdBy: 'preload',
+        workloadKey,
+        yieldStrategy: 'none',
+      }
+
+      this.scheduleGC(key, entry)
+      this.entries.set(key, entry)
+      return value
+    } catch (error) {
+      void this.runtime.runPromise(Scope.close(scope, Exit.fail(error as unknown))).catch((closeError) => {
+        debugBestEffortFailure('[ModuleCache] Scope.close failed', closeError)
+      })
+      return undefined
+    }
+  }
+
   preload<A extends ModuleRuntimeLike>(
     key: ResourceKey,
     factory: ModuleCacheFactory<A>,
@@ -598,12 +728,49 @@ export class ModuleCache {
       }
     }
 
-    const scope = Effect.runSync(Scope.make()) as Scope.CloseableScope
+    const scope = Effect.runSync(Scope.make()) as Scope.Closeable
 
     const ownerId = options?.ownerId
     const gcTime = options?.gcTime ?? this.gcDelayMs
     const workloadKey = `${options?.entrypoint ?? 'unknown'}::${ownerId ?? 'unknown'}`
     const yieldDecision = decideYieldStrategy(this.runtime as unknown as object, workloadKey, options?.yield)
+    const optimisticSyncBudgetMs = options?.optimisticSyncBudgetMs ?? 0
+    const shouldTryOptimisticSync = options?.policyMode === 'defer' && optimisticSyncBudgetMs > 0
+
+    if (shouldTryOptimisticSync) {
+      const startedAt = performance.now()
+      try {
+        const value = this.runtime.runSync(factory(scope)) as A
+        const durationMs = performance.now() - startedAt
+        YieldBudgetMemory.record({ runtime: this.runtime as unknown as object, workloadKey, durationMs })
+
+        const entry: ResourceEntry = {
+          scope,
+          status: 'success',
+          promise: Promise.resolve(value),
+          value,
+          refCount: 0,
+          preloadRefCount: 1,
+          gcTime,
+          ownerId,
+          createdBy: 'preload',
+          workloadKey,
+          yieldStrategy: 'none',
+        }
+
+        this.scheduleGC(key, entry)
+        this.entries.set(key, entry)
+
+        return {
+          promise: Promise.resolve(value),
+          cancel: () => {
+            this.cancelPreload(key, entry)
+          },
+        }
+      } catch {
+        // Fall through to async preload.
+      }
+    }
 
     const entry: ResourceEntry = {
       scope,
@@ -622,9 +789,9 @@ export class ModuleCache {
     this.entries.set(key, entry)
 
     const startedAt = performance.now()
-    const buildEffect = yieldEffect(yieldDecision.strategy).pipe(Effect.zipRight(factory(scope)))
+    const buildEffect = yieldEffect(yieldDecision.strategy).pipe(Effect.flatMap(() => factory(scope)))
 
-    const fiber = this.runtime.runFork(buildEffect) as Fiber.RuntimeFiber<ModuleRuntimeLike, unknown>
+    const fiber = this.runtime.runFork(buildEffect) as Fiber.Fiber<ModuleRuntimeLike, unknown>
     entry.fiber = fiber
 
     const promise: Promise<A> = this.runtime.runPromise(Fiber.await(fiber)).then((exit) => {

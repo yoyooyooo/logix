@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@effect/vitest'
-import { Effect, Schema } from 'effect'
+import { Effect, Fiber, Schema, Stream } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('StateTrait converge time-slicing (043)', () => {
@@ -39,7 +39,7 @@ describe('StateTrait converge time-slicing (043)', () => {
     logics: [],
   })
 
-  it.scoped('skips deferred converge in the current txn, then flushes later', () =>
+  it.effect('skips deferred converge in the current txn, then flushes later', () =>
     Effect.gen(function* () {
       const runtime = Logix.Runtime.make(impl, {
         stateTransaction: {
@@ -54,7 +54,16 @@ describe('StateTrait converge time-slicing (043)', () => {
       yield* Effect.promise(() =>
         runtime.runPromise(
           Effect.gen(function* () {
-            const rt: any = yield* M.tag
+            const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
+            const commitsFiber = yield* Effect.forkChild(
+              Stream.runCollect(Stream.take(rt.changesWithMeta((s: any) => s), 2)),
+            )
+            yield* Effect.promise(
+              () =>
+                new Promise<void>((resolve) => {
+                  setTimeout(resolve, 10)
+                }),
+            )
 
             yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 't1' }, () =>
               Effect.gen(function* () {
@@ -65,9 +74,13 @@ describe('StateTrait converge time-slicing (043)', () => {
             )
 
             const afterTxn = yield* rt.getState
-            expect(afterTxn).toMatchObject({ a: 1, immediateA: 2, deferredA: 100, deferredFromImmediateA: 1001 })
+            expect(afterTxn).toMatchObject({ a: 1, immediateA: 2 })
 
             yield* Effect.sleep('80 millis')
+            const commits = Array.from((yield* Fiber.join(commitsFiber)) as Iterable<any>)
+            expect(commits.length).toBe(2)
+            expect(commits[0]?.value).toMatchObject({ a: 1, immediateA: 2, deferredA: 100, deferredFromImmediateA: 1001 })
+            expect(commits[1]?.value).toMatchObject({ a: 1, immediateA: 2, deferredA: 101, deferredFromImmediateA: 1002 })
 
             const afterFlush = yield* rt.getState
             expect(afterFlush).toMatchObject({ a: 1, immediateA: 2, deferredA: 101, deferredFromImmediateA: 1002 })
@@ -77,7 +90,7 @@ describe('StateTrait converge time-slicing (043)', () => {
     }),
   )
 
-  it.scoped('maxLagMs forces a flush even if debounceMs is large', () =>
+  it.effect('maxLagMs forces a flush even if debounceMs is large', () =>
     Effect.gen(function* () {
       const runtime = Logix.Runtime.make(impl, {
         stateTransaction: {
@@ -92,7 +105,7 @@ describe('StateTrait converge time-slicing (043)', () => {
       yield* Effect.promise(() =>
         runtime.runPromise(
           Effect.gen(function* () {
-            const rt: any = yield* M.tag
+            const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
             yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 't1' }, () =>
               Effect.gen(function* () {

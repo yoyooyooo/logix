@@ -1,15 +1,15 @@
 import { PgClient } from '@effect/sql-pg'
-import * as Reactivity from '@effect/experimental/Reactivity'
-import { Config, Effect, Layer, Option, Redacted, Scope } from 'effect'
+import * as Reactivity from 'effect/unstable/reactivity/Reactivity'
+import { Effect, Layer, Option, Redacted, Scope } from 'effect'
 
 import { Db, DbError, type DbService } from './db.js'
 
-export const DbLive: Layer.Layer<Db, never, never> = Layer.scoped(
+const databaseUrl = Effect.sync(() => process.env.DATABASE_URL)
+
+export const DbLive: Layer.Layer<Db, never, never> = Layer.effect(
   Db,
   Effect.gen(function* () {
-    const urlOpt = yield* Config.option(Config.string('DATABASE_URL')).pipe(
-      Effect.catchAll(() => Effect.succeed(Option.none())),
-    )
+    const urlOpt = Option.fromNullishOr(yield* databaseUrl)
     if (Option.isNone(urlOpt)) {
       const disabled = new DbError({
         reason: 'disabled',
@@ -31,7 +31,7 @@ export const DbLive: Layer.Layer<Db, never, never> = Layer.scoped(
         url: Redacted.make(urlOpt.value),
       }).pipe(
         Effect.provide(Reactivity.layer),
-        Scope.extend(layerScope),
+        Scope.provide(layerScope),
       ),
     )
 

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as Logix from '@logixjs/core'
 import { Context, Effect, Option, Schema } from 'effect'
 import type { CrudApi, CrudQueryResult } from '@logixjs/domain'

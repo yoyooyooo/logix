@@ -204,14 +204,9 @@ test(
           const scenario = params.scenario as string
           expect(scenario).toBe('watchers.clickToPaint')
           const instrumentation = diagnosticsLevel === 'full' ? 'full' : 'light'
-          const mode: Logix.Debug.DevtoolsProjectionMode =
-            diagnosticsLevel === 'full' ? 'full' : diagnosticsLevel === 'off' ? 'off' : 'light'
-          const debugLayer = Layer.mergeAll(
-            Logix.Debug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
-              mode,
-            }) as Layer.Layer<any, never, never>,
-            Logix.Debug.diagnosticsLevel(diagnosticsLevel),
-          ) as Layer.Layer<any, never, never>
+          const debugLayer = Logix.Debug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
+            diagnosticsLevel,
+          }) as Layer.Layer<any, never, never>
 
           const runtime = Logix.Runtime.make(impl, {
             stateTransaction: {
@@ -224,7 +219,7 @@ test(
           // Warm up: avoid triggering module assembly during React render (may introduce Suspense / unstable latency).
           await runtime.runPromise(
             Effect.gen(function* () {
-              yield* PerfModule.tag
+              yield* Effect.service(PerfModule.tag).pipe(Effect.orDie)
             }) as Effect.Effect<void, never, any>,
           )
 

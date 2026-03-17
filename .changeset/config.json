@@ -1,0 +1,29 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+  "changelog": "@changesets/cli/changelog",
+  "commit": false,
+  "fixed": [
+    [
+      "@logixjs/cli",
+      "@logixjs/core",
+      "@logixjs/core-ng",
+      "@logixjs/devtools-react",
+      "@logixjs/domain",
+      "@logixjs/form",
+      "@logixjs/i18n",
+      "@logixjs/query",
+      "@logixjs/react",
+      "@logixjs/sandbox",
+      "@logixjs/test"
+    ]
+  ],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "effect-v4",
+  "updateInternalDependencies": "patch",
+  "privatePackages": {
+    "version": false,
+    "tag": false
+  },
+  "ignore": ["@logixjs/perf-evidence", "speckit-kit"]
+}

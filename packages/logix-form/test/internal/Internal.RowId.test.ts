@@ -1,5 +1,4 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { getFieldArrayItemId, getTrackByForListPath } from '../../src/internal/form/rowid.js'
 
 const RUNTIME_INTERNALS = Symbol.for('@logixjs/core/runtimeInternals')

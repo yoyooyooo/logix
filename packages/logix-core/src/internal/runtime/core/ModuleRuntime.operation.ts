@@ -1,29 +1,34 @@
-import { Context, Effect, FiberRef, Option } from 'effect'
+import { Effect, Option } from 'effect'
 import type { StateTxnContext } from './StateTransaction.js'
 import * as Debug from './DebugSink.js'
 import * as EffectOpCore from './EffectOpCore.js'
 import * as EffectOp from '../../effect-op.js'
 import type { RunSession } from '../../observability/runSession.js'
 import { RunSessionTag } from '../../observability/runSession.js'
+import { EffectOpMiddlewareTag } from './EffectOpCore.js'
 
 export interface OperationRuntimeServices {
   readonly middlewareStack: EffectOp.MiddlewareStack
   readonly runSession: RunSession | undefined
 }
 
-export const resolveOperationRuntimeServices = (): Effect.Effect<OperationRuntimeServices, never, any> =>
-  Effect.context<any>().pipe(
-    Effect.map((context) => {
-      const middlewareOpt = Context.getOption(context, EffectOpCore.EffectOpMiddlewareTag as any) as Option.Option<{
-        readonly stack: EffectOp.MiddlewareStack
-      }>
-      const runSessionOpt = Context.getOption(context, RunSessionTag as any) as Option.Option<RunSession>
-      return {
-        middlewareStack: Option.isSome(middlewareOpt) ? middlewareOpt.value.stack : [],
-        runSession: Option.isSome(runSessionOpt) ? runSessionOpt.value : undefined,
-      }
-    }),
+const readMiddlewareEnv = (): Effect.Effect<Option.Option<EffectOpCore.EffectOpMiddlewareEnv>, never, any> =>
+  Effect.serviceOption(EffectOpMiddlewareTag as any).pipe(
+    Effect.map((option) => option as Option.Option<EffectOpCore.EffectOpMiddlewareEnv>),
   )
+
+const readRunSession = (): Effect.Effect<Option.Option<RunSession>, never, any> =>
+  Effect.serviceOption(RunSessionTag as any).pipe(Effect.map((option) => option as Option.Option<RunSession>))
+
+export const resolveOperationRuntimeServices = (): Effect.Effect<OperationRuntimeServices, never, any> =>
+  Effect.gen(function* () {
+    const middlewareOpt = yield* readMiddlewareEnv()
+    const runSessionOpt = yield* readRunSession()
+    return {
+      middlewareStack: Option.isSome(middlewareOpt) ? middlewareOpt.value.stack : [],
+      runSession: Option.isSome(runSessionOpt) ? runSessionOpt.value : undefined,
+    }
+  })
 
 export const getMiddlewareStack = (): Effect.Effect<EffectOp.MiddlewareStack, never, any> =>
   resolveOperationRuntimeServices().pipe(Effect.map((runtimeServices) => runtimeServices.middlewareStack))
@@ -60,9 +65,10 @@ export type RunOperation = <A, E, R>(
 export const makeRunOperation = (args: {
   readonly optionsModuleId: string | undefined
   readonly instanceId: string
+  readonly runtimeLabel: string | undefined
   readonly txnContext: StateTxnContext<any>
 }): RunOperation => {
-  const { optionsModuleId, instanceId, txnContext } = args
+  const { optionsModuleId, instanceId, runtimeLabel, txnContext } = args
 
   const runOperation: RunOperation = <A2, E2, R2>(
     kind: EffectOp.EffectOp['kind'],
@@ -74,11 +80,8 @@ export const makeRunOperation = (args: {
     eff: Effect.Effect<A2, E2, R2>,
   ): Effect.Effect<A2, E2, R2> =>
     Effect.gen(function* () {
-      const [{ middlewareStack, runSession }, existingLinkId, runtimeLabel] = yield* Effect.all([
-        resolveOperationRuntimeServices(),
-        FiberRef.get(EffectOpCore.currentLinkId),
-        FiberRef.get(Debug.currentRuntimeLabel),
-      ])
+      const { middlewareStack, runSession } = yield* resolveOperationRuntimeServices()
+      const existingLinkId = yield* Effect.service(EffectOpCore.currentLinkId).pipe(Effect.orDie)
 
       const currentTxnId = txnContext.current?.txnId
 
@@ -112,10 +115,7 @@ export const makeRunOperation = (args: {
       const program = middlewareStack.length ? EffectOp.run(op, middlewareStack) : op.effect
 
       // linkId: created at the boundary, reused for nested ops (shared across modules via a FiberRef).
-      return yield* Effect.locally(
-        EffectOpCore.currentLinkId,
-        linkId,
-      )(Effect.locally(Debug.currentOpSeq, opSeq)(program))
+      return yield* Effect.provideService(Effect.provideService(program, Debug.currentOpSeq, opSeq), EffectOpCore.currentLinkId, linkId)
     })
 
   return runOperation

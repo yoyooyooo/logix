@@ -10,7 +10,7 @@
  *   pnpm -C examples/logix exec tsx src/scenarios/cross-module-link.ts
  */
 
-import { Effect, Schema, Stream } from 'effect'
+import { Effect, Option, Schema, Stream } from 'effect'
 import * as Logix from '@logixjs/core'
 
 // ---------------------------------------------------------------------------
@@ -32,9 +32,7 @@ const RegionDef = Logix.Module.make('RegionModule', {
 
 const RegionLogic = RegionDef.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction('region/select').run({
-      effect: (action: any) => $.state.update((s) => ({ ...s, province: action.payload })),
-    })
+    yield* $.onAction('region/select').run((action) => $.state.update((s) => ({ ...s, province: action.payload })))
   }),
 )
 
@@ -60,12 +58,8 @@ const CartDef = Logix.Module.make('CartModule', {
 const CartLogic = CartDef.logic(($) =>
   Effect.gen(function* () {
     yield* Effect.all([
-      $.onAction('cart/addShippingFee').run({
-        effect: (action: any) => $.state.update((s) => ({ ...s, shippingFee: action.payload })),
-      }),
-      $.onAction('cart/resetShippingFee').run({
-        effect: () => $.state.update((s) => ({ ...s, shippingFee: 0 })),
-      }),
+      $.onAction('cart/addShippingFee').run((action) => $.state.update((s) => ({ ...s, shippingFee: action.payload }))),
+      $.onAction('cart/resetShippingFee').run(() => $.state.update((s) => ({ ...s, shippingFee: 0 }))),
     ])
   }),
 )
@@ -128,13 +122,14 @@ const waitShippingFee = (cart: any, expected: number) =>
   cart
     .changes((s: any) => s.shippingFee as number)
     .pipe(
-      Stream.filter((fee: number) => fee === expected),
-      Stream.take(1),
-      Stream.runDrain,
-      Effect.timeoutFail({
-        duration: '2 seconds',
-        onTimeout: () => new Error(`[cross-module-link] timeout waiting shippingFee=${expected}`),
-      }),
+      Stream.filter((fee: any) => fee === expected),
+      Stream.runHead,
+      Effect.timeoutOption('2 seconds'),
+      Effect.flatMap((maybe: Option.Option<unknown>) =>
+        Option.isSome(maybe)
+          ? Effect.void
+          : Effect.die(new Error(`[cross-module-link] timeout waiting shippingFee=${expected}`)),
+      ),
     )
 
 const main = Effect.gen(function* () {
@@ -142,8 +137,8 @@ const main = Effect.gen(function* () {
     yield* Effect.promise(() =>
       runtime.runPromise(
         Effect.gen(function* () {
-          const region: any = yield* RegionDef.tag
-          const cart: any = yield* CartDef.tag
+          const region: any = yield* Effect.service(RegionDef.tag).pipe(Effect.orDie)
+          const cart: any = yield* Effect.service(CartDef.tag).pipe(Effect.orDie)
 
           yield* region.dispatch({
             _tag: 'region/select',

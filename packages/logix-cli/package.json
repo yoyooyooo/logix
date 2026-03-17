@@ -1,22 +1,50 @@
 {
   "name": "@logixjs/cli",
-  "version": "0.0.1",
+  "version": "1.0.2-beta.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yoyooyooo/logix",
+    "directory": "packages/logix-cli"
+  },
   "license": "Apache-2.0",
   "description": "Node-only Logix CLI toolbox (IR export / trialrun / gates)",
   "type": "module",
   "bin": {
-    "logix": "bin/logix.mjs",
-    "logix-devserver": "bin/logix-devserver.mjs"
+    "logix": "dist/bin/logix.js",
+    "logix-devserver": "dist/bin/logix-devserver.js"
   },
   "files": [
-    "dist/**",
-    "bin/**"
+    "dist/**"
   ],
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
     "./Commands": "./src/Commands.ts",
     "./internal/*": null
+  },
+  "publishConfig": {
+    "access": "public",
+    "bin": {
+      "logix": "dist/bin/logix.js",
+      "logix-devserver": "dist/bin/logix-devserver.js"
+    },
+    "exports": {
+      "./package.json": "./package.json",
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
+      },
+      "./Commands": {
+        "types": "./dist/Commands.d.ts",
+        "import": "./dist/Commands.js",
+        "require": "./dist/Commands.cjs"
+      },
+      "./internal/*": null
+    },
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts"
   },
   "scripts": {
     "build": "tsup",
@@ -29,10 +57,9 @@
     "measure:startup:ci": "node ./scripts/measure-startup.mjs --samples 11 --warmup 2 --thresholdMs 500 --jsonOut ./perf/startup.report.json"
   },
   "dependencies": {
-    "@effect/cli": "0.73.1",
-    "@effect/platform-node": "0.104.0",
+    "@effect/platform-node": "4.0.0-beta.28",
     "@logixjs/core": "workspace:*",
-    "effect": "^3.19.13",
+    "effect": "4.0.0-beta.28",
     "happy-dom": "^20.0.11",
     "ts-morph": "^25.0.0",
     "tsx": "^4.20.6",
@@ -47,6 +74,6 @@
   },
   "peerDependencies": {
     "@logixjs/core": "workspace:*",
-    "effect": "^3.19.13"
+    "effect": "4.0.0-beta.28"
   }
 }

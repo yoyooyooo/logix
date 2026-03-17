@@ -4,7 +4,7 @@ import * as Logix from '../../src/index.js'
 import * as Debug from '../../src/Debug.js'
 
 describe('StateTrait converge auto deterministic ids', () => {
-  it.scoped('uses stable instanceId/txnSeq/opSeq anchors (no random/time defaults)', () =>
+  it.effect('uses stable instanceId/txnSeq/opSeq anchors (no random/time defaults)', () =>
     Effect.gen(function* () {
       const State = Schema.Struct({
         a: Schema.Number,
@@ -53,7 +53,7 @@ describe('StateTrait converge auto deterministic ids', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt: any = yield* M.tag
+        const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
         yield* rt.dispatch({ _tag: 'incA', payload: undefined } as any)
       })
@@ -98,7 +98,7 @@ describe('StateTrait converge auto deterministic ids', () => {
     }),
   )
 
-  it.scoped('staticIrDigest is stable across independent runs (same converge shape)', () =>
+  it.effect('staticIrDigest is stable across independent runs (same converge shape)', () =>
     Effect.gen(function* () {
       const State = Schema.Struct({
         a: Schema.Number,
@@ -144,7 +144,7 @@ describe('StateTrait converge auto deterministic ids', () => {
 
           const layer = Debug.devtoolsHubLayer({
             bufferSize: 256,
-            mode: 'full',
+            diagnosticsLevel: 'full',
           }) as Layer.Layer<any, never, never>
 
           const runtime = Logix.Runtime.make(impl, {
@@ -153,7 +153,7 @@ describe('StateTrait converge auto deterministic ids', () => {
           })
 
           const program = Effect.gen(function* () {
-            const rt: any = yield* M.tag
+            const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
             yield* rt.dispatch({ _tag: 'incA', payload: undefined } as any)
           })

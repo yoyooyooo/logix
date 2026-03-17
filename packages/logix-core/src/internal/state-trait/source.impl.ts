@@ -1,4 +1,4 @@
-import { Effect, Fiber, FiberRef, Option } from 'effect'
+import { Effect, Fiber, Option } from 'effect'
 import { create } from 'mutative'
 import * as EffectOp from '../effect-op.js'
 import { Snapshot, internal as ResourceInternal, keyHash as hashKey } from '../resource.js'
@@ -13,9 +13,11 @@ import { normalizeFieldPath } from '../field-path.js'
 import type { BoundApi } from '../runtime/core/module.js'
 import { getBoundInternals } from '../runtime/core/runtimeInternalsAccessor.js'
 import { RunSessionTag } from '../observability/runSession.js'
+import type { RunSession } from '../observability/runSession.js'
 import * as DepsTrace from './deps-trace.js'
 import * as RowId from './rowid.js'
 import type { StateTraitEntry, StateTraitPlanStep, StateTraitProgram } from './model.js'
+import type { ServiceMap } from 'effect'
 
 export interface SourceSyncContext<S> {
   readonly moduleId?: string
@@ -33,7 +35,7 @@ export interface SourceSyncContext<S> {
 }
 
 const onceInRunSession = (key: string): Effect.Effect<boolean, never, any> =>
-  Effect.serviceOption(RunSessionTag).pipe(
+  Effect.serviceOption(RunSessionTag as unknown as ServiceMap.Key<any, RunSession>).pipe(
     Effect.map((maybe) => (Option.isSome(maybe) ? maybe.value.local.once(key) : true)),
   )
 
@@ -72,8 +74,10 @@ const emitDepsMismatch = (params: {
     })
   })
 
-const getMiddlewareStack = (): Effect.Effect<EffectOp.MiddlewareStack, never, any> =>
-  Effect.serviceOption(EffectOpCore.EffectOpMiddlewareTag).pipe(
+const getMiddlewareStack = (): Effect.Effect<EffectOpCore.EffectOpMiddlewareEnv['stack'], never, any> =>
+  Effect.serviceOption(
+    EffectOpCore.EffectOpMiddlewareTag as unknown as ServiceMap.Key<any, EffectOpCore.EffectOpMiddlewareEnv>,
+  ).pipe(
     Effect.map((maybe) => (Option.isSome(maybe) ? maybe.value.stack : [])),
   )
 
@@ -280,7 +284,7 @@ export const installSourceRefresh = <S>(
   const register = internals.traits.registerSourceRefresh
 
   const recordSnapshot = (
-    replayMode: 'live' | 'replay',
+    replayMode: 'live' | 'replay' | 'record',
     replayLog: ReplayLog.ReplayLogService | undefined,
     input:
       | ReplayLog.ReplayLogEvent
@@ -314,47 +318,6 @@ export const installSourceRefresh = <S>(
     return replayLog.record(event)
   }
 
-  const consumeReplaySnapshotWithFallback = (
-    replayLog: ReplayLog.ReplayLogService,
-    params: {
-      readonly fieldPath: string
-      readonly keyHash: string
-      readonly phase?: ReplayLog.ResourceSnapshotPhase
-      readonly moduleId?: string
-      readonly instanceId?: string
-    },
-  ): Effect.Effect<ReplayLog.ResourceSnapshotEvent | undefined, never, any> =>
-    Effect.gen(function* () {
-      let replayed = yield* replayLog.consumeNextResourceSnapshot({
-        resourceId,
-        fieldPath: params.fieldPath,
-        keyHash: params.keyHash,
-        phase: params.phase,
-        moduleId: params.moduleId,
-        instanceId: params.instanceId,
-      })
-      if (!replayed) {
-        replayed = yield* replayLog.consumeNextResourceSnapshot({
-          resourceId,
-          fieldPath: params.fieldPath,
-          keyHash: params.keyHash,
-          phase: params.phase,
-          moduleId: params.moduleId,
-          instanceId: params.instanceId,
-          scopeFallbackMode: 'module_or_legacy',
-        })
-      }
-      if (!replayed) {
-        replayed = yield* replayLog.consumeNextResourceSnapshot({
-          resourceId,
-          fieldPath: params.fieldPath,
-          keyHash: params.keyHash,
-          phase: params.phase,
-        })
-      }
-      return replayed
-    })
-
   // list.item scope: in-flight gating by RowID (avoid writing to the wrong row under insert/remove/reorder).
   if (listItem) {
     const store = internals.traits.rowIdStore as RowId.RowIdStore | undefined
@@ -376,7 +339,7 @@ export const installSourceRefresh = <S>(
       RowId.RowId,
       {
         readonly gen: number
-        readonly fiber: Fiber.RuntimeFiber<void, never>
+        readonly fiber: Fiber.Fiber<void, never>
         readonly keyHash: string
       }
     >()
@@ -458,7 +421,7 @@ export const installSourceRefresh = <S>(
       rowId: RowId.RowId,
       key: unknown,
       keyHash: string,
-      replayMode: 'live' | 'replay',
+      replayMode: 'live' | 'replay' | 'record',
       replayLog: ReplayLog.ReplayLogService | undefined,
     ): Effect.Effect<void, never, any> =>
       Effect.gen(function* () {
@@ -470,12 +433,11 @@ export const installSourceRefresh = <S>(
 
         let loadingSnapshot: unknown = Snapshot.loading({ keyHash })
         if (replayMode === 'replay' && replayLog && logFieldPath) {
-          const replayLoading = yield* consumeReplaySnapshotWithFallback(replayLog, {
+          const replayLoading = yield* replayLog.consumeNextResourceSnapshot({
+            resourceId,
             fieldPath: logFieldPath,
             keyHash,
             phase: 'loading',
-            moduleId,
-            instanceId,
           })
           if (replayLoading) {
             loadingSnapshot = replayLoading.snapshot
@@ -507,15 +469,14 @@ export const installSourceRefresh = <S>(
         const io = Effect.gen(function* () {
           if (replayMode === 'replay' && replayLog) {
             // Let loading commit become visible first, then replay the settled phase (preserve the async-resource timeline shape).
-            yield* Effect.yieldNow()
+            yield* Effect.yieldNow
             const consumePath = wroteLoadingPath ?? logFieldPath
             if (!consumePath) return yield* Effect.void
 
-            const replayed = yield* consumeReplaySnapshotWithFallback(replayLog, {
+            const replayed = yield* replayLog.consumeNextResourceSnapshot({
+              resourceId,
               fieldPath: consumePath,
               keyHash,
-              moduleId,
-              instanceId,
             })
             if (!replayed) return yield* Effect.void
 
@@ -544,7 +505,9 @@ export const installSourceRefresh = <S>(
 
           const stack = yield* getMiddlewareStack()
 
-          const registryOpt = yield* Effect.serviceOption(ResourceInternal.ResourceRegistryTag)
+          const registryOpt = yield* Effect.serviceOption(
+            ResourceInternal.ResourceRegistryTag as unknown as ServiceMap.Key<any, { specs: Map<string, { load: (key: unknown) => Effect.Effect<any, any, any> }> }>,
+          )
           const registry = Option.isSome(registryOpt) ? registryOpt.value : undefined
           const spec = registry?.specs.get(resourceId)
 
@@ -567,7 +530,7 @@ export const installSourceRefresh = <S>(
           }
 
           if (!(typeof meta.opSeq === 'number' && Number.isFinite(meta.opSeq))) {
-            const sessionOpt = yield* Effect.serviceOption(RunSessionTag)
+            const sessionOpt = yield* Effect.serviceOption(RunSessionTag as unknown as ServiceMap.Key<any, RunSession>)
             if (Option.isSome(sessionOpt)) {
               const seqKey = instanceId ?? 'global'
               meta.opSeq = sessionOpt.value.local.nextSeq('opSeq', seqKey)
@@ -632,53 +595,46 @@ export const installSourceRefresh = <S>(
               })
             }
           }
-        }).pipe(Effect.catchAllCause(() => Effect.void))
+        }).pipe(Effect.catchCause(() => Effect.void))
 
         // list.item: IO fibers must detach from the sync-transaction FiberRef; otherwise they'd be misclassified as "in txn window"
         // and block subsequent writeback entrypoints.
-        const fiber = yield* Effect.forkScoped(Effect.locally(TaskRunner.inSyncTransactionFiber, false)(io))
+        const fiber = yield* Effect.forkScoped(Effect.provideService(io, TaskRunner.inSyncTransactionFiber, false))
         const myGen = (gen += 1)
         inFlight.set(rowId, { gen: myGen, fiber, keyHash })
 
         yield* Effect.forkScoped(
-          Effect.locally(
-            TaskRunner.inSyncTransactionFiber,
-            false,
-          )(
-            Fiber.await(fiber).pipe(
-              Effect.zipRight(
-                Effect.sync(() => {
-                  const current = inFlight.get(rowId)
-                  if (current && current.gen === myGen) {
-                    inFlight.delete(rowId)
+          Effect.provideService(Fiber.await(fiber).pipe(
+            Effect.flatMap(() => Effect.sync(() => {
+              const current = inFlight.get(rowId)
+              if (current && current.gen === myGen) {
+                inFlight.delete(rowId)
+              }
+            })),
+            Effect.flatMap(() => mode === 'exhaust-trailing'
+              ? Effect.gen(function* () {
+                  const next = trailing.get(rowId)
+                  trailing.delete(rowId)
+                  if (next) {
+                    yield* startFetch(rowId, next.key, next.keyHash, replayMode, replayLog)
                   }
-                }),
-              ),
-              Effect.zipRight(
-                mode === 'exhaust-trailing'
-                  ? Effect.gen(function* () {
-                      const next = trailing.get(rowId)
-                      trailing.delete(rowId)
-                      if (next) {
-                        yield* startFetch(rowId, next.key, next.keyHash, replayMode, replayLog)
-                      }
-                    })
-                  : Effect.void,
-              ),
-              Effect.catchAllCause(() => Effect.void),
-            ),
-          ),
+                })
+              : Effect.void),
+            Effect.catchCause(() => Effect.void),
+          ), TaskRunner.inSyncTransactionFiber, false),
         )
       })
 
     register(fieldPath, (state: any) =>
       Effect.gen(function* () {
         const { moduleId, instanceId } = getBoundScope(bound)
-        const replayModeOpt = yield* Effect.serviceOption(ReplayModeConfigTag)
+        const replayModeOpt = yield* Effect.serviceOption(
+          ReplayModeConfigTag as unknown as ServiceMap.Key<any, { mode: 'live' | 'record' | 'replay' }>,
+        )
         const replayMode = Option.isSome(replayModeOpt) ? replayModeOpt.value.mode : 'live'
-        const replayLogOpt = yield* Effect.serviceOption(ReplayLog.ReplayLog)
+        const replayLogOpt = yield* Effect.serviceOption(ReplayLog.ReplayLog as unknown as ServiceMap.Key<any, ReplayLog.ReplayLogService>)
         const replayLog = Option.isSome(replayLogOpt) ? replayLogOpt.value : undefined
-        const force = yield* FiberRef.get(TaskRunner.forceSourceRefresh)
+        const force = yield* Effect.service(TaskRunner.forceSourceRefresh).pipe(Effect.orDie)
 
         const listValue = RowId.getAtPath(state, listPath)
         const items: ReadonlyArray<unknown> = Array.isArray(listValue) ? listValue : []
@@ -825,7 +781,7 @@ export const installSourceRefresh = <S>(
   let inFlight:
     | {
         readonly gen: number
-        readonly fiber: Fiber.RuntimeFiber<void, never>
+        readonly fiber: Fiber.Fiber<void, never>
         readonly keyHash: string
       }
     | undefined
@@ -838,7 +794,7 @@ export const installSourceRefresh = <S>(
   const startFetch = (
     key: unknown,
     keyHash: string,
-    replayMode: 'live' | 'replay',
+    replayMode: 'live' | 'replay' | 'record',
     replayLog: ReplayLog.ReplayLogService | undefined,
   ): Effect.Effect<void, never, any> =>
     Effect.gen(function* () {
@@ -847,12 +803,11 @@ export const installSourceRefresh = <S>(
       // 1) pending: synchronously write a loading snapshot (within the current transaction window).
       let loadingSnapshot: unknown = Snapshot.loading({ keyHash })
       if (replayMode === 'replay' && replayLog) {
-        const replayLoading = yield* consumeReplaySnapshotWithFallback(replayLog, {
+        const replayLoading = yield* replayLog.consumeNextResourceSnapshot({
+          resourceId,
           fieldPath,
           keyHash,
           phase: 'loading',
-          moduleId,
-          instanceId,
         })
         if (replayLoading) {
           loadingSnapshot = replayLoading.snapshot
@@ -887,12 +842,11 @@ export const installSourceRefresh = <S>(
       const io = Effect.gen(function* () {
         if (replayMode === 'replay' && replayLog) {
           // Let loading commit become visible first, then replay the settled phase (preserve the async-resource timeline shape).
-          yield* Effect.yieldNow()
-          const replayed = yield* consumeReplaySnapshotWithFallback(replayLog, {
+          yield* Effect.yieldNow
+          const replayed = yield* replayLog.consumeNextResourceSnapshot({
+            resourceId,
             fieldPath,
             keyHash,
-            moduleId,
-            instanceId,
           })
           if (!replayed) return yield* Effect.void
 
@@ -1043,52 +997,45 @@ export const installSourceRefresh = <S>(
             yield* recordSnapshot(replayMode, replayLog, event)
           }
         }
-      }).pipe(Effect.catchAllCause(() => Effect.void))
+      }).pipe(Effect.catchCause(() => Effect.void))
 
       // Do not wait for IO completion: forkScoped into the runtime scope so unmount will interrupt automatically.
-      const fiber = yield* Effect.forkScoped(Effect.locally(TaskRunner.inSyncTransactionFiber, false)(io))
+      const fiber = yield* Effect.forkScoped(Effect.provideService(io, TaskRunner.inSyncTransactionFiber, false))
       const myGen = (gen += 1)
       inFlight = { gen: myGen, fiber, keyHash }
 
       // After in-flight completes, clean up; in exhaust-trailing mode, run one trailing fetch if present.
       yield* Effect.forkScoped(
-        Effect.locally(
-          TaskRunner.inSyncTransactionFiber,
-          false,
-        )(
-          Fiber.await(fiber).pipe(
-            Effect.zipRight(
-              Effect.sync(() => {
-                if (inFlight && inFlight.gen === myGen) {
-                  inFlight = undefined
+        Effect.provideService(Fiber.await(fiber).pipe(
+          Effect.flatMap(() => Effect.sync(() => {
+            if (inFlight && inFlight.gen === myGen) {
+              inFlight = undefined
+            }
+          })),
+          Effect.flatMap(() => mode === 'exhaust-trailing'
+            ? Effect.gen(function* () {
+                const next = trailing
+                trailing = undefined
+                if (next) {
+                  yield* startFetch(next.key, next.keyHash, replayMode, replayLog)
                 }
-              }),
-            ),
-            Effect.zipRight(
-              mode === 'exhaust-trailing'
-                ? Effect.gen(function* () {
-                    const next = trailing
-                    trailing = undefined
-                    if (next) {
-                      yield* startFetch(next.key, next.keyHash, replayMode, replayLog)
-                    }
-                  })
-                : Effect.void,
-            ),
-            Effect.catchAllCause(() => Effect.void),
-          ),
-        ),
+              })
+            : Effect.void),
+          Effect.catchCause(() => Effect.void),
+        ), TaskRunner.inSyncTransactionFiber, false),
       )
     })
 
   register(fieldPath, (state: any) =>
     Effect.gen(function* () {
       const { moduleId, instanceId } = getBoundScope(bound)
-      const replayModeOpt = yield* Effect.serviceOption(ReplayModeConfigTag)
+        const replayModeOpt = yield* Effect.serviceOption(
+          ReplayModeConfigTag as unknown as ServiceMap.Key<any, { mode: 'live' | 'record' | 'replay' }>,
+        )
       const replayMode = Option.isSome(replayModeOpt) ? replayModeOpt.value.mode : 'live'
-      const replayLogOpt = yield* Effect.serviceOption(ReplayLog.ReplayLog)
+        const replayLogOpt = yield* Effect.serviceOption(ReplayLog.ReplayLog as unknown as ServiceMap.Key<any, ReplayLog.ReplayLogService>)
       const replayLog = Option.isSome(replayLogOpt) ? replayLogOpt.value : undefined
-      const force = yield* FiberRef.get(TaskRunner.forceSourceRefresh)
+      const force = yield* Effect.service(TaskRunner.forceSourceRefresh).pipe(Effect.orDie)
 
       let key: unknown
       try {
@@ -1120,7 +1067,7 @@ export const installSourceRefresh = <S>(
       // Key becomes empty: synchronously clear to idle (and interrupt in-flight).
       if (key === undefined) {
         if (inFlight) {
-          yield* Fiber.interruptFork(inFlight.fiber)
+          yield* Fiber.interrupt(inFlight.fiber)
           inFlight = undefined
         }
         trailing = undefined
@@ -1204,7 +1151,7 @@ export const installSourceRefresh = <S>(
       }
 
       if (mode === 'switch' && inFlight) {
-        yield* Fiber.interruptFork(inFlight.fiber)
+        yield* Fiber.interrupt(inFlight.fiber)
         inFlight = undefined
         trailing = undefined
       }

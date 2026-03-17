@@ -1,10 +1,10 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('Runtime.runProgram handle-extend (US1)', () => {
-  it.scoped('ctx.$.use(module) preserves handle-extend (controller/extra)', () =>
+  it.effect('ctx.$.use(module) preserves handle-extend (controller/extra)', () =>
     Effect.gen(function* () {
       const Counter = Logix.Module.make('Runtime.runProgram.handleExtend.Counter', {
         state: Schema.Struct({ count: Schema.Number }),

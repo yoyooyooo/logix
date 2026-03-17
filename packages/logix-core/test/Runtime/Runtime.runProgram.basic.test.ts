@@ -1,10 +1,10 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('Runtime.runProgram (US1)', () => {
-  it.scoped('boot starts logics and main can observe state changes', () =>
+  it.effect('boot starts logics and main can observe state changes', () =>
     Effect.gen(function* () {
       const Root = Logix.Module.make('Runtime.runProgram.basic', {
         state: Schema.Struct({ value: Schema.Number }),
@@ -18,12 +18,11 @@ describe('Runtime.runProgram (US1)', () => {
 
       const logic = Root.logic(($) =>
         Effect.gen(function* () {
-          yield* $.onAction('bump').run({
-            effect: () =>
-              $.state.mutate((draft) => {
-                draft.value += 1
-              }),
-          })
+          yield* $.onAction('bump').run(() =>
+            $.state.mutate((draft) => {
+              draft.value += 1
+            }),
+          )
         }),
       )
 
