@@ -1,0 +1,597 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-03-06T07:05:15.725Z",
+    "generator": ".codex/skills/logix-perf-evidence/scripts/collect.ts",
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "matrixUpdatedAt": "2026-01-19",
+    "matrixHash": "5e7c604c80f9ef262a069045299e41a94acd380b187e4cd3abed7eda15441481",
+    "git": {
+      "branch": "agent/r1-txn-lanes-policy-split",
+      "commit": "6a1f89dc6a0838ac51721cd81a9b48b0eb883599",
+      "dirty": true
+    },
+    "config": {
+      "runs": 25,
+      "warmupDiscard": 5,
+      "timeoutMs": 15000,
+      "headless": true,
+      "profile": "quick",
+      "stability": {
+        "maxP95DeltaRatio": 0.1,
+        "maxP95DeltaMs": 5
+      }
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M4 Pro",
+      "memoryGb": 24,
+      "node": "v22.22.0",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "chromium",
+        "headless": true,
+        "version": "143.0.7499.4"
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "txnLanes.urgentBacklog",
+      "title": "txn lanes: urgent interaction under non-urgent backlog (mode matrix)",
+      "priority": "P1",
+      "primaryAxis": "steps",
+      "budgets": [
+        {
+          "id": "urgent.p95<=50ms",
+          "type": "absolute",
+          "metric": "e2e.urgentToStableMs",
+          "p95Ms": 50
+        },
+        {
+          "id": "urgent.p95<=100ms",
+          "type": "absolute",
+          "metric": "e2e.urgentToStableMs",
+          "p95Ms": 100
+        },
+        {
+          "id": "catchUp.p95<=200ms",
+          "type": "absolute",
+          "metric": "runtime.backlogCatchUpMs",
+          "p95Ms": 200
+        },
+        {
+          "id": "catchUp.p95<=500ms",
+          "type": "absolute",
+          "metric": "runtime.backlogCatchUpMs",
+          "p95Ms": 500
+        }
+      ],
+      "requiredEvidence": [
+        "txnLanes.mode",
+        "txnLanes.budgetMs",
+        "txnLanes.maxLagMs",
+        "budget.cutOffCount"
+      ],
+      "metricCategories": {
+        "e2e.urgentToStableMs": "e2e",
+        "runtime.backlogCatchUpMs": "runtime"
+      },
+      "points": [
+        {
+          "params": {
+            "mode": "default",
+            "steps": 200
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.urgentToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 40,
+                "p95Ms": 51.900000005960464
+              }
+            },
+            {
+              "name": "runtime.backlogCatchUpMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 78.69999998807907,
+                "p95Ms": 95.7000000178814
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "txnLanes.budgetMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnLanes.maxLagMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 50
+            },
+            {
+              "name": "txnLanes.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "default"
+            },
+            {
+              "name": "txnLanes.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "baseline"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "mode": "default",
+            "steps": 800
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.urgentToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 42,
+                "p95Ms": 51.099999994039536
+              }
+            },
+            {
+              "name": "runtime.backlogCatchUpMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 83.2999999821186,
+                "p95Ms": 95.90000000596046
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "txnLanes.budgetMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnLanes.maxLagMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 50
+            },
+            {
+              "name": "txnLanes.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "default"
+            },
+            {
+              "name": "txnLanes.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "baseline"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "mode": "default",
+            "steps": 2000
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.urgentToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 35.69999998807907,
+                "p95Ms": 44.69999998807907
+              }
+            },
+            {
+              "name": "runtime.backlogCatchUpMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 83.5,
+                "p95Ms": 91
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "txnLanes.budgetMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnLanes.maxLagMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 50
+            },
+            {
+              "name": "txnLanes.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "default"
+            },
+            {
+              "name": "txnLanes.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "baseline"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "mode": "off",
+            "steps": 200
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.urgentToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 39,
+                "p95Ms": 51.400000005960464
+              }
+            },
+            {
+              "name": "runtime.backlogCatchUpMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 77.09999999403954,
+                "p95Ms": 95.7999999821186
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "txnLanes.budgetMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnLanes.maxLagMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 50
+            },
+            {
+              "name": "txnLanes.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "txnLanes.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "baseline"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "mode": "off",
+            "steps": 800
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.urgentToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 35.70000001788139,
+                "p95Ms": 50.599999994039536
+              }
+            },
+            {
+              "name": "runtime.backlogCatchUpMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 78.40000000596046,
+                "p95Ms": 97.09999999403954
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "txnLanes.budgetMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnLanes.maxLagMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 50
+            },
+            {
+              "name": "txnLanes.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "txnLanes.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "baseline"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "mode": "off",
+            "steps": 2000
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "e2e.urgentToStableMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 35.099999994039536,
+                "p95Ms": 50.5
+              }
+            },
+            {
+              "name": "runtime.backlogCatchUpMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 81.30000001192093,
+                "p95Ms": 103.80000001192093
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "txnLanes.budgetMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "txnLanes.maxLagMs",
+              "unit": "count",
+              "status": "ok",
+              "value": 50
+            },
+            {
+              "name": "txnLanes.mode",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "txnLanes.yieldStrategy",
+              "unit": "string",
+              "status": "ok",
+              "value": "baseline"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "thresholds": [
+        {
+          "budget": {
+            "id": "urgent.p95<=50ms",
+            "type": "absolute",
+            "metric": "e2e.urgentToStableMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "mode": "default"
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "urgent.p95<=50ms",
+            "type": "absolute",
+            "metric": "e2e.urgentToStableMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "mode": "off"
+          },
+          "maxLevel": null,
+          "firstFailLevel": 200,
+          "reason": "budgetExceeded"
+        },
+        {
+          "budget": {
+            "id": "urgent.p95<=100ms",
+            "type": "absolute",
+            "metric": "e2e.urgentToStableMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "mode": "default"
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "urgent.p95<=100ms",
+            "type": "absolute",
+            "metric": "e2e.urgentToStableMs",
+            "p95Ms": 100
+          },
+          "where": {
+            "mode": "off"
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "catchUp.p95<=200ms",
+            "type": "absolute",
+            "metric": "runtime.backlogCatchUpMs",
+            "p95Ms": 200
+          },
+          "where": {
+            "mode": "default"
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "catchUp.p95<=200ms",
+            "type": "absolute",
+            "metric": "runtime.backlogCatchUpMs",
+            "p95Ms": 200
+          },
+          "where": {
+            "mode": "off"
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "catchUp.p95<=500ms",
+            "type": "absolute",
+            "metric": "runtime.backlogCatchUpMs",
+            "p95Ms": 500
+          },
+          "where": {
+            "mode": "default"
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "catchUp.p95<=500ms",
+            "type": "absolute",
+            "metric": "runtime.backlogCatchUpMs",
+            "p95Ms": 500
+          },
+          "where": {
+            "mode": "off"
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        }
+      ]
+    }
+  ]
+}

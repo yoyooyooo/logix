@@ -1,0 +1,7 @@
+
+> @logixjs/react@1.0.2-beta.1 typecheck:test /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p1-4d-single-path-cleanup/packages/logix-react
+> tsc -p tsconfig.test.json --noEmit
+
+sh: tsc: command not found
+ ELIFECYCLE  Command failed.
+ WARN   Local package.json exists, but node_modules missing, did you mean to install?

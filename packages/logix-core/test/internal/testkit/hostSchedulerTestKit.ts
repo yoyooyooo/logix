@@ -13,7 +13,7 @@ export const flushAllHostScheduler = (
 ): Effect.Effect<void> =>
   Effect.gen(function* () {
     const maxTurns = options?.maxTurns ?? 1_000
-    const settleYields = options?.settleYields ?? 8
+    const settleYields = options?.settleYields ?? 256
 
     for (let turn = 0; turn < maxTurns; turn += 1) {
       yield* Effect.sync(() => {
@@ -21,7 +21,7 @@ export const flushAllHostScheduler = (
       })
 
       // Give forked fibers (e.g. TickScheduler.scheduleTick) a chance to run and enqueue more host tasks.
-      yield* Effect.yieldNow()
+      yield* Effect.yieldNow
 
       const { microtasks, macrotasks } = scheduler.getQueueSize()
       if (microtasks !== 0 || macrotasks !== 0) {
@@ -30,7 +30,7 @@ export const flushAllHostScheduler = (
 
       // Let non-host work settle (e.g. state transactions / PubSub) and catch follow-up host tasks.
       for (let i = 0; i < settleYields; i += 1) {
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
       }
 
       const after = scheduler.getQueueSize()

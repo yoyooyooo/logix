@@ -1,0 +1,69 @@
+{
+  "id": "2026-03-20-p1-3r-reopen-check.evidence",
+  "capturedAt": "2026-03-20",
+  "scope": "p1-3r-fresh-reopen-check-on-current-mainline",
+  "decision": {
+    "status": "discarded_or_pending",
+    "acceptedWithEvidence": false,
+    "mergeToMain": false,
+    "reopenP13R": false,
+    "reasons": [
+      "最小验证命令命中环境阻塞，无法达成 reopen-plan 要求的语义门全绿",
+      "probe_next_blocker 的 failure_kind=environment，按 09 模板不构成开线触发器",
+      "当前母线已包含唯一允许切口 batched accessor reuse，不需要在本轮重复实现",
+      "本轮按 docs/evidence-only 收口，P1-3R 继续维持 watchlist"
+    ]
+  },
+  "sources": {
+    "focusedTests": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts test/internal/Runtime/ModuleAsSource.tick.test.ts",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p1-3r-reopen-check.focused-tests.txt",
+      "status": "blocked_environment"
+    },
+    "probeRun": {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p1-3r-reopen-check.probe-next-blocker.json",
+      "status": "blocked",
+      "failureKind": "environment",
+      "blockerSuite": "externalStore.ingest.tickNotify",
+      "executedCount": 1,
+      "thresholdAnomalyCount": 0
+    },
+    "headState": {
+      "baseHead": "e97ec6d36ff3dc66134c8d4c7a12c035aabc1d3a",
+      "accessorReuseCommit": "71bb1b9ad916d45566006266029f9158a6c362e6",
+      "accessorReuseFile": "packages/logix-core/src/internal/state-trait/external-store.ts",
+      "batchedReadLine": 203,
+      "batchedWriteLine": 213
+    }
+  },
+  "triggerGate": {
+    "template": "docs/perf/09-worktree-open-decision-template.md",
+    "status": "not_met",
+    "type": "none",
+    "explanation": "没有通过最小验证，且 blocker 属于 environment。当前仅允许 docs/evidence-only 收口。"
+  },
+  "invariants": [
+    {
+      "id": "p1-3r-reopen-check.forbidden-cuts-untouched",
+      "expectation": "不重做 draft primitive、large-batch-only、raw direct fallback",
+      "status": "passed",
+      "evidenceType": "scope-guard"
+    },
+    {
+      "id": "p1-3r-reopen-check.no-runtime-write-in-this-run",
+      "expectation": "本轮不改 runtime 代码，仅新增 docs/evidence",
+      "status": "passed",
+      "evidenceType": "git-diff-scope"
+    }
+  ],
+  "summary": {
+    "result": "discarded_or_pending",
+    "classification": "docs_evidence_only_watchlist_hold",
+    "notes": [
+      "本轮不开新的 P1-3R 实施线",
+      "下一次重开前需先消除环境阻塞并复跑最小验证",
+      "对应结论文档：docs/perf/archive/2026-03/2026-03-20-p1-3r-reopen-check.md"
+    ]
+  }
+}

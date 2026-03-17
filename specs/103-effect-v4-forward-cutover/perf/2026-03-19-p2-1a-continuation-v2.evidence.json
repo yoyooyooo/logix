@@ -1,0 +1,47 @@
+{
+  "id": "2026-03-19-p2-1a-continuation-v2.evidence",
+  "capturedAt": "2026-03-19",
+  "scope": "p2-1a-deferred-converge-continuation-handle-v2",
+  "decision": {
+    "status": "hold",
+    "mergeToMain": false,
+    "reasons": [
+      "continuation v2 触达 runtime 核心路径，继续推进会扩大实现面",
+      "probe_next_blocker 在 logix-react browser suite 导入阶段失败，缺少全链路 gate 证据闭环"
+    ]
+  },
+  "source": {
+    "suite": "packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts",
+    "testCase": "deferred flush should not block an urgent transaction when txnLanes is enabled",
+    "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.TxnLanes.DefaultOn.test.ts test/internal/observability/TxnLaneEvidence.Schema.test.ts"
+  },
+  "invariants": [
+    {
+      "id": "deferred.urgentTxn.notBlockedByDeferredFlush",
+      "expectation": "urgent txn sees b==1 while deferred flush is still incomplete",
+      "status": "blocked",
+      "evidenceType": "test-assertion"
+    },
+    {
+      "id": "deferred.flush.eventuallyCompletes",
+      "expectation": "eventually deferred last computed field reaches expected value",
+      "status": "blocked",
+      "evidenceType": "test-assertion"
+    },
+    {
+      "id": "laneEvidence.schemaAndReplay.stable",
+      "expectation": "TxnLanes default-on + lane evidence schema tests remain green",
+      "status": "blocked",
+      "evidenceType": "test-assertion"
+    }
+  ],
+  "summary": {
+    "result": "hold",
+    "notes": [
+      "本条仅保留证据与阻塞描述，不保留任何 runtime 代码改动",
+      "原 v2 方向关注 deferred flush 多 slice 的外层 operation 复用，但实现面已清理",
+      "browser probe gate 当前存在导入级故障（见 probe-next-blocker*.json）",
+      "packages/logix-core 当前解析到 effect@4，测试在导入阶段失败，导致无法复测上述断言"
+    ]
+  }
+}

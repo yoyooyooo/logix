@@ -1,0 +1,231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "intent-flow://specs/103-effect-v4-forward-cutover/perf/runtime-shell.ledger.schema.v1.json",
+  "title": "Runtime Shell Ledger (NDJSON) v1",
+  "type": "object",
+  "description": "Schema for each NDJSON record in a runtime-shell ledger file. The file is a stream of records, not a single JSON document.",
+  "oneOf": [
+    { "$ref": "#/$defs/HeaderRecord" },
+    { "$ref": "#/$defs/SegmentRecord" },
+    { "$ref": "#/$defs/SampleRecord" }
+  ],
+  "$defs": {
+    "NonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "Ms": {
+      "type": "number",
+      "minimum": 0
+    },
+    "IsoDateTime": {
+      "type": "string",
+      "minLength": 10,
+      "description": "ISO-8601 datetime string"
+    },
+    "HeaderRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["recordType", "schemaVersion", "capturedAt", "git", "env", "generator"],
+      "properties": {
+        "recordType": { "const": "header" },
+        "schemaVersion": { "const": 1 },
+        "capturedAt": { "$ref": "#/$defs/IsoDateTime" },
+        "generator": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "command"],
+          "properties": {
+            "kind": { "enum": ["vitest", "node", "custom"] },
+            "command": { "$ref": "#/$defs/NonEmptyString" }
+          }
+        },
+        "git": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["head"],
+          "properties": {
+            "head": { "$ref": "#/$defs/NonEmptyString" },
+            "branch": { "type": "string" },
+            "worktree": { "type": "string" }
+          }
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["os", "arch", "node"],
+          "properties": {
+            "os": { "$ref": "#/$defs/NonEmptyString" },
+            "arch": { "$ref": "#/$defs/NonEmptyString" },
+            "node": { "$ref": "#/$defs/NonEmptyString" }
+          }
+        },
+        "profile": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "SuiteRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command"],
+      "properties": {
+        "suiteId": { "type": "string" },
+        "command": { "$ref": "#/$defs/NonEmptyString" },
+        "artifactRef": { "type": "string" }
+      }
+    },
+    "SegmentRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["recordType", "segmentId", "suiteRef", "config"],
+      "properties": {
+        "recordType": { "const": "segment" },
+        "segmentId": { "$ref": "#/$defs/NonEmptyString" },
+        "suiteRef": { "$ref": "#/$defs/SuiteRef" },
+        "config": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Minimal comparable config for this segment, used by validators."
+        }
+      }
+    },
+    "TxnPhaseTrace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["txnPreludeMs", "queueContextLookupMs", "queueResolvePolicyMs", "bodyShellMs", "commitTotalMs"],
+      "properties": {
+        "txnPreludeMs": { "$ref": "#/$defs/Ms" },
+        "queueContextLookupMs": { "$ref": "#/$defs/Ms" },
+        "queueResolvePolicyMs": { "$ref": "#/$defs/Ms" },
+        "bodyShellMs": { "$ref": "#/$defs/Ms" },
+        "asyncEscapeGuardMs": { "$ref": "#/$defs/Ms" },
+        "dispatchActionRecordMs": { "$ref": "#/$defs/Ms" },
+        "dispatchActionCommitHubMs": { "$ref": "#/$defs/Ms" },
+        "commitTotalMs": { "$ref": "#/$defs/Ms" }
+      }
+    },
+    "DispatchShellPhasesSample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "index", "dispatchMs", "txnPhase"],
+      "properties": {
+        "kind": { "const": "dispatchShell.phases" },
+        "index": { "type": "integer", "minimum": 0 },
+        "dispatchMs": { "$ref": "#/$defs/Ms" },
+        "txnPhase": { "$ref": "#/$defs/TxnPhaseTrace" },
+        "residualMs": { "$ref": "#/$defs/Ms" },
+        "alloc": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "heapUsedDeltaBytes": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "ResolveShellSample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "index", "case", "batchMs"],
+      "properties": {
+        "kind": { "const": "resolveShell.snapshot" },
+        "index": { "type": "integer", "minimum": 0 },
+        "case": { "enum": ["noSnapshot", "snapshot"] },
+        "batchMs": { "$ref": "#/$defs/Ms" },
+        "decision": { "$ref": "#/$defs/RuntimeShellBoundaryDecision" },
+        "alloc": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "heapUsedDeltaBytes": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "OperationRunnerSample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "index", "case", "batchMs"],
+      "properties": {
+        "kind": { "const": "operationRunner.txnHotContext" },
+        "index": { "type": "integer", "minimum": 0 },
+        "case": { "enum": ["shared", "fallback"] },
+        "batchMs": { "$ref": "#/$defs/Ms" },
+        "decision": { "$ref": "#/$defs/RuntimeShellBoundaryDecision" },
+        "alloc": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "heapUsedDeltaBytes": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "RuntimeShellReasonCode": {
+      "enum": [
+        "snapshot_missing",
+        "snapshot_scope_mismatch",
+        "middleware_env_mismatch",
+        "trait_config_mismatch",
+        "concurrency_policy_mismatch",
+        "diagnostics_level_escalated"
+      ]
+    },
+    "RuntimeShellBoundaryClass": {
+      "enum": [
+        "snapshot_ready",
+        "snapshot_blocked",
+        "reuse_hit",
+        "reuse_miss",
+        "policy_fallback",
+        "diagnostics_escalated"
+      ]
+    },
+    "RuntimeShellSource": {
+      "enum": [
+        "resolveShell.snapshot",
+        "resolveShell.noSnapshot",
+        "operationRunner.shared",
+        "operationRunner.fallback"
+      ]
+    },
+    "RuntimeShellBoundaryDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "reasonCode", "boundaryClass", "shellSource"],
+      "properties": {
+        "mode": { "enum": ["snapshot", "noSnapshot"] },
+        "reasonCode": { "$ref": "#/$defs/RuntimeShellReasonCode" },
+        "boundaryClass": { "$ref": "#/$defs/RuntimeShellBoundaryClass" },
+        "reuseKeyHash": { "type": "string" },
+        "shellRef": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["instanceId", "txnSeq"],
+          "properties": {
+            "instanceId": { "$ref": "#/$defs/NonEmptyString" },
+            "txnSeq": { "type": "integer", "minimum": 0 },
+            "opSeq": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "shellSource": { "$ref": "#/$defs/RuntimeShellSource" }
+      }
+    },
+    "SampleRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["recordType", "segmentId", "sample"],
+      "properties": {
+        "recordType": { "const": "sample" },
+        "segmentId": { "$ref": "#/$defs/NonEmptyString" },
+        "sample": {
+          "oneOf": [
+            { "$ref": "#/$defs/DispatchShellPhasesSample" },
+            { "$ref": "#/$defs/ResolveShellSample" },
+            { "$ref": "#/$defs/OperationRunnerSample" }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "cutId": "p1-3r-accessor-reuse",
+  "validatedAtUtc": "2026-03-19T16:48:26Z",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p1-3r-accessor-reuse",
+  "branch": "agent/v4-perf-p1-3r-accessor-reuse",
+  "commands": [
+    {
+      "name": "semantic-guards",
+      "cmd": "pnpm -C packages/logix-core exec vitest run test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts test/internal/Runtime/ModuleAsSource.tick.test.ts",
+      "exitCode": 0,
+      "result": "passed",
+      "summary": {
+        "testFilesPassed": 2,
+        "testsPassed": 14,
+        "duration": "1.10s"
+      }
+    },
+    {
+      "name": "next-blocker-probe",
+      "cmd": "python3 fabfile.py probe_next_blocker --json",
+      "exitCode": 0,
+      "result": "passed",
+      "summary": {
+        "status": "clear",
+        "executedSuites": [
+          {
+            "suiteId": "externalStore.ingest.tickNotify",
+            "status": "passed",
+            "durationMs": 1950,
+            "thresholdAnomalyCount": 0
+          },
+          {
+            "suiteId": "runtimeStore.noTearing.tickNotify",
+            "status": "passed",
+            "durationMs": 16306,
+            "thresholdAnomalyCount": 0
+          },
+          {
+            "suiteId": "form.listScopeCheck",
+            "status": "passed",
+            "durationMs": 1567,
+            "thresholdAnomalyCount": 0
+          }
+        ],
+        "thresholdAnomalyCount": 0
+      },
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p1-3r-accessor-reuse.probe-next-blocker.json"
+    }
+  ],
+  "decisionGate": {
+    "semanticGuards": "green",
+    "probeNextBlocker": "clear",
+    "overall": "pass"
+  }
+}

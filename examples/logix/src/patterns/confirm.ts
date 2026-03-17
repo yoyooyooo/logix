@@ -8,7 +8,7 @@
  *   Effect.provideService / Layer 提供。
  */
 
-import { Context, Effect } from 'effect'
+import { Effect, ServiceMap } from 'effect'
 
 // ---------------------------------------------------------------------------
 // Service 契约：ConfirmServiceTag 只描述接口，不内置实现
@@ -21,7 +21,7 @@ export interface ConfirmService {
   confirm: (message: string) => Effect.Effect<boolean>
 }
 
-export class ConfirmServiceTag extends Context.Tag('@svc/Confirm')<ConfirmServiceTag, ConfirmService>() {}
+export class ConfirmServiceTag extends ServiceMap.Service<ConfirmServiceTag, ConfirmService>()('@svc/Confirm') {}
 
 // ---------------------------------------------------------------------------
 // Pattern：带确认的 Effect 组合
@@ -50,7 +50,7 @@ export const runConfirmAndThenPattern = <R, E, A>(
   input: ConfirmAndThenPatternInput<R, E, A>,
 ): Effect.Effect<void | A, E, ConfirmServiceTag | R> =>
   Effect.gen(function* () {
-    const svc = yield* ConfirmServiceTag
+    const svc = yield* Effect.service(ConfirmServiceTag).pipe(Effect.orDie)
     const ok = yield* svc.confirm(input.message)
 
     if (!ok) {

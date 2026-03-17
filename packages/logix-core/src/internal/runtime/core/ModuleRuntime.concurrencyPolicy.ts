@@ -38,12 +38,34 @@ const normalizeConcurrencyLimit = (v: unknown): SchedulingPolicyLimit | undefine
   v === 'unbounded' ? 'unbounded' : normalizePositiveInt(v)
 
 type ResolvedPolicyCache = {
+  readonly runtimeConfigRef: SchedulingPolicySurface | undefined
+  readonly runtimeModulePatchRef: SchedulingPolicySurfacePatch | undefined
+  readonly providerOverridesRef: SchedulingPolicySurfaceOverrides | undefined
+  readonly providerModulePatchRef: SchedulingPolicySurfacePatch | undefined
   readonly runtimeDefaultFingerprint: string
   readonly runtimeModuleFingerprint: string
   readonly providerDefaultFingerprint: string
   readonly providerModuleFingerprint: string
   readonly resolved: ResolvedSchedulingPolicySurface
 }
+
+export type SchedulingPolicyRuntimeSnapshot = {
+  readonly runtimeConfig: SchedulingPolicySurface | undefined
+  readonly providerOverrides: SchedulingPolicySurfaceOverrides | undefined
+}
+
+export type ConcurrencyPolicyRuntimeSnapshot = SchedulingPolicyRuntimeSnapshot
+
+export const captureSchedulingPolicyRuntimeSnapshot = (): Effect.Effect<SchedulingPolicyRuntimeSnapshot, never, never> =>
+  Effect.gen(function* () {
+    const runtimeConfigOpt = yield* Effect.serviceOption(SchedulingPolicySurfaceTag)
+    const overridesOpt = yield* Effect.serviceOption(SchedulingPolicySurfaceOverridesTag)
+    const runtimeConfig = Option.isSome(runtimeConfigOpt) ? runtimeConfigOpt.value : undefined
+    const providerOverrides = Option.isSome(overridesOpt) ? overridesOpt.value : undefined
+    return { runtimeConfig, providerOverrides }
+  })
+
+export const captureConcurrencyPolicyRuntimeSnapshot = captureSchedulingPolicyRuntimeSnapshot
 
 const patchFingerprint = (
   patch: SchedulingPolicySurface | SchedulingPolicySurfacePatch | SchedulingPolicySurfaceOverrides | undefined,
@@ -69,7 +91,7 @@ export const makeResolveSchedulingPolicySurface = (args: {
   readonly moduleId: string | undefined
   /** Optional: one-shot audit diagnostics for unbounded opt-in/blocked. */
   readonly diagnostics?: ConcurrencyDiagnostics
-}): (() => Effect.Effect<ResolvedSchedulingPolicySurface>) => {
+}): ((snapshot?: SchedulingPolicyRuntimeSnapshot) => Effect.Effect<ResolvedSchedulingPolicySurface>) => {
   const builtinConcurrencyLimit: SchedulingPolicyLimit = 16
   const builtinLosslessBackpressureCapacity = 4096
   const builtinAllowUnbounded = false
@@ -77,18 +99,34 @@ export const makeResolveSchedulingPolicySurface = (args: {
   const builtinThresholdBacklogDurationMs = 5000
   const builtinWarningCooldownMs = 30_000
   let cache: ResolvedPolicyCache | undefined
+  const snapshotCache = new WeakMap<SchedulingPolicyRuntimeSnapshot, ResolvedSchedulingPolicySurface>()
 
-  return () =>
+  return (snapshot?: SchedulingPolicyRuntimeSnapshot) =>
     Effect.gen(function* () {
-      const runtimeConfigOpt = yield* Effect.serviceOption(SchedulingPolicySurfaceTag)
-      const overridesOpt = yield* Effect.serviceOption(SchedulingPolicySurfaceOverridesTag)
+      if (snapshot) {
+        const cachedFromSnapshot = snapshotCache.get(snapshot)
+        if (cachedFromSnapshot) {
+          if (args.diagnostics) {
+            yield* args.diagnostics.emitUnboundedPolicyIfNeeded({
+              policy: cachedFromSnapshot,
+              trigger: { kind: 'concurrencyPolicy', name: 'resolve' },
+            })
+          }
+          return cachedFromSnapshot
+        }
+      }
 
-      const runtimeConfig: SchedulingPolicySurface | undefined = Option.isSome(runtimeConfigOpt)
-        ? runtimeConfigOpt.value
-        : undefined
-      const providerOverrides: SchedulingPolicySurfaceOverrides | undefined = Option.isSome(overridesOpt)
-        ? overridesOpt.value
-        : undefined
+      let runtimeConfig: SchedulingPolicySurface | undefined
+      let providerOverrides: SchedulingPolicySurfaceOverrides | undefined
+      if (snapshot) {
+        runtimeConfig = snapshot.runtimeConfig
+        providerOverrides = snapshot.providerOverrides
+      } else {
+        const runtimeConfigOpt = yield* Effect.serviceOption(SchedulingPolicySurfaceTag)
+        const overridesOpt = yield* Effect.serviceOption(SchedulingPolicySurfaceOverridesTag)
+        runtimeConfig = Option.isSome(runtimeConfigOpt) ? runtimeConfigOpt.value : undefined
+        providerOverrides = Option.isSome(overridesOpt) ? overridesOpt.value : undefined
+      }
 
       let concurrencyLimit: SchedulingPolicyLimit = builtinConcurrencyLimit
       let concurrencyLimitScope: SchedulingPolicySurfaceConfigScope = 'builtin'
@@ -166,6 +204,7 @@ export const makeResolveSchedulingPolicySurface = (args: {
         moduleId && runtimeConfig?.overridesByModuleId ? runtimeConfig.overridesByModuleId[moduleId] : undefined
       const providerModulePatch: SchedulingPolicySurfacePatch | undefined =
         moduleId && providerOverrides?.overridesByModuleId ? providerOverrides.overridesByModuleId[moduleId] : undefined
+
       const runtimeDefaultFingerprint = patchFingerprint(runtimeConfig)
       const runtimeModuleFingerprint = patchFingerprint(runtimeModulePatch)
       const providerDefaultFingerprint = patchFingerprint(providerOverrides)
@@ -183,6 +222,9 @@ export const makeResolveSchedulingPolicySurface = (args: {
             policy: cache.resolved,
             trigger: { kind: 'concurrencyPolicy', name: 'resolve' },
           })
+        }
+        if (snapshot) {
+          snapshotCache.set(snapshot, cache.resolved)
         }
         return cache.resolved
       }
@@ -227,11 +269,18 @@ export const makeResolveSchedulingPolicySurface = (args: {
       }
 
       cache = {
+        runtimeConfigRef: runtimeConfig,
+        runtimeModulePatchRef: runtimeModulePatch,
+        providerOverridesRef: providerOverrides,
+        providerModulePatchRef: providerModulePatch,
         runtimeDefaultFingerprint,
         runtimeModuleFingerprint,
         providerDefaultFingerprint,
         providerModuleFingerprint,
         resolved,
+      }
+      if (snapshot) {
+        snapshotCache.set(snapshot, resolved)
       }
 
       return resolved

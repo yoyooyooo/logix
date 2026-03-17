@@ -2,10 +2,13 @@ node_modules
 dist
 build
 archive/
+!docs/perf/archive/
+!docs/perf/archive/**
 coverage
 .turbo
 .next
 .vite
+.vitest-browser-cache
 .cache
 .source
 
@@ -32,8 +35,6 @@ Thumbs.db
 .vscode/
 .idea/
 .obsidian/
-.artifacts/
-examples/logix-cli-playground/.logix/out/
 
 # Auto Claude data directory
 .auto-claude/

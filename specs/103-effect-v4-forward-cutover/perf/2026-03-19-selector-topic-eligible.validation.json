@@ -1,0 +1,41 @@
+{
+  "capturedAt": "2026-03-19T09:08:49Z",
+  "scope": "提升 selectorTopicEligible 覆盖率（stable selectorId dynamic lane）",
+  "branch": "agent/v4-perf-selector-topic-eligible",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.selector-topic-eligible",
+  "commands": [
+    {
+      "id": "react.selector-topic-eligible.targeted",
+      "command": "pnpm --dir packages/logix-react test -- --run test/Hooks/useSelector.laneSubscription.test.tsx test/Hooks/useSelector.sharedSubscription.test.tsx test/Hooks/useSelector.test.tsx",
+      "status": "passed",
+      "testFiles": 3,
+      "tests": 6
+    },
+    {
+      "id": "core.readquery-buildgate.targeted",
+      "command": "pnpm --dir packages/logix-core test -- --run test/ReadQuery/ReadQuery.buildGate.test.ts",
+      "status": "passed",
+      "testFiles": 1,
+      "tests": 2
+    },
+    {
+      "id": "react.typecheck",
+      "command": "pnpm --dir packages/logix-react typecheck",
+      "status": "passed"
+    },
+    {
+      "id": "probe.next-blocker",
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "status": "clear",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-19-selector-topic-eligible.probe-next-blocker.json"
+    }
+  ],
+  "summary": {
+    "publicApiChanged": false,
+    "selectorTopicEligiblePolicy": "exclude-only-unstableSelectorId",
+    "dynamicStableSelectorRoutedToReadQueryTopic": true,
+    "moduleTopicSubscribeCountInLaneTest": 0,
+    "dynamicTopicListenerCallsOnUnrelatedUpdate": 0,
+    "currentProbeStatus": "clear"
+  }
+}

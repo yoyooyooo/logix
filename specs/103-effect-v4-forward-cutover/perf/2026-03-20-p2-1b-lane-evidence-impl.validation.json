@@ -1,0 +1,36 @@
+{
+  "cutId": "p2-1b-lane-evidence-impl",
+  "validatedAtUtc": "2026-03-20T02:30:31Z",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p2-1b-lane-evidence-impl",
+  "branch": "agent/v4-perf-p2-1b-lane-evidence-impl",
+  "commands": [
+    {
+      "name": "focused-tests",
+      "cmd": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts test/internal/observability/TxnLaneEvidence.Schema.test.ts",
+      "exitCode": 0,
+      "result": "passed",
+      "summary": {
+        "testFilesPassed": 2,
+        "testsPassed": 5
+      },
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p2-1b-lane-evidence-impl.focused-tests.txt"
+    },
+    {
+      "name": "next-blocker-probe",
+      "cmd": "python3 fabfile.py probe_next_blocker --json",
+      "exitCode": 0,
+      "result": "passed",
+      "summary": {
+        "status": "clear",
+        "executed": 3,
+        "thresholdAnomalyCount": 0
+      },
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p2-1b-lane-evidence-impl.probe-next-blocker.json"
+    }
+  ],
+  "decisionGate": {
+    "focusedTests": "green",
+    "probeNextBlocker": "clear",
+    "overall": "pass"
+  }
+}

@@ -1,0 +1,23 @@
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p0-2-operation-shell-next/packages/logix-core
+
+ ✓ test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts (1 test) 100ms
+stdout | test/internal/Runtime/ModuleRuntime/ModuleRuntime.RuntimeSnapshot.ResolveShell.Perf.off.test.ts > ModuleRuntime runtime snapshot resolve shell · microbench (Diagnostics=off) > keeps resolver semantics and cuts repeated serviceOption shell tax across adjacent resolvers
+[perf] runtime-snapshot-resolve-shell diagnostics=off iters=2000 warmup=200 batch=128 noSnapshot.p50=0.559ms noSnapshot.p95=0.988ms noSnapshot.avg=0.633ms snapshot.p50=0.212ms snapshot.p95=0.744ms snapshot.avg=0.258ms speedup=2.458x saved=59.32%
+
+ ✓ test/internal/Runtime/ModuleRuntime/ModuleRuntime.RuntimeSnapshot.ResolveShell.Perf.off.test.ts (1 test) 1993ms
+     ✓ keeps resolver semantics and cuts repeated serviceOption shell tax across adjacent resolvers  1992ms
+stdout | test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts > ModuleRuntime.operation runner · transaction-shared hot context microbench (Diagnostics=off, middleware=empty) > records direct evidence for transaction-captured operation hot context
+[perf] operation-runner txn-hot-context diagnostics=off middleware=empty iters=1500 warmup=150 batch=256 shared.p50=0.713ms shared.p95=0.916ms shared.avg=0.738ms fallback.p50=1.092ms fallback.p95=1.389ms fallback.avg=1.140ms speedup=1.544x saved=35.25%
+
+stdout | test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts > ModuleRuntime.operation runner · transaction-shared hot context microbench (Diagnostics=off, middleware=empty) > records direct evidence for transaction-captured operation hot context
+[perf] operation-runner txn-hot-context diagnostics=off middleware=empty iters=1500 warmup=150 batch=1024 shared.p50=2.853ms shared.p95=2.955ms shared.avg=2.861ms fallback.p50=4.594ms fallback.p95=5.174ms fallback.avg=4.697ms speedup=1.642x saved=39.10%
+
+ ✓ test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts (1 test) 15583ms
+     ✓ records direct evidence for transaction-captured operation hot context  15582ms
+
+ Test Files  3 passed (3)
+      Tests  3 passed (3)
+   Start at  16:14:47
+   Duration  15.94s (transform 640ms, setup 0ms, import 1.28s, tests 17.68s, environment 0ms)
+

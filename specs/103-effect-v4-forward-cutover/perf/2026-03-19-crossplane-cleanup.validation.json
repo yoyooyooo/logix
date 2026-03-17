@@ -1,0 +1,36 @@
+{
+  "capturedAt": "2026-03-19T07:46:33Z",
+  "scope": "cross-plane old-path cleanup",
+  "branch": "agent/v4-perf-crossplane-cleanup",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.crossplane-cleanup",
+  "commands": [
+    {
+      "id": "core.topic-tick-store",
+      "command": "pnpm --dir packages/logix-core test -- --run test/internal/Runtime/TickScheduler.topic-classification.test.ts test/internal/Runtime/TickScheduler.listenerFanout.postCommit.test.ts test/internal/Runtime/RuntimeStore.listenerSnapshot.test.ts",
+      "status": "passed",
+      "testFiles": 3,
+      "tests": 12
+    },
+    {
+      "id": "react.lowPriority-idleTeardown",
+      "command": "pnpm --dir packages/logix-react test -- --run test/internal/RuntimeExternalStore.lowPriority.test.ts test/internal/RuntimeExternalStore.idleTeardown.test.ts",
+      "status": "passed",
+      "testFiles": 2,
+      "tests": 2
+    },
+    {
+      "id": "core.typecheck",
+      "command": "pnpm --dir packages/logix-core typecheck",
+      "status": "passed"
+    },
+    {
+      "id": "react.typecheck",
+      "command": "pnpm --dir packages/logix-react typecheck",
+      "status": "passed"
+    }
+  ],
+  "summary": {
+    "singlePathSemantics": "verified",
+    "semanticDriftDetected": false
+  }
+}

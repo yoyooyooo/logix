@@ -1,0 +1,29 @@
+{
+  "id": "2026-03-20-r2-controlplane-synergy",
+  "baselineCommit": "7929ff550a2ce9c9f8f83c78fd5466b8da5f8275",
+  "classification": "accepted_with_evidence",
+  "verification": {
+    "typecheckTest": {
+      "command": "pnpm -C packages/logix-core typecheck:test",
+      "status": "passed",
+      "evidence": "2026-03-20-r2-controlplane-synergy.validation.typecheck.txt"
+    },
+    "vitestFocused": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.TxnLanes.DefaultOn.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.TxnLanes.Overrides.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.txnQueue.Lanes.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts",
+      "status": "passed",
+      "passedFiles": 4,
+      "passedTests": 17,
+      "evidence": "2026-03-20-r2-controlplane-synergy.validation.vitest.txt"
+    },
+    "probeNextBlocker": {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "status": "clear",
+      "thresholdAnomalyCount": 0,
+      "evidence": "2026-03-20-r2-controlplane-synergy.probe-next-blocker.json"
+    }
+  },
+  "notes": [
+    "Worktree initially lacked dependencies; validation was executed after `pnpm install`.",
+    "No public API change was introduced in this cut."
+  ]
+}

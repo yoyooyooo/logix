@@ -1,0 +1,24 @@
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p2-1a-continuation-v4/packages/logix-core
+
+stdout | test/internal/observability/TxnLaneEvidence.Schema.test.ts > TxnLaneEvidence schema (060) > emits TxnLaneEvidence that matches JSON schema when diagnostics is enabled
+[09:39:22.239] ERROR (#1): Error: TxnLaneEvidence.policy: unknown key "effective"
+    at validate (/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p2-1a-continuation-v4/packages/logix-core/test/internal/observability/TxnLaneEvidence.Schema.test.ts:41:19)
+    at validate (/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p2-1a-continuation-v4/packages/logix-core/test/internal/observability/TxnLaneEvidence.Schema.test.ts:25:7)
+    at validate (/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p2-1a-continuation-v4/packages/logix-core/test/internal/observability/TxnLaneEvidence.Schema.test.ts:55:11)
+    at assertMatchesSchema (/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p2-1a-continuation-v4/packages/logix-core/test/internal/observability/TxnLaneEvidence.Schema.test.ts:109:3)
+    at Array.<anonymous> (/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p2-1a-continuation-v4/packages/logix-core/test/internal/observability/TxnLaneEvidence.Schema.test.ts:248:9) {
+  [cause]: undefined
+}
+
+ ✓ test/internal/Runtime/ModuleRuntime/ModuleRuntime.TxnLanes.DefaultOn.test.ts (3 tests) 54ms
+ ❯ test/internal/observability/TxnLaneEvidence.Schema.test.ts (2 tests | 1 failed) 61ms
+     × emits TxnLaneEvidence that matches JSON schema when diagnostics is enabled 54ms
+     ✓ does not emit TxnLaneEvidence when diagnostics is off 7ms
+ ✓ test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts (1 test) 105ms
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  1 failed | 5 passed (6)
+   Start at  09:39:21
+   Duration  989ms (transform 1.50s, setup 0ms, import 2.41s, tests 221ms, environment 0ms)
+

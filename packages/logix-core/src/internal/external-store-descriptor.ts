@@ -1,4 +1,4 @@
-import type { Context, Stream } from 'effect'
+import type { ServiceMap, Stream } from 'effect'
 import type * as LogixModule from './module.js'
 import type { ReadQueryCompiled } from './runtime/core/ReadQuery.js'
 
@@ -11,7 +11,7 @@ export type ExternalStoreDescriptor =
       readonly kind: 'service'
       readonly storeId: string
       readonly tagId: string
-      readonly tag: Context.Tag<any, any>
+      readonly tag: ServiceMap.Key<any, any>
       readonly map: (service: any) => {
         readonly getSnapshot: () => any
         readonly getServerSnapshot?: () => any

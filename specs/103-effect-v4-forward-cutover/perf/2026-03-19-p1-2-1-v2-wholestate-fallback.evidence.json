@@ -1,0 +1,64 @@
+{
+  "task": "P1-2.1 v2 whole-state fallback tighten-surface",
+  "date": "2026-03-19",
+  "branch": "agent/v4-perf-p1-2-1-v2",
+  "result": "partial_pending",
+  "codeChanges": {
+    "packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts": "changed",
+    "packages/logix-core/src/internal/runtime/core/StateTransaction.ts": "changed",
+    "packages/logix-core/src/internal/state-trait/external-store.ts": "unchanged"
+  },
+  "minVerification": {
+    "commands": [
+      {
+        "cmd": "pnpm -C packages/logix-core exec vitest run test/StateTrait/StateTrait.ConvergeAuto.DirtySetFromMutate.test.ts",
+        "status": "passed"
+      },
+      {
+        "cmd": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.reducerWholeStateFallback.Perf.off.test.ts",
+        "status": "passed",
+        "metrics": {
+          "single": { "legacyP95Ms": 0.026, "topLevelP95Ms": 0.008 },
+          "eight": { "legacyP95Ms": 0.024, "topLevelP95Ms": 0.006 },
+          "many": { "legacyP95Ms": 0.022, "topLevelP95Ms": 0.013 }
+        }
+      },
+      {
+        "cmd": "pnpm -C packages/logix-core exec vitest run test/internal/Bound/BoundApiRuntime.stateUpdateWholeStateFallback.Perf.off.test.ts",
+        "status": "passed",
+        "metrics": {
+          "single": { "legacyP95Ms": 0.105, "currentP95Ms": 0.123, "legacyAvgMs": 0.079, "currentAvgMs": 0.108 },
+          "eight": { "legacyP95Ms": 0.125, "currentP95Ms": 0.074, "legacyAvgMs": 0.073, "currentAvgMs": 0.054 },
+          "many": { "legacyP95Ms": 0.096, "currentP95Ms": 0.089, "legacyAvgMs": 0.069, "currentAvgMs": 0.066 }
+        }
+      }
+    ]
+  },
+  "externalStoreSemanticGate": {
+    "status": "blocked_preexisting",
+    "cmd": "pnpm -C packages/logix-core exec vitest run test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts test/internal/Runtime/ModuleAsSource.tick.test.ts",
+    "failures": [
+      {
+        "test": "StateTrait.ExternalStoreTrait.Runtime.test.ts :: perf skeleton: externalStore ingest proxy phases",
+        "message": "waitUntil timed out"
+      },
+      {
+        "test": "ModuleAsSource.tick.test.ts :: should settle A->B writeback and downstream derived within the same tick",
+        "message": "expected { fromSource: +0, keyHash: 'h:0' } to deeply equal { fromSource: 2, keyHash: 'h:2' }"
+      },
+      {
+        "test": "ModuleAsSource.tick.test.ts :: should apply Module-as-Source during scheduled microtask tick (no manual flushNow)",
+        "message": "[TestKit.advanceTicks] Expected >=1 ticks, got 0"
+      }
+    ]
+  },
+  "decision": {
+    "accepted": [
+      "BoundApiRuntime state.update list-root guard + cached root keys",
+      "StateTransaction.collectKnownTopLevelDirtyChanges array-friendly collection"
+    ],
+    "notAccepted": [
+      "external-store entry widen (blocked by semantic red gate)"
+    ]
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "id": "2026-03-22-p1-6pp-owner-resolve-engine-design-package",
+  "capturedAt": "2026-03-22",
+  "scope": "react-controlplane-p1-6pp-owner-resolve-engine-docs-proposal-only",
+  "decision": {
+    "status": "discarded_or_pending",
+    "acceptedWithEvidence": false,
+    "mergeToMain": false,
+    "classification": "docs/evidence-only",
+    "reasons": [
+      "P1-6'' 当前缺少 implementation-ready design package，不满足直接开 implementation line 的前置条件",
+      "四入口 read/readSync/warmSync/preload 尚未被单一 owner-phase 合同约束",
+      "缺少统一 phase-trace 契约与 implementation 前 gate，直接实施会引入不可比风险"
+    ]
+  },
+  "constraints": {
+    "publicApiChange": false,
+    "touchedCorePath": false,
+    "codeImplementationRetained": false,
+    "writeScope": [
+      "docs/perf/**",
+      "specs/103-effect-v4-forward-cutover/perf/**"
+    ]
+  },
+  "designGaps": [
+    "D1: OwnerResolveRequested 单一内部合同",
+    "D2: stale/commit reason code 矩阵",
+    "D3: 四入口统一 phase-trace 字段集",
+    "D4: runtime-bootresolve-phase-trace 四入口断言矩阵"
+  ],
+  "nextGates": [
+    "Gate-A design-contract",
+    "Gate-B test-contract",
+    "Gate-C evidence-comparability"
+  ],
+  "artifacts": {
+    "designPackage": "docs/perf/2026-03-22-p1-6pp-owner-resolve-engine-design-package.md",
+    "summary": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-p1-6pp-owner-resolve-engine-design-package.summary.md"
+  }
+}

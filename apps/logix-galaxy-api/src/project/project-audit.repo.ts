@@ -1,4 +1,4 @@
-import { Context, Effect, Schema } from 'effect'
+import { ServiceMap, Effect, Schema } from 'effect'
 
 import { DbError } from '../db/db.js'
 import { ProjectAuditEventDto, ProjectAuditEventType } from './project.contract.js'
@@ -30,5 +30,5 @@ export interface ProjectAuditRepoService {
   readonly list: (query: ProjectAuditListQuery) => Effect.Effect<ReadonlyArray<ProjectAuditEventDtoDto>, DbError>
 }
 
-export class ProjectAuditRepo extends Context.Tag('ProjectAuditRepo')<ProjectAuditRepo, ProjectAuditRepoService>() {}
+export class ProjectAuditRepo extends ServiceMap.Service<ProjectAuditRepo, ProjectAuditRepoService>()('ProjectAuditRepo') {}
 

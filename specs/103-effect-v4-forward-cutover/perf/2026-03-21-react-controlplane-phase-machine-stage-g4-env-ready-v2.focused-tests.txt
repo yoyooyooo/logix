@@ -1,0 +1,20 @@
+date: 2026-03-21
+topic: react-controlplane-phase-machine stage g4 env-ready v2 (fresh verification)
+worktree: /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.react-controlplane-stage-g4-env-ready-v2
+
+precondition:
+- node_modules initially missing in this worktree, ran `pnpm install` at repo root.
+
+checks:
+1) pnpm --filter @logixjs/react typecheck:test
+status: passed
+
+2) pnpm --filter @logixjs/react exec vitest run test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx --pool forks
+status: passed
+note: test printed two lines of "[RuntimeProvider] Scope.close failed ManagedRuntime disposed" to stdout, assertions passed.
+
+3) python3 fabfile.py probe_next_blocker --json
+status: passed
+probeStatus: clear
+artifact: specs/103-effect-v4-forward-cutover/perf/2026-03-21-react-controlplane-phase-machine-stage-g4-env-ready-v2.probe-next-blocker.json
+

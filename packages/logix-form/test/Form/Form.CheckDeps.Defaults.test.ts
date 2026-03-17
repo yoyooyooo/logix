@@ -1,11 +1,17 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
 
+const waitForAsync = Effect.promise(
+  () =>
+    new Promise<void>((resolve) => {
+      setTimeout(resolve, 20)
+    }),
+)
+
 describe('Form traits check deps defaults', () => {
-  it.scoped('deps is optional; self validate still runs when deps excludes self', () =>
+  it.effect('deps is optional; self validate still runs when deps excludes self', () =>
     Effect.gen(function* () {
       const ValuesSchema = Schema.Struct({
         a: Schema.String,
@@ -46,19 +52,20 @@ describe('Form traits check deps defaults', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* module.tag
+        const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const form = module.controller.make(rt)
+        yield* waitForAsync
 
         // b change => validates b, and should pull in a check via deps:["b"]
         yield* form.field('b').set(true)
-        yield* Effect.sleep('20 millis')
+        yield* waitForAsync
 
         const s1: any = yield* form.getState
         expect(s1.errors?.a).toBe('a_required')
 
         // a change => validates a even though deps excludes self
         yield* form.field('a').set('ok')
-        yield* Effect.sleep('20 millis')
+        yield* waitForAsync
 
         const s2: any = yield* form.getState
         expect(s2.errors?.a).toBeUndefined()

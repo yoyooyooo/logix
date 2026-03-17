@@ -4,7 +4,7 @@ import * as Logix from '../../src/index.js'
 import { collectProcessErrorEvent, withProcessRuntime } from './test-helpers.js'
 
 describe('process: trigger invalid kind', () => {
-  it.scoped('should fail with process::invalid_trigger_kind for malformed trigger kind', () =>
+  it.effect('should fail with process::invalid_trigger_kind for malformed trigger kind', () =>
     Effect.gen(function* () {
       const invoked = yield* Ref.make(0)
 

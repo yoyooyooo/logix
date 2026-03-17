@@ -1,0 +1,31 @@
+{
+  "id": "p1-1.1-fieldpathid-semantic-guard",
+  "date": "2026-03-19",
+  "notes": "记录 externalStore/module-as-source 邻近语义门现状，用于区分存量红线与本刀新增回归。",
+  "commands": [
+    {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts",
+      "status": "failed",
+      "failedCases": [
+        "perf skeleton: externalStore ingest proxy phases"
+      ],
+      "failureSignature": "waitUntil timed out"
+    },
+    {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleAsSource.tick.test.ts -t \"should settle A->B writeback and downstream derived within the same tick|should apply Module-as-Source during scheduled microtask tick (no manual flushNow)\"",
+      "status": "failed",
+      "failedCases": [
+        "should settle A->B writeback and downstream derived within the same tick",
+        "should apply Module-as-Source during scheduled microtask tick (no manual flushNow)"
+      ],
+      "failureSignatures": [
+        "expected { fromSource: +0, keyHash: 'h:0' } to deeply equal { fromSource: 2, keyHash: 'h:2' }",
+        "[TestKit.advanceTicks] Expected >=1 ticks, got 0."
+      ]
+    }
+  ],
+  "assessment": {
+    "isNewRegressionFromThisCut": false,
+    "reason": "失败签名与历史 perf 记录一致，且本刀未改 ModuleAsSource / tick / externalStore perf skeleton 语义路径。"
+  }
+}

@@ -1,0 +1,18 @@
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p0-2-hot-snapshot-next/packages/logix-core
+
+ ✓ test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts (1 test) 114ms
+stdout | test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts > ModuleRuntime.operation runner · transaction-shared hot context microbench (Diagnostics=off, middleware=empty) > records direct evidence for transaction-captured operation hot context
+[perf] operation-runner txn-hot-context diagnostics=off middleware=empty iters=1500 warmup=150 batch=256 shared.p50=0.725ms shared.p95=1.024ms shared.avg=0.785ms fallback.p50=1.096ms fallback.p95=1.814ms fallback.avg=1.263ms speedup=1.608x saved=37.80%
+
+stdout | test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts > ModuleRuntime.operation runner · transaction-shared hot context microbench (Diagnostics=off, middleware=empty) > records direct evidence for transaction-captured operation hot context
+[perf] operation-runner txn-hot-context diagnostics=off middleware=empty iters=1500 warmup=150 batch=1024 shared.p50=2.884ms shared.p95=3.173ms shared.avg=2.941ms fallback.p50=4.214ms fallback.p95=4.481ms fallback.avg=4.360ms speedup=1.483x saved=32.55%
+
+ ✓ test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts (1 test) 15496ms
+     ✓ records direct evidence for transaction-captured operation hot context  15495ms
+
+ Test Files  2 passed (2)
+      Tests  2 passed (2)
+   Start at  11:38:38
+   Duration  15.89s (transform 678ms, setup 0ms, import 1.20s, tests 15.61s, environment 0ms)
+

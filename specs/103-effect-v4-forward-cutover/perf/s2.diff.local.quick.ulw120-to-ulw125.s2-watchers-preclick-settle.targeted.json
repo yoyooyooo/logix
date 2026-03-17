@@ -1,0 +1,291 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-03-06T04:59:50.664Z",
+    "from": {
+      "file": "specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw120.watchers-direct-writeback.targeted.json",
+      "commit": "04132a534071f914a8526ee2a0f7e44b47df20f1"
+    },
+    "to": {
+      "file": "specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw125.watchers-preclick-settle.targeted.json",
+      "commit": "9ff95105870f14c3a795e2b7893da891945adaec"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": true,
+      "allowEnvDrift": true,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.before=true",
+        "git.dirty.after=true",
+        "git.commit: before=04132a534071f914a8526ee2a0f7e44b47df20f1 after=9ff95105870f14c3a795e2b7893da891945adaec"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 2,
+    "improvements": 0,
+    "budgetViolations": 0,
+    "slices": {
+      "total": 6,
+      "compared": 6,
+      "skippedCoverage": 0,
+      "skippedData": 0,
+      "beforeOnly": 0,
+      "afterOnly": 0
+    }
+  },
+  "suites": [
+    {
+      "id": "watchers.clickToPaint",
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "p95<=50ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "reactStrictMode": false
+          },
+          "beforeMaxLevel": 1,
+          "afterMaxLevel": null,
+          "message": "[category=e2e] p95<=50ms {reactStrictMode=false}: before=1 after=null (after:budgetExceeded) (before:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.watchers.scale-down-watchers",
+              "title": "减少 watcher 数量或拆分模块",
+              "detail": "边界回归集中在 watcher 维度，可优先尝试降低单模块 watcher 数量、拆分模块或减少级联依赖。"
+            }
+          ]
+        },
+        {
+          "budget": {
+            "id": "p95<=50ms",
+            "type": "absolute",
+            "metric": "e2e.clickToPaintMs",
+            "p95Ms": 50
+          },
+          "where": {
+            "reactStrictMode": true
+          },
+          "beforeMaxLevel": 512,
+          "afterMaxLevel": null,
+          "message": "[category=e2e] p95<=50ms {reactStrictMode=true}: before=512 after=null (after:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.watchers.scale-down-watchers",
+              "title": "减少 watcher 数量或拆分模块",
+              "detail": "边界回归集中在 watcher 维度，可优先尝试降低单模块 watcher 数量、拆分模块或减少级联依赖。"
+            }
+          ]
+        }
+      ],
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 14,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 14,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=14 unavailable=0 missing=0] after[value=core ok=14 unavailable=0 missing=0]"
+        }
+      ],
+      "metricDeltas": [
+        {
+          "metric": "e2e.clickToPaintMs",
+          "unit": "ms",
+          "compared": 14,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [
+            {
+              "params": {
+                "watchers": 512,
+                "reactStrictMode": true
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 27,
+                "p95Ms": 36.599999994039536
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 59.69999998807907,
+                "p95Ms": 64.89999997615814
+              },
+              "deltaMs": {
+                "medianMs": 32.69999998807907,
+                "p95Ms": 28.299999982118607
+              },
+              "ratio": {
+                "median": 2.211111110669595,
+                "p95": 1.7732240433532072
+              }
+            },
+            {
+              "params": {
+                "watchers": 128,
+                "reactStrictMode": true
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 31.900000005960464,
+                "p95Ms": 37.79999999701977
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 51.80000001192093,
+                "p95Ms": 55.099999994039536
+              },
+              "deltaMs": {
+                "medianMs": 19.900000005960464,
+                "p95Ms": 17.299999997019768
+              },
+              "ratio": {
+                "median": 1.6238244514809461,
+                "p95": 1.4576719576291994
+              }
+            },
+            {
+              "params": {
+                "watchers": 256,
+                "reactStrictMode": false
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 37.400000005960464,
+                "p95Ms": 46.099999994039536
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 42.900000005960464,
+                "p95Ms": 59.30000001192093
+              },
+              "deltaMs": {
+                "medianMs": 5.5,
+                "p95Ms": 13.200000017881393
+              },
+              "ratio": {
+                "median": 1.1470588235059749,
+                "p95": 1.2863340568240365
+              }
+            },
+            {
+              "params": {
+                "watchers": 128,
+                "reactStrictMode": false
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 32.3999999910593,
+                "p95Ms": 40.099999994039536
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 42.099999994039536,
+                "p95Ms": 53.099999994039536
+              },
+              "deltaMs": {
+                "medianMs": 9.700000002980232,
+                "p95Ms": 13
+              },
+              "ratio": {
+                "median": 1.299382716223979,
+                "p95": 1.3241895262327261
+              }
+            },
+            {
+              "params": {
+                "watchers": 8,
+                "reactStrictMode": true
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 31.600000008940697,
+                "p95Ms": 43.400000005960464
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 41.80000001192093,
+                "p95Ms": 56.10000002384186
+              },
+              "deltaMs": {
+                "medianMs": 10.200000002980232,
+                "p95Ms": 12.700000017881393
+              },
+              "ratio": {
+                "median": 1.3227848101295667,
+                "p95": 1.292626728482424
+              }
+            }
+          ],
+          "topImprovements": [
+            {
+              "params": {
+                "watchers": 32,
+                "reactStrictMode": false
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 38.70000000298023,
+                "p95Ms": 60.20000000298023
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 46.099999994039536,
+                "p95Ms": 49.400000005960464
+              },
+              "deltaMs": {
+                "medianMs": 7.399999991059303,
+                "p95Ms": -10.799999997019768
+              },
+              "ratio": {
+                "median": 1.1912144700384868,
+                "p95": 0.8205980067029052
+              }
+            },
+            {
+              "params": {
+                "watchers": 64,
+                "reactStrictMode": false
+              },
+              "before": {
+                "n": 20,
+                "medianMs": 29.600000008940697,
+                "p95Ms": 51.5
+              },
+              "after": {
+                "n": 20,
+                "medianMs": 42.69999998807907,
+                "p95Ms": 49.30000001192093
+              },
+              "deltaMs": {
+                "medianMs": 13.099999979138374,
+                "p95Ms": -2.199999988079071
+              },
+              "ratio": {
+                "median": 1.4425675667291051,
+                "p95": 0.9572815536295326
+              }
+            }
+          ]
+        }
+      ],
+      "notes": "mostSignificantRegression: p95<=50ms {reactStrictMode=true} (before=512, after=null); stabilityWarning: metric=e2e.clickToPaintMs {reactStrictMode=false&watchers=1} baselineP95=45.50ms afterP95=55.30ms diff=9.80ms limit=5.00ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+    }
+  ]
+}

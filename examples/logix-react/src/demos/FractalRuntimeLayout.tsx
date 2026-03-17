@@ -1,5 +1,5 @@
 import React from 'react'
-import { Context, Effect, Layer } from 'effect'
+import { Effect, Layer, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 import { RuntimeProvider, useModule, useRuntime } from '@logixjs/react'
 import { CounterDef, CounterModule } from '../modules/counter'
@@ -11,7 +11,7 @@ interface ThemeService {
   readonly name: string
 }
 
-const ThemeTag = Context.GenericTag<ThemeService>('@examples/ThemeService')
+const ThemeTag = ServiceMap.Service<ThemeService>('@examples/ThemeService')
 
 const GlobalThemeLayer = Layer.succeed(ThemeTag, { name: 'GlobalTheme' })
 const FeatureThemeLayer = Layer.succeed(ThemeTag, { name: 'FeatureTheme' })
@@ -30,7 +30,7 @@ const ThemeProbe: React.FC<{ label: string }> = ({ label }) => {
   React.useEffect(() => {
     void runtime.runPromise(
       Effect.gen(function* () {
-        const theme = yield* ThemeTag
+        const theme = yield* Effect.service(ThemeTag).pipe(Effect.orDie)
         setThemeName(theme.name)
       }),
     )

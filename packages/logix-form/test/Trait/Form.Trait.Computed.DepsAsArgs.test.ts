@@ -1,5 +1,4 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import * as Form from '../../src/index.js'
 
 describe('Form.Trait.computed deps-as-args', () => {

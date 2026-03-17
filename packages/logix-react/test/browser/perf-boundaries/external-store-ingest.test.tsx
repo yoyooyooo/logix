@@ -113,13 +113,9 @@ test(
         if (cached) return cached
 
         const instrumentation = args.diagnosticsLevel === 'full' ? 'full' : 'light'
-        const mode: Logix.Debug.DevtoolsProjectionMode = args.diagnosticsLevel === 'full' ? 'full' : 'off'
-        const debugLayer = Layer.mergeAll(
-          Logix.Debug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
-            mode,
-          }) as Layer.Layer<any, never, never>,
-          Logix.Debug.diagnosticsLevel(args.diagnosticsLevel),
-        ) as Layer.Layer<any, never, never>
+        const debugLayer = Logix.Debug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
+          diagnosticsLevel: args.diagnosticsLevel,
+        }) as Layer.Layer<any, never, never>
 
         const State = Schema.Struct({ value: Schema.Number })
         const manualStores = Array.from({ length: moduleCount }, (_, i) => makeManualStore(i))
@@ -154,7 +150,7 @@ test(
         )
 
         const moduleRuntimes = (await runtime.runPromise(
-          Effect.all(moduleDefs.map((m) => m.tag), { concurrency: 'unbounded' }) as any,
+          Effect.all(moduleDefs.map((m) => Effect.service(m.tag).pipe(Effect.orDie)), { concurrency: 'unbounded' }) as any,
         )) as ReadonlyArray<any>
 
         const storeOptions = { lowPriorityDelayMs: 16, lowPriorityMaxDelayMs: 50 }
@@ -354,7 +350,7 @@ test(
         })
 
         try {
-          const moduleRuntime = (await runtime.runPromise(M.tag as any)) as any
+          const moduleRuntime = (await runtime.runPromise(Effect.service(M.tag).pipe(Effect.orDie))) as any
 
           const selectorCount = 200
           const readQueries = Array.from({ length: selectorCount }, (_, i) =>
@@ -374,6 +370,10 @@ test(
           for (const s of stores) s.getSnapshot()
 
           for (const u of unsubs) u()
+          await Promise.resolve()
+          await nextFrame()
+          await new Promise((resolve) => setTimeout(resolve, 20))
+          await nextFrame()
 
           const s0 = stores[0]
           const rq0 = readQueries[0]
@@ -384,7 +384,6 @@ test(
             expect(s1).not.toBe(s0)
           }
 
-          await nextFrame()
         } finally {
           await runtime.dispose()
         }

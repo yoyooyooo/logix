@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { describe, it, expect } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, act, waitFor } from '@testing-library/react'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import { RuntimeProvider, useModule } from '../../src/index.js'
@@ -157,11 +157,13 @@ describe('@logixjs/react · react-render Debug events', () => {
         )
       })
 
-      const refs = Logix.Debug.getDevtoolsSnapshot().events.filter(
-        (ref) => ref.kind === 'react-render' && ref.runtimeLabel === runtimeLabel,
-      )
+      await waitFor(() => {
+        const refs = Logix.Debug.getDevtoolsSnapshot().events.filter(
+          (ref) => ref.kind === 'react-render' && ref.runtimeLabel === runtimeLabel,
+        )
 
-      expect(refs.length).toBeGreaterThan(0)
+        expect(refs.length).toBeGreaterThan(0)
+      })
     } finally {
       process.env.NODE_ENV = prevEnv
     }

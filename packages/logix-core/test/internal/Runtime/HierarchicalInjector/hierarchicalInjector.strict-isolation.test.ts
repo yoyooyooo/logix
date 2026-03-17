@@ -21,9 +21,9 @@ describe('HierarchicalInjector strict isolation', () => {
     try {
       // Construct a Child runtime in "another root" first so it gets registered in the process-level registry.
       // Current behavior: BoundApi $.use(Child) may fall back to it, causing cross-root instance leakage.
-      otherRoot.runSync(Child.tag)
+      otherRoot.runSync(Effect.service(Child.tag).pipe(Effect.orDie))
 
-      const parentRuntime = parentRoot.runSync(Parent.tag) as Logix.ModuleRuntime<any, any>
+      const parentRuntime = parentRoot.runSync(Effect.service(Parent.tag).pipe(Effect.orDie)) as Logix.ModuleRuntime<any, any>
 
       const $ = BoundApiRuntime.make(Parent.shape as any, parentRuntime as any, {
         moduleId: Parent.id,

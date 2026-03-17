@@ -1,0 +1,42 @@
+{
+  "cutId": "p2-1-env-ready-recheck",
+  "validatedAtUtc": "2026-03-21T01:27:38Z",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p2-1-env-ready-recheck",
+  "branch": "agent/v4-perf-p2-1-env-ready-recheck",
+  "commands": [
+    {
+      "name": "focused-tests",
+      "cmd": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts test/internal/observability/TxnLaneEvidence.Schema.test.ts",
+      "exitCode": 0,
+      "result": "passed",
+      "summary": {
+        "testFiles": "2 passed",
+        "tests": "5 passed"
+      },
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p2-1-env-ready-recheck.focused-tests.txt"
+    },
+    {
+      "name": "next-blocker-probe",
+      "cmd": "python3 fabfile.py probe_next_blocker --json",
+      "exitCode": 42,
+      "result": "blocked_threshold",
+      "summary": {
+        "status": "blocked",
+        "failureKind": "threshold",
+        "blockerSuite": "externalStore.ingest.tickNotify",
+        "executed": 1,
+        "thresholdAnomalyCount": 1,
+        "firstFailLevel": 256,
+        "maxLevel": 128
+      },
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p2-1-env-ready-recheck.probe-next-blocker.json"
+    }
+  ],
+  "decisionGate": {
+    "trigger1_environment_ready": "met",
+    "trigger2_non_environment_probe_failure": "met_but_known_edge_gate_noise",
+    "trigger3_unique_minimal_cut_for_p2_1": "not_met",
+    "triggerStatus": "not_met",
+    "overall": "docs_evidence_only_watchlist_hold"
+  }
+}

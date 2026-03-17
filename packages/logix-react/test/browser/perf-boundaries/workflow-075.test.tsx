@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { Context, Effect, Exit, Layer, Schema } from 'effect'
+import { Effect, Exit, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 import matrix from '@logixjs/perf-evidence/assets/matrix.json'
 import { getRuntimeModuleExternalStore } from '../../../src/internal/store/RuntimeExternalStore.js'
@@ -39,10 +39,10 @@ test(
       const perfSuite = (matrix.suites as any[]).find((s) => s.id === 'workflow.submit.tickNotify') as any
       expect(perfSuite).toBeDefined()
 
-      class SubmitPort extends Context.Tag('PerfWorkflow.075.SubmitPort')<
+      class SubmitPort extends ServiceMap.Service<
         SubmitPort,
         (shouldFail: boolean) => Effect.Effect<void, Error, never>
-      >() {}
+      >()('PerfWorkflow.075.SubmitPort') {}
 
       const M = Logix.Module.make('PerfWorkflow075.Submit', {
         state: Schema.Struct({ ok: Schema.Number, bad: Schema.Number }),
@@ -59,16 +59,14 @@ test(
 
       const manualLogic = M.logic<SubmitPort>(($) =>
         Effect.gen(function* () {
-          yield* $.onAction('submit').run({
-            mode: 'latest',
-            effect: (action: any) =>
-              Effect.gen(function* () {
-                const port = yield* $.use(SubmitPort)
-                const shouldFail = Boolean((action as any)?.payload?.shouldFail)
-                const exit = yield* Effect.exit(port(shouldFail))
-                yield* $.dispatch(Exit.isSuccess(exit) ? 'ok' : 'bad')
-              }),
-          })
+          yield* $.onAction('submit').runLatest((action) =>
+            Effect.gen(function* () {
+              const port = yield* $.use(SubmitPort)
+              const shouldFail = Boolean((action as any)?.payload?.shouldFail)
+              const exit = yield* Effect.exit(port(shouldFail))
+              yield* $.dispatch(Exit.isSuccess(exit) ? 'ok' : 'bad')
+            }),
+          )
         }),
       )
 
@@ -115,13 +113,9 @@ test(
         if (cached) return cached
 
         const instrumentation = 'light'
-        const projectionMode: Logix.Debug.DevtoolsProjectionMode = args.diagnosticsLevel
-        const debugLayer = Layer.mergeAll(
-          Logix.Debug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
-            mode: projectionMode,
-          }) as Layer.Layer<any, never, never>,
-          Logix.Debug.diagnosticsLevel(args.diagnosticsLevel),
-        ) as Layer.Layer<any, never, never>
+        const debugLayer = Logix.Debug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
+          diagnosticsLevel: args.diagnosticsLevel,
+        }) as Layer.Layer<any, never, never>
 
         const impl = mode === 'workflow' ? workflowImpl : manualImpl
 
@@ -141,7 +135,7 @@ test(
           },
         )
 
-        const moduleRuntime = (await runtime.runPromise(M.tag as any)) as any
+        const moduleRuntime = (await runtime.runPromise(Effect.service(M.tag).pipe(Effect.orDie))) as any
 
         const storeOptions = { lowPriorityDelayMs: 16, lowPriorityMaxDelayMs: 50 }
         const store = getRuntimeModuleExternalStore(runtime as any, moduleRuntime, storeOptions)
@@ -304,15 +298,13 @@ test(
 
       const manualLogic = M.logic(($) =>
         Effect.gen(function* () {
-          yield* $.onAction('start').run({
-            mode: 'latest',
-            effect: () =>
-              Effect.gen(function* () {
-                // manual baseline: use Effect.sleep (timer-based) + dispatch
-                yield* Effect.sleep('0 millis')
-                yield* $.dispatch('done')
-              }),
-          })
+          yield* $.onAction('start').runLatest(() =>
+            Effect.gen(function* () {
+              // manual baseline: use Effect.sleep (timer-based) + dispatch
+              yield* Effect.sleep('0 millis')
+              yield* $.dispatch('done')
+            }),
+          )
         }),
       )
 
@@ -351,13 +343,9 @@ test(
         if (cached) return cached
 
         const instrumentation = 'light'
-        const projectionMode: Logix.Debug.DevtoolsProjectionMode = args.diagnosticsLevel
-        const debugLayer = Layer.mergeAll(
-          Logix.Debug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
-            mode: projectionMode,
-          }) as Layer.Layer<any, never, never>,
-          Logix.Debug.diagnosticsLevel(args.diagnosticsLevel),
-        ) as Layer.Layer<any, never, never>
+        const debugLayer = Logix.Debug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
+          diagnosticsLevel: args.diagnosticsLevel,
+        }) as Layer.Layer<any, never, never>
 
         const impl = mode === 'workflow' ? workflowImpl : manualImpl
 
@@ -373,7 +361,7 @@ test(
           },
         )
 
-        const moduleRuntime = (await runtime.runPromise(M.tag as any)) as any
+        const moduleRuntime = (await runtime.runPromise(Effect.service(M.tag).pipe(Effect.orDie))) as any
 
         const storeOptions = { lowPriorityDelayMs: 16, lowPriorityMaxDelayMs: 50 }
         const store = getRuntimeModuleExternalStore(runtime as any, moduleRuntime, storeOptions)

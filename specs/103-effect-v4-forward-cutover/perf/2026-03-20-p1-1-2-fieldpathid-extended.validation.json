@@ -1,0 +1,33 @@
+{
+  "id": "p1-1.1-fieldpathid-extended-validation",
+  "date": "2026-03-20",
+  "commands": [
+    {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts",
+      "status": "passed",
+      "testsPassed": 12,
+      "testsFailed": 0
+    },
+    {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/StateTrait/StateTrait.ExternalStoreTrait.SingleFieldFastPath.Perf.off.test.ts",
+      "status": "passed",
+      "assertions": [
+        "single-shallow ratio < 0.9",
+        "single-deep ratio < 0.95",
+        "single-same-value-noop ratio < 0.85",
+        "multi-2 ratio <= 1.08",
+        "multi-8 ratio <= 1.08",
+        "multi-64 ratio <= 1.08"
+      ]
+    },
+    {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "status": "passed",
+      "probeStatus": "clear"
+    }
+  ],
+  "successGate": {
+    "singleFieldHighFreqEvidencePositive": true,
+    "externalStoreNeighborSuiteNoRegression": true
+  }
+}

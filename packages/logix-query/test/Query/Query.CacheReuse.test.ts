@@ -1,12 +1,11 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Duration, Effect, Layer, Schema } from 'effect'
 import { QueryClient } from '@tanstack/query-core'
 import * as Logix from '@logixjs/core'
 import * as Query from '../../src/index.js'
 
 describe('Query.CacheReuse', () => {
-  it.scoped('should reuse same keyHash and avoid redundant loading', () =>
+  it.effect('should reuse same keyHash and avoid redundant loading', () =>
     Effect.gen(function* () {
       const KeySchema = Schema.Struct({ q: Schema.String })
       type Key = Schema.Schema.Type<typeof KeySchema>
@@ -51,7 +50,7 @@ describe('Query.CacheReuse', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* module.tag
+          const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const controller = module.controller.make(rt)
 
         // `onMount` triggers one load.

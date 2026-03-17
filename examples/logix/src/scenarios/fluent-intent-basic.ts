@@ -43,27 +43,27 @@ export const CounterDef = Logix.Module.make('CounterModule', {
 export const CounterLogic = CounterDef.logic(($) =>
   Effect.gen(function* () {
     // 1. 监听 inc / dec Action，更新 count
-    yield* $.onAction('inc').run({
-      effect: $.state.update((prev) => ({
+    yield* $.onAction('inc').run(
+      $.state.update((prev) => ({
         ...prev,
         count: prev.count + 1,
       })),
-    })
+    )
 
-    yield* $.onAction('dec').run({
-      effect: $.state.update((prev) => ({
+    yield* $.onAction('dec').run(
+      $.state.update((prev) => ({
         ...prev,
         count: prev.count - 1,
       })),
-    })
+    )
 
     // 2. 监听 count 派生 hasValue 字段
-    yield* $.onState((s) => s.count).run({
-      effect: $.state.update((prev) => ({
+    yield* $.onState((s) => s.count).run(
+      $.state.update((prev) => ({
         ...prev,
         hasValue: prev.count !== 0,
       })),
-    })
+    )
   }),
 )
 
@@ -87,14 +87,12 @@ export const CounterLiveFluent = CounterFluentModule.impl.layer
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const program = Effect.gen(function* () {
-    const runtime = yield* CounterDef.tag
+    const runtime = yield* Effect.service(CounterDef.tag).pipe(Effect.orDie)
 
     // Log state changes
-    yield* Effect.fork(
-      runtime
-        .changes((s) => s)
-        .pipe(Stream.runForEach((s) => Effect.log(`[State] count=${s.count}, hasValue=${s.hasValue}`))),
-    )
+    yield* Effect.forkChild(runtime
+      .changes((s) => s)
+      .pipe(Stream.runForEach((s) => Effect.log(`[State] count=${s.count}, hasValue=${s.hasValue}`))))
 
     yield* Effect.log('--- Start ---')
 

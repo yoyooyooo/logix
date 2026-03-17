@@ -2,6 +2,10 @@ import * as Logix from '@logixjs/core'
 import type { DevtoolsSnapshot } from '../snapshot/index.js'
 import type { DevtoolsSettings, DevtoolsState, OperationSummary, TimelineEntry } from './model.js'
 import { defaultSettings, emptyDevtoolsState, type DevtoolsSelectionOverride } from './model.js'
+import {
+  makeProjectionBudgetSyntheticEvent,
+  readProjectionBudgetSummaryFromSnapshot,
+} from './projection-budget.js'
 
 // A simple path reader for Devtools internal use:
 // - Only supports nested field paths separated by ".", e.g. "profile.name".
@@ -24,21 +28,13 @@ const getAtPath = (obj: unknown, path: string): unknown => {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
-const readStaticIrDigest = (meta: Record<string, unknown>): string | undefined => {
-  const lookupKey = isRecord((meta as any).traceLookupKey) ? ((meta as any).traceLookupKey as Record<string, unknown>) : undefined
-  const digestFromLookup = lookupKey && typeof lookupKey.staticIrDigest === 'string' ? lookupKey.staticIrDigest : undefined
-  if (digestFromLookup && digestFromLookup.length > 0) return digestFromLookup
-  const digest = meta.staticIrDigest
-  return typeof digest === 'string' && digest.length > 0 ? digest : undefined
-}
-
 // Consumer-side digest gate: when staticIrDigest is missing, do not keep rootPaths (avoid showing wrong info).
 // Note: live runtime events are id-first by default; only Evidence import path may materialize rootPaths from summary.fieldPaths.
 const gateDirtyRootPathsByDigest = (meta: unknown): unknown => {
   if (!isRecord(meta)) return meta
 
-  const staticIrDigest = readStaticIrDigest(meta)
-  if (staticIrDigest) {
+  const staticIrDigest = meta.staticIrDigest
+  if (typeof staticIrDigest === 'string' && staticIrDigest.length > 0) {
     return meta
   }
 
@@ -85,6 +81,23 @@ type TraitConvergeWindow = {
   top3: Array<TraitConvergeStep>
 }
 
+type StateWriteSourceKey = 'reducer' | 'boundApiUpdate' | 'traitExternalStore' | 'moduleAsSource' | 'unknown'
+type StateWriteCoverage = 'precisePatch' | 'topLevelKnown' | 'customMutation'
+
+type StateWriteBucket = {
+  total: number
+  degraded: number
+  unknownReason: number
+}
+
+type StateWriteWindow = {
+  observedCount: number
+  missingCount: number
+  degradedCount: number
+  unknownReasonCount: number
+  bySource: Record<StateWriteSourceKey, StateWriteBucket>
+}
+
 const emptyTraitConvergeWindow = (): TraitConvergeWindow => ({
   txnCount: 0,
   outcomes: {
@@ -102,6 +115,91 @@ const emptyTraitConvergeWindow = (): TraitConvergeWindow => ({
   changedSteps: 0,
   top3: [],
 })
+
+const emptyStateWriteBucket = (): StateWriteBucket => ({
+  total: 0,
+  degraded: 0,
+  unknownReason: 0,
+})
+
+const emptyStateWriteWindow = (): StateWriteWindow => ({
+  observedCount: 0,
+  missingCount: 0,
+  degradedCount: 0,
+  unknownReasonCount: 0,
+  bySource: {
+    reducer: emptyStateWriteBucket(),
+    boundApiUpdate: emptyStateWriteBucket(),
+    traitExternalStore: emptyStateWriteBucket(),
+    moduleAsSource: emptyStateWriteBucket(),
+    unknown: emptyStateWriteBucket(),
+  },
+})
+
+const isStateWriteCoverage = (value: unknown): value is StateWriteCoverage =>
+  value === 'precisePatch' || value === 'topLevelKnown' || value === 'customMutation'
+
+const readStateWriteSourceKey = (value: unknown): StateWriteSourceKey => {
+  if (value === 'reducer') return 'reducer'
+  if (value === 'boundApi.update') return 'boundApiUpdate'
+  if (value === 'trait.externalStore') return 'traitExternalStore'
+  if (value === 'moduleAsSource') return 'moduleAsSource'
+  return 'unknown'
+}
+
+const collectStateWrite = (window: StateWriteWindow, event: Logix.Debug.RuntimeDebugEventRef): void => {
+  if (event.kind !== 'state' || event.label !== 'state:update') return
+
+  const meta = event.meta as any
+  const stateWrite = meta && typeof meta === 'object' ? (meta as any).stateWrite : undefined
+  if (!stateWrite || typeof stateWrite !== 'object') {
+    window.missingCount += 1
+    return
+  }
+
+  const coverage = (stateWrite as any).coverage
+  if (!isStateWriteCoverage(coverage)) {
+    window.missingCount += 1
+    return
+  }
+
+  const sourceKey = readStateWriteSourceKey((stateWrite as any).source)
+  const bucket = window.bySource[sourceKey]
+
+  window.observedCount += 1
+  bucket.total += 1
+
+  if (coverage !== 'customMutation') return
+
+  window.degradedCount += 1
+  bucket.degraded += 1
+
+  const degradeReason = (stateWrite as any).degradeReason
+  if (degradeReason === 'unknownWrite') {
+    window.unknownReasonCount += 1
+    bucket.unknownReason += 1
+  }
+}
+
+const finalizeStateWriteWindow = (window: StateWriteWindow): OperationSummary['stateWrite'] => {
+  const totalCount = window.observedCount + window.missingCount
+  if (totalCount <= 0) return undefined
+
+  const degradeRatio = window.observedCount > 0 ? window.degradedCount / window.observedCount : 0
+  const degradeUnknownShare = window.degradedCount > 0 ? window.unknownReasonCount / window.degradedCount : 0
+  const readCoverage = window.observedCount / totalCount
+
+  return {
+    observedCount: window.observedCount,
+    missingCount: window.missingCount,
+    readCoverage,
+    degradedCount: window.degradedCount,
+    unknownReasonCount: window.unknownReasonCount,
+    degradeRatio,
+    degradeUnknownShare,
+    bySource: window.bySource,
+  }
+}
 
 const pushTop3 = (window: TraitConvergeWindow, step: TraitConvergeStep): void => {
   const next = [...window.top3, step].sort((a, b) => b.durationMs - a.durationMs).slice(0, 3)
@@ -191,18 +289,20 @@ const groupEventsIntoOperationWindows = (
   let current:
     | {
         startedAt: number
-        endedAt: number
-        eventCount: number
-        renderCount: number
-        txnIds: Set<string>
-        traitConverge: TraitConvergeWindow
-      }
+      endedAt: number
+      eventCount: number
+      renderCount: number
+      txnIds: Set<string>
+      traitConverge: TraitConvergeWindow
+      stateWrite: StateWriteWindow
+    }
     | undefined
 
   const flush = () => {
     if (!current) return
     const durationMs = Math.max(0, current.endedAt - current.startedAt)
     const traitConverge = current.traitConverge.txnCount > 0 ? current.traitConverge : undefined
+    const stateWrite = finalizeStateWriteWindow(current.stateWrite)
     summaries.push({
       startedAt: current.startedAt,
       endedAt: current.endedAt,
@@ -211,6 +311,7 @@ const groupEventsIntoOperationWindows = (
       renderCount: current.renderCount,
       txnCount: current.txnIds.size,
       traitConverge: traitConverge as any,
+      stateWrite: stateWrite as any,
     })
     current = undefined
   }
@@ -228,8 +329,10 @@ const groupEventsIntoOperationWindows = (
         renderCount: ref.kind === 'react-render' ? 1 : 0,
         txnIds: new Set(ref.txnId ? [ref.txnId] : []),
         traitConverge: emptyTraitConvergeWindow(),
+        stateWrite: emptyStateWriteWindow(),
       }
       collectTraitConverge(current.traitConverge, ref)
+      collectStateWrite(current.stateWrite, ref)
       continue
     }
 
@@ -244,8 +347,10 @@ const groupEventsIntoOperationWindows = (
         renderCount: ref.kind === 'react-render' ? 1 : 0,
         txnIds: new Set(ref.txnId ? [ref.txnId] : []),
         traitConverge: emptyTraitConvergeWindow(),
+        stateWrite: emptyStateWriteWindow(),
       }
       collectTraitConverge(current.traitConverge, ref)
+      collectStateWrite(current.stateWrite, ref)
       continue
     }
 
@@ -258,6 +363,7 @@ const groupEventsIntoOperationWindows = (
       current.txnIds.add(ref.txnId)
     }
     collectTraitConverge(current.traitConverge, ref)
+    collectStateWrite(current.stateWrite, ref)
   }
 
   flush()
@@ -468,11 +574,13 @@ export const computeDevtoolsState = (
 
   const hasSelectedFieldPathOverride = Object.prototype.hasOwnProperty.call(overrides, 'selectedFieldPath')
   const selectedFieldPath = hasSelectedFieldPathOverride ? overrides.selectedFieldPath : (base as any).selectedFieldPath
+  const projectionBudgetSummary = readProjectionBudgetSummaryFromSnapshot(snapshot)
 
   // 3) Build the event timeline under the current selection (including state after each event),
   // and optionally correlate/filter by fieldPath.
   const timeline: TimelineEntry[] = []
   const lastStateByInstance = new Map<string, unknown>()
+  let hasProjectionBudgetEvent = false
 
   if (selectedRuntime) {
     for (const event of snapshot.events) {
@@ -509,6 +617,10 @@ export const computeDevtoolsState = (
         }
       }
 
+      if (event.kind === 'devtools' && event.label === 'devtools:projectionBudget') {
+        hasProjectionBudgetEvent = true
+      }
+
       if (event.kind === 'state' && event.label === 'state:update') {
         const gatedEvent: Logix.Debug.RuntimeDebugEventRef = {
           ...event,
@@ -542,6 +654,22 @@ export const computeDevtoolsState = (
           stateAfter: lastStateByInstance.get(instanceKey),
         })
       }
+    }
+
+    if (!selectedFieldPath && projectionBudgetSummary && !hasProjectionBudgetEvent) {
+      const moduleId = selectedModule ?? 'devtools'
+      const instanceId = selectedInstance ?? `${moduleId}::projection-budget`
+      const anchorTs = timeline.length > 0 ? Math.max(0, (timeline[0]?.event as any).timestamp - 1) : Date.now()
+      timeline.unshift({
+        event: makeProjectionBudgetSyntheticEvent({
+          runtimeLabel: selectedRuntime,
+          moduleId,
+          instanceId,
+          timestamp: anchorTs,
+          summary: projectionBudgetSummary,
+        }),
+        stateAfter: undefined,
+      })
     }
   }
 

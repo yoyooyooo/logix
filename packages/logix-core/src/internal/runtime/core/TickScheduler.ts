@@ -1,12 +1,10 @@
-import { Effect, FiberRef } from 'effect'
+import { Effect } from 'effect'
 import * as Debug from './DebugSink.js'
-import * as DevtoolsHub from './DevtoolsHub.js'
 import type { DeclarativeLinkRuntime } from './DeclarativeLinkRuntime.js'
 import type { HostScheduler } from './HostScheduler.js'
 import { makeJobQueue, type JobQueue } from './JobQueue.js'
 import * as TaskRunner from './TaskRunner.js'
 import {
-  makeReadQueryTopicKey,
   type ModuleInstanceKey,
   type RuntimeStore,
   type RuntimeStoreModuleCommit,
@@ -75,7 +73,21 @@ export interface TickScheduler {
     readonly selectorId: string
     readonly priority: StateCommitPriority
   }) => void
+  readonly retainModuleSourceObserver: (moduleInstanceKey: ModuleInstanceKey) => () => void
+  readonly hasModuleSourceObservers: (moduleInstanceKey: ModuleInstanceKey) => boolean
   readonly flushNow: Effect.Effect<void, never, never>
+}
+
+const dispatchTopicListeners = (listeners: ReadonlyArray<() => void>): void => {
+  for (let index = 0; index < listeners.length; index += 1) {
+    const listener = listeners[index]
+    if (!listener) continue
+    try {
+      listener()
+    } catch {
+      // best-effort: never let listener callback break the tick
+    }
+  }
 }
 
 // ---- Runtime.batch (sync boundary) ----
@@ -106,38 +118,40 @@ export const exitRuntimeBatch = (): void => {
 const waitForBatchEndIfNeeded = (): Effect.Effect<void, never, never> =>
   batchDepth === 0
     ? Effect.void
-    : Effect.async<void, never>((resume, signal) => {
+    : Effect.promise<void>((signal) =>
+        new Promise<void>((resolve) => {
 
-    let done = false
-    const cleanup = () => {
-      if (done) return
-      done = true
-      batchWaiters.delete(waiter)
-      try {
-        signal.removeEventListener('abort', onAbort)
-      } catch {
-        // best-effort
-      }
-    }
+          let done = false
+          const cleanup = () => {
+            if (done) return
+            done = true
+            batchWaiters.delete(waiter)
+            try {
+              signal.removeEventListener('abort', onAbort)
+            } catch {
+              // best-effort
+            }
+          }
 
-    const onAbort = () => {
-      cleanup()
-    }
+          const onAbort = () => {
+            cleanup()
+          }
 
-    const waiter: BatchWaiter = {
-      resolve: () => {
-        cleanup()
-        resume(Effect.void)
-      },
-    }
+          const waiter: BatchWaiter = {
+            resolve: () => {
+              cleanup()
+              resolve()
+            },
+          }
 
-    batchWaiters.add(waiter)
-    try {
-      signal.addEventListener('abort', onAbort, { once: true })
-    } catch {
-      // best-effort
-    }
-  })
+          batchWaiters.add(waiter)
+          try {
+            signal.addEventListener('abort', onAbort, { once: true })
+          } catch {
+            // best-effort
+          }
+        }),
+      )
 
 // ---- TickScheduler implementation ----
 
@@ -219,8 +233,6 @@ const shouldSampleTick = (tickSeq: number, sampleRate: number): boolean => {
   const h = Math.imul(x ^ 0x9e3779b9, 0x85ebca6b) >>> 0
   return h / 0xffffffff < sampleRate
 }
-
-const topicKeyResolutionCacheLimit = 1024
 
 const toTriggerKind = (originKind: string | undefined): TriggerKind => {
   if (originKind === 'action') return 'dispatch'
@@ -374,41 +386,32 @@ export const makeTickScheduler = (args: {
   let microtaskChainDepth = 0
   let nextForcedReason: TickScheduleReason | undefined
   let lastSchedulingDegrade: SchedulingDegradeState | undefined
+  const moduleSourceObserverRefCount = new Map<ModuleInstanceKey, number>()
 
   let coalescedModules = 0
   let coalescedTopics = 0
-  const topicKeyToModuleInstanceKeyCache = new Map<string, ModuleInstanceKey | null>()
 
-  const rememberTopicKeyResolution = (topicKey: string, moduleInstanceKey: ModuleInstanceKey | undefined): ModuleInstanceKey | undefined => {
-    if (topicKeyToModuleInstanceKeyCache.has(topicKey)) {
-      topicKeyToModuleInstanceKeyCache.delete(topicKey)
-    } else if (topicKeyToModuleInstanceKeyCache.size >= topicKeyResolutionCacheLimit) {
-      const oldestKey = topicKeyToModuleInstanceKeyCache.keys().next().value
-      if (oldestKey !== undefined) {
-        topicKeyToModuleInstanceKeyCache.delete(oldestKey)
+  const yieldMicrotask = Effect.promise<void>(() =>
+    new Promise<void>((resolve) => {
+      hostScheduler.scheduleMicrotask(resolve)
+    }),
+  )
+  const yieldMacrotask = Effect.promise<void>((signal) =>
+    new Promise<void>((resolve) => {
+      const cancel = hostScheduler.scheduleMacrotask(resolve)
+      try {
+        signal.addEventListener(
+          'abort',
+          () => {
+            cancel()
+          },
+          { once: true },
+        )
+      } catch {
+        // best-effort
       }
-    }
-    topicKeyToModuleInstanceKeyCache.set(topicKey, moduleInstanceKey ?? null)
-    return moduleInstanceKey
-  }
-
-  const yieldMicrotask = Effect.async<void, never>((resume) => {
-    hostScheduler.scheduleMicrotask(() => resume(Effect.void))
-  })
-  const yieldMacrotask = Effect.async<void, never>((resume, signal) => {
-    const cancel = hostScheduler.scheduleMacrotask(() => resume(Effect.void))
-    try {
-      signal.addEventListener(
-        'abort',
-        () => {
-          cancel()
-        },
-        { once: true },
-      )
-    } catch {
-      // best-effort
-    }
-  })
+    }),
+  )
 
   const scheduleTick = (): Effect.Effect<void, never, never> =>
     Effect.gen(function* () {
@@ -428,47 +431,51 @@ export const makeTickScheduler = (args: {
       const startedAs: TickScheduleStartedAs = waitedForBatch ? 'batch' : boundary
       const depthAtSchedule = microtaskChainDepth
 
-      yield* Effect.forkDaemon(
-        Effect.locally(TaskRunner.inSyncTransactionFiber, false)(
-          Effect.gen(function* () {
-            try {
-              yield* waitForBatchEndIfNeeded()
-              if (boundary === 'microtask') {
-                yield* yieldMicrotask
+      yield* Effect.provideService(Effect.gen(function* () {
+          try {
+            yield* waitForBatchEndIfNeeded()
+            if (boundary === 'microtask') {
+              // Always yield at least one microtask tick boundary before flushing:
+              // - Keeps tick→notify semantics stable (async flush window) even under Runtime.batch.
+              // - Avoids "denominatorZero" artifacts in perf budgets when dispatch is synchronous (mr.actions.*).
+              if (waitedForBatch) {
+                microtaskChainDepth = 0
+              }
+              yield* yieldMicrotask
+              if (!waitedForBatch) {
                 microtaskChainDepth += 1
-              } else {
-                yield* yieldMacrotask
-                microtaskChainDepth = 0
               }
-
-              const schedule: TickSchedule = {
-                startedAs,
-                microtaskChainDepth: boundary === 'macrotask' ? depthAtSchedule : microtaskChainDepth,
-                ...(boundary === 'macrotask' ? { forcedMacrotask: true, reason: reason ?? 'unknown' } : {}),
-              }
-
-              const outcome = yield* flushTick(schedule)
-              if (!outcome.stable) {
-                nextForcedReason =
-                  outcome.degradeReason === 'budget_steps'
-                    ? 'budget'
-                    : outcome.degradeReason === 'cycle_detected'
-                      ? 'cycle_detected'
-                      : 'unknown'
-              }
-            } finally {
-              scheduled = false
-              // If something was re-queued or arrived after commit, schedule the next tick (best-effort).
-              if (queue.hasPending()) {
-                yield* scheduleTick()
-              } else {
-                // Reset chain depth when the system becomes idle (avoid forcing a macrotask on the next unrelated tick).
-                microtaskChainDepth = 0
-              }
+            } else {
+              yield* yieldMacrotask
+              microtaskChainDepth = 0
             }
-          }),
-        ),
-      )
+        
+            const schedule: TickSchedule = {
+              startedAs,
+              microtaskChainDepth: boundary === 'macrotask' ? depthAtSchedule : microtaskChainDepth,
+              ...(boundary === 'macrotask' ? { forcedMacrotask: true, reason: reason ?? 'unknown' } : {}),
+            }
+        
+            const outcome = yield* flushTick(schedule)
+            if (!outcome.stable) {
+              nextForcedReason =
+                outcome.degradeReason === 'budget_steps'
+                  ? 'budget'
+                  : outcome.degradeReason === 'cycle_detected'
+                    ? 'cycle_detected'
+                    : 'unknown'
+            }
+          } finally {
+            scheduled = false
+            // If something was re-queued or arrived after commit, schedule the next tick (best-effort).
+            if (queue.hasPending()) {
+              yield* scheduleTick()
+            } else {
+              // Reset chain depth when the system becomes idle (avoid forcing a macrotask on the next unrelated tick).
+              microtaskChainDepth = 0
+            }
+          }
+        }), TaskRunner.inSyncTransactionFiber, false).pipe(Effect.forkDetach({ startImmediately: true }))
     })
 
   const flushTick = (schedule: TickSchedule): Effect.Effect<{ stable: boolean; degradeReason?: TickDegradeReason }, never, never> =>
@@ -480,8 +487,9 @@ export const makeTickScheduler = (args: {
     tickSeq += 1
     const currentTickSeq = tickSeq
 
-    const diagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
-    const shouldEmitTrace = DevtoolsHub.isDevtoolsEnabled() && diagnosticsLevel !== 'off'
+    const diagnosticsLevel = yield* Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie)
+    const traceMode = yield* Effect.service(Debug.currentTraceMode).pipe(Effect.orDie)
+    const shouldEmitTrace = traceMode === 'on' && diagnosticsLevel !== 'off'
     const shouldEmitSchedulingDiagnostics = diagnosticsLevel !== 'off'
 
     const captured: {
@@ -519,11 +527,26 @@ export const makeTickScheduler = (args: {
     }
 
     // Budget enforcement (defer nonUrgent only; urgent may be cut only in cycle safety-break).
-    const { acceptedModules, deferredModules, urgentCapExceeded, deferredNonUrgentCount } = partitionModulesForBudget({
-      modules: captured.accepted.modules,
-      maxSteps: config.maxSteps,
-      urgentStepCap: config.urgentStepCap,
-    })
+    //
+    // Perf: fast-path the common case where a tick is far under both budgets:
+    // - Avoid allocating new Maps in partitionModulesForBudget.
+    // - Avoid re-walking dirtyTopics to split accepted/deferred topics.
+    let acceptedModules: Map<ModuleInstanceKey, RuntimeStoreModuleCommit> = captured.accepted.modules
+    let deferredModules: Map<ModuleInstanceKey, RuntimeStoreModuleCommit> | undefined = undefined
+    let urgentCapExceeded = false
+    let deferredNonUrgentCount = 0
+
+    if (!(captured.accepted.modules.size <= config.maxSteps && captured.accepted.modules.size <= config.urgentStepCap)) {
+      const partitioned = partitionModulesForBudget({
+        modules: captured.accepted.modules,
+        maxSteps: config.maxSteps,
+        urgentStepCap: config.urgentStepCap,
+      })
+      acceptedModules = partitioned.acceptedModules
+      deferredModules = partitioned.deferredModules
+      urgentCapExceeded = partitioned.urgentCapExceeded
+      deferredNonUrgentCount = partitioned.deferredNonUrgentCount
+    }
 
     if (urgentCapExceeded) {
       captured.stable = false
@@ -533,34 +556,82 @@ export const makeTickScheduler = (args: {
       captured.degradeReason = captured.degradeReason ?? 'budget_steps'
     }
 
-    const acceptedTopics = new Map<string, StateCommitPriority>()
-    const deferredTopics = new Map<string, StateCommitPriority>()
+    const canAcceptAllTopics = deferredModules == null || deferredModules.size === 0
 
-    for (const [topicKey, priority] of captured.accepted.dirtyTopics) {
-      const moduleInstanceKey = storeTopicToModuleInstanceKey(topicKey)
-      if (!moduleInstanceKey) continue
-      if (acceptedModules.has(moduleInstanceKey)) {
-        acceptedTopics.set(topicKey, priority)
-      } else if (deferredModules.has(moduleInstanceKey)) {
-        deferredTopics.set(topicKey, priority)
-      } else {
-        // Conservative default: treat unknown topics as accepted.
-        acceptedTopics.set(topicKey, priority)
+    const acceptedDrain: RuntimeStorePendingDrain = (() => {
+      if (canAcceptAllTopics) {
+        // Even when we accept all module topics, we must ignore non-parsable topic keys.
+        // Otherwise, arbitrary strings would become "real" topics in RuntimeStore and create silent drift.
+        if (captured.accepted.dirtyTopics.size === 0) {
+          return captured.accepted as unknown as RuntimeStorePendingDrain
+        }
+
+        let hasNonParsable = false
+        for (const topicKey of captured.accepted.dirtyTopics.keys()) {
+          if (!storeTopicToModuleInstanceKey(topicKey)) {
+            hasNonParsable = true
+            break
+          }
+        }
+
+        if (!hasNonParsable) {
+          return captured.accepted as unknown as RuntimeStorePendingDrain
+        }
+
+        const acceptedTopics = new Map<string, StateCommitPriority>()
+        for (const [topicKey, priority] of captured.accepted.dirtyTopics) {
+          const moduleInstanceKey = storeTopicToModuleInstanceKey(topicKey)
+          if (!moduleInstanceKey) continue
+          acceptedTopics.set(topicKey, priority)
+        }
+
+        return {
+          modules: acceptedModules,
+          dirtyTopics: acceptedTopics,
+        } satisfies RuntimeStorePendingDrain
       }
-    }
 
-    const acceptedDrain: RuntimeStorePendingDrain = {
-      modules: acceptedModules,
-      dirtyTopics: acceptedTopics,
-    }
+      const acceptedTopics = new Map<string, StateCommitPriority>()
+      const deferredTopics = new Map<string, StateCommitPriority>()
+
+      for (const [topicKey, priority] of captured.accepted.dirtyTopics) {
+        const moduleInstanceKey = storeTopicToModuleInstanceKey(topicKey)
+        if (!moduleInstanceKey) continue
+        if (acceptedModules.has(moduleInstanceKey)) {
+          acceptedTopics.set(topicKey, priority)
+        } else if (deferredModules && deferredModules.has(moduleInstanceKey)) {
+          deferredTopics.set(topicKey, priority)
+        } else {
+          // Conservative default: treat unknown topics as accepted.
+          acceptedTopics.set(topicKey, priority)
+        }
+      }
+
+      return {
+        modules: acceptedModules,
+        dirtyTopics: acceptedTopics,
+      } satisfies RuntimeStorePendingDrain
+    })()
 
     const deferredDrain: RuntimeStorePendingDrain | undefined =
-      deferredModules.size > 0 || deferredTopics.size > 0
-        ? {
-            modules: deferredModules,
-            dirtyTopics: deferredTopics,
-          }
-        : undefined
+      canAcceptAllTopics || !deferredModules
+        ? undefined
+        : deferredModules.size > 0
+          ? {
+              modules: deferredModules,
+              dirtyTopics: (() => {
+                const deferredTopics = new Map<string, StateCommitPriority>()
+                for (const [topicKey, priority] of captured.accepted.dirtyTopics) {
+                  const moduleInstanceKey = storeTopicToModuleInstanceKey(topicKey)
+                  if (!moduleInstanceKey) continue
+                  if (deferredModules.has(moduleInstanceKey)) {
+                    deferredTopics.set(topicKey, priority)
+                  }
+                }
+                return deferredTopics
+              })(),
+            }
+          : undefined
 
     captured.deferred = deferredDrain
 
@@ -882,16 +953,9 @@ export const makeTickScheduler = (args: {
       queue.requeue(deferredDrain)
     }
 
-    store.commitTick({
+    const committed = store.commitTick({
       tickSeq: currentTickSeq,
       accepted: acceptedDrain,
-      onListener: (listener) => {
-        try {
-          listener()
-        } catch {
-          // best-effort: never let a subscriber break the tick
-        }
-      },
     })
 
     if (!captured.stable && shouldEmitTrace && backlog?.deferredPrimary) {
@@ -935,6 +999,12 @@ export const makeTickScheduler = (args: {
       })
     }
 
+    if (committed.changedTopicListeners.length > 0) {
+      yield* Effect.sync(() => {
+        dispatchTopicListeners(committed.changedTopicListeners)
+      })
+    }
+
     if (telemetry?.onTickDegraded && (schedule.forcedMacrotask || !captured.stable) && shouldSampleTick(currentTickSeq, telemetrySampleRate)) {
       try {
         telemetry.onTickDegraded({
@@ -956,26 +1026,41 @@ export const makeTickScheduler = (args: {
     return { stable: captured.stable, degradeReason: captured.degradeReason }
   })
 
-  const flushNow: TickScheduler['flushNow'] = flushTick({ startedAs: 'unknown' }).pipe(Effect.asVoid)
+  const flushNow: TickScheduler['flushNow'] = Effect.gen(function* () {
+    const beforeTickSeq = tickSeq
+    for (let turn = 0; turn < 32; turn += 1) {
+      yield* flushTick({ startedAs: 'unknown' })
 
-  const storeTopicToModuleInstanceKey = (topicKey: string): ModuleInstanceKey | undefined => {
-    const cached = topicKeyToModuleInstanceKeyCache.get(topicKey)
-    if (cached !== undefined) {
-      return cached === null ? undefined : cached
-    }
+      if (tickSeq > beforeTickSeq) {
+        return
+      }
 
-    const idx = topicKey.indexOf('::rq:')
-    if (idx > 0) {
-      return rememberTopicKeyResolution(topicKey, topicKey.slice(0, idx) as ModuleInstanceKey)
+      if (!queue.hasPending() && !scheduled) {
+        return
+      }
+
+      yield* Effect.yieldNow
+      if (tickSeq > beforeTickSeq) {
+        return
+      }
     }
-    if (topicKey.includes('::')) {
-      return rememberTopicKeyResolution(topicKey, topicKey as ModuleInstanceKey)
-    }
-    return rememberTopicKeyResolution(topicKey, undefined)
-  }
+  }).pipe(Effect.asVoid)
+
+  const storeTopicToModuleInstanceKey = (topicKey: string): ModuleInstanceKey | undefined => store.resolveTopicModuleInstanceKey(topicKey)
+
+  const hasModuleTopicSubscribers = (moduleInstanceKey: ModuleInstanceKey): boolean =>
+    store.getModuleSubscriberCount(moduleInstanceKey) > 0
+
+  const hasSelectorInterest = (moduleInstanceKey: ModuleInstanceKey, selectorId: string): boolean =>
+    store.hasSelectorInterest(moduleInstanceKey, selectorId)
 
   const onSelectorChanged: TickScheduler['onSelectorChanged'] = ({ moduleInstanceKey, selectorId, priority }) => {
-    const coalesced = queue.markTopicDirty(makeReadQueryTopicKey(moduleInstanceKey, selectorId), priority)
+    if (!hasSelectorInterest(moduleInstanceKey, selectorId)) {
+      return
+    }
+
+    const selectorTopicKey = store.getReadQueryTopicKey(moduleInstanceKey, selectorId)
+    const coalesced = queue.markTopicDirty(selectorTopicKey, priority)
     if (coalesced) coalescedTopics += 1
   }
 
@@ -983,15 +1068,37 @@ export const makeTickScheduler = (args: {
     Effect.gen(function* () {
       const coalescedCommit = queue.enqueueModuleCommit(commit)
       if (coalescedCommit) coalescedModules += 1
-      const coalescedTopic = queue.markTopicDirty(commit.moduleInstanceKey, commit.meta.priority)
-      if (coalescedTopic) coalescedTopics += 1
+      if (hasModuleTopicSubscribers(commit.moduleInstanceKey)) {
+        const coalescedTopic = queue.markTopicDirty(commit.moduleInstanceKey, commit.meta.priority)
+        if (coalescedTopic) coalescedTopics += 1
+      }
       yield* scheduleTick()
     })
+
+  const retainModuleSourceObserver: TickScheduler['retainModuleSourceObserver'] = (moduleInstanceKey) => {
+    const next = (moduleSourceObserverRefCount.get(moduleInstanceKey) ?? 0) + 1
+    moduleSourceObserverRefCount.set(moduleInstanceKey, next)
+
+    return () => {
+      const current = moduleSourceObserverRefCount.get(moduleInstanceKey) ?? 0
+      const remaining = current - 1
+      if (remaining <= 0) {
+        moduleSourceObserverRefCount.delete(moduleInstanceKey)
+        return
+      }
+      moduleSourceObserverRefCount.set(moduleInstanceKey, remaining)
+    }
+  }
+
+  const hasModuleSourceObservers: TickScheduler['hasModuleSourceObservers'] = (moduleInstanceKey) =>
+    (moduleSourceObserverRefCount.get(moduleInstanceKey) ?? 0) > 0
 
   return {
     getTickSeq: () => tickSeq,
     onModuleCommit,
     onSelectorChanged,
+    retainModuleSourceObserver,
+    hasModuleSourceObservers,
     flushNow,
   }
 }

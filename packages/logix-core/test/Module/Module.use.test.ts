@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { Deferred, Effect, FiberId, Layer, Schema } from 'effect'
+import { Deferred, Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('$.use(module) unwrap', () => {
@@ -30,7 +30,7 @@ describe('$.use(module) unwrap', () => {
       actions: {},
     })
 
-    const done = Deferred.unsafeMake<void>(FiberId.none)
+    const done = await Effect.runPromise(Deferred.make<void>())
 
     const hostLogic = Host.logic(($) =>
       Effect.gen(function* () {
@@ -61,7 +61,7 @@ describe('$.use(module) unwrap', () => {
     try {
       await runtime.runPromise(
         Effect.gen(function* () {
-          yield* Host.tag
+          yield* Effect.service(Host.tag).pipe(Effect.orDie)
           yield* Deferred.await(done)
         }) as Effect.Effect<void, never, any>,
       )

@@ -1,0 +1,35 @@
+{
+  "date": "2026-03-20",
+  "topic": "react-controlplane-phase-machine-stage-g1-owner-lane-registry-adapter",
+  "result": "accepted_with_evidence",
+  "checks": [
+    {
+      "command": "pnpm --filter @logixjs/react typecheck:test",
+      "status": "passed"
+    },
+    {
+      "command": "pnpm --filter @logixjs/react exec vitest run test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx --pool forks",
+      "status": "passed",
+      "summary": {
+        "testFilesPassed": 1,
+        "testsPassed": 6,
+        "testsFailed": 0
+      }
+    },
+    {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "status": "passed",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-react-controlplane-phase-machine-stage-g1-owner-lane-registry-adapter.probe-next-blocker.json",
+      "summary": {
+        "probeStatus": "clear",
+        "blocker": null,
+        "executedSuites": 3
+      }
+    }
+  ],
+  "notes": [
+    "G1 将 config/neutral lane 的 latest/completed/inFlight 生命周期迁入 owner-lane registry adapter，preload lane 继续保留现有 executor 并桥接同一 registry。",
+    "phase-machine 与 async config snapshot 事件补齐 ownerKey 字段，便于跨 lane owner 口径对齐。",
+    "runtime-bootresolve-phase-trace 新增跨 lane owner registry 一致性断言，验证 neutral/config/preload 共享 owner 语义。"
+  ]
+}

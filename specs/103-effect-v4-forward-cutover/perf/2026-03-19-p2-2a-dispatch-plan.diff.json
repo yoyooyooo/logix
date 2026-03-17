@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-03-19",
+  "cutId": "p2-2a-dispatch-plan",
+  "beforeRef": "2026-03-19-p2-2a-dispatch-plan.before.json",
+  "afterRef": "2026-03-19-p2-2a-dispatch-plan.after.json",
+  "diff": {
+    "dispatch.p50.ms": 0.002,
+    "dispatch.p95.ms": -0.007,
+    "txnPrelude.avg.ms": 0.0,
+    "queueContext.avg.ms": 0.0,
+    "queueResolve.avg.ms": 0.0,
+    "bodyShell.avg.ms": 0.0,
+    "asyncEscape.avg.ms": 0.0,
+    "commit.avg.ms": 0.001,
+    "dispatchRecord.avg.ms": 0.0,
+    "dispatchCommitHub.avg.ms": 0.0,
+    "residual.avg.ms": 0.0
+  },
+  "recheck": {
+    "dispatch.p50.ms": 0.081,
+    "dispatch.p95.ms": 0.141,
+    "residual.avg.ms": 0.059,
+    "capturedAt": "2026-03-19T12:22:08+08:00"
+  },
+  "probeNextBlocker": {
+    "command": "python3 fabfile.py probe_next_blocker --json",
+    "statusAfter": "clear",
+    "processReturnCode": 0,
+    "returnCode": 0,
+    "regression": false
+  },
+  "verdict": "accepted_with_evidence_probe_clear"
+}

@@ -63,10 +63,10 @@ const FormActions = {
 type FormShapeForActions = FormShape<Record<string, never>>
 export type FormAction = Logix.ActionOf<FormShapeForActions>
 
-export type FormShape<TValues extends object> = Logix.Shape<Schema.Schema<FormState<TValues>, any>, typeof FormActions>
+export type FormShape<TValues extends object> = Logix.Shape<Schema.Schema<FormState<TValues>>, typeof FormActions>
 
 export interface FormMakeConfig<TValues extends object> {
-  readonly values: Schema.Schema<TValues, any>
+  readonly values: Schema.Schema<TValues>
   readonly initialValues: TValues
   readonly validateOn?: ReadonlyArray<'onSubmit' | 'onChange' | 'onBlur'>
   readonly reValidateOn?: ReadonlyArray<'onSubmit' | 'onChange' | 'onBlur'>
@@ -87,7 +87,7 @@ export interface FormMakeConfig<TValues extends object> {
 }
 
 export type FormExtendDef<TValues extends object> = Omit<
-  Logix.Module.MakeExtendDef<Schema.Schema<FormState<TValues>, any>, typeof FormActions, {}>,
+  Logix.Module.MakeExtendDef<Schema.Schema<FormState<TValues>>, typeof FormActions, {}>,
   'actions'
 > & { readonly actions?: never }
 
@@ -163,14 +163,12 @@ export const make = <Id extends string, TValues extends object>(
     errorCount: Schema.Number,
   })
 
-  const StateSchema = Schema.extend(
-    config.values,
-    Schema.Struct({
-      errors: ErrorsSchema,
-      ui: UiSchema,
-      $form: MetaSchema,
-    }),
-  )
+  const StateSchema = Schema.Struct({
+    ...((config.values as unknown as { fields: Record<string, Schema.Schema<any>> }).fields ?? {}),
+    errors: ErrorsSchema,
+    ui: UiSchema,
+    $form: MetaSchema,
+  }) as unknown as Schema.Schema<FormState<TValues>>
 
   const Actions = FormActions
 

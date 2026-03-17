@@ -1,0 +1,37 @@
+{
+  "date": "2026-03-21",
+  "topic": "react-controlplane-phase-machine-stage-g4-env-ready-v2",
+  "result": "accepted_with_evidence",
+  "checks": [
+    {
+      "command": "pnpm --filter @logixjs/react typecheck:test",
+      "status": "passed"
+    },
+    {
+      "command": "pnpm --filter @logixjs/react exec vitest run test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx --pool forks",
+      "status": "passed",
+      "stdout_tail": [
+        "✓ test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx (6 tests)"
+      ]
+    },
+    {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "status": "passed",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-react-controlplane-phase-machine-stage-g4-env-ready-v2.probe-next-blocker.json",
+      "summary": {
+        "probeStatus": "clear",
+        "blocker": null
+      }
+    }
+  ],
+  "decision": {
+    "codeRetained": true,
+    "accepted_with_evidence": true,
+    "route": "implementation"
+  },
+  "notes": [
+    "按约束完成 fresh 复核，不改 public API，不改 packages/logix-core/**。",
+    "本 worktree 初始缺少 node_modules，先执行 pnpm install，再跑最小验证命令。"
+  ]
+}
+

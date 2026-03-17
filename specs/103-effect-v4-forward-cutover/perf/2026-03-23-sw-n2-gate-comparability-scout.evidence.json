@@ -1,0 +1,95 @@
+{
+  "id": "2026-03-23-sw-n2-gate-comparability-scout",
+  "capturedAt": "2026-03-23",
+  "decision": {
+    "status": "discarded_or_pending",
+    "openImplementationLine": false,
+    "reasons": [
+      "current-head probe_next_blocker 仍为 clear",
+      "packages/logix-core test 当前只剩单一 failing perf suite",
+      "同 suite 独立 5 轮复跑为 4 pass + 1 fail，未形成稳定可归因回归"
+    ]
+  },
+  "probe": {
+    "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-23-post-fanout-identify.probe-next-blocker.json",
+    "status": "clear",
+    "softWatch": [
+      {
+        "suiteId": "externalStore.ingest.tickNotify",
+        "budgetId": "full/off<=1.25",
+        "gateClass": "soft",
+        "costClass": "devtools_projection",
+        "firstFailLevel": 128
+      }
+    ]
+  },
+  "fullSuiteGate": {
+    "command": "pnpm -C packages/logix-core test",
+    "failingSuite": "test/internal/StateTrait/StateTrait.ExternalStoreTrait.SingleFieldFastPath.Perf.off.test.ts",
+    "failingSample": {
+      "single-shallow": 1.0519976816772787
+    }
+  },
+  "isolatedReplay": [
+    {
+      "run": 1,
+      "returncode": 0,
+      "ratios": {
+        "single-shallow": 0.7273619793045744,
+        "single-deep": 0.9184347610385316,
+        "single-same-value-noop": 0.5331134459778277,
+        "multi-2": 1.0356360994939426,
+        "multi-8": 0.9461903131057331,
+        "multi-64": 1.004432007071271
+      }
+    },
+    {
+      "run": 2,
+      "returncode": 0,
+      "ratios": {
+        "single-shallow": 0.6833636540540955,
+        "single-deep": 0.8880566285864581,
+        "single-same-value-noop": 0.5429788098440946,
+        "multi-2": 1.004235246039826,
+        "multi-8": 1.0032386469652679,
+        "multi-64": 1.0515175824807925
+      }
+    },
+    {
+      "run": 3,
+      "returncode": 0,
+      "ratios": {
+        "single-shallow": 0.746034405133672,
+        "single-deep": 0.8893965245122105,
+        "single-same-value-noop": 0.5605911231475822,
+        "multi-2": 1.0430570476999002,
+        "multi-8": 0.9751516117182103,
+        "multi-64": 0.9582553325223397
+      }
+    },
+    {
+      "run": 4,
+      "returncode": 0,
+      "ratios": {
+        "single-shallow": 0.7190682812923321,
+        "single-deep": 0.8661743395534466,
+        "single-same-value-noop": 0.5535457677456963,
+        "multi-2": 0.9956047031348144,
+        "multi-8": 1.0090351002268414,
+        "multi-64": 1.010555127920064
+      }
+    },
+    {
+      "run": 5,
+      "returncode": 1,
+      "ratios": {
+        "single-shallow": 0.721418579634296,
+        "single-deep": 0.8828279120822256,
+        "single-same-value-noop": 0.5435994599246737,
+        "multi-2": 0.9621226294610263,
+        "multi-8": 1.1006385518916657,
+        "multi-64": 0.9987491429283067
+      }
+    }
+  ]
+}

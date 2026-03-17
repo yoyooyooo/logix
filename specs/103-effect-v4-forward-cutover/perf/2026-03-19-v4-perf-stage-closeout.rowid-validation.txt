@@ -1,0 +1,13 @@
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf/packages/logix-core
+
+ ✓ test/internal/StateTrait/RowId.NoTrackByGate.test.ts (6 tests) 2ms
+ ✓ test/internal/StateTrait/RowId.UpdateGate.test.ts (14 tests) 3ms
+ ✓ test/internal/StateTrait/StateTrait.NestedList.RowId.Stability.test.ts (2 tests) 8ms
+ ✓ test/internal/StateTrait/StateTrait.ListScopeCheck.Writeback.test.ts (1 test) 9ms
+
+ Test Files  4 passed (4)
+      Tests  23 passed (23)
+   Start at  20:21:53
+   Duration  1.15s (transform 1.40s, setup 0ms, import 2.59s, tests 22ms, environment 0ms)
+

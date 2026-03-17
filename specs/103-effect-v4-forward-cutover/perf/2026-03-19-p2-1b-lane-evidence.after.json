@@ -1,0 +1,41 @@
+{
+  "id": "2026-03-19-p2-1b-lane-evidence.after",
+  "capturedAt": "2026-03-19",
+  "scope": "p2-1b-lane-evidence-sequence-remap",
+  "source": {
+    "suite": "lane-evidence-and-replay-semantic-check",
+    "commands": [
+      "pnpm -C packages/logix-core typecheck:test",
+      "pnpm -C packages/logix-core exec vitest run test/internal/observability/TxnLaneEvidence.Schema.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.TxnLanes.DefaultOn.test.ts test/StateTrait/StateTrait.ReplayEventBridge.test.ts",
+      "python3 fabfile.py probe_next_blocker --json"
+    ]
+  },
+  "semanticEvidence": {
+    "laneEvidence": {
+      "anchorModel": "per_continuation_anchor",
+      "anchorFields": ["txnSeq", "opSeq"],
+      "continuationStableAnchor": true,
+      "sliceProofInOriginDetails": true
+    },
+    "originDetails": {
+      "continuationId": true,
+      "continuationSliceSeq": true,
+      "continuationAnchorTxnSeq": true,
+      "continuationSliceTxnSeq": true,
+      "continuationAnchorOpSeq": true,
+      "continuationSliceOpSeq": true
+    },
+    "replayEvent": {
+      "continuationRemapApplied": true,
+      "continuationObjectAttached": true,
+      "anchorAndSliceDualSemantics": true,
+      "mappedFields": ["txnSeq", "txnId", "continuation.anchor", "continuation.slice", "continuation.sliceWindow"]
+    }
+  },
+  "verification": {
+    "typecheckTest": "passed",
+    "laneAndReplayTests": "passed",
+    "probeNextBlocker": "clear"
+  }
+}
+

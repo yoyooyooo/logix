@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-03-19",
+  "cutId": "p2-2b-dispatch-plan",
+  "phase": "after",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p2-2b-dispatch-plan-b",
+  "branch": "agent/v4-perf-p2-2b-dispatch-plan-b",
+  "command": "pnpm -C packages/logix-core test -- test/internal/Runtime/ModuleRuntime/ModuleRuntime.dispatchShell.Phases.Perf.light.test.ts",
+  "config": {
+    "diagnostics": "light",
+    "iterations": 400,
+    "warmup": 80
+  },
+  "metrics": {
+    "dispatch.p50.ms": 0.078,
+    "dispatch.p95.ms": 0.144,
+    "txnPrelude.avg.ms": 0.013,
+    "queueContext.avg.ms": 0.001,
+    "queueResolve.avg.ms": 0.003,
+    "bodyShell.avg.ms": 0.015,
+    "asyncEscape.avg.ms": 0.015,
+    "commit.avg.ms": 0.004,
+    "dispatchRecord.avg.ms": 0.003,
+    "dispatchCommitHub.avg.ms": 0.001,
+    "residual.avg.ms": 0.057
+  },
+  "capturedAt": "2026-03-19T12:45:00+08:00"
+}

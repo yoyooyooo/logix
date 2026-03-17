@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo } from 'react'
+import React, { useContext, useEffect, useMemo, useRef } from 'react'
 import { useSyncExternalStoreWithSelector } from 'use-sync-external-store/shim/with-selector'
 import * as Logix from '@logixjs/core'
 import { RuntimeContext } from '../provider/ReactContext.js'
@@ -6,8 +6,55 @@ import type { ReactModuleHandle, StateOfHandle } from './useModuleRuntime.js'
 import { useModuleRuntime } from './useModuleRuntime.js'
 import { isDevEnv } from '../provider/env.js'
 import { RuntimeProviderNotFoundError } from '../provider/errors.js'
-import { getRuntimeModuleExternalStore, getRuntimeReadQueryExternalStore } from '../store/RuntimeExternalStore.js'
+import {
+  getRuntimeExternalStoreLastPulseEnvelope,
+  getRuntimeModuleExternalStore,
+  getRuntimeReadQueryExternalStore,
+  runtimeSelectorDeltaMaybeChanged,
+  subscribeRuntimeExternalStoreWithComponentMultiplex,
+} from '../store/RuntimeExternalStore.js'
 import { shallow } from './shallow.js'
+
+type ReactInternalsA = {
+  readonly getOwner?: () => unknown
+}
+
+type ReactInternalsCurrentOwner = {
+  readonly current: unknown
+}
+
+type ReactInternalsLike = {
+  readonly A?: ReactInternalsA
+  readonly ReactCurrentOwner?: ReactInternalsCurrentOwner
+}
+
+type ReactWithInternals = typeof React & {
+  readonly __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE?: ReactInternalsLike
+  readonly __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED?: ReactInternalsLike
+}
+
+const NO_SELECTED_VALUE = Symbol('logix-react:useSelector-no-selected-value')
+
+const readCurrentComponentOwner = (): object | undefined => {
+  const reactWithInternals = React as ReactWithInternals
+  const internals =
+    reactWithInternals.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE ??
+    reactWithInternals.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED
+
+  if (!internals) return undefined
+
+  const ownerFromDispatcher = internals.A?.getOwner?.()
+  if (ownerFromDispatcher && typeof ownerFromDispatcher === 'object') {
+    return ownerFromDispatcher as object
+  }
+
+  const ownerFromLegacyField = internals.ReactCurrentOwner?.current
+  if (ownerFromLegacyField && typeof ownerFromLegacyField === 'object') {
+    return ownerFromLegacyField as object
+  }
+
+  return undefined
+}
 
 export function useSelector<H extends ReactModuleHandle>(handle: H): StateOfHandle<H>
 
@@ -22,6 +69,17 @@ export function useSelector<H extends ReactModuleHandle, V>(
   selector?: (state: StateOfHandle<H>) => V,
   equalityFn?: (previous: V, next: V) => boolean,
 ): V | StateOfHandle<H> {
+  const hookListenerIdRef = useRef<symbol | undefined>(undefined)
+  if (!hookListenerIdRef.current) {
+    hookListenerIdRef.current = Symbol('logix-react:useSelector-listener')
+  }
+
+  const componentOwnerRef = useRef<object | null | undefined>(undefined)
+  if (componentOwnerRef.current === undefined) {
+    componentOwnerRef.current = readCurrentComponentOwner() ?? null
+  }
+  const componentOwner = componentOwnerRef.current ?? undefined
+
   const runtimeContext = useContext(RuntimeContext)
   if (!runtimeContext) {
     throw new RuntimeProviderNotFoundError('useSelector')
@@ -46,9 +104,9 @@ export function useSelector<H extends ReactModuleHandle, V>(
 
   const selectorTopicEligible =
     typeof selector === 'function' &&
-    selectorReadQuery?.lane === 'static' &&
-    selectorReadQuery.readsDigest != null &&
-    selectorReadQuery.fallbackReason == null
+    selectorReadQuery != null &&
+    selectorReadQuery.fallbackReason !== 'unstableSelectorId' &&
+    selectorReadQuery.staticIr.fallbackReason !== 'unstableSelectorId'
 
   const store = useMemo(
     () =>
@@ -75,13 +133,64 @@ export function useSelector<H extends ReactModuleHandle, V>(
     ],
   )
 
+  const selectFromSnapshot = useMemo(
+    () =>
+      selectorTopicEligible
+        ? ((snapshot: unknown) => snapshot as V)
+        : ((snapshot: unknown) => actualSelector(snapshot as StateOfHandle<H>)),
+    [actualSelector, selectorTopicEligible],
+  )
+
+  const lastSelectedRef = useRef<V | typeof NO_SELECTED_VALUE>(NO_SELECTED_VALUE)
+  const equalityRef = useRef(actualEqualityFn)
+  equalityRef.current = actualEqualityFn
+
+  const subscribe = useMemo(() => {
+    const shouldNotify = (): boolean => {
+      const previousSelected = lastSelectedRef.current
+      if (previousSelected === NO_SELECTED_VALUE) return true
+
+      if (selectorTopicEligible && selectorReadQuery) {
+        const envelope = getRuntimeExternalStoreLastPulseEnvelope(store)
+        if (envelope && !runtimeSelectorDeltaMaybeChanged(envelope.selectorDelta, selectorReadQuery.selectorId)) {
+          return false
+        }
+      }
+
+      try {
+        const nextSelected = selectFromSnapshot(store.getSnapshot())
+        return !equalityRef.current(previousSelected as V, nextSelected)
+      } catch {
+        return true
+      }
+    }
+
+    if (!componentOwner) {
+      return (listener: () => void) =>
+        store.subscribe(() => {
+          if (shouldNotify()) {
+            listener()
+          }
+        })
+    }
+    const hookListenerId = hookListenerIdRef.current as symbol
+    return (listener: () => void) =>
+      subscribeRuntimeExternalStoreWithComponentMultiplex(store, componentOwner, hookListenerId, listener, {
+        shouldNotify,
+      })
+  }, [componentOwner, selectFromSnapshot, selectorReadQuery, selectorTopicEligible, store])
+
   const selected = useSyncExternalStoreWithSelector<unknown, V>(
-    store.subscribe,
+    subscribe,
     store.getSnapshot,
     store.getServerSnapshot ?? store.getSnapshot,
-    selectorTopicEligible ? (snapshot) => snapshot as V : (snapshot) => actualSelector(snapshot as StateOfHandle<H>),
+    selectFromSnapshot,
     actualEqualityFn,
   )
+
+  useEffect(() => {
+    lastSelectedRef.current = selected as V
+  }, [selected])
 
   // Emit a trace:react-selector Debug event after React commit:
   // - Enabled only in dev/test to avoid production overhead.

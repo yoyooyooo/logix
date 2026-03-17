@@ -1,0 +1,48 @@
+{
+  "task": "P1-2.2b ModuleAsSource target-txn convergence fix",
+  "date": "2026-03-19",
+  "branch": "agent/v4-perf-p1-2-2b-module-source-txn",
+  "result": "failed_blocked",
+  "codeChanges": {
+    "packages/logix-core/src/internal/runtime/core/StateTransaction.ts": "changed",
+    "packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts": "changed",
+    "packages/logix-core/src/internal/state-trait/external-store.ts": "changed"
+  },
+  "verification": {
+    "commands": [
+      {
+        "cmd": "pnpm -C packages/logix-core exec vitest run test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts test/internal/Runtime/ModuleAsSource.tick.test.ts",
+        "status": "failed",
+        "failures": [
+          {
+            "test": "StateTrait.ExternalStoreTrait.Runtime.test.ts :: perf skeleton: externalStore ingest proxy phases",
+            "message": "waitUntil timed out"
+          },
+          {
+            "test": "ModuleAsSource.tick.test.ts :: should settle A->B writeback and downstream derived within the same tick",
+            "message": "expected { fromSource: +0, keyHash: 'h:0' } to deeply equal { fromSource: 2, keyHash: 'h:2' }"
+          },
+          {
+            "test": "ModuleAsSource.tick.test.ts :: should apply Module-as-Source during scheduled microtask tick (no manual flushNow)",
+            "message": "[TestKit.advanceTicks] Expected >=1 ticks, got 0"
+          }
+        ]
+      },
+      {
+        "cmd": "pnpm -C packages/logix-core exec vitest run test/internal/Bound/BoundApiRuntime.stateUpdateWholeStateFallback.Perf.off.test.ts",
+        "status": "passed",
+        "metrics": {
+          "single": { "legacyP95Ms": 0.199, "currentP95Ms": 0.448, "legacyAvgMs": 0.111, "currentAvgMs": 0.209 },
+          "eight": { "legacyP95Ms": 0.446, "currentP95Ms": 0.167, "legacyAvgMs": 0.14, "currentAvgMs": 0.077 },
+          "many": { "legacyP95Ms": 0.306, "currentP95Ms": 0.191, "legacyAvgMs": 0.119, "currentAvgMs": 0.091 }
+        }
+      }
+    ]
+  },
+  "blocker": {
+    "type": "single-root-cause-mismatch",
+    "summary": "target-txn fix landed but ModuleAsSource/externalStore semantic redlines remain",
+    "closure": "failed-evidence-collected",
+    "nextDecisionNeeded": "失败证据已收口，建议扩面到 commit->tick->module-as-source 触发链"
+  }
+}

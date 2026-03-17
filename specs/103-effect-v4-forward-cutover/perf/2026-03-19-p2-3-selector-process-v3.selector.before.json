@@ -1,0 +1,24 @@
+{
+  "scenario": "selectorGraph.pathKeyFastAppend.off",
+  "mode": "legacy.rebuildEveryWrite",
+  "dataset": {
+    "txns": 640,
+    "roots": 32,
+    "dirtyPerTxn": 24,
+    "seed": 20260319
+  },
+  "run": {
+    "iterations": 30,
+    "warmup": 5
+  },
+  "behavior": {
+    "totalRoots": 15873,
+    "digest": 2640405965
+  },
+  "metricsMs": {
+    "p50": 8.304457999999954,
+    "p95": 10.015750000000025,
+    "mean": 8.691599966666669
+  },
+  "capturedAt": "2026-03-19T15:38:56+08:00"
+}

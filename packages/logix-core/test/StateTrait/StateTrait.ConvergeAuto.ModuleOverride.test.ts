@@ -17,7 +17,7 @@ const runTxn = (
   Effect.promise(() =>
     runtime.runPromise(
       Effect.gen(function* () {
-        const rt = yield* M.tag
+        const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
         yield* Logix.InternalContracts.runWithStateTransaction(rt as any, { kind: 'test', name }, () =>
           Effect.gen(function* () {
             const prev = yield* rt.getState
@@ -30,7 +30,7 @@ const runTxn = (
   )
 
 describe('StateTrait converge auto module overrides (hot switch)', () => {
-  it.scoped('runtime moduleId override can hot switch and takes effect on next transaction', () =>
+  it.effect('runtime moduleId override can hot switch and takes effect on next transaction', () =>
     Effect.gen(function* () {
       const moduleId = 'StateTraitConvergeAuto_ModuleOverrideHotSwitch'
       const { M, ring, runtime } = makeConvergeAutoFixture({
@@ -41,21 +41,21 @@ describe('StateTrait converge auto module overrides (hot switch)', () => {
         },
       })
 
-      Logix.Runtime.setTraitConvergeOverride(runtime, moduleId, { traitConvergeMode: 'full' })
+      yield* Logix.Runtime.setTraitConvergeOverride(runtime, moduleId, { traitConvergeMode: 'full' })
       yield* runTxn(M, runtime, 't1')
       const t1 = lastConvergeData(ring)
       expect(t1).toBeDefined()
       expect(t1.configScope).toBe('runtime_module')
       expect(t1.requestedMode).toBe('full')
 
-      Logix.Runtime.setTraitConvergeOverride(runtime, moduleId, { traitConvergeMode: 'dirty' })
+      yield* Logix.Runtime.setTraitConvergeOverride(runtime, moduleId, { traitConvergeMode: 'dirty' })
       yield* runTxn(M, runtime, 't2')
       const t2 = lastConvergeData(ring)
       expect(t2).toBeDefined()
       expect(t2.configScope).toBe('runtime_module')
       expect(t2.requestedMode).toBe('dirty')
 
-      Logix.Runtime.setTraitConvergeOverride(runtime, moduleId, undefined)
+      yield* Logix.Runtime.setTraitConvergeOverride(runtime, moduleId, undefined)
       yield* runTxn(M, runtime, 't3')
       const t3 = lastConvergeData(ring)
       expect(t3).toBeDefined()
@@ -64,7 +64,7 @@ describe('StateTrait converge auto module overrides (hot switch)', () => {
     }),
   )
 
-  it.scoped('provider override beats runtime moduleId override after hot switch', () =>
+  it.effect('provider override beats runtime moduleId override after hot switch', () =>
     Effect.gen(function* () {
       const moduleId = 'StateTraitConvergeAuto_ModuleOverrideHotSwitch_ProviderWins'
       const providerOverride = Logix.Runtime.stateTransactionOverridesLayer({
@@ -81,12 +81,12 @@ describe('StateTrait converge auto module overrides (hot switch)', () => {
         },
       })
 
-      Logix.Runtime.setTraitConvergeOverride(runtime, moduleId, { traitConvergeMode: 'dirty' })
+      yield* Logix.Runtime.setTraitConvergeOverride(runtime, moduleId, { traitConvergeMode: 'dirty' })
 
       yield* Effect.promise(() =>
         runtime.runPromise(
           Effect.gen(function* () {
-            const rt = yield* M.tag
+            const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
             yield* Logix.InternalContracts.runWithStateTransaction(
               rt as any,
               { kind: 'test', name: 'provider-wins' },

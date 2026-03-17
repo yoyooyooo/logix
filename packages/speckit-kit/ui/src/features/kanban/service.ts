@@ -1,4 +1,4 @@
-import { Context, Effect } from 'effect'
+import { Effect, ServiceMap } from 'effect'
 
 import type {
   ApiResponseError,
@@ -9,7 +9,7 @@ import type {
   TaskListResponse,
 } from '../../api/client'
 
-export class SpecboardApi extends Context.Tag('SpecboardApi')<SpecboardApi, SpecboardApi.Service>() {}
+export class SpecboardApi extends ServiceMap.Service<SpecboardApi, SpecboardApi.Service>()('SpecboardApi') {}
 
 export namespace SpecboardApi {
   export interface Service {
@@ -20,4 +20,3 @@ export namespace SpecboardApi {
     readonly writeFile: (specId: string, name: ArtifactName, content: string) => Effect.Effect<FileWriteResponse, ApiResponseError>
   }
 }
-

@@ -1,0 +1,35 @@
+{
+  "date": "2026-03-20",
+  "topic": "react-controlplane-phase-machine-stage-c",
+  "result": "accepted_with_evidence",
+  "checks": [
+    {
+      "command": "pnpm --filter @logixjs/react typecheck:test",
+      "status": "passed"
+    },
+    {
+      "command": "pnpm --filter @logixjs/react exec vitest run test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx --pool forks",
+      "status": "passed",
+      "summary": {
+        "testFilesPassed": 1,
+        "testsPassed": 3,
+        "testsFailed": 0
+      }
+    },
+    {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "status": "passed",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-react-controlplane-phase-machine-stage-c.probe-next-blocker.json",
+      "summary": {
+        "probeStatus": "clear",
+        "blocker": null,
+        "executedSuites": 3
+      }
+    }
+  ],
+  "notes": [
+    "Stage C 仅把 configLane 的 boot 执行裁决切给 phase-machine，ready 边界保持 legacy-control。",
+    "RuntimeProvider 在 trace:react.runtime.controlplane.phase-machine 中显式输出 neutralSettled 与 configLane 原因码。",
+    "runtime-bootresolve-phase-trace 新增 config-bearing 断言，确认 configLane boot executor 切换生效且边界受控。"
+  ]
+}

@@ -10,14 +10,14 @@ const lastConvergeData = (ring: Debug.RingBufferSink): any => {
 }
 
 describe('StateTrait converge auto config (default & override priority)', () => {
-  it.scoped('defaults to requestedMode=auto (builtin)', () =>
+  it.effect('defaults to requestedMode=auto (builtin)', () =>
     Effect.gen(function* () {
       const { M, ring, runtime } = makeConvergeAutoFixture({
         diagnosticsLevel: 'light',
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* M.tag
+        const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
         yield* Logix.InternalContracts.runWithStateTransaction(rt as any, { kind: 'test', name: 'default-auto' }, () =>
           Effect.gen(function* () {
             const prev = yield* rt.getState
@@ -36,7 +36,7 @@ describe('StateTrait converge auto config (default & override priority)', () => 
     }),
   )
 
-  it.scoped('runtime moduleId override beats runtime default', () =>
+  it.effect('runtime moduleId override beats runtime default', () =>
     Effect.gen(function* () {
       const moduleId = 'StateTraitConvergeAuto_ConfigOverride'
       const { M, ring, runtime } = makeConvergeAutoFixture({
@@ -51,7 +51,7 @@ describe('StateTrait converge auto config (default & override priority)', () => 
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* M.tag
+        const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
         yield* Logix.InternalContracts.runWithStateTransaction(
           rt as any,
           { kind: 'test', name: 'module-override' },
@@ -73,7 +73,7 @@ describe('StateTrait converge auto config (default & override priority)', () => 
     }),
   )
 
-  it.scoped('provider override beats runtime moduleId override', () =>
+  it.effect('provider override beats runtime moduleId override', () =>
     Effect.gen(function* () {
       const moduleId = 'StateTraitConvergeAuto_ProviderOverride'
       const providerOverride = Logix.Runtime.stateTransactionOverridesLayer({
@@ -94,7 +94,7 @@ describe('StateTrait converge auto config (default & override priority)', () => 
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* M.tag
+        const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
         yield* Logix.InternalContracts.runWithStateTransaction(
           rt as any,
           { kind: 'test', name: 'provider-override' },

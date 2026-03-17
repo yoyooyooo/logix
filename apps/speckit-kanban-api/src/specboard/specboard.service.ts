@@ -1,4 +1,4 @@
-import { Context, Effect } from 'effect'
+import { Effect, ServiceMap } from 'effect'
 
 export type ArtifactName = 'spec.md' | 'plan.md' | 'tasks.md' | 'quickstart.md' | 'data-model.md' | 'research.md'
 
@@ -57,4 +57,4 @@ export interface SpecboardService {
   }) => Effect.Effect<{ readonly name: ArtifactName; readonly path: string }, SpecboardError>
 }
 
-export class Specboard extends Context.Tag('Specboard')<Specboard, SpecboardService>() {}
+export class Specboard extends ServiceMap.Service<Specboard, SpecboardService>()('Specboard') {}

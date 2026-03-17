@@ -1,0 +1,55 @@
+{
+  "id": "2026-03-20-p2-1a-continuation-v5.evidence",
+  "capturedAt": "2026-03-20",
+  "scope": "p2-1a-continuation-v5-hard-implementation",
+  "decision": {
+    "status": "accepted_with_evidence",
+    "mergeToMain": true,
+    "reasons": [
+      "focused tests 全绿，`TxnLaneEvidence.Schema` 失败门已消失",
+      "`probe_next_blocker --json` 为 clear，三条默认 probe suite 全通过且无 threshold anomaly",
+      "本轮仅做 ModuleRuntime 的最小序列化切口，未扩大 continuation 实现面，未改 public API"
+    ]
+  },
+  "sources": {
+    "focusedTests": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.TxnLanes.DefaultOn.test.ts test/internal/observability/TxnLaneEvidence.Schema.test.ts",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p2-1a-continuation-v5.focused-tests.txt",
+      "result": {
+        "testFilesPassed": 3,
+        "testsPassed": 7
+      }
+    },
+    "probeRun": {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p2-1a-continuation-v5.probe-next-blocker.json",
+      "status": "clear",
+      "blockerSuite": null,
+      "failureKind": null,
+      "executedCount": 3,
+      "thresholdAnomalyCount": 0
+    }
+  },
+  "invariants": [
+    {
+      "id": "continuation-v5.focused-tests-hard-gate",
+      "expectation": "三条 focused tests 全绿",
+      "status": "passed",
+      "evidenceType": "test-run"
+    },
+    {
+      "id": "continuation-v5.probe-next-blocker",
+      "expectation": "probe_next_blocker 返回 clear 且无 threshold anomaly",
+      "status": "passed",
+      "evidenceType": "probe-run"
+    }
+  ],
+  "summary": {
+    "result": "accepted_with_evidence",
+    "notes": [
+      "代码改动仅在 packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts",
+      "Txn lane evidence 的 policy 改为 schema 兼容的可枚举字段，同时保留 v2 扩展字段为不可枚举属性",
+      "对应结论文档：docs/perf/archive/2026-03/2026-03-20-p2-1a-continuation-v5.md"
+    ]
+  }
+}

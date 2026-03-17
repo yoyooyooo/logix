@@ -1,0 +1,39 @@
+{
+  "cutId": "p2-1-reopen-check",
+  "validatedAtUtc": "2026-03-20T03:48:13Z",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p2-1-reopen-check",
+  "branch": "agent/v4-perf-p2-1-reopen-check",
+  "commands": [
+    {
+      "name": "focused-tests",
+      "cmd": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts test/internal/observability/TxnLaneEvidence.Schema.test.ts",
+      "exitCode": 254,
+      "result": "blocked_environment",
+      "summary": {
+        "reason": "vitest_missing",
+        "stderr": "ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL: Command \"vitest\" not found"
+      },
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p2-1-reopen-check.focused-tests.txt"
+    },
+    {
+      "name": "next-blocker-probe",
+      "cmd": "python3 fabfile.py probe_next_blocker --json",
+      "exitCode": 1,
+      "result": "blocked_environment",
+      "summary": {
+        "status": "blocked",
+        "failureKind": "environment",
+        "blockerSuite": "externalStore.ingest.tickNotify",
+        "executed": 1,
+        "thresholdAnomalyCount": 0
+      },
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p2-1-reopen-check.probe-next-blocker.json"
+    }
+  ],
+  "decisionGate": {
+    "focusedTests": "blocked_environment",
+    "probeNextBlocker": "blocked_environment",
+    "triggerStatus": "not_met",
+    "overall": "docs_evidence_only_watchlist_hold"
+  }
+}

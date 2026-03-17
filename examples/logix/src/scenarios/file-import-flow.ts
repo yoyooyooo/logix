@@ -27,7 +27,7 @@ const ImportStateSchema = Schema.Struct({
   fileName: Schema.String,
   fileSize: Schema.Number,
   taskId: Schema.optional(Schema.String),
-  status: Schema.Literal('idle', 'uploading', 'importing', 'done', 'error'),
+  status: Schema.Literals(['idle', 'uploading', 'importing', 'done', 'error']),
   errorMessage: Schema.optional(Schema.String),
 })
 
@@ -141,11 +141,11 @@ export const FileImportLogic = FileImportDef.logic<FileUploadService | ImportSer
       errorMessage: undefined,
     }))
 
-    yield* $.onAction('import/start').run({ mode: 'exhaust', effect: handleStart })
-    yield* $.onAction('import/reset').run({ effect: handleReset })
+    yield* $.onAction('import/start').runExhaust(handleStart)
+    yield* $.onAction('import/reset').run(handleReset)
   }).pipe(
     // 收敛错误通道到 never，确保作为 ModuleLogic 使用时类型安全
-    Effect.catchAll(() => Effect.void),
+    Effect.catch(() => Effect.void),
   ),
 )
 

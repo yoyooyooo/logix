@@ -78,7 +78,7 @@ const pickDecisionSummaries = (ring: Debug.RingBufferSink): ReadonlyArray<any> =
     .map((e) => (e as any).data)
 
 describe('StateTrait converge auto decision budget (small steps)', () => {
-  it.scoped('small steps should not be forced into long-term full fallback', () =>
+  it.effect('small steps should not be forced into long-term full fallback', () =>
     Effect.gen(function* () {
       const originalNow = yield* Effect.acquireRelease(
         Effect.sync(() => {
@@ -118,7 +118,7 @@ describe('StateTrait converge auto decision budget (small steps)', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt: any = yield* M.tag
+        const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
         for (let i = 0; i < 20; i++) {
           const input = `in${i % steps}`
           yield* rt.dispatch({ _tag: 'bump', payload: input } as any)

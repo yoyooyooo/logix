@@ -1,6 +1,7 @@
-import { Effect, PubSub, Scope } from 'effect'
-import { isPrefixOf, normalizeFieldPath, type DirtySet, type FieldPath, type FieldPathIdRegistry } from '../../field-path.js'
+import { Effect, PubSub } from 'effect'
+import { isPrefixOf, normalizeFieldPath, toKey, type FieldPath, type FieldPathIdRegistry } from '../../field-path.js'
 import type { ReadQueryCompiled } from './ReadQuery.js'
+import type { TxnDirtyEvidenceSnapshot } from './StateTransaction.js'
 import type { StateChangeWithMeta, StateCommitMeta } from './module.js'
 import * as Debug from './DebugSink.js'
 
@@ -10,6 +11,12 @@ type IndexedRootCandidate<S> = {
   readonly selectorId: string
   readonly entry: SelectorEntry<S, any>
   readonly readsForRoot: ReadonlyArray<FieldPath>
+}
+
+type DirtyRootScratchBucket = {
+  generation: number
+  readonly paths: Array<FieldPath>
+  readonly pathKeys: Set<string>
 }
 
 type SelectorEvalEventPolicy = 'always' | 'sampled'
@@ -28,15 +35,24 @@ type SelectorEntry<S, V> = {
   cachedValue: V | undefined
 }
 
+const MAX_CACHED_SELECTOR_ENTRIES = 256
+
 export interface SelectorGraph<S> {
   readonly ensureEntry: <V>(
     readQuery: ReadQueryCompiled<S, V>,
-  ) => Effect.Effect<SelectorEntry<S, V>, never, Scope.Scope>
+  ) => Effect.Effect<SelectorEntry<S, V>, never, never>
   readonly releaseEntry: (selectorId: string) => void
+  /**
+   * O(1) check: whether any selector entries exist.
+   *
+   * Important perf contract:
+   * - Avoid triggering DirtySet construction on commit when there are no selectors at all.
+   */
+  readonly hasAnyEntries: () => boolean
   readonly onCommit: (
     state: S,
     meta: StateCommitMeta,
-    dirtySet: DirtySet,
+    dirty: TxnDirtyEvidenceSnapshot,
     diagnosticsLevel: Debug.DiagnosticsLevel,
     onSelectorChanged?: (selectorId: string) => void,
   ) => Effect.Effect<void, never, never>
@@ -71,6 +87,39 @@ const upsertDirtyRoot = (existingDirtyRoots: Array<FieldPath>, dirtyRoot: FieldP
   }
   existingDirtyRoots.length = nextLength
   existingDirtyRoots.push(dirtyRoot)
+  return true
+}
+
+const rebuildDirtyRootPathKeyCache = (pathKeys: Set<string>, paths: ReadonlyArray<FieldPath>): void => {
+  pathKeys.clear()
+  for (let i = 0; i < paths.length; i += 1) {
+    pathKeys.add(toKey(paths[i]!))
+  }
+}
+
+const upsertDirtyRootWithPathKeyCache = (
+  existingDirtyRoots: Array<FieldPath>,
+  pathKeys: Set<string>,
+  dirtyRoot: FieldPath,
+  fastAppendEnabled: boolean,
+): boolean => {
+  const dirtyRootKey = toKey(dirtyRoot)
+  if (pathKeys.has(dirtyRootKey)) {
+    return false
+  }
+
+  const beforeLength = existingDirtyRoots.length
+  const changed = upsertDirtyRoot(existingDirtyRoots, dirtyRoot)
+  if (!changed) {
+    return false
+  }
+
+  if (fastAppendEnabled && existingDirtyRoots.length === beforeLength + 1) {
+    pathKeys.add(dirtyRootKey)
+    return true
+  }
+
+  rebuildDirtyRootPathKeyCache(pathKeys, existingDirtyRoots)
   return true
 }
 
@@ -114,26 +163,26 @@ const SAMPLED_SELECTOR_EVAL_SLOW_THRESHOLD_MS = 4
 
 const shouldEvaluateEntryForDirtyRoots = <S>(args: {
   readonly entry: SelectorEntry<S, any>
-  readonly dirtySet: DirtySet
-  readonly getDirtyRootPath: (id: number) => FieldPath | undefined
+  readonly dirty: TxnDirtyEvidenceSnapshot
+  readonly getDirtyPath: (id: number) => FieldPath | undefined
   readonly hasRegistry: boolean
 }): boolean => {
-  if (args.dirtySet.dirtyAll) return true
+  if (args.dirty.dirtyAll) return true
   if (args.entry.reads.length === 0) return true
   if (!args.hasRegistry) return true
 
-  for (const dirtyRootId of args.dirtySet.rootIds) {
-    const dirtyRoot = args.getDirtyRootPath(dirtyRootId)
-    if (!dirtyRoot) return true
+  for (const dirtyPathId of args.dirty.dirtyPathIds) {
+    const dirtyPath = args.getDirtyPath(dirtyPathId)
+    if (!dirtyPath) return true
 
-    const dirtyRootKey = getReadRootKeyFromPath(dirtyRoot)
+    const dirtyRootKey = getReadRootKeyFromPath(dirtyPath)
     const readsForRoot = args.entry.readsByRootKey.get(dirtyRootKey)
     if (!readsForRoot || readsForRoot.length === 0) {
       continue
     }
 
     for (const read of readsForRoot) {
-      if (overlaps(dirtyRoot, read)) {
+      if (overlaps(dirtyPath, read)) {
         return true
       }
     }
@@ -229,15 +278,135 @@ export const make = <S>(args: {
   readonly getFieldPathIdRegistry?: () => FieldPathIdRegistry | undefined
 }): SelectorGraph<S> => {
   const { moduleId, instanceId, getFieldPathIdRegistry } = args
+  const dirtyPathKeyCacheEnabled =
+    ((globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env
+      ?.LOGIX_SELECTOR_INDEX_V2_DIRTY_PATH_KEY_CACHE ??
+      '1') !== '0'
+  const dirtyPathKeyFastAppendEnabled =
+    ((globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env
+      ?.LOGIX_SELECTOR_INDEX_V2_DIRTY_PATH_KEY_FAST_APPEND ??
+      '1') !== '0'
 
-  const selectorsById = new Map<string, SelectorEntry<S, any>>()
-  const indexByReadRoot = new Map<ReadRootKey, Set<string>>()
+  const activeEntriesById = new Map<string, SelectorEntry<S, any>>()
+  const cachedEntriesById = new Map<string, SelectorEntry<S, any>>()
+  const candidateIndexByReadRoot = new Map<ReadRootKey, Array<IndexedRootCandidate<S>>>()
   const selectorsWithoutReads = new Set<string>()
+  const dirtyRootScratchBuckets = new Map<ReadRootKey, DirtyRootScratchBucket>()
+  const dirtyRootScratchActiveRootKeys: Array<ReadRootKey> = []
+  let dirtyRootScratchGeneration = 0
+
+  const hasAnyEntries: SelectorGraph<S>['hasAnyEntries'] = () => activeEntriesById.size > 0
+
+  const registerIndexedRootCandidates = (entry: SelectorEntry<S, any>): void => {
+    for (const rootKey of entry.readRootKeys) {
+      const readsForRoot = entry.readsByRootKey.get(rootKey)
+      if (!readsForRoot || readsForRoot.length === 0) continue
+
+      const candidate: IndexedRootCandidate<S> = {
+        selectorId: entry.selectorId,
+        entry,
+        readsForRoot,
+      }
+
+      const bucket = candidateIndexByReadRoot.get(rootKey)
+      if (bucket) {
+        bucket.push(candidate)
+      } else {
+        candidateIndexByReadRoot.set(rootKey, [candidate])
+      }
+    }
+  }
+
+  const unregisterIndexedRootCandidates = (entry: SelectorEntry<S, any>): void => {
+    for (const rootKey of entry.readRootKeys) {
+      const bucket = candidateIndexByReadRoot.get(rootKey)
+      if (!bucket) continue
+
+      let nextLength = 0
+      for (let index = 0; index < bucket.length; index += 1) {
+        const candidate = bucket[index]!
+        if (candidate.entry === entry) {
+          continue
+        }
+        bucket[nextLength] = candidate
+        nextLength += 1
+      }
+      bucket.length = nextLength
+
+      if (bucket.length === 0) {
+        candidateIndexByReadRoot.delete(rootKey)
+      }
+    }
+  }
+
+  const beginDirtyRootScratchGeneration = (): number => {
+    dirtyRootScratchGeneration += 1
+    dirtyRootScratchActiveRootKeys.length = 0
+    return dirtyRootScratchGeneration
+  }
+
+  const getDirtyRootScratchBucket = (rootKey: ReadRootKey, generation: number): DirtyRootScratchBucket => {
+    const existing = dirtyRootScratchBuckets.get(rootKey)
+    if (existing) {
+      if (existing.generation !== generation) {
+        existing.generation = generation
+        existing.paths.length = 0
+        existing.pathKeys.clear()
+        dirtyRootScratchActiveRootKeys.push(rootKey)
+      }
+      return existing
+    }
+
+    const created: DirtyRootScratchBucket = {
+      generation,
+      paths: [],
+      pathKeys: new Set<string>(),
+    }
+    dirtyRootScratchBuckets.set(rootKey, created)
+    dirtyRootScratchActiveRootKeys.push(rootKey)
+    return created
+  }
+
+  const resetCachedEntryValue = (entry: SelectorEntry<S, any>): void => {
+    entry.hasValue = false
+    entry.cachedValue = undefined
+    entry.cachedAtTxnSeq = 0
+    entry.lastScheduledTxnSeq = -1
+  }
+
+  const cacheReleasedEntry = (selectorId: string, entry: SelectorEntry<S, any>): void => {
+    resetCachedEntryValue(entry)
+
+    if (cachedEntriesById.has(selectorId)) {
+      cachedEntriesById.delete(selectorId)
+    }
+    cachedEntriesById.set(selectorId, entry)
+
+    while (cachedEntriesById.size > MAX_CACHED_SELECTOR_ENTRIES) {
+      const oldestSelectorId = cachedEntriesById.keys().next().value
+      if (typeof oldestSelectorId !== 'string') {
+        break
+      }
+      cachedEntriesById.delete(oldestSelectorId)
+    }
+  }
 
   const ensureEntry: SelectorGraph<S>['ensureEntry'] = (readQuery) => {
-    const existing = selectorsById.get(readQuery.selectorId)
+    const existing = activeEntriesById.get(readQuery.selectorId)
     if (existing) {
       return Effect.succeed(existing as any)
+    }
+
+    const cached = cachedEntriesById.get(readQuery.selectorId)
+    if (cached) {
+      cachedEntriesById.delete(readQuery.selectorId)
+      activeEntriesById.set(readQuery.selectorId, cached)
+      if (cached.readRootKeys.length === 0) {
+        selectorsWithoutReads.add(readQuery.selectorId)
+      } else {
+        registerIndexedRootCandidates(cached)
+      }
+      return Effect.succeed(cached as any)
     }
 
     return Effect.gen(function* () {
@@ -264,14 +433,8 @@ export const make = <S>(args: {
       if (readRootKeys.length === 0) {
         selectorsWithoutReads.add(readQuery.selectorId)
       } else {
-        for (const rootKey of readRootKeys) {
-          const set = indexByReadRoot.get(rootKey)
-          if (set) {
-            set.add(readQuery.selectorId)
-          } else {
-            indexByReadRoot.set(rootKey, new Set([readQuery.selectorId]))
-          }
-        }
+        // Build a stable per-root candidate index at registration time so commit-time
+        // scheduling can reuse it directly without rebuilding transient arrays.
       }
 
       const entry: SelectorEntry<S, any> = {
@@ -287,41 +450,36 @@ export const make = <S>(args: {
         hasValue: false,
         cachedValue: undefined,
       }
-      selectorsById.set(readQuery.selectorId, entry)
+      activeEntriesById.set(readQuery.selectorId, entry)
+      registerIndexedRootCandidates(entry)
       return entry as any
     })
   }
 
   const releaseEntry: SelectorGraph<S>['releaseEntry'] = (selectorId) => {
-    const entry = selectorsById.get(selectorId)
+    const entry = activeEntriesById.get(selectorId)
     if (!entry) return
     entry.subscriberCount = Math.max(0, entry.subscriberCount - 1)
     if (entry.subscriberCount > 0) return
 
-    selectorsById.delete(selectorId)
+    activeEntriesById.delete(selectorId)
     selectorsWithoutReads.delete(selectorId)
-    for (const rootKey of entry.readRootKeys) {
-      const set = indexByReadRoot.get(rootKey)
-      if (!set) continue
-      set.delete(selectorId)
-      if (set.size === 0) {
-        indexByReadRoot.delete(rootKey)
-      }
-    }
+    unregisterIndexedRootCandidates(entry)
+    cacheReleasedEntry(selectorId, entry)
   }
 
-  const onCommit: SelectorGraph<S>['onCommit'] = (state, meta, dirtySet, diagnosticsLevel, onSelectorChanged) =>
+  const onCommit: SelectorGraph<S>['onCommit'] = (state, meta, dirty, diagnosticsLevel, onSelectorChanged) =>
     Effect.gen(function* () {
-      if (selectorsById.size === 0) return
+      if (activeEntriesById.size === 0) return
 
       const emitEvalEvent =
         diagnosticsLevel === 'light' || diagnosticsLevel === 'full' || diagnosticsLevel === 'sampled'
       const evalEventPolicy: SelectorEvalEventPolicy = diagnosticsLevel === 'sampled' ? 'sampled' : 'always'
 
       const registry: FieldPathIdRegistry | undefined =
-        dirtySet.dirtyAll || dirtySet.rootIds.length === 0 ? undefined : getFieldPathIdRegistry?.()
+        dirty.dirtyAll || dirty.dirtyPathIds.length === 0 ? undefined : getFieldPathIdRegistry?.()
 
-      const getDirtyRootPath = (id: number): FieldPath | undefined => {
+      const getDirtyPath = (id: number): FieldPath | undefined => {
         if (!registry) return undefined
         if (!Number.isFinite(id)) return undefined
         const idx = Math.floor(id)
@@ -351,50 +509,20 @@ export const make = <S>(args: {
 
       const evaluateAllSubscribedSelectors = (): Effect.Effect<void, never, never> =>
         Effect.gen(function* () {
-          for (const [selectorId, entry] of selectorsById.entries()) {
+          for (const [selectorId, entry] of activeEntriesById.entries()) {
             yield* evaluateSubscribedEntry(entry, selectorId)
           }
         })
 
-      const indexedCandidatesByRoot = new Map<ReadRootKey, ReadonlyArray<IndexedRootCandidate<S>>>()
-      const getIndexedCandidatesForRoot = (rootKey: ReadRootKey): ReadonlyArray<IndexedRootCandidate<S>> => {
-        const cached = indexedCandidatesByRoot.get(rootKey)
-        if (cached) {
-          return cached
-        }
-
-        const selectorIds = indexByReadRoot.get(rootKey)
-        if (!selectorIds || selectorIds.size === 0) {
-          indexedCandidatesByRoot.set(rootKey, [])
-          return []
-        }
-
-        const indexed: Array<IndexedRootCandidate<S>> = []
-        for (const selectorId of selectorIds) {
-          const entry = selectorsById.get(selectorId)
-          if (!entry) continue
-          const readsForRoot = entry.readsByRootKey.get(rootKey)
-          if (!readsForRoot || readsForRoot.length === 0) continue
-          indexed.push({
-            selectorId,
-            entry,
-            readsForRoot,
-          })
-        }
-
-        indexedCandidatesByRoot.set(rootKey, indexed)
-        return indexed
-      }
-
-      if (selectorsById.size === 1) {
-        const entry = selectorsById.values().next().value
+      if (activeEntriesById.size === 1) {
+        const entry = activeEntriesById.values().next().value
         if (!entry) return
 
         if (
           !shouldEvaluateEntryForDirtyRoots({
             entry,
-            dirtySet,
-            getDirtyRootPath,
+            dirty,
+            getDirtyPath,
             hasRegistry: registry != null,
           })
         ) {
@@ -405,7 +533,7 @@ export const make = <S>(args: {
         return
       }
 
-      if (dirtySet.dirtyAll) {
+      if (dirty.dirtyAll) {
         yield* evaluateAllSubscribedSelectors()
         return
       }
@@ -416,32 +544,42 @@ export const make = <S>(args: {
       }
 
       for (const selectorId of selectorsWithoutReads) {
-        const entry = selectorsById.get(selectorId)
+        const entry = activeEntriesById.get(selectorId)
         if (!entry) continue
         yield* evaluateSubscribedEntry(entry, selectorId)
       }
 
-      const dirtyRootsToProcessByRoot = new Map<ReadRootKey, Array<FieldPath>>()
-      for (const dirtyRootId of dirtySet.rootIds) {
-        const dirtyRoot = getDirtyRootPath(dirtyRootId)
-        if (!dirtyRoot) {
+      const dirtyRootGeneration = beginDirtyRootScratchGeneration()
+      for (const dirtyPathId of dirty.dirtyPathIds) {
+        const dirtyPath = getDirtyPath(dirtyPathId)
+        if (!dirtyPath) {
           yield* evaluateAllSubscribedSelectors()
           return
         }
 
-        const rootKey = getReadRootKeyFromPath(dirtyRoot)
-
-        const existingDirtyRoots = dirtyRootsToProcessByRoot.get(rootKey)
-        if (existingDirtyRoots) {
-          upsertDirtyRoot(existingDirtyRoots, dirtyRoot)
-          continue
+        const rootKey = getReadRootKeyFromPath(dirtyPath)
+        const scratchBucket = getDirtyRootScratchBucket(rootKey, dirtyRootGeneration)
+        if (dirtyPathKeyCacheEnabled) {
+          upsertDirtyRootWithPathKeyCache(
+            scratchBucket.paths,
+            scratchBucket.pathKeys,
+            dirtyPath,
+            dirtyPathKeyFastAppendEnabled,
+          )
+        } else {
+          upsertDirtyRoot(scratchBucket.paths, dirtyPath)
         }
-        dirtyRootsToProcessByRoot.set(rootKey, [dirtyRoot])
       }
 
-      for (const [rootKey, dirtyRootsForRoot] of dirtyRootsToProcessByRoot) {
-        const candidates = getIndexedCandidatesForRoot(rootKey)
-        if (candidates.length === 0) {
+      for (let rootIndex = 0; rootIndex < dirtyRootScratchActiveRootKeys.length; rootIndex += 1) {
+        const rootKey = dirtyRootScratchActiveRootKeys[rootIndex]!
+        const dirtyRootsForRoot = dirtyRootScratchBuckets.get(rootKey)?.paths
+        if (!dirtyRootsForRoot || dirtyRootsForRoot.length === 0) {
+          continue
+        }
+
+        const candidates = candidateIndexByReadRoot.get(rootKey)
+        if (!candidates || candidates.length === 0) {
           continue
         }
 
@@ -475,5 +613,5 @@ export const make = <S>(args: {
       }
     })
 
-  return { ensureEntry, releaseEntry, onCommit }
+  return { ensureEntry, releaseEntry, hasAnyEntries, onCommit }
 }

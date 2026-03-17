@@ -51,7 +51,7 @@ describe('ModuleCache.preload', () => {
     const neverFactory: ModuleCacheFactory<{ instanceId: string }> = () =>
       Effect.sync(() => {
         calls += 1
-      }).pipe(Effect.zipRight(Effect.never as unknown as Effect.Effect<{ instanceId: string }, unknown, unknown>))
+      }).pipe(Effect.flatMap(() => Effect.never as unknown as Effect.Effect<{ instanceId: string }, unknown, unknown>))
 
     const op1 = cache.preload('k', neverFactory, { yield: { strategy: 'none' } })
     const op2 = cache.preload('k', neverFactory, { yield: { strategy: 'none' } })

@@ -1,6 +1,7 @@
 import { Effect, Layer } from 'effect'
+import type { SqlClient } from 'effect/unstable/sql/SqlClient'
 
-import { Db } from '../db/db.js'
+import { Db, DbError } from '../db/db.js'
 import { computeEffectivePermissionKeys, computeEffectiveRoleKeys, sortRoleKeys } from './project.rbac.js'
 import { ProjectRepo, type ProjectRepoService } from './project.repo.js'
 import { ProjectSchema } from './project.schema.live.js'
@@ -92,26 +93,23 @@ const computeMemberAccess = (args: { readonly projectId: number; readonly userId
 export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema> = Layer.effect(
   ProjectRepo,
   Effect.gen(function* () {
-    const db = yield* Db
-    const schema = yield* ProjectSchema
+    const db = yield* Effect.service(Db)
+    const schema = yield* Effect.service(ProjectSchema)
     const ensureReady = schema.ready.pipe(Effect.orDie)
+
+    const withSql = <A, E>(f: (sql: SqlClient) => Effect.Effect<A, E>): Effect.Effect<A, DbError | E> =>
+      db.sql.pipe(Effect.flatMap((sql: SqlClient) => f(sql)))
 
     const queryOrDie = <Row extends object = Record<string, unknown>>(
       strings: TemplateStringsArray,
       ...args: Array<any>
-    ) =>
-      db.sql.pipe(
-        Effect.flatMap((sql) => db.run(sql<Row>(strings, ...args))),
-        Effect.orDie,
-      )
+    ): Effect.Effect<ReadonlyArray<Row>, never> => withSql((sql) => db.run(sql<Row>(strings, ...args))).pipe(Effect.orDie)
 
     const projectExists = (projectId: number) =>
       ensureReady.pipe(
-        Effect.zipRight(
-          queryOrDie<{ readonly ok: number }>`select 1 as ok from projects where project_id = ${projectId}`.pipe(
-            Effect.map((rows) => rows.length > 0),
-          ),
-        ),
+        Effect.flatMap(() => queryOrDie<{ readonly ok: number }>`select 1 as ok from projects where project_id = ${projectId}`.pipe(
+          Effect.map((rows) => rows.length > 0),
+        )),
       )
 
     const requireProjectExists = (projectId: number) =>
@@ -123,68 +121,60 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
 
     const requireProject = (projectId: number) =>
       ensureReady.pipe(
-        Effect.zipRight(
-          queryOrDie<ProjectRow>`
-            select
-              project_id::int as "projectId",
-              name,
-              created_by_user_id as "createdByUserId",
-              created_at::text as "createdAt",
-              updated_at::text as "updatedAt"
-            from projects
-            where project_id = ${projectId}
-          `.pipe(
-            Effect.flatMap((rows) =>
-              rows[0]
-                ? Effect.succeed(rows[0])
-                : Effect.fail({ _tag: 'NotFoundError', message: 'Project not found' } as const),
-            ),
+        Effect.flatMap(() => queryOrDie<ProjectRow>`
+          select
+            project_id::int as "projectId",
+            name,
+            created_by_user_id as "createdByUserId",
+            created_at::text as "createdAt",
+            updated_at::text as "updatedAt"
+          from projects
+          where project_id = ${projectId}
+        `.pipe(
+          Effect.flatMap((rows) =>
+            rows[0]
+              ? Effect.succeed(rows[0])
+              : Effect.fail({ _tag: 'NotFoundError', message: 'Project not found' } as const),
           ),
-        ),
+        )),
       )
 
     const requireProjectMemberDirectRole = (projectId: number, userId: string) =>
       ensureReady.pipe(
-        Effect.zipRight(
-          queryOrDie<{ readonly directRole: string }>`
-            select direct_role as "directRole"
-            from project_members
-            where project_id = ${projectId} and user_id = ${userId}
-          `.pipe(
-            Effect.flatMap((rows) =>
-              rows[0] ? Effect.succeed(rows[0].directRole as any) : Effect.fail({ _tag: 'ForbiddenError', message: 'Forbidden' } as const),
-            ),
+        Effect.flatMap(() => queryOrDie<{ readonly directRole: string }>`
+          select direct_role as "directRole"
+          from project_members
+          where project_id = ${projectId} and user_id = ${userId}
+        `.pipe(
+          Effect.flatMap((rows) =>
+            rows[0] ? Effect.succeed(rows[0].directRole as any) : Effect.fail({ _tag: 'ForbiddenError', message: 'Forbidden' } as const),
           ),
-        ),
+        )),
       )
 
     const requireProjectMemberDirectRoleOrNotFound = (projectId: number, userId: string) =>
       ensureReady.pipe(
-        Effect.zipRight(
-          queryOrDie<{ readonly directRole: string }>`
-            select direct_role as "directRole"
-            from project_members
-            where project_id = ${projectId} and user_id = ${userId}
-          `.pipe(
-            Effect.flatMap((rows) =>
-              rows[0]
-                ? Effect.succeed(rows[0].directRole as any)
-                : Effect.fail({ _tag: 'NotFoundError', message: 'Member not found' } as const),
-            ),
+        Effect.flatMap(() => queryOrDie<{ readonly directRole: string }>`
+          select direct_role as "directRole"
+          from project_members
+          where project_id = ${projectId} and user_id = ${userId}
+        `.pipe(
+          Effect.flatMap((rows) =>
+            rows[0]
+              ? Effect.succeed(rows[0].directRole as any)
+              : Effect.fail({ _tag: 'NotFoundError', message: 'Member not found' } as const),
           ),
-        ),
+        )),
       )
 
     const groupExists = (projectId: number, groupId: number) =>
       ensureReady.pipe(
-        Effect.zipRight(
-          queryOrDie<{ readonly ok: number }>`
-            select 1 as ok
-            from project_groups
-            where project_id = ${projectId} and group_id = ${groupId}
-            limit 1
-          `,
-        ),
+        Effect.flatMap(() => queryOrDie<{ readonly ok: number }>`
+          select 1 as ok
+          from project_groups
+          where project_id = ${projectId} and group_id = ${groupId}
+          limit 1
+        `),
         Effect.map((rows) => rows.length > 0),
       )
 
@@ -197,19 +187,17 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
 
     const countProjectOwners = (projectId: number) =>
       ensureReady.pipe(
-        Effect.zipRight(
-          queryOrDie<{ readonly count: number }>`
-            select count(*)::int as count
-            from project_members
-            where project_id = ${projectId} and direct_role = 'owner'
-          `,
-        ),
-        Effect.flatMap((rows) => (rows[0] ? Effect.succeed(rows[0].count) : Effect.dieMessage('count should return one row'))),
+        Effect.flatMap(() => queryOrDie<{ readonly count: number }>`
+          select count(*)::int as count
+          from project_members
+          where project_id = ${projectId} and direct_role = 'owner'
+        `),
+        Effect.flatMap((rows) => (rows[0] ? Effect.succeed(rows[0].count) : Effect.die(new Error('count should return one row')))),
       )
 
     const ensureProjectHasAnotherOwner = (projectId: number) =>
       countProjectOwners(projectId).pipe(
-        Effect.flatMap((owners) =>
+        Effect.flatMap((owners: number) =>
           owners <= 1
             ? Effect.fail({ _tag: 'ConflictError', message: 'Project must have at least one owner' } as const)
             : Effect.void,
@@ -218,18 +206,16 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
 
     const groupRoleKeysByUserId = (projectId: number) =>
       ensureReady.pipe(
-        Effect.zipRight(
-          queryOrDie<GroupRoleRow>`
-            select
-              pgm.user_id as "userId",
-              pg.role_key as "roleKey"
-            from project_group_members pgm
-            join project_groups pg
-              on pg.project_id = pgm.project_id
-              and pg.group_id = pgm.group_id
-            where pgm.project_id = ${projectId}
-          `,
-        ),
+        Effect.flatMap(() => queryOrDie<GroupRoleRow>`
+          select
+            pgm.user_id as "userId",
+            pg.role_key as "roleKey"
+          from project_group_members pgm
+          join project_groups pg
+            on pg.project_id = pgm.project_id
+            and pg.group_id = pgm.group_id
+          where pgm.project_id = ${projectId}
+        `),
         Effect.map((rows) => {
           const map = new Map<string, Array<any>>()
           for (const row of rows) {
@@ -247,75 +233,67 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
 
     const getGroupRoleKeysForUser = (projectId: number, userId: string) =>
       ensureReady.pipe(
-        Effect.zipRight(
-          queryOrDie<{ readonly roleKey: string }>`
-            select distinct
-              pg.role_key as "roleKey"
-            from project_group_members pgm
-            join project_groups pg
-              on pg.project_id = pgm.project_id
-              and pg.group_id = pgm.group_id
-            where pgm.project_id = ${projectId} and pgm.user_id = ${userId}
-          `,
-        ),
+        Effect.flatMap(() => queryOrDie<{ readonly roleKey: string }>`
+          select distinct
+            pg.role_key as "roleKey"
+          from project_group_members pgm
+          join project_groups pg
+            on pg.project_id = pgm.project_id
+            and pg.group_id = pgm.group_id
+          where pgm.project_id = ${projectId} and pgm.user_id = ${userId}
+        `),
         Effect.map((rows) => sortRoleKeys(rows.map((r) => r.roleKey as any))),
       )
 
     const requireUserByEmail = (email: string) =>
       ensureReady.pipe(
-        Effect.zipRight(
-          queryOrDie<{ readonly id: string; readonly email: string; readonly displayName: string }>`
-            select
-              id,
-              email,
-              coalesce(name, email) as "displayName"
-            from auth."user"
-            where lower(btrim(email)) = lower(btrim(${email}))
-            limit 1
-          `.pipe(
-            Effect.flatMap((rows) =>
-              rows[0] ? Effect.succeed(toUserSummary(rows[0])) : Effect.fail({ _tag: 'NotFoundError', message: 'User not found' } as const),
-            ),
+        Effect.flatMap(() => queryOrDie<{ readonly id: string; readonly email: string; readonly displayName: string }>`
+          select
+            id,
+            email,
+            coalesce(name, email) as "displayName"
+          from auth."user"
+          where lower(btrim(email)) = lower(btrim(${email}))
+          limit 1
+        `.pipe(
+          Effect.flatMap((rows) =>
+            rows[0] ? Effect.succeed(toUserSummary(rows[0])) : Effect.fail({ _tag: 'NotFoundError', message: 'User not found' } as const),
           ),
-        ),
+        )),
       )
 
     const requireUserById = (id: string) =>
       ensureReady.pipe(
-        Effect.zipRight(
-          queryOrDie<{ readonly id: string; readonly email: string; readonly displayName: string }>`
-            select
-              id,
-              email,
-              coalesce(name, email) as "displayName"
-            from auth."user"
-            where id = ${id}
-            limit 1
-          `.pipe(
-            Effect.flatMap((rows) =>
-              rows[0] ? Effect.succeed(toUserSummary(rows[0])) : Effect.fail({ _tag: 'NotFoundError', message: 'User not found' } as const),
-            ),
+        Effect.flatMap(() => queryOrDie<{ readonly id: string; readonly email: string; readonly displayName: string }>`
+          select
+            id,
+            email,
+            coalesce(name, email) as "displayName"
+          from auth."user"
+          where id = ${id}
+          limit 1
+        `.pipe(
+          Effect.flatMap((rows) =>
+            rows[0] ? Effect.succeed(toUserSummary(rows[0])) : Effect.fail({ _tag: 'NotFoundError', message: 'User not found' } as const),
           ),
-        ),
+        )),
       )
 
     const projectList: ProjectRepoService['projectList'] = (userId) =>
       Effect.orDie(
         ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<ProjectRow>`
-              select
-                p.project_id::int as "projectId",
-                p.name,
-                p.created_by_user_id as "createdByUserId",
-                p.created_at::text as "createdAt",
-                p.updated_at::text as "updatedAt"
-              from projects p
-              join project_members m on m.project_id = p.project_id
-              where m.user_id = ${userId}
-              order by p.project_id asc
-            `,
-          ),
+          Effect.flatMap(() => queryOrDie<ProjectRow>`
+            select
+              p.project_id::int as "projectId",
+              p.name,
+              p.created_by_user_id as "createdByUserId",
+              p.created_at::text as "createdAt",
+              p.updated_at::text as "updatedAt"
+            from projects p
+            join project_members m on m.project_id = p.project_id
+            where m.user_id = ${userId}
+            order by p.project_id asc
+          `),
           Effect.map((rows) =>
             rows.map((r) => ({
               projectId: r.projectId,
@@ -332,42 +310,36 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
         const name = yield* validateName(input.name)
 
         const existing = yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<{ readonly ok: number }>`
-              select 1 as ok
-              from projects
-              where created_by_user_id = ${input.createdByUserId} and lower(btrim(name)) = lower(btrim(${name}))
-              limit 1
-            `,
-          ),
+          Effect.flatMap(() => queryOrDie<{ readonly ok: number }>`
+            select 1 as ok
+            from projects
+            where created_by_user_id = ${input.createdByUserId} and lower(btrim(name)) = lower(btrim(${name}))
+            limit 1
+          `),
         )
         if (existing.length > 0) {
           return yield* Effect.fail({ _tag: 'ConflictError', message: 'Project name already exists' } as const)
         }
 
-        const created = yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<ProjectRow>`
-              insert into projects (name, created_by_user_id)
-              values (${name}, ${input.createdByUserId})
-              returning
-                project_id::int as "projectId",
-                name,
-                created_by_user_id as "createdByUserId",
-                created_at::text as "createdAt",
-                updated_at::text as "updatedAt"
-            `,
-          ),
-          Effect.flatMap((rows) => (rows[0] ? Effect.succeed(rows[0]) : Effect.dieMessage('insert should return one row'))),
+        const created: ProjectRow = yield* ensureReady.pipe(
+          Effect.flatMap(() => queryOrDie<ProjectRow>`
+            insert into projects (name, created_by_user_id)
+            values (${name}, ${input.createdByUserId})
+            returning
+              project_id::int as "projectId",
+              name,
+              created_by_user_id as "createdByUserId",
+              created_at::text as "createdAt",
+              updated_at::text as "updatedAt"
+          `),
+          Effect.flatMap((rows) => (rows[0] ? Effect.succeed(rows[0]) : Effect.die(new Error('insert should return one row')))),
         )
 
         yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie`
-              insert into project_members (project_id, user_id, direct_role, created_by_user_id)
-              values (${created.projectId}, ${input.createdByUserId}, 'owner', ${input.createdByUserId})
-            `.pipe(Effect.asVoid),
-          ),
+          Effect.flatMap(() => queryOrDie`
+            insert into project_members (project_id, user_id, direct_role, created_by_user_id)
+            values (${created.projectId}, ${input.createdByUserId}, 'owner', ${input.createdByUserId})
+          `.pipe(Effect.asVoid)),
         )
 
         return {
@@ -381,20 +353,18 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
     const projectGetForMember: ProjectRepoService['projectGetForMember'] = (input) =>
       Effect.gen(function* () {
         yield* requireProjectExists(input.projectId)
-        const rows = yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<ProjectRow>`
-              select
-                p.project_id::int as "projectId",
-                p.name,
-                p.created_by_user_id as "createdByUserId",
-                p.created_at::text as "createdAt",
-                p.updated_at::text as "updatedAt"
-              from projects p
-              join project_members m on m.project_id = p.project_id
-              where p.project_id = ${input.projectId} and m.user_id = ${input.userId}
-            `,
-          ),
+        const rows: ReadonlyArray<ProjectRow> = yield* ensureReady.pipe(
+          Effect.flatMap(() => queryOrDie<ProjectRow>`
+            select
+              p.project_id::int as "projectId",
+              p.name,
+              p.created_by_user_id as "createdByUserId",
+              p.created_at::text as "createdAt",
+              p.updated_at::text as "updatedAt"
+            from projects p
+            join project_members m on m.project_id = p.project_id
+            where p.project_id = ${input.projectId} and m.user_id = ${input.userId}
+          `),
         )
         if (!rows[0]) {
           return yield* Effect.fail({ _tag: 'ForbiddenError', message: 'Forbidden' } as const)
@@ -418,14 +388,12 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
         const project = yield* requireProject(input.projectId)
 
         const isMember = yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<{ readonly ok: number }>`
-              select 1 as ok
-              from project_members
-              where project_id = ${input.projectId} and user_id = ${input.userId}
-              limit 1
-            `,
-          ),
+          Effect.flatMap(() => queryOrDie<{ readonly ok: number }>`
+            select 1 as ok
+            from project_members
+            where project_id = ${input.projectId} and user_id = ${input.userId}
+            limit 1
+          `),
           Effect.map((rows) => rows.length > 0),
         )
         if (!isMember) {
@@ -433,36 +401,32 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
         }
 
         const dup = yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<{ readonly ok: number }>`
-              select 1 as ok
-              from projects
-              where created_by_user_id = ${project.createdByUserId}
-                and project_id <> ${input.projectId}
-                and lower(btrim(name)) = lower(btrim(${nextName}))
-              limit 1
-            `,
-          ),
+          Effect.flatMap(() => queryOrDie<{ readonly ok: number }>`
+            select 1 as ok
+            from projects
+            where created_by_user_id = ${project.createdByUserId}
+              and project_id <> ${input.projectId}
+              and lower(btrim(name)) = lower(btrim(${nextName}))
+            limit 1
+          `),
         )
         if (dup.length > 0) {
           return yield* Effect.fail({ _tag: 'ConflictError', message: 'Project name already exists' } as const)
         }
 
-        const updated = yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<ProjectRow>`
-              update projects
-              set name = ${nextName}, updated_at = now()
-              where project_id = ${input.projectId}
-              returning
-                project_id::int as "projectId",
-                name,
-                created_by_user_id as "createdByUserId",
-                created_at::text as "createdAt",
-                updated_at::text as "updatedAt"
-            `,
-          ),
-          Effect.flatMap((rows) => (rows[0] ? Effect.succeed(rows[0]) : Effect.dieMessage('update should return one row'))),
+        const updated: ProjectRow = yield* ensureReady.pipe(
+          Effect.flatMap(() => queryOrDie<ProjectRow>`
+            update projects
+            set name = ${nextName}, updated_at = now()
+            where project_id = ${input.projectId}
+            returning
+              project_id::int as "projectId",
+              name,
+              created_by_user_id as "createdByUserId",
+              created_at::text as "createdAt",
+              updated_at::text as "updatedAt"
+          `),
+          Effect.flatMap((rows) => (rows[0] ? Effect.succeed(rows[0]) : Effect.die(new Error('update should return one row')))),
         )
 
         return {
@@ -484,8 +448,8 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
 
     const accessGet: ProjectRepoService['accessGet'] = (input) =>
       Effect.gen(function* () {
-        const directRole = yield* requireProjectMemberDirectRoleOrNotFound(input.projectId, input.userId)
-        const groupRoleKeys = yield* getGroupRoleKeysForUser(input.projectId, input.userId).pipe(Effect.catchAll(() => Effect.succeed([])))
+        const directRole: any = yield* requireProjectMemberDirectRoleOrNotFound(input.projectId, input.userId)
+        const groupRoleKeys: ReadonlyArray<any> = yield* getGroupRoleKeysForUser(input.projectId, input.userId)
         return computeMemberAccess({ projectId: input.projectId, userId: input.userId, directRole, groupRoleKeys })
       })
 
@@ -495,21 +459,19 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
 
         const groupRoles = yield* groupRoleKeysByUserId(input.projectId)
 
-        const rows = yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<MemberRow>`
-              select
-                u.id as "userId",
-                u.email as "email",
-                coalesce(u.name, u.email) as "displayName",
-                m.direct_role as "directRole",
-                m.created_at::text as "createdAt"
-              from project_members m
-              join auth."user" u on u.id = m.user_id
-              where m.project_id = ${input.projectId}
-              order by lower(u.email) asc
-            `,
-          ),
+        const rows: ReadonlyArray<MemberRow> = yield* ensureReady.pipe(
+          Effect.flatMap(() => queryOrDie<MemberRow>`
+            select
+              u.id as "userId",
+              u.email as "email",
+              coalesce(u.name, u.email) as "displayName",
+              m.direct_role as "directRole",
+              m.created_at::text as "createdAt"
+            from project_members m
+            join auth."user" u on u.id = m.user_id
+            where m.project_id = ${input.projectId}
+            order by lower(u.email) asc
+          `),
         )
 
         return rows.map((r) => {
@@ -543,28 +505,24 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
         const user = yield* requireUserByEmail(email)
 
         const existed = yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<{ readonly ok: number }>`
-              select 1 as ok
-              from project_members
-              where project_id = ${input.projectId} and user_id = ${user.id}
-              limit 1
-            `,
-          ),
+          Effect.flatMap(() => queryOrDie<{ readonly ok: number }>`
+            select 1 as ok
+            from project_members
+            where project_id = ${input.projectId} and user_id = ${user.id}
+            limit 1
+          `),
         )
         if (existed.length > 0) {
           return yield* Effect.fail({ _tag: 'ConflictError', message: 'Member already exists' } as const)
         }
 
-        const createdAt = yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<{ readonly createdAt: string }>`
-              insert into project_members (project_id, user_id, direct_role, created_by_user_id)
-              values (${input.projectId}, ${user.id}, ${input.roleKey}, ${input.createdByUserId})
-              returning created_at::text as "createdAt"
-            `,
-          ),
-          Effect.flatMap((rows) => (rows[0] ? Effect.succeed(rows[0].createdAt) : Effect.dieMessage('insert should return one row'))),
+        const createdAt: string = yield* ensureReady.pipe(
+          Effect.flatMap(() => queryOrDie<{ readonly createdAt: string }>`
+            insert into project_members (project_id, user_id, direct_role, created_by_user_id)
+            values (${input.projectId}, ${user.id}, ${input.roleKey}, ${input.createdByUserId})
+            returning created_at::text as "createdAt"
+          `),
+          Effect.flatMap((rows) => (rows[0] ? Effect.succeed(rows[0].createdAt) : Effect.die(new Error('insert should return one row')))),
         )
 
         const access = computeMemberAccess({
@@ -594,16 +552,14 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
           yield* ensureProjectHasAnotherOwner(input.projectId)
         }
 
-        const createdAt = yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<{ readonly createdAt: string }>`
-              update project_members
-              set direct_role = ${input.nextRoleKey}
-              where project_id = ${input.projectId} and user_id = ${input.userId}
-              returning created_at::text as "createdAt"
-            `,
-          ),
-          Effect.flatMap((rows) => (rows[0] ? Effect.succeed(rows[0].createdAt) : Effect.dieMessage('update should return one row'))),
+        const createdAt: string = yield* ensureReady.pipe(
+          Effect.flatMap(() => queryOrDie<{ readonly createdAt: string }>`
+            update project_members
+            set direct_role = ${input.nextRoleKey}
+            where project_id = ${input.projectId} and user_id = ${input.userId}
+            returning created_at::text as "createdAt"
+          `),
+          Effect.flatMap((rows) => (rows[0] ? Effect.succeed(rows[0].createdAt) : Effect.die(new Error('update should return one row')))),
         )
 
         const user = yield* requireUserById(input.userId)
@@ -635,17 +591,15 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
         }
 
         yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<{ readonly userId: string }>`
-              delete from project_members
-              where project_id = ${input.projectId} and user_id = ${input.userId}
-              returning user_id as "userId"
-            `.pipe(
-              Effect.flatMap((rows) =>
-                rows.length > 0 ? Effect.void : Effect.fail({ _tag: 'NotFoundError', message: 'Member not found' } as const),
-              ),
+          Effect.flatMap(() => queryOrDie<{ readonly userId: string }>`
+            delete from project_members
+            where project_id = ${input.projectId} and user_id = ${input.userId}
+            returning user_id as "userId"
+          `.pipe(
+            Effect.flatMap((rows) =>
+              rows.length > 0 ? Effect.void : Effect.fail({ _tag: 'NotFoundError', message: 'Member not found' } as const),
             ),
-          ),
+          )),
         )
       })
 
@@ -654,19 +608,17 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
         yield* requireProjectExists(input.projectId)
 
         const rows = yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<GroupRow>`
-              select
-                group_id::int as "groupId",
-                project_id::int as "projectId",
-                name,
-                role_key as "roleKey",
-                created_at::text as "createdAt"
-              from project_groups
-              where project_id = ${input.projectId}
-              order by group_id asc
-            `,
-          ),
+          Effect.flatMap(() => queryOrDie<GroupRow>`
+            select
+              group_id::int as "groupId",
+              project_id::int as "projectId",
+              name,
+              role_key as "roleKey",
+              created_at::text as "createdAt"
+            from project_groups
+            where project_id = ${input.projectId}
+            order by group_id asc
+          `),
         )
 
         return rows.map((r) => ({
@@ -680,19 +632,17 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
 
     const groupGetRoleKey: ProjectRepoService['groupGetRoleKey'] = (input) =>
       ensureReady.pipe(
-        Effect.zipRight(
-          queryOrDie<{ readonly roleKey: string }>`
-            select role_key as "roleKey"
-            from project_groups
-            where project_id = ${input.projectId} and group_id = ${input.groupId}
-          `.pipe(
-            Effect.flatMap((rows) =>
-              rows[0]
-                ? Effect.succeed(rows[0].roleKey as any)
-                : Effect.fail({ _tag: 'NotFoundError', message: 'Group not found' } as const),
-            ),
+        Effect.flatMap(() => queryOrDie<{ readonly roleKey: string }>`
+          select role_key as "roleKey"
+          from project_groups
+          where project_id = ${input.projectId} and group_id = ${input.groupId}
+        `.pipe(
+          Effect.flatMap((rows) =>
+            rows[0]
+              ? Effect.succeed(rows[0].roleKey as any)
+              : Effect.fail({ _tag: 'NotFoundError', message: 'Group not found' } as const),
           ),
-        ),
+        )),
       )
 
     const groupCreate: ProjectRepoService['groupCreate'] = (input) =>
@@ -701,33 +651,29 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
         yield* requireProjectExists(input.projectId)
 
         const dup = yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<{ readonly ok: number }>`
-              select 1 as ok
-              from project_groups
-              where project_id = ${input.projectId} and lower(btrim(name)) = lower(btrim(${name}))
-              limit 1
-            `,
-          ),
+          Effect.flatMap(() => queryOrDie<{ readonly ok: number }>`
+            select 1 as ok
+            from project_groups
+            where project_id = ${input.projectId} and lower(btrim(name)) = lower(btrim(${name}))
+            limit 1
+          `),
         )
         if (dup.length > 0) {
           return yield* Effect.fail({ _tag: 'ConflictError', message: 'Group name already exists' } as const)
         }
 
-        const created = yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<GroupRow>`
-              insert into project_groups (project_id, name, role_key, created_by_user_id)
-              values (${input.projectId}, ${name}, ${input.roleKey}, ${input.createdByUserId})
-              returning
-                group_id::int as "groupId",
-                project_id::int as "projectId",
-                name,
-                role_key as "roleKey",
-                created_at::text as "createdAt"
-            `,
-          ),
-          Effect.flatMap((rows) => (rows[0] ? Effect.succeed(rows[0]) : Effect.dieMessage('insert should return one row'))),
+        const created: GroupRow = yield* ensureReady.pipe(
+          Effect.flatMap(() => queryOrDie<GroupRow>`
+            insert into project_groups (project_id, name, role_key, created_by_user_id)
+            values (${input.projectId}, ${name}, ${input.roleKey}, ${input.createdByUserId})
+            returning
+              group_id::int as "groupId",
+              project_id::int as "projectId",
+              name,
+              role_key as "roleKey",
+              created_at::text as "createdAt"
+          `),
+          Effect.flatMap((rows) => (rows[0] ? Effect.succeed(rows[0]) : Effect.die(new Error('insert should return one row')))),
         )
 
         return {
@@ -747,38 +693,34 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
 
         if (patchName !== undefined) {
           const dup = yield* ensureReady.pipe(
-            Effect.zipRight(
-              queryOrDie<{ readonly ok: number }>`
-                select 1 as ok
-                from project_groups
-                where project_id = ${input.projectId}
-                  and group_id <> ${input.groupId}
-                  and lower(btrim(name)) = lower(btrim(${patchName}))
-                limit 1
-              `,
-            ),
+            Effect.flatMap(() => queryOrDie<{ readonly ok: number }>`
+              select 1 as ok
+              from project_groups
+              where project_id = ${input.projectId}
+                and group_id <> ${input.groupId}
+                and lower(btrim(name)) = lower(btrim(${patchName}))
+              limit 1
+            `),
           )
           if (dup.length > 0) {
             return yield* Effect.fail({ _tag: 'ConflictError', message: 'Group name already exists' } as const)
           }
         }
 
-        const updated = yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<GroupRow>`
-              update project_groups
-              set
-                name = coalesce(${patchName ?? null}, name),
-                role_key = coalesce(${input.patch.roleKey ?? null}, role_key)
-              where project_id = ${input.projectId} and group_id = ${input.groupId}
-              returning
-                group_id::int as "groupId",
-                project_id::int as "projectId",
-                name,
-                role_key as "roleKey",
-                created_at::text as "createdAt"
-            `,
-          ),
+        const updated: GroupRow = yield* ensureReady.pipe(
+          Effect.flatMap(() => queryOrDie<GroupRow>`
+            update project_groups
+            set
+              name = coalesce(${patchName ?? null}, name),
+              role_key = coalesce(${input.patch.roleKey ?? null}, role_key)
+            where project_id = ${input.projectId} and group_id = ${input.groupId}
+            returning
+              group_id::int as "groupId",
+              project_id::int as "projectId",
+              name,
+              role_key as "roleKey",
+              created_at::text as "createdAt"
+          `),
           Effect.flatMap((rows) =>
             rows[0] ? Effect.succeed(rows[0]) : Effect.fail({ _tag: 'NotFoundError', message: 'Group not found' } as const),
           ),
@@ -795,17 +737,15 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
 
     const groupDelete: ProjectRepoService['groupDelete'] = (input) =>
       ensureReady.pipe(
-        Effect.zipRight(
-          queryOrDie<{ readonly groupId: number }>`
-            delete from project_groups
-            where project_id = ${input.projectId} and group_id = ${input.groupId}
-            returning group_id::int as "groupId"
-          `.pipe(
-            Effect.flatMap((rows) =>
-              rows.length > 0 ? Effect.void : Effect.fail({ _tag: 'NotFoundError', message: 'Group not found' } as const),
-            ),
+        Effect.flatMap(() => queryOrDie<{ readonly groupId: number }>`
+          delete from project_groups
+          where project_id = ${input.projectId} and group_id = ${input.groupId}
+          returning group_id::int as "groupId"
+        `.pipe(
+          Effect.flatMap((rows) =>
+            rows.length > 0 ? Effect.void : Effect.fail({ _tag: 'NotFoundError', message: 'Group not found' } as const),
           ),
-        ),
+        )),
       )
 
     const groupMemberList: ProjectRepoService['groupMemberList'] = (input) =>
@@ -813,20 +753,18 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
         yield* requireProjectExists(input.projectId)
         yield* requireGroupExists(input.projectId, input.groupId)
 
-        const rows = yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<GroupMemberRow>`
-              select
-                u.id as "userId",
-                u.email as "email",
-                coalesce(u.name, u.email) as "displayName",
-                pgm.created_at::text as "createdAt"
-              from project_group_members pgm
-              join auth."user" u on u.id = pgm.user_id
-              where pgm.project_id = ${input.projectId} and pgm.group_id = ${input.groupId}
-              order by lower(u.email) asc
-            `,
-          ),
+        const rows: ReadonlyArray<GroupMemberRow> = yield* ensureReady.pipe(
+          Effect.flatMap(() => queryOrDie<GroupMemberRow>`
+            select
+              u.id as "userId",
+              u.email as "email",
+              coalesce(u.name, u.email) as "displayName",
+              pgm.created_at::text as "createdAt"
+            from project_group_members pgm
+            join auth."user" u on u.id = pgm.user_id
+            where pgm.project_id = ${input.projectId} and pgm.group_id = ${input.groupId}
+            order by lower(u.email) asc
+          `),
         )
 
         return rows.map((r) => ({
@@ -841,14 +779,12 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
         yield* requireGroupExists(input.projectId, input.groupId)
 
         const isProjectMember = yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<{ readonly ok: number }>`
-              select 1 as ok
-              from project_members
-              where project_id = ${input.projectId} and user_id = ${input.userId}
-              limit 1
-            `,
-          ),
+          Effect.flatMap(() => queryOrDie<{ readonly ok: number }>`
+            select 1 as ok
+            from project_members
+            where project_id = ${input.projectId} and user_id = ${input.userId}
+            limit 1
+          `),
           Effect.map((rows) => rows.length > 0),
         )
         if (!isProjectMember) {
@@ -856,28 +792,24 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
         }
 
         const existed = yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<{ readonly ok: number }>`
-              select 1 as ok
-              from project_group_members
-              where project_id = ${input.projectId} and group_id = ${input.groupId} and user_id = ${input.userId}
-              limit 1
-            `,
-          ),
+          Effect.flatMap(() => queryOrDie<{ readonly ok: number }>`
+            select 1 as ok
+            from project_group_members
+            where project_id = ${input.projectId} and group_id = ${input.groupId} and user_id = ${input.userId}
+            limit 1
+          `),
         )
         if (existed.length > 0) {
           return yield* Effect.fail({ _tag: 'ConflictError', message: 'Member already in group' } as const)
         }
 
-        const createdAt = yield* ensureReady.pipe(
-          Effect.zipRight(
-            queryOrDie<{ readonly createdAt: string }>`
-              insert into project_group_members (project_id, group_id, user_id, created_by_user_id)
-              values (${input.projectId}, ${input.groupId}, ${input.userId}, ${input.createdByUserId})
-              returning created_at::text as "createdAt"
-            `,
-          ),
-          Effect.flatMap((rows) => (rows[0] ? Effect.succeed(rows[0].createdAt) : Effect.dieMessage('insert should return one row'))),
+        const createdAt: string = yield* ensureReady.pipe(
+          Effect.flatMap(() => queryOrDie<{ readonly createdAt: string }>`
+            insert into project_group_members (project_id, group_id, user_id, created_by_user_id)
+            values (${input.projectId}, ${input.groupId}, ${input.userId}, ${input.createdByUserId})
+            returning created_at::text as "createdAt"
+          `),
+          Effect.flatMap((rows) => (rows[0] ? Effect.succeed(rows[0].createdAt) : Effect.die(new Error('insert should return one row')))),
         )
 
         const user = yield* requireUserById(input.userId)
@@ -886,17 +818,15 @@ export const ProjectRepoLive: Layer.Layer<ProjectRepo, never, Db | ProjectSchema
 
     const groupMemberRemove: ProjectRepoService['groupMemberRemove'] = (input) =>
       ensureReady.pipe(
-        Effect.zipRight(
-          queryOrDie<{ readonly userId: string }>`
-            delete from project_group_members
-            where project_id = ${input.projectId} and group_id = ${input.groupId} and user_id = ${input.userId}
-            returning user_id as "userId"
-          `.pipe(
-            Effect.flatMap((rows) =>
-              rows.length > 0 ? Effect.void : Effect.fail({ _tag: 'NotFoundError', message: 'Group member not found' } as const),
-            ),
+        Effect.flatMap(() => queryOrDie<{ readonly userId: string }>`
+          delete from project_group_members
+          where project_id = ${input.projectId} and group_id = ${input.groupId} and user_id = ${input.userId}
+          returning user_id as "userId"
+        `.pipe(
+          Effect.flatMap((rows) =>
+            rows.length > 0 ? Effect.void : Effect.fail({ _tag: 'NotFoundError', message: 'Group member not found' } as const),
           ),
-        ),
+        )),
       )
 
     return {

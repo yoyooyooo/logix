@@ -1,0 +1,23 @@
+{
+  "cutId": "p1-2-next-expansion",
+  "date": "2026-03-20",
+  "result": "passed",
+  "commands": [
+    {
+      "cmd": "pnpm -C packages/logix-core typecheck:test",
+      "status": "passed",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p1-2-next-expansion.validation.typecheck.txt"
+    },
+    {
+      "cmd": "pnpm -C packages/logix-core exec vitest run test/internal/Bound/BoundApiRuntime.stateUpdateWholeStateFallback.Perf.off.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.reducerWholeStateFallback.Perf.off.test.ts",
+      "status": "passed",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p1-2-next-expansion.validation.vitest.txt"
+    },
+    {
+      "cmd": "python3 fabfile.py probe_next_blocker --json",
+      "status": "passed",
+      "probeStatus": "clear",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p1-2-next-expansion.probe-next-blocker.json"
+    }
+  ]
+}

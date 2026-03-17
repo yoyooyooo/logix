@@ -1,13 +1,12 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
 
 describe('Form rules-first complex form (US1)', () => {
-  it.scoped('covers derived + conditional required + list scope + $self', () =>
+  it.effect('covers derived + conditional required + list scope + $self', () =>
     Effect.gen(function* () {
-      const ChannelSchema = Schema.Union(Schema.Literal('email'), Schema.Literal('phone'))
+      const ChannelSchema = Schema.Union([Schema.Literal('email'), Schema.Literal('phone')])
 
       const ItemSchema = Schema.Struct({
         id: Schema.String,
@@ -153,7 +152,7 @@ describe('Form rules-first complex form (US1)', () => {
         new Map(items.map((row, i) => [String(row?.id ?? i), i]))
 
       const program = Effect.gen(function* () {
-        const rt = yield* module.tag
+        const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const controller = module.controller.make(rt)
 
         // derived: only writes values/ui, not errors.

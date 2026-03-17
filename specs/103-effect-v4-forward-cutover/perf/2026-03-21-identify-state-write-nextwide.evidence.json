@@ -1,0 +1,63 @@
+{
+  "id": "2026-03-21-identify-state-write-nextwide.evidence",
+  "capturedAt": "2026-03-21",
+  "scope": "identify-state-write-data-plane-nextwide-after-p1-1-p1-2-p1-3r",
+  "decision": {
+    "status": "docs_only_identify",
+    "acceptedWithEvidence": false,
+    "mergeToMain": false,
+    "top2": [
+      {
+        "id": "SW-N1",
+        "title": "Patch-first state write contract hardening",
+        "recommendedNextLane": true
+      },
+      {
+        "id": "SW-N2",
+        "title": "Static FieldPathId table and stable anchor plumbing",
+        "recommendedNextLane": false
+      }
+    ],
+    "doNotReopen": [
+      "P1-1 dispatch PatchAnchor precompile",
+      "P1-1 single-field pathId 直写链",
+      "P1-1 patchanchor next",
+      "P1-2 next-expansion (BoundApi.state.update)",
+      "P1-3 draft primitive / large-batch-only",
+      "P1-3R (default lane)"
+    ],
+    "reasons": [
+      "state-write 事务数爆炸与 watcher 写回固定税已由 I-1/O-1/O-2 收敛，继续追 runtime 预编译很容易复现负收益",
+      "仍存在跨入口的 '*' 退化与 registry 缺失降级，靠推导补救属于尾部风险且会放大全诊断材料化成本",
+      "SW-N1 可以把 tail risk 收敛为契约约束，收益面覆盖 dispatch、BoundApi、externalStore、module-as-source，且与 id-first dirty evidence 方向一致",
+      "SW-N2 值得做，但更适合作为 SW-N1 之后的第二阶段，避免在契约仍可退化时先冻结 token 形态"
+    ]
+  },
+  "sources": {
+    "doc": {
+      "ref": "docs/perf/2026-03-21-identify-state-write-nextwide.md"
+    },
+    "followUp": [
+      "docs/perf/2026-03-22-sw-n2-fieldpathid-table-and-stable-anchor-impl-check.md",
+      "specs/103-effect-v4-forward-cutover/perf/2026-03-22-sw-n2-fieldpathid-table-and-stable-anchor.evidence.json"
+    ],
+    "absorbedCuts": [
+      "docs/perf/archive/2026-03/2026-03-06-i1-state-writeback-batched.md",
+      "docs/perf/archive/2026-03/2026-03-06-o1-watchers-action-writeback-fusion.md",
+      "docs/perf/archive/2026-03/2026-03-06-o2-watchers-direct-writeback.md",
+      "docs/perf/archive/2026-03/2026-03-04-b1-externalStore-batched-writeback.md",
+      "docs/perf/archive/2026-03/2026-03-05-d2-dirtyevidence-snapshot.md",
+      "docs/perf/archive/2026-03/2026-03-05-g1-infer-replace-patches.md",
+      "docs/perf/archive/2026-03/2026-03-05-g2-infer-replace-if-empty.md",
+      "docs/perf/archive/2026-03/2026-03-19-p1-2-2c-module-source-tick.md",
+      "docs/perf/archive/2026-03/2026-03-20-p1-1-2-fieldpathid-extended.md",
+      "docs/perf/archive/2026-03/2026-03-21-p1-3r-env-ready-impl-check-v2.md"
+    ],
+    "probeRun": {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-identify-state-write-nextwide.probe-next-blocker.json",
+      "expected": "可执行时应为 clear 或 non-environment 可比 blocker",
+      "status": "captured"
+    }
+  }
+}

@@ -1,4 +1,4 @@
-import { Context, Duration, Effect, Option, Ref, Stream } from 'effect'
+import { Duration, Effect, Option, PubSub, Ref, Stream } from 'effect'
 import { isDevEnv } from '../env.js'
 import * as ReadQuery from '../ReadQuery.js'
 import { makeSchemaSelector } from './selectorSchema.js'
@@ -19,7 +19,7 @@ type SchemaAstLike = Parameters<typeof makeSchemaSelector>[1]
 type CachedSchemaAstEntry = { readonly ast: SchemaAstLike }
 
 type TriggerStreamFactoryOptions = {
-  readonly baseEnv: Context.Context<any>
+  readonly moduleRuntimeRegistry: ReadonlyMap<string, unknown>
   readonly shouldRecordChainEvents: boolean
   readonly actionIdFromUnknown: (action: unknown) => string | undefined
   readonly resolveRuntimeStateSchemaAst: (runtime: unknown) => SchemaAstLike
@@ -86,19 +86,8 @@ const makeModuleStateChangeReadQuery = (args: {
   })
 
 export const makeNonPlatformTriggerStreamFactory = (options: TriggerStreamFactoryOptions) => {
-  const moduleRuntimeTagCache = new Map<string, Context.Tag<any, any>>()
   const moduleRuntimeCache = new Map<string, any>()
   const runtimeSchemaAstCache = new WeakMap<object, CachedSchemaAstEntry>()
-
-  const resolveModuleRuntimeTag = (moduleId: string): Context.Tag<any, any> => {
-    const cached = moduleRuntimeTagCache.get(moduleId)
-    if (cached) {
-      return cached
-    }
-    const created = Context.Tag(`@logixjs/Module/${moduleId}`)() as Context.Tag<any, any>
-    moduleRuntimeTagCache.set(moduleId, created)
-    return created
-  }
 
   const resolveModuleRuntime = (moduleId: string): Effect.Effect<any, Error> =>
     Effect.gen(function* () {
@@ -106,14 +95,12 @@ export const makeNonPlatformTriggerStreamFactory = (options: TriggerStreamFactor
         return moduleRuntimeCache.get(moduleId)
       }
 
-      const tag = resolveModuleRuntimeTag(moduleId)
-      const found = Context.getOption(options.baseEnv, tag)
-      if (Option.isNone(found)) {
+      const runtime = options.moduleRuntimeRegistry.get(moduleId)
+      if (runtime === undefined) {
         return yield* Effect.fail(new Error(`Missing module runtime in scope: ${moduleId}`))
       }
 
-      const runtime = found.value as any
-      moduleRuntimeCache.set(moduleId, runtime)
+      moduleRuntimeCache.set(moduleId, runtime as any)
       return runtime
     })
 
@@ -134,12 +121,12 @@ export const makeNonPlatformTriggerStreamFactory = (options: TriggerStreamFactor
 
   const makeTimerTriggerStream = (spec: TimerTriggerSpec): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>
     Effect.gen(function* () {
-      const interval = Duration.decodeUnknown(spec.timerId)
-      if (Option.isNone(interval)) {
+      const interval = Duration.fromInput(spec.timerId as Duration.Input)
+      if (!interval) {
         return yield* Effect.fail(makeInvalidTimerIdError(spec.timerId))
       }
 
-      return Stream.tick(interval.value).pipe(
+      return Stream.tick(interval).pipe(
         Stream.map(
           () =>
             ({
@@ -328,4 +315,142 @@ export const makeNonPlatformTriggerStreamFactory = (options: TriggerStreamFactor
           return yield* Effect.fail(makeInvalidTriggerKindError(spec))
       }
     })
+}
+
+const makeGroupedModuleActionTriggerStream = (args: {
+  readonly options: TriggerStreamFactoryOptions
+  readonly specs: ReadonlyArray<ModuleActionTriggerSpec>
+}): Effect.Effect<Stream.Stream<ProcessTrigger>, Error> =>
+  Effect.gen(function* () {
+    const first = args.specs[0]
+    if (!first) {
+      return Stream.empty as Stream.Stream<ProcessTrigger>
+    }
+
+    const runtimeResolved = args.options.moduleRuntimeRegistry.get(first.moduleId)
+    if (runtimeResolved === undefined) {
+      return yield* Effect.fail(new Error(`Missing module runtime in scope: ${first.moduleId}`))
+    }
+    const runtime = runtimeResolved as any
+
+    const triggersByActionId = new Map<string, Array<ModuleActionTriggerSpec>>()
+    for (const spec of args.specs) {
+      const existing = triggersByActionId.get(spec.actionId)
+      if (existing) {
+        existing.push(spec)
+      } else {
+        triggersByActionId.set(spec.actionId, [spec])
+      }
+    }
+
+    const buildTriggers = (actionId: string | undefined, txnSeq: number): ReadonlyArray<ProcessTrigger> => {
+      if (!actionId) return []
+      const matched = triggersByActionId.get(actionId)
+      if (!matched || matched.length === 0) return []
+
+      const instanceId = runtime.instanceId as string
+      return matched.map((spec) => ({
+        kind: 'moduleAction',
+        name: spec.name,
+        moduleId: spec.moduleId,
+        instanceId,
+        actionId: spec.actionId,
+        txnSeq,
+      }))
+    }
+
+    const makeSharedStream = <A>(
+      source: Stream.Stream<A>,
+      resolve: (value: A) => ReadonlyArray<ProcessTrigger>,
+    ): Stream.Stream<ProcessTrigger> =>
+      Stream.unwrap(
+        Effect.gen(function* () {
+          const hub = yield* PubSub.unbounded<ProcessTrigger>()
+          yield* Effect.forkScoped(
+            Stream.runForEach(source, (value) => {
+              const triggers = resolve(value)
+              if (triggers.length === 0) {
+                return Effect.void
+              }
+              return Effect.forEach(triggers, (trigger) => PubSub.publish(hub, trigger), { discard: true })
+            }),
+          )
+          return Stream.fromPubSub(hub)
+        }),
+      )
+
+    if (!args.options.shouldRecordChainEvents) {
+      const stream = runtime.actions$ as Stream.Stream<any> | undefined
+      if (!stream) {
+        return yield* Effect.fail(makeMissingActionStreamError(first.moduleId))
+      }
+
+      return makeSharedStream(stream, (action) =>
+        buildTriggers(args.options.actionIdFromUnknown(action), 1),
+      )
+    }
+
+    const stream = runtime.actionsWithMeta$ as Stream.Stream<any> | undefined
+    if (!stream) {
+      return yield* Effect.fail(makeMissingActionMetaStreamError(first.moduleId))
+    }
+
+    return makeSharedStream(stream, (evt) => {
+      const txnSeq = evt?.meta?.txnSeq
+      return buildTriggers(
+        args.options.actionIdFromUnknown(evt?.value),
+        typeof txnSeq === 'number' ? txnSeq : 1,
+      )
+    })
+  })
+
+export const buildNonPlatformTriggerStreams = (args: {
+  readonly options: TriggerStreamFactoryOptions
+  readonly specs: ReadonlyArray<NonPlatformTriggerSpec>
+}): Effect.Effect<ReadonlyArray<Stream.Stream<ProcessTrigger>>, Error> => {
+  const makeSingle = makeNonPlatformTriggerStreamFactory(args.options)
+
+  return Effect.gen(function* () {
+    const groupedModuleActions = new Map<string, Array<ModuleActionTriggerSpec>>()
+    const actionGroupOrder: Array<string> = []
+    const singles: Array<NonPlatformTriggerSpec> = []
+
+    for (const spec of args.specs) {
+      if (spec.kind !== 'moduleAction') {
+        singles.push(spec)
+        continue
+      }
+
+      const existing = groupedModuleActions.get(spec.moduleId)
+      if (existing) {
+        existing.push(spec)
+      } else {
+        groupedModuleActions.set(spec.moduleId, [spec])
+        actionGroupOrder.push(spec.moduleId)
+      }
+    }
+
+    const streams: Array<Stream.Stream<ProcessTrigger>> = []
+
+    for (const moduleId of actionGroupOrder) {
+      const specs = groupedModuleActions.get(moduleId)
+      if (!specs || specs.length === 0) continue
+      if (specs.length === 1) {
+        streams.push(yield* makeSingle(specs[0]!))
+        continue
+      }
+      streams.push(
+        yield* makeGroupedModuleActionTriggerStream({
+          options: args.options,
+          specs,
+        }),
+      )
+    }
+
+    for (const spec of singles) {
+      streams.push(yield* makeSingle(spec))
+    }
+
+    return streams
+  })
 }

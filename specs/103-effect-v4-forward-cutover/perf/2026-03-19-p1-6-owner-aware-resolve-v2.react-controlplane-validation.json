@@ -1,0 +1,41 @@
+{
+  "date": "2026-03-19",
+  "topic": "P1-6-owner-aware-resolve-v2",
+  "checks": [
+    {
+      "command": "pnpm --filter @logixjs/react typecheck:test",
+      "status": "passed"
+    },
+    {
+      "command": "pnpm --filter @logixjs/react exec vitest run test/internal/integration/reactConfigRuntimeProvider.test.tsx --pool forks",
+      "status": "passed",
+      "summary": {
+        "testFilesPassed": 1,
+        "testsPassed": 9,
+        "testsFailed": 0
+      }
+    },
+    {
+      "command": "pnpm --filter @logixjs/react exec vitest run test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx --pool forks",
+      "status": "passed",
+      "summary": {
+        "testFilesPassed": 1,
+        "testsPassed": 2,
+        "testsFailed": 0
+      }
+    },
+    {
+      "command": "pnpm --filter @logixjs/react exec vitest run test/integration/runtimeProviderTickServices.regression.test.tsx -t \"should apply RuntimeProvider.layer overrides and still re-render immediately\" --pool forks",
+      "status": "passed",
+      "summary": {
+        "testFilesPassed": 1,
+        "testsPassed": 1,
+        "testsSkipped": 6,
+        "testsFailed": 0
+      }
+    }
+  ],
+  "notes": [
+    "独立 worktree 缺少依赖目录，已复用母线 node_modules 软链后执行验证。"
+  ]
+}

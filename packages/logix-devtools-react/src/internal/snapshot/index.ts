@@ -1,5 +1,5 @@
 import * as Logix from '@logixjs/core'
-import { Context, Effect, Layer, Stream } from 'effect'
+import { Effect, Layer, PubSub, ServiceMap, Stream } from 'effect'
 
 /**
  * Notes:
@@ -11,7 +11,10 @@ import { Context, Effect, Layer, Stream } from 'effect'
 
 export type DevtoolsSnapshot = Logix.Debug.DevtoolsSnapshot
 
-export const clearDevtoolsEvents = Logix.Debug.clearDevtoolsEvents
+export const clearDevtoolsEvents = (): void => {
+  Logix.Debug.clearDevtoolsEvents()
+  notify()
+}
 export const setInstanceLabel = Logix.Debug.setInstanceLabel
 export const getInstanceLabel = Logix.Debug.getInstanceLabel
 
@@ -80,8 +83,10 @@ const normalizeDevtoolsSnapshot = (snapshot: DevtoolsSnapshot): DevtoolsSnapshot
 
 const listeners = new Set<() => void>()
 let unsubscribeCore: (() => void) | undefined
+const snapshotPubSub = Effect.runSync(PubSub.unbounded<DevtoolsSnapshot>())
 
 const notify = (): void => {
+  PubSub.publishUnsafe(snapshotPubSub, getDevtoolsSnapshot())
   for (const listener of listeners) {
     listener()
   }
@@ -115,8 +120,6 @@ export const clearDevtoolsSnapshotOverride = (): void => {
 }
 
 export const getDevtoolsSnapshot = (): DevtoolsSnapshot => snapshotOverride ?? Logix.Debug.getDevtoolsSnapshot()
-export const getDevtoolsSnapshotByRuntimeLabel = (runtimeLabel: string): DevtoolsSnapshot =>
-  snapshotOverride ?? Logix.Debug.getDevtoolsSnapshotByRuntimeLabel(runtimeLabel)
 
 /**
  * SnapshotToken (safe for external subscription):
@@ -161,20 +164,13 @@ export interface DevtoolsSnapshotService {
  * - Exposed as an Env Service for Devtools Runtime.
  * - Used by DevtoolsModule to subscribe to Snapshot changes and derive DevtoolsState.
  */
-export class DevtoolsSnapshotStore extends Context.Tag('Logix/DevtoolsSnapshotStore')<
-  DevtoolsSnapshotStore,
-  DevtoolsSnapshotService
->() {}
+export class DevtoolsSnapshotStore extends ServiceMap.Service<DevtoolsSnapshotStore, DevtoolsSnapshotService>()(
+  'Logix/DevtoolsSnapshotStore',
+) {}
 
 const devtoolsSnapshotService: DevtoolsSnapshotService = {
   get: Effect.sync(() => getDevtoolsSnapshot()),
-  changes: Stream.async<DevtoolsSnapshot>((emit) => {
-    const listener = () => {
-      emit.single(getDevtoolsSnapshot())
-    }
-    const unsubscribe = subscribeDevtoolsSnapshot(listener)
-    return Effect.sync(unsubscribe)
-  }),
+  changes: Stream.fromPubSub(snapshotPubSub),
 }
 
 export const devtoolsSnapshotLayer: Layer.Layer<DevtoolsSnapshotStore, never, never> = Layer.succeed(

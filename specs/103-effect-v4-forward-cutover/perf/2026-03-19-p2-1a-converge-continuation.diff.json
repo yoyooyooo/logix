@@ -1,0 +1,41 @@
+{
+  "id": "2026-03-19-p2-1a-converge-continuation.diff",
+  "capturedAt": "2026-03-19",
+  "scope": "p2-1a-deferred-converge-continuation-handle",
+  "beforeRef": "specs/103-effect-v4-forward-cutover/perf/2026-03-19-p2-1a-converge-continuation.before.json",
+  "afterRef": "specs/103-effect-v4-forward-cutover/perf/2026-03-19-p2-1a-converge-continuation.after.json",
+  "deltasMs": {
+    "return": {
+      "avg": 0.03,
+      "p50": 0.019,
+      "p95": 0.114
+    },
+    "settle": {
+      "avg": -0.817,
+      "p50": -0.707,
+      "p95": -0.746
+    }
+  },
+  "ratios": {
+    "return": {
+      "avg": 1.0493,
+      "p50": 1.0344,
+      "p95": 1.1206
+    },
+    "settle": {
+      "avg": 0.8467,
+      "p50": 0.8599,
+      "p95": 0.8785
+    }
+  },
+  "summary": {
+    "positiveEvidence": [
+      "deferred backlog settle.avg improved from 5.329ms to 4.512ms",
+      "deferred backlog settle.p95 improved from 6.138ms to 5.392ms"
+    ],
+    "notes": [
+      "txn-return path shows slight regression in this single quick sample",
+      "this cut is accepted as a minimal falsifiable slice with mixed but explicit evidence"
+    ]
+  }
+}

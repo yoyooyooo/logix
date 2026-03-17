@@ -1,0 +1,60 @@
+{
+  "id": "2026-03-20-p2-1a-continuation-v4.evidence",
+  "capturedAt": "2026-03-20",
+  "scope": "p2-1a-continuation-v4-revalidation",
+  "decision": {
+    "status": "docs_only_veto",
+    "mergeToMain": false,
+    "reasons": [
+      "最小 focused tests 命令未全绿，成功门前置条件失败",
+      "TxnLaneEvidence.Schema 用例报错：TxnLaneEvidence.policy 包含 schema 未接纳字段 effective",
+      "probe_next_blocker 虽为 clear，但无法覆盖 focused tests 的失败门"
+    ]
+  },
+  "sources": {
+    "focusedTests": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.TxnLanes.DefaultOn.test.ts test/internal/observability/TxnLaneEvidence.Schema.test.ts",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p2-1a-continuation-v4.focused-tests.txt",
+      "result": {
+        "testFilesFailed": 1,
+        "testFilesPassed": 2,
+        "testsFailed": 1,
+        "testsPassed": 5,
+        "firstFailure": {
+          "file": "test/internal/observability/TxnLaneEvidence.Schema.test.ts",
+          "message": "TxnLaneEvidence.policy: unknown key \"effective\""
+        }
+      }
+    },
+    "probeRun": {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p2-1a-continuation-v4.probe-next-blocker.json",
+      "status": "clear",
+      "blockerSuite": null,
+      "failureKind": null,
+      "thresholdAnomalyCount": 0
+    }
+  },
+  "invariants": [
+    {
+      "id": "continuation-v4.focused-tests-hard-gate",
+      "expectation": "三条 focused tests 全绿",
+      "status": "failed",
+      "evidenceType": "test-run"
+    },
+    {
+      "id": "continuation-v4.probe-next-blocker",
+      "expectation": "probe_next_blocker 返回 clear 且无 threshold anomaly",
+      "status": "passed",
+      "evidenceType": "probe-run"
+    }
+  ],
+  "summary": {
+    "result": "docs_only_veto",
+    "notes": [
+      "本轮按失败门直接收口，不继续推进 P2-1A 实现",
+      "未修改 runtime 核心实现文件",
+      "对应结论文档：docs/perf/archive/2026-03/2026-03-20-p2-1a-continuation-v4.md"
+    ]
+  }
+}

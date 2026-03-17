@@ -1,0 +1,56 @@
+{
+  "id": "2026-03-22-sw-n2-fieldpathid-table-and-stable-anchor.evidence",
+  "capturedAt": "2026-03-22",
+  "scope": "sw-n2-static-fieldpathid-table-and-stable-anchor-plumbing-min-cut",
+  "decision": {
+    "status": "discarded_or_pending",
+    "acceptedWithEvidence": false,
+    "mergeToMain": false,
+    "publicApiChange": false,
+    "closeout": "docs/evidence-only",
+    "rollbackImplemented": true,
+    "reason": [
+      "success gate 要求 correctness 与 perf gate 同时全绿",
+      "typecheck:test 通过",
+      "probe_next_blocker 为 clear",
+      "packages/logix-core 全量 test 未通过（clean 状态仍有失败）"
+    ]
+  },
+  "validation": {
+    "typecheck": {
+      "command": "pnpm -C packages/logix-core typecheck:test",
+      "status": "passed",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-sw-n2-fieldpathid-table-and-stable-anchor.validation.typecheck.txt"
+    },
+    "test": {
+      "command": "pnpm -C packages/logix-core test",
+      "status": "failed",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-sw-n2-fieldpathid-table-and-stable-anchor.validation.test.txt",
+      "summary": {
+        "failedTestFiles": 8,
+        "passedTestFiles": 299,
+        "failedTests": 11,
+        "passedTests": 706,
+        "skippedTests": 1
+      },
+      "representativeFailures": [
+        "test/Process/Process.ErrorPolicy.Supervise.test.ts",
+        "test/StateTrait/StateTrait.ConvergeAuto.DiagnosticsLevels.test.ts",
+        "test/internal/Runtime/DeclarativeLinkIR.boundary.test.ts",
+        "test/internal/Runtime/WorkflowRuntime.075.test.ts",
+        "test/internal/Runtime/ConcurrencyPolicy/ConcurrencyPolicy.ResolveCache.test.ts",
+        "test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.ExistingLinkInline.Perf.off.test.ts",
+        "test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.Perf.off.test.ts"
+      ]
+    },
+    "probeNextBlocker": {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "status": "clear",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-sw-n2-fieldpathid-table-and-stable-anchor.probe-next-blocker.json"
+    }
+  },
+  "links": {
+    "doc": "docs/perf/2026-03-22-sw-n2-fieldpathid-table-and-stable-anchor-impl-check.md",
+    "summary": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-sw-n2-fieldpathid-table-and-stable-anchor.summary.md"
+  }
+}

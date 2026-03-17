@@ -1,7 +1,14 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Deferred, Effect, Exit, PubSub, Queue, Scope } from 'effect'
 import * as ModuleRuntime from '../../../../src/internal/runtime/ModuleRuntime.js'
+
+const waitForStartup = Effect.promise(
+  () =>
+    new Promise<void>((resolve) => {
+      setTimeout(resolve, 10)
+    }),
+)
 
 describe('ConcurrencyPolicy (US1): ModuleRuntime.destroy should cancel in-flight fibers', () => {
   it('closing the runtime scope should interrupt in-flight action handlers', async () => {
@@ -12,7 +19,7 @@ describe('ConcurrencyPolicy (US1): ModuleRuntime.destroy should cancel in-flight
       const interrupted = yield* Deferred.make<void>()
 
       const actionHub = yield* PubSub.unbounded<any>()
-      const runtime = yield* Scope.extend(
+      const runtime = yield* Scope.provide(
         ModuleRuntime.make(
           { count: 0 } as any,
           {
@@ -24,11 +31,11 @@ describe('ConcurrencyPolicy (US1): ModuleRuntime.destroy should cancel in-flight
       )
 
       // Start a "long-running" handler inside the scope so destroy will interrupt it.
-      yield* Scope.extend(
+      yield* Scope.provide(
         Effect.forkScoped(
           Effect.gen(function* () {
             const subscription = yield* PubSub.subscribe(actionHub)
-            const action = yield* Queue.take(subscription)
+            const action = yield* PubSub.take(subscription)
             expect((action as any)?._tag).toBe('inc')
 
             yield* Deferred.succeed(started, undefined)
@@ -40,6 +47,7 @@ describe('ConcurrencyPolicy (US1): ModuleRuntime.destroy should cancel in-flight
         scope,
       )
 
+      yield* waitForStartup
       // Trigger once to start the handler.
       yield* runtime.dispatch({ _tag: 'inc', payload: undefined } as any)
       yield* Deferred.await(started)

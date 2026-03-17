@@ -1,0 +1,108 @@
+{
+  "id": "2026-03-22-identify-runtime-shell-attribution-nextcut.evidence",
+  "capturedAt": "2026-03-22T21:30:00+08:00",
+  "scope": {
+    "kind": "docs/evidence-only",
+    "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.scout-runtime-shell-attribution-next",
+    "branch": "agent/v4-perf-scout-runtime-shell-attribution-next",
+    "writeScope": [
+      "docs/perf/**",
+      "specs/103-effect-v4-forward-cutover/perf/**"
+    ],
+    "noCodeChanges": true
+  },
+  "decision": {
+    "status": "docs_evidence_only",
+    "acceptedWithEvidence": false,
+    "recommendedNextLine": "N-3 runtime-shell.resolve-boundary-attribution-contract",
+    "top2": [
+      {
+        "id": "N-3 runtime-shell.resolve-boundary-attribution-contract",
+        "rank": 1,
+        "uniqueNextLine": true,
+        "summary": "统一归因协议、shell 复用口径与 snapshot/noSnapshot 边界，收敛唯一 nextcut"
+      },
+      {
+        "id": "N-0 runtime-shell.noSnapshot.shrink",
+        "rank": 2,
+        "uniqueNextLine": false,
+        "summary": "继续压缩 noSnapshot 边界，作为后续候选实施线"
+      }
+    ]
+  },
+  "sources": {
+    "chainAnchors": [
+      {
+        "artifact": "docs/perf/archive/2026-03/2026-03-20-p0-1plus-dispatch-shell-recheck.md",
+        "signal": "dispatch-shell residual 未出现新可归因突增"
+      },
+      {
+        "artifact": "docs/perf/archive/2026-03/2026-03-21-p0-2-operation-empty-default-next.md",
+        "signal": "operation-empty-default-next 未识别遗漏最小切口"
+      },
+      {
+        "artifact": "docs/perf/archive/2026-03/2026-03-21-n-1-runtime-shell-freeze-nextwide.md",
+        "signal": "freeze 试探回退并回滚实现"
+      },
+      {
+        "artifact": "docs/perf/2026-03-21-n-2-runtime-shell-ledger-design-package.md",
+        "signal": "ledger v1 schema 与对齐门已建立"
+      },
+      {
+        "artifact": "docs/perf/2026-03-21-n-2-runtime-shell-ledger-impl.md",
+        "signal": "Node microbench ledger 输出已接入"
+      },
+      {
+        "artifact": "docs/perf/2026-03-21-identify-runtime-shell-nextwide.md",
+        "signal": "post-ledger 方向已切至 attribution-nextcut"
+      }
+    ],
+    "metricsAnchors": [
+      {
+        "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-19-p0-2plus-hot-context.after.json",
+        "dispatchP95Ms": 0.132,
+        "residualAvgMs": 0.06
+      },
+      {
+        "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-2-operation-shell-next.evidence.json",
+        "noSnapshotAvgMs": 0.633,
+        "snapshotAvgMs": 0.258,
+        "speedupX": 2.458
+      },
+      {
+        "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p0-2-operation-empty-default-next.evidence.json",
+        "noSnapshotAvgMs": 0.626,
+        "snapshotAvgMs": 0.256,
+        "speedupX": 2.442
+      }
+    ]
+  },
+  "proposal": {
+    "protocolDelta": [
+      "ledger resolveShell.sample 增加 decision.reasonCode / boundaryClass / reuseKeyHash / shellSource",
+      "operationRunner.sample 增加同口径 decision 字段，与 resolveShell 共用 reason 词表"
+    ],
+    "internalApiProposal": "新增 resolveRuntimeShellBoundary(...) 统一返回 mode/reasonCode/reuseKey/shellRef",
+    "publicApiChange": {
+      "requiredNow": false,
+      "note": "仅当 reason 协议显示需要对外策略语义时，单开 API proposal"
+    }
+  },
+  "invariants": [
+    {
+      "id": "runtime-shell-attribution-scout.write-scope",
+      "expectation": "仅写入 docs/perf 与 specs/103-effect-v4-forward-cutover/perf",
+      "status": "passed"
+    },
+    {
+      "id": "runtime-shell-attribution-scout.no-code-changes",
+      "expectation": "本线不改 packages 实现代码",
+      "status": "passed"
+    }
+  ],
+  "verification": {
+    "requiredCommand": "git diff --stat v4-perf..HEAD",
+    "status": "pending_in_this_artifact",
+    "note": "命令结果以本次收口提交输出为准。"
+  }
+}

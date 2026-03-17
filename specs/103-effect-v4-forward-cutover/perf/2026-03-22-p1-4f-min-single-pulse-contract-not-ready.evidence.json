@@ -1,0 +1,58 @@
+{
+  "id": "2026-03-22-p1-4f-min-single-pulse-contract-not-ready.evidence",
+  "capturedAt": "2026-03-22",
+  "scope": "p1-4f-min-core-react-single-pulse-contract",
+  "baseBranch": "v4-perf",
+  "status": "docs_evidence_only",
+  "resultCategory": "discarded_or_pending",
+  "acceptedWithEvidence": false,
+  "codeChanges": {
+    "packages": false,
+    "notes": "实现试探已停止，本轮不保留 packages 半成品改动"
+  },
+  "blockers": [
+    {
+      "id": "B1",
+      "title": "TickScheduler selector active contract 仍绑 readQuery subscriber count",
+      "details": [
+        "onSelectorChanged 的门控依赖 getReadQuerySubscriberCount",
+        "module-level single pulse 下缺少等价 selector interest contract"
+      ]
+    },
+    {
+      "id": "B2",
+      "title": "RuntimeExternalStore readQuery activation retain 生命周期未迁移",
+      "details": [
+        "retainReadQueryActivation 仍围绕旧的 readQuery store 首尾监听器路径",
+        "单订阅路径下的 activate/deactivate/grace teardown 合同未定"
+      ]
+    },
+    {
+      "id": "B3",
+      "title": "useSelector 单订阅路径合同未定",
+      "details": [
+        "当前复用粒度仍为 componentOwner + store",
+        "缺少同 module 多 selector 共享单订阅输入的稳定合同与验证门"
+      ]
+    }
+  ],
+  "decision": {
+    "implementNow": false,
+    "why": [
+      "最小切口边界当前不稳定",
+      "继续落代码会引入漏通知与不可比验证风险"
+    ],
+    "nextAction": "先补合同定义与验证门，再重开实现"
+  },
+  "references": {
+    "docs": [
+      "docs/perf/2026-03-22-crossplane-single-pulse-contract-nextwide-scout.md",
+      "docs/perf/2026-03-22-p1-4f-min-single-pulse-contract-not-ready.md",
+      "docs/perf/2026-03-21-p1-4c-min-pulse-envelope-selector-delta-impl.md",
+      "docs/perf/2026-03-22-p1-4d-min-single-path-cleanup.md"
+    ],
+    "specSummary": [
+      "specs/103-effect-v4-forward-cutover/perf/2026-03-22-p1-4f-min-single-pulse-contract-not-ready.summary.md"
+    ]
+  }
+}

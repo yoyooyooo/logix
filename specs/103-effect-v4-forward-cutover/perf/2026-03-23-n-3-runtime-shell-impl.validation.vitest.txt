@@ -1,0 +1,25 @@
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.n-3-runtime-shell-impl-20260323/packages/logix-core
+
+stdout | test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts > ModuleRuntime.operation runner · transaction-shared hot context microbench (Diagnostics=off, middleware=empty) > records direct evidence for transaction-captured operation hot context
+[perf] operation-runner txn-hot-context diagnostics=off middleware=empty iters=900 warmup=100 batch=256 shared.p50=0.845ms shared.p95=1.693ms shared.avg=0.988ms fallback.p50=1.295ms fallback.p95=2.291ms fallback.avg=1.491ms speedup=1.508x saved=33.70%
+[ledger] wrote specs/103-effect-v4-forward-cutover/perf/.local/runtime-shell-ledger/2026-03-23-n-2-runtime-shell-ledger.operationRunner.txnHotContext.off.batch256.darwin-arm64.nodev22.19.0.quick.ledger.v1.ndjson + specs/103-effect-v4-forward-cutover/perf/.local/runtime-shell-ledger/2026-03-23-n-2-runtime-shell-ledger.operationRunner.txnHotContext.off.batch256.darwin-arm64.nodev22.19.0.quick.ledger.summary.v1.json
+
+stdout | test/internal/Runtime/ModuleRuntime/ModuleRuntime.RuntimeSnapshot.ResolveShell.Perf.off.test.ts > ModuleRuntime runtime snapshot resolve shell · microbench (Diagnostics=off) > keeps resolver semantics and cuts repeated serviceOption shell tax across adjacent resolvers
+[perf] runtime-snapshot-resolve-shell diagnostics=off iters=2000 warmup=200 batch=128 noSnapshot.p50=0.683ms noSnapshot.p95=1.486ms noSnapshot.avg=0.845ms snapshot.p50=0.232ms snapshot.p95=1.037ms snapshot.avg=0.348ms speedup=2.426x saved=58.79%
+[ledger] wrote specs/103-effect-v4-forward-cutover/perf/.local/runtime-shell-ledger/2026-03-23-n-2-runtime-shell-ledger.resolveShell.snapshot.off.darwin-arm64.nodev22.19.0.quick.ledger.v1.ndjson + specs/103-effect-v4-forward-cutover/perf/.local/runtime-shell-ledger/2026-03-23-n-2-runtime-shell-ledger.resolveShell.snapshot.off.darwin-arm64.nodev22.19.0.quick.ledger.summary.v1.json
+
+ ✓ test/internal/Runtime/ModuleRuntime/ModuleRuntime.RuntimeSnapshot.ResolveShell.Perf.off.test.ts (1 test) 2738ms
+     ✓ keeps resolver semantics and cuts repeated serviceOption shell tax across adjacent resolvers  2737ms
+stdout | test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts > ModuleRuntime.operation runner · transaction-shared hot context microbench (Diagnostics=off, middleware=empty) > records direct evidence for transaction-captured operation hot context
+[perf] operation-runner txn-hot-context diagnostics=off middleware=empty iters=900 warmup=100 batch=1024 shared.p50=3.058ms shared.p95=4.399ms shared.avg=3.258ms fallback.p50=4.674ms fallback.p95=5.500ms fallback.avg=4.863ms speedup=1.493x saved=33.01%
+[ledger] wrote specs/103-effect-v4-forward-cutover/perf/.local/runtime-shell-ledger/2026-03-23-n-2-runtime-shell-ledger.operationRunner.txnHotContext.off.batch1024.darwin-arm64.nodev22.19.0.quick.ledger.v1.ndjson + specs/103-effect-v4-forward-cutover/perf/.local/runtime-shell-ledger/2026-03-23-n-2-runtime-shell-ledger.operationRunner.txnHotContext.off.batch1024.darwin-arm64.nodev22.19.0.quick.ledger.summary.v1.json
+
+ ✓ test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts (1 test) 10784ms
+     ✓ records direct evidence for transaction-captured operation hot context  10783ms
+
+ Test Files  2 passed (2)
+      Tests  2 passed (2)
+   Start at  12:21:39
+   Duration  11.23s (transform 254ms, setup 0ms, import 718ms, tests 13.52s, environment 0ms)
+

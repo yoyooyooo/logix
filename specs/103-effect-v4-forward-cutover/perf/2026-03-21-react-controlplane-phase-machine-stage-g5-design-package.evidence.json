@@ -1,0 +1,58 @@
+{
+  "topic": "react-controlplane-phase-machine-stage-g5-design-package",
+  "date": "2026-03-21",
+  "baseHead": "383c108c",
+  "decision": {
+    "result": "docs_evidence_only",
+    "classification": "discarded_or_pending",
+    "accepted_with_evidence": false
+  },
+  "followUp": {
+    "status": "upgraded_to_accepted_with_evidence",
+    "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-react-controlplane-stage-g5-kernel-v0-evidence.evidence.json",
+    "doc": "docs/perf/2026-03-21-react-controlplane-phase-machine-stage-g5-kernel-v0-evidence.md"
+  },
+  "reasoning": {
+    "whyMoreWorthThanG4": [
+      "G4 mainly reduced explanation drift by aligning executor label; it is a contract hygiene cut",
+      "G5 targets a structural tax: neutral settle triggering a second async config snapshot load under the same owner",
+      "G5 makes future controlplane work testable via ownerKey/epoch/ticket, reducing RuntimeProvider branch explosion"
+    ],
+    "whyNoImplementationThisRound": [
+      "probe_next_blocker returned status=blocked",
+      "blocker.failure_kind=environment",
+      "current worktree is missing node_modules so evidence is not comparable for implementation acceptance"
+    ],
+    "excludedSlices": [
+      "boot-epoch config singleflight",
+      "owner-conflict patch",
+      "executor-hidden dedupe without ticket validation"
+    ]
+  },
+  "proposedMinimalCut": {
+    "status": "implementation_ready_docs_only",
+    "uniqueMinimalSlice": "G5 controlplane kernel v0 (neutral-settle no-refresh)",
+    "writeScopeIfTriggered": [
+      "packages/logix-react/src/internal/provider/RuntimeProvider.tsx",
+      "packages/logix-react/src/internal/provider/*ControlplaneKernel*",
+      "packages/logix-react/test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx"
+    ],
+    "publicApiChange": false,
+    "logixCoreChange": false
+  },
+  "publicApiBoundary": {
+    "rule": "Any need for new public policy / configurable surface must route to R-2 proposal gates, not be implemented in G5.",
+    "proposalDocs": [
+      "docs/perf/2026-03-20-r2-public-api-proposal.md",
+      "docs/perf/2026-03-21-r2-public-api-staging-plan.md"
+    ]
+  },
+  "verification": {
+    "commands": [
+      "python3 fabfile.py probe_next_blocker --json"
+    ],
+    "probeStatus": "blocked",
+    "probeFailureKind": "environment",
+    "probeReport": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-react-controlplane-phase-machine-stage-g5-design-package.probe-next-blocker.json"
+  }
+}

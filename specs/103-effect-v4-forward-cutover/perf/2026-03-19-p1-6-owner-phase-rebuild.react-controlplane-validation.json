@@ -1,0 +1,33 @@
+{
+  "date": "2026-03-19",
+  "topic": "P1-6-owner-phase-rebuild",
+  "checks": [
+    {
+      "command": "pnpm --filter @logixjs/react typecheck:test",
+      "status": "passed"
+    },
+    {
+      "command": "pnpm --filter @logixjs/react exec vitest run test/internal/integration/reactConfigRuntimeProvider.test.tsx --pool forks",
+      "status": "passed",
+      "summary": {
+        "testFilesPassed": 1,
+        "testsPassed": 9,
+        "testsFailed": 0
+      }
+    },
+    {
+      "command": "pnpm --filter @logixjs/react exec vitest run test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx --pool forks",
+      "status": "passed",
+      "summary": {
+        "testFilesPassed": 1,
+        "testsPassed": 2,
+        "testsFailed": 0
+      }
+    }
+  ],
+  "notes": [
+    "P1-6' 最小切口：owner/phase 语义保持两条路径。config-bearing layer 走 runtime.layer-bound@boot；env-only layer 走 runtime.base@ready。",
+    "RuntimeProvider async config 触发条件新增 !configState.loaded，确保 sync gate 放行后仍有一次异步确认，并由 token 去重。",
+    "相关实现/断言见 docs/perf/archive/2026-03/2026-03-19-p1-6-owner-phase-rebuild.md。"
+  ]
+}

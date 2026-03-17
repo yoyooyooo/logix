@@ -1,0 +1,62 @@
+{
+  "id": "2026-03-20-p2-1-reopen-check.evidence",
+  "capturedAt": "2026-03-20",
+  "scope": "p2-1-fresh-reopen-check-after-next-stage-docs-only-close",
+  "decision": {
+    "status": "discarded_or_pending",
+    "acceptedWithEvidence": false,
+    "mergeToMain": false,
+    "reopenP21Expansion": false,
+    "reasons": [
+      "P2-1A/P2-1B 已吸收，P2-1 next-stage 已按 docs/evidence-only 收口，当前不存在可直接吸收的半成品收益链",
+      "fresh 最小验证命令在当前 worktree 命中环境阻塞：node_modules 缺失导致 vitest 不可执行",
+      "probe_next_blocker 的 blocker.failure_kind=environment，按 09 模板属于禁止开线情形",
+      "本轮仅做 docs/evidence-only 收口，保留 P2-1 为 watchlist"
+    ]
+  },
+  "sources": {
+    "focusedTests": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts test/internal/observability/TxnLaneEvidence.Schema.test.ts",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p2-1-reopen-check.focused-tests.txt",
+      "status": "blocked_environment"
+    },
+    "probeRun": {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p2-1-reopen-check.probe-next-blocker.json",
+      "status": "blocked",
+      "failureKind": "environment",
+      "blockerSuite": "externalStore.ingest.tickNotify",
+      "executedCount": 1,
+      "thresholdAnomalyCount": 0
+    }
+  },
+  "triggerGate": {
+    "template": "docs/perf/09-worktree-open-decision-template.md",
+    "status": "not_met",
+    "type": "none",
+    "explanation": "本轮未出现 real probe 的 threshold/runtime 失败，也无 clean/comparable 新证据与新 SLA。唯一失败属于 environment。"
+  },
+  "invariants": [
+    {
+      "id": "p2-1-reopen-check.no-runtime-implementation-change",
+      "expectation": "本轮不回到 queue-side 微调，不重做 next-stage 半成品",
+      "status": "passed",
+      "evidenceType": "scope-guard"
+    },
+    {
+      "id": "p2-1-reopen-check.trigger-must-be-real",
+      "expectation": "开线触发器需满足 09 模板约束，environment 失败不计入 trigger",
+      "status": "passed",
+      "evidenceType": "decision-template"
+    }
+  ],
+  "summary": {
+    "result": "discarded_or_pending",
+    "classification": "docs_evidence_only_watchlist_hold",
+    "notes": [
+      "本轮不开新的 P2-1 扩面 worktree",
+      "下一次重开需先消除环境阻塞，再满足 real probe 或 clean/comparable 触发门",
+      "对应结论文档：docs/perf/archive/2026-03/2026-03-20-p2-1-reopen-check.md"
+    ]
+  }
+}

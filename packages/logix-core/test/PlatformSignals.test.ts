@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../src/index.js'
@@ -34,7 +34,7 @@ class TestPlatform implements Logix.Platform.Service {
 }
 
 describe('Platform signals', () => {
-  it.scoped(
+  it.effect(
     'should trigger registered handlers via emit*',
     () =>
       Effect.gen(function* () {
@@ -81,7 +81,7 @@ describe('Platform signals', () => {
         >
 
         yield* Effect.gen(function* () {
-          const runtime = yield* TestModule.tag
+          const runtime = yield* Effect.service(TestModule.tag).pipe(Effect.orDie)
           expect((yield* runtime.lifecycleStatus!).status).toBe('ready')
 
           yield* platform.emitSuspend()

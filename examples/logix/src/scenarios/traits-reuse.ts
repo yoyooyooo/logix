@@ -26,7 +26,7 @@ const runOne = (id: string, initialBase: number) =>
       const state: any = yield* Effect.promise(() =>
         runtime.runPromise(
           Effect.gen(function* () {
-            const rt: any = yield* M.tag
+            const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
             yield* rt.dispatch({ _tag: 'base/set', payload: initialBase + 1 })
             yield* Effect.sleep('10 millis')
             return yield* rt.getState

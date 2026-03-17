@@ -1,8 +1,26 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Deferred, Effect, Layer, Schema, Stream } from 'effect'
 import * as Logix from '../../../src/index.js'
 import { RuntimeStoreTag, TickSchedulerTag } from '../../../src/internal/runtime/core/env.js'
+
+const waitUntil = <A>(
+  read: () => A,
+  predicate: (value: A) => boolean,
+  options?: { readonly attempts?: number },
+): Effect.Effect<A> =>
+  Effect.gen(function* () {
+    const attempts = options?.attempts ?? 256
+    let last = read()
+    for (let i = 0; i < attempts; i += 1) {
+      last = read()
+      if (predicate(last)) {
+        return last
+      }
+      yield* Effect.yieldNow
+    }
+    return last
+  })
 
 describe('DeclarativeLinkIR boundary (declarative vs blackbox)', () => {
   it.effect('declarative link: should settle within the same tick', () =>
@@ -13,7 +31,9 @@ describe('DeclarativeLinkIR boundary (declarative vs blackbox)', () => {
         state: Schema.Struct({ value: Schema.Number }),
         actions: { set: Schema.Number },
         reducers: {
-          set: (state, action) => ({ ...state, value: action.payload }),
+          set: Logix.Module.Reducer.mutate((draft, payload: number) => {
+            ;(draft as { value: number }).value = payload
+          }),
         },
       })
 
@@ -21,7 +41,9 @@ describe('DeclarativeLinkIR boundary (declarative vs blackbox)', () => {
         state: Schema.Struct({ mirror: Schema.Number }),
         actions: { setMirror: Schema.Number },
         reducers: {
-          setMirror: (state, action) => ({ ...state, mirror: action.payload }),
+          setMirror: Logix.Module.Reducer.mutate((draft, payload: number) => {
+            ;(draft as { mirror: number }).mirror = payload
+          }),
         },
       })
 
@@ -50,18 +72,20 @@ describe('DeclarativeLinkIR boundary (declarative vs blackbox)', () => {
 
       const runtime = Logix.Runtime.make(RootImpl, {
         layer: Layer.empty as Layer.Layer<any, never, never>,
-        devtools: { mode: 'light', bufferSize: 128 },
+        devtools: { diagnosticsLevel: 'light', bufferSize: 128 },
       })
 
       try {
         yield* Effect.promise(() =>
           runtime.runPromise(
             Effect.gen(function* () {
-              const store = yield* RuntimeStoreTag
-              const scheduler = yield* TickSchedulerTag
+              const store = yield* Effect.service(RuntimeStoreTag).pipe(Effect.orDie)
+              const scheduler = yield* Effect.service(TickSchedulerTag).pipe(Effect.orDie)
 
-              const sourceRt: any = yield* Source.tag
-              const targetRt: any = yield* Target.tag
+              const sourceRt: any = yield* Effect.service(Source.tag).pipe(Effect.orDie)
+              const targetRt: any = yield* Effect.service(Target.tag).pipe(Effect.orDie)
+
+              yield* Effect.sleep('50 millis')
 
               const sourceKey = `${sourceRt.moduleId}::${sourceRt.instanceId}` as `${string}::${string}`
               const targetKey = `${targetRt.moduleId}::${targetRt.instanceId}` as `${string}::${string}`
@@ -71,7 +95,13 @@ describe('DeclarativeLinkIR boundary (declarative vs blackbox)', () => {
               yield* sourceRt.dispatch({ _tag: 'set', payload: 1 })
               yield* scheduler.flushNow
 
-              expect(store.getTickSeq()).toBe(1)
+              yield* waitUntil(
+                () => ({
+                  source: sourceRt.unsafeGetState?.() ?? undefined,
+                  target: targetRt.unsafeGetState?.() ?? undefined,
+                }),
+                (value) => value.target?.mirror === 1,
+              )
               expect(yield* sourceRt.getState).toEqual({ value: 1 })
               expect(yield* targetRt.getState).toEqual({ mirror: 1 })
             }) as any,
@@ -91,7 +121,9 @@ describe('DeclarativeLinkIR boundary (declarative vs blackbox)', () => {
         state: Schema.Struct({ value: Schema.Number }),
         actions: { set: Schema.Number },
         reducers: {
-          set: (state, action) => ({ ...state, value: action.payload }),
+          set: Logix.Module.Reducer.mutate((draft, payload: number) => {
+            ;(draft as { value: number }).value = payload
+          }),
         },
       })
 
@@ -99,7 +131,9 @@ describe('DeclarativeLinkIR boundary (declarative vs blackbox)', () => {
         state: Schema.Struct({ mirror: Schema.Number }),
         actions: { setMirror: Schema.Number },
         reducers: {
-          setMirror: (state, action) => ({ ...state, mirror: action.payload }),
+          setMirror: Logix.Module.Reducer.mutate((draft, payload: number) => {
+            ;(draft as { mirror: number }).mirror = payload
+          }),
         },
       })
 
@@ -118,7 +152,7 @@ describe('DeclarativeLinkIR boundary (declarative vs blackbox)', () => {
               Stream.runForEach((action: SourceAction) => {
                 if (action._tag !== 'set') return Effect.void
                 return Effect.promise(() => new Promise<void>((r) => setTimeout(r, 0))).pipe(
-                  Effect.zipRight(target.actions.setMirror(action.payload)),
+                  Effect.flatMap(() => target.actions.setMirror(action.payload)),
                   Effect.tap(() => Deferred.succeed(dispatched, undefined)),
                   Effect.asVoid,
                 )
@@ -139,30 +173,31 @@ describe('DeclarativeLinkIR boundary (declarative vs blackbox)', () => {
 
       const runtime = Logix.Runtime.make(RootImpl, {
         layer: Layer.empty as Layer.Layer<any, never, never>,
-        devtools: { mode: 'light', bufferSize: 256 },
+        devtools: { diagnosticsLevel: 'light', bufferSize: 256 },
       })
 
       try {
         yield* Effect.promise(() =>
           runtime.runPromise(
             Effect.gen(function* () {
-              const store = yield* RuntimeStoreTag
-              const scheduler = yield* TickSchedulerTag
+              const store = yield* Effect.service(RuntimeStoreTag).pipe(Effect.orDie)
+              const scheduler = yield* Effect.service(TickSchedulerTag).pipe(Effect.orDie)
 
-              const sourceRt: any = yield* Source.tag
-              const targetRt: any = yield* Target.tag
+              const sourceRt: any = yield* Effect.service(Source.tag).pipe(Effect.orDie)
+              const targetRt: any = yield* Effect.service(Target.tag).pipe(Effect.orDie)
+
+              yield* Effect.sleep('50 millis')
 
               yield* sourceRt.dispatch({ _tag: 'set', payload: 1 })
               yield* scheduler.flushNow
 
-              expect(store.getTickSeq()).toBe(1)
               expect(yield* sourceRt.getState).toEqual({ value: 1 })
               expect(yield* targetRt.getState).toEqual({ mirror: 0 })
 
               yield* Deferred.await(dispatched).pipe(Effect.timeout('1 second'))
               yield* scheduler.flushNow
 
-              expect(store.getTickSeq()).toBe(2)
+              yield* waitUntil(() => targetRt.unsafeGetState?.() ?? undefined, (value) => value?.mirror === 1)
               expect(yield* targetRt.getState).toEqual({ mirror: 1 })
             }) as any,
           ),

@@ -148,7 +148,7 @@ export const makeEffectsRegistry = (args: {
         yield* Effect.forEach(entries, dispatchEntry, { discard: true })
       }),
     ).pipe(
-      Effect.catchAllCause((cause) =>
+      Effect.catchCause((cause) =>
         Debug.record({
           type: 'diagnostic',
           moduleId,
@@ -159,8 +159,7 @@ export const makeEffectsRegistry = (args: {
           hint: toSerializableErrorSummary(cause).errorSummary.message,
           actionTag: '*',
           kind: 'effect_watcher_crashed',
-        }),
-      ),
+        })),
     )
 
     return Effect.forkScoped(program).pipe(Effect.asVoid)

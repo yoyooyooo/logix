@@ -1,4 +1,4 @@
-import { Context, Layer } from 'effect'
+import { Layer, ServiceMap } from 'effect'
 import type { JsonValue } from './jsonValue.js'
 import type { EvidencePackage, EvidencePackageSource, ObservationEnvelope } from './evidence.js'
 import { exportEvidencePackage, OBSERVABILITY_PROTOCOL_VERSION } from './evidence.js'
@@ -28,7 +28,7 @@ export interface RunSession {
   readonly local: RunSessionLocalState
 }
 
-class RunSessionTagImpl extends Context.Tag('@logixjs/core/RunSession')<RunSessionTagImpl, RunSession>() {}
+class RunSessionTagImpl extends ServiceMap.Service<RunSessionTagImpl, RunSession>()('@logixjs/core/RunSession') {}
 
 export const RunSessionTag = RunSessionTagImpl
 

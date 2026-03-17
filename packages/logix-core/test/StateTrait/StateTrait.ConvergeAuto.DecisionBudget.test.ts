@@ -78,7 +78,7 @@ const pickDecisionSummaries = (ring: Debug.RingBufferSink): ReadonlyArray<any> =
     .map((e) => (e as any).data)
 
 describe('StateTrait converge auto decision budget', () => {
-  it.scoped('budget cutoff falls back to executedMode=full (reason=budget_cutoff)', () =>
+  it.effect('budget cutoff falls back to executedMode=full (reason=budget_cutoff)', () =>
     Effect.gen(function* () {
       const originalNow = yield* Effect.acquireRelease(
         Effect.sync(() => {
@@ -111,7 +111,7 @@ describe('StateTrait converge auto decision budget', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt: any = yield* M.tag
+        const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
         yield* rt.dispatch({ _tag: 'bump', payload: 'in0' } as any)
         yield* rt.dispatch({ _tag: 'bump', payload: 'in0' } as any)

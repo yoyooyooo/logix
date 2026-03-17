@@ -1,10 +1,10 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('Module.Manage.make (factory) forwards extend def', () => {
-  it.scoped('custom factory can extend actions + override reducers', () => {
+  it.effect('custom factory can extend actions + override reducers', () => {
     const State = Schema.Struct({
       total: Schema.Number,
       error: Schema.String,
@@ -65,7 +65,7 @@ describe('Module.Manage.make (factory) forwards extend def', () => {
       expect(Logix.Module.is(M)).toBe(true)
       expect(Logix.Module.hasImpl(M)).toBe(true)
 
-      const rt = yield* M.tag
+      const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
       const desc = Logix.Module.descriptor(M as any, rt as any)
       expect(desc.actionKeys.slice().sort()).toEqual(['clearError', 'setTotal'])
 

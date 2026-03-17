@@ -1,0 +1,54 @@
+{
+  "id": "2026-03-23-react-controlplane-full-phase-machine-nextcut-scout",
+  "capturedAt": "2026-03-23",
+  "decision": {
+    "status": "identified_future_only_docs_scout",
+    "openImplementationLine": false,
+    "reasons": [
+      "current-head probe_refresh 继续为 clear",
+      "SW-N2 已收紧为 full-suite perf gate 噪声 watch gate",
+      "R-2 当前仍缺外部 SLA-R2 输入",
+      "react controlplane 的 G5/G6/P1-6'' 已 accepted_with_evidence，仓内剩余高价值方向只剩更大的 full phase-machine"
+    ]
+  },
+  "currentHead": {
+    "probeArtifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-23-current-head-probe-refresh.probe-next-blocker.json",
+    "status": "clear"
+  },
+  "acceptedControlplaneCuts": [
+    "docs/perf/2026-03-21-react-controlplane-phase-machine-stage-g5-kernel-v0-evidence.md",
+    "docs/perf/2026-03-22-react-controlplane-stage-g6-kernel-v1.md",
+    "docs/perf/archive/2026-03/2026-03-23-p1-6pp-owner-resolve-engine-impl.md"
+  ],
+  "blockedWatchlist": [
+    {
+      "name": "SW-N2",
+      "reason": "当前只剩 watch gate，未形成稳定可归因的实现切口"
+    },
+    {
+      "name": "R-2 / R2-U PolicyPlan contract reorder",
+      "reason": "仍缺外部 SLA-R2 实值输入"
+    }
+  ],
+  "recommendedNextCut": {
+    "name": "react controlplane full phase-machine trigger package",
+    "lineType": "docs-only scout",
+    "goals": [
+      "补齐最小状态机定义与状态图",
+      "补齐迁移阶段与回滚门",
+      "补齐 perf/diagnostics anchor bundle",
+      "明确与 R-2 的边界"
+    ],
+    "implementationBlockedBy": [
+      "缺最小状态机定义与状态图",
+      "缺 Stage A/B 入场门",
+      "缺 full phase-machine 专用 perf anchor bundle",
+      "当前没有新的 hard blocker 直接驱动实现线"
+    ]
+  },
+  "anchors": [
+    "docs/perf/2026-03-20-react-controlplane-phase-machine.md",
+    "docs/perf/2026-03-22-identify-react-controlplane-next-cut-post-g6-owner-resolve.md",
+    "docs/perf/archive/2026-03/2026-03-23-current-head-probe-refresh-and-state-trait-gate-audit.md"
+  ]
+}

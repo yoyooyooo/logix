@@ -1,19 +1,284 @@
-import { Context, Effect, FiberRef, Option } from 'effect'
+import { Effect, Fiber, Option, ServiceMap, Stream } from 'effect'
 import { create } from 'mutative'
 import type { BoundApi } from '../runtime/core/module.js'
 import { getBoundInternals } from '../runtime/core/runtimeInternalsAccessor.js'
 import * as TaskRunner from '../runtime/core/TaskRunner.js'
 import * as Debug from '../runtime/core/DebugSink.js'
+import * as StateTransaction from '../runtime/core/StateTransaction.js'
 import { getExternalStoreDescriptor } from '../external-store-descriptor.js'
 import { normalizeFieldPath } from '../field-path.js'
-import { DeclarativeLinkRuntimeTag, HostSchedulerTag } from '../runtime/core/env.js'
-import { getGlobalHostScheduler } from '../runtime/core/HostScheduler.js'
-import * as RowId from './rowid.js'
+import { DeclarativeLinkRuntimeTag, TickSchedulerTag } from '../runtime/core/env.js'
+import type { DeclarativeLinkRuntimeService, TickSchedulerService } from '../runtime/core/env.js'
 import type { StateTraitEntry, StateTraitPlanStep } from './model.js'
 
 const isFn = (value: unknown): value is (...args: ReadonlyArray<any>) => unknown => typeof value === 'function'
 
 type ExternalStoreEntry<S> = Extract<StateTraitEntry<S, string>, { readonly kind: 'externalStore' }>
+
+type ExternalStoreLike = {
+  readonly getSnapshot: () => unknown
+  readonly subscribe: (listener: () => void) => (() => void) | undefined
+}
+
+type ExternalStoreWritebackCommitPriority = 'normal' | 'low'
+
+type ExternalStoreWritebackRequest = {
+  readonly fieldPath: string
+  readonly traitNodeId: string
+  readonly patchPath: StateTransaction.StatePatchPath
+  readonly accessor: ExternalStoreFieldAccessor
+  readonly nextValue: unknown
+  readonly isEqual: (a: unknown, b: unknown) => boolean
+  readonly commitPriority: ExternalStoreWritebackCommitPriority
+}
+
+type ExternalStoreWritebackCoordinator = {
+  readonly enqueue: (request: ExternalStoreWritebackRequest) => Effect.Effect<void, never, any>
+}
+
+const writebackCoordinatorByInternals = new WeakMap<object, ExternalStoreWritebackCoordinator>()
+
+type RuntimePathSegment = string | number
+
+type ExternalStoreFieldAccessor = {
+  readonly get: (state: unknown) => unknown
+  readonly set: (draft: unknown, value: unknown) => void
+}
+
+const isNumericPathSegment = (segment: string): boolean => {
+  if (!segment) return false
+  for (let index = 0; index < segment.length; index += 1) {
+    const code = segment.charCodeAt(index)
+    if (code < 48 || code > 57) return false
+  }
+  return true
+}
+
+const getAtRuntimeSegments = (state: unknown, segments: ReadonlyArray<RuntimePathSegment>): unknown => {
+  let current: any = state
+  for (let index = 0; index < segments.length; index += 1) {
+    if (current == null) return undefined
+    const segment = segments[index]!
+    if (typeof segment === 'number') {
+      current = Array.isArray(current) ? current[segment] : current[String(segment)]
+      continue
+    }
+    current = current[segment]
+  }
+  return current
+}
+
+const setAtRuntimeSegmentsMutating = (
+  draft: unknown,
+  segments: ReadonlyArray<RuntimePathSegment>,
+  value: unknown,
+): void => {
+  if (segments.length === 0 || draft == null) return
+
+  let current: any = draft
+  for (let index = 0; index < segments.length - 1; index += 1) {
+    const segment = segments[index]!
+    const nextSegment = segments[index + 1]!
+    const next = current?.[segment as any]
+
+    if (next == null || typeof next !== 'object') {
+      current[segment as any] = typeof nextSegment === 'number' ? [] : {}
+    }
+
+    current = current[segment as any]
+  }
+
+  const last = segments[segments.length - 1]!
+  current[last as any] = value
+}
+
+export const makeExternalStoreFieldAccessor = (path: string): ExternalStoreFieldAccessor => {
+  if (!path) {
+    return {
+      get: (state) => state,
+      set: () => {},
+    }
+  }
+
+  if (path.indexOf('.') < 0) {
+    const key: RuntimePathSegment = isNumericPathSegment(path) ? Number(path) : path
+    return {
+      get: (state) => {
+        if (state == null) return undefined
+        if (typeof key === 'number') {
+          return Array.isArray(state) ? (state as any)[key] : (state as any)[String(key)]
+        }
+        return (state as any)[key]
+      },
+      set: (draft, value) => {
+        if (draft == null) return
+        ;(draft as any)[key as any] = value
+      },
+    }
+  }
+
+  const rawSegments = path.split('.')
+  const segments: Array<RuntimePathSegment> = new Array(rawSegments.length)
+  for (let index = 0; index < rawSegments.length; index += 1) {
+    const segment = rawSegments[index]!
+    segments[index] = isNumericPathSegment(segment) ? Number(segment) : segment
+  }
+
+  return {
+    get: (state) => getAtRuntimeSegments(state, segments),
+    set: (draft, value) => {
+      setAtRuntimeSegmentsMutating(draft, segments, value)
+    },
+  }
+}
+
+const resolveExternalStorePatchPath = (fieldPath: string): StateTransaction.StatePatchPath | undefined => {
+  if (!fieldPath) return []
+
+  const normalized = normalizeFieldPath(fieldPath)
+  if (!normalized || normalized.length === 0) return undefined
+
+  return normalized.length === 1 ? StateTransaction.prefetchProducerPatchArrayPath(normalized) : normalized
+}
+
+const getOrCreateExternalStoreWritebackCoordinator = (args: {
+  readonly internals: ReturnType<typeof getBoundInternals>
+  readonly bound: BoundApi<any, any>
+  readonly env: ServiceMap.ServiceMap<any>
+}): Effect.Effect<ExternalStoreWritebackCoordinator, never, any> =>
+  Effect.gen(function* () {
+    const cached = writebackCoordinatorByInternals.get(args.internals as any)
+    if (cached) return cached
+
+    let closed = false
+    let inFlight = false
+    let pendingWrites = new Map<string, ExternalStoreWritebackRequest>()
+
+    const drainPendingWrites = (): ReadonlyArray<ExternalStoreWritebackRequest> => {
+      if (pendingWrites.size === 0) return []
+      const drained = pendingWrites
+      pendingWrites = new Map()
+      return Array.from(drained.values())
+    }
+
+    const applyWritebackBatch = (batch: ReadonlyArray<ExternalStoreWritebackRequest>): Effect.Effect<void, never, any> =>
+      Effect.gen(function* () {
+        if (batch.length === 0) return
+
+        // Hot-path: single field writeback (most externalStore updates).
+        // Avoid allocating per-batch/per-change arrays here: full diagnostics already has higher overhead.
+        if (batch.length === 1) {
+          const req = batch[0]!
+          const prevState = (yield* args.bound.state.read) as any
+          const prevValue = req.accessor.get(prevState)
+          if (req.isEqual(prevValue, req.nextValue)) return
+
+          const nextDraft = create(prevState, (draft) => {
+            req.accessor.set(draft, req.nextValue)
+          })
+
+          args.internals.txn.recordStatePatch(
+            req.patchPath,
+            'trait-external-store',
+            prevValue,
+            req.nextValue,
+            req.traitNodeId,
+          )
+          args.internals.txn.updateDraft(nextDraft)
+          return
+        }
+
+        const prevState = (yield* args.bound.state.read) as any
+
+        const changes: Array<{
+          readonly request: ExternalStoreWritebackRequest
+          readonly prevValue: unknown
+        }> = []
+
+        for (let i = 0; i < batch.length; i++) {
+          const req = batch[i]!
+          const prevValue = req.accessor.get(prevState)
+          if (req.isEqual(prevValue, req.nextValue)) continue
+          changes.push({ request: req, prevValue })
+        }
+
+        if (changes.length === 0) return
+
+        const nextDraft = create(prevState, (draft) => {
+          for (let i = 0; i < changes.length; i++) {
+            const { request } = changes[i]!
+            request.accessor.set(draft, request.nextValue)
+          }
+        })
+
+        for (let i = 0; i < changes.length; i++) {
+          const { request, prevValue } = changes[i]!
+          args.internals.txn.recordStatePatch(
+            request.patchPath,
+            'trait-external-store',
+            prevValue,
+            request.nextValue,
+            request.traitNodeId,
+          )
+        }
+
+        args.internals.txn.updateDraft(nextDraft)
+      })
+
+    const coordinator: ExternalStoreWritebackCoordinator = {
+      enqueue: (request) =>
+        Effect.gen(function* () {
+          if (closed) return
+
+          pendingWrites.set(request.fieldPath, request)
+
+          // Single-flusher: avoid an extra per-module fiber by letting the first caller drain the queue.
+          if (inFlight) return
+          inFlight = true
+
+          try {
+            while (true) {
+              const batch = drainPendingWrites()
+              if (batch.length === 0) return
+
+              const commitPriority: ExternalStoreWritebackCommitPriority = batch.some((x) => x.commitPriority === 'normal')
+                ? 'normal'
+                : 'low'
+
+              const originName = batch.length === 1 ? batch[0]!.fieldPath : 'externalStore:batched'
+
+              yield* args.internals.txn
+                .runWithStateTransaction(
+                  {
+                    kind: 'trait-external-store',
+                    name: originName,
+                    details: {
+                      stateCommit: {
+                        priority: commitPriority,
+                      },
+                    },
+                  },
+                  () => applyWritebackBatch(batch).pipe(Effect.asVoid),
+                )
+                .pipe(Effect.provide(args.env))
+            }
+          } finally {
+            inFlight = false
+          }
+        }),
+    }
+
+    writebackCoordinatorByInternals.set(args.internals as any, coordinator)
+
+    yield* Effect.addFinalizer(() =>
+      Effect.sync(() => {
+        closed = true
+        pendingWrites.clear()
+      }),
+    )
+
+    return coordinator
+  })
 
 const resolveStore = (entry: ExternalStoreEntry<any>): Effect.Effect<any, never, any> =>
   Effect.gen(function* () {
@@ -21,7 +286,7 @@ const resolveStore = (entry: ExternalStoreEntry<any>): Effect.Effect<any, never,
     const descriptor = getExternalStoreDescriptor(store)
 
     if (descriptor?.kind === 'service') {
-      const service = yield* descriptor.tag
+      const service = yield* Effect.service(descriptor.tag as ServiceMap.Key<any, unknown>).pipe(Effect.orDie)
       return descriptor.map(service)
     }
 
@@ -37,13 +302,7 @@ export const installExternalStoreSync = <S>(
     const fieldPath = step.targetFieldPath
     if (!fieldPath) return
 
-    const env = yield* Effect.context<any>()
-    const hostSchedulerOpt = yield* Effect.serviceOption(HostSchedulerTag)
-    const hostScheduler = Option.isSome(hostSchedulerOpt) ? hostSchedulerOpt.value : getGlobalHostScheduler()
-    const microtask = Effect.async<void, never>((resume) => {
-      hostScheduler.scheduleMicrotask(() => resume(Effect.void))
-    })
-
+    const env = yield* Effect.services<any>()
     let internals: ReturnType<typeof getBoundInternals>
     try {
       internals = getBoundInternals(bound as any)
@@ -58,14 +317,96 @@ export const installExternalStoreSync = <S>(
     const isEqual = (a: unknown, b: unknown): boolean => (isFn(equals) ? equals(a, b) : Object.is(a, b))
 
     const traitLane = (entry.meta as any)?.priority as 'urgent' | 'nonUrgent' | undefined
+    const patchPath = resolveExternalStorePatchPath(fieldPath)
+    if (patchPath === undefined) {
+      return yield* Effect.die(
+        new Error(
+          `[StateTrait.externalStore] Invalid target fieldPath "${fieldPath}". ` +
+            'Patch-first contract requires a normalized trackable path.',
+        ),
+      )
+    }
+    const fieldAccessor = makeExternalStoreFieldAccessor(fieldPath)
+    const commitPriority: ExternalStoreWritebackCommitPriority = traitLane === 'nonUrgent' ? 'low' : 'normal'
 
     const rawStore = (entry.meta as any)?.store
     const rawDescriptor = getExternalStoreDescriptor(rawStore)
 
+    const makeScopedDescriptorStore = (): Effect.Effect<ExternalStoreLike | undefined, never, any> =>
+      Effect.gen(function* () {
+        if (rawDescriptor?.kind === 'subscriptionRef') {
+          let current = yield* Effect.provideService(rawDescriptor.ref.get as any, TaskRunner.inSyncTransactionFiber, false)
+          const listeners = new Set<() => void>()
+
+          const notify = (): void => {
+            for (const listener of listeners) {
+              listener()
+            }
+          }
+
+          const fiber = yield* Effect.forkDetach(
+            Effect.provideService(Stream.runForEach(rawDescriptor.ref.changes as Stream.Stream<unknown, never, never>, (value) =>
+              Effect.sync(() => {
+                current = value
+                notify()
+              }),
+            ).pipe(Effect.catchCause(() => Effect.void)), TaskRunner.inSyncTransactionFiber, false),
+            { startImmediately: true },
+          )
+          internals.lifecycle.registerDestroy(Fiber.interrupt(fiber).pipe(Effect.asVoid), { name: `externalStore:${fieldPath}:subscriptionRef` })
+
+          return {
+            getSnapshot: () => current,
+            subscribe: (listener) => {
+              listeners.add(listener)
+              return () => {
+                listeners.delete(listener)
+              }
+            },
+          }
+        }
+
+        if (rawDescriptor?.kind === 'stream') {
+          let current = rawDescriptor.initial
+          const listeners = new Set<() => void>()
+
+          const notify = (): void => {
+            for (const listener of listeners) {
+              listener()
+            }
+          }
+
+          const fiber = yield* Effect.forkDetach(
+            Effect.provideService(Stream.runForEach(rawDescriptor.stream as Stream.Stream<unknown, any, any>, (value) =>
+              Effect.sync(() => {
+                current = value
+                notify()
+              }),
+            ).pipe(Effect.catchCause(() => Effect.void)), TaskRunner.inSyncTransactionFiber, false),
+            { startImmediately: true },
+          )
+          internals.lifecycle.registerDestroy(Fiber.interrupt(fiber).pipe(Effect.asVoid), { name: `externalStore:${fieldPath}:stream` })
+
+          return {
+            getSnapshot: () => current,
+            subscribe: (listener) => {
+              listeners.add(listener)
+              return () => {
+                listeners.delete(listener)
+              }
+            },
+          }
+        }
+
+        return undefined
+      }) as Effect.Effect<ExternalStoreLike | undefined, never, any>
+
     if (rawDescriptor?.kind === 'module') {
-      const linkRuntimeOpt = yield* Effect.serviceOption(DeclarativeLinkRuntimeTag)
+      const linkRuntimeOpt = yield* Effect.serviceOption(
+        DeclarativeLinkRuntimeTag as unknown as ServiceMap.Key<any, DeclarativeLinkRuntimeService>,
+      )
       if (Option.isNone(linkRuntimeOpt)) {
-        return yield* Effect.dieMessage('[StateTrait.externalStore] Missing DeclarativeLinkRuntime service (073).')
+        return yield* Effect.die(new Error('[StateTrait.externalStore] Missing DeclarativeLinkRuntime service (073).'))
       }
 
       const module = rawDescriptor.module
@@ -80,11 +421,11 @@ export const installExternalStoreSync = <S>(
           }
 
           const tag = (module as any).tag
-          if (tag && Context.isTag(tag)) {
+          if (tag && ServiceMap.isKey(tag)) {
             return internals.imports.get(tag as any)
           }
 
-          if (Context.isTag(module as any)) {
+          if (ServiceMap.isKey(module as any)) {
             return internals.imports.get(module as any)
           }
         }
@@ -92,24 +433,18 @@ export const installExternalStoreSync = <S>(
       })()
 
       if (!sourceRuntime) {
-        return yield* Effect.dieMessage(
-          `[StateTrait.externalStore] Module-as-Source store is unresolved for "${fieldPath}". ` +
-            `Fix: include the source ModuleTag in module imports (moduleId=${rawDescriptor.moduleId}).`,
-        )
+        return yield* Effect.die(new Error(`[StateTrait.externalStore] Module-as-Source store is unresolved for "${fieldPath}". ` +
+          `Fix: include the source ModuleTag in module imports (moduleId=${rawDescriptor.moduleId}).`))
       }
 
       if (rawDescriptor.instanceId && rawDescriptor.instanceId !== sourceRuntime.instanceId) {
-        return yield* Effect.dieMessage(
-          `[StateTrait.externalStore] Module-as-Source instanceId mismatch for "${fieldPath}". ` +
-            `descriptor.instanceId=${rawDescriptor.instanceId}, resolved.instanceId=${sourceRuntime.instanceId}`,
-        )
+        return yield* Effect.die(new Error(`[StateTrait.externalStore] Module-as-Source instanceId mismatch for "${fieldPath}". ` +
+          `descriptor.instanceId=${rawDescriptor.instanceId}, resolved.instanceId=${sourceRuntime.instanceId}`))
       }
 
       if (sourceRuntime.moduleId !== rawDescriptor.moduleId) {
-        return yield* Effect.dieMessage(
-          `[StateTrait.externalStore] Module-as-Source moduleId mismatch for "${fieldPath}". ` +
-            `descriptor.moduleId=${rawDescriptor.moduleId}, resolved.moduleId=${sourceRuntime.moduleId}`,
-        )
+        return yield* Effect.die(new Error(`[StateTrait.externalStore] Module-as-Source moduleId mismatch for "${fieldPath}". ` +
+          `descriptor.moduleId=${rawDescriptor.moduleId}, resolved.moduleId=${sourceRuntime.moduleId}`))
       }
 
       const staticIr = rawDescriptor.readQuery.staticIr
@@ -143,25 +478,30 @@ export const installExternalStoreSync = <S>(
       }
 
       const moduleInstanceKey = `${sourceRuntime.moduleId}::${sourceRuntime.instanceId}` as any
+      const tickSchedulerOpt = yield* Effect.serviceOption(
+        TickSchedulerTag as unknown as ServiceMap.Key<any, TickSchedulerService>,
+      )
+      const releaseModuleSourceObserver = Option.isSome(tickSchedulerOpt)
+        ? tickSchedulerOpt.value.retainModuleSourceObserver(moduleInstanceKey)
+        : undefined
 
       const writeValue = (nextValue: unknown): Effect.Effect<void, never, never> =>
         Effect.gen(function* () {
-          const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
+          const inTxn = yield* Effect.service(TaskRunner.inSyncTransactionFiber).pipe(Effect.orDie)
 
           const body = Effect.gen(function* () {
             const prevState = (yield* bound.state.read) as any
-            const prevValue = RowId.getAtPath(prevState as any, fieldPath)
+            const prevValue = fieldAccessor.get(prevState)
 
             if (isEqual(prevValue, nextValue)) {
               return
             }
 
             const nextDraft = create(prevState, (draft) => {
-              RowId.setAtPathMutating(draft as any, fieldPath, nextValue)
+              fieldAccessor.set(draft, nextValue)
             })
 
-            const normalized = normalizeFieldPath(fieldPath) ?? []
-            internals.txn.recordStatePatch(normalized, 'trait-external-store', prevValue, nextValue, step.id)
+            internals.txn.recordStatePatch(patchPath, 'trait-external-store', prevValue, nextValue, step.id)
             internals.txn.updateDraft(nextDraft)
           })
 
@@ -169,20 +509,19 @@ export const installExternalStoreSync = <S>(
             return yield* body
           }
 
-          const stateCommitPriority = traitLane === 'nonUrgent' ? 'low' : 'normal'
           return yield* internals.txn.runWithStateTransaction(
             {
               kind: 'trait-external-store',
               name: fieldPath,
               details: {
                 stateCommit: {
-                  priority: stateCommitPriority,
+                  priority: commitPriority,
                 },
               },
             },
             () => body.pipe(Effect.asVoid),
           )
-        }).pipe(Effect.provide(env))
+        }).pipe(Effect.provideServices(env))
 
       const unregister = linkRuntimeOpt.value.registerModuleAsSourceLink({
         id: `${internals.instanceId}::externalStore:${step.id}`,
@@ -196,6 +535,7 @@ export const installExternalStoreSync = <S>(
       yield* Effect.addFinalizer(() =>
         Effect.sync(() => {
           unregister()
+          releaseModuleSourceObserver?.()
         }),
       )
 
@@ -207,17 +547,14 @@ export const installExternalStoreSync = <S>(
       return
     }
 
-    const store = rawDescriptor?.kind === 'service' ? yield* resolveStore(entry) : rawStore
+    const scopedDescriptorStore = yield* makeScopedDescriptorStore()
+    const store = scopedDescriptorStore ?? (rawDescriptor?.kind === 'service' ? yield* resolveStore(entry) : rawStore)
 
     if (!store || typeof store !== 'object') {
-      return yield* Effect.dieMessage(
-        `[StateTrait.externalStore] Invalid store for "${fieldPath}". Expected { getSnapshot, subscribe }.`,
-      )
+      return yield* Effect.die(new Error(`[StateTrait.externalStore] Invalid store for "${fieldPath}". Expected { getSnapshot, subscribe }.`))
     }
     if (!isFn((store as any).getSnapshot) || !isFn((store as any).subscribe)) {
-      return yield* Effect.dieMessage(
-        `[StateTrait.externalStore] Invalid store for "${fieldPath}". Expected { getSnapshot, subscribe }.`,
-      )
+      return yield* Effect.die(new Error(`[StateTrait.externalStore] Invalid store for "${fieldPath}". Expected { getSnapshot, subscribe }.`))
     }
 
     let fused = false
@@ -276,18 +613,18 @@ export const installExternalStoreSync = <S>(
         return Effect.void
       }
 
-      return Effect.async<void, never>((resumeEffect, signal) => {
-        let done = false
-        const r = () => {
-          if (done) return
-          done = true
-          resume = undefined
-          resumeEffect(Effect.void)
-        }
+      return Effect.promise<void>((signal) =>
+        new Promise<void>((resolve) => {
+          let done = false
+          const r = () => {
+            if (done) return
+            done = true
+            resume = undefined
+            resolve()
+          }
 
-        resume = r
+          resume = r
 
-        try {
           signal.addEventListener(
             'abort',
             () => {
@@ -297,10 +634,8 @@ export const installExternalStoreSync = <S>(
             },
             { once: true },
           )
-        } catch {
-          // best-effort
-        }
-      })
+        }),
+      )
     }
 
     const getSnapshotOrFuse = (): unknown => {
@@ -313,7 +648,7 @@ export const installExternalStoreSync = <S>(
       }
     }
 
-    const readSnapshotOrFuse = Effect.locally(TaskRunner.inSyncTransactionFiber, false)(Effect.sync(getSnapshotOrFuse))
+    const readSnapshotOrFuse = Effect.provideService(Effect.sync(getSnapshotOrFuse), TaskRunner.inSyncTransactionFiber, false)
 
     // T016: atomic init semantics (no missed updates between getSnapshot() and subscribe()).
     const before = yield* readSnapshotOrFuse
@@ -339,72 +674,81 @@ export const installExternalStoreSync = <S>(
       return
     }
 
-    const writeValue = (nextValue: unknown): Effect.Effect<void, never, any> =>
+    const coordinator = yield* getOrCreateExternalStoreWritebackCoordinator({ internals, bound, env })
+
+    const writeValueSync = (nextValue: unknown): Effect.Effect<void, never, any> =>
       Effect.gen(function* () {
-        const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
+        const inTxn = yield* Effect.service(TaskRunner.inSyncTransactionFiber).pipe(Effect.orDie)
 
         const body = Effect.gen(function* () {
           const prevState = (yield* bound.state.read) as any
-          const prevValue = RowId.getAtPath(prevState as any, fieldPath)
+          const prevValue = fieldAccessor.get(prevState)
 
           if (isEqual(prevValue, nextValue)) {
             return
           }
 
           const nextDraft = create(prevState, (draft) => {
-            RowId.setAtPathMutating(draft as any, fieldPath, nextValue)
+            fieldAccessor.set(draft, nextValue)
           })
 
-          const normalized = normalizeFieldPath(fieldPath) ?? []
-          internals.txn.recordStatePatch(normalized, 'trait-external-store', prevValue, nextValue, step.id)
+          internals.txn.recordStatePatch(patchPath, 'trait-external-store', prevValue, nextValue, step.id)
           internals.txn.updateDraft(nextDraft)
         })
 
-          if (inTxn) {
-            return yield* body
-          }
+        if (inTxn) {
+          return yield* body
+        }
 
-          const stateCommitPriority = traitLane === 'nonUrgent' ? 'low' : 'normal'
-          return yield* internals.txn.runWithStateTransaction(
-            {
-              kind: 'trait-external-store',
-              name: fieldPath,
-              details: {
-                stateCommit: {
-                  priority: stateCommitPriority,
-                },
+        return yield* internals.txn.runWithStateTransaction(
+          {
+            kind: 'trait-external-store',
+            name: fieldPath,
+            details: {
+              stateCommit: {
+                priority: commitPriority,
               },
             },
-            () => body.pipe(Effect.asVoid),
-          )
-        })
+          },
+          () => body.pipe(Effect.asVoid),
+        )
+      }).pipe(Effect.provideServices(env))
+
+    const enqueueWriteValue = (nextValue: unknown): Effect.Effect<void, never, any> =>
+      coordinator.enqueue({
+        fieldPath,
+        traitNodeId: step.id,
+        patchPath,
+        accessor: fieldAccessor,
+        nextValue,
+        isEqual,
+        commitPriority,
+      })
 
     // Use the post-subscribe snapshot as the initial committed value to avoid missing an update between getSnapshot and subscribe.
-    yield* writeValue(computeValue(after))
+    yield* writeValueSync(computeValue(after))
 
     if (!isEqual(before, after)) {
       signal()
     }
 
     // Long-lived sync loop: coalesce changes, pull latest snapshot, and write back in a txn.
-    yield* Effect.forkScoped(
-      Effect.locally(TaskRunner.inSyncTransactionFiber, false)(
-        Effect.gen(function* () {
-          while (true) {
-            yield* awaitSignal()
-            if (fused) return
-            yield* microtask
-            if (fused) return
-
-            const snapshot = yield* readSnapshotOrFuse
-            if (fused) {
-              yield* recordFuseDiagnostic
-              return
-            }
-
-            yield* writeValue(computeValue(snapshot))
+    const fiber = yield* Effect.forkDetach(
+      Effect.provideService(Effect.gen(function* () {
+        while (true) {
+          yield* awaitSignal()
+          if (fused) return
+      
+          const snapshot = yield* readSnapshotOrFuse
+          if (fused) {
+            yield* recordFuseDiagnostic
+            return
           }
-        }),
-      ),
+      
+          yield* enqueueWriteValue(computeValue(snapshot))
+        }
+      }), TaskRunner.inSyncTransactionFiber, false),
+      { startImmediately: true },
     )
+    internals.lifecycle.registerDestroy(Fiber.interrupt(fiber).pipe(Effect.asVoid), { name: `externalStore:${fieldPath}:writeback` })
   })

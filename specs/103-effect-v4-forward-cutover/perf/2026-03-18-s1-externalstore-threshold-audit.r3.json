@@ -1,0 +1,131 @@
+{
+  "source": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.s1-externalstore-reprobe/docs/perf/04-agent-execution-playbook.md",
+  "mode": "probe_next_blocker",
+  "dry_run": false,
+  "tail_lines": 20,
+  "targets": [
+    {
+      "order": 1,
+      "suite_id": "externalStore.ingest.tickNotify",
+      "gate": "残余复核门",
+      "command": "pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/external-store-ingest.test.tsx -t \"perf: externalStore ingest\""
+    },
+    {
+      "order": 2,
+      "suite_id": "runtimeStore.noTearing.tickNotify",
+      "gate": "防回归门",
+      "command": "pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx -t \"perf: runtimeStore tick\""
+    },
+    {
+      "order": 3,
+      "suite_id": "form.listScopeCheck",
+      "gate": "防回归门",
+      "command": "pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/form-list-scope-check.test.tsx"
+    }
+  ],
+  "status": "blocked",
+  "executed": [
+    {
+      "order": 1,
+      "suite_id": "externalStore.ingest.tickNotify",
+      "gate": "残余复核门",
+      "command": "pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/external-store-ingest.test.tsx -t \"perf: externalStore ingest\"",
+      "status": "failed",
+      "failure_kind": "threshold",
+      "process_returncode": 0,
+      "returncode": 42,
+      "duration_ms": 1931,
+      "perf_report_count": 1,
+      "threshold_anomaly_count": 1,
+      "threshold_anomalies": [
+        {
+          "report_index": 1,
+          "suite_id": "externalStore.ingest.tickNotify",
+          "budget_id": "full/off<=1.25",
+          "first_fail_level": 128,
+          "max_level": null,
+          "where": null
+        }
+      ],
+      "perf_report_parse_errors": [],
+      "stdout_tail": [
+        "> @logixjs/react@1.0.2-beta.1 test /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.s1-externalstore-reprobe/packages/logix-react",
+        "> vitest run --project browser test/browser/perf-boundaries/external-store-ingest.test.tsx -t 'perf: externalStore ingest'",
+        " RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.s1-externalstore-reprobe/packages/logix-react",
+        "stdout | test/browser/perf-boundaries/external-store-ingest.test.tsx > perf: externalStore ingest→notify baseline (externalStore.ingest.tickNotify)",
+        "LOGIX_PERF_REPORT:{\"schemaVersion\":1,\"meta\":{\"createdAt\":\"2026-03-18T14:17:30.800Z\",\"generator\":\"packages/logix-react/test/browser/perf-boundaries/external-store-ingest.test.tsx\",\"matrixId\":\"logix-browser-perf-matrix-v1\",\"config\":{\"runs\":10,\"warmupDiscard\":2,\"timeoutMs\":30000,\"headless\":true,\"profile\":\"matrix.defaults\",\"stability\":{\"maxP95DeltaRatio\":0.1,\"maxP95DeltaMs\":5}},\"env\":{\"os\":\"MacIntel\",\"arch\":\"unknown\",\"node\":\"unknown\",\"browser\":{\"name\":\"chromium\",\"headless\":true,\"version\":\"143.0.7499.4\"}}},\"suites\":[{\"id\":\"externalStore.ingest.tickNotify\",\"title\":\"externalStore: ingest→notify baseline (external input workload)\",\"priority\":\"P1\",\"primaryAxis\":\"watchers\",\"budgets\":[{\"id\":\"p95<=3.00ms\",\"type\":\"absolute\",\"metric\":\"timePerIngestMs\",\"p95Ms\":3},{\"id\":\"full/off<=1.25\",\"type\":\"relative\",\"metric\":\"timePerIngestMs\",\"maxRatio\":1.25,\"minDeltaMs\":0.02,\"numeratorRef\":\"diagnosticsLevel=full\",\"denominatorRef\":\"diagnosticsLevel=off\"}],\"metricCategories\":{\"timePerIngestMs\":\"runtimeStore\"},\"points\":[{\"params\":{\"diagnosticsLevel\":\"off\",\"watchers\":128},\"status\":\"ok\",\"metrics\":[{\"name\":\"timePerIngestMs\",\"unit\":\"ms\",\"status\":\"ok\",\"stats\":{\"n\":8,\"medianMs\":0.5999999046325684,\"p95Ms\":0.7000000476837158}}],\"evidence\":[{\"name\":\"diagnostics.level\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"off\"},{\"name\":\"runtime.kernelId\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"core\"},{\"name\":\"workload.externalStores\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.modules\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.ticksPerRun\",\"unit\":\"count\",\"status\":\"ok\",\"value\":1},{\"name\":\"budget.cutOffCount\",\"unit\":\"count\",\"status\":\"ok\",\"value\":0}]},{\"params\":{\"diagnosticsLevel\":\"full\",\"watchers\":128},\"status\":\"ok\",\"metrics\":[{\"name\":\"timePerIngestMs\",\"unit\":\"ms\",\"status\":\"ok\",\"stats\":{\"n\":8,\"medianMs\":1.0999999046325684,\"p95Ms\":1.2000000476837158}}],\"evidence\":[{\"name\":\"diagnostics.level\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"full\"},{\"name\":\"runtime.kernelId\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"core\"},{\"name\":\"workload.externalStores\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.modules\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.ticksPerRun\",\"unit\":\"count\",\"status\":\"ok\",\"value\":1},{\"name\":\"budget.cutOffCount\",\"unit\":\"count\",\"status\":\"ok\",\"value\":0}]},{\"params\":{\"diagnosticsLevel\":\"off\",\"watchers\":256},\"status\":\"ok\",\"metrics\":[{\"name\":\"timePerIngestMs\",\"unit\":\"ms\",\"status\":\"ok\",\"stats\":{\"n\":8,\"medianMs\":0.5999999046325684,\"p95Ms\":0.7000000476837158}}],\"evidence\":[{\"name\":\"diagnostics.level\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"off\"},{\"name\":\"runtime.kernelId\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"core\"},{\"name\":\"workload.externalStores\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.modules\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.ticksPerRun\",\"unit\":\"count\",\"status\":\"ok\",\"value\":1},{\"name\":\"budget.cutOffCount\",\"unit\":\"count\",\"status\":\"ok\",\"value\":0}]},{\"params\":{\"diagnosticsLevel\":\"full\",\"watchers\":256},\"status\":\"ok\",\"metrics\":[{\"name\":\"timePerIngestMs\",\"unit\":\"ms\",\"status\":\"ok\",\"stats\":{\"n\":8,\"medianMs\":0.7000000476837158,\"p95Ms\":0.9000000953674316}}],\"evidence\":[{\"name\":\"diagnostics.level\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"full\"},{\"name\":\"runtime.kernelId\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"core\"},{\"name\":\"workload.externalStores\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.modules\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.ticksPerRun\",\"unit\":\"count\",\"status\":\"ok\",\"value\":1},{\"name\":\"budget.cutOffCount\",\"unit\":\"count\",\"status\":\"ok\",\"value\":0}]},{\"params\":{\"diagnosticsLevel\":\"off\",\"watchers\":512},\"status\":\"ok\",\"metrics\":[{\"name\":\"timePerIngestMs\",\"unit\":\"ms\",\"status\":\"ok\",\"stats\":{\"n\":8,\"medianMs\":0.6000001430511475,\"p95Ms\":1.0999999046325684}}],\"evidence\":[{\"name\":\"diagnostics.level\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"off\"},{\"name\":\"runtime.kernelId\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"core\"},{\"name\":\"workload.externalStores\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.modules\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.ticksPerRun\",\"unit\":\"count\",\"status\":\"ok\",\"value\":1},{\"name\":\"budget.cutOffCount\",\"unit\":\"count\",\"status\":\"ok\",\"value\":0}]},{\"params\":{\"diagnosticsLevel\":\"full\",\"watchers\":512},\"status\":\"ok\",\"metrics\":[{\"name\":\"timePerIngestMs\",\"unit\":\"ms\",\"status\":\"ok\",\"stats\":{\"n\":8,\"medianMs\":0.8000001907348633,\"p95Ms\":0.9000000953674316}}],\"evidence\":[{\"name\":\"diagnostics.level\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"full\"},{\"name\":\"runtime.kernelId\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"core\"},{\"name\":\"workload.externalStores\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.modules\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.ticksPerRun\",\"unit\":\"count\",\"status\":\"ok\",\"value\":1},{\"name\":\"budget.cutOffCount\",\"unit\":\"count\",\"status\":\"ok\",\"value\":0}]}],\"thresholds\":[{\"budget\":{\"id\":\"p95<=3.00ms\",\"type\":\"absolute\",\"metric\":\"timePerIngestMs\",\"p95Ms\":3},\"where\":{\"diagnosticsLevel\":\"off\"},\"maxLevel\":512,\"firstFailLevel\":null},{\"budget\":{\"id\":\"p95<=3.00ms\",\"type\":\"absolute\",\"metric\":\"timePerIngestMs\",\"p95Ms\":3},\"where\":{\"diagnosticsLevel\":\"full\"},\"maxLevel\":512,\"firstFailLevel\":null},{\"budget\":{\"id\":\"full/off<=1.25\",\"type\":\"relative\",\"metric\":\"timePerIngestMs\",\"maxRatio\":1.25,\"minDeltaMs\":0.02,\"numeratorRef\":\"diagnosticsLevel=full\",\"denominatorRef\":\"diagnosticsLevel=off\"},\"maxLevel\":null,\"firstFailLevel\":128,\"reason\":\"budgetExceeded\"}]}]}",
+        " ✓ |browser (chromium)| test/browser/perf-boundaries/external-store-ingest.test.tsx (2 tests | 1 skipped) 421ms",
+        "   ✓ perf: externalStore ingest→notify baseline (externalStore.ingest.tickNotify)  420ms",
+        " Test Files  1 passed (1)",
+        "      Tests  1 passed | 1 skipped (2)",
+        "   Start at  22:17:29",
+        "   Duration  1.33s (transform 0ms, setup 0ms, import 93ms, tests 421ms, environment 0ms)"
+      ],
+      "stderr_tail": []
+    }
+  ],
+  "blocker": {
+    "order": 1,
+    "suite_id": "externalStore.ingest.tickNotify",
+    "gate": "残余复核门",
+    "command": "pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/external-store-ingest.test.tsx -t \"perf: externalStore ingest\"",
+    "status": "failed",
+    "failure_kind": "threshold",
+    "process_returncode": 0,
+    "returncode": 42,
+    "duration_ms": 1931,
+    "perf_report_count": 1,
+    "threshold_anomaly_count": 1,
+    "threshold_anomalies": [
+      {
+        "report_index": 1,
+        "suite_id": "externalStore.ingest.tickNotify",
+        "budget_id": "full/off<=1.25",
+        "first_fail_level": 128,
+        "max_level": null,
+        "where": null
+      }
+    ],
+    "perf_report_parse_errors": [],
+    "stdout_tail": [
+      "> @logixjs/react@1.0.2-beta.1 test /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.s1-externalstore-reprobe/packages/logix-react",
+      "> vitest run --project browser test/browser/perf-boundaries/external-store-ingest.test.tsx -t 'perf: externalStore ingest'",
+      " RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.s1-externalstore-reprobe/packages/logix-react",
+      "stdout | test/browser/perf-boundaries/external-store-ingest.test.tsx > perf: externalStore ingest→notify baseline (externalStore.ingest.tickNotify)",
+      "LOGIX_PERF_REPORT:{\"schemaVersion\":1,\"meta\":{\"createdAt\":\"2026-03-18T14:17:30.800Z\",\"generator\":\"packages/logix-react/test/browser/perf-boundaries/external-store-ingest.test.tsx\",\"matrixId\":\"logix-browser-perf-matrix-v1\",\"config\":{\"runs\":10,\"warmupDiscard\":2,\"timeoutMs\":30000,\"headless\":true,\"profile\":\"matrix.defaults\",\"stability\":{\"maxP95DeltaRatio\":0.1,\"maxP95DeltaMs\":5}},\"env\":{\"os\":\"MacIntel\",\"arch\":\"unknown\",\"node\":\"unknown\",\"browser\":{\"name\":\"chromium\",\"headless\":true,\"version\":\"143.0.7499.4\"}}},\"suites\":[{\"id\":\"externalStore.ingest.tickNotify\",\"title\":\"externalStore: ingest→notify baseline (external input workload)\",\"priority\":\"P1\",\"primaryAxis\":\"watchers\",\"budgets\":[{\"id\":\"p95<=3.00ms\",\"type\":\"absolute\",\"metric\":\"timePerIngestMs\",\"p95Ms\":3},{\"id\":\"full/off<=1.25\",\"type\":\"relative\",\"metric\":\"timePerIngestMs\",\"maxRatio\":1.25,\"minDeltaMs\":0.02,\"numeratorRef\":\"diagnosticsLevel=full\",\"denominatorRef\":\"diagnosticsLevel=off\"}],\"metricCategories\":{\"timePerIngestMs\":\"runtimeStore\"},\"points\":[{\"params\":{\"diagnosticsLevel\":\"off\",\"watchers\":128},\"status\":\"ok\",\"metrics\":[{\"name\":\"timePerIngestMs\",\"unit\":\"ms\",\"status\":\"ok\",\"stats\":{\"n\":8,\"medianMs\":0.5999999046325684,\"p95Ms\":0.7000000476837158}}],\"evidence\":[{\"name\":\"diagnostics.level\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"off\"},{\"name\":\"runtime.kernelId\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"core\"},{\"name\":\"workload.externalStores\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.modules\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.ticksPerRun\",\"unit\":\"count\",\"status\":\"ok\",\"value\":1},{\"name\":\"budget.cutOffCount\",\"unit\":\"count\",\"status\":\"ok\",\"value\":0}]},{\"params\":{\"diagnosticsLevel\":\"full\",\"watchers\":128},\"status\":\"ok\",\"metrics\":[{\"name\":\"timePerIngestMs\",\"unit\":\"ms\",\"status\":\"ok\",\"stats\":{\"n\":8,\"medianMs\":1.0999999046325684,\"p95Ms\":1.2000000476837158}}],\"evidence\":[{\"name\":\"diagnostics.level\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"full\"},{\"name\":\"runtime.kernelId\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"core\"},{\"name\":\"workload.externalStores\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.modules\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.ticksPerRun\",\"unit\":\"count\",\"status\":\"ok\",\"value\":1},{\"name\":\"budget.cutOffCount\",\"unit\":\"count\",\"status\":\"ok\",\"value\":0}]},{\"params\":{\"diagnosticsLevel\":\"off\",\"watchers\":256},\"status\":\"ok\",\"metrics\":[{\"name\":\"timePerIngestMs\",\"unit\":\"ms\",\"status\":\"ok\",\"stats\":{\"n\":8,\"medianMs\":0.5999999046325684,\"p95Ms\":0.7000000476837158}}],\"evidence\":[{\"name\":\"diagnostics.level\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"off\"},{\"name\":\"runtime.kernelId\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"core\"},{\"name\":\"workload.externalStores\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.modules\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.ticksPerRun\",\"unit\":\"count\",\"status\":\"ok\",\"value\":1},{\"name\":\"budget.cutOffCount\",\"unit\":\"count\",\"status\":\"ok\",\"value\":0}]},{\"params\":{\"diagnosticsLevel\":\"full\",\"watchers\":256},\"status\":\"ok\",\"metrics\":[{\"name\":\"timePerIngestMs\",\"unit\":\"ms\",\"status\":\"ok\",\"stats\":{\"n\":8,\"medianMs\":0.7000000476837158,\"p95Ms\":0.9000000953674316}}],\"evidence\":[{\"name\":\"diagnostics.level\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"full\"},{\"name\":\"runtime.kernelId\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"core\"},{\"name\":\"workload.externalStores\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.modules\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.ticksPerRun\",\"unit\":\"count\",\"status\":\"ok\",\"value\":1},{\"name\":\"budget.cutOffCount\",\"unit\":\"count\",\"status\":\"ok\",\"value\":0}]},{\"params\":{\"diagnosticsLevel\":\"off\",\"watchers\":512},\"status\":\"ok\",\"metrics\":[{\"name\":\"timePerIngestMs\",\"unit\":\"ms\",\"status\":\"ok\",\"stats\":{\"n\":8,\"medianMs\":0.6000001430511475,\"p95Ms\":1.0999999046325684}}],\"evidence\":[{\"name\":\"diagnostics.level\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"off\"},{\"name\":\"runtime.kernelId\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"core\"},{\"name\":\"workload.externalStores\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.modules\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.ticksPerRun\",\"unit\":\"count\",\"status\":\"ok\",\"value\":1},{\"name\":\"budget.cutOffCount\",\"unit\":\"count\",\"status\":\"ok\",\"value\":0}]},{\"params\":{\"diagnosticsLevel\":\"full\",\"watchers\":512},\"status\":\"ok\",\"metrics\":[{\"name\":\"timePerIngestMs\",\"unit\":\"ms\",\"status\":\"ok\",\"stats\":{\"n\":8,\"medianMs\":0.8000001907348633,\"p95Ms\":0.9000000953674316}}],\"evidence\":[{\"name\":\"diagnostics.level\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"full\"},{\"name\":\"runtime.kernelId\",\"unit\":\"string\",\"status\":\"ok\",\"value\":\"core\"},{\"name\":\"workload.externalStores\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.modules\",\"unit\":\"count\",\"status\":\"ok\",\"value\":10},{\"name\":\"workload.ticksPerRun\",\"unit\":\"count\",\"status\":\"ok\",\"value\":1},{\"name\":\"budget.cutOffCount\",\"unit\":\"count\",\"status\":\"ok\",\"value\":0}]}],\"thresholds\":[{\"budget\":{\"id\":\"p95<=3.00ms\",\"type\":\"absolute\",\"metric\":\"timePerIngestMs\",\"p95Ms\":3},\"where\":{\"diagnosticsLevel\":\"off\"},\"maxLevel\":512,\"firstFailLevel\":null},{\"budget\":{\"id\":\"p95<=3.00ms\",\"type\":\"absolute\",\"metric\":\"timePerIngestMs\",\"p95Ms\":3},\"where\":{\"diagnosticsLevel\":\"full\"},\"maxLevel\":512,\"firstFailLevel\":null},{\"budget\":{\"id\":\"full/off<=1.25\",\"type\":\"relative\",\"metric\":\"timePerIngestMs\",\"maxRatio\":1.25,\"minDeltaMs\":0.02,\"numeratorRef\":\"diagnosticsLevel=full\",\"denominatorRef\":\"diagnosticsLevel=off\"},\"maxLevel\":null,\"firstFailLevel\":128,\"reason\":\"budgetExceeded\"}]}]}",
+      " ✓ |browser (chromium)| test/browser/perf-boundaries/external-store-ingest.test.tsx (2 tests | 1 skipped) 421ms",
+      "   ✓ perf: externalStore ingest→notify baseline (externalStore.ingest.tickNotify)  420ms",
+      " Test Files  1 passed (1)",
+      "      Tests  1 passed | 1 skipped (2)",
+      "   Start at  22:17:29",
+      "   Duration  1.33s (transform 0ms, setup 0ms, import 93ms, tests 421ms, environment 0ms)"
+    ],
+    "stderr_tail": []
+  },
+  "pending": [
+    {
+      "order": 2,
+      "suite_id": "runtimeStore.noTearing.tickNotify",
+      "gate": "防回归门",
+      "command": "pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx -t \"perf: runtimeStore tick\""
+    },
+    {
+      "order": 3,
+      "suite_id": "form.listScopeCheck",
+      "gate": "防回归门",
+      "command": "pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/form-list-scope-check.test.tsx"
+    }
+  ],
+  "threshold_anomalies": [
+    {
+      "probe_order": 1,
+      "suite_id": "externalStore.ingest.tickNotify",
+      "gate": "残余复核门",
+      "report_index": 1,
+      "budget_id": "full/off<=1.25",
+      "first_fail_level": 128,
+      "max_level": null,
+      "where": null
+    }
+  ]
+}

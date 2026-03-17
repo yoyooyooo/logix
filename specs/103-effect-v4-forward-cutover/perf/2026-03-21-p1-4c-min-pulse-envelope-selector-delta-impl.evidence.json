@@ -1,0 +1,50 @@
+{
+  "id": "2026-03-21-p1-4c-min-pulse-envelope-selector-delta-impl",
+  "spec": "103-effect-v4-forward-cutover",
+  "date": "2026-03-21",
+  "status": "accepted_with_evidence",
+  "decision": "keep_implementation",
+  "scope": {
+    "code": [
+      "packages/logix-react/src/internal/store/RuntimeExternalStore.ts",
+      "packages/logix-react/src/internal/hooks/useSelector.ts",
+      "packages/logix-react/test/internal/RuntimeExternalStore.lowPriority.test.ts",
+      "packages/logix-react/test/Hooks/useSelector.sharedSubscription.test.tsx"
+    ],
+    "forbiddenTouched": false,
+    "publicApiChanged": false
+  },
+  "verification": {
+    "typecheck": {
+      "command": "pnpm -C packages/logix-react typecheck:test",
+      "result": "passed",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p1-4c-min-pulse-envelope-selector-delta-impl.validation.typecheck.txt"
+    },
+    "unitLowPriority": {
+      "command": "pnpm -C packages/logix-react test -- RuntimeExternalStore.lowPriority.test.ts",
+      "result": "passed",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p1-4c-min-pulse-envelope-selector-delta-impl.validation.lowpriority.txt"
+    },
+    "unitSharedSubscription": {
+      "command": "pnpm -C packages/logix-react test -- useSelector.sharedSubscription.test.tsx",
+      "result": "passed",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p1-4c-min-pulse-envelope-selector-delta-impl.validation.shared-subscription.txt"
+    },
+    "probeNextBlocker": {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "result": "clear",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p1-4c-min-pulse-envelope-selector-delta-impl.probe-next-blocker.json"
+    }
+  },
+  "signals": {
+    "pulseEnvelopePresent": true,
+    "selectorDeltaTopKPresent": true,
+    "conservativeSkipPresent": true,
+    "leadSelectorUnchangedCaseCovered": true
+  },
+  "references": {
+    "designDoc": "docs/perf/2026-03-21-p1-4c-moduleinstance-pulse-envelope-selector-delta-payload-design.md",
+    "implDoc": "docs/perf/2026-03-21-p1-4c-min-pulse-envelope-selector-delta-impl.md",
+    "summary": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p1-4c-min-pulse-envelope-selector-delta-impl.summary.md"
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "id": "2026-03-21-crossplane-pulse-topic-reactbridge-nextwide-identify.evidence",
+  "capturedAt": "2026-03-21",
+  "scope": "crossplane-pulse-topic-reactbridge-nextwide-identify-package",
+  "baseHead": "03ad2c1b",
+  "decision": {
+    "status": "discarded_or_pending",
+    "acceptedWithEvidence": false,
+    "mergeToMain": false,
+    "reasons": [
+      "probe_next_blocker 命中 failure_kind=environment，当前证据不可比",
+      "本轮目标是形成 nextwide 的 implementation-ready 识别包，不进入代码实施",
+      "旧切口 shared microtask flush 与 dirtyTopics single-pass classification 已维持否决"
+    ]
+  },
+  "top2Directions": {
+    "top1": {
+      "name": "P1-4B module-scoped pulse coalescing",
+      "uniqueNextLine": true,
+      "nextLineCut": "P1-4B-min RuntimeExternalStore module pulse hub",
+      "anchors": [
+        "docs/perf/2026-03-21-p1-4b-module-scoped-pulse-coalescing-design.md",
+        "docs/perf/2026-03-21-p1-4-crossplane-bigger-design-v2.md"
+      ]
+    },
+    "top2": {
+      "name": "P1-4C moduleInstance pulse envelope + selector delta payload",
+      "uniqueNextLine": false,
+      "anchors": [
+        "docs/perf/2026-03-21-crossplane-pulse-topic-reactbridge-nextwide-identify.md"
+      ]
+    }
+  },
+  "constraints": {
+    "forbiddenSlices": [
+      "normal-path shared microtask flush",
+      "dirtyTopics single-pass classification"
+    ],
+    "publicApiChange": false
+  },
+  "proposedNextwideCut": {
+    "name": "P1-4C-min PulseEnvelope v0 + SelectorDeltaTopK",
+    "status": "implementation_ready_docs_only",
+    "writeScopeIfTriggered": [
+      "packages/logix-core/src/internal/runtime/core/TickScheduler.ts",
+      "packages/logix-core/src/internal/runtime/core/RuntimeStore.ts",
+      "packages/logix-react/src/internal/store/RuntimeExternalStore.ts",
+      "packages/logix-react/src/internal/hooks/useSelector.ts"
+    ]
+  },
+  "verification": {
+    "commands": [
+      "python3 fabfile.py probe_next_blocker --json"
+    ],
+    "probeStatus": "blocked",
+    "probeFailureKind": "environment",
+    "probeReport": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-crossplane-pulse-topic-reactbridge-nextwide-identify.probe-next-blocker.json"
+  }
+}
+

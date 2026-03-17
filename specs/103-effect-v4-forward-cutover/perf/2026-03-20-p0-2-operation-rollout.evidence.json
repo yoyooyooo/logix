@@ -1,0 +1,80 @@
+{
+  "id": "2026-03-20-p0-2-operation-rollout.evidence",
+  "capturedAt": "2026-03-20",
+  "scope": "p0-2-operation-rollout-concurrency-resolve-shell-reuse",
+  "decision": {
+    "status": "accepted_with_evidence",
+    "acceptedWithEvidence": true,
+    "mergeToMain": true,
+    "reasons": [
+      "在 P0-2/rollout-next 的 snapshot 复用基础上，把 resolve shell 复用扩到 concurrencyPolicy resolver，新增 snapshot capture + WeakMap 命中路径",
+      "expanded resolve-shell microbench 显示 noSnapshot.avg=0.715ms -> snapshot.avg=0.302ms，speedup=2.368x，saved=57.77%",
+      "最小验证命令全部通过，probe_next_blocker 本次落盘为 clear"
+    ]
+  },
+  "sources": {
+    "validation": {
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-2-operation-rollout.validation.json",
+      "passed": true
+    },
+    "typecheckTest": {
+      "command": "pnpm -C packages/logix-core typecheck:test",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-2-operation-rollout.validation.typecheck.txt",
+      "passed": true
+    },
+    "targetedVitest": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.RuntimeSnapshot.ResolveShell.Perf.off.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-2-operation-rollout.validation.vitest.txt",
+      "result": {
+        "runtimeSnapshotResolveShellExpandedSpeedupX": 2.368,
+        "runtimeSnapshotResolveShellExpandedSavedPercent": 57.77,
+        "operationRunnerBatch256SpeedupX": 1.452,
+        "operationRunnerBatch1024SpeedupX": 1.497
+      }
+    },
+    "probeRun": {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-2-operation-rollout.probe-next-blocker.json",
+      "status": "clear",
+      "blocker": null,
+      "executedCount": 3
+    },
+    "baseline": {
+      "ref": "v4-perf@e9e39325",
+      "note": "基线阶段仅覆盖 txnLanePolicy + traitConvergeConfig 的 resolve-shell 复用；本刀新增 concurrencyPolicy resolver 复用面"
+    }
+  },
+  "invariants": [
+    {
+      "id": "p0-2-operation-rollout.typecheck-test",
+      "expectation": "logix-core typecheck:test 通过",
+      "status": "passed",
+      "evidenceType": "test-run"
+    },
+    {
+      "id": "p0-2-operation-rollout.targeted-vitest",
+      "expectation": "三项最小 vitest 守门通过",
+      "status": "passed",
+      "evidenceType": "test-run"
+    },
+    {
+      "id": "p0-2-operation-rollout.resolve-shell-perf",
+      "expectation": "expanded resolver 组里 snapshot 路径明显优于 noSnapshot 路径",
+      "status": "passed",
+      "evidenceType": "perf-run"
+    },
+    {
+      "id": "p0-2-operation-rollout.probe-next-blocker",
+      "expectation": "probe_next_blocker clear",
+      "status": "passed",
+      "evidenceType": "probe-run"
+    }
+  ],
+  "summary": {
+    "result": "accepted_with_evidence",
+    "notes": [
+      "未触碰 public API",
+      "文档结论见 docs/perf/archive/2026-03/2026-03-20-p0-2-operation-rollout.md"
+    ]
+  }
+}

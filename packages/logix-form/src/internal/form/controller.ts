@@ -1,5 +1,5 @@
 import * as Logix from '@logixjs/core'
-import { Effect, Schema } from 'effect'
+import { Effect, Exit, Schema } from 'effect'
 import { getAtPath } from './path.js'
 import { toSchemaErrorTree } from '../../SchemaErrorMapping.js'
 import { isAuxRootPath } from './arrays.js'
@@ -8,7 +8,7 @@ import { readErrorCount } from './errors.js'
 export const makeFormController = <TValues extends object>(params: {
   readonly runtime: Logix.ModuleRuntime<any, any>
   readonly shape: unknown
-  readonly valuesSchema: Schema.Schema<TValues, any>
+  readonly valuesSchema: Schema.Schema<TValues>
 }): any => {
   const runtime = params.runtime
   const bound = Logix.Bound.make(params.shape as any, runtime as any)
@@ -28,8 +28,14 @@ export const makeFormController = <TValues extends object>(params: {
 
           const state = yield* runtime.getState
           const { errors: _errors, ui: _ui, $form: _meta, ...values } = state as any
-          const decoded = Schema.decodeUnknownEither(params.valuesSchema)(values as any) as any
-          const schemaTree = decoded._tag === 'Right' ? {} : toSchemaErrorTree(decoded.left)
+          const schemaTree = (() => {
+            try {
+              Schema.decodeUnknownSync(params.valuesSchema as any)(values as any)
+              return {}
+            } catch (error) {
+              return toSchemaErrorTree(error)
+            }
+          })()
 
           yield* runtime.dispatch({
             _tag: 'setValue',
@@ -82,8 +88,14 @@ export const makeFormController = <TValues extends object>(params: {
             $form: _metaAfterRules,
             ...valuesAfterRules
           } = stateAfterRules as any
-          const decoded = Schema.decodeUnknownEither(params.valuesSchema)(valuesAfterRules as any) as any
-          const schemaTree = decoded._tag === 'Right' ? {} : toSchemaErrorTree(decoded.left)
+          const schemaTree = (() => {
+            try {
+              Schema.decodeUnknownSync(params.valuesSchema as any)(valuesAfterRules as any)
+              return {}
+            } catch (error) {
+              return toSchemaErrorTree(error)
+            }
+          })()
 
           yield* runtime.dispatch({
             _tag: 'setValue',

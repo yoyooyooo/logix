@@ -1,0 +1,55 @@
+{
+  "id": "2026-03-23-p1-4f-single-pulse-impl",
+  "capturedAt": "2026-03-23",
+  "scope": "cross-plane-single-pulse-contract",
+  "baseHead": "f8d015b5",
+  "decision": {
+    "status": "accepted_with_evidence",
+    "acceptedWithEvidence": true,
+    "mergeToMain": true,
+    "reasons": [
+      "selector interest、readQuery activation 生命周期与单订阅路径的行为门已全部通过",
+      "probe_next_blocker 继续 clear，未出现新的 hard blocker",
+      "packages/logix-core 与 packages/logix-react 的 typecheck:test 均已通过"
+    ]
+  },
+  "constraints": {
+    "publicApiChange": false,
+    "touchedCorePath": true,
+    "writeScope": [
+      "packages/logix-core/src/internal/runtime/core/RuntimeStore.ts",
+      "packages/logix-core/src/internal/runtime/core/TickScheduler.ts",
+      "packages/logix-react/src/internal/store/RuntimeExternalStore.ts",
+      "packages/logix-core/test/internal/Runtime/**",
+      "packages/logix-react/test/internal/**",
+      "packages/logix-react/test/Hooks/**"
+    ],
+    "keptUntouched": [
+      "packages/logix-react/src/internal/provider/**",
+      "public API"
+    ]
+  },
+  "verification": {
+    "commands": [
+      "pnpm -C packages/logix-core typecheck:test",
+      "pnpm -C packages/logix-react typecheck:test",
+      "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/TickScheduler.listenerFanout.postCommit.test.ts test/internal/Runtime/TickScheduler.topic-classification.test.ts test/internal/Runtime/TickScheduler.selectorInterest.contract.test.ts test/internal/Runtime/RuntimeStore.selectorInterest.refcount.test.ts",
+      "pnpm -C packages/logix-react exec vitest run test/internal/RuntimeExternalStore.lowPriority.test.ts test/internal/RuntimeExternalStore.idleTeardown.test.ts test/internal/RuntimeExternalStore.readQueryActivation.lifecycle.test.ts test/Hooks/useSelector.sharedSubscription.test.tsx test/Hooks/useSelector.readQueryRetainScope.test.tsx test/Hooks/useSelector.singlePulseSingleSubscription.test.tsx",
+      "python3 fabfile.py probe_next_blocker --json"
+    ],
+    "artifacts": {
+      "coreTypecheck": "specs/103-effect-v4-forward-cutover/perf/2026-03-23-p1-4f-single-pulse-impl.validation.core-typecheck.txt",
+      "reactTypecheck": "specs/103-effect-v4-forward-cutover/perf/2026-03-23-p1-4f-single-pulse-impl.validation.react-typecheck.txt",
+      "coreVitest": "specs/103-effect-v4-forward-cutover/perf/2026-03-23-p1-4f-single-pulse-impl.validation.core-vitest.txt",
+      "reactVitest": "specs/103-effect-v4-forward-cutover/perf/2026-03-23-p1-4f-single-pulse-impl.validation.react-vitest.txt",
+      "probeNextBlocker": "specs/103-effect-v4-forward-cutover/perf/2026-03-23-p1-4f-single-pulse-impl.probe-next-blocker.json"
+    },
+    "passed": {
+      "coreTypecheck": true,
+      "reactTypecheck": true,
+      "coreVitest": true,
+      "reactVitest": true,
+      "probeNextBlocker": true
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-03-21",
+  "cutId": "n-2-runtime-shell-ledger",
+  "commands": [
+    {
+      "command": "pnpm -C packages/logix-core typecheck:test",
+      "status": "passed",
+      "evidenceRef": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-n-2-runtime-shell-ledger.validation.typecheck.txt"
+    },
+    {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.dispatchShell.Phases.Perf.light.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.RuntimeSnapshot.ResolveShell.Perf.off.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts",
+      "status": "passed",
+      "evidenceRef": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-n-2-runtime-shell-ledger.validation.vitest.txt",
+      "notes": [
+        "该命令运行时会在 specs/103-effect-v4-forward-cutover/perf/.local/runtime-shell-ledger/ 写出 *.ledger.v1.ndjson + *.ledger.summary.v1.json 工件。"
+      ]
+    },
+    {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "status": "passed",
+      "evidenceRef": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-n-2-runtime-shell-ledger.probe-next-blocker.json"
+    }
+  ],
+  "notes": [
+    "本线只补 Node 端 microbench 的 ledger 落盘切口，不改变 runtime 行为，不引入新的指标体系。",
+    "ledger summary 仅输出既有 suite 已在使用的聚合指标名，避免并行真相源。"
+  ]
+}

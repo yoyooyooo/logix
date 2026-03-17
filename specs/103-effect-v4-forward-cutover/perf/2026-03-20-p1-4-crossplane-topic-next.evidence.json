@@ -1,0 +1,31 @@
+{
+  "topic": "p1-4-crossplane-topic-next",
+  "date": "2026-03-20",
+  "baseHead": "aa7c0b50",
+  "decision": {
+    "result": "docs_evidence_only",
+    "classification": "discarded_or_pending",
+    "accepted_with_evidence": false
+  },
+  "attempt": {
+    "candidateCut": "tickScheduler dirtyTopics single-pass classification",
+    "writeScope": [
+      "packages/logix-core/src/internal/runtime/core/RuntimeStore.ts",
+      "packages/logix-core/src/internal/runtime/core/TickScheduler.ts",
+      "packages/logix-react/src/internal/store/RuntimeExternalStore.ts"
+    ],
+    "keptInCode": false,
+    "rollbackApplied": true
+  },
+  "verification": {
+    "commands": [
+      "pnpm -C packages/logix-core typecheck:test",
+      "pnpm -C packages/logix-react typecheck:test",
+      "python3 fabfile.py probe_next_blocker --json"
+    ],
+    "typecheckCore": "passed",
+    "typecheckReact": "passed",
+    "probeStatus": "clear",
+    "probeReport": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p1-4-crossplane-topic-next.probe-next-blocker.json"
+  }
+}

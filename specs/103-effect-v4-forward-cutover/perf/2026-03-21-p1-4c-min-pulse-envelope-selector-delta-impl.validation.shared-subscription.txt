@@ -1,0 +1,14 @@
+
+> @logixjs/react@1.0.2-beta.1 test /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p1-4c-pulse-envelope-impl/packages/logix-react
+> vitest run useSelector.sharedSubscription.test.tsx
+
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p1-4c-pulse-envelope-impl/packages/logix-react
+
+ ✓ |unit| test/Hooks/useSelector.sharedSubscription.test.tsx (4 tests) 65ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  20:15:42
+   Duration  1.58s (transform 808ms, setup 0ms, import 1.20s, tests 65ms, environment 178ms)
+

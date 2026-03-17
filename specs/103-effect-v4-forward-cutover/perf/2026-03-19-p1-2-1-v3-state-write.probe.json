@@ -1,0 +1,28 @@
+{
+  "date": "2026-03-19",
+  "command": "python3 fabfile.py probe_next_blocker --json",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p1-2-1-v3-state-write",
+  "branch": "agent/v4-perf-p1-2-1-v3-state-write",
+  "status": "clear",
+  "executed": [
+    {
+      "order": 1,
+      "suiteId": "externalStore.ingest.tickNotify",
+      "status": "passed",
+      "durationMs": 2087
+    },
+    {
+      "order": 2,
+      "suiteId": "runtimeStore.noTearing.tickNotify",
+      "status": "passed",
+      "durationMs": 15828
+    },
+    {
+      "order": 3,
+      "suiteId": "form.listScopeCheck",
+      "status": "passed",
+      "durationMs": 1478
+    }
+  ],
+  "thresholdAnomalies": []
+}

@@ -6,6 +6,7 @@ import * as Logix from '@logixjs/core'
 import { Effect, Layer, ManagedRuntime, Schema } from 'effect'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
 import { useModule } from '../../src/Hooks.js'
+import { getRuntimeModuleExternalStore } from '../../src/internal/store/RuntimeExternalStore.js'
 
 const Counter = Logix.Module.make('useSelectorSharedSubscriptionCounter', {
   state: Schema.Struct({ count: Schema.Number }),
@@ -47,12 +48,30 @@ describe('useSelector(shared subscription)', () => {
     )
 
     type CounterAction = { readonly _tag: 'inc'; readonly payload?: void }
-    const baseHandle = runtime.runSync(Counter.tag as any) as Logix.ModuleRuntime<{ count: number }, CounterAction>
+    const baseHandle = runtime.runSync(Effect.service(Counter.tag).pipe(Effect.orDie)) as Logix.ModuleRuntime<
+      { count: number },
+      CounterAction
+    >
 
     const moduleInstanceKey = `${baseHandle.moduleId}::${baseHandle.instanceId}`
     const runtimeStore = Logix.InternalContracts.getRuntimeStore(runtime as any) as any
     let subscribeCallCount = 0
     const subscribeOriginal = runtimeStore.subscribeTopic?.bind(runtimeStore)
+
+    const moduleStore = getRuntimeModuleExternalStore(runtime as any, baseHandle as any) as {
+      subscribe: (listener: () => void) => () => void
+    }
+    let moduleStoreSubscribeCallCount = 0
+    let moduleStoreListenerCallCount = 0
+    const moduleStoreSubscribeOriginal = moduleStore.subscribe.bind(moduleStore)
+    ;(moduleStore as any).subscribe = (listener: () => void) => {
+      moduleStoreSubscribeCallCount += 1
+      return moduleStoreSubscribeOriginal(() => {
+        moduleStoreListenerCallCount += 1
+        listener()
+      })
+    }
+
     runtimeStore.subscribeTopic = (topicKey: string, listener: () => void) => {
       if (topicKey === moduleInstanceKey) {
         subscribeCallCount += 1
@@ -81,6 +100,8 @@ describe('useSelector(shared subscription)', () => {
 
     // Even with multiple selectors in the same component, they should share a single runtime-store subscription.
     expect(subscribeCallCount).toBe(1)
+    // Same topic within the same component should use one store.subscribe listener chain.
+    expect(moduleStoreSubscribeCallCount).toBe(1)
 
     await act(async () => {
       result.current.inc()
@@ -92,6 +113,77 @@ describe('useSelector(shared subscription)', () => {
 
     // After updates, it should still not create additional runtime-store subscriptions.
     expect(subscribeCallCount).toBe(1)
+    // Listener callback fanout should stay at one callback per update for this component/topic.
+    expect(moduleStoreListenerCallCount).toBe(1)
+  })
+
+  it('retains static selector activation in core across a short listener gap', async () => {
+    const events: Logix.Debug.Event[] = []
+    const runtime = makeRuntime(events)
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <RuntimeProvider runtime={runtime}>{children}</RuntimeProvider>
+    )
+
+    type CounterAction = { readonly _tag: 'inc'; readonly payload?: void }
+    const baseHandle = runtime.runSync(Effect.service(Counter.tag).pipe(Effect.orDie)) as Logix.ModuleRuntime<
+      { count: number },
+      CounterAction
+    >
+
+    const selector = Object.assign((s: { readonly count: number }) => s.count, {
+      fieldPaths: ['count'],
+    })
+
+    let activationStartCount = 0
+    const changesReadQueryWithMetaOriginal = baseHandle.changesReadQueryWithMeta.bind(baseHandle)
+    ;(baseHandle as any).changesReadQueryWithMeta = (readQuery: any) => {
+      activationStartCount += 1
+      return changesReadQueryWithMetaOriginal(readQuery) as any
+    }
+
+    const mountSelector = () =>
+      renderHook(
+        () => {
+          const rt = useModule(baseHandle)
+          const selected = useModule(baseHandle, selector as any)
+          return { selected, inc: rt.dispatchers.inc }
+        },
+        { wrapper },
+      )
+
+    const first = mountSelector()
+
+    await waitFor(() => {
+      expect(first.result.current.selected).toBe(0)
+    })
+
+    expect(activationStartCount).toBe(0)
+
+    await act(async () => {
+      first.result.current.inc()
+    })
+
+    await waitFor(() => {
+      expect(first.result.current.selected).toBe(1)
+    })
+
+    expect(activationStartCount).toBe(0)
+
+    first.unmount()
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    const second = mountSelector()
+
+    await waitFor(() => {
+      expect(second.result.current.selected).toBe(1)
+    })
+
+    expect(activationStartCount).toBe(0)
+
+    second.unmount()
   })
 
   it('react-render events do not scale with selector count', async () => {
@@ -149,5 +241,78 @@ describe('useSelector(shared subscription)', () => {
     const delta8 = await runScenario(8)
 
     expect(delta8).toBe(delta1)
+  })
+
+  it('when lead selector is unchanged, multiplex still selects a changed hook listener', async () => {
+    const events: Logix.Debug.Event[] = []
+    const debugLayer = Logix.Debug.replace([
+      {
+        record: (event: Logix.Debug.Event) =>
+          Effect.sync(() => {
+            events.push(event)
+          }),
+      },
+    ]) as Layer.Layer<any, never, never>
+
+    const Pair = Logix.Module.make('useSelectorSharedSubscriptionPair', {
+      state: Schema.Struct({ anchor: Schema.Number, value: Schema.Number }),
+      actions: { incValue: Schema.Void },
+      reducers: {
+        incValue: Logix.Module.Reducer.mutate((draft) => {
+          draft.value += 1
+        }),
+      },
+    })
+
+    const tickServicesLayer = Logix.InternalContracts.tickServicesLayer as Layer.Layer<any, never, any>
+    const pairLayer = Pair.live({ anchor: 0, value: 0 }) as Layer.Layer<any, never, any>
+    const runtime = ManagedRuntime.make(
+      Layer.mergeAll(
+        tickServicesLayer,
+        Layer.provide(pairLayer, tickServicesLayer),
+        debugLayer as Layer.Layer<any, never, any>,
+      ) as Layer.Layer<any, never, never>,
+    )
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <RuntimeProvider runtime={runtime}>{children}</RuntimeProvider>
+    )
+
+    type PairAction = { readonly _tag: 'incValue'; readonly payload?: void }
+    const baseHandle = runtime.runSync(Effect.service(Pair.tag).pipe(Effect.orDie)) as Logix.ModuleRuntime<
+      { anchor: number; value: number },
+      PairAction
+    >
+
+    const useTest = () => {
+      const rt = useModule(baseHandle)
+      const leadUnchanged = useModule(baseHandle, (s: any) => s.anchor)
+      const value = useModule(baseHandle, (s: any) => s.value)
+      const plusOne = useModule(baseHandle, (s: any) => s.value + 1)
+      return { leadUnchanged, value, plusOne, incValue: rt.dispatchers.incValue }
+    }
+
+    const { result, unmount } = renderHook(() => useTest(), { wrapper })
+
+    try {
+      await waitFor(() => {
+        expect(result.current.value).toBe(0)
+      })
+      expect(result.current.leadUnchanged).toBe(0)
+      expect(result.current.plusOne).toBe(1)
+
+      await act(async () => {
+        result.current.incValue()
+      })
+
+      await waitFor(() => {
+        expect(result.current.value).toBe(1)
+      })
+      expect(result.current.leadUnchanged).toBe(0)
+      expect(result.current.plusOne).toBe(2)
+    } finally {
+      unmount()
+      await runtime.dispose()
+    }
   })
 })

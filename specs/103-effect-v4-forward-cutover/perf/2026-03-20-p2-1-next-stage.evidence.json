@@ -1,0 +1,56 @@
+{
+  "id": "2026-03-20-p2-1-next-stage.evidence",
+  "capturedAt": "2026-03-20",
+  "scope": "p2-1-next-stage-continuation-expansion-receivership",
+  "decision": {
+    "status": "discarded_or_pending",
+    "acceptedWithEvidence": false,
+    "mergeToMain": false,
+    "reasons": [
+      "接手 worktree 时仅有半成品残留改动，缺少可归因的硬收益证据",
+      "focused tests 通过，但 probe_next_blocker 仍为 blocked，卡点仍是 externalStore.ingest.tickNotify 的 full/off<=1.25",
+      "按失败门执行：清掉残留实现，只做 docs/evidence-only 收口"
+    ]
+  },
+  "sources": {
+    "focusedTests": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.TxnLanes.DefaultOn.test.ts test/internal/observability/TxnLaneEvidence.Schema.test.ts",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p2-1-next-stage.focused-tests.txt",
+      "result": {
+        "testFilesPassed": 3,
+        "testsPassed": 9
+      }
+    },
+    "probeRun": {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p2-1-next-stage.probe-next-blocker.json",
+      "status": "blocked",
+      "blockerSuite": "externalStore.ingest.tickNotify",
+      "failureKind": "threshold",
+      "budgetId": "full/off<=1.25",
+      "executedCount": 1,
+      "thresholdAnomalyCount": 1
+    }
+  },
+  "invariants": [
+    {
+      "id": "p2-1-next-stage.focused-tests-hard-gate",
+      "expectation": "三条 focused tests 全绿",
+      "status": "passed",
+      "evidenceType": "test-run"
+    },
+    {
+      "id": "p2-1-next-stage.probe-next-blocker",
+      "expectation": "probe_next_blocker 仍 blocked，不能判定为 accepted_with_evidence",
+      "status": "failed",
+      "evidenceType": "probe-run"
+    }
+  ],
+  "summary": {
+    "result": "discarded_or_pending",
+    "notes": [
+      "本轮不保留 runtime 实现代码改动",
+      "对应结论文档：docs/perf/archive/2026-03/2026-03-20-p2-1-next-stage-evidence-only.md"
+    ]
+  }
+}

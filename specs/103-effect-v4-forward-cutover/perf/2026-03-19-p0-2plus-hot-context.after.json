@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-03-19",
+  "cutId": "p0-2plus-hot-context",
+  "phase": "after",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p0-2plus-hot-context",
+  "branch": "agent/v4-perf-p0-2plus-hot-context",
+  "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.dispatchShell.Phases.Perf.light.test.ts",
+  "config": {
+    "diagnosticsLevel": "light",
+    "iterations": 400,
+    "warmup": 80
+  },
+  "metrics": {
+    "dispatch.p50.ms": 0.079,
+    "dispatch.p95.ms": 0.132,
+    "txnPrelude.avg.ms": 0.009,
+    "queueContext.avg.ms": 0.001,
+    "queueResolve.avg.ms": 0.004,
+    "bodyShell.avg.ms": 0.014,
+    "asyncEscape.avg.ms": 0.014,
+    "commit.avg.ms": 0.004,
+    "dispatchRecord.avg.ms": 0.003,
+    "dispatchCommitHub.avg.ms": 0.001,
+    "residual.avg.ms": 0.060
+  },
+  "capturedAt": "2026-03-19T11:04:28+08:00"
+}

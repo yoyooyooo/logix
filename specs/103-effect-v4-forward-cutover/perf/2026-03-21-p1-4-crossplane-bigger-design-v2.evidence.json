@@ -1,0 +1,39 @@
+{
+  "topic": "p1-4-crossplane-bigger-design-v2",
+  "date": "2026-03-21",
+  "baseHead": "c6bd6a83",
+  "decision": {
+    "result": "docs_evidence_only",
+    "classification": "discarded_or_pending",
+    "accepted_with_evidence": false
+  },
+  "reasoning": {
+    "whyNoImplementation": [
+      "probe_next_blocker returned status=blocked",
+      "blocker.failure_kind=environment",
+      "current evidence is not comparable for runtime cut acceptance"
+    ],
+    "nextWorthwhileCrossPlaneLine": "P1-4B module-scoped pulse coalescing",
+    "excludedSlices": [
+      "normal-path shared microtask flush",
+      "tickScheduler dirtyTopics single-pass classification"
+    ]
+  },
+  "proposedMinimalCut": {
+    "status": "implementation_ready_docs_only",
+    "writeScopeIfTriggered": [
+      "packages/logix-core/src/internal/runtime/core/RuntimeStore.ts",
+      "packages/logix-core/src/internal/runtime/core/TickScheduler.ts",
+      "packages/logix-react/src/internal/store/RuntimeExternalStore.ts"
+    ],
+    "publicApiChange": false
+  },
+  "verification": {
+    "commands": [
+      "python3 fabfile.py probe_next_blocker --json"
+    ],
+    "probeStatus": "blocked",
+    "probeFailureKind": "environment",
+    "probeReport": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p1-4-crossplane-bigger-design-v2.probe-next-blocker.json"
+  }
+}

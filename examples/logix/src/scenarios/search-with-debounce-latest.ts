@@ -1,4 +1,4 @@
-import { Context, Effect, Schema } from 'effect'
+import { Effect, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 
 // Note: 本示例中的 `Logic.forShape` 写法仅作为“针对 SearchShape + SearchApi 预绑定的 Bound API `$`”
@@ -27,7 +27,7 @@ export type SearchAction = Logix.ActionOf<SearchShape>
 // DI 示例：SearchApi 作为 Tag 注入的服务
 // ---------------------------------------------------------------------------
 
-export class SearchApi extends Context.Tag('@demo/SearchApi')<SearchApi, SearchApi.Service>() {}
+export class SearchApi extends ServiceMap.Service<SearchApi, SearchApi.Service>()('@demo/SearchApi') { }
 
 export namespace SearchApi {
   export interface Service {
@@ -77,7 +77,7 @@ export const SearchLogic = SearchDef.logic<SearchApi>(($) =>
     //    - 时间：通过 debounce 限制频率
     //    - 过滤：只放过非空关键字
     //    - 并发语义：runLatest，始终只保留最新一次搜索
-    yield* debouncedValidKeyword$.pipe($.flow.run({ mode: 'latest', effect: runSearch }))
+    yield* debouncedValidKeyword$.pipe($.flow.runLatest(runSearch))
   }),
 )
 

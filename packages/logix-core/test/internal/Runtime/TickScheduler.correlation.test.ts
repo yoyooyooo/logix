@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
 import * as Logix from '../../../src/index.js'
@@ -34,8 +34,7 @@ describe('TickScheduler (tickSeq correlation)', () => {
       })
       queue.markTopicDirty(key, 'normal')
 
-      yield* scheduler.flushNow.pipe(
-        Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel as any, 'light'),
+      yield* Effect.provideService(scheduler.flushNow, Logix.Debug.internal.currentDiagnosticsLevel as any, 'light').pipe(
         Effect.provide(Logix.Debug.devtoolsHubLayer({ bufferSize: 64 })),
       )
 
@@ -103,9 +102,10 @@ describe('TickScheduler (tickSeq correlation)', () => {
       queue.markTopicDirty(key2, 'low')
 
       const withDiagnostics = <A, E>(eff: Effect.Effect<A, E, never>) =>
-        eff.pipe(
-          Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any]),
-          Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel as any, 'light'),
+        Effect.provideService(
+          Effect.provideService(eff, Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any]),
+          Logix.Debug.internal.currentDiagnosticsLevel as any,
+          'light',
         )
 
       // Tick1: degraded (budget_steps) with deferred backlog.
@@ -179,15 +179,17 @@ describe('TickScheduler (tickSeq correlation)', () => {
       queue.markTopicDirty(key2, 'low')
 
       const withDiagnostics = <A, E>(eff: Effect.Effect<A, E, never>) =>
-        eff.pipe(
-          Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any]),
-          Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel as any, 'light'),
+        Effect.provideService(
+          Effect.provideService(eff, Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any]),
+          Logix.Debug.internal.currentDiagnosticsLevel as any,
+          'light',
         )
 
       const withoutDiagnostics = <A, E>(eff: Effect.Effect<A, E, never>) =>
-        eff.pipe(
-          Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any]),
-          Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel as any, 'off'),
+        Effect.provideService(
+          Effect.provideService(eff, Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any]),
+          Logix.Debug.internal.currentDiagnosticsLevel as any,
+          'off',
         )
 
       // Tick1: enter degrade and emit scheduling::degrade.
@@ -278,9 +280,10 @@ describe('TickScheduler (tickSeq correlation)', () => {
       queue.markTopicDirty(key3, 'low')
 
       const withDiagnostics = <A, E>(eff: Effect.Effect<A, E, never>) =>
-        eff.pipe(
-          Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any]),
-          Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel as any, 'light'),
+        Effect.provideService(
+          Effect.provideService(eff, Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any]),
+          Logix.Debug.internal.currentDiagnosticsLevel as any,
+          'light',
         )
 
       // Tick1: unstable (degrade emitted).

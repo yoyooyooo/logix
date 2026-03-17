@@ -1,0 +1,38 @@
+{
+  "date": "2026-03-20",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.list-rowid-plan-cache",
+  "branch": "agent/v4-perf-list-rowid-plan-cache",
+  "scope": "RowId updateAll traversal plan cache (list-config traversal plan cache)",
+  "decision": "rejected_evidence_only",
+  "commands": [
+    {
+      "cmd": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.transaction.ListConfigsGuard.Perf.off.test.ts test/internal/StateTrait/StateTrait.RowIdMatrix.test.ts test/internal/StateTrait/StateTrait.NestedList.RowId.Stability.test.ts",
+      "status": "failed",
+      "exitCode": 1,
+      "testFilesFailed": 1,
+      "testFilesPassed": 2,
+      "testsPassed": 6,
+      "testsFailed": 3,
+      "failedCases": [
+        "StateTrait.RowIdMatrix: routes in-flight writeback to the correct row after prepend",
+        "StateTrait.RowIdMatrix: does not write back to a removed row (no ghost write)",
+        "StateTrait.RowIdMatrix: keeps writeback correct after reorder (swap)"
+      ],
+      "artifacts": [
+        "specs/103-effect-v4-forward-cutover/perf/2026-03-20-list-rowid-plan-cache.vitest.after-revert.log.txt"
+      ]
+    },
+    {
+      "cmd": "python3 fabfile.py probe_next_blocker --json",
+      "status": "ok",
+      "exitCode": 0,
+      "artifacts": [
+        "specs/103-effect-v4-forward-cutover/perf/2026-03-20-list-rowid-plan-cache.probe-next-blocker.json"
+      ]
+    }
+  ],
+  "notes": [
+    "语义门未全绿，不满足本线成功门。",
+    "当前证据只落盘失败日志与 probe 输出，未落地任何 runtime 行为改动。"
+  ]
+}

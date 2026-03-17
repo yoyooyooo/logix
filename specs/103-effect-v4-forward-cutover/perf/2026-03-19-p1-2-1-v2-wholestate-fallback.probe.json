@@ -1,0 +1,29 @@
+{
+  "task": "P1-2.1 v2 whole-state fallback tighten-surface",
+  "date": "2026-03-19",
+  "command": "python3 fabfile.py probe_next_blocker --json",
+  "status": "clear",
+  "executed": [
+    {
+      "order": 1,
+      "suiteId": "externalStore.ingest.tickNotify",
+      "status": "passed",
+      "durationMs": 1949
+    },
+    {
+      "order": 2,
+      "suiteId": "runtimeStore.noTearing.tickNotify",
+      "status": "passed",
+      "durationMs": 15277
+    },
+    {
+      "order": 3,
+      "suiteId": "form.listScopeCheck",
+      "status": "passed",
+      "durationMs": 1636
+    }
+  ],
+  "blocker": null,
+  "pending": [],
+  "thresholdAnomalies": []
+}

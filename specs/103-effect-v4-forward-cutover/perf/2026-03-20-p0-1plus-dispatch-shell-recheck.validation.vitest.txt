@@ -1,0 +1,12 @@
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p0-1plus-dispatch-shell-recheck/packages/logix-core
+
+stdout | test/internal/Runtime/ModuleRuntime/ModuleRuntime.dispatchShell.Phases.Perf.light.test.ts > ModuleRuntime.dispatch shell phases · perf baseline (Diagnostics=light) > records reproducible dispatch shell phase evidence
+[perf] dispatch-shell-phases diagnostics=light iters=400 warmup=80 dispatch.p50=0.104ms dispatch.p95=0.225ms txnPrelude.avg=0.012ms queueContext.avg=0.002ms queueResolve.avg=0.004ms bodyShell.avg=0.022ms asyncEscape.avg=0.022ms commit.avg=0.007ms dispatchRecord.avg=0.004ms dispatchCommitHub.avg=0.001ms residual.avg=0.081ms
+
+ ✓ test/internal/Runtime/ModuleRuntime/ModuleRuntime.dispatchShell.Phases.Perf.light.test.ts (1 test) 91ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  16:09:33
+   Duration  1.08s (transform 610ms, setup 0ms, import 910ms, tests 91ms, environment 0ms)

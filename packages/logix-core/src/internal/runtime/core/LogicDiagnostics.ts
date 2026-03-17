@@ -1,4 +1,4 @@
-import { Cause, Context, Effect } from 'effect'
+import { Cause, Effect, ServiceMap } from 'effect'
 import * as Debug from './DebugSink.js'
 import { isDevEnv } from './env.js'
 
@@ -32,7 +32,7 @@ export const emitEnvServiceNotFoundDiagnosticIfNeeded = (
   Effect.gen(function* () {
     let pretty: string
     try {
-      pretty = Cause.pretty(cause, { renderErrorCause: true })
+      pretty = Cause.pretty(cause)
     } catch {
       return
     }
@@ -84,7 +84,10 @@ export interface LogicPhaseService {
   readonly current: 'setup' | 'run'
 }
 
-export const LogicPhaseServiceTag = Context.GenericTag<LogicPhaseService>('@logixjs/LogicPhaseService')
+export class LogicPhaseServiceTag extends ServiceMap.Service<
+  LogicPhaseServiceTag,
+  LogicPhaseService
+>()('@logixjs/LogicPhaseService') {}
 
 /**
  * LogicUnitService:
@@ -101,10 +104,10 @@ export interface LogicUnitService {
   readonly path?: string
 }
 
-export class LogicUnitServiceTag extends Context.Tag('@logixjs/LogicUnitService')<
+export class LogicUnitServiceTag extends ServiceMap.Service<
   LogicUnitServiceTag,
   LogicUnitService
->() {}
+>()('@logixjs/LogicUnitService') {}
 
 export const makeLogicPhaseError = (
   kind: string,
@@ -134,7 +137,9 @@ export const emitInvalidPhaseDiagnosticIfNeeded = (
       return
     }
 
-    const allErrors = [...Cause.failures(cause), ...Cause.defects(cause)]
+    const allErrors = cause.reasons
+      .filter((reason) => Cause.isFailReason(reason) || Cause.isDieReason(reason))
+      .map((reason) => (Cause.isFailReason(reason) ? reason.error : reason.defect))
 
     for (const err of allErrors) {
       const logicErr = err as any

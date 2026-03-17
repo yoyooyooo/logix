@@ -1,0 +1,32 @@
+{
+  "date": "2026-03-19",
+  "topic": "P1-6-owner-phase-rebuild",
+  "mode": "probe_next_blocker",
+  "status": "clear",
+  "blocker": null,
+  "pending": [],
+  "threshold_anomalies": [],
+  "executed": [
+    {
+      "order": 1,
+      "suite_id": "externalStore.ingest.tickNotify",
+      "status": "passed",
+      "duration_ms": 1953
+    },
+    {
+      "order": 2,
+      "suite_id": "runtimeStore.noTearing.tickNotify",
+      "status": "passed",
+      "duration_ms": 16067
+    },
+    {
+      "order": 3,
+      "suite_id": "form.listScopeCheck",
+      "status": "passed",
+      "duration_ms": 1429
+    }
+  ],
+  "sourceCommand": "python3 fabfile.py probe_next_blocker --json",
+  "sourceWorktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p1-6-owner-phase-rebuild",
+  "reference": "docs/perf/archive/2026-03/2026-03-19-p1-6-owner-phase-rebuild.md"
+}

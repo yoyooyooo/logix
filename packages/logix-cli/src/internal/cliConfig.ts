@@ -88,7 +88,7 @@ const statExists = (filePath: string): Effect.Effect<boolean, never> =>
       return true
     },
     catch: (cause) => cause,
-  }).pipe(Effect.catchAll(() => Effect.succeed(false)))
+  }).pipe(Effect.catch(() => Effect.succeed(false)))
 
 const findUp = (startDir: string, fileName: string): Effect.Effect<string | undefined, never> =>
   Effect.gen(function* () {
@@ -455,7 +455,7 @@ export const discoverCliConfig = (args: {
       const profiles = Object.keys(config.profiles ?? {}).sort()
       return { found: true, path: discoveredPath, ok: true, config, profiles } as const
     }).pipe(
-      Effect.catchAll((cause) => {
+      Effect.catch((cause) => {
         const summary = asSerializableErrorSummary(cause)
         const code = summary.message.includes('.entry') ? 'CLI_ENTRY_INVALID' : 'CLI_CONFIG_INVALID'
         const out: CliConfigDiscovery = {

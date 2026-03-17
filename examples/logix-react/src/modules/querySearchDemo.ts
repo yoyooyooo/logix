@@ -78,18 +78,16 @@ export const SearchSpec = Logix.Resource.make({
     const hasNext = start + PageSize < total
 
     return Effect.sleep(Duration.millis(latencyMs)).pipe(
-      Effect.zipRight(
-        Effect.succeed({
-          keyword,
-          page,
-          pageSize: PageSize,
-          total,
-          totalPages,
-          hasPrev,
-          hasNext,
-          items,
-        }),
-      ),
+      Effect.flatMap(() => Effect.succeed({
+        keyword,
+        page,
+        pageSize: PageSize,
+        total,
+        totalPages,
+        hasPrev,
+        hasNext,
+        items,
+      })),
     )
   },
 })
@@ -99,13 +97,11 @@ export const DetailSpec = Logix.Resource.make({
   keySchema: DetailKeySchema,
   load: (key: { readonly id: string }) =>
     Effect.sleep(Duration.millis(150)).pipe(
-      Effect.zipRight(
-        Effect.succeed({
-          id: key.id,
-          title: `Detail: ${key.id}`,
-          description: '该数据由 ResourceSpec.load 产生，并通过 Query 领域包写回到模块 state 作为可回放快照。',
-        }),
-      ),
+      Effect.flatMap(() => Effect.succeed({
+        id: key.id,
+        title: `Detail: ${key.id}`,
+        description: '该数据由 ResourceSpec.load 产生，并通过 Query 领域包写回到模块 state 作为可回放快照。',
+      })),
     ),
 })
 

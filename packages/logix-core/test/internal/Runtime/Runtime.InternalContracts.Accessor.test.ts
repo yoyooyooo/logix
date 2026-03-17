@@ -29,8 +29,33 @@ const makeInternals = (instanceId: string): RuntimeInternals => ({
   txnLanes: {
     resolveTxnLanePolicy: () =>
       Effect.succeed({
+        effective: {
+          enabled: false,
+          budgetMs: 8,
+          debounceMs: 16,
+          maxLagMs: 200,
+          allowCoalesce: true,
+          yieldStrategy: 'baseline',
+          queueMode: 'fifo',
+        },
+        explain: {
+          scope: 'builtin',
+          candidates: [
+            { scope: 'provider_module', present: false },
+            { scope: 'provider_default', present: false },
+            { scope: 'runtime_module', present: false },
+            { scope: 'runtime_default', present: false },
+            {
+              scope: 'builtin',
+              present: true,
+              writes: ['enabled', 'budgetMs', 'debounceMs', 'maxLagMs', 'allowCoalesce', 'yieldStrategy'],
+              fingerprint: 'v1|ov=|en=1|q=lanes|b=1|d=0|l=50|c=1|y=baseline',
+            },
+          ],
+        },
+        fingerprint: 'v1|ov=|en=0|q=fifo|b=8|d=16|l=200|c=1|y=baseline',
         enabled: false,
-        configScope: 'builtin',
+        scope: 'builtin',
         budgetMs: 8,
         debounceMs: 16,
         maxLagMs: 200,
@@ -55,6 +80,10 @@ const makeInternals = (instanceId: string): RuntimeInternals => ({
   txn: {
     instrumentation: 'light',
     registerReducer: () => {},
+    registerActionStateWriteback: () => {},
+    dispatchWithOriginOverride: () => Effect.void,
+    dispatchLowPriorityWithOriginOverride: () => Effect.void,
+    dispatchBatchWithOriginOverride: () => Effect.void,
     runWithStateTransaction: () => Effect.void,
     updateDraft: () => {},
     recordStatePatch: () => {},

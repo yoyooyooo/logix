@@ -21,18 +21,18 @@ export const CounterAllLogic = CounterAllDef.logic(($) => ({
   run: Effect.gen(function* () {
     yield* Effect.all(
       [
-        $.onAction('inc').run({
-          effect: $.state.update((prev) => ({
+        $.onAction('inc').run(
+          $.state.update((prev) => ({
             ...prev,
             value: prev.value + 1,
           })),
-        }),
-        $.onAction('dec').run({
-          effect: $.state.update((prev) => ({
+        ),
+        $.onAction('dec').run(
+          $.state.update((prev) => ({
             ...prev,
             value: prev.value - 1,
           })),
-        }),
+        ),
       ],
       { concurrency: 'unbounded' },
     )

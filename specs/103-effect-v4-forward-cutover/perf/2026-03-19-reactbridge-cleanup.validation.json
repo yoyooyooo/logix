@@ -1,0 +1,41 @@
+{
+  "capturedAt": "2026-03-19T08:01:30Z",
+  "scope": "RuntimeStore / React bridge 旧桥接收口（top2-2）",
+  "branch": "agent/v4-perf-reactbridge-cleanup",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.reactbridge-cleanup",
+  "commands": [
+    {
+      "id": "react.runtime-external-store.targeted",
+      "command": "pnpm --dir packages/logix-react test -- --run test/internal/RuntimeExternalStore.lowPriority.test.ts test/internal/RuntimeExternalStore.idleTeardown.test.ts test/Hooks/useSelector.sharedSubscription.test.tsx test/Hooks/useSelector.readQueryRetainScope.test.tsx",
+      "status": "passed",
+      "testFiles": 4,
+      "tests": 6
+    },
+    {
+      "id": "react.typecheck",
+      "command": "pnpm --dir packages/logix-react typecheck",
+      "status": "passed"
+    },
+    {
+      "id": "probe.next-blocker.r1",
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "status": "blocked",
+      "summary": {
+        "blockerSuiteId": "externalStore.ingest.tickNotify",
+        "failureKind": "threshold",
+        "budgetId": "full/off<=1.25"
+      }
+    },
+    {
+      "id": "probe.next-blocker.r2",
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "status": "clear",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-19-reactbridge-cleanup.probe-next-blocker.json"
+    }
+  ],
+  "summary": {
+    "legacyBridgeImplementationRemoved": true,
+    "runtimeExternalStoreConverged": true,
+    "currentProbeStatus": "clear"
+  }
+}

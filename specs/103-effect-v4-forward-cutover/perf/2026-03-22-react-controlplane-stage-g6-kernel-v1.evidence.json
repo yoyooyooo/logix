@@ -1,0 +1,67 @@
+{
+  "id": "2026-03-22-react-controlplane-stage-g6-kernel-v1",
+  "capturedAt": "2026-03-22",
+  "scope": "react-controlplane-stage-g6-controlplane-kernel-v1-owner-ticket-unification",
+  "baseHead": "450bc529",
+  "decision": {
+    "status": "accepted_with_evidence",
+    "acceptedWithEvidence": true,
+    "mergeToMain": true,
+    "reasons": [
+      "ControlplaneKernel v1 已覆盖所有 config snapshot confirm run 触发，owner ticket 规则统一化完成",
+      "phase-trace 锚点满足同 ownerKey 同 epoch 单次 commit，且过期 ticket 回写有明确 reason 码",
+      "typecheck 与 phase-trace 测试通过，probe 首轮阈值波动在已知噪声口径内，复跑恢复 clear"
+    ]
+  },
+  "constraints": {
+    "publicApiChange": false,
+    "touchedCorePath": false,
+    "writeScope": [
+      "packages/logix-react/src/internal/provider/**",
+      "packages/logix-react/test/RuntimeProvider/**",
+      "docs/perf/**",
+      "specs/103-effect-v4-forward-cutover/perf/**"
+    ],
+    "keptUntouched": [
+      "packages/logix-core/**",
+      "packages/logix-react public API"
+    ]
+  },
+  "verification": {
+    "commands": [
+      "pnpm --filter @logixjs/react typecheck:test",
+      "pnpm --filter @logixjs/react exec vitest run test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx --pool forks",
+      "python3 fabfile.py probe_next_blocker --json"
+    ],
+    "artifacts": {
+      "typecheck": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-react-controlplane-stage-g6-kernel-v1.validation.typecheck.txt",
+      "phaseTraceTest": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-react-controlplane-stage-g6-kernel-v1.validation.vitest.txt",
+      "probeNextBlockerR1": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-react-controlplane-stage-g6-kernel-v1.probe-next-blocker.json",
+      "probeNextBlockerR2": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-react-controlplane-stage-g6-kernel-v1.probe-next-blocker.r2.json"
+    },
+    "phaseTrace": {
+      "testFile": "test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx",
+      "passed": true,
+      "total": 8,
+      "assertions": [
+        "runtime.layer-bound/config resolve-commit for same ownerKey+epoch is exactly 1",
+        "expired ticket commit reason is ticket-expired and stale reason code is kernel-ticket-expired"
+      ]
+    },
+    "probe": {
+      "r1": {
+        "status": "blocked",
+        "failureKind": "threshold",
+        "suiteId": "form.listScopeCheck",
+        "budgetId": "auto<=full*1.05",
+        "firstFailLevel": 10
+      },
+      "r2": {
+        "status": "clear",
+        "failureKind": null,
+        "thresholdAnomalyCount": 0
+      }
+    },
+    "finalProbeStatus": "clear"
+  }
+}

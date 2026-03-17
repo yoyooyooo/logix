@@ -1,0 +1,42 @@
+{
+  "cutId": "r2a-policy-surface-impl",
+  "validatedAtUtc": "2026-03-19T17:33:18Z",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.r2a-policy-surface-impl",
+  "branch": "agent/v4-perf-r2a-policy-surface-impl",
+  "commands": [
+    {
+      "name": "typecheck-test",
+      "cmd": "pnpm -C packages/logix-core typecheck:test",
+      "exitCode": 0,
+      "result": "passed"
+    },
+    {
+      "name": "txn-lane-tests",
+      "cmd": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.TxnLanes.DefaultOn.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.TxnLanes.Overrides.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.txnQueue.Lanes.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts",
+      "exitCode": 0,
+      "result": "passed",
+      "summary": {
+        "testFilesPassed": 4,
+        "testsPassed": 12,
+        "duration": "877ms"
+      }
+    },
+    {
+      "name": "next-blocker-probe",
+      "cmd": "python3 fabfile.py probe_next_blocker --json",
+      "exitCode": 0,
+      "result": "passed",
+      "summary": {
+        "status": "clear",
+        "thresholdAnomalyCount": 0
+      },
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-r2a-policy-surface-impl.probe-next-blocker.json"
+    }
+  ],
+  "decisionGate": {
+    "typecheckTest": "green",
+    "txnLaneTests": "green",
+    "probeNextBlocker": "clear",
+    "overall": "pass"
+  }
+}

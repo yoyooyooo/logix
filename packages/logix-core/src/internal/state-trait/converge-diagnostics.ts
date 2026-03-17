@@ -1,4 +1,4 @@
-import { Effect, FiberRef, Option } from 'effect'
+import { Effect, Option } from 'effect'
 import * as SchemaAST from 'effect/SchemaAST'
 import * as Debug from '../runtime/core/DebugSink.js'
 import { isDevEnv } from '../runtime/core/env.js'
@@ -65,44 +65,29 @@ const schemaHasPath = (
 ): boolean => {
   if (segments.length === 0) return true
 
-  let current = ast
+  let current = SchemaAST.toType(ast)
 
-  // unwrap Suspend/Refinement (common for recursive schemas and branded schemas)
-  while (true) {
-    if (SchemaAST.isSuspend(current)) {
-      if (seen.has(current)) {
-        // Recursion: if we can't statically decide further, allow conservatively to avoid false positives.
-        return true
-      }
-      seen.add(current)
-      current = current.f()
-      continue
+  while (SchemaAST.isSuspend(current)) {
+    if (seen.has(current)) {
+      return true
     }
-    if (SchemaAST.isRefinement(current)) {
-      current = current.from
-      continue
-    }
-    break
-  }
-
-  // Transformation: prefer `to` (decoded shape), but also allow `from` to reduce false positives.
-  if (SchemaAST.isTransformation(current)) {
-    return schemaHasPath(current.to, segments, seen) || schemaHasPath(current.from, segments, seen)
+    seen.add(current)
+    current = SchemaAST.toType(current.thunk())
   }
 
   if (SchemaAST.isUnion(current)) {
     return current.types.some((t) => schemaHasPath(t, segments, seen))
   }
 
-  if (SchemaAST.isTupleType(current)) {
+  if (SchemaAST.isArrays(current)) {
     const candidates: Array<SchemaAST.AST> = []
-    for (const e of current.elements) candidates.push(e.type)
-    for (const r of current.rest) candidates.push(r.type)
+    for (const e of current.elements) candidates.push(e)
+    for (const r of current.rest) candidates.push(r)
     if (candidates.length === 0) return true
     return candidates.some((t) => schemaHasPath(t, segments, seen))
   }
 
-  if (SchemaAST.isTypeLiteral(current)) {
+  if (SchemaAST.isObjects(current)) {
     const [head, ...tail] = segments
 
     for (const ps of current.propertySignatures) {
@@ -112,12 +97,9 @@ const schemaHasPath = (
 
     // index signature: open objects like Record<string, T> allow any key
     for (const sig of current.indexSignatures) {
-      let param: SchemaAST.AST = sig.parameter as unknown as SchemaAST.AST
-      while (SchemaAST.isRefinement(param)) {
-        param = param.from
-      }
+      const param = SchemaAST.toType(sig.parameter as unknown as SchemaAST.AST)
       const tag = (param as any)?._tag
-      if (tag === 'StringKeyword' || tag === 'TemplateLiteral') {
+      if (tag === 'String' || tag === 'TemplateLiteral') {
         return schemaHasPath(sig.type, tail, seen)
       }
     }
@@ -168,7 +150,7 @@ export const emitSchemaMismatch = <S extends object>(
   Effect.gen(function* () {
     if (!isDevEnv()) return
 
-    const level = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
+  const level = yield* Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie)
     if (level === 'off') return
 
     const key = `${ctx.moduleId ?? 'unknown'}::${ctx.instanceId}`

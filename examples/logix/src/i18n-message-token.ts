@@ -95,7 +95,7 @@ const runtime = Logix.Runtime.make(DemoImpl, {
 const program = Effect.scoped(
   Effect.gen(function* () {
     const svc = yield* Logix.Root.resolve(I18nTag)
-    const demo = yield* DemoDef.tag
+    const demo = yield* Effect.service(DemoDef.tag).pipe(Effect.orDie)
 
     const token0 = (yield* demo.getState as any).token as I18nMessageToken
     console.log('[en] token:', JSON.stringify(token0))

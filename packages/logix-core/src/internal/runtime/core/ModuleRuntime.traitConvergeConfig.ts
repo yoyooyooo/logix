@@ -2,6 +2,7 @@ import { Effect, Option } from 'effect'
 import {
   StateTransactionConfigTag,
   StateTransactionOverridesTag,
+  type StateTransactionRuntimeConfig,
   type StateTransactionOverrides,
   type StateTransactionTraitConvergeOverrides,
   type TraitConvergeTimeSlicingPatch,
@@ -39,11 +40,39 @@ const normalizeRequestedMode = (mode: unknown): TraitConvergeRequestedMode | und
 
 const normalizeBool = (value: unknown): boolean | undefined => (typeof value === 'boolean' ? value : undefined)
 
+type ResolvedTraitConvergeConfigCache = {
+  readonly runtimeDefaultFingerprint: string
+  readonly runtimeModuleFingerprint: string
+  readonly providerDefaultFingerprint: string
+  readonly providerModuleFingerprint: string
+  readonly resolved: ResolvedTraitConvergeConfig
+}
+
+export type StateTransactionRuntimeSnapshot = {
+  readonly runtimeConfig: StateTransactionRuntimeConfig | undefined
+  readonly providerOverrides: StateTransactionOverrides | undefined
+}
+
+const patchFingerprint = (
+  patch: StateTransactionTraitConvergeOverrides | StateTransactionOverrides | undefined,
+): string => {
+  if (!patch) return ''
+  const timeSlicing = (patch as any).traitConvergeTimeSlicing
+  return [
+    String((patch as any).traitConvergeMode ?? ''),
+    String((patch as any).traitConvergeBudgetMs ?? ''),
+    String((patch as any).traitConvergeDecisionBudgetMs ?? ''),
+    timeSlicing && typeof timeSlicing === 'object' ? String((timeSlicing as any).enabled ?? '') : '',
+    timeSlicing && typeof timeSlicing === 'object' ? String((timeSlicing as any).debounceMs ?? '') : '',
+    timeSlicing && typeof timeSlicing === 'object' ? String((timeSlicing as any).maxLagMs ?? '') : '',
+  ].join('|')
+}
+
 export const makeResolveTraitConvergeConfig = (args: {
   /** Original options.moduleId (may be undefined); used for module overrides map lookup. */
   readonly moduleId: string | undefined
   readonly stateTransaction: ModuleStateTransactionOptions
-}): (() => Effect.Effect<ResolvedTraitConvergeConfig>) => {
+}): ((snapshot?: StateTransactionRuntimeSnapshot) => Effect.Effect<ResolvedTraitConvergeConfig>) => {
   const builtinTraitConvergeBudgetMs: number = normalizePositiveMs(args.stateTransaction?.traitConvergeBudgetMs) ?? 200
   const builtinTraitConvergeDecisionBudgetMs: number =
     normalizePositiveMs(args.stateTransaction?.traitConvergeDecisionBudgetMs) ?? 0.5
@@ -56,14 +85,29 @@ export const makeResolveTraitConvergeConfig = (args: {
     normalizePositiveMs(args.stateTransaction?.traitConvergeTimeSlicing?.debounceMs) ?? 16
   const builtinTimeSlicingMaxLagMs: number =
     normalizePositiveMs(args.stateTransaction?.traitConvergeTimeSlicing?.maxLagMs) ?? 200
+  let cache: ResolvedTraitConvergeConfigCache | undefined
+  const snapshotCache = new WeakMap<StateTransactionRuntimeSnapshot, ResolvedTraitConvergeConfig>()
 
-  return () =>
+  return (snapshot?: StateTransactionRuntimeSnapshot) =>
     Effect.gen(function* () {
-      const runtimeConfigOpt = yield* Effect.serviceOption(StateTransactionConfigTag)
-      const overridesOpt = yield* Effect.serviceOption(StateTransactionOverridesTag)
+      if (snapshot) {
+        const cachedFromSnapshot = snapshotCache.get(snapshot)
+        if (cachedFromSnapshot) {
+          return cachedFromSnapshot
+        }
+      }
 
-      const runtimeConfig = Option.isSome(runtimeConfigOpt) ? runtimeConfigOpt.value : undefined
-      const providerOverrides = Option.isSome(overridesOpt) ? overridesOpt.value : undefined
+      let runtimeConfig: StateTransactionRuntimeConfig | undefined
+      let providerOverrides: StateTransactionOverrides | undefined
+      if (snapshot) {
+        runtimeConfig = snapshot.runtimeConfig
+        providerOverrides = snapshot.providerOverrides
+      } else {
+        const runtimeConfigOpt = yield* Effect.serviceOption(StateTransactionConfigTag)
+        const overridesOpt = yield* Effect.serviceOption(StateTransactionOverridesTag)
+        runtimeConfig = Option.isSome(runtimeConfigOpt) ? runtimeConfigOpt.value : undefined
+        providerOverrides = Option.isSome(overridesOpt) ? overridesOpt.value : undefined
+      }
 
       let traitConvergeMode = builtinTraitConvergeMode
       let traitConvergeBudgetMs = builtinTraitConvergeBudgetMs
@@ -135,13 +179,31 @@ export const makeResolveTraitConvergeConfig = (args: {
           ? providerOverrides.traitConvergeOverridesByModuleId[moduleId]
           : undefined
 
+      const runtimeDefaultFingerprint = patchFingerprint(runtimeConfig)
+      const runtimeModuleFingerprint = patchFingerprint(runtimeModulePatch)
+      const providerDefaultFingerprint = patchFingerprint(providerOverrides)
+      const providerModuleFingerprint = patchFingerprint(providerModulePatch)
+
+      if (
+        cache &&
+        cache.runtimeDefaultFingerprint === runtimeDefaultFingerprint &&
+        cache.runtimeModuleFingerprint === runtimeModuleFingerprint &&
+        cache.providerDefaultFingerprint === providerDefaultFingerprint &&
+        cache.providerModuleFingerprint === providerModuleFingerprint
+      ) {
+        if (snapshot) {
+          snapshotCache.set(snapshot, cache.resolved)
+        }
+        return cache.resolved
+      }
+
       // priority: provider > runtime_module > runtime_default > builtin
       applyPatch(runtimeConfig, 'runtime_default')
       applyPatch(runtimeModulePatch, 'runtime_module')
       applyPatch(providerOverrides, 'provider')
       applyPatch(providerModulePatch, 'provider')
 
-      return {
+      const resolved: ResolvedTraitConvergeConfig = {
         traitConvergeMode,
         traitConvergeBudgetMs,
         traitConvergeDecisionBudgetMs,
@@ -152,5 +214,18 @@ export const makeResolveTraitConvergeConfig = (args: {
         },
         configScope,
       }
+
+      cache = {
+        runtimeDefaultFingerprint,
+        runtimeModuleFingerprint,
+        providerDefaultFingerprint,
+        providerModuleFingerprint,
+        resolved,
+      }
+      if (snapshot) {
+        snapshotCache.set(snapshot, resolved)
+      }
+
+      return resolved
     })
 }

@@ -1,0 +1,28 @@
+{
+  "date": "2026-03-19",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.list-rowid-gate",
+  "branch": "agent/v4-perf-list-rowid-gate",
+  "scope": "D-4 no-trackBy commit-time updateAll gate tightening",
+  "commands": [
+    {
+      "cmd": "pnpm -C packages/logix-core test -- test/internal/StateTrait/RowId.UpdateGate.test.ts test/internal/StateTrait/RowId.NoTrackByGate.test.ts test/internal/StateTrait/StateTrait.NestedList.RowId.Stability.test.ts",
+      "status": "passed",
+      "testFiles": 3,
+      "testsPassed": 22
+    },
+    {
+      "cmd": "python3 fabfile.py probe_next_blocker --json",
+      "status": "failed",
+      "exitCode": 42,
+      "probeStatus": "blocked",
+      "blockerSuiteId": "externalStore.ingest.tickNotify",
+      "blockerBudgetId": "full/off<=1.25",
+      "blockerFirstFailLevel": 256,
+      "blockerMaxLevel": 128
+    }
+  ],
+  "notes": [
+    "Top2 traversal plan cache was not touched.",
+    "Probe queue remains blocked by an existing threshold anomaly outside this write scope."
+  ]
+}

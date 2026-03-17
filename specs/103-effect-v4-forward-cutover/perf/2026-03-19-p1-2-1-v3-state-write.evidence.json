@@ -1,0 +1,70 @@
+{
+  "date": "2026-03-19",
+  "cut": "P1-2.1-v3-state-write",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p1-2-1-v3-state-write",
+  "branch": "agent/v4-perf-p1-2-1-v3-state-write",
+  "result": "accepted_with_evidence",
+  "scope": {
+    "code": [
+      "packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts",
+      "packages/logix-core/src/internal/runtime/core/ModuleRuntime.dispatch.ts",
+      "packages/logix-core/src/internal/runtime/core/StateTransaction.ts",
+      "packages/logix-core/src/internal/state-trait/external-store.ts",
+      "packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.reducerWholeStateFallback.Perf.off.test.ts"
+    ],
+    "docs": [
+      "docs/perf/archive/2026-03/2026-03-19-p1-2-1-v3-state-write.md",
+      "specs/103-effect-v4-forward-cutover/perf/2026-03-19-p1-2-1-v3-state-write.evidence.json",
+      "specs/103-effect-v4-forward-cutover/perf/2026-03-19-p1-2-1-v3-state-write.probe.json"
+    ]
+  },
+  "benchmarks": {
+    "reducerWholeStateFallbackPerfOff": {
+      "single": {
+        "legacy": { "p50Ms": 0.016, "p95Ms": 0.019, "avgMs": 0.018 },
+        "topLevel": { "p50Ms": 0.006, "p95Ms": 0.009, "avgMs": 0.007 }
+      },
+      "eight": {
+        "legacy": { "p50Ms": 0.019, "p95Ms": 0.025, "avgMs": 0.021 },
+        "topLevel": { "p50Ms": 0.004, "p95Ms": 0.006, "avgMs": 0.005 }
+      },
+      "many": {
+        "legacy": { "p50Ms": 0.011, "p95Ms": 0.014, "avgMs": 0.012 },
+        "topLevel": { "p50Ms": 0.004, "p95Ms": 0.011, "avgMs": 0.006 }
+      },
+      "listRoot": {
+        "legacy": { "p50Ms": 0.015, "p95Ms": 0.018, "avgMs": 0.025 },
+        "topLevel": { "p50Ms": 0.004, "p95Ms": 0.004, "avgMs": 0.004 }
+      }
+    },
+    "boundApiStateUpdateWholeStateFallbackPerfOff": {
+      "single": {
+        "legacy": { "p50Ms": 0.08, "p95Ms": 0.201, "avgMs": 0.11 },
+        "current": { "p50Ms": 0.082, "p95Ms": 0.132, "avgMs": 0.109 }
+      },
+      "eight": {
+        "legacy": { "p50Ms": 0.062, "p95Ms": 0.104, "avgMs": 0.073 },
+        "current": { "p50Ms": 0.049, "p95Ms": 0.07, "avgMs": 0.051 }
+      },
+      "many": {
+        "legacy": { "p50Ms": 0.062, "p95Ms": 0.083, "avgMs": 0.065 },
+        "current": { "p50Ms": 0.056, "p95Ms": 0.083, "avgMs": 0.064 }
+      }
+    }
+  },
+  "validation": {
+    "commands": [
+      "pnpm -C packages/logix-core exec vitest run test/StateTrait/StateTrait.ConvergeAuto.DirtySetFromMutate.test.ts",
+      "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.reducerWholeStateFallback.Perf.off.test.ts",
+      "pnpm -C packages/logix-core exec vitest run test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts test/internal/Runtime/ModuleAsSource.tick.test.ts",
+      "pnpm -C packages/logix-core exec vitest run test/internal/Bound/BoundApiRuntime.stateUpdateWholeStateFallback.Perf.off.test.ts",
+      "python3 fabfile.py probe_next_blocker --json"
+    ],
+    "status": "passed",
+    "probeStatus": "clear"
+  },
+  "notes": [
+    "top-level list root dirty evidence now records `${key}[]`, shrinking whole-state fallback surface.",
+    "externalStore patch path resolution now preserves raw path when normalization fails, reducing avoidable fallback."
+  ]
+}

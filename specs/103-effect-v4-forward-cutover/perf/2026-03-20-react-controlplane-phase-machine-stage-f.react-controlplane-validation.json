@@ -1,0 +1,35 @@
+{
+  "date": "2026-03-20",
+  "topic": "react-controlplane-phase-machine-stage-f",
+  "result": "accepted_with_evidence",
+  "checks": [
+    {
+      "command": "pnpm --filter @logixjs/react typecheck:test",
+      "status": "passed"
+    },
+    {
+      "command": "pnpm --filter @logixjs/react exec vitest run test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx --pool forks",
+      "status": "passed",
+      "summary": {
+        "testFilesPassed": 1,
+        "testsPassed": 6,
+        "testsFailed": 0
+      }
+    },
+    {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "status": "passed",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-react-controlplane-phase-machine-stage-f.probe-next-blocker.json",
+      "summary": {
+        "probeStatus": "clear",
+        "blocker": null,
+        "executedSuites": 3
+      }
+    }
+  ],
+  "notes": [
+    "Stage F 把 preload lane 的 latest/completed/inFlight/retainedCancels 合并到 ownerKey 维度 registry，减少 lane-specific ref 分叉。",
+    "preload lane 的 mismatch/unmount/release 三类取消动作已统一到共享 cancel helper。",
+    "phase-trace 增加 preload ownerKey 断言，保证 controlplane owner 口径可解释。"
+  ]
+}

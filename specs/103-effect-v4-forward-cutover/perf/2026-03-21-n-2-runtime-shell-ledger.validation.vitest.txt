@@ -1,0 +1,30 @@
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf/packages/logix-core
+
+stdout | test/internal/Runtime/ModuleRuntime/ModuleRuntime.dispatchShell.Phases.Perf.light.test.ts > ModuleRuntime.dispatch shell phases · perf baseline (Diagnostics=light) > records reproducible dispatch shell phase evidence
+[perf] dispatch-shell-phases diagnostics=light iters=400 warmup=80 dispatch.p50=0.129ms dispatch.p95=0.479ms txnPrelude.avg=0.023ms queueContext.avg=0.003ms queueResolve.avg=0.006ms bodyShell.avg=0.034ms asyncEscape.avg=0.033ms commit.avg=0.009ms dispatchRecord.avg=0.006ms dispatchCommitHub.avg=0.001ms residual.avg=0.131ms
+[ledger] wrote specs/103-effect-v4-forward-cutover/perf/.local/runtime-shell-ledger/2026-03-21-n-2-runtime-shell-ledger.dispatchShell.phases.light.darwin-arm64.nodev22.22.0.quick.ledger.v1.ndjson + specs/103-effect-v4-forward-cutover/perf/.local/runtime-shell-ledger/2026-03-21-n-2-runtime-shell-ledger.dispatchShell.phases.light.darwin-arm64.nodev22.22.0.quick.ledger.summary.v1.json
+
+ ✓ test/internal/Runtime/ModuleRuntime/ModuleRuntime.dispatchShell.Phases.Perf.light.test.ts (1 test) 184ms
+stdout | test/internal/Runtime/ModuleRuntime/ModuleRuntime.RuntimeSnapshot.ResolveShell.Perf.off.test.ts > ModuleRuntime runtime snapshot resolve shell · microbench (Diagnostics=off) > keeps resolver semantics and cuts repeated serviceOption shell tax across adjacent resolvers
+[perf] runtime-snapshot-resolve-shell diagnostics=off iters=2000 warmup=200 batch=128 noSnapshot.p50=0.636ms noSnapshot.p95=1.536ms noSnapshot.avg=0.817ms snapshot.p50=0.226ms snapshot.p95=0.967ms snapshot.avg=0.305ms speedup=2.682x saved=62.71%
+[ledger] wrote specs/103-effect-v4-forward-cutover/perf/.local/runtime-shell-ledger/2026-03-21-n-2-runtime-shell-ledger.resolveShell.snapshot.off.darwin-arm64.nodev22.22.0.quick.ledger.v1.ndjson + specs/103-effect-v4-forward-cutover/perf/.local/runtime-shell-ledger/2026-03-21-n-2-runtime-shell-ledger.resolveShell.snapshot.off.darwin-arm64.nodev22.22.0.quick.ledger.summary.v1.json
+
+ ✓ test/internal/Runtime/ModuleRuntime/ModuleRuntime.RuntimeSnapshot.ResolveShell.Perf.off.test.ts (1 test) 2575ms
+     ✓ keeps resolver semantics and cuts repeated serviceOption shell tax across adjacent resolvers  2574ms
+stdout | test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts > ModuleRuntime.operation runner · transaction-shared hot context microbench (Diagnostics=off, middleware=empty) > records direct evidence for transaction-captured operation hot context
+[perf] operation-runner txn-hot-context diagnostics=off middleware=empty iters=1500 warmup=150 batch=256 shared.p50=0.823ms shared.p95=1.552ms shared.avg=0.932ms fallback.p50=1.230ms fallback.p95=2.012ms fallback.avg=1.383ms speedup=1.484x saved=32.59%
+[ledger] wrote specs/103-effect-v4-forward-cutover/perf/.local/runtime-shell-ledger/2026-03-21-n-2-runtime-shell-ledger.operationRunner.txnHotContext.off.batch256.darwin-arm64.nodev22.22.0.quick.ledger.v1.ndjson + specs/103-effect-v4-forward-cutover/perf/.local/runtime-shell-ledger/2026-03-21-n-2-runtime-shell-ledger.operationRunner.txnHotContext.off.batch256.darwin-arm64.nodev22.22.0.quick.ledger.summary.v1.json
+
+stdout | test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts > ModuleRuntime.operation runner · transaction-shared hot context microbench (Diagnostics=off, middleware=empty) > records direct evidence for transaction-captured operation hot context
+[perf] operation-runner txn-hot-context diagnostics=off middleware=empty iters=1500 warmup=150 batch=1024 shared.p50=2.762ms shared.p95=3.335ms shared.avg=2.847ms fallback.p50=4.795ms fallback.p95=5.632ms fallback.avg=4.868ms speedup=1.710x saved=41.53%
+[ledger] wrote specs/103-effect-v4-forward-cutover/perf/.local/runtime-shell-ledger/2026-03-21-n-2-runtime-shell-ledger.operationRunner.txnHotContext.off.batch1024.darwin-arm64.nodev22.22.0.quick.ledger.v1.ndjson + specs/103-effect-v4-forward-cutover/perf/.local/runtime-shell-ledger/2026-03-21-n-2-runtime-shell-ledger.operationRunner.txnHotContext.off.batch1024.darwin-arm64.nodev22.22.0.quick.ledger.summary.v1.json
+
+ ✓ test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts (1 test) 16620ms
+     ✓ records direct evidence for transaction-captured operation hot context  16619ms
+
+ Test Files  3 passed (3)
+      Tests  3 passed (3)
+   Start at  22:44:36
+   Duration  17.14s (transform 1.03s, setup 0ms, import 2.06s, tests 19.38s, environment 0ms)
+

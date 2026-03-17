@@ -1,10 +1,10 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Context, Effect, Ref, Schema } from 'effect'
+import {Effect, Ref, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../src/index.js'
 import { withProcessRuntime, withProcessRuntimeScope } from './test-helpers.js'
 
 describe('process: trigger platformEvent', () => {
-  it.scoped('should run when platform event is delivered via InternalContracts', () =>
+  it.effect('should run when platform event is delivered via InternalContracts', () =>
     Effect.gen(function* () {
       const invoked = yield* Ref.make(0)
 
@@ -45,7 +45,7 @@ describe('process: trigger platformEvent', () => {
 
             for (let i = 0; i < 100; i++) {
               if ((yield* Ref.get(invoked)) === 1) break
-              yield* Effect.yieldNow()
+              yield* Effect.yieldNow
             }
           }),
       })
@@ -54,7 +54,7 @@ describe('process: trigger platformEvent', () => {
     }),
   )
 
-  it.scoped('should only fan out to matching platformEvent triggers and preserve duplicate specs', () =>
+  it.effect('should only fan out to matching platformEvent triggers and preserve duplicate specs', () =>
     Effect.gen(function* () {
       const invokedA = yield* Ref.make(0)
       const invokedB = yield* Ref.make(0)
@@ -124,7 +124,7 @@ describe('process: trigger platformEvent', () => {
               const b = yield* Ref.get(invokedB)
               const c = yield* Ref.get(invokedC)
               if (a === 1 && b === 0 && c === 2) break
-              yield* Effect.yieldNow()
+              yield* Effect.yieldNow
             }
           }),
       })
@@ -134,7 +134,7 @@ describe('process: trigger platformEvent', () => {
       expect(yield* Ref.get(invokedC)).toBe(2)
     }),
   )
-  it.scoped('should refresh platformEvent index when re-install updates trigger definitions', () =>
+  it.effect('should refresh platformEvent index when re-install updates trigger definitions', () =>
     Effect.gen(function* () {
       const processId = 'ProcessTriggerPlatformEventReinstall'
 
@@ -176,7 +176,7 @@ describe('process: trigger platformEvent', () => {
         layer,
         run: ({ env, runtime }) =>
           Effect.gen(function* () {
-            const host = Context.get(env, Host.tag) as any
+            const host = ServiceMap.get(env, Host.tag) as any
             const scope = {
               type: 'moduleInstance',
               moduleId: Host.id,
@@ -201,7 +201,7 @@ describe('process: trigger platformEvent', () => {
                   event.trigger.platformEvent === 'runtime:boot',
               )
               if (bootReady) break
-              yield* Effect.yieldNow()
+              yield* Effect.yieldNow
             }
 
             yield* runtime.install(ProcNew, { scope, mode: 'switch' })
@@ -218,11 +218,11 @@ describe('process: trigger platformEvent', () => {
                   event.trigger.platformEvent === 'app:reregister:new',
               )
               if (hasNew) break
-              yield* Effect.yieldNow()
+              yield* Effect.yieldNow
             }
 
             for (let i = 0; i < 20; i++) {
-              yield* Effect.yieldNow()
+              yield* Effect.yieldNow
             }
 
             return yield* runtime.getEventsSnapshot()
@@ -243,7 +243,7 @@ describe('process: trigger platformEvent', () => {
     }),
   )
 
-  it.scoped('should refresh precompiled boot trigger when install updates definition before start', () =>
+  it.effect('should refresh precompiled boot trigger when install updates definition before start', () =>
     Effect.gen(function* () {
       const processId = 'ProcessTriggerPlatformEventStartPlanRefresh'
 
@@ -285,7 +285,7 @@ describe('process: trigger platformEvent', () => {
         layer,
         run: ({ env, runtime }) =>
           Effect.gen(function* () {
-            const host = Context.get(env, Host.tag) as any
+            const host = ServiceMap.get(env, Host.tag) as any
             const scope = {
               type: 'moduleInstance',
               moduleId: Host.id,
@@ -305,7 +305,7 @@ describe('process: trigger platformEvent', () => {
                   event.trigger.platformEvent === 'runtime:boot',
               )
               if (bootReady) break
-              yield* Effect.yieldNow()
+              yield* Effect.yieldNow
             }
 
             return yield* runtime.getEventsSnapshot()

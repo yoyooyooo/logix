@@ -1,15 +1,14 @@
 # 6. 与运行时容器的关系
 
-总结一下 Module / Logic / build-createInstance / ModuleImpl 与运行时容器之间的关系：
+总结一下 Module / Logic / Live / ModuleImpl 与运行时容器之间的关系：
 
 - 概念层：
   - Module = 领域模块定义（不含实例）；
   - Logic = 在该 Module 上运行的一段长逻辑程序；
-  - build/createInstance = Module 的统一实例化路径（program module + ModuleImpl）；
-  - Live = legacy 迁移入口（不再作为推荐主路径）；
+  - Live = Module 的运行时 Layer（一次性、即可注入即可用）；
   - ModuleImpl = 带初始状态、逻辑、默认依赖（imports）与可选进程（processes）的模块实现蓝图，可在不同 Runtime / React Tree 中多次复用。
 - 运行时层：
-  - 每个 `Module.build(...).createInstance()` / `ModuleImpl.layer` 会构造一个与该 Module 绑定的运行时实例；
+  - 每个 Module.live / ModuleImpl.layer 会构造一个与该 Module 绑定的运行时实例；
   - 所有挂在该 Module 上的 Logic 程序运行在同一个运行时实例上（共享 State / actions$ / changes$）；
   - 依赖解析与跨模块协作遵循 **strict 默认 + 显式 root provider**：
     - **strict（默认）**：`$.use(ChildModule)` 仅用于访问“当前模块实例 scope”内由 `imports` 提供的子模块；
@@ -20,11 +19,11 @@
       - moduleInstance-scope：ModuleImpl 的 `processes`（随实例 Scope 启停，多实例严格隔离）
       - uiSubtree-scope：React `useProcesses(...)`（随 UI 子树挂载/卸载）
   - 在分形 Runtime 模型下：
-    - 推荐通过 `Logix.Runtime.make(root, { layer, onError })` 以某个 Root program module（或 `root.createInstance()`）为入口构造一颗 Runtime（App / Page / Feature 均视为“Root + Runtime”）；
+    - 推荐通过 `Logix.Runtime.make(root, { layer, onError })` 以某个 Root program module（或其 `.impl`）为入口构造一颗 Runtime（App / Page / Feature 均视为“Root + Runtime”）；
     - Root ModuleImpl 可以通过 `imports` 引入子模块实现，通过 `processes` 声明长期进程（Process；含 `Process.link/Link.make`）；
     - 应用级 AppRuntime（基于 `LogixAppConfig` / `makeApp`）仅作为底层实现存在（基于 Layer 合成与 processes fork），主要服务于平台/运行时内部，不再建议业务直接调用。
 
-对日常业务开发而言，只需通过 Module / Logic / build-createInstance / ModuleImpl / `$` 五个概念进行思考与编码。
+对日常业务开发而言，只需通过 Module / Logic / Live / ModuleImpl / `$` 五个概念进行思考与编码。
 需要深入运行时生命周期、Scope、调试等能力时，再参考 `../runtime/05-runtime-implementation.md` 与 `../impl/*` 系列文档。
 
 ## 6.1 Root Provider（单例）心智模型（吸收 Angular/Nest 思想，但保留 Effect 优势）

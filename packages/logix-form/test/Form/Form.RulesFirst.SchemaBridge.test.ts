@@ -1,15 +1,21 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
 
+const waitForAsync = Effect.promise(
+  () =>
+    new Promise<void>((resolve) => {
+      setTimeout(resolve, 20)
+    }),
+)
+
 describe('Form rules-first schema bridge (T046)', () => {
-  it.scoped('z.field(schema) validates and participates in reValidateOn', () =>
+  it.effect('z.field(schema) validates and participates in reValidateOn', () =>
     Effect.gen(function* () {
       const Email = Schema.String.pipe(
-        Schema.minLength(1, { message: () => '请填写邮箱' }),
-        Schema.pattern(/.+@.+\..+/, { message: () => '邮箱格式不正确' }),
+        Schema.refine((value): value is string => value.length >= 1, { message: '请填写邮箱' }),
+        Schema.refine((value): value is string => /.+@.+\..+/.test(value), { message: '邮箱格式不正确' }),
       )
 
       const ValuesSchema = Schema.Struct({
@@ -44,8 +50,9 @@ describe('Form rules-first schema bridge (T046)', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* module.tag
+        const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const controller = module.controller.make(rt)
+        yield* waitForAsync
 
         yield* controller.controller.handleSubmit({
           onValid: () => Effect.void,
@@ -56,13 +63,13 @@ describe('Form rules-first schema bridge (T046)', () => {
         expect(s1.errors?.contact?.email).toBe('请填写邮箱')
 
         yield* controller.field('contact.email').set('abc')
-        yield* Effect.sleep('20 millis')
+        yield* waitForAsync
 
         const s2: any = yield* controller.getState
         expect(s2.errors?.contact?.email).toBe('邮箱格式不正确')
 
         yield* controller.field('contact.email').set('a@b.com')
-        yield* Effect.sleep('20 millis')
+        yield* waitForAsync
 
         const s3: any = yield* controller.getState
         expect(s3.errors?.contact?.email).toBeUndefined()

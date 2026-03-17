@@ -1,4 +1,4 @@
-import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from '@effect/platform'
+import { HttpApiEndpoint, HttpApiGroup } from 'effect/unstable/httpapi'
 import { Schema } from 'effect'
 
 export const HealthResponse = Schema.Struct({
@@ -13,9 +13,10 @@ export const HealthProbeResponse = Schema.Struct({
 })
 
 export const HealthGroup = HttpApiGroup.make('Health')
-  .add(HttpApiEndpoint.get('health')`/health`.addSuccess(HealthResponse))
   .add(
-    HttpApiEndpoint.get('healthProbe')`/health/${HttpApiSchema.param('probe', Schema.NumberFromString)}`.addSuccess(
-      HealthProbeResponse,
-    ),
+    HttpApiEndpoint.get('health', '/health', { success: HealthResponse }),
+    HttpApiEndpoint.get('healthProbe', '/health/:probe', {
+      params: { probe: Schema.NumberFromString },
+      success: HealthProbeResponse,
+    }),
   )

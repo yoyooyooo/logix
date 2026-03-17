@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-03-21",
+  "cutId": "n-1-runtime-shell-freeze-nextwide",
+  "baseline": {
+    "motherlineRef": "v4-perf@1f53693f",
+    "note": "本线先做实现试探，再做同机同命令对照；未获得新增硬收益后回滚实现。"
+  },
+  "trial": {
+    "implemented": true,
+    "rolledBack": true,
+    "reason": "resolve-shell 与 dispatch/residual 未取得硬收益，且出现回退。"
+  },
+  "perfSignals": {
+    "trialVsBaseline": {
+      "runtimeSnapshotResolveShell": {
+        "trialNoSnapshotAvgMs": 0.784,
+        "baselineNoSnapshotAvgMs": 0.634,
+        "trialSnapshotAvgMs": 0.28,
+        "baselineSnapshotAvgMs": 0.259
+      },
+      "dispatchShellPhases": {
+        "trialDispatchP95Ms": 0.277,
+        "baselineDispatchP95Ms": 0.193,
+        "trialResidualAvgMs": 0.079,
+        "baselineResidualAvgMs": 0.073
+      },
+      "operationRunnerTxnHotContext": {
+        "trialBatch256SpeedupX": 1.623,
+        "baselineBatch256SpeedupX": 1.855,
+        "trialBatch1024SpeedupX": 1.611,
+        "baselineBatch1024SpeedupX": 1.612
+      }
+    },
+    "postRollback": {
+      "runtimeSnapshotResolveShell": {
+        "noSnapshotAvgMs": 0.634,
+        "snapshotAvgMs": 0.255,
+        "speedupX": 2.491
+      },
+      "dispatchShellPhases": {
+        "dispatchP95Ms": 0.183,
+        "residualAvgMs": 0.065
+      }
+    }
+  },
+  "probeNextBlocker": {
+    "ref": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-n-1-runtime-shell-freeze-nextwide.probe-next-blocker.json",
+    "status": "clear",
+    "blocker": null,
+    "thresholdAnomalyCount": 0
+  },
+  "conclusion": {
+    "resultClass": "docs/evidence-only",
+    "accepted_with_evidence": false,
+    "keepCodeChanges": false,
+    "reason": "本线未满足新增硬收益成功门，按约束回滚实现并仅保留证据与结论。"
+  }
+}

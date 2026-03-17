@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-03-19",
+  "cutId": "p0-1plus-dispatch-shell",
+  "phase": "before",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p0-1plus-dispatch-shell",
+  "branch": "agent/v4-perf-p0-1plus-dispatch-shell",
+  "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.dispatchShell.Phases.Perf.light.test.ts",
+  "config": {
+    "diagnosticsLevel": "light",
+    "iterations": 400,
+    "warmup": 80
+  },
+  "metrics": {
+    "dispatch.p50.ms": 0.107,
+    "dispatch.p95.ms": 0.268,
+    "txnPrelude.avg.ms": 0.014,
+    "queueContext.avg.ms": 0.002,
+    "queueResolve.avg.ms": 0.004,
+    "bodyShell.avg.ms": 0.025,
+    "asyncEscape.avg.ms": 0.025,
+    "commit.avg.ms": 0.01,
+    "dispatchRecord.avg.ms": 0.004,
+    "dispatchCommitHub.avg.ms": 0.001,
+    "residual.avg.ms": 0.086
+  },
+  "capturedAt": "2026-03-19T09:57:38+08:00"
+}

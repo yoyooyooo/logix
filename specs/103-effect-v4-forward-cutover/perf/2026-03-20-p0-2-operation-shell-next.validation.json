@@ -1,0 +1,55 @@
+{
+  "id": "2026-03-20-p0-2-operation-shell-next.validation",
+  "capturedAt": "2026-03-20",
+  "baselineRef": "v4-perf@97be4b0c",
+  "baselineArtifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-2-operation-rollout.validation.vitest.txt",
+  "commands": {
+    "typecheckTest": {
+      "command": "pnpm -C packages/logix-core typecheck:test",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-2-operation-shell-next.validation.typecheck.txt",
+      "passed": true
+    },
+    "targetedVitest": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.RuntimeSnapshot.ResolveShell.Perf.off.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-2-operation-shell-next.validation.vitest.txt",
+      "passed": true,
+      "testFilesPassed": 3,
+      "testsPassed": 3
+    },
+    "probeNextBlocker": {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-2-operation-shell-next.probe-next-blocker.json",
+      "status": "clear",
+      "blocker": null,
+      "executedCount": 3
+    }
+  },
+  "perfSummary": {
+    "runtimeSnapshotResolveShellExpanded": {
+      "noSnapshotAvgMs": 0.633,
+      "snapshotAvgMs": 0.258,
+      "speedupX": 2.458,
+      "savedPercent": 59.32
+    },
+    "operationRunnerTxnHotContext": {
+      "batch256SpeedupX": 1.544,
+      "batch1024SpeedupX": 1.642
+    }
+  },
+  "perfDeltaVsBaseline": {
+    "runtimeSnapshotResolveShellExpanded": {
+      "baselineNoSnapshotAvgMs": 0.715,
+      "baselineSnapshotAvgMs": 0.302,
+      "baselineSpeedupX": 2.368,
+      "noSnapshotAvgDeltaMs": -0.082,
+      "snapshotAvgDeltaMs": -0.044,
+      "speedupDeltaX": 0.09
+    },
+    "operationRunnerTxnHotContext": {
+      "baselineBatch256SpeedupX": 1.452,
+      "baselineBatch1024SpeedupX": 1.497,
+      "batch256SpeedupDeltaX": 0.092,
+      "batch1024SpeedupDeltaX": 0.145
+    }
+  }
+}

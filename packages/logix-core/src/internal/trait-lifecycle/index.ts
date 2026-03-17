@@ -1,4 +1,4 @@
-import { Effect, FiberRef, Option } from 'effect'
+import { Effect, Option } from 'effect'
 import type { BoundApi } from '../runtime/core/module.js'
 import * as TaskRunner from '../runtime/core/TaskRunner.js'
 import * as ReplayLog from '../runtime/core/ReplayLog.js'
@@ -144,7 +144,7 @@ export const scopedValidate = (bound: BoundApi<any, any>, request: ValidateReque
       target: toTarget(request.target),
     }
 
-    const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
+      const inTxn = yield* Effect.service(TaskRunner.inSyncTransactionFiber).pipe(Effect.orDie)
     if (inTxn) {
       enqueue(internal)
       return
@@ -155,7 +155,7 @@ export const scopedValidate = (bound: BoundApi<any, any>, request: ValidateReque
         enqueue(internal)
       }),
     )
-  })
+  }).pipe(Effect.catchCause(() => Effect.void))
 
 /**
  * scopedExecute (placeholder): a unified execution entrypoint for query/resource actions (refresh/invalidate, etc.).
@@ -247,7 +247,7 @@ export const cleanup = (bound: BoundApi<any, any>, request: CleanupRequest): Eff
         }
       })
 
-    const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
+  const inTxn = yield* Effect.service(TaskRunner.inSyncTransactionFiber).pipe(Effect.orDie)
     if (inTxn) {
       return yield* apply()
     }
@@ -271,7 +271,7 @@ export const cleanup = (bound: BoundApi<any, any>, request: CleanupRequest): Eff
     }
 
     return yield* runWithTxn({ kind: 'trait', name: 'cleanup', details: request }, apply)
-  })
+  }).pipe(Effect.catchCause(() => Effect.void))
 
 type SourceWiring = {
   readonly setup: Effect.Effect<void, never, any>

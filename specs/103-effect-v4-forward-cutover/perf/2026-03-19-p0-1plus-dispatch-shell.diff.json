@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-03-19",
+  "cutId": "p0-1plus-dispatch-shell",
+  "beforeRef": "2026-03-19-p0-1plus-dispatch-shell.before.json",
+  "afterRef": "2026-03-19-p0-1plus-dispatch-shell.after.json",
+  "diff": {
+    "dispatch.p50.ms": -0.021,
+    "dispatch.p95.ms": -0.114,
+    "txnPrelude.avg.ms": -0.003,
+    "queueContext.avg.ms": -0.001,
+    "queueResolve.avg.ms": 0.001,
+    "bodyShell.avg.ms": -0.009,
+    "asyncEscape.avg.ms": -0.009,
+    "commit.avg.ms": -0.006,
+    "dispatchRecord.avg.ms": -0.001,
+    "dispatchCommitHub.avg.ms": 0.0,
+    "residual.avg.ms": -0.023
+  },
+  "probeNextBlocker": {
+    "command": "python3 fabfile.py probe_next_blocker --json",
+    "statusBefore": "clear",
+    "statusAfter": "clear",
+    "statusAt20260319T1018": "blocked",
+    "statusAt20260319T1022": "clear",
+    "earlierBlockerSuiteId": "externalStore.ingest.tickNotify",
+    "earlierFailureKind": "threshold",
+    "earlierBudgetId": "full/off<=1.25",
+    "earlierFirstFailLevel": 256,
+    "earlierMaxLevel": 128,
+    "processReturnCode": 0,
+    "returnCode": 0,
+    "regression": false
+  },
+  "verdict": "accepted_with_evidence_probe_clear"
+}

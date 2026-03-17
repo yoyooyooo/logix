@@ -1,0 +1,66 @@
+{
+  "id": "2026-03-21-react-controlplane-stage-g5-kernel-v0-evidence",
+  "capturedAt": "2026-03-21",
+  "scope": "react-controlplane-stage-g5-kernel-v0-neutral-settle-no-refresh",
+  "baseHead": "6c0d9d55",
+  "decision": {
+    "status": "accepted_with_evidence",
+    "acceptedWithEvidence": true,
+    "mergeToMain": true,
+    "upgradeFrom": "merged_but_provisional",
+    "reasons": [
+      "独立 worktree 同口径复验中，typecheck 与 RuntimeProvider phase-trace 用例全部通过",
+      "probe_next_blocker 返回 status=clear，默认 3 个 gate 全部 passed，threshold_anomalies 为空",
+      "本轮无需新增代码修补，现有 G5 kernel v0 实现满足升级门"
+    ]
+  },
+  "constraints": {
+    "publicApiChange": false,
+    "touchedCorePath": false,
+    "codeChangeRequired": false,
+    "writeScope": [
+      "docs/perf/**",
+      "specs/103-effect-v4-forward-cutover/perf/**"
+    ],
+    "keptUntouched": [
+      "packages/logix-core/**",
+      "packages/logix-react/src/public API"
+    ]
+  },
+  "verification": {
+    "commands": [
+      "pnpm --filter @logixjs/react typecheck:test",
+      "pnpm --filter @logixjs/react exec vitest run test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx --pool forks",
+      "python3 fabfile.py probe_next_blocker --json"
+    ],
+    "artifacts": {
+      "typecheck": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-react-controlplane-stage-g5-kernel-v0-evidence.validation.typecheck.txt",
+      "phaseTraceTest": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-react-controlplane-stage-g5-kernel-v0-evidence.validation.vitest.txt",
+      "probeNextBlocker": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-react-controlplane-stage-g5-kernel-v0-evidence.probe-next-blocker.json"
+    },
+    "phaseTrace": {
+      "testFile": "test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx",
+      "passed": true,
+      "total": 7
+    },
+    "probeStatus": "clear",
+    "probeFailureKind": null,
+    "probeSuites": [
+      {
+        "suiteId": "externalStore.ingest.tickNotify",
+        "status": "passed",
+        "thresholdAnomalyCount": 0
+      },
+      {
+        "suiteId": "runtimeStore.noTearing.tickNotify",
+        "status": "passed",
+        "thresholdAnomalyCount": 0
+      },
+      {
+        "suiteId": "form.listScopeCheck",
+        "status": "passed",
+        "thresholdAnomalyCount": 0
+      }
+    ]
+  }
+}

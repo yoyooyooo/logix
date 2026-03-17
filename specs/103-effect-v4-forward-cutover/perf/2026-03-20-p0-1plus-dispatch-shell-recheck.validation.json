@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-03-20",
+  "cutId": "p0-1plus-dispatch-shell-recheck",
+  "commands": [
+    {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.dispatchShell.Phases.Perf.light.test.ts",
+      "status": "passed",
+      "evidenceRef": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-1plus-dispatch-shell-recheck.validation.vitest.txt"
+    },
+    {
+      "command": "pnpm -C packages/logix-core typecheck:test",
+      "status": "passed",
+      "evidenceRef": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-1plus-dispatch-shell-recheck.validation.typecheck.txt"
+    },
+    {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "status": "passed",
+      "evidenceRef": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-1plus-dispatch-shell-recheck.probe-next-blocker.json",
+      "probeStatus": "clear"
+    }
+  ],
+  "notes": [
+    "单次400迭代样本存在机器负载波动，最终裁决以 wave5 重复采样中位数为准。",
+    "本次未改 runtime 实现代码，仅做 docs/evidence-only 收口。"
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "id": "2026-03-21-crossplane-post-p1-4c-nextwide-identify.evidence",
+  "capturedAt": "2026-03-21",
+  "scope": "crossplane-post-p1-4c-nextwide-identify-package",
+  "baseHead": "5ad2cf6e",
+  "assumptions": [
+    "P1-4B-min 与 P1-4C-min 已在母线实现并 accepted_with_evidence",
+    "externalStore.ingest.tickNotify 当前仍按 edge_gate_noise 管理，作为复核门而不是主线触发器"
+  ],
+  "decision": {
+    "status": "discarded_or_pending",
+    "acceptedWithEvidence": false,
+    "mergeToMain": false,
+    "reasons": [
+      "probe_next_blocker 命中 failure_kind=environment，当前证据不可比",
+      "本轮目标是形成 post P1-4B/P1-4C 的 implementation-ready 识别包，不进入代码实施",
+      "下一线以 single-path cleanup 为主，优先消除并行真相源与热路径分支税"
+    ]
+  },
+  "top2Directions": {
+    "top1": {
+      "name": "P1-4D cross-plane single-path cleanup",
+      "uniqueNextLine": true,
+      "nextLineCut": "P1-4D-min remove LOGIX_CROSSPLANE_TOPIC dual path",
+      "anchors": [
+        "docs/perf/2026-03-21-crossplane-post-p1-4c-nextwide-identify.md",
+        "docs/perf/archive/2026-03/2026-03-19-identify-runtimestore-reactbridge.md"
+      ]
+    },
+    "top2": {
+      "name": "P1-4E react-bridge legacy external store removal",
+      "uniqueNextLine": false,
+      "nextLineCut": "P1-4E-min remove unused ModuleRuntimeExternalStore*",
+      "anchors": [
+        "docs/perf/2026-03-21-crossplane-post-p1-4c-nextwide-identify.md",
+        "docs/perf/archive/2026-03/2026-03-19-identify-runtimestore-reactbridge.md"
+      ]
+    }
+  },
+  "baselineAcceptedCuts": [
+    {
+      "name": "P1-4B-min RuntimeExternalStore module pulse hub",
+      "anchor": "docs/perf/2026-03-21-p1-4b-module-pulse-hub-impl.md"
+    },
+    {
+      "name": "P1-4C-min PulseEnvelope v0 + SelectorDeltaTopK",
+      "anchor": "docs/perf/2026-03-21-p1-4c-min-pulse-envelope-selector-delta-impl.md"
+    }
+  ],
+  "constraints": {
+    "publicApiChange": false,
+    "currentWorktreeWriteScope": [
+      "docs/perf/**",
+      "specs/103-effect-v4-forward-cutover/perf/**"
+    ]
+  },
+  "proposedNextwideCut": {
+    "name": "P1-4D-min remove LOGIX_CROSSPLANE_TOPIC dual path",
+    "status": "implementation_ready_docs_only",
+    "writeScopeIfTriggered": [
+      "packages/logix-core/src/internal/runtime/core/TickScheduler.ts",
+      "packages/logix-react/src/internal/store/RuntimeExternalStore.ts"
+    ]
+  },
+  "verification": {
+    "commands": [
+      "python3 fabfile.py probe_next_blocker --json"
+    ],
+    "probeStatus": "blocked",
+    "probeFailureKind": "environment",
+    "probeReport": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-crossplane-post-p1-4c-nextwide-identify.probe-next-blocker.json"
+  }
+}
+

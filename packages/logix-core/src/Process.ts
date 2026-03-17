@@ -1,9 +1,9 @@
-import { Effect, FiberRef } from 'effect'
+import { Effect, Option } from 'effect'
 import * as ModuleFactory from './internal/runtime/ModuleFactory.js'
 import * as Debug from './internal/runtime/core/DebugSink.js'
 import { currentConvergeStaticIrCollectors } from './internal/runtime/core/ConvergeStaticIrCollector.js'
 import { exportDeclarativeLinkIr, type DeclarativeLinkIR } from './internal/runtime/core/DeclarativeLinkIR.js'
-import { DeclarativeLinkRuntimeTag } from './internal/runtime/core/env.js'
+import { DeclarativeLinkRuntimeTag, TickSchedulerTag } from './internal/runtime/core/env.js'
 import type * as Protocol from './internal/runtime/core/process/protocol.js'
 import * as Meta from './internal/runtime/core/process/meta.js'
 import type { AnyModuleShape, ModuleHandle, ModuleLike, ModuleTag } from './internal/module.js'
@@ -152,7 +152,7 @@ export function link<Ms extends readonly LinkModuleToken<string, AnyModuleShape>
   )
 
   const wrapped = Effect.gen(function* () {
-    const level = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
+    const level = yield* Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie)
     if (level !== 'off') {
       yield* Debug.record({
         type: 'diagnostic',
@@ -278,15 +278,15 @@ export function linkDeclarative<Ms extends readonly LinkModuleToken<string, AnyM
     })
 
   const program: Effect.Effect<void, never, any> = Effect.gen(function* () {
-    const runtime = yield* DeclarativeLinkRuntimeTag
-    const collectors = yield* FiberRef.get(currentConvergeStaticIrCollectors)
+    const runtime = yield* Effect.service(DeclarativeLinkRuntimeTag).pipe(Effect.orDie)
+    const collectors = yield* Effect.service(currentConvergeStaticIrCollectors).pipe(Effect.orDie)
 
     const runtimeByTag = new Map<ModuleTag<string, AnyModuleShape>, any>()
-    const resolveRuntime = (tag: ModuleTag<string, AnyModuleShape>): Effect.Effect<any> =>
+    const resolveRuntime = (tag: ModuleTag<string, AnyModuleShape>): Effect.Effect<any, never, any> =>
       Effect.suspend(() => {
         const cached = runtimeByTag.get(tag)
         if (cached) return Effect.succeed(cached)
-        return (tag as any).pipe(
+        return Effect.service(tag as any).pipe(
           Effect.tap((rt: any) =>
             Effect.sync(() => {
               runtimeByTag.set(tag, rt)
@@ -348,6 +348,12 @@ export function linkDeclarative<Ms extends readonly LinkModuleToken<string, AnyM
     } as const
 
     const unregister = runtime.registerDeclarativeLink(registration as any)
+    const tickSchedulerOpt = (yield* Effect.serviceOption(TickSchedulerTag as any)) as Option.Option<any>
+    const releaseModuleSourceObservers = Option.isSome(tickSchedulerOpt)
+      ? Array.from(new Set(readNodes.map((node) => node.moduleInstanceKey))).map((moduleInstanceKey) =>
+          tickSchedulerOpt.value.retainModuleSourceObserver(moduleInstanceKey),
+        )
+      : []
 
     if (collectors.length > 0) {
       const exported = exportDeclarativeLinkIr({ linkId, ir })
@@ -359,6 +365,9 @@ export function linkDeclarative<Ms extends readonly LinkModuleToken<string, AnyM
     yield* Effect.addFinalizer(() =>
       Effect.sync(() => {
         unregister()
+        for (let i = 0; i < releaseModuleSourceObservers.length; i += 1) {
+          releaseModuleSourceObservers[i]!()
+        }
       }),
     )
 

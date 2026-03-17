@@ -1,0 +1,35 @@
+{
+  "date": "2026-03-20",
+  "topic": "react-controlplane-phase-machine-stage-b",
+  "result": "accepted_with_evidence",
+  "checks": [
+    {
+      "command": "pnpm --filter @logixjs/react typecheck:test",
+      "status": "passed"
+    },
+    {
+      "command": "pnpm --filter @logixjs/react exec vitest run test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx --pool forks",
+      "status": "passed",
+      "summary": {
+        "testFilesPassed": 1,
+        "testsPassed": 2,
+        "testsFailed": 0
+      }
+    },
+    {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "status": "passed",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-react-controlplane-phase-machine-stage-b.probe-next-blocker.json",
+      "summary": {
+        "probeStatus": "clear",
+        "blocker": null,
+        "executedSuites": 3
+      }
+    }
+  ],
+  "notes": [
+    "Stage B 仅切 neutralLane 的 phase-machine 执行权，configLane 维持原执行路径。",
+    "RuntimeProvider 新增 neutralLane phase-machine 诊断事件 trace:react.runtime.controlplane.phase-machine。",
+    "runtime-bootresolve-phase-trace 新增 neutralLane 最小断言，确认 executor 切换已生效。"
+  ]
+}

@@ -1,5 +1,5 @@
 import * as Logix from '@logixjs/core'
-import { Layer } from 'effect'
+import { Effect, Layer } from 'effect'
 import { devtoolsSnapshotLayer } from '../snapshot/index.js'
 import { DevtoolsLogic } from './logic.js'
 import { DevtoolsModule } from './module.js'
@@ -23,4 +23,4 @@ export const devtoolsRuntime = Logix.Runtime.make(DevtoolsImpl, {
   layer: devtoolsSnapshotLayer as Layer.Layer<any, never, never>,
 })
 
-export const devtoolsModuleRuntime = devtoolsRuntime.runSync(DevtoolsModule.tag)
+export const devtoolsModuleRuntime = devtoolsRuntime.runSync(Effect.service(DevtoolsModule.tag).pipe(Effect.orDie))

@@ -1,0 +1,14 @@
+
+> @logixjs/react@1.0.2-beta.1 test /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p1-4b-module-pulse-hub/packages/logix-react
+> vitest run RuntimeExternalStore.lowPriority.test.ts
+
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p1-4b-module-pulse-hub/packages/logix-react
+
+ ✓ |unit| test/internal/RuntimeExternalStore.lowPriority.test.ts (2 tests) 364ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  18:02:33
+   Duration  1.51s (transform 609ms, setup 0ms, import 876ms, tests 364ms, environment 161ms)
+

@@ -1,0 +1,135 @@
+{
+  "cutId": "p1-2-wholestate-fallback-next",
+  "date": "2026-03-20",
+  "accepted_with_evidence": true,
+  "evidenceType": [
+    "structural:fallback-tightening",
+    "perf:reducer-whole-state-fallback-benchmark"
+  ],
+  "structural": {
+    "newCase": "mixedUnknown",
+    "claim": "top-level known keys can be recorded even when mixed with unknown top-level changes, avoiding reducer whole-state * fallback in mixed-known/unknown path"
+  },
+  "reducerPerf": [
+    {
+      "case": "single",
+      "legacy": {
+        "p50Ms": 0.019,
+        "p95Ms": 0.024,
+        "avgMs": 0.02
+      },
+      "topLevel": {
+        "p50Ms": 0.007,
+        "p95Ms": 0.01,
+        "avgMs": 0.008
+      },
+      "delta": {
+        "p50Ms": -0.012,
+        "p95Ms": -0.014,
+        "avgMs": -0.012
+      },
+      "ratio": {
+        "p50": 0.368421052631579,
+        "p95": 0.4166666666666667,
+        "avg": 0.4
+      }
+    },
+    {
+      "case": "eight",
+      "legacy": {
+        "p50Ms": 0.018,
+        "p95Ms": 0.026,
+        "avgMs": 0.029
+      },
+      "topLevel": {
+        "p50Ms": 0.004,
+        "p95Ms": 0.005,
+        "avgMs": 0.004
+      },
+      "delta": {
+        "p50Ms": -0.013999999999999999,
+        "p95Ms": -0.020999999999999998,
+        "avgMs": -0.025
+      },
+      "ratio": {
+        "p50": 0.22222222222222224,
+        "p95": 0.19230769230769232,
+        "avg": 0.13793103448275862
+      }
+    },
+    {
+      "case": "many",
+      "legacy": {
+        "p50Ms": 0.011,
+        "p95Ms": 0.014,
+        "avgMs": 0.013
+      },
+      "topLevel": {
+        "p50Ms": 0.004,
+        "p95Ms": 0.012,
+        "avgMs": 0.006
+      },
+      "delta": {
+        "p50Ms": -0.006999999999999999,
+        "p95Ms": -0.002,
+        "avgMs": -0.006999999999999999
+      },
+      "ratio": {
+        "p50": 0.36363636363636365,
+        "p95": 0.8571428571428571,
+        "avg": 0.46153846153846156
+      }
+    },
+    {
+      "case": "listRoot",
+      "legacy": {
+        "p50Ms": 0.014,
+        "p95Ms": 0.019,
+        "avgMs": 0.027
+      },
+      "topLevel": {
+        "p50Ms": 0.004,
+        "p95Ms": 0.005,
+        "avgMs": 0.004
+      },
+      "delta": {
+        "p50Ms": -0.01,
+        "p95Ms": -0.013999999999999999,
+        "avgMs": -0.023
+      },
+      "ratio": {
+        "p50": 0.2857142857142857,
+        "p95": 0.2631578947368421,
+        "avg": 0.14814814814814814
+      }
+    },
+    {
+      "case": "mixedUnknown",
+      "legacy": {
+        "p50Ms": 0.008,
+        "p95Ms": 0.017,
+        "avgMs": 0.01
+      },
+      "topLevel": {
+        "p50Ms": 0.003,
+        "p95Ms": 0.004,
+        "avgMs": 0.004
+      },
+      "delta": {
+        "p50Ms": -0.005,
+        "p95Ms": -0.013000000000000001,
+        "avgMs": -0.006
+      },
+      "ratio": {
+        "p50": 0.375,
+        "p95": 0.23529411764705882,
+        "avg": 0.4
+      }
+    }
+  ],
+  "sources": {
+    "vitest": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p1-2-wholestate-fallback-next.validation.vitest.txt",
+    "typecheck": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p1-2-wholestate-fallback-next.validation.typecheck.txt",
+    "probeNextBlocker": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p1-2-wholestate-fallback-next.probe-next-blocker.json"
+  }
+}

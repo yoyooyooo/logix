@@ -1,13 +1,13 @@
-import { Effect, Schema } from 'effect'
+import { Effect, Exit, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import { galaxyApi } from '../galaxy-api/client'
 import { tokenStorage } from '../galaxy-api/token'
 
-const AuthPhaseSchema = Schema.Union(
+const AuthPhaseSchema = Schema.Union([
   Schema.Literal('booting'),
   Schema.Literal('anonymous'),
   Schema.Literal('authenticated'),
-)
+])
 
 export type AuthPhase = Schema.Schema.Type<typeof AuthPhaseSchema>
 
@@ -71,16 +71,16 @@ export const AuthLogic = AuthDef.logic(($) => {
     yield* $.dispatchers.setPending(true)
     yield* $.dispatchers.setError(null)
 
-    const meEither = yield* Effect.tryPromise({
+    const meEither = yield* Effect.exit(Effect.tryPromise({
       try: () => galaxyApi.me(stored),
       catch: (e) => e,
-    }).pipe(Effect.either)
+    }))
 
-    if (meEither._tag === 'Left') {
-      return yield* clearSession(galaxyApi.toMessage(meEither.left))
+    if (Exit.isFailure(meEither)) {
+      return yield* clearSession(galaxyApi.toMessage(meEither.cause))
     }
 
-    yield* $.dispatchers.setUser(meEither.right as any)
+    yield* $.dispatchers.setUser(meEither.value as any)
     yield* $.dispatchers.setPhase('authenticated')
     yield* $.dispatchers.setPending(false)
   })
@@ -91,37 +91,39 @@ export const AuthLogic = AuthDef.logic(($) => {
       yield* bootstrapFromStorage
 
       yield* Effect.all([
-        $.onAction('login').run({ mode: 'latest', effect: (action) =>
+        $.onAction('login').runLatest((action) =>
           Effect.gen(function* () {
             yield* $.dispatchers.setPending(true)
             yield* $.dispatchers.setError(null)
-        
-            const resEither = yield* Effect.tryPromise({
+
+            const resEither = yield* Effect.exit(Effect.tryPromise({
               try: () => galaxyApi.login(action.payload),
               catch: (e) => e,
-            }).pipe(Effect.either)
-        
-            if (resEither._tag === 'Left') {
+            }))
+
+            if (Exit.isFailure(resEither)) {
               yield* $.dispatchers.setPending(false)
               yield* $.dispatchers.setPhase('anonymous')
-              yield* $.dispatchers.setError(galaxyApi.toMessage(resEither.left))
+              yield* $.dispatchers.setError(galaxyApi.toMessage(resEither.cause))
               return
             }
-        
-            tokenStorage.set(resEither.right.token)
-            yield* $.dispatchers.setToken(resEither.right.token)
-            yield* $.dispatchers.setUser(resEither.right.user as any)
+
+            tokenStorage.set(resEither.value.token)
+            yield* $.dispatchers.setToken(resEither.value.token)
+            yield* $.dispatchers.setUser(resEither.value.user as any)
             yield* $.dispatchers.setPhase('authenticated')
             yield* $.dispatchers.setPending(false)
-          }) }),
+          }),
+        ),
 
-        $.onAction('logout').run({ mode: 'latest', effect: () =>
+        $.onAction('logout').runLatest(() =>
           Effect.gen(function* () {
             const token = (yield* $.state.read).token
             yield* clearSession()
             if (!token) return
             yield* Effect.tryPromise({ try: () => galaxyApi.logout(token), catch: () => undefined }).pipe(Effect.asVoid)
-          }) }),
+          }),
+        ),
       ], { concurrency: 'unbounded' })
     }),
   }

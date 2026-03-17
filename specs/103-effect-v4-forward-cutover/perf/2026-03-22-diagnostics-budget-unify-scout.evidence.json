@@ -1,0 +1,86 @@
+{
+  "id": "2026-03-22-diagnostics-budget-unify-scout",
+  "capturedAt": "2026-03-22",
+  "decision": {
+    "recommendedCut": "D-5",
+    "title": "Diagnostics Cost-Class Protocol + Gate Plane Split",
+    "classification": "docs/evidence-only",
+    "implementNow": false
+  },
+  "anchors": {
+    "requiredDocs": [
+      "docs/perf/README.md",
+      "docs/perf/06-current-head-triage.md",
+      "docs/perf/07-optimization-backlog-and-routing.md",
+      "docs/perf/archive/2026-03/2026-03-21-externalstore-threshold-localize-v4.md"
+    ],
+    "probeWave": [
+      "specs/103-effect-v4-forward-cutover/perf/2026-03-21-r2-gate-c-stability-recheck.probe-next-blocker.r1.json",
+      "specs/103-effect-v4-forward-cutover/perf/2026-03-21-r2-gate-c-stability-recheck.probe-next-blocker.r2.json",
+      "specs/103-effect-v4-forward-cutover/perf/2026-03-21-r2-gate-c-stability-recheck.probe-next-blocker.r3.json",
+      "specs/103-effect-v4-forward-cutover/perf/2026-03-21-r2-gate-c-stability-recheck.probe-next-blocker.r4.json",
+      "specs/103-effect-v4-forward-cutover/perf/2026-03-21-r2-gate-c-stability-recheck.probe-next-blocker.r5.json",
+      "specs/103-effect-v4-forward-cutover/perf/2026-03-21-r2-gate-c-stability-recheck.probe-next-blocker.r6.json",
+      "specs/103-effect-v4-forward-cutover/perf/2026-03-21-r2-gate-c-stability-recheck.probe-next-blocker.r7.json"
+    ],
+    "focusedWave": [
+      "specs/103-effect-v4-forward-cutover/perf/2026-03-21-externalstore-threshold-localize-v4.focused-wave.json"
+    ],
+    "controlplaneEvidence": [
+      "specs/103-effect-v4-forward-cutover/perf/2026-03-22-react-controlplane-stage-g6-kernel-v1.evidence.json"
+    ]
+  },
+  "observations": {
+    "gateC": {
+      "clear": 4,
+      "blocked": 3,
+      "blockedBudgetId": "full/off<=1.25",
+      "blockedSuiteId": "externalStore.ingest.tickNotify",
+      "firstFailLevelSet": [
+        128,
+        256
+      ]
+    },
+    "externalstoreV4Focused": {
+      "runCount": 7,
+      "failCount": 4,
+      "firstFailLevelSet": [
+        128,
+        256,
+        512
+      ],
+      "offP95At128RangeMs": [
+        0.8,
+        1.0
+      ],
+      "fullP95At128RangeMs": [
+        1.1,
+        1.7
+      ],
+      "ratio128Mean": 1.490476245602613,
+      "delta128MeanMs": 0.4142857619694301
+    },
+    "controlplaneG6Probe": {
+      "r1": {
+        "status": "blocked",
+        "failureKind": "threshold",
+        "suiteId": "form.listScopeCheck",
+        "budgetId": "auto<=full*1.05",
+        "firstFailLevel": 10
+      },
+      "r2": {
+        "status": "clear",
+        "thresholdAnomalyCount": 0
+      }
+    }
+  },
+  "proposal": {
+    "protocolChangesRequired": true,
+    "publicApiChangeRequired": false,
+    "coreIdea": [
+      "Introduce costClass, gateClass, samplingPolicy into diagnostics budget chain",
+      "Use hard gate for runtime_core and soft watch for all classes",
+      "Apply deterministic budgeted admission for controlplane/devtools classes"
+    ]
+  }
+}

@@ -1,4 +1,4 @@
-import { Context } from 'effect'
+import { ServiceMap } from 'effect'
 import type { JsonValue } from './internal/observability/jsonValue.js'
 import { fromTag as serviceIdFromTag } from './internal/serviceId.js'
 import { makeWorkflowError } from './internal/workflow/errors.js'
@@ -70,10 +70,10 @@ export type WorkflowPart<ActionTag extends string = string> =
   | WorkflowFragment<ActionTag>
   | WorkflowComposeResult<ActionTag>
 
-class KernelSourceRefreshPortTagImpl extends Context.Tag('logix/kernel/sourceRefresh')<
+class KernelSourceRefreshPortTagImpl extends ServiceMap.Service<
   KernelSourceRefreshPortTagImpl,
   unknown
->() {}
+>()('logix/kernel/sourceRefresh') {}
 
 export const KernelPorts = {
   sourceRefresh: KernelSourceRefreshPortTagImpl,
@@ -104,7 +104,7 @@ export const forModule = <M extends { readonly actions: Record<string, unknown> 
     }) => callById<ActionTag>(args),
     call: <Id, Svc>(args: {
       readonly key: string
-      readonly service: Context.Tag<Id, Svc>
+      readonly service: ServiceMap.Key<Id, Svc>
       readonly input?: InputExpr
       readonly timeoutMs?: number
       readonly retry?: { readonly times: number }
@@ -287,7 +287,7 @@ export const callById = <ActionTag extends string = never>(args: {
 
 export const call = <Id, Svc, ActionTag extends string = never>(args: {
   readonly key: string
-  readonly service: Context.Tag<Id, Svc>
+  readonly service: ServiceMap.Key<Id, Svc>
   readonly input?: InputExprV1
   readonly timeoutMs?: number
   readonly retry?: { readonly times: number }

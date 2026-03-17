@@ -4,19 +4,19 @@ import type {
   ProjectRoleKey as ApiProjectRoleKey,
 } from '../galaxy-api/client'
 
-export const ProjectRoleKeySchema = Schema.Union(
+export const ProjectRoleKeySchema = Schema.Union([
   Schema.Literal('owner'),
   Schema.Literal('admin'),
   Schema.Literal('member'),
   Schema.Literal('viewer'),
-)
+])
 
 export type ProjectRoleKey = Schema.Schema.Type<typeof ProjectRoleKeySchema>
 
 type _ProjectRoleKeyCompatA = ApiProjectRoleKey extends ProjectRoleKey ? true : never
 type _ProjectRoleKeyCompatB = ProjectRoleKey extends ApiProjectRoleKey ? true : never
 
-export const ProjectPermissionKeySchema = Schema.Union(
+export const ProjectPermissionKeySchema = Schema.Union([
   Schema.Literal('project.read'),
   Schema.Literal('project.update'),
   Schema.Literal('member.read'),
@@ -25,7 +25,7 @@ export const ProjectPermissionKeySchema = Schema.Union(
   Schema.Literal('group.manage'),
   Schema.Literal('audit.read'),
   Schema.Literal('owner.manage'),
-)
+])
 
 export type ProjectPermissionKey = Schema.Schema.Type<typeof ProjectPermissionKeySchema>
 
@@ -84,4 +84,3 @@ export const hasPermission = (
   access: { readonly effectivePermissionKeys: ReadonlyArray<ProjectPermissionKey> },
   required: ProjectPermissionKey,
 ): boolean => access.effectivePermissionKeys.includes(required)
-

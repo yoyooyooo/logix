@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { Context, Effect, Exit, Layer, Scope, Schema } from 'effect'
+import {Effect, Exit, Layer, Scope, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../../src/index.js'
 
 describe('HierarchicalInjector ImportsScope lifecycle', () => {
@@ -31,8 +31,8 @@ describe('HierarchicalInjector ImportsScope lifecycle', () => {
         try {
           const context = yield* Layer.buildWithScope(ParentImpl.impl.layer, scope)
 
-          parentRuntime = Context.get(context as Context.Context<any>, Parent.tag) as any
-          const childRuntime = Context.get(context as Context.Context<any>, Child.tag) as any
+          parentRuntime = ServiceMap.get(context as ServiceMap.ServiceMap<any>, Parent.tag) as any
+          const childRuntime = ServiceMap.get(context as ServiceMap.ServiceMap<any>, Child.tag) as any
 
           importsScope = Logix.InternalContracts.getImportsScope(parentRuntime)
           expect(importsScope).toBeTruthy()

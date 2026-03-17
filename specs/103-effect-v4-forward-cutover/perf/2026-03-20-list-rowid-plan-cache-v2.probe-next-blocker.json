@@ -1,0 +1,26 @@
+{
+  "date": "2026-03-20",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.list-rowid-plan-cache-v2",
+  "branch": "agent/v4-perf-list-rowid-plan-cache-v2",
+  "command": "python3 fabfile.py probe_next_blocker --json",
+  "status": "clear",
+  "executedSuites": [
+    {
+      "suiteId": "externalStore.ingest.tickNotify",
+      "status": "passed",
+      "thresholdAnomalyCount": 0
+    },
+    {
+      "suiteId": "runtimeStore.noTearing.tickNotify",
+      "status": "passed",
+      "thresholdAnomalyCount": 0
+    },
+    {
+      "suiteId": "form.listScopeCheck",
+      "status": "passed",
+      "thresholdAnomalyCount": 0
+    }
+  ],
+  "blocker": null,
+  "thresholdAnomalies": []
+}

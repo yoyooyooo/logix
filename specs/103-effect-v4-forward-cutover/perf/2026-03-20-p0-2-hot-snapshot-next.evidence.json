@@ -1,0 +1,82 @@
+{
+  "id": "2026-03-20-p0-2-hot-snapshot-next.evidence",
+  "capturedAt": "2026-03-20",
+  "scope": "p0-2-hotenv-runtimesnapshot-resolve-shell",
+  "decision": {
+    "status": "accepted_with_evidence",
+    "acceptedWithEvidence": true,
+    "mergeToMain": true,
+    "reasons": [
+      "事务入口 runtime snapshot 复用后，resolver 壳税 microbench 在同进程 A/B 下得到正向差异（speedup=1.289x，saved=22.41%）",
+      "operation hot-context 与 time-slicing lanes 邻近守门测试全绿",
+      "probe_next_blocker 为 clear，未引入新的 blocker 或 threshold anomaly"
+    ]
+  },
+  "sources": {
+    "typecheckTest": {
+      "command": "pnpm -C packages/logix-core typecheck:test",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-2-hot-snapshot-next.validation.typecheck.txt",
+      "passed": true
+    },
+    "targetedVitest": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-2-hot-snapshot-next.validation.vitest.txt",
+      "result": {
+        "testFilesPassed": 2,
+        "testsPassed": 2,
+        "operationRunnerBatch256SpeedupX": 1.608,
+        "operationRunnerBatch1024SpeedupX": 1.483
+      }
+    },
+    "runtimeSnapshotPerf": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.RuntimeSnapshot.ResolveShell.Perf.off.test.ts",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-2-hot-snapshot-next.runtime-snapshot-resolve-shell.perf.txt",
+      "result": {
+        "noSnapshotAvgMs": 0.574,
+        "snapshotAvgMs": 0.445,
+        "speedupX": 1.289,
+        "savedPercent": 22.41
+      }
+    },
+    "probeRun": {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-2-hot-snapshot-next.probe-next-blocker.json",
+      "status": "clear",
+      "blocker": null,
+      "executedCount": 3
+    }
+  },
+  "invariants": [
+    {
+      "id": "p0-2-hot-snapshot-next.typecheck-test",
+      "expectation": "logix-core typecheck:test 通过",
+      "status": "passed",
+      "evidenceType": "test-run"
+    },
+    {
+      "id": "p0-2-hot-snapshot-next.targeted-vitest",
+      "expectation": "operation hot-context + time-slicing lanes 守门通过",
+      "status": "passed",
+      "evidenceType": "test-run"
+    },
+    {
+      "id": "p0-2-hot-snapshot-next.resolve-shell-perf",
+      "expectation": "snapshot 解析路径开销低于 noSnapshot 路径",
+      "status": "passed",
+      "evidenceType": "perf-run"
+    },
+    {
+      "id": "p0-2-hot-snapshot-next.probe-next-blocker",
+      "expectation": "probe_next_blocker clear",
+      "status": "passed",
+      "evidenceType": "probe-run"
+    }
+  ],
+  "summary": {
+    "result": "accepted_with_evidence",
+    "notes": [
+      "本轮改动未触碰 public API",
+      "文档结论见 docs/perf/archive/2026-03/2026-03-20-p0-2-hot-snapshot-next.md"
+    ]
+  }
+}

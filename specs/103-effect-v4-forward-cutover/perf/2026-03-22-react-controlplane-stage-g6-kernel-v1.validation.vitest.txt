@@ -1,0 +1,19 @@
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.react-controlplane-stage-g6-kernel-v1/packages/logix-react
+
+stdout | test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx > RuntimeProvider bootResolve phase traces > keeps env-only provider layer on runtime.base owner path
+[RuntimeProvider] Scope.close failed ManagedRuntime disposed
+
+stdout | test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx > RuntimeProvider bootResolve phase traces > delegates configLane boot execution to phase-machine with controlled ready boundary
+[RuntimeProvider] Scope.close failed ManagedRuntime disposed
+
+stdout | test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx > RuntimeProvider bootResolve phase traces > dedupes configLane ready refresh after neutral settle when fingerprint stable
+[RuntimeProvider] Scope.close failed ManagedRuntime disposed
+
+ ✓ |unit| test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx (8 tests) 125ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  00:25:33
+   Duration  1.98s (transform 1.04s, setup 0ms, import 1.53s, tests 125ms, environment 162ms)
+

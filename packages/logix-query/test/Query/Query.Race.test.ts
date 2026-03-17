@@ -1,12 +1,11 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Duration, Effect, Layer, Schema } from 'effect'
 import { QueryClient } from '@tanstack/query-core'
 import * as Logix from '@logixjs/core'
 import * as Query from '../../src/index.js'
 
 describe('Query.Race', () => {
-  it.scoped('should never let stale result overwrite latest', () =>
+  it.effect('should never let stale result overwrite latest', () =>
     Effect.gen(function* () {
       const KeySchema = Schema.Struct({ q: Schema.String })
       type Key = Schema.Schema.Type<typeof KeySchema>
@@ -17,7 +16,7 @@ describe('Query.Race', () => {
         load: (key) => {
           const index = Number(String(key.q).slice(1))
           const delay = Number.isFinite(index) ? (10 - index) * 10 : 50
-          return Effect.sleep(Duration.millis(delay)).pipe(Effect.zipRight(Effect.succeed({ q: key.q })))
+          return Effect.sleep(Duration.millis(delay)).pipe(Effect.andThen(() => Effect.succeed({ q: key.q })))
         },
       })
 
@@ -46,7 +45,7 @@ describe('Query.Race', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* module.tag
+          const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const controller = module.controller.make(rt)
 
         // Rapid param changes: make older requests slower and the last one faster to reproduce a typical race/overwrite risk.

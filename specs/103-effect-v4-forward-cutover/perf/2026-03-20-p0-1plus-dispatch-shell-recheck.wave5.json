@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-03-20T16:10:44.946688+08:00",
+  "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.dispatchShell.Phases.Perf.light.test.ts",
+  "runs": [
+    {
+      "run": 1,
+      "dispatch.p50.ms": 0.077,
+      "dispatch.p95.ms": 0.133,
+      "txnPrelude.avg.ms": 0.009,
+      "queueContext.avg.ms": 0.001,
+      "queueResolve.avg.ms": 0.003,
+      "bodyShell.avg.ms": 0.014,
+      "asyncEscape.avg.ms": 0.014,
+      "commit.avg.ms": 0.004,
+      "dispatchRecord.avg.ms": 0.003,
+      "dispatchCommitHub.avg.ms": 0.001,
+      "residual.avg.ms": 0.06
+    },
+    {
+      "run": 2,
+      "dispatch.p50.ms": 0.076,
+      "dispatch.p95.ms": 0.144,
+      "txnPrelude.avg.ms": 0.009,
+      "queueContext.avg.ms": 0.003,
+      "queueResolve.avg.ms": 0.003,
+      "bodyShell.avg.ms": 0.014,
+      "asyncEscape.avg.ms": 0.014,
+      "commit.avg.ms": 0.004,
+      "dispatchRecord.avg.ms": 0.003,
+      "dispatchCommitHub.avg.ms": 0.001,
+      "residual.avg.ms": 0.059
+    },
+    {
+      "run": 3,
+      "dispatch.p50.ms": 0.078,
+      "dispatch.p95.ms": 0.15,
+      "txnPrelude.avg.ms": 0.008,
+      "queueContext.avg.ms": 0.001,
+      "queueResolve.avg.ms": 0.003,
+      "bodyShell.avg.ms": 0.015,
+      "asyncEscape.avg.ms": 0.015,
+      "commit.avg.ms": 0.004,
+      "dispatchRecord.avg.ms": 0.003,
+      "dispatchCommitHub.avg.ms": 0.001,
+      "residual.avg.ms": 0.063
+    },
+    {
+      "run": 4,
+      "dispatch.p50.ms": 0.078,
+      "dispatch.p95.ms": 0.144,
+      "txnPrelude.avg.ms": 0.01,
+      "queueContext.avg.ms": 0.001,
+      "queueResolve.avg.ms": 0.004,
+      "bodyShell.avg.ms": 0.015,
+      "asyncEscape.avg.ms": 0.014,
+      "commit.avg.ms": 0.004,
+      "dispatchRecord.avg.ms": 0.003,
+      "dispatchCommitHub.avg.ms": 0.001,
+      "residual.avg.ms": 0.06
+    },
+    {
+      "run": 5,
+      "dispatch.p50.ms": 0.076,
+      "dispatch.p95.ms": 0.146,
+      "txnPrelude.avg.ms": 0.01,
+      "queueContext.avg.ms": 0.001,
+      "queueResolve.avg.ms": 0.003,
+      "bodyShell.avg.ms": 0.015,
+      "asyncEscape.avg.ms": 0.014,
+      "commit.avg.ms": 0.004,
+      "dispatchRecord.avg.ms": 0.003,
+      "dispatchCommitHub.avg.ms": 0.001,
+      "residual.avg.ms": 0.058
+    }
+  ],
+  "summary": {
+    "dispatch.p50.ms": {
+      "min": 0.076,
+      "max": 0.078,
+      "median": 0.077,
+      "mean": 0.077
+    },
+    "dispatch.p95.ms": {
+      "min": 0.133,
+      "max": 0.15,
+      "median": 0.144,
+      "mean": 0.1434
+    },
+    "txnPrelude.avg.ms": {
+      "min": 0.008,
+      "max": 0.01,
+      "median": 0.009,
+      "mean": 0.0092
+    },
+    "queueContext.avg.ms": {
+      "min": 0.001,
+      "max": 0.003,
+      "median": 0.001,
+      "mean": 0.0014
+    },
+    "queueResolve.avg.ms": {
+      "min": 0.003,
+      "max": 0.004,
+      "median": 0.003,
+      "mean": 0.0032
+    },
+    "bodyShell.avg.ms": {
+      "min": 0.014,
+      "max": 0.015,
+      "median": 0.015,
+      "mean": 0.0146
+    },
+    "asyncEscape.avg.ms": {
+      "min": 0.014,
+      "max": 0.015,
+      "median": 0.014,
+      "mean": 0.0142
+    },
+    "commit.avg.ms": {
+      "min": 0.004,
+      "max": 0.004,
+      "median": 0.004,
+      "mean": 0.004
+    },
+    "dispatchRecord.avg.ms": {
+      "min": 0.003,
+      "max": 0.003,
+      "median": 0.003,
+      "mean": 0.003
+    },
+    "dispatchCommitHub.avg.ms": {
+      "min": 0.001,
+      "max": 0.001,
+      "median": 0.001,
+      "mean": 0.001
+    },
+    "residual.avg.ms": {
+      "min": 0.058,
+      "max": 0.063,
+      "median": 0.06,
+      "mean": 0.06
+    }
+  }
+}

@@ -1,16 +1,25 @@
-import { Effect, FiberRef, PubSub } from 'effect'
+import { Effect, PubSub } from 'effect'
 import type { StateChangeWithMeta, StateCommitMeta, StateCommitMode, StateCommitPriority } from './module.js'
 import * as Debug from './DebugSink.js'
 import type { ConcurrencyDiagnostics } from './ConcurrencyDiagnostics.js'
 import * as ReducerDiagnostics from './ReducerDiagnostics.js'
 import * as StateTransaction from './StateTransaction.js'
-import { currentTxnOriginOverride, type TxnOriginOverride } from './TxnOriginOverride.js'
+import { mutateWithPatchPaths } from './mutativePatches.js'
+import type { TxnOriginOverride } from './TxnOriginOverride.js'
 import type { RunOperation } from './ModuleRuntime.operation.js'
 import type { RunWithStateTransaction, SetStateInternal } from './ModuleRuntime.transaction.js'
 import type { EnqueueTransaction } from './ModuleRuntime.txnQueue.js'
 import type { ResolvedConcurrencyPolicy } from './ModuleRuntime.concurrencyPolicy.js'
 
 type DispatchEntryPoint = 'dispatch' | 'dispatchBatch' | 'dispatchLowPriority'
+
+const readClockMs = (): number => {
+  const perf = globalThis.performance
+  if (perf && typeof perf.now === 'function') {
+    return perf.now()
+  }
+  return Date.now()
+}
 
 type ActionAnalysis = {
   readonly actionTag: string | undefined
@@ -31,6 +40,22 @@ type ActionPropagationEntry<A> = {
   readonly topicTargets: ReadonlyArray<ActionPropagationTopicTarget<A>>
   readonly fanoutCount: number
 }
+
+type DispatchActionPlan<A> = {
+  readonly analysis: ActionAnalysis
+  readonly topicTargets: ReadonlyArray<ActionPropagationTopicTarget<A>>
+  readonly fanoutCount: number
+}
+
+type DispatchActionRoute<A> = {
+  readonly analysis: ActionAnalysis
+  readonly propagationEntry: ActionPropagationEntry<A>
+}
+
+type ActionStateWritebackHandler<S, A> =
+  | { readonly kind: 'update'; readonly run: (state: S, action: A) => S }
+  | { readonly kind: 'mutate'; readonly run: (draft: S, action: A) => void }
+  | { readonly kind: 'effect'; readonly run: (action: A) => Effect.Effect<void, never, any> }
 
 type ActionTopicBatch<A> = {
   readonly topicTag: string
@@ -78,9 +103,19 @@ export const makeDispatchOps = <S, A>(args: {
   readonly isDevEnv: () => boolean
 }): {
   readonly registerReducer: (tag: string, fn: (state: S, action: A) => S) => void
-  readonly dispatch: (action: A) => Effect.Effect<void>
-  readonly dispatchBatch: (actions: ReadonlyArray<A>) => Effect.Effect<void>
-  readonly dispatchLowPriority: (action: A) => Effect.Effect<void>
+  readonly registerActionStateWriteback: (tag: string, handler: ActionStateWritebackHandler<S, A>) => void
+  readonly dispatchWithOriginOverride: (action: A, override?: TxnOriginOverride) => Effect.Effect<void, never, any>
+  readonly dispatchBatchWithOriginOverride: (
+    actions: ReadonlyArray<A>,
+    override?: TxnOriginOverride,
+  ) => Effect.Effect<void, never, any>
+  readonly dispatchLowPriorityWithOriginOverride: (
+    action: A,
+    override?: TxnOriginOverride,
+  ) => Effect.Effect<void, never, any>
+  readonly dispatch: (action: A) => Effect.Effect<void, never, any>
+  readonly dispatchBatch: (actions: ReadonlyArray<A>) => Effect.Effect<void, never, any>
+  readonly dispatchLowPriority: (action: A) => Effect.Effect<void, never, any>
 } => {
   const {
     optionsModuleId,
@@ -120,6 +155,28 @@ export const makeDispatchOps = <S, A>(args: {
     }
     if (tag.includes('Unset') || tag.includes('unset')) return 'unset'
     return 'set'
+  }
+
+  const dispatchPlanByActionTag = new Map<string, DispatchActionPlan<A>>()
+  if (declaredActionTags && declaredActionTags.size > 0) {
+    for (const actionTag of declaredActionTags) {
+      const topicTargets: Array<ActionPropagationTopicTarget<A>> = []
+      const topicHub = actionTagHubsByTag?.get(actionTag)
+      if (topicHub) {
+        topicTargets.push({ topicTag: actionTag, hub: topicHub })
+      }
+      dispatchPlanByActionTag.set(actionTag, {
+        analysis: {
+          actionTag,
+          actionTagNormalized: actionTag,
+          topicTagPrimary: actionTag,
+          topicTagSecondary: undefined,
+          originOp: resolveActionOriginOp(actionTag),
+        },
+        topicTargets,
+        fanoutCount: topicTargets.length,
+      })
+    }
   }
 
   const analyzeAction = (action: A): ActionAnalysis => {
@@ -174,6 +231,7 @@ export const makeDispatchOps = <S, A>(args: {
 
   // Track whether an Action tag has been dispatched, for diagnosing config issues like late reducer registration.
   const dispatchedTags = new Set<string>()
+  const actionStateWritebacks = new Map<string, Array<ActionStateWritebackHandler<S, A>>>()
 
   const registerReducer = (tag: string, fn: (state: S, action: A) => S): void => {
     if (reducerMap.has(tag)) {
@@ -185,6 +243,18 @@ export const makeDispatchOps = <S, A>(args: {
       throw ReducerDiagnostics.makeReducerError('ReducerLateRegistrationError', tag, optionsModuleId)
     }
     reducerMap.set(tag, fn)
+  }
+
+  const registerActionStateWriteback = (tag: string, handler: ActionStateWritebackHandler<S, A>): void => {
+    if (dispatchedTags.has(tag)) {
+      throw ReducerDiagnostics.makeReducerError('ReducerLateRegistrationError', tag, optionsModuleId)
+    }
+    const existing = actionStateWritebacks.get(tag)
+    if (existing) {
+      existing.push(handler)
+      return
+    }
+    actionStateWritebacks.set(tag, [handler])
   }
 
   const applyPrimaryReducer = (action: A, analysis: ActionAnalysis) => {
@@ -224,7 +294,7 @@ export const makeDispatchOps = <S, A>(args: {
 
           // Prefer the traceable in-transaction path:
           // - If the reducer provides patchPaths (e.g. generated by Logix.Module.Reducer.mutate), record field-level patches.
-          // - Otherwise deterministically fall back to dirtyAll (path="*") and emit a migration diagnostic in dev mode.
+          // - Otherwise degrade explicitly to contract-level dirtyAll, without relying on "*" + commit-time inference.
           if (txnContext.current) {
             if (patchPaths.length > 0) {
               StateTransaction.updateDraft(txnContext, next)
@@ -235,7 +305,11 @@ export const makeDispatchOps = <S, A>(args: {
             }
 
             StateTransaction.updateDraft(txnContext, next)
-            recordStatePatch('*', 'reducer', undefined, next)
+            // Includes top-level list root writes: list roots are recorded as `${key}[]`,
+            // preserving structural list semantics without relying on wildcard inference.
+            if (!StateTransaction.recordKnownTopLevelDirtyEvidence(txnContext, prev, next, 'reducer')) {
+              recordStatePatch(undefined, 'reducer', undefined, next)
+            }
 
             if (isDevEnv()) {
               yield* Debug.record({
@@ -245,47 +319,128 @@ export const makeDispatchOps = <S, A>(args: {
                 txnSeq: txnContext.current?.txnSeq,
                 txnId: txnContext.current?.txnId,
                 trigger: txnContext.current?.origin,
-                code: 'state_transaction::dirty_all_fallback',
+                code: 'state_transaction::patch_contract_degraded',
                 severity: 'warning',
                 message:
-                  'Reducer writeback did not provide field-level dirty-set evidence; falling back to dirtyAll scheduling.',
-                hint: 'Prefer Logix.Module.Reducer.mutate(...) or $.state.mutate(...) inside the transaction to produce field-level patchPaths.',
-                kind: 'dirty_all_fallback:reducer',
+                  'Reducer writeback did not provide contract-level patch paths; degraded to explicit dirtyAll(customMutation).',
+                hint: 'Prefer Logix.Module.Reducer.mutate(...) or sink patch paths to keep incremental scheduling evidence precise.',
+                kind: 'patch_contract_degraded:reducer',
               })
             }
 
             return
           }
 
-          yield* setStateInternal(next, '*', 'reducer', undefined, next)
+          yield* setStateInternal(next, [], 'reducer', undefined, next)
         }),
       ),
     )
   }
 
-  const mergeTxnOriginDetails = (
-    baseDetails: Record<string, unknown>,
-    overrideOrigin?: TxnOriginOverride,
-  ): Record<string, unknown> => {
-    const overrideDetails = overrideOrigin?.details
-    if (!overrideDetails || typeof overrideDetails !== 'object') {
-      return baseDetails
+	
+  const applyActionStateWritebacks = (action: A, analysis: ActionAnalysis): Effect.Effect<void, never, any> => {
+    const tag = analysis.actionTag
+    if (tag == null || actionStateWritebacks.size === 0) {
+      return Effect.void
+    }
+    const handlers = actionStateWritebacks.get(tag.length > 0 ? tag : 'unknown')
+    if (!handlers || handlers.length === 0) {
+      return Effect.void
     }
 
-    const runtimeOwnedAuditKeys = ['count', '_tag', 'path', 'op'] as const
+    return Effect.gen(function* () {
+      let currentState: S | undefined
+      let pendingState: S | undefined
+      let pendingWholeStateWrite = false
+      let pendingChanged = false
+      const pendingPatchPaths: Array<StateTransaction.StatePatchPath> = []
 
-    const merged = { ...baseDetails, ...(overrideDetails as Record<string, unknown>) } as Record<string, unknown>
-
-    for (let index = 0; index < runtimeOwnedAuditKeys.length; index += 1) {
-      const key = runtimeOwnedAuditKeys[index]
-      if (Object.prototype.hasOwnProperty.call(baseDetails, key)) {
-        merged[key] = baseDetails[key]
-      } else {
-        delete merged[key]
+      const clearPending = (): void => {
+        pendingState = undefined
+        pendingWholeStateWrite = false
+        pendingChanged = false
+        pendingPatchPaths.length = 0
       }
-    }
 
-    return merged
+      const flushPending = (): Effect.Effect<void, never, any> =>
+        Effect.gen(function* () {
+          if (!pendingChanged || pendingState === undefined) {
+            clearPending()
+            return
+          }
+
+          if (pendingWholeStateWrite) {
+            const prevState = currentState ?? (yield* getCurrentState())
+            if (txnContext.current) {
+              StateTransaction.updateDraft(txnContext, pendingState)
+              // Includes top-level list root writes: list roots are recorded as `${key}[]`,
+              // preserving structural list semantics without relying on wildcard inference.
+              if (!StateTransaction.recordKnownTopLevelDirtyEvidence(txnContext, prevState, pendingState, 'unknown')) {
+                recordStatePatch(undefined, 'unknown', undefined, pendingState)
+              }
+            } else {
+              yield* setStateInternal(pendingState, [], 'unknown', undefined, pendingState)
+            }
+          } else {
+            for (const path of pendingPatchPaths) {
+              recordStatePatch(path, 'unknown')
+            }
+            StateTransaction.updateDraft(txnContext, pendingState)
+          }
+
+          currentState = pendingState
+          clearPending()
+        })
+
+      const getCurrentState = (): Effect.Effect<S, never, any> =>
+        currentState === undefined
+          ? readState.pipe(
+              Effect.tap((state) =>
+                Effect.sync(() => {
+                  currentState = state
+                }),
+              ),
+            )
+          : Effect.succeed(currentState)
+
+      for (const handler of handlers) {
+        if (handler.kind === 'effect') {
+          yield* flushPending()
+          yield* handler.run(action)
+          currentState = undefined
+          continue
+        }
+
+        const prev = pendingState ?? (yield* getCurrentState())
+
+        if (handler.kind === 'update') {
+          const next = handler.run(prev, action)
+          if (Object.is(next, prev)) {
+            continue
+          }
+          pendingState = next
+          pendingChanged = true
+          pendingWholeStateWrite = true
+          continue
+        }
+
+        const { nextState, patchPaths } = mutateWithPatchPaths(prev as S, (draft) => handler.run(draft as S, action))
+        if (Object.is(nextState, prev)) {
+          continue
+        }
+
+        pendingState = nextState
+        pendingChanged = true
+
+        if (!pendingWholeStateWrite) {
+          for (const path of patchPaths) {
+            pendingPatchPaths.push(path)
+          }
+        }
+      }
+
+      yield* flushPending()
+    })
   }
 
   const makeActionOrigin = (
@@ -293,30 +448,28 @@ export const makeDispatchOps = <S, A>(args: {
     action: A,
     analysis: ActionAnalysis,
     override?: TxnOriginOverride,
-  ): StateTransaction.StateTxnOrigin => {
-    const baseDetails = {
+  ): StateTransaction.StateTxnOrigin => ({
+    kind: override?.kind ?? 'action',
+    name: override?.name ?? originName,
+    details: {
       _tag: analysis.actionTagNormalized,
       path: typeof (action as any)?.payload?.path === 'string' ? ((action as any).payload.path as string) : undefined,
       op: analysis.originOp,
-    }
+    },
+  })
 
-    const details = mergeTxnOriginDetails(baseDetails, override)
-
-    return {
-      kind: override?.kind ?? 'action',
-      name: override?.name ?? originName,
-      details,
-    }
-  }
-
-  const dispatchInTransaction = (action: A, analysis: ActionAnalysis): Effect.Effect<void> =>
+  const dispatchInTransaction = (action: A, analysis: ActionAnalysis): Effect.Effect<void, never, any> =>
     Effect.gen(function* () {
       // Apply the primary reducer first (may be a no-op).
       yield* applyPrimaryReducer(action, analysis)
+      yield* applyActionStateWritebacks(action, analysis)
 
       const unknownAction = declaredActionTags ? !declaredActionTags.has(analysis.actionTagNormalized) : false
+      const current: any = txnContext.current
+      const phaseTimingEnabled = current?.dispatchPhaseTimingEnabled === true
 
       // Record action dispatch (for Devtools/diagnostics).
+      const actionRecordStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
       yield* Debug.record({
         type: 'action:dispatch',
         moduleId: optionsModuleId,
@@ -327,9 +480,13 @@ export const makeDispatchOps = <S, A>(args: {
         txnSeq: txnContext.current?.txnSeq,
         txnId: txnContext.current?.txnId,
       })
+      if (phaseTimingEnabled) {
+        current.dispatchActionRecordMs =
+          (typeof current.dispatchActionRecordMs === 'number' ? current.dispatchActionRecordMs : 0) +
+          Math.max(0, readClockMs() - actionRecordStartedAtMs)
+      }
 
       // actionsWithMeta$: provides stable txnSeq/txnId anchors for higher-level subscriptions (e.g. Process).
-      const current = txnContext.current
       if (current) {
         const meta: StateCommitMeta = {
           txnSeq: current.txnSeq,
@@ -339,7 +496,15 @@ export const makeDispatchOps = <S, A>(args: {
           originKind: current.origin.kind,
           originName: current.origin.name,
         }
+        const actionCommitStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
         yield* PubSub.publish(actionCommitHub, { value: action, meta })
+        if (phaseTimingEnabled) {
+          current.dispatchActionCommitHubMs =
+            (typeof current.dispatchActionCommitHubMs === 'number' ? current.dispatchActionCommitHubMs : 0) +
+            Math.max(0, readClockMs() - actionCommitStartedAtMs)
+          current.dispatchActionCount =
+            (typeof current.dispatchActionCount === 'number' ? current.dispatchActionCount : 0) + 1
+        }
       }
     })
 
@@ -352,7 +517,7 @@ export const makeDispatchOps = <S, A>(args: {
         meta: { moduleId: optionsModuleId, instanceId },
       },
       runWithStateTransaction(makeActionOrigin('dispatch', action, analysis, override), () =>
-        dispatchInTransaction(action, analysis),
+        dispatchInTransaction(action, analysis) as Effect.Effect<void, never, never>,
       ),
     ).pipe(Effect.asVoid)
 
@@ -370,7 +535,7 @@ export const makeDispatchOps = <S, A>(args: {
             ;(txnContext.current as any).commitMode = 'lowPriority' as StateCommitMode
             ;(txnContext.current as any).priority = 'low' as StateCommitPriority
           }
-          yield* dispatchInTransaction(action, analysis)
+          yield* (dispatchInTransaction(action, analysis) as Effect.Effect<void, never, never>)
         }),
       ),
     ).pipe(Effect.asVoid)
@@ -389,30 +554,21 @@ export const makeDispatchOps = <S, A>(args: {
         payload: actions,
         meta: { moduleId: optionsModuleId, instanceId },
       },
-      (() => {
-        const baseDetails = { count: actions.length }
-        const details = mergeTxnOriginDetails(baseDetails, override)
-
-        return runWithStateTransaction(
-          {
-            kind: override?.kind ?? 'action',
-            name: override?.name ?? 'dispatchBatch',
-            details,
-          } as any,
-          () =>
-            Effect.gen(function* () {
-              if (txnContext.current) {
-                ;(txnContext.current as any).commitMode = 'batch' as StateCommitMode
-                ;(txnContext.current as any).priority = 'normal' as StateCommitPriority
-              }
-              for (let index = 0; index < actions.length; index += 1) {
-                const action = actions[index] as A
-                const analysis = analyses[index] as ActionAnalysis
-                yield* dispatchInTransaction(action, analysis)
-              }
-            }),
-        )
-      })(),
+      runWithStateTransaction(
+        { kind: override?.kind ?? 'action', name: override?.name ?? 'dispatchBatch', details: { count: actions.length } } as any,
+        () =>
+          Effect.gen(function* () {
+            if (txnContext.current) {
+              ;(txnContext.current as any).commitMode = 'batch' as StateCommitMode
+              ;(txnContext.current as any).priority = 'normal' as StateCommitPriority
+            }
+            for (let index = 0; index < actions.length; index += 1) {
+              const action = actions[index] as A
+              const analysis = analyses[index] as ActionAnalysis
+              yield* (dispatchInTransaction(action, analysis) as Effect.Effect<void, never, never>)
+            }
+          }),
+      ),
     ).pipe(Effect.asVoid)
   }
 
@@ -503,6 +659,50 @@ export const makeDispatchOps = <S, A>(args: {
       analysis,
       topicTargets,
       fanoutCount: topicTargets.length,
+    }
+  }
+
+  const makeActionPropagationEntryFromPlan = (
+    action: A,
+    plan: DispatchActionPlan<A>,
+  ): ActionPropagationEntry<A> => ({
+    action,
+    analysis: plan.analysis,
+    topicTargets: plan.topicTargets,
+    fanoutCount: plan.fanoutCount,
+  })
+
+  const resolveDispatchPlan = (action: A): DispatchActionPlan<A> | undefined => {
+    const rawTag = (action as any)?._tag
+    const rawType = (action as any)?.type
+    const tag = typeof rawTag === 'string' && rawTag.length > 0 ? rawTag : undefined
+    const type = typeof rawType === 'string' && rawType.length > 0 ? rawType : undefined
+
+    // Static plan hit:
+    // 1) _tag-driven declared actions
+    // 2) type-only declared actions
+    // Keep mixed `_tag/type` dual-route semantics in fallback path.
+    if (tag && (type == null || type === tag)) {
+      return dispatchPlanByActionTag.get(tag)
+    }
+    if (tag == null && type) {
+      return dispatchPlanByActionTag.get(type)
+    }
+    return undefined
+  }
+
+  const resolveDispatchActionRoute = (action: A): DispatchActionRoute<A> => {
+    const plan = resolveDispatchPlan(action)
+    if (plan) {
+      return {
+        analysis: plan.analysis,
+        propagationEntry: makeActionPropagationEntryFromPlan(action, plan),
+      }
+    }
+    const analysis = analyzeAction(action)
+    return {
+      analysis,
+      propagationEntry: makeActionPropagationEntry(action, analysis),
     }
   }
 
@@ -640,46 +840,62 @@ export const makeDispatchOps = <S, A>(args: {
 
   return {
     registerReducer,
+    registerActionStateWriteback,
+    dispatchWithOriginOverride: (action, override) => {
+      const route = resolveDispatchActionRoute(action)
+      const resolvePolicy = makeLazyPolicyResolver()
+      return enqueueTransaction(runDispatch(action, route.analysis, override)).pipe(
+        Effect.flatMap(() => publishActionPropagationBus([route.propagationEntry], 'dispatch', resolvePolicy)),
+      )
+    },
+    dispatchBatchWithOriginOverride: (actions, override) => {
+      const analyses = new Array<ActionAnalysis>(actions.length)
+      const propagationEntries = new Array<ActionPropagationEntry<A>>(actions.length)
+      for (let index = 0; index < actions.length; index += 1) {
+        const route = resolveDispatchActionRoute(actions[index] as A)
+        analyses[index] = route.analysis
+        propagationEntries[index] = route.propagationEntry
+      }
+      const resolvePolicy = makeLazyPolicyResolver()
+      return enqueueTransaction(runDispatchBatch(actions, analyses, override)).pipe(
+        Effect.flatMap(() => publishActionPropagationBus(propagationEntries, 'dispatchBatch', resolvePolicy)),
+      )
+    },
+    dispatchLowPriorityWithOriginOverride: (action, override) => {
+      const route = resolveDispatchActionRoute(action)
+      const resolvePolicy = makeLazyPolicyResolver()
+      return enqueueTransaction(runDispatchLowPriority(action, route.analysis, override)).pipe(
+        Effect.flatMap(() => publishActionPropagationBus([route.propagationEntry], 'dispatchLowPriority', resolvePolicy)),
+      )
+    },
     // Note: publish is a lossless/backpressure channel and may wait.
     // Must run outside the transaction window (FR-012) and must not block the txnQueue consumer fiber (avoid deadlock).
-    dispatch: (action) =>
-      FiberRef.get(currentTxnOriginOverride).pipe(
-        Effect.flatMap((override) => {
-          const analysis = analyzeAction(action)
-          const propagationEntry = makeActionPropagationEntry(action, analysis)
-          const resolvePolicy = makeLazyPolicyResolver()
-          return enqueueTransaction(runDispatch(action, analysis, override)).pipe(
-            Effect.zipRight(publishActionPropagationBus([propagationEntry], 'dispatch', resolvePolicy)),
-          )
-        }),
-      ),
-    dispatchBatch: (actions) =>
-      FiberRef.get(currentTxnOriginOverride).pipe(
-        Effect.flatMap((override) => {
-          const analyses = new Array<ActionAnalysis>(actions.length)
-          for (let index = 0; index < actions.length; index += 1) {
-            analyses[index] = analyzeAction(actions[index] as A)
-          }
-          const propagationEntries = new Array<ActionPropagationEntry<A>>(actions.length)
-          for (let index = 0; index < actions.length; index += 1) {
-            propagationEntries[index] = makeActionPropagationEntry(actions[index] as A, analyses[index] as ActionAnalysis)
-          }
-          const resolvePolicy = makeLazyPolicyResolver()
-          return enqueueTransaction(runDispatchBatch(actions, analyses, override)).pipe(
-            Effect.zipRight(publishActionPropagationBus(propagationEntries, 'dispatchBatch', resolvePolicy)),
-          )
-        }),
-      ),
-    dispatchLowPriority: (action) =>
-      FiberRef.get(currentTxnOriginOverride).pipe(
-        Effect.flatMap((override) => {
-          const analysis = analyzeAction(action)
-          const propagationEntry = makeActionPropagationEntry(action, analysis)
-          const resolvePolicy = makeLazyPolicyResolver()
-          return enqueueTransaction(runDispatchLowPriority(action, analysis, override)).pipe(
-            Effect.zipRight(publishActionPropagationBus([propagationEntry], 'dispatchLowPriority', resolvePolicy)),
-          )
-        }),
-      ),
+    dispatch: (action) => {
+      const route = resolveDispatchActionRoute(action)
+      const resolvePolicy = makeLazyPolicyResolver()
+      return enqueueTransaction(runDispatch(action, route.analysis)).pipe(
+        Effect.flatMap(() => publishActionPropagationBus([route.propagationEntry], 'dispatch', resolvePolicy)),
+      )
+    },
+    dispatchBatch: (actions) => {
+      const analyses = new Array<ActionAnalysis>(actions.length)
+      const propagationEntries = new Array<ActionPropagationEntry<A>>(actions.length)
+      for (let index = 0; index < actions.length; index += 1) {
+        const route = resolveDispatchActionRoute(actions[index] as A)
+        analyses[index] = route.analysis
+        propagationEntries[index] = route.propagationEntry
+      }
+      const resolvePolicy = makeLazyPolicyResolver()
+      return enqueueTransaction(runDispatchBatch(actions, analyses)).pipe(
+        Effect.flatMap(() => publishActionPropagationBus(propagationEntries, 'dispatchBatch', resolvePolicy)),
+      )
+    },
+    dispatchLowPriority: (action) => {
+      const route = resolveDispatchActionRoute(action)
+      const resolvePolicy = makeLazyPolicyResolver()
+      return enqueueTransaction(runDispatchLowPriority(action, route.analysis)).pipe(
+        Effect.flatMap(() => publishActionPropagationBus([route.propagationEntry], 'dispatchLowPriority', resolvePolicy)),
+      )
+    },
   }
 }

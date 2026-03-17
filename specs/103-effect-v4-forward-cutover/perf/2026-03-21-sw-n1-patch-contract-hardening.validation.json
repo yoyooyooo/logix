@@ -1,0 +1,23 @@
+{
+  "id": "2026-03-21-sw-n1-patch-contract-hardening.validation",
+  "capturedAt": "2026-03-21",
+  "commands": {
+    "typecheckTest": {
+      "command": "pnpm -C packages/logix-core typecheck:test",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-sw-n1-patch-contract-hardening.validation.typecheck.txt",
+      "passed": true
+    },
+    "targetedVitest": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/FieldPath/FieldPath.DirtySetReason.test.ts test/internal/Bound/BoundApiRuntime.stateUpdateWholeStateFallback.Perf.off.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.reducerWholeStateFallback.Perf.off.test.ts test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-sw-n1-patch-contract-hardening.validation.vitest.txt",
+      "passed": true
+    },
+    "probeNextBlocker": {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-sw-n1-patch-contract-hardening.probe-next-blocker.json",
+      "status": "clear",
+      "blocker": null,
+      "thresholdAnomalyCount": 0
+    }
+  }
+}

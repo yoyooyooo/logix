@@ -1,0 +1,90 @@
+{
+  "id": "2026-03-21-p1-4c-moduleinstance-pulse-envelope-selector-delta-payload-design.evidence",
+  "capturedAt": "2026-03-21",
+  "scope": "p1-4c-moduleinstance-pulse-envelope-selector-delta-payload-design-package",
+  "baseHead": "9c34aa63",
+  "decision": {
+    "status": "discarded_or_pending",
+    "acceptedWithEvidence": false,
+    "mergeToMain": false,
+    "reasons": [
+      "probe_next_blocker 命中 failure_kind=environment，当前证据不可比",
+      "本轮目标是形成 implementation-ready 设计包，不进入代码实施",
+      "设计只在 P1-4B 已成立的前提上推进到 selector 重算触发面"
+    ]
+  },
+  "preconditions": {
+    "dependsOnAcceptedCut": "P1-4B-min RuntimeExternalStore module pulse hub",
+    "anchors": [
+      "docs/perf/2026-03-21-p1-4b-module-pulse-hub-impl.md"
+    ]
+  },
+  "constraints": {
+    "forbiddenSlices": [
+      "normal-path shared microtask flush",
+      "dirtyTopics single-pass classification"
+    ],
+    "publicApiChange": false,
+    "codeChangeInThisLine": false
+  },
+  "comparison": {
+    "whyP14CMoreFurtherThanP14B": [
+      "P1-4B 收敛 pulse 次数，P1-4C 收敛每次 pulse 下的 selector 重算触发面",
+      "统一 React bridge 输入为 PulseEnvelope，使订阅拓扑按 moduleInstance 收敛",
+      "selector delta payload 只允许误报，禁止漏报，保持 correctness"
+    ]
+  },
+  "proposedMinimalCut": {
+    "name": "P1-4C-min PulseEnvelope v0 + SelectorDeltaTopK",
+    "status": "implementation_ready_docs_only",
+    "writeScopeIfTriggered": [
+      "packages/logix-react/src/internal/store/RuntimeExternalStore.ts",
+      "packages/logix-react/src/internal/hooks/useSelector.ts",
+      "packages/logix-core/src/internal/runtime/core/TickScheduler.ts",
+      "packages/logix-core/src/internal/runtime/core/RuntimeStore.ts"
+    ],
+    "mustKeepSemantics": [
+      "getSnapshot",
+      "topicVersion",
+      "tickSeq",
+      "priority",
+      "no tearing"
+    ]
+  },
+  "protocolV0": {
+    "pulseEnvelope": {
+      "fields": [
+        "moduleInstanceKey",
+        "tickSeq",
+        "priorityMax",
+        "topicDeltaCount",
+        "topicDeltaHash",
+        "selectorDelta"
+      ],
+      "notes": [
+        "envelope 只做 gating，不改变 getSnapshot/topicVersion 语义",
+        "selectorDelta 必须 Slim 且可序列化，并支持采样开关"
+      ]
+    },
+    "selectorDeltaTopK": {
+      "fields": [
+        "bloomWords[4]",
+        "topK[]",
+        "hash"
+      ],
+      "notes": [
+        "membership 检查允许误报，禁止漏报",
+        "topK 默认不常驻，仅在 diagnostics 或采样时填充"
+      ]
+    }
+  },
+  "verification": {
+    "commands": [
+      "python3 fabfile.py probe_next_blocker --json"
+    ],
+    "probeStatus": "blocked",
+    "probeFailureKind": "environment",
+    "probeReport": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p1-4c-moduleinstance-pulse-envelope-selector-delta-payload-design.probe-next-blocker.json"
+  }
+}
+

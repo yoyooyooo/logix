@@ -1,0 +1,64 @@
+{
+  "id": "2026-03-21-p2-1-env-ready-recheck.evidence",
+  "capturedAt": "2026-03-21",
+  "scope": "p2-1-fresh-reopen-check-env-ready",
+  "decision": {
+    "status": "discarded_or_pending",
+    "acceptedWithEvidence": false,
+    "mergeToMain": false,
+    "reopenP21Expansion": false,
+    "reasons": [
+      "环境已就绪，focused tests 通过，排除了此前的 environment 阻塞",
+      "probe_next_blocker 本轮命中 externalStore.ingest.tickNotify 的 threshold 失败，但该项已在 current-head triage 中归类为 clear_unstable + edge_gate_noise",
+      "本轮失败未指向 P2-1 converge/lanes 的唯一最小切口，且约束禁止回到 queue-side 微调",
+      "按 09 模板与本轮目标，继续 docs/evidence-only 收口，P2-1 维持 watchlist"
+    ]
+  },
+  "sources": {
+    "focusedTests": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts test/internal/observability/TxnLaneEvidence.Schema.test.ts",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p2-1-env-ready-recheck.focused-tests.txt",
+      "status": "passed"
+    },
+    "probeRun": {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p2-1-env-ready-recheck.probe-next-blocker.json",
+      "status": "blocked",
+      "failureKind": "threshold",
+      "blockerSuite": "externalStore.ingest.tickNotify",
+      "executedCount": 1,
+      "thresholdAnomalyCount": 1,
+      "firstFailLevel": 256,
+      "maxLevel": 128
+    }
+  },
+  "triggerGate": {
+    "template": "docs/perf/09-worktree-open-decision-template.md",
+    "status": "not_met",
+    "type": "none",
+    "explanation": "本轮没有形成可归因到 P2-1 的唯一最小切口，命中的 threshold 失败属于既有 edge_gate_noise 轨道。"
+  },
+  "invariants": [
+    {
+      "id": "p2-1-env-ready-recheck.forbidden-cuts-untouched",
+      "expectation": "不重做 next-stage 半成品，不回到 queue-side 微调",
+      "status": "passed",
+      "evidenceType": "scope-guard"
+    },
+    {
+      "id": "p2-1-env-ready-recheck.no-runtime-code-change",
+      "expectation": "本轮不改 packages/logix-core 实现代码，仅新增 docs/evidence",
+      "status": "passed",
+      "evidenceType": "git-diff-scope"
+    }
+  ],
+  "summary": {
+    "result": "discarded_or_pending",
+    "classification": "docs_evidence_only_watchlist_hold",
+    "notes": [
+      "本轮不开新的 P2-1 扩面实施线",
+      "环境阻塞已消除，后续重开条件从“先修环境”切换为“出现非 edge_gate_noise 且直指 P2-1 的真实触发器”",
+      "对应结论文档：docs/perf/archive/2026-03/2026-03-21-p2-1-env-ready-recheck.md"
+    ]
+  }
+}

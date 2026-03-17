@@ -1,4 +1,4 @@
-import { Context, Effect, Layer, Option, Schema } from 'effect'
+import { Effect, Layer, Option, Schema, ServiceMap } from 'effect'
 import * as ModuleRuntimeImpl from './ModuleRuntime.js'
 import * as BoundApiRuntime from './BoundApiRuntime.js'
 import * as LogicDiagnostics from './core/LogicDiagnostics.js'
@@ -36,7 +36,7 @@ export function Link<Modules extends Record<string, LogixModuleTag<any, AnyModul
     const handles: Record<string, ModuleHandle<AnyModuleShape>> = {}
 
     for (const [key, module] of Object.entries(modules)) {
-      const runtime = yield* module
+      const runtime = yield* Effect.service(module).pipe(Effect.orDie)
 
       handles[key] = {
         read: (selector: any) => Effect.map(runtime.getState, selector),
@@ -71,24 +71,24 @@ export function Module<Id extends string, SSchema extends AnySchema, AMap extend
     readonly reducers?: ReducersFromMap<SSchema, AMap>
   },
 ): LogixModuleTag<Id, ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>> {
+  const actionMembers = Object.entries(def.actions).map(([tag, token]) => {
+    const payload = (token as Action.AnyActionToken).schema as AnySchema
+    return Schema.Struct(
+      payload === Schema.Void
+        ? {
+            _tag: Schema.Literal(tag),
+            payload: Schema.optional(payload),
+          }
+        : {
+            _tag: Schema.Literal(tag),
+            payload,
+          },
+    )
+  }) as [AnySchema, ...AnySchema[]]
+
   const shape: ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap> = {
     stateSchema: def.state as any,
-    actionSchema: Schema.Union(
-      ...Object.entries(def.actions).map(([tag, token]) => {
-        const payload = (token as Action.AnyActionToken).schema as AnySchema
-        return Schema.Struct(
-          payload === Schema.Void
-            ? {
-                _tag: Schema.Literal(tag),
-                payload: Schema.optional(payload),
-              }
-            : {
-                _tag: Schema.Literal(tag),
-                payload,
-              },
-        )
-      }),
-    ) as unknown as Schema.Schema<ActionsFromMap<AMap>>,
+    actionSchema: Schema.Union(actionMembers) as unknown as Schema.Schema<ActionsFromMap<AMap>>,
     actionMap: def.actions as any,
   }
 
@@ -117,10 +117,10 @@ export function Module<Id extends string, SSchema extends AnySchema, AMap extend
       (state: ShapeState, action: ShapeAction, sink?: (path: string | FieldPath) => void) => ShapeState
     >)
 
-  class ModuleTag extends Context.Tag(`@logixjs/Module/${id}`)<
+  class ModuleTag extends ServiceMap.Service<
     ModuleTag,
     import('./core/module.js').ModuleRuntime<StateOf<typeof shape>, ActionOf<typeof shape>>
-  >() {}
+  >()(`@logixjs/Module/${id}`) {}
 
   const tag = ModuleTag
 
@@ -142,7 +142,7 @@ export function Module<Id extends string, SSchema extends AnySchema, AMap extend
       build: (api: import('./core/module.js').BoundApi<typeof shape, R>) => ModuleLogic<typeof shape, R, E>,
     ): ModuleLogic<typeof shape, R, E> => {
       const logicEffect = Effect.gen(function* () {
-        const runtime = yield* tag
+        const runtime = yield* Effect.service(tag).pipe(Effect.orDie)
         const logicUnit = yield* Effect.serviceOption(LogicDiagnostics.LogicUnitServiceTag).pipe(
           Effect.map(Option.getOrUndefined),
         )
@@ -199,7 +199,7 @@ export function Module<Id extends string, SSchema extends AnySchema, AMap extend
       initial: StateOf<typeof shape>,
       ...logics: Array<ModuleLogic<typeof shape, R, E>>
     ): Layer.Layer<import('./core/module.js').ModuleRuntime<StateOf<typeof shape>, ActionOf<typeof shape>>, E, R> =>
-      Layer.scoped(
+      Layer.effect(
         tag,
         ModuleRuntimeImpl.make<StateOf<typeof shape>, ActionOf<typeof shape>, R>(initial, {
           tag,
@@ -239,11 +239,11 @@ export function Module<Id extends string, SSchema extends AnySchema, AMap extend
        * - If instrumentation is provided, it takes precedence over Runtime-level config and defaults.
        */
       stateTransaction?: ModuleImplementStateTransactionOptions
-    }): ModuleImpl<Id, ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>, R> => {
+      }): ModuleImpl<Id, ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>, R> => {
       const importedModules = (config.imports ?? []).flatMap((item) => {
         if ((item as ModuleImpl<any, AnyModuleShape, any>)._tag === 'ModuleImpl') {
           return [
-            (item as ModuleImpl<any, AnyModuleShape, any>).module as unknown as Context.Tag<
+            (item as ModuleImpl<any, AnyModuleShape, any>).module as unknown as ServiceMap.Key<
               any,
               import('./core/module.js').ModuleRuntime<any, any>
             >,
@@ -252,7 +252,7 @@ export function Module<Id extends string, SSchema extends AnySchema, AMap extend
         return []
       })
 
-      const baseLayer = Layer.scoped(
+      const baseLayer = Layer.effect(
         tag,
         ModuleRuntimeImpl.make<StateOf<typeof shape>, ActionOf<typeof shape>, R>(config.initial, {
           tag,

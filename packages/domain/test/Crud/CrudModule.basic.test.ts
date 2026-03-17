@@ -1,11 +1,10 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
-import { Deferred, Effect, FiberId, Layer, Schema } from 'effect'
+import { describe, it, expect } from '@effect/vitest'
+import { Deferred, Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import { CRUDModule, type CrudApi, type CrudDefaultQueryInput } from '../../src/index.js'
 
 describe('CRUDModule.basic', () => {
-  it.scoped('Runtime.make/$.use/withLogic basics', () =>
+  it.effect('Runtime.make/$.use/withLogic basics', () =>
     Effect.gen(function* () {
       const Entity = Schema.Struct({
         id: Schema.String,
@@ -41,8 +40,8 @@ describe('CRUDModule.basic', () => {
           }),
       }
 
-      const seedDone = Deferred.unsafeMake<void>(FiberId.none)
-      const hostDone = Deferred.unsafeMake<void>(FiberId.none)
+      const seedDone = yield* Deferred.make<void>()
+      const hostDone = yield* Deferred.make<void>()
 
       const Seed = Crud.logic(
         ($) =>
@@ -67,6 +66,10 @@ describe('CRUDModule.basic', () => {
           const crud = yield* $.use(Live)
           yield* Deferred.await(seedDone)
 
+          // `seedDone` only proves the extra Seed logic completed; give the imported module
+          // one scheduler turn so the original CRUD install logic can register its action handlers.
+          yield* Effect.yieldNow
+
           const waitForItems = (expectedLength: number) =>
             Effect.gen(function* () {
               for (let i = 0; i < 40; i++) {
@@ -74,7 +77,7 @@ describe('CRUDModule.basic', () => {
                 if (state.items.length === expectedLength && state.loading === false) {
                   return state.items
                 }
-                yield* Effect.yieldNow()
+                yield* Effect.yieldNow
               }
               const final = yield* crud.read((s) => s)
               return yield* Effect.fail(
@@ -110,7 +113,7 @@ describe('CRUDModule.basic', () => {
       const runtime = Logix.Runtime.make(host)
 
       const program = Effect.gen(function* () {
-        yield* Host.tag
+        yield* Effect.service(Host.tag).pipe(Effect.orDie)
         yield* Deferred.await(hostDone)
       })
 

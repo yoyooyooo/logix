@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer } from 'effect'
 import * as Logix from '../../src/index.js'
@@ -16,7 +16,7 @@ describe('DevtoolsHub (buffer resize)', () => {
 
       const fullLayer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 5,
-        mode: 'full',
+        diagnosticsLevel: 'full',
       }) as Layer.Layer<any, never, never>
 
       let notified = 0
@@ -51,7 +51,7 @@ describe('DevtoolsHub (buffer resize)', () => {
         expect(before).toEqual(seenEventIds.slice(-5))
 
         notified = 0
-        Logix.Debug.devtoolsHubLayer({ bufferSize: 3, mode: 'full' })
+        Logix.Debug.devtoolsHubLayer({ bufferSize: 3, diagnosticsLevel: 'full' })
         yield* flushMicrotask
 
         expect(notified).toBeGreaterThan(0)
@@ -69,7 +69,7 @@ describe('DevtoolsHub (buffer resize)', () => {
         expect(() => JSON.stringify(shrinkPolicy)).not.toThrow()
 
         notified = 0
-        Logix.Debug.devtoolsHubLayer({ bufferSize: 10, mode: 'full' })
+        Logix.Debug.devtoolsHubLayer({ bufferSize: 10, diagnosticsLevel: 'full' })
         yield* flushMicrotask
 
         expect(notified).toBeGreaterThan(0)

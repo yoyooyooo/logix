@@ -1,0 +1,92 @@
+{
+  "source": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.react-controlplane-stage-g-design/docs/perf/04-agent-execution-playbook.md",
+  "mode": "probe_next_blocker",
+  "dry_run": false,
+  "tail_lines": 20,
+  "targets": [
+    {
+      "order": 1,
+      "suite_id": "externalStore.ingest.tickNotify",
+      "gate": "残余复核门",
+      "command": "pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/external-store-ingest.test.tsx -t \"perf: externalStore ingest\""
+    },
+    {
+      "order": 2,
+      "suite_id": "runtimeStore.noTearing.tickNotify",
+      "gate": "防回归门",
+      "command": "pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx -t \"perf: runtimeStore tick\""
+    },
+    {
+      "order": 3,
+      "suite_id": "form.listScopeCheck",
+      "gate": "防回归门",
+      "command": "pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/form-list-scope-check.test.tsx"
+    }
+  ],
+  "status": "blocked",
+  "executed": [
+    {
+      "order": 1,
+      "suite_id": "externalStore.ingest.tickNotify",
+      "gate": "残余复核门",
+      "command": "pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/external-store-ingest.test.tsx -t \"perf: externalStore ingest\"",
+      "status": "failed",
+      "failure_kind": "environment",
+      "process_returncode": 1,
+      "returncode": 1,
+      "duration_ms": 445,
+      "perf_report_count": 0,
+      "threshold_anomaly_count": 0,
+      "threshold_anomalies": [],
+      "perf_report_parse_errors": [],
+      "stdout_tail": [
+        "> @logixjs/react@1.0.2-beta.1 test /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.react-controlplane-stage-g-design/packages/logix-react",
+        "> vitest run --project browser test/browser/perf-boundaries/external-store-ingest.test.tsx -t 'perf: externalStore ingest'",
+        " ELIFECYCLE  Test failed. See above for more details.",
+        " WARN   Local package.json exists, but node_modules missing, did you mean to install?"
+      ],
+      "stderr_tail": [
+        "sh: vitest: command not found"
+      ]
+    }
+  ],
+  "blocker": {
+    "order": 1,
+    "suite_id": "externalStore.ingest.tickNotify",
+    "gate": "残余复核门",
+    "command": "pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/external-store-ingest.test.tsx -t \"perf: externalStore ingest\"",
+    "status": "failed",
+    "failure_kind": "environment",
+    "process_returncode": 1,
+    "returncode": 1,
+    "duration_ms": 445,
+    "perf_report_count": 0,
+    "threshold_anomaly_count": 0,
+    "threshold_anomalies": [],
+    "perf_report_parse_errors": [],
+    "stdout_tail": [
+      "> @logixjs/react@1.0.2-beta.1 test /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.react-controlplane-stage-g-design/packages/logix-react",
+      "> vitest run --project browser test/browser/perf-boundaries/external-store-ingest.test.tsx -t 'perf: externalStore ingest'",
+      " ELIFECYCLE  Test failed. See above for more details.",
+      " WARN   Local package.json exists, but node_modules missing, did you mean to install?"
+    ],
+    "stderr_tail": [
+      "sh: vitest: command not found"
+    ]
+  },
+  "pending": [
+    {
+      "order": 2,
+      "suite_id": "runtimeStore.noTearing.tickNotify",
+      "gate": "防回归门",
+      "command": "pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx -t \"perf: runtimeStore tick\""
+    },
+    {
+      "order": 3,
+      "suite_id": "form.listScopeCheck",
+      "gate": "防回归门",
+      "command": "pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/form-list-scope-check.test.tsx"
+    }
+  ],
+  "threshold_anomalies": []
+}

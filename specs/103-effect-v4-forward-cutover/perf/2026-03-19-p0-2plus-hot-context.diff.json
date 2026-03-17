@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-03-19",
+  "cutId": "p0-2plus-hot-context",
+  "beforeRef": "2026-03-19-p0-2plus-hot-context.before.json",
+  "afterRef": "2026-03-19-p0-2plus-hot-context.after.json",
+  "diff": {
+    "dispatch.p50.ms": -0.007,
+    "dispatch.p95.ms": -0.022,
+    "txnPrelude.avg.ms": -0.002,
+    "queueContext.avg.ms": 0.0,
+    "queueResolve.avg.ms": -0.001,
+    "bodyShell.avg.ms": -0.002,
+    "asyncEscape.avg.ms": -0.002,
+    "commit.avg.ms": 0.0,
+    "dispatchRecord.avg.ms": 0.0,
+    "dispatchCommitHub.avg.ms": 0.0,
+    "residual.avg.ms": -0.003
+  },
+  "operationHotContextMicrobench": {
+    "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts --testTimeout=20000",
+    "batch256": {
+      "shared.avg.ms": 0.745,
+      "fallback.avg.ms": 1.107,
+      "speedup.x": 1.486,
+      "saved.pct": 32.71
+    },
+    "batch1024": {
+      "shared.avg.ms": 2.729,
+      "fallback.avg.ms": 4.056,
+      "speedup.x": 1.486,
+      "saved.pct": 32.71
+    }
+  },
+  "probeNextBlocker": {
+    "command": "python3 fabfile.py probe_next_blocker --json",
+    "statusBefore": "clear",
+    "statusAfter": "clear",
+    "processReturnCode": 0,
+    "returnCode": 0,
+    "regression": false
+  },
+  "verdict": "accepted_with_evidence_probe_clear"
+}

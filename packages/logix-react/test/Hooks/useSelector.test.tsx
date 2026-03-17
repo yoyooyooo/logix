@@ -18,7 +18,7 @@ describe('useSelector', () => {
   it('should select state slice and update on change', async () => {
     const CounterLogic = Counter.logic<never>((api) =>
       Effect.gen(function* () {
-        yield* api.onAction('increment').run({ effect: () => api.state.update((s) => ({ count: s.count + 1 })) })
+        yield* api.onAction('increment').run(() => api.state.update((s) => ({ count: s.count + 1 })))
       }),
     )
 
@@ -58,7 +58,7 @@ describe('useSelector', () => {
   it('should invoke equalityFn when provided', async () => {
     const CounterLogic = Counter.logic<never>((api) =>
       Effect.gen(function* () {
-        yield* api.onAction('increment').run({ effect: () => api.state.update((s) => ({ count: s.count + 1 })) })
+        yield* api.onAction('increment').run(() => api.state.update((s) => ({ count: s.count + 1 })))
       }),
     )
 

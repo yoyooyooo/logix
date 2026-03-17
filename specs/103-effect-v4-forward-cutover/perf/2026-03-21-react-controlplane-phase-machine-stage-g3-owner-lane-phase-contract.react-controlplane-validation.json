@@ -1,0 +1,41 @@
+{
+  "date": "2026-03-21",
+  "topic": "react-controlplane-phase-machine-stage-g3-owner-lane-phase-contract",
+  "result": "accepted_with_evidence",
+  "checks": [
+    {
+      "command": "pnpm --filter @logixjs/react typecheck:test",
+      "status": "passed"
+    },
+    {
+      "command": "pnpm --filter @logixjs/react exec vitest run test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx --pool forks",
+      "status": "passed",
+      "summary": {
+        "testFilesPassed": 1,
+        "testsPassed": 6,
+        "testsFailed": 0
+      }
+    },
+    {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "status": "passed",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-react-controlplane-phase-machine-stage-g3-owner-lane-phase-contract.probe-next-blocker.json",
+      "summary": {
+        "probeStatus": "clear",
+        "blocker": null,
+        "executedSuites": 3
+      }
+    }
+  ],
+  "decision": {
+    "codeRetained": true,
+    "accepted_with_evidence": true,
+    "route": "keep_code"
+  },
+  "notes": [
+    "G3 在 RuntimeProvider 内引入统一 owner-lane phase contract 归约层，统一 trace:react.runtime.controlplane.phase-machine 的 lane/owner/ownerKey/token/action/reason/phase/executor/cancelBoundary 口径。",
+    "补齐 runtime-bootresolve-phase-trace 的 contract 一致性断言组，覆盖 config ready, neutral ready, preload reuse-inflight 场景。",
+    "最小验证闭环全绿，probe_next_blocker=clear，满足 accepted_with_evidence 成功门。"
+  ]
+}
+

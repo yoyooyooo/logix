@@ -1,0 +1,47 @@
+{
+  "id": "2026-03-21-p1-3r-env-ready-impl-check-v2.evidence",
+  "capturedAt": "2026-03-21",
+  "scope": "p1-3r-env-ready-implementation-check-on-current-head",
+  "decision": {
+    "status": "discarded_or_pending",
+    "acceptedWithEvidence": false,
+    "mergeToMain": false,
+    "reopenP13R": false,
+    "reasons": [
+      "环境已就绪，focused tests 通过，排除了此前的 environment 阻塞",
+      "probe_next_blocker 本轮为 clear，没有出现可映射到 P1-3R 的 real probe failure",
+      "reopen-plan 的 trigger1 仍不成立，本轮不应重开实施线",
+      "current-head 已包含唯一允许切口 batched accessor reuse，本轮不重复实现，继续维持 watchlist"
+    ]
+  },
+  "sources": {
+    "reopenPlan": {
+      "ref": "docs/perf/archive/2026-03/2026-03-19-p1-3r-reopen-plan.md"
+    },
+    "focusedTests": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts test/internal/Runtime/ModuleAsSource.tick.test.ts",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p1-3r-env-ready-impl-check-v2.focused-tests.txt",
+      "status": "passed"
+    },
+    "probeRun": {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p1-3r-env-ready-impl-check-v2.probe-next-blocker.json",
+      "status": "clear",
+      "thresholdAnomalyCount": 0
+    },
+    "headState": {
+      "baseHead": "c6bd6a83",
+      "accessorReuseFile": "packages/logix-core/src/internal/state-trait/external-store.ts",
+      "batchedReadLine": 203,
+      "batchedWriteLine": 213
+    }
+  },
+  "triggerGate": {
+    "template": "docs/perf/archive/2026-03/2026-03-19-p1-3r-reopen-plan.md",
+    "trigger1_externalStoreTopFixedTax": "not_met",
+    "trigger2_uniqueMinimalCutBatchedAccessorReuse": "met_existing_in_head",
+    "trigger3_guardsAndProbeGreen": "met",
+    "status": "not_met"
+  }
+}
+

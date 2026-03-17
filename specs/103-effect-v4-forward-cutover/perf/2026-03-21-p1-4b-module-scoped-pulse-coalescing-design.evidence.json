@@ -1,0 +1,51 @@
+{
+  "id": "2026-03-21-p1-4b-module-scoped-pulse-coalescing-design.evidence",
+  "capturedAt": "2026-03-21",
+  "scope": "p1-4b-module-scoped-pulse-coalescing-design-package",
+  "baseHead": "383c108c",
+  "decision": {
+    "status": "discarded_or_pending",
+    "acceptedWithEvidence": false,
+    "mergeToMain": false,
+    "reasons": [
+      "probe_next_blocker 命中 failure_kind=environment，当前证据不可比",
+      "本轮目标是形成 implementation-ready 包，代码实施触发门未成立",
+      "旧切口 shared-microtask-flush 与 dirtyTopics single-pass 都已被明确否决"
+    ]
+  },
+  "constraints": {
+    "forbiddenSlices": [
+      "normal-path shared microtask flush",
+      "dirtyTopics single-pass classification"
+    ],
+    "publicApiChange": false
+  },
+  "comparison": {
+    "whyP14BMoreValuable": [
+      "直接覆盖 runtime 到 react bridge 的重复 pulse 准备成本",
+      "按 moduleInstance 聚合可同时覆盖 module topic 与 readQuery topic",
+      "收益面跨 plane，旧切口只覆盖单段局部成本"
+    ]
+  },
+  "proposedMinimalCut": {
+    "name": "P1-4B-min RuntimeExternalStore module pulse hub",
+    "status": "implementation_ready_docs_only",
+    "writeScopeIfTriggered": [
+      "packages/logix-react/src/internal/store/RuntimeExternalStore.ts",
+      "packages/logix-react/test/internal/RuntimeExternalStore.lowPriority.test.ts",
+      "packages/logix-react/test/Hooks/useSelector.sharedSubscription.test.tsx"
+    ],
+    "keepUntouched": [
+      "packages/logix-core/src/internal/runtime/core/TickScheduler.ts",
+      "packages/logix-core/src/internal/runtime/core/RuntimeStore.ts"
+    ]
+  },
+  "verification": {
+    "commands": [
+      "python3 fabfile.py probe_next_blocker --json"
+    ],
+    "probeStatus": "blocked",
+    "probeFailureKind": "environment",
+    "probeReport": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p1-4b-module-scoped-pulse-coalescing-design.probe-next-blocker.json"
+  }
+}

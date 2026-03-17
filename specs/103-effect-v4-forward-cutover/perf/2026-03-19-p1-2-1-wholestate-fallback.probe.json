@@ -1,0 +1,23 @@
+{
+  "task": "P1-2.1 whole-state fallback 收紧扩面",
+  "date": "2026-03-19",
+  "probeCommand": "python3 fabfile.py probe_next_blocker --json",
+  "status": "clear",
+  "executedSuites": [
+    {
+      "suiteId": "externalStore.ingest.tickNotify",
+      "status": "passed",
+      "returncode": 0
+    },
+    {
+      "suiteId": "runtimeStore.noTearing.tickNotify",
+      "status": "passed",
+      "returncode": 0
+    },
+    {
+      "suiteId": "form.listScopeCheck",
+      "status": "passed",
+      "returncode": 0
+    }
+  ]
+}

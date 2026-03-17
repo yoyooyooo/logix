@@ -144,7 +144,7 @@ export const runConvergeTimeSlicingTxnCommit = (
   dirtyRoots: number,
 ): Effect.Effect<void, never, any> =>
   Effect.gen(function* () {
-    const moduleScope = (yield* rt.module.tag) as any
+    const moduleScope = (yield* Effect.service(rt.module.tag).pipe(Effect.orDie)) as any
     yield* Logix.InternalContracts.runWithStateTransaction(
       moduleScope,
       { kind: 'perf', name: 'converge:txnCommit:timeSlicing' },
@@ -167,7 +167,7 @@ export const runConvergeTimeSlicingTxnCommitWithDiagnosticsLevel = (
   diagnosticsLevel: DiagnosticsLevel,
 ): Effect.Effect<void, never, any> =>
   runConvergeTimeSlicingTxnCommit(rt, dirtyRoots).pipe(
-    Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel, diagnosticsLevel),
+    (effect) => Effect.provideService(effect, Logix.Debug.internal.currentDiagnosticsLevel, diagnosticsLevel),
   )
 
 export const runConvergeTimeSlicingTxnCommitDirtyAll = (
@@ -175,7 +175,7 @@ export const runConvergeTimeSlicingTxnCommitDirtyAll = (
   mutateRoots: number,
 ): Effect.Effect<void, never, any> =>
   Effect.gen(function* () {
-    const moduleScope = (yield* rt.module.tag) as any
+    const moduleScope = (yield* Effect.service(rt.module.tag).pipe(Effect.orDie)) as any
     yield* Logix.InternalContracts.runWithStateTransaction(
       moduleScope,
       { kind: 'perf', name: 'converge:txnCommit:timeSlicing:dirtyAll' },
@@ -197,5 +197,5 @@ export const runConvergeTimeSlicingTxnCommitDirtyAllWithDiagnosticsLevel = (
   diagnosticsLevel: DiagnosticsLevel,
 ): Effect.Effect<void, never, any> =>
   runConvergeTimeSlicingTxnCommitDirtyAll(rt, mutateRoots).pipe(
-    Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel, diagnosticsLevel),
+    (effect) => Effect.provideService(effect, Logix.Debug.internal.currentDiagnosticsLevel, diagnosticsLevel),
   )

@@ -16,7 +16,7 @@ describe('BoundApi $.use missing import', () => {
     })
 
     const app = ManagedRuntime.make(Parent.live({ ok: true }).pipe(Layer.mergeAll))
-    const parentRuntime = app.runSync(Parent.tag) as Logix.ModuleRuntime<any, any>
+    const parentRuntime = app.runSync(Effect.service(Parent.tag).pipe(Effect.orDie)) as Logix.ModuleRuntime<any, any>
 
     const $ = BoundApiRuntime.make(Parent.shape as any, parentRuntime as any, {
       moduleId: Parent.id,

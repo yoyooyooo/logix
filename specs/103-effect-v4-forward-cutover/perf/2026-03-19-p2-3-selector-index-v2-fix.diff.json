@@ -1,0 +1,53 @@
+{
+  "scenario": "selectorGraph.pathCacheKey.targeted",
+  "beforeFile": "2026-03-19-p2-3-selector-index-v2-fix.before.json",
+  "afterFile": "2026-03-19-p2-3-selector-index-v2-fix.after.json",
+  "timestamp": "2026-03-19T03:28:26.249Z",
+  "comparability": {
+    "sameScenario": true,
+    "sameEnv": true,
+    "sameIterations": true
+  },
+  "behavior": {
+    "changedCountBefore": 0,
+    "changedCountAfter": 0,
+    "changedCountStable": true
+  },
+  "metricsMs": {
+    "before": {
+      "p50": 157.96545800000013,
+      "p95": 204.20974999999999,
+      "mean": 163.74200691666672,
+      "min": 151.3430000000003,
+      "max": 204.20974999999999
+    },
+    "after": {
+      "p50": 157.7210409999998,
+      "p95": 163.68870900000002,
+      "mean": 157.57181241666663,
+      "min": 149.34299999999985,
+      "max": 163.68870900000002
+    },
+    "delta": {
+      "p50": -0.2444170000003396,
+      "p95": -40.52104099999997,
+      "mean": -6.170194500000093,
+      "min": -2.0000000000004547,
+      "max": -40.52104099999997
+    },
+    "ratio": {
+      "p50AfterOverBefore": 0.9984527186949925,
+      "p95AfterOverBefore": 0.8015714675719452,
+      "meanAfterOverBefore": 0.9623175835194185
+    }
+  },
+  "conclusion": {
+    "positiveEvidence": [
+      "p95 improved and remained under same targeted dataset.",
+      "p50/mean did not regress under the same run envelope."
+    ],
+    "negativeEvidence": [
+      "No selector change-count difference; behavior remained stable."
+    ]
+  }
+}

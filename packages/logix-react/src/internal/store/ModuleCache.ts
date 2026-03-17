@@ -15,12 +15,15 @@ export type ModuleCacheFactory<A extends ModuleRuntimeLike = ModuleRuntimeLike> 
 ) => Effect.Effect<A, unknown, unknown>
 
 export type ModuleCachePolicyMode = 'sync' | 'suspend' | 'defer'
+export type ModuleCacheResolvePhase = 'boot' | 'ready' | 'steady'
 
 export interface ModuleCacheLoadOptions {
   readonly entrypoint?: string
   readonly policyMode?: ModuleCachePolicyMode
+  readonly resolvePhase?: ModuleCacheResolvePhase
   readonly yield?: YieldPolicy
   readonly warnSyncBlockingThresholdMs?: number
+  readonly optimisticSyncBudgetMs?: number
 }
 
 export interface ModuleCachePreloadOptions extends ModuleCacheLoadOptions {
@@ -29,10 +32,10 @@ export interface ModuleCachePreloadOptions extends ModuleCacheLoadOptions {
 }
 
 interface ResourceEntry {
-  scope: Scope.CloseableScope
+  scope: Scope.Closeable
   status: 'pending' | 'success' | 'error'
   promise: Promise<ModuleRuntimeLike>
-  fiber?: Fiber.RuntimeFiber<ModuleRuntimeLike, unknown>
+  fiber?: Fiber.Fiber<ModuleRuntimeLike, unknown>
   value?: ModuleRuntimeLike
   error?: unknown
   refCount: number
@@ -51,12 +54,14 @@ interface ResourceEntry {
    * - For error state: uses short-cycle GC (ERROR_GC_DELAY_MS), unaffected by business gcTime.
    */
   gcTime: number
+  usesDefaultGcTime: boolean
   createdBy: 'read' | 'preload'
   workloadKey: string
   yieldStrategy: YieldStrategy
+  lastResolvePhase: ModuleCacheResolvePhase
 }
 
-const RUNTIME_CACHE = new WeakMap<ManagedRuntime.ManagedRuntime<any, any>, { version: number; cache: ModuleCache }>()
+const RUNTIME_CACHE = new WeakMap<ManagedRuntime.ManagedRuntime<any, any>, ModuleCache>()
 
 const DEFAULT_GC_DELAY_MS = 500
 const ERROR_GC_DELAY_MS = 500
@@ -88,9 +93,9 @@ const debugBestEffortFailure = (label: string, error: unknown): void => {
 }
 
 const causeToUnknown = (cause: Cause.Cause<unknown>): unknown => {
-  const failure = Option.getOrUndefined(Cause.failureOption(cause))
+  const failure = Option.getOrUndefined(Cause.findErrorOption(cause))
   if (failure !== undefined) return failure
-  const defect = Option.getOrUndefined(Cause.dieOption(cause))
+  const defect = cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)[0]
   if (defect !== undefined) return defect
   return cause
 }
@@ -100,7 +105,7 @@ const yieldEffect = (strategy: YieldStrategy): Effect.Effect<void> => {
     case 'none':
       return Effect.void
     case 'microtask':
-      return Effect.yieldNow()
+      return Effect.yieldNow
     case 'macrotask':
       return Effect.promise(
         () =>
@@ -141,8 +146,57 @@ export class ModuleCache {
 
   constructor(
     private readonly runtime: ManagedRuntime.ManagedRuntime<any, any>,
-    private readonly gcDelayMs: number = DEFAULT_GC_DELAY_MS,
+    private defaultGcTime: number = DEFAULT_GC_DELAY_MS,
   ) {}
+
+  private resolveGcPolicy(gcTime?: number): { readonly gcTime: number; readonly usesDefaultGcTime: boolean } {
+    if (gcTime === undefined) {
+      return { gcTime: this.defaultGcTime, usesDefaultGcTime: true }
+    }
+    return { gcTime, usesDefaultGcTime: false }
+  }
+
+  private updateEntryGcPolicy(key: ResourceKey, entry: ResourceEntry, gcTime?: number): void {
+    if (entry.status === 'error') {
+      return
+    }
+
+    const next = this.resolveGcPolicy(gcTime)
+    if (entry.gcTime === next.gcTime && entry.usesDefaultGcTime === next.usesDefaultGcTime) {
+      return
+    }
+
+    entry.gcTime = next.gcTime
+    entry.usesDefaultGcTime = next.usesDefaultGcTime
+
+    if (!entry.gcTimeout) {
+      return
+    }
+
+    clearTimeout(entry.gcTimeout)
+    entry.gcTimeout = undefined
+
+    if (entry.refCount > 0 || entry.preloadRefCount > 0) {
+      return
+    }
+
+    this.scheduleGC(key, entry)
+  }
+
+  updateDefaultGcTime(gcTime: number): void {
+    if (this.defaultGcTime === gcTime) {
+      return
+    }
+
+    this.defaultGcTime = gcTime
+
+    for (const [key, entry] of this.entries) {
+      if (!entry.usesDefaultGcTime) {
+        continue
+      }
+      this.updateEntryGcPolicy(key, entry)
+    }
+  }
 
   private scheduleGC(key: ResourceKey, entry: ResourceEntry): void {
     if (entry.gcTimeout) {
@@ -207,6 +261,40 @@ export class ModuleCache {
     }, timeoutMs)
   }
 
+  private resolvePhase(options?: ModuleCacheLoadOptions): ModuleCacheResolvePhase {
+    return options?.resolvePhase ?? 'steady'
+  }
+
+  private ownerPhaseLabel(ownerId: string | undefined, phase: ModuleCacheResolvePhase): string {
+    return `${ownerId ?? 'unknown'}@${phase}`
+  }
+
+  private assertOwnerCompatible(
+    method: 'read' | 'readSync' | 'warmSync' | 'preload',
+    key: ResourceKey,
+    entry: ResourceEntry,
+    ownerId: string | undefined,
+    phase: ModuleCacheResolvePhase,
+  ): void {
+    if (!(isDevEnv() && entry.ownerId !== undefined && ownerId !== undefined && entry.ownerId !== ownerId)) {
+      return
+    }
+
+    // eslint-disable-next-line no-console
+    console.error(
+      `[ModuleCache.${method}] resource key ownership mismatch:`,
+      `key="${key}" previously owned by "${entry.ownerId}@${entry.lastResolvePhase}",`,
+      `but now requested by "${ownerId}@${phase}".`,
+    )
+
+    throw new Error(
+      `[ModuleCache.${method}] resource key "${key}" has already been claimed by module "${entry.ownerId}", ` +
+        `but is now requested by module "${ownerId}" during "${phase}" resolve phase. ` +
+        'Within the same ManagedRuntime, a given key must not be shared across different ModuleImpl definitions. ' +
+        'Please ensure each ModuleImpl uses a distinct key when sharing ModuleRuntime instances.',
+    )
+  }
+
   /**
    * Suspense-friendly read: starts async construction during render and suspends via Promise.
    */
@@ -231,23 +319,14 @@ export class ModuleCache {
     ownerId?: string,
     options?: ModuleCacheLoadOptions,
   ): A {
+    const resolvePhase = this.resolvePhase(options)
     const existing = this.entries.get(key)
 
     if (existing) {
-      if (isDevEnv() && existing.ownerId !== undefined && ownerId !== undefined && existing.ownerId !== ownerId) {
-        // eslint-disable-next-line no-console
-        console.error(
-          '[ModuleCache.read] resource key ownership mismatch:',
-          `key="${key}" previously owned by "${existing.ownerId}",`,
-          `but now requested by "${ownerId}".`,
-        )
-        throw new Error(
-          `[ModuleCache.read] resource key "${key}" has already been claimed by module "${existing.ownerId}", ` +
-            `but is now requested by module "${ownerId}". ` +
-            'Within the same ManagedRuntime, a given key must not be shared across different ModuleImpl definitions. ' +
-            'Please ensure each ModuleImpl uses a distinct key when sharing ModuleRuntime instances.',
-        )
-      }
+      this.assertOwnerCompatible('read', key, existing, ownerId, resolvePhase)
+      existing.lastResolvePhase = resolvePhase
+
+      this.updateEntryGcPolicy(key, existing, gcTime)
 
       if (existing.status === 'pending') {
         throw existing.promise
@@ -262,10 +341,86 @@ export class ModuleCache {
     // - Does not depend on React Runtime Env.
     // - Uses the global default Runtime, avoiding early ManagedRuntime.runSync in suspend:true scenarios
     //   (may encounter async Layer building).
-    const scope = Effect.runSync(Scope.make()) as Scope.CloseableScope
+    const scope = Effect.runSync(Scope.make()) as Scope.Closeable
 
-    const workloadKey = `${options?.entrypoint ?? 'unknown'}::${ownerId ?? 'unknown'}`
+    const workloadKey = `${options?.entrypoint ?? 'unknown'}::${this.ownerPhaseLabel(ownerId, resolvePhase)}`
     const yieldDecision = decideYieldStrategy(this.runtime as unknown as object, workloadKey, options?.yield)
+    const optimisticSyncBudgetMs = options?.optimisticSyncBudgetMs ?? 0
+    const shouldTryOptimisticSync = options?.policyMode === 'suspend' && optimisticSyncBudgetMs > 0
+
+    const gcPolicy = this.resolveGcPolicy(gcTime)
+
+    if (shouldTryOptimisticSync) {
+      const startedAt = performance.now()
+      try {
+        const value = this.runtime.runSync(factory(scope)) as A
+        const durationMs = performance.now() - startedAt
+        YieldBudgetMemory.record({ runtime: this.runtime as unknown as object, workloadKey, durationMs })
+
+        const entry: ResourceEntry = {
+          scope,
+          status: 'success',
+          promise: Promise.resolve(value),
+          value,
+          refCount: 0,
+          preloadRefCount: 0,
+          gcTime: gcPolicy.gcTime,
+          usesDefaultGcTime: gcPolicy.usesDefaultGcTime,
+          ownerId,
+          createdBy: 'read',
+          workloadKey,
+          yieldStrategy: 'none',
+          lastResolvePhase: resolvePhase,
+        }
+
+        this.scheduleGC(key, entry)
+        this.entries.set(key, entry)
+
+        if (isDevEnv() || Logix.Debug.isDevtoolsEnabled()) {
+          void this.runtime
+            .runPromise(
+              Logix.Debug.record({
+                type: 'trace:react.module.init',
+                moduleId: ownerId,
+                instanceId: value.instanceId,
+                data: {
+                  mode: 'suspend',
+                  key,
+                  durationMs: Math.round(durationMs * 100) / 100,
+                  yieldStrategy: 'none',
+                  fastPath: 'sync',
+                },
+              }) as unknown as Effect.Effect<void, never, never>,
+            )
+            .catch((error) => {
+              debugBestEffortFailure('[ModuleCache] Debug.record failed', error)
+            })
+
+          void this.runtime
+            .runPromise(
+              Logix.Debug.record({
+                type: 'trace:react.module-instance',
+                moduleId: ownerId,
+                instanceId: value.instanceId,
+                data: {
+                  event: 'attach',
+                  key,
+                  mode: 'suspend',
+                  gcTime: entry.gcTime,
+                  fastPath: 'sync',
+                },
+              }) as unknown as Effect.Effect<void, never, never>,
+            )
+            .catch((error) => {
+              debugBestEffortFailure('[ModuleCache] Debug.record failed', error)
+            })
+        }
+
+        return value
+      } catch {
+        // Fall through to the async Suspense path.
+      }
+    }
 
     const entry: ResourceEntry = {
       scope,
@@ -274,11 +429,13 @@ export class ModuleCache {
       promise: Promise.resolve<ModuleRuntimeLike>(null as unknown as ModuleRuntimeLike),
       refCount: 0,
       preloadRefCount: 0,
-      gcTime: gcTime ?? this.gcDelayMs,
+      gcTime: gcPolicy.gcTime,
+      usesDefaultGcTime: gcPolicy.usesDefaultGcTime,
       ownerId,
       createdBy: 'read',
       workloadKey,
       yieldStrategy: yieldDecision.strategy,
+      lastResolvePhase: resolvePhase,
     }
 
     // Suspense scenario: if a render is abandoned after suspension (component never commits),
@@ -287,9 +444,9 @@ export class ModuleCache {
 
     const startedAt = performance.now()
 
-    const buildEffect = yieldEffect(yieldDecision.strategy).pipe(Effect.zipRight(factory(scope)))
+    const buildEffect = yieldEffect(yieldDecision.strategy).pipe(Effect.flatMap(() => factory(scope)))
 
-    const fiber = this.runtime.runFork(buildEffect) as Fiber.RuntimeFiber<ModuleRuntimeLike, unknown>
+    const fiber = this.runtime.runFork(buildEffect) as Fiber.Fiber<ModuleRuntimeLike, unknown>
     entry.fiber = fiber
 
     const promise: Promise<A> = this.runtime.runPromise(Fiber.await(fiber)).then((exit) => {
@@ -405,27 +562,17 @@ export class ModuleCache {
     ownerId?: string,
     options?: ModuleCacheLoadOptions,
   ): A {
+    const resolvePhase = this.resolvePhase(options)
     const existing = this.entries.get(key)
 
     if (existing) {
-      if (isDevEnv() && existing.ownerId !== undefined && ownerId !== undefined && existing.ownerId !== ownerId) {
-        // eslint-disable-next-line no-console
-        console.error(
-          '[ModuleCache.readSync] resource key ownership mismatch:',
-          `key="${key}" previously owned by "${existing.ownerId}",`,
-          `but now requested by "${ownerId}".`,
-        )
-        throw new Error(
-          `[ModuleCache.readSync] resource key "${key}" has already been claimed by module "${existing.ownerId}", ` +
-            `but is now requested by module "${ownerId}". ` +
-            'Within the same ManagedRuntime, a given key must not be shared across different ModuleImpl definitions. ' +
-            'Please ensure each ModuleImpl uses a distinct key when sharing ModuleRuntime instances.',
-        )
-      }
+      this.assertOwnerCompatible('readSync', key, existing, ownerId, resolvePhase)
+      existing.lastResolvePhase = resolvePhase
 
       if (existing.status === 'error') {
         throw existing.error
       }
+      this.updateEntryGcPolicy(key, existing, gcTime)
       if (existing.status === 'pending') {
         // For sync reads, we do not expect to hit a pending entry; throw to surface a logic error.
         // Typical cause: the same key is accessed by both suspend:true (async) and sync consumers.
@@ -439,7 +586,8 @@ export class ModuleCache {
       return existing.value as A
     }
 
-    const scope = this.runtime.runSync(Scope.make()) as Scope.CloseableScope
+    const scope = this.runtime.runSync(Scope.make()) as Scope.Closeable
+    const gcPolicy = this.resolveGcPolicy(gcTime)
 
     const startedAt = performance.now()
 
@@ -454,11 +602,13 @@ export class ModuleCache {
         value,
         refCount: 0,
         preloadRefCount: 0,
-        gcTime: gcTime ?? this.gcDelayMs,
+        gcTime: gcPolicy.gcTime,
+        usesDefaultGcTime: gcPolicy.usesDefaultGcTime,
         ownerId,
         createdBy: 'read',
-        workloadKey: `${options?.entrypoint ?? 'unknown'}::${ownerId ?? 'unknown'}`,
+        workloadKey: `${options?.entrypoint ?? 'unknown'}::${this.ownerPhaseLabel(ownerId, resolvePhase)}`,
         yieldStrategy: 'none',
+        lastResolvePhase: resolvePhase,
       }
 
       // Schedule a GC in case of render abort (retain never executes).
@@ -556,10 +706,12 @@ export class ModuleCache {
         refCount: 0,
         preloadRefCount: 0,
         gcTime: ERROR_GC_DELAY_MS,
+        usesDefaultGcTime: false,
         ownerId,
         createdBy: 'read',
-        workloadKey: `${options?.entrypoint ?? 'unknown'}::${ownerId ?? 'unknown'}`,
+        workloadKey: `${options?.entrypoint ?? 'unknown'}::${this.ownerPhaseLabel(ownerId, resolvePhase)}`,
         yieldStrategy: 'none',
+        lastResolvePhase: resolvePhase,
       }
 
       // Error state also needs GC, otherwise the key stays in error forever and cannot retry.
@@ -570,14 +722,76 @@ export class ModuleCache {
     }
   }
 
+  warmSync<A extends ModuleRuntimeLike>(
+    key: ResourceKey,
+    factory: ModuleCacheFactory<A>,
+    gcTime?: number,
+    ownerId?: string,
+    options?: ModuleCacheLoadOptions,
+  ): A | undefined {
+    const resolvePhase = this.resolvePhase(options)
+    const existing = this.entries.get(key)
+
+    if (existing) {
+      this.assertOwnerCompatible('warmSync', key, existing, ownerId, resolvePhase)
+      existing.lastResolvePhase = resolvePhase
+
+      if (existing.status === 'success') {
+        this.updateEntryGcPolicy(key, existing, gcTime)
+        return existing.value as A
+      }
+      return undefined
+    }
+
+    const scope = this.runtime.runSync(Scope.make()) as Scope.Closeable
+    const startedAt = performance.now()
+    const workloadKey = `${options?.entrypoint ?? 'unknown'}::${this.ownerPhaseLabel(ownerId, resolvePhase)}`
+    const gcPolicy = this.resolveGcPolicy(gcTime)
+
+    try {
+      const value = this.runtime.runSync(factory(scope)) as A
+      const durationMs = performance.now() - startedAt
+      YieldBudgetMemory.record({ runtime: this.runtime as unknown as object, workloadKey, durationMs })
+
+      const entry: ResourceEntry = {
+        scope,
+        status: 'success',
+        promise: Promise.resolve(value),
+        value,
+        refCount: 0,
+        preloadRefCount: 0,
+        gcTime: gcPolicy.gcTime,
+        usesDefaultGcTime: gcPolicy.usesDefaultGcTime,
+        ownerId,
+        createdBy: 'preload',
+        workloadKey,
+        yieldStrategy: 'none',
+        lastResolvePhase: resolvePhase,
+      }
+
+      this.scheduleGC(key, entry)
+      this.entries.set(key, entry)
+      return value
+    } catch (error) {
+      void this.runtime.runPromise(Scope.close(scope, Exit.fail(error as unknown))).catch((closeError) => {
+        debugBestEffortFailure('[ModuleCache] Scope.close failed', closeError)
+      })
+      return undefined
+    }
+  }
+
   preload<A extends ModuleRuntimeLike>(
     key: ResourceKey,
     factory: ModuleCacheFactory<A>,
     options?: ModuleCachePreloadOptions,
   ): { readonly promise: Promise<A>; readonly cancel: () => void } {
+    const resolvePhase = this.resolvePhase(options)
     const existing = this.entries.get(key)
     if (existing) {
+      this.assertOwnerCompatible('preload', key, existing, options?.ownerId, resolvePhase)
+      existing.lastResolvePhase = resolvePhase
       if (existing.status === 'success') {
+        this.updateEntryGcPolicy(key, existing, options?.gcTime)
         existing.preloadRefCount += 1
         return {
           promise: Promise.resolve(existing.value as A),
@@ -589,6 +803,7 @@ export class ModuleCache {
       if (existing.status === 'error') {
         return { promise: Promise.reject(existing.error), cancel: () => {} }
       }
+      this.updateEntryGcPolicy(key, existing, options?.gcTime)
       existing.preloadRefCount += 1
       return {
         promise: existing.promise as Promise<A>,
@@ -598,12 +813,52 @@ export class ModuleCache {
       }
     }
 
-    const scope = Effect.runSync(Scope.make()) as Scope.CloseableScope
+    const scope = Effect.runSync(Scope.make()) as Scope.Closeable
 
     const ownerId = options?.ownerId
-    const gcTime = options?.gcTime ?? this.gcDelayMs
-    const workloadKey = `${options?.entrypoint ?? 'unknown'}::${ownerId ?? 'unknown'}`
+    const gcPolicy = this.resolveGcPolicy(options?.gcTime)
+    const gcTime = gcPolicy.gcTime
+    const workloadKey = `${options?.entrypoint ?? 'unknown'}::${this.ownerPhaseLabel(ownerId, resolvePhase)}`
     const yieldDecision = decideYieldStrategy(this.runtime as unknown as object, workloadKey, options?.yield)
+    const optimisticSyncBudgetMs = options?.optimisticSyncBudgetMs ?? 0
+    const shouldTryOptimisticSync = options?.policyMode === 'defer' && optimisticSyncBudgetMs > 0
+
+    if (shouldTryOptimisticSync) {
+      const startedAt = performance.now()
+      try {
+        const value = this.runtime.runSync(factory(scope)) as A
+        const durationMs = performance.now() - startedAt
+        YieldBudgetMemory.record({ runtime: this.runtime as unknown as object, workloadKey, durationMs })
+
+        const entry: ResourceEntry = {
+          scope,
+          status: 'success',
+          promise: Promise.resolve(value),
+          value,
+          refCount: 0,
+          preloadRefCount: 1,
+          gcTime,
+          usesDefaultGcTime: gcPolicy.usesDefaultGcTime,
+          ownerId,
+          createdBy: 'preload',
+          workloadKey,
+          yieldStrategy: 'none',
+          lastResolvePhase: resolvePhase,
+        }
+
+        this.scheduleGC(key, entry)
+        this.entries.set(key, entry)
+
+        return {
+          promise: Promise.resolve(value),
+          cancel: () => {
+            this.cancelPreload(key, entry)
+          },
+        }
+      } catch {
+        // Fall through to async preload.
+      }
+    }
 
     const entry: ResourceEntry = {
       scope,
@@ -612,19 +867,21 @@ export class ModuleCache {
       refCount: 0,
       preloadRefCount: 1,
       gcTime,
+      usesDefaultGcTime: gcPolicy.usesDefaultGcTime,
       ownerId,
       createdBy: 'preload',
       workloadKey,
       yieldStrategy: yieldDecision.strategy,
+      lastResolvePhase: resolvePhase,
     }
 
     this.scheduleGC(key, entry)
     this.entries.set(key, entry)
 
     const startedAt = performance.now()
-    const buildEffect = yieldEffect(yieldDecision.strategy).pipe(Effect.zipRight(factory(scope)))
+    const buildEffect = yieldEffect(yieldDecision.strategy).pipe(Effect.flatMap(() => factory(scope)))
 
-    const fiber = this.runtime.runFork(buildEffect) as Fiber.RuntimeFiber<ModuleRuntimeLike, unknown>
+    const fiber = this.runtime.runFork(buildEffect) as Fiber.Fiber<ModuleRuntimeLike, unknown>
     entry.fiber = fiber
 
     const promise: Promise<A> = this.runtime.runPromise(Fiber.await(fiber)).then((exit) => {
@@ -648,6 +905,7 @@ export class ModuleCache {
         entry.status = 'error'
         entry.error = error
         entry.gcTime = ERROR_GC_DELAY_MS
+        entry.usesDefaultGcTime = false
         if (entry.gcTimeout) {
           clearTimeout(entry.gcTimeout)
           entry.gcTimeout = undefined
@@ -772,19 +1030,15 @@ export class ModuleCache {
 export const getModuleCache = (
   runtime: ManagedRuntime.ManagedRuntime<any, any>,
   config: ReactConfigSnapshot,
-  version: number,
 ): ModuleCache => {
   const cached = RUNTIME_CACHE.get(runtime)
-  if (cached && cached.version === version) {
-    return cached.cache
-  }
-
   if (cached) {
-    cached.cache.dispose()
+    cached.updateDefaultGcTime(config.gcTime)
+    return cached
   }
 
   const cache = new ModuleCache(runtime, config.gcTime)
-  RUNTIME_CACHE.set(runtime, { version, cache })
+  RUNTIME_CACHE.set(runtime, cache)
   return cache
 }
 

@@ -1,0 +1,61 @@
+{
+  "capturedAt": "2026-03-19T05:12:12.011Z",
+  "baselineEnv": {
+    "LOGIX_CROSSPLANE_TOPIC": "0"
+  },
+  "candidateEnv": {
+    "LOGIX_CROSSPLANE_TOPIC": "1"
+  },
+  "suites": {
+    "tick.selectorGate.noSubscriber": {
+      "iterations": 300000,
+      "rounds": 8,
+      "meanMs": {
+        "before": 15.036797000000014,
+        "after": 2.850031125000015,
+        "delta": -12.186765874999999,
+        "ratio": 0.18953711518483707
+      },
+      "p50Ms": {
+        "before": 14.940791000000047,
+        "after": 1.3177909999999997,
+        "delta": -13.623000000000047,
+        "ratio": 0.088200885749623
+      },
+      "p95Ms": {
+        "before": 15.785584000000028,
+        "after": 4.765458000000024,
+        "delta": -11.020126000000005,
+        "ratio": 0.301886708784421
+      },
+      "semanticCheckChanged": false
+    },
+    "tick.selectorGate.withSubscriber": {
+      "iterations": 300000,
+      "rounds": 8,
+      "meanMs": {
+        "before": 45.97791150000002,
+        "after": 8.727198000000008,
+        "delta": -37.25071350000001,
+        "ratio": 0.18981284088991307
+      },
+      "p50Ms": {
+        "before": 45.516707999999994,
+        "after": 7.979332999999997,
+        "delta": -37.537375,
+        "ratio": 0.17530558229299004
+      },
+      "p95Ms": {
+        "before": 47.58879200000007,
+        "after": 9.978666999999973,
+        "delta": -37.610125000000096,
+        "ratio": 0.2096852342879382
+      },
+      "semanticCheckChanged": false
+    }
+  },
+  "summary": {
+    "allSuitesImprovedOnMean": true,
+    "semanticDriftDetected": false
+  }
+}

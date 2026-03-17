@@ -1,0 +1,126 @@
+{
+  "capturedAt": "2026-03-19T05:12:12.011Z",
+  "env": {
+    "LOGIX_CROSSPLANE_TOPIC": "1"
+  },
+  "suites": {
+    "tick.selectorGate.noSubscriber": {
+      "iterations": 300000,
+      "rounds": 8,
+      "samplesMs": [
+        4.765458000000024,
+        5.066832999999974,
+        3.9001670000000104,
+        1.3177909999999997,
+        1.30762500000003,
+        3.8317080000000487,
+        1.3131670000000213,
+        1.2975000000000136
+      ],
+      "meanMs": 2.850031125000015,
+      "p50Ms": 1.3177909999999997,
+      "p95Ms": 4.765458000000024,
+      "semanticChecks": [
+        {
+          "round": 0,
+          "topicVersion": 0,
+          "notifyCount": 0
+        },
+        {
+          "round": 1,
+          "topicVersion": 0,
+          "notifyCount": 0
+        },
+        {
+          "round": 2,
+          "topicVersion": 0,
+          "notifyCount": 0
+        },
+        {
+          "round": 3,
+          "topicVersion": 0,
+          "notifyCount": 0
+        },
+        {
+          "round": 4,
+          "topicVersion": 0,
+          "notifyCount": 0
+        },
+        {
+          "round": 5,
+          "topicVersion": 0,
+          "notifyCount": 0
+        },
+        {
+          "round": 6,
+          "topicVersion": 0,
+          "notifyCount": 0
+        },
+        {
+          "round": 7,
+          "topicVersion": 0,
+          "notifyCount": 0
+        }
+      ]
+    },
+    "tick.selectorGate.withSubscriber": {
+      "iterations": 300000,
+      "rounds": 8,
+      "samplesMs": [
+        9.888417000000004,
+        9.978666999999973,
+        10.477917000000048,
+        7.784832999999992,
+        7.872708999999986,
+        8.040875000000028,
+        7.79483300000004,
+        7.979332999999997
+      ],
+      "meanMs": 8.727198000000008,
+      "p50Ms": 7.979332999999997,
+      "p95Ms": 9.978666999999973,
+      "semanticChecks": [
+        {
+          "round": 0,
+          "topicVersion": 1,
+          "notifyCount": 1
+        },
+        {
+          "round": 1,
+          "topicVersion": 1,
+          "notifyCount": 1
+        },
+        {
+          "round": 2,
+          "topicVersion": 1,
+          "notifyCount": 1
+        },
+        {
+          "round": 3,
+          "topicVersion": 1,
+          "notifyCount": 1
+        },
+        {
+          "round": 4,
+          "topicVersion": 1,
+          "notifyCount": 1
+        },
+        {
+          "round": 5,
+          "topicVersion": 1,
+          "notifyCount": 1
+        },
+        {
+          "round": 6,
+          "topicVersion": 1,
+          "notifyCount": 1
+        },
+        {
+          "round": 7,
+          "topicVersion": 1,
+          "notifyCount": 1
+        }
+      ]
+    }
+  }
+}

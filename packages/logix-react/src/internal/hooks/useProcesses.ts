@@ -31,7 +31,7 @@ export interface UseProcessesOptions {
 type Entry = {
   readonly key: string
   readonly signature: string
-  readonly scope: Scope.CloseableScope
+  readonly scope: Scope.Closeable
   refCount: number
   gcTimeout?: ReturnType<typeof setTimeout>
 }
@@ -45,7 +45,7 @@ class ProcessSubtreeRegistry {
     readonly key: string
     readonly signature: string
     readonly gcTime: number
-    readonly install: (scope: Scope.CloseableScope) => void
+    readonly install: (scope: Scope.Closeable) => void
   }): () => void {
     const existing = this.entries.get(args.key)
 
@@ -67,7 +67,7 @@ class ProcessSubtreeRegistry {
       return () => this.release({ key: args.key, gcTime: args.gcTime })
     }
 
-    const scope = Effect.runSync(Scope.make()) as Scope.CloseableScope
+    const scope = Effect.runSync(Scope.make()) as Scope.Closeable
 
     const entry: Entry = {
       key: args.key,
@@ -201,7 +201,7 @@ export function useProcesses(
                 }
                 return Effect.forkScoped(process as any).pipe(Effect.asVoid)
               }),
-              Effect.catchAll(() => Effect.forkScoped(process as any).pipe(Effect.asVoid)),
+              Effect.catch(() => Effect.forkScoped(process as any).pipe(Effect.asVoid)),
             ),
           { discard: true },
         ).pipe(Effect.provideService(Scope.Scope, scope))

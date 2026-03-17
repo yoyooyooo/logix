@@ -1,4 +1,4 @@
-import { Context, Effect, FiberRef, Layer, Schema } from 'effect'
+import { Effect, Layer, Schema, ServiceMap } from 'effect'
 import * as Debug from './Debug.js'
 import * as Logic from './Logic.js'
 import * as ModuleTagNS from './ModuleTag.js'
@@ -39,8 +39,7 @@ import type {
  *
  * - Domain factories (Form / CRUD / ...) should return this object.
  * - `.tag` is the identity anchor (ModuleTag/Context.Tag), used by `$.use(...)` and Env injection.
- * - 入口分级：`layer(...)` 为业务默认主路径；`build(...)` 为显式实例编排的高级路径；`createInstance(...)` 仅用于 Runtime 直连等高级桥接。
- * - `.impl` 仅作为 legacy 兼容读口，不作为业务教程入口。
+ * - `.impl` is the assembly blueprint (ModuleImpl), consumed by React/Runtime entry points.
  * - `.logic()` only produces the logic value; `.withLogic/withLayer(s)` changes the runnable shape (immutable: returns a new object).
  */
 
@@ -200,7 +199,7 @@ type ModuleDefBase<
   ) => Layer.Layer<ModuleRuntimeOfShape<Sh>, E, R>
   readonly schemas?: Record<string, unknown>
   readonly meta?: Record<string, JsonValue>
-  readonly services?: Record<string, Context.Tag<any, any>>
+  readonly services?: Record<string, ServiceMap.Key<any, any>>
   readonly dev?: ModuleDev
   readonly logic: <R = never, E = unknown>(
     build: (
@@ -210,26 +209,16 @@ type ModuleDefBase<
   ) => ModuleLogic<Sh, R, E>
 }
 
-export interface ModuleInstanceConfig<Sh extends AnyModuleShape, R = never> {
-  readonly initial: StateOf<Sh>
-  readonly logics?: ReadonlyArray<ModuleLogic<Sh, R, any>>
-  readonly imports?: ReadonlyArray<Layer.Layer<any, any, any> | ModuleImpl<any, AnyModuleShape, any>>
-  readonly processes?: ReadonlyArray<Effect.Effect<void, any, any>>
-  readonly stateTransaction?: ModuleImplementStateTransactionOptions
-}
-
 export type AnyModule = {
   readonly _kind: 'Module'
   readonly id: string
   readonly tag: ModuleTag<string, AnyModuleShape>
-  readonly createInstance: () => ModuleImpl<any, AnyModuleShape, any>
-  /** @deprecated use createInstance() */
   readonly impl: ModuleImpl<any, AnyModuleShape, any>
   readonly actions: Record<string, AnySchema>
   readonly reducers?: Record<string, unknown>
   readonly schemas?: Record<string, unknown>
   readonly meta?: Record<string, JsonValue>
-  readonly services?: Record<string, Context.Tag<any, any>>
+  readonly services?: Record<string, ServiceMap.Key<any, any>>
   readonly dev?: ModuleDev
 }
 
@@ -239,8 +228,6 @@ export type Module<Id extends string, Sh extends AnyModuleShape, Ext extends obj
   Ext
 > & {
   readonly _kind: 'Module'
-  readonly createInstance: () => ModuleImpl<Id, Sh, R>
-  /** @deprecated use createInstance() */
   readonly impl: ModuleImpl<Id, Sh, R>
   readonly withLogic: (logic: ModuleLogic<Sh, any, any>, options?: LogicUnitOptions) => Module<Id, Sh, Ext, R>
   readonly withLogics: (...inputs: ReadonlyArray<MountInput<Sh>>) => Module<Id, Sh, Ext, R>
@@ -258,27 +245,20 @@ export type ModuleDef<Id extends string, Sh extends AnyModuleShape, Ext extends 
   readonly _kind: 'ModuleDef'
   readonly withWorkflow: (workflow: Workflow) => ModuleDef<Id, Sh, Ext>
   readonly withWorkflows: (workflows: ReadonlyArray<Workflow>) => ModuleDef<Id, Sh, Ext>
-  /**
-   * Primary entry for business code (Effect-native layer-first).
-   */
-  readonly layer: <R = never>(config: ModuleInstanceConfig<Sh, R>) => Layer.Layer<ModuleRuntimeOfShape<Sh>, never, R>
-  /**
-   * Advanced entry for explicit Module object composition before runtime wiring.
-   */
-  readonly build: <R = never>(config: ModuleInstanceConfig<Sh, R>) => Module<Id, Sh, Ext, R>
-  /**
-   * Advanced bridge to ModuleImpl for Runtime.make / tests; not a primary tutorial entry.
-   */
-  readonly createInstance: <R = never>(config: ModuleInstanceConfig<Sh, R>) => ModuleImpl<Id, Sh, R>
-  /** @deprecated use layer(...) or build(...) */
-  readonly implement: <R = never>(config: ModuleInstanceConfig<Sh, R>) => Module<Id, Sh, Ext, R>
+  readonly implement: <R = never>(config: {
+    readonly initial: StateOf<Sh>
+    readonly logics?: Array<ModuleLogic<Sh, R, any>>
+    readonly imports?: ReadonlyArray<Layer.Layer<any, any, any> | ModuleImpl<any, AnyModuleShape, any>>
+    readonly processes?: ReadonlyArray<Effect.Effect<void, any, any>>
+    readonly stateTransaction?: ModuleImplementStateTransactionOptions
+  }) => Module<Id, Sh, Ext, R>
 }
 
 export const is = (value: unknown): value is ModuleDefBase => {
   if (!value || typeof value !== 'object') return false
   const kind = (value as any)._kind
   if (kind !== 'ModuleDef' && kind !== 'Module') return false
-  return Context.isTag((value as any).tag)
+  return ServiceMap.isKey((value as any).tag)
 }
 
 export const hasImpl = (value: unknown): value is AnyModule => {
@@ -294,10 +274,7 @@ export const unwrapTag = <Id extends string, Sh extends AnyModuleShape>(
 
 export const unwrapImpl = <Id extends string, Sh extends AnyModuleShape>(
   module: AnyModule & { readonly id: Id; readonly tag: ModuleTag<Id, Sh> },
-): ModuleImpl<Id, Sh, any> =>
-  typeof (module as any).createInstance === 'function'
-    ? ((module as any).createInstance() as ModuleImpl<Id, Sh, any>)
-    : ((module as any).impl as ModuleImpl<Id, Sh, any>)
+): ModuleImpl<Id, Sh, any> => (module as any).impl as ModuleImpl<Id, Sh, any>
 
 export const descriptor = (
   module: ModuleDefBase<string, AnyModuleShape, any>,
@@ -464,17 +441,17 @@ const makeOverrideDiagnosticsLogic = (
   overrides: ReadonlyArray<LogicOverrideWarning>,
 ): ModuleLogic<any, any, never> => {
   if (overrides.length === 0) {
-    return Effect.void as any
+    return Effect.void as ModuleLogic<any, any, never>
   }
 
-  return tag.logic(() =>
+  return tag.logic<any, never>(() =>
     Effect.gen(function* () {
       if (!isDevEnv()) return
 
-      const diagnosticsLevel = yield* FiberRef.get(Debug.internal.currentDiagnosticsLevel as any)
+      const diagnosticsLevel = yield* Effect.service(Debug.internal.currentDiagnosticsLevel).pipe(Effect.orDie)
       if (diagnosticsLevel === 'off') return
 
-      const runtime = (yield* tag) as ModuleRuntime<any, any>
+      const runtime = (yield* Effect.service(tag).pipe(Effect.orDie)) as ModuleRuntime<any, any>
 
       yield* Effect.forEach(
         overrides,
@@ -493,7 +470,7 @@ const makeOverrideDiagnosticsLogic = (
           }),
         { discard: true },
       )
-    }),
+    }).pipe(Effect.catchCause(() => Effect.void)),
   )
 }
 
@@ -547,39 +524,6 @@ const makeDeclaredEffectsLogic = (
   return logic
 }
 
-type InstantiationApiSource = 'build' | 'implement'
-
-const makeLegacyInstantiationDiagnosticsLogic = (
-  tag: ModuleTag<any, AnyModuleShape>,
-  moduleId: string,
-  source: string,
-  shouldEmit: () => boolean = () => true,
-): ModuleLogic<any, any, never> =>
-  tag.logic(() =>
-    Effect.gen(function* () {
-      if (!shouldEmit()) return
-      if (!isDevEnv()) return
-
-      const diagnosticsLevel = yield* FiberRef.get(Debug.internal.currentDiagnosticsLevel as any)
-      if (diagnosticsLevel === 'off') return
-
-      const runtime = (yield* tag) as ModuleRuntime<any, any>
-      yield* Debug.record({
-        type: 'diagnostic',
-        moduleId: runtime.moduleId,
-        instanceId: runtime.instanceId,
-        code: 'module_instantiation::legacy_entry',
-        severity: 'warning',
-        message: '检测到 Module 旧实例化入口。',
-        hint: '默认迁移到 Module.layer(...)；需要显式 Module 组合时使用 Module.build(...).createInstance()；仅在 Runtime 直连等高级场景使用 Module.createInstance(...)。',
-        kind: 'module_instantiation',
-        source,
-        txnSeq: 0,
-        opSeq: 0,
-      } as any)
-    }),
-  )
-
 const makeLogicFactory = <Id extends string, Sh extends AnyModuleShape, Ext extends object>(
   selfModule: ModuleDefBase<Id, Sh, Ext>,
 ): ModuleDefBase<Id, Sh, Ext>['logic'] => {
@@ -612,14 +556,14 @@ type MakeDef<Id extends string, SSchema extends AnySchema, AMap extends Action.A
   readonly traits?: unknown
   readonly schemas?: Record<string, unknown>
   readonly meta?: Record<string, JsonValue>
-  readonly services?: Record<string, Context.Tag<any, any>>
+  readonly services?: Record<string, ServiceMap.Key<any, any>>
   readonly dev?: ModuleDev
 }
 
 type AnyActionMap = Action.ActionDefs
 type EmptyActionMap = Record<never, never>
 
-type PayloadOfActionDef<V> = V extends Schema.Schema<any, any, any>
+type PayloadOfActionDef<V> = V extends Schema.Schema<any>
   ? Schema.Schema.Type<V>
   : V extends Action.ActionToken<any, infer P, any>
     ? P
@@ -653,7 +597,7 @@ export type MakeExtendDef<
   readonly effects?: EffectsFromMap<MergeActionMap<BaseActions, ExtActions>>
   readonly schemas?: Record<string, unknown>
   readonly meta?: Record<string, JsonValue>
-  readonly services?: Record<string, Context.Tag<any, any>>
+  readonly services?: Record<string, ServiceMap.Key<any, any>>
   readonly dev?: ModuleDev
 }
 
@@ -845,7 +789,9 @@ export function make(id: any, def: any, extend?: any): any {
 
   base.logic = makeLogicFactory(base as any)
 
-  const buildFromConfig = (config: any, source: InstantiationApiSource): any => {
+  base.implement = (config: any) => {
+    type Sh = AnyModuleShape
+
     const initial = config.initial as any
     const imports = config.imports as any
     const processes = config.processes as any
@@ -872,16 +818,10 @@ export function make(id: any, def: any, extend?: any): any {
       readonly workflowDefs: ReadonlyArray<WorkflowDef>
     }
 
-    const buildImpl = (
-      state: State,
-      legacySource?: 'Module.impl' | 'Module.implement',
-    ): ModuleImpl<any, AnyModuleShape, any> => {
+    const buildImpl = (state: State): ModuleImpl<any, AnyModuleShape, any> => {
       const diagnosticsLogic = makeOverrideDiagnosticsLogic(tag as any, state.overrides)
       const declaredEffectsLogic = makeDeclaredEffectsLogic(tag as any, merged.effects, id)
       const allLogics = [...state.mounted.map((u) => u.logic), declaredEffectsLogic, diagnosticsLogic]
-      if (legacySource) {
-        allLogics.push(makeLegacyInstantiationDiagnosticsLogic(tag as any, id, legacySource))
-      }
 
       let impl = (tag as any).implement({
         initial,
@@ -899,7 +839,6 @@ export function make(id: any, def: any, extend?: any): any {
     }
 
     const createModule = (state: State): any => {
-      const primaryLegacySource = source === 'implement' ? 'Module.implement' : undefined
       const internal: ModuleInternal<any, AnyModuleShape> = {
         initial,
         imports,
@@ -909,27 +848,14 @@ export function make(id: any, def: any, extend?: any): any {
         overrides: state.overrides,
         layers: state.layers,
         workflowDefs: state.workflowDefs,
-        rebuild: () => buildImpl(state, primaryLegacySource),
+        rebuild: () => buildImpl(state),
       }
-
-      const primaryImpl = buildImpl(state, primaryLegacySource)
-      let legacyImpl: ModuleImpl<any, AnyModuleShape, any> | undefined
 
       const mod: any = {
         ...base,
         _kind: 'Module' as const,
-        createInstance: () => primaryImpl,
+        impl: buildImpl(state),
       }
-
-      Object.defineProperty(mod, 'impl', {
-        enumerable: true,
-        configurable: true,
-        get: () => {
-          if (source === 'implement') return primaryImpl
-          if (!legacyImpl) legacyImpl = buildImpl(state, 'Module.impl')
-          return legacyImpl
-        },
-      })
 
       Object.defineProperty(mod, MODULE_INTERNAL, {
         value: internal,
@@ -1014,12 +940,6 @@ export function make(id: any, def: any, extend?: any): any {
     })
   }
 
-  base.build = (config: any) => buildFromConfig(config, 'build')
-  base.layer = (config: any) => base.build(config).createInstance().layer
-  base.createInstance = (config: any) => base.build(config).createInstance()
-  base.implement = (config: any) => buildFromConfig(config, 'implement')
-
-  const baseBuild = base.build
   const baseImplement = base.implement
 
   const withExtraLogics = (
@@ -1045,15 +965,6 @@ export function make(id: any, def: any, extend?: any): any {
         [...extraWorkflowDefs, ...workflows.map((w) => (w as any).def as WorkflowDef)],
       )
     }
-
-    next.build = (config: any) => {
-      const mergedLogics = [...(config.logics ?? []), ...extraLogics]
-      return baseBuild({ ...config, logics: mergedLogics, __logix_workflowDefs: extraWorkflowDefs })
-    }
-
-    next.layer = (config: any) => next.build(config).createInstance().layer
-
-    next.createInstance = (config: any) => next.build(config).createInstance()
 
     next.implement = (config: any) => {
       const mergedLogics = [...(config.logics ?? []), ...extraLogics]

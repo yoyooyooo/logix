@@ -1,0 +1,35 @@
+{
+  "id": "2026-03-23-current-phase-terminal-closeout",
+  "capturedAt": "2026-03-23",
+  "decision": {
+    "status": "phase_closed_internal_directions_consumed",
+    "openImplementationLine": false,
+    "reasons": [
+      "当前 phase 的内部方向已全部收口到 accepted_with_evidence 或 discarded_current_phase",
+      "R-2 当前只剩外部 SLA-R2 输入阻塞",
+      "已无注册中的 v4-perf 实施 worktree 与相关实施分支"
+    ]
+  },
+  "acceptedOnMotherline": [
+    "P1-6'' owner-aware resolve engine",
+    "P1-4F single pulse contract",
+    "SW-N3 evidence closeout",
+    "N-3 runtime-shell attribution contract"
+  ],
+  "discardedCurrentPhase": [
+    "P1-3R",
+    "P2-1",
+    "SW-N2",
+    "P0-3/N-0 runtime-shell.ledger.attribution-nextcut",
+    "react controlplane full phase-machine"
+  ],
+  "externalBlocked": [
+    "R-2 / R2-U PolicyPlan contract reorder"
+  ],
+  "worktreeCleanup": {
+    "registeredV4PerfChildren": [],
+    "matchingBranches": [],
+    "staleDirectory": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.r2-u-policyplan-v2",
+    "staleDirectoryRemoved": true
+  }
+}

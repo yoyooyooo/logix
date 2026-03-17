@@ -1,4 +1,4 @@
-import type { Context, Layer as EffectLayer, Stream, Effect } from 'effect'
+import type { Effect, Layer as EffectLayer, ServiceMap, Stream } from 'effect'
 
 /**
  * Actions namespace (module-level):
@@ -7,7 +7,7 @@ import type { Context, Layer as EffectLayer, Stream, Effect } from 'effect'
  *
  * Type-level only; no additional runtime dependency.
  */
-export type Tag<A> = Context.Tag<
+export type Tag<A> = ServiceMap.Key<
   any,
   {
     dispatch: (a: A) => Effect.Effect<void>

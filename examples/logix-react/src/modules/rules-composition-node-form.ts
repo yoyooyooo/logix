@@ -24,7 +24,7 @@ export const RulesCompositionNodeValuesSchema = Schema.Struct({
   }),
   contact: Schema.Struct({
     email: Schema.String,
-    preferredChannel: Schema.Literal('email', 'phone'),
+    preferredChannel: Schema.Literals(['email', 'phone']),
     phone: Schema.String,
   }),
   items: Schema.Array(ItemSchema),

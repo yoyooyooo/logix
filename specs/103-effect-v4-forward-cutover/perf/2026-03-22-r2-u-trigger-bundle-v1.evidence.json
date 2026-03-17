@@ -1,0 +1,39 @@
+{
+  "id": "2026-03-22-r2-u-trigger-bundle-v1",
+  "capturedAt": "2026-03-22",
+  "scope": "r2-u-trigger-bundle-docs-only",
+  "decision": {
+    "status": "discarded_or_pending",
+    "acceptedWithEvidence": false,
+    "mergeToMain": false,
+    "classification": "docs/evidence-only",
+    "reasons": [
+      "R2-U 的最小 trigger bundle 已落盘，D1/D2/D3/D4 均具备模板或草稿形态",
+      "Gate-D 已绑定到 trigger bundle，Gate-E 已形成可复用开线裁决草稿",
+      "当前唯一剩余阻塞为外部 SLA 输入未提供，Gate-A/B 无法升级为 accepted"
+    ]
+  },
+  "constraints": {
+    "publicApiChange": true,
+    "touchedCorePath": false,
+    "codeImplementationRetained": false,
+    "writeScope": [
+      "docs/perf/**",
+      "specs/103-effect-v4-forward-cutover/perf/**"
+    ]
+  },
+  "gateSnapshot": {
+    "gateA": "pending_external_sla_input",
+    "gateB": "draft_ready_waiting_sla_binding",
+    "gateC": "pass",
+    "gateD": "bound_to_trigger_bundle_v1",
+    "gateE": "draft_ready_waiting_trigger"
+  },
+  "remainingBlockers": [
+    "external_sla_input_missing: owner/scope/metric/measurement_anchor/load/why_public_surface"
+  ],
+  "artifacts": {
+    "bundle": "docs/perf/2026-03-22-r2-u-trigger-bundle-v1.md",
+    "summary": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-r2-u-trigger-bundle-v1.summary.md"
+  }
+}

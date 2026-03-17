@@ -24,9 +24,10 @@ describe('best-effort cleanup diagnostics', () => {
         (event as any)?.type === 'trace:react.module-instance' ? Effect.die(new Error('debug sink boom')) : Effect.void,
     }
 
-    const failingDebugLayer = Layer.locallyScoped(Logix.Debug.internal.currentDebugSinks, [
-      failingSink,
-    ]) as unknown as Layer.Layer<any, never, never>
+    const failingDebugLayer = Layer.succeed(
+      Logix.Debug.internal.currentDebugSinks,
+      [failingSink],
+    ) as unknown as Layer.Layer<any, never, never>
 
     const runtime = Logix.Runtime.make(RootImpl, {
       layer: failingDebugLayer,
@@ -84,7 +85,7 @@ describe('best-effort cleanup diagnostics', () => {
 
     const baseRuntime = ManagedRuntime.make(Layer.empty as Layer.Layer<any, never, never>)
 
-    const failingFinalizerLayer = Layer.scopedDiscard(
+const failingFinalizerLayer = Layer.effectDiscard(
       Effect.addFinalizer(() => Effect.die(new Error('layer finalizer boom'))),
     ) as unknown as Layer.Layer<any, any, never>
 

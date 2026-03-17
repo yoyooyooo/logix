@@ -1,0 +1,24 @@
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf/packages/logix-core
+
+stdout | test/internal/Runtime/ModuleRuntime/ModuleRuntime.transaction.ListConfigsGuard.Perf.off.test.ts > ModuleRuntime.transaction listConfigs guard · perf baseline (Diagnostics=off) > should provide reproducible evidence for no-overlap fast path vs overlap path
+[perf] ModuleRuntime.transaction.listConfigsGuard no-overlap iters=20 txns=256 legacy.p50=9.512ms legacy.p95=10.134ms guarded.p50=0.065ms guarded.p95=0.072ms speedup=147.00x updateAll(legacy=5120,guarded=0)
+[perf] ModuleRuntime.transaction.listConfigsGuard overlap iters=20 txns=256 legacy.p50=9.667ms legacy.p95=11.450ms guarded.p50=10.223ms guarded.p95=11.130ms guardedOverhead=1.06x updateAll(legacy=5120,guarded=5120)
+
+ ✓ test/internal/Runtime/ModuleRuntime/ModuleRuntime.transaction.ListConfigsGuard.Perf.off.test.ts (1 test) 759ms
+     ✓ should provide reproducible evidence for no-overlap fast path vs overlap path  758ms
+stdout | test/internal/StateTrait/StateTrait.NoTrackByRowIdGate.Perf.off.test.ts > StateTrait no-trackBy RowId gate · perf baseline (Diagnostics=off) > provides reproducible evidence for validate/source-like hot paths
+[perf] no-trackby-rowid-gate validate rows=100 iters=60 legacy.p50=0.043ms legacy.p95=0.078ms gated.p50=0.021ms gated.p95=0.044ms speedup.p50=2.02x speedup.p95=1.79x ensureList(legacy=70,gated=0)
+[perf] no-trackby-rowid-gate source-like rows=100 iters=60 legacy.p50=0.012ms legacy.p95=0.013ms gated.p50=0.010ms gated.p95=0.015ms speedup.p50=1.17x speedup.p95=0.90x ensureList(legacy=70,gated=0)
+[perf] no-trackby-rowid-gate validate rows=300 iters=60 legacy.p50=0.055ms legacy.p95=0.094ms gated.p50=0.021ms gated.p95=0.024ms speedup.p50=2.59x speedup.p95=4.01x ensureList(legacy=70,gated=0)
+[perf] no-trackby-rowid-gate source-like rows=300 iters=60 legacy.p50=0.031ms legacy.p95=0.054ms gated.p50=0.023ms gated.p95=0.031ms speedup.p50=1.35x speedup.p95=1.76x ensureList(legacy=70,gated=0)
+[perf] no-trackby-rowid-gate validate rows=1000 iters=60 legacy.p50=0.154ms legacy.p95=0.246ms gated.p50=0.052ms gated.p95=0.081ms speedup.p50=2.95x speedup.p95=3.04x ensureList(legacy=70,gated=0)
+[perf] no-trackby-rowid-gate source-like rows=1000 iters=60 legacy.p50=0.097ms legacy.p95=0.122ms gated.p50=0.064ms gated.p95=0.075ms speedup.p50=1.51x speedup.p95=1.64x ensureList(legacy=70,gated=0)
+
+ ✓ test/internal/StateTrait/StateTrait.NoTrackByRowIdGate.Perf.off.test.ts (1 test) 61ms
+
+ Test Files  2 passed (2)
+      Tests  2 passed (2)
+   Start at  20:21:53
+   Duration  1.22s (transform 711ms, setup 0ms, import 1.37s, tests 819ms, environment 0ms)
+

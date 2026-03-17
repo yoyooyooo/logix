@@ -5,7 +5,7 @@ import * as ModuleRuntimeImpl from '../../../src/internal/runtime/ModuleRuntime.
 import * as BoundApiRuntime from '../../../src/internal/runtime/BoundApiRuntime.js'
 
 describe('StateTrait deps diagnostics (dev-mode)', () => {
-  it.scoped('computed deps mismatch emits diagnostic', () =>
+  it.effect('computed deps mismatch emits diagnostic', () =>
     Effect.gen(function* () {
       const ring = Logix.Debug.makeRingBufferSink(64)
 
@@ -34,39 +34,32 @@ describe('StateTrait deps diagnostics (dev-mode)', () => {
 
       const initial: State = { a: 1, b: 2, sum: 0 }
 
-      yield* Effect.locally(Logix.Debug.internal.currentDebugSinks, [ring.sink])(
-        Effect.locally(
-          Logix.Debug.internal.currentDiagnosticsLevel,
-          'light',
-        )(
-          Effect.gen(function* () {
-            type Shape = Logix.Module.Shape<typeof StateSchema, { noop: typeof Schema.Void }>
-            type Action = Logix.Module.ActionOf<Shape>
-
-            const runtime = yield* ModuleRuntimeImpl.make<State, Action>(initial, {
-              moduleId: 'StateTraitDepsDiagnostics-Computed',
-            })
-
-            const bound = BoundApiRuntime.make<Shape, never>(
-              {
-                stateSchema: StateSchema,
-                actionSchema: Schema.Never as any,
-                actionMap: { noop: Schema.Void } as any,
-              } as any,
-              runtime as any,
-              {
-                getPhase: () => 'run',
-                moduleId: 'StateTraitDepsDiagnostics-Computed',
-              },
-            )
-
-            yield* Logix.StateTrait.install(bound as any, program)
-
-            // Trigger a transaction window (even if reducer is a no-op) to enter converge and run deps tracing.
-            yield* runtime.setState({ ...initial })
-          }),
-        ),
-      )
+      yield* Effect.provideService(Effect.provideService(Effect.gen(function* () {
+        type Shape = Logix.Module.Shape<typeof StateSchema, { noop: typeof Schema.Void }>
+        type Action = Logix.Module.ActionOf<Shape>
+            
+        const runtime = yield* ModuleRuntimeImpl.make<State, Action>(initial, {
+          moduleId: 'StateTraitDepsDiagnostics-Computed',
+        })
+            
+        const bound = BoundApiRuntime.make<Shape, never>(
+          {
+            stateSchema: StateSchema,
+            actionSchema: Schema.Never as any,
+            actionMap: { noop: Schema.Void } as any,
+          } as any,
+          runtime as any,
+          {
+            getPhase: () => 'run',
+            moduleId: 'StateTraitDepsDiagnostics-Computed',
+          },
+        )
+            
+        yield* Logix.StateTrait.install(bound as any, program)
+            
+        // Trigger a transaction window (even if reducer is a no-op) to enter converge and run deps tracing.
+        yield* runtime.setState({ ...initial })
+      }), Logix.Debug.internal.currentDiagnosticsLevel, 'light'), Logix.Debug.internal.currentDebugSinks, [ring.sink])
 
       const diags = ring
         .getSnapshot()

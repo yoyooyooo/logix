@@ -4,7 +4,7 @@ import * as Logix from '../../src/index.js'
 import { withProcessRuntime, withProcessRuntimeScope } from './test-helpers.js'
 
 describe('process: errorPolicy supervise', () => {
-  it.scoped('should restart with runSeq increment until maxRestarts reached', () =>
+  it.effect('should restart with runSeq increment until maxRestarts reached', () =>
     Effect.gen(function* () {
       const Host = Logix.Module.make('ProcessSuperviseHost', {
         state: Schema.Void,
@@ -33,16 +33,22 @@ describe('process: errorPolicy supervise', () => {
         run: ({ runtime }) =>
           Effect.gen(function* () {
             let currentEvents: ReadonlyArray<Logix.Process.ProcessEvent> = []
-            // wait for runSeq=3 failure
-            for (let i = 0; i < 200; i++) {
+            for (let i = 0; i < 500; i++) {
               currentEvents = (yield* runtime.getEventsSnapshot()) as ReadonlyArray<Logix.Process.ProcessEvent>
-              const errorRunSeqs = currentEvents
-                .filter((event) => event.type === 'process:error')
+              const starts = currentEvents.filter((event) => event.type === 'process:start').map((event) => event.identity.runSeq)
+              const errors = currentEvents.filter((event) => event.type === 'process:error').map((event) => event.identity.runSeq)
+              const restarts = currentEvents
+                .filter((event) => event.type === 'process:restart')
                 .map((event) => event.identity.runSeq)
-              if (errorRunSeqs.includes(3)) {
+              if (
+                starts.length >= 3 &&
+                errors.length >= 3 &&
+                restarts.length >= 2 &&
+                errors.includes(3)
+              ) {
                 break
               }
-              yield* Effect.yieldNow()
+              yield* Effect.yieldNow
             }
             return currentEvents
           }),

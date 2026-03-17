@@ -537,7 +537,7 @@ async function handleRun(runId: string, useCompiledCode?: boolean): Promise<void
       const res = yield* program
       return res
     }).pipe(
-      EffectRuntime.provide(Logger.replace(Logger.defaultLogger, SandboxLogger)),
+      EffectRuntime.withLogger(SandboxLogger),
       EffectRuntime.withSpan(`sandbox:${runId}`),
     )
 

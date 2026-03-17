@@ -1,0 +1,47 @@
+{
+  "date": "2026-03-21",
+  "topic": "react-controlplane-phase-machine-stage-g3-owner-lane-phase-contract-impl-recheck",
+  "result": "docs_evidence_only",
+  "checks": [
+    {
+      "command": "pnpm --filter @logixjs/react typecheck:test",
+      "status": "failed",
+      "failure_kind": "environment",
+      "stderr_tail": [
+        "sh: tsc: command not found"
+      ],
+      "stdout_tail": [
+        "WARN Local package.json exists, but node_modules missing, did you mean to install?"
+      ]
+    },
+    {
+      "command": "pnpm --filter @logixjs/react exec vitest run test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx --pool forks",
+      "status": "failed",
+      "failure_kind": "environment",
+      "stderr_tail": [
+        "ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command \"vitest\" not found"
+      ]
+    },
+    {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "status": "failed",
+      "failure_kind": "environment",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-react-controlplane-phase-machine-stage-g3-impl-recheck.probe-next-blocker.json",
+      "summary": {
+        "probeStatus": "blocked",
+        "blockerFailureKind": "environment",
+        "blockerSuiteId": "externalStore.ingest.tickNotify"
+      }
+    }
+  ],
+  "decision": {
+    "codeRetained": false,
+    "accepted_with_evidence": false,
+    "route": "docs/evidence-only"
+  },
+  "notes": [
+    "按最小实现线尝试 owner-lane phase contract 切口，但环境缺少 node_modules，无法给出可比验证证据。",
+    "为满足“若保留代码必须 accepted_with_evidence”约束，本轮不保留代码改动，仅保留文档与证据产物。",
+    "G3 trigger 与 G4 boundary 延续 2026-03-20 设计包，不新增 public API 变更讨论。"
+  ]
+}

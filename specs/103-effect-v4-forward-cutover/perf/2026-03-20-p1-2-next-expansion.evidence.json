@@ -1,0 +1,66 @@
+{
+  "cutId": "p1-2-next-expansion",
+  "date": "2026-03-20",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p1-2-next-expansion",
+  "branch": "agent/v4-perf-p1-2-next-expansion",
+  "result": "discarded_or_pending",
+  "accepted_with_evidence": false,
+  "decision": "docs/evidence-only",
+  "attemptedImplementation": {
+    "reverted": true,
+    "files": [
+      "packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts",
+      "packages/logix-core/test/internal/Bound/BoundApiRuntime.stateUpdateWholeStateFallback.Perf.off.test.ts"
+    ],
+    "intent": "filter unknown top-level keys in BoundApi.state.update mixed-known/unknown writeback path to reduce whole-state fallback"
+  },
+  "exploratoryRuns": [
+    {
+      "id": "runA",
+      "boundApiMixedUnknown": {
+        "legacy": { "p95Ms": 0.154, "avgMs": 0.089 },
+        "current": { "p95Ms": 0.241, "avgMs": 0.121 },
+        "ratio": { "p95": 1.564935064935065, "avg": 1.3595505617977528 }
+      },
+      "notes": "regression"
+    },
+    {
+      "id": "runB",
+      "boundApiMixedUnknown": {
+        "legacy": { "p95Ms": 0.075, "avgMs": 0.057 },
+        "current": { "p95Ms": 0.074, "avgMs": 0.054 },
+        "ratio": { "p95": 0.9866666666666667, "avg": 0.9473684210526316 }
+      },
+      "boundApiMany": {
+        "legacy": { "p95Ms": 0.077, "avgMs": 0.062 },
+        "current": { "p95Ms": 0.091, "avgMs": 0.076 },
+        "ratio": { "p95": 1.1818181818181819, "avg": 1.2258064516129032 }
+      },
+      "notes": "mixedUnknown nearly flat, many regressed"
+    },
+    {
+      "id": "runC",
+      "boundApiMixedUnknown": {
+        "legacy": { "p95Ms": 0.072, "avgMs": 0.056 },
+        "current": { "p95Ms": 0.117, "avgMs": 0.075 },
+        "ratio": { "p95": 1.625, "avg": 1.3392857142857142 }
+      },
+      "boundApiEight": {
+        "legacy": { "p95Ms": 0.079, "avgMs": 0.069 },
+        "current": { "p95Ms": 0.126, "avgMs": 0.081 },
+        "ratio": { "p95": 1.5949367088607596, "avg": 1.1739130434782608 }
+      },
+      "notes": "regression"
+    }
+  ],
+  "conclusion": {
+    "hardGainEstablished": false,
+    "reason": "direction unstable across repeated runs; mixedUnknown path shows repeated p95 regressions",
+    "action": "revert implementation and keep evidence-only"
+  },
+  "artifacts": {
+    "archiveNote": "docs/perf/archive/2026-03/2026-03-20-p1-2-next-expansion-evidence-only.md",
+    "summary": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p1-2-next-expansion.summary.md",
+    "validation": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p1-2-next-expansion.validation.json"
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "cutId": "p1-3r-env-ready-impl-check-v2",
+  "validatedAtUtc": "2026-03-21T01:46:45Z",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p1-3r-env-ready-impl-check-v2",
+  "branch": "agent/v4-perf-p1-3r-env-ready-impl-check-v2",
+  "commands": [
+    {
+      "name": "focused-tests",
+      "cmd": "pnpm -C packages/logix-core exec vitest run test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts test/internal/Runtime/ModuleAsSource.tick.test.ts",
+      "exitCode": 0,
+      "result": "passed",
+      "summary": {
+        "testFilesPassed": 2,
+        "testsPassed": 14
+      },
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p1-3r-env-ready-impl-check-v2.focused-tests.txt"
+    },
+    {
+      "name": "next-blocker-probe",
+      "cmd": "python3 fabfile.py probe_next_blocker --json",
+      "exitCode": 0,
+      "result": "passed",
+      "summary": {
+        "status": "clear",
+        "executedSuites": [
+          {
+            "suiteId": "externalStore.ingest.tickNotify",
+            "status": "passed",
+            "thresholdAnomalyCount": 0
+          },
+          {
+            "suiteId": "runtimeStore.noTearing.tickNotify",
+            "status": "passed",
+            "thresholdAnomalyCount": 0
+          },
+          {
+            "suiteId": "form.listScopeCheck",
+            "status": "passed",
+            "thresholdAnomalyCount": 0
+          }
+        ],
+        "thresholdAnomalyCount": 0
+      },
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p1-3r-env-ready-impl-check-v2.probe-next-blocker.json"
+    }
+  ],
+  "scopeCheck": {
+    "allowedCodeTouchFile": "packages/logix-core/src/internal/state-trait/external-store.ts",
+    "runtimeCodeEditedThisRun": false,
+    "currentHeadContainsMinimalCut": true,
+    "proof": {
+      "accessorReuseFile": "packages/logix-core/src/internal/state-trait/external-store.ts",
+      "batchedReadLine": 203,
+      "batchedWriteLine": 213
+    }
+  },
+  "decisionGate": {
+    "trigger1_externalStoreTopFixedTax": "not_met_probe_clear",
+    "trigger2_semanticSafeMinimalCutOnly": "met_existing_in_head",
+    "trigger3_guardsAndProbeGreen": "met",
+    "overall": "docs_evidence_only"
+  }
+}
+

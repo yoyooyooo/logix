@@ -32,13 +32,51 @@ export const OperationSummarySchema = Schema.Struct({
       top3: Schema.Array(
         Schema.Struct({
           stepId: Schema.String,
-          kind: Schema.Literal('computed', 'link'),
+          kind: Schema.Literals(['computed', 'link']),
           fieldPath: Schema.String,
           durationMs: Schema.Number,
           changed: Schema.Boolean,
           txnId: Schema.optional(Schema.String),
         }),
       ),
+    }),
+  ),
+  stateWrite: Schema.optional(
+    Schema.Struct({
+      observedCount: Schema.Number,
+      missingCount: Schema.Number,
+      readCoverage: Schema.Number,
+      degradedCount: Schema.Number,
+      unknownReasonCount: Schema.Number,
+      degradeRatio: Schema.Number,
+      degradeUnknownShare: Schema.Number,
+      bySource: Schema.Struct({
+        reducer: Schema.Struct({
+          total: Schema.Number,
+          degraded: Schema.Number,
+          unknownReason: Schema.Number,
+        }),
+        boundApiUpdate: Schema.Struct({
+          total: Schema.Number,
+          degraded: Schema.Number,
+          unknownReason: Schema.Number,
+        }),
+        traitExternalStore: Schema.Struct({
+          total: Schema.Number,
+          degraded: Schema.Number,
+          unknownReason: Schema.Number,
+        }),
+        moduleAsSource: Schema.Struct({
+          total: Schema.Number,
+          degraded: Schema.Number,
+          unknownReason: Schema.Number,
+        }),
+        unknown: Schema.Struct({
+          total: Schema.Number,
+          degraded: Schema.Number,
+          unknownReason: Schema.Number,
+        }),
+      }),
     }),
   ),
 })
@@ -51,7 +89,7 @@ export const TriggerLayoutSchema = Schema.Struct({
 })
 
 export const DevtoolsSettingsSchema = Schema.Struct({
-  mode: Schema.Literal('basic', 'deep'),
+  mode: Schema.Literals(['basic', 'deep']),
   showTraitEvents: Schema.Boolean,
   showReactRenderEvents: Schema.Boolean,
   enableTimeTravelUI: Schema.Boolean,
@@ -95,7 +133,7 @@ export const DevtoolsStateSchema = Schema.Struct({
       moduleId: Schema.String,
       instanceId: Schema.String,
       txnId: Schema.String,
-      mode: Schema.Literal('before', 'after'),
+      mode: Schema.Literals(['before', 'after']),
     }),
   ),
   runtimes: Schema.Array(
@@ -124,7 +162,7 @@ export const DevtoolsStateSchema = Schema.Struct({
     isDragging: Schema.Boolean,
     trigger: Schema.optional(TriggerLayoutSchema),
   }),
-  theme: Schema.Literal('system', 'light', 'dark'),
+  theme: Schema.Literals(['system', 'light', 'dark']),
   settings: DevtoolsSettingsSchema,
 })
 

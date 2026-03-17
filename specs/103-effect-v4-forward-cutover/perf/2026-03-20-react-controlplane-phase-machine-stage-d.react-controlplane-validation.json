@@ -1,0 +1,35 @@
+{
+  "date": "2026-03-20",
+  "topic": "react-controlplane-phase-machine-stage-d",
+  "result": "accepted_with_evidence",
+  "checks": [
+    {
+      "command": "pnpm --filter @logixjs/react typecheck:test",
+      "status": "passed"
+    },
+    {
+      "command": "pnpm --filter @logixjs/react exec vitest run test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx --pool forks",
+      "status": "passed",
+      "summary": {
+        "testFilesPassed": 1,
+        "testsPassed": 5,
+        "testsFailed": 0
+      }
+    },
+    {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "status": "passed",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-react-controlplane-phase-machine-stage-d.probe-next-blocker.json",
+      "summary": {
+        "probeStatus": "clear",
+        "blocker": null,
+        "executedSuites": 3
+      }
+    }
+  ],
+  "notes": [
+    "Stage D 仅把 preload/suspend 的最小裁决接入 phase-machine，不改 preload 执行器与 public API。",
+    "新增 preload lane 的 phase-machine 原因码，覆盖 suspend 的 skip 协同与 defer 的 dispatch 路径。",
+    "phase-trace 用例扩展到 5 条，验证 preload lane run/skip 与 trace 可解释链路。"
+  ]
+}

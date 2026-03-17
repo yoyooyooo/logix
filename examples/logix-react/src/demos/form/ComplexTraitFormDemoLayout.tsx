@@ -14,7 +14,7 @@ const ValuesSchema = Schema.Struct({
   contact: Schema.Struct({
     email: Schema.String,
     phone: Schema.String,
-    preferredChannel: Schema.Literal('email', 'phone'),
+    preferredChannel: Schema.Literals(['email', 'phone']),
   }),
   shipping: Schema.Struct({
     recipientName: Schema.String,

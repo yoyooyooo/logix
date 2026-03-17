@@ -1,11 +1,10 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
 
 describe('FormBlueprint.resource-idle', () => {
-  it.scoped('sync idle when key becomes undefined', () =>
+  it.effect('sync idle when key becomes undefined', () =>
     Effect.gen(function* () {
       const ValuesSchema = Schema.Struct({
         userId: Schema.String,
@@ -45,7 +44,7 @@ describe('FormBlueprint.resource-idle', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* form.tag
+        const rt = yield* Effect.service(form.tag).pipe(Effect.orDie)
         const controller = form.controller.make(rt)
 
         const before = yield* controller.getState

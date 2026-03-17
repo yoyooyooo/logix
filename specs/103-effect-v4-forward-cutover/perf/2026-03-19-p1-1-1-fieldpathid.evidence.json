@@ -1,0 +1,80 @@
+{
+  "id": "p1-1.1-fieldpathid",
+  "date": "2026-03-19",
+  "branch": "agent/v4-perf-p1-1-1-fieldpathid",
+  "result": "accepted_with_evidence",
+  "goal": "externalStore single-field producer-side FieldPathId prefetch and reuse",
+  "scope": {
+    "in": [
+      "packages/logix-core/src/internal/state-trait/external-store.ts",
+      "packages/logix-core/src/internal/runtime/core/StateTransaction.ts",
+      "packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts"
+    ],
+    "out": [
+      "reducer dynamic pathId detection",
+      "PatchAnchor all-path precompile expansion",
+      "external-store draft primitive / batch dual path"
+    ]
+  },
+  "validation": {
+    "commands": [
+      {
+        "command": "pnpm -C packages/logix-core typecheck:test",
+        "status": "passed"
+      },
+      {
+        "command": "pnpm -C packages/logix-core exec vitest run test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts -t \"single-field shallow writeback should not re-parse fieldPath at runtime\"",
+        "status": "passed"
+      },
+      {
+        "command": "pnpm -C packages/logix-core exec vitest run test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts -t \"single-field deep same-value no-op should not re-parse fieldPath at runtime\"",
+        "status": "passed"
+      },
+      {
+        "command": "pnpm -C packages/logix-core exec vitest run test/internal/StateTrait/StateTrait.ExternalStoreTrait.SingleFieldFastPath.Perf.off.test.ts",
+        "status": "passed"
+      }
+    ]
+  },
+  "perf": {
+    "suite": "StateTrait.ExternalStoreTrait.SingleFieldFastPath.Perf.off",
+    "metrics": [
+      {
+        "name": "single-shallow",
+        "legacyP95Ms": 10.131916,
+        "optimizedP95Ms": 8.047042,
+        "ratio": 0.7942270741289208
+      },
+      {
+        "name": "single-deep",
+        "legacyP95Ms": 32.109834,
+        "optimizedP95Ms": 28.07225,
+        "ratio": 0.8742570889653307
+      },
+      {
+        "name": "single-same-value-noop",
+        "legacyP95Ms": 15.154042,
+        "optimizedP95Ms": 8.374666,
+        "ratio": 0.5526357918237259
+      },
+      {
+        "name": "multi-2",
+        "legacyP95Ms": 16.542,
+        "optimizedP95Ms": 16.231459,
+        "ratio": 0.9812271188489904
+      },
+      {
+        "name": "multi-8",
+        "legacyP95Ms": 26.922833,
+        "optimizedP95Ms": 27.026875,
+        "ratio": 1.0038644521547937
+      },
+      {
+        "name": "multi-64",
+        "legacyP95Ms": 56.134917,
+        "optimizedP95Ms": 56.099917,
+        "ratio": 0.9993765021510586
+      }
+    ]
+  }
+}

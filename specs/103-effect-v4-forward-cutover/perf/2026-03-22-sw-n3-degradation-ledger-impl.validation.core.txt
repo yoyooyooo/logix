@@ -1,0 +1,40 @@
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.sw-n3-degradation-ledger-impl/packages/logix-core
+
+ ✓ test/Contracts/Contracts.019.TxnPerfControls.test.ts (1 test) 3ms
+stdout | test/internal/Runtime/ModuleRuntime/ModuleRuntime.reducerWholeStateFallback.Perf.off.test.ts > ModuleRuntime.reducer whole-state fallback · perf baseline (Diagnostics=off) > records reproducible evidence for top-level dirty evidence vs inferReplaceEvidence
+[perf] reducer-whole-state-fallback case=single legacy.p50=0.018ms legacy.p95=0.062ms legacy.avg=0.028ms topLevel.p50=0.007ms topLevel.p95=0.036ms topLevel.avg=0.012ms
+
+stdout | test/internal/Runtime/ModuleRuntime/ModuleRuntime.reducerWholeStateFallback.Perf.off.test.ts > ModuleRuntime.reducer whole-state fallback · perf baseline (Diagnostics=off) > records reproducible evidence for top-level dirty evidence vs inferReplaceEvidence
+[perf] reducer-whole-state-fallback case=eight legacy.p50=0.019ms legacy.p95=0.121ms legacy.avg=0.045ms topLevel.p50=0.005ms topLevel.p95=0.013ms topLevel.avg=0.008ms
+
+stdout | test/internal/Runtime/ModuleRuntime/ModuleRuntime.reducerWholeStateFallback.Perf.off.test.ts > ModuleRuntime.reducer whole-state fallback · perf baseline (Diagnostics=off) > records reproducible evidence for top-level dirty evidence vs inferReplaceEvidence
+[perf] reducer-whole-state-fallback case=many legacy.p50=0.012ms legacy.p95=0.046ms legacy.avg=0.023ms topLevel.p50=0.005ms topLevel.p95=0.063ms topLevel.avg=0.024ms
+
+stdout | test/internal/Runtime/ModuleRuntime/ModuleRuntime.reducerWholeStateFallback.Perf.off.test.ts > ModuleRuntime.reducer whole-state fallback · perf baseline (Diagnostics=off) > records reproducible evidence for top-level dirty evidence vs inferReplaceEvidence
+[perf] reducer-whole-state-fallback case=listRoot legacy.p50=0.016ms legacy.p95=0.082ms legacy.avg=0.066ms topLevel.p50=0.004ms topLevel.p95=0.020ms topLevel.avg=0.009ms
+
+stdout | test/internal/Runtime/ModuleRuntime/ModuleRuntime.reducerWholeStateFallback.Perf.off.test.ts > ModuleRuntime.reducer whole-state fallback · perf baseline (Diagnostics=off) > records reproducible evidence for top-level dirty evidence vs inferReplaceEvidence
+[perf] reducer-whole-state-fallback case=mixedUnknown legacy.p50=0.010ms legacy.p95=0.109ms legacy.avg=0.028ms topLevel.p50=0.004ms topLevel.p95=0.005ms topLevel.avg=0.005ms
+
+ ✓ test/internal/Runtime/ModuleRuntime/ModuleRuntime.reducerWholeStateFallback.Perf.off.test.ts (1 test) 92ms
+stdout | test/internal/Bound/BoundApiRuntime.stateUpdateWholeStateFallback.Perf.off.test.ts > BoundApiRuntime.state.update whole-state fallback · perf baseline (Diagnostics=off) > records reproducible evidence for top-level dirty evidence vs inferReplaceEvidence
+[perf] boundapi-update-whole-state case=single legacy.p50=0.147ms legacy.p95=1.422ms legacy.avg=0.392ms current.p50=0.089ms current.p95=0.447ms current.avg=0.177ms
+
+stdout | test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts > StateTrait.externalStore runtime semantics > perf skeleton: externalStore ingest proxy phases
+PERF_EXTERNAL_STORE_INGEST_PROXY {"phaseSetMs":0.017333000000007814,"phaseCommitMs":16.740499999999884,"phaseCommitWithStateMs":1.4828749999999218,"phasePreStoreCommitMs":0.8675000000000637,"phaseStoreCommitInnerMs":0.05704100000002654,"phasePostStoreCommitMs":0,"phaseTickFlushLagMs":1.0734170000000631,"phaseWaitForBatchOrEnqueueMs":0,"phaseYieldMicrotaskMs":0,"phaseFlushBeforeCommitMs":1.0734170000000631,"phaseTailMs":0.06491700000015044,"phaseTopicBumpMs":0.00463623046875,"phaseListenerSnapshotFlattenMs":0,"phaseListenerCallbackFanoutMs":0.0021595039062499996,"tickDelta":1,"finalValues":[100,101,102,103]}
+
+ ✓ test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts (13 tests) 178ms
+stdout | test/internal/Bound/BoundApiRuntime.stateUpdateWholeStateFallback.Perf.off.test.ts > BoundApiRuntime.state.update whole-state fallback · perf baseline (Diagnostics=off) > records reproducible evidence for top-level dirty evidence vs inferReplaceEvidence
+[perf] boundapi-update-whole-state case=eight legacy.p50=0.077ms legacy.p95=0.388ms legacy.avg=0.131ms current.p50=0.061ms current.p95=0.240ms current.avg=0.102ms
+
+stdout | test/internal/Bound/BoundApiRuntime.stateUpdateWholeStateFallback.Perf.off.test.ts > BoundApiRuntime.state.update whole-state fallback · perf baseline (Diagnostics=off) > records reproducible evidence for top-level dirty evidence vs inferReplaceEvidence
+[perf] boundapi-update-whole-state case=many legacy.p50=0.067ms legacy.p95=0.245ms legacy.avg=0.103ms current.p50=0.071ms current.p95=0.326ms current.avg=0.124ms
+
+ ✓ test/internal/Bound/BoundApiRuntime.stateUpdateWholeStateFallback.Perf.off.test.ts (2 tests) 291ms
+
+ Test Files  4 passed (4)
+      Tests  17 passed (17)
+   Start at  22:18:52
+   Duration  2.10s (transform 2.40s, setup 0ms, import 3.91s, tests 563ms, environment 0ms)
+

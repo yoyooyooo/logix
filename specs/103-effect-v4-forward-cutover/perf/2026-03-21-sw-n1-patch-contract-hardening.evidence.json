@@ -1,0 +1,31 @@
+{
+  "cutId": "sw-n1-patch-contract-hardening",
+  "date": "2026-03-21",
+  "accepted_with_evidence": true,
+  "publicApiChange": false,
+  "evidenceType": [
+    "structural:patch-first-contract-hardening",
+    "validation:typecheck-and-targeted-tests",
+    "gate:probe-next-blocker-clear"
+  ],
+  "contractWins": {
+    "dispatchReducer": "no patchPaths fallback switched from wildcard '*' inference to explicit contract dirtyAll(customMutation)",
+    "boundApiStateUpdate": "top-level unknown/invalid/schema-missing writes explicitly degrade to customMutation without runtime wildcard inference path",
+    "externalStoreAndModuleAsSource": "invalid fieldPath now fail-fast at install; no raw-string best-effort patch fallback",
+    "registryMissing": "reducer/unknown/trait-external-store writes map registry-missing to customMutation instead of fallbackPolicy"
+  },
+  "changedFiles": [
+    "packages/logix-core/src/internal/runtime/core/StateTransaction.ts",
+    "packages/logix-core/src/internal/runtime/core/ModuleRuntime.dispatch.ts",
+    "packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts",
+    "packages/logix-core/src/internal/state-trait/external-store.ts",
+    "packages/logix-core/test/internal/Bound/BoundApiRuntime.stateUpdateWholeStateFallback.Perf.off.test.ts",
+    "packages/logix-core/test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts"
+  ],
+  "sources": {
+    "typecheck": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-sw-n1-patch-contract-hardening.validation.typecheck.txt",
+    "vitest": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-sw-n1-patch-contract-hardening.validation.vitest.txt",
+    "probeNextBlocker": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-sw-n1-patch-contract-hardening.probe-next-blocker.json",
+    "validationSummary": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-sw-n1-patch-contract-hardening.validation.json"
+  }
+}

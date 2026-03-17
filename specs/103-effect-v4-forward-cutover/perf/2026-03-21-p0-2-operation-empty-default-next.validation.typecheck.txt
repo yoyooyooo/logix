@@ -1,0 +1,4 @@
+
+> @logixjs/core@1.0.2-beta.1 typecheck:test /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p0-2-operation-empty-default-next/packages/logix-core
+> tsc -p tsconfig.test.json --noEmit
+

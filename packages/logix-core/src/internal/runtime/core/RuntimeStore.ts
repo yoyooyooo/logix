@@ -85,12 +85,18 @@ const EMPTY_LISTENER_SNAPSHOT: ReadonlyArray<() => void> = []
 export interface RuntimeStore {
   // ---- React-facing sync snapshot APIs ----
   readonly getTickSeq: () => number
+  readonly getModuleTopicKey: (moduleId: string, instanceId: string) => ModuleInstanceKey
+  readonly getReadQueryTopicKey: (moduleInstanceKey: ModuleInstanceKey, selectorId: string) => TopicKey
+  readonly resolveTopicModuleInstanceKey: (topicKey: TopicKey) => ModuleInstanceKey | undefined
   readonly getModuleState: (moduleInstanceKey: ModuleInstanceKey) => unknown
   readonly getTopicVersion: (topicKey: TopicKey) => number
   readonly getTopicPriority: (topicKey: TopicKey) => StateCommitPriority
   readonly subscribeTopic: (topicKey: TopicKey, listener: () => void) => () => void
   readonly getTopicSubscriberCount: (topicKey: TopicKey) => number
   readonly getModuleSubscriberCount: (moduleInstanceKey: ModuleInstanceKey) => number
+  readonly getReadQuerySubscriberCount: (moduleInstanceKey: ModuleInstanceKey, selectorId: string) => number
+  readonly retainSelectorInterest: (moduleInstanceKey: ModuleInstanceKey, selectorId: string) => () => void
+  readonly hasSelectorInterest: (moduleInstanceKey: ModuleInstanceKey, selectorId: string) => boolean
 
   // ---- Runtime integration ----
   readonly registerModuleInstance: (args: {
@@ -112,6 +118,8 @@ export interface RuntimeStore {
 }
 
 const NO_CHANGED_TOPIC_LISTENERS: ReadonlyArray<() => void> = []
+const topicResolutionCacheLimit = 2048
+const readQueryTopicKeyCachePerModuleLimit = 256
 
 export const makeRuntimeStore = (): RuntimeStore => {
   let tickSeq = 0
@@ -120,13 +128,77 @@ export const makeRuntimeStore = (): RuntimeStore => {
   const moduleStates = new Map<ModuleInstanceKey, unknown>()
   const topicVersions = new Map<TopicKey, number>()
   const topicPriorities = new Map<TopicKey, StateCommitPriority>()
+  const topicInfoByTopic = new Map<TopicKey, TopicInfo | null>()
+  const readQueryTopicKeysByModule = new Map<ModuleInstanceKey, Map<string, TopicKey>>()
 
   // ---- Subscriptions ----
   const listenersByTopic = new Map<TopicKey, TopicListenersState>()
   const subscriberCountByModule = new Map<ModuleInstanceKey, number>()
+  const subscriberCountByReadQuery = new Map<ModuleInstanceKey, Map<string, number>>()
+  const selectorInterestRefCountByReadQuery = new Map<ModuleInstanceKey, Map<string, number>>()
 
   const getTopicVersion = (topicKey: TopicKey): number => topicVersions.get(topicKey) ?? 0
   const getTopicPriority = (topicKey: TopicKey): StateCommitPriority => topicPriorities.get(topicKey) ?? 'normal'
+
+  const rememberTopicInfo = (topicKey: TopicKey, info: TopicInfo | undefined): TopicInfo | undefined => {
+    const cachedValue = info ?? null
+    if (topicInfoByTopic.has(topicKey)) {
+      topicInfoByTopic.delete(topicKey)
+    } else if (topicInfoByTopic.size >= topicResolutionCacheLimit) {
+      const oldestKey = topicInfoByTopic.keys().next().value
+      if (oldestKey !== undefined) {
+        topicInfoByTopic.delete(oldestKey)
+      }
+    }
+    topicInfoByTopic.set(topicKey, cachedValue)
+    return info
+  }
+
+  const resolveTopicInfo = (topicKey: TopicKey): TopicInfo | undefined => {
+    const cached = topicInfoByTopic.get(topicKey)
+    if (cached !== undefined) {
+      return cached === null ? undefined : cached
+    }
+    return rememberTopicInfo(topicKey, parseTopicKey(topicKey))
+  }
+
+  const getModuleTopicKey: RuntimeStore['getModuleTopicKey'] = (moduleId, instanceId) => {
+    const moduleInstanceKey = makeModuleInstanceKey(moduleId, instanceId)
+    rememberTopicInfo(moduleInstanceKey, { kind: 'module', moduleInstanceKey })
+    return moduleInstanceKey
+  }
+
+  const ensureReadQueryTopicBucket = (moduleInstanceKey: ModuleInstanceKey): Map<string, TopicKey> => {
+    const existing = readQueryTopicKeysByModule.get(moduleInstanceKey)
+    if (existing) return existing
+    const created = new Map<string, TopicKey>()
+    readQueryTopicKeysByModule.set(moduleInstanceKey, created)
+    return created
+  }
+
+  const rememberReadQueryTopicKey = (moduleInstanceKey: ModuleInstanceKey, selectorId: string, topicKey: TopicKey): TopicKey => {
+    const bucket = ensureReadQueryTopicBucket(moduleInstanceKey)
+    if (bucket.has(selectorId)) {
+      bucket.delete(selectorId)
+    } else if (bucket.size >= readQueryTopicKeyCachePerModuleLimit) {
+      const oldestSelectorId = bucket.keys().next().value
+      if (oldestSelectorId !== undefined) {
+        bucket.delete(oldestSelectorId)
+      }
+    }
+    bucket.set(selectorId, topicKey)
+    rememberTopicInfo(topicKey, { kind: 'readQuery', moduleInstanceKey, selectorId })
+    return topicKey
+  }
+
+  const getReadQueryTopicKey: RuntimeStore['getReadQueryTopicKey'] = (moduleInstanceKey, selectorId) => {
+    const cached = readQueryTopicKeysByModule.get(moduleInstanceKey)?.get(selectorId)
+    if (cached) return cached
+    return rememberReadQueryTopicKey(moduleInstanceKey, selectorId, makeReadQueryTopicKey(moduleInstanceKey, selectorId))
+  }
+
+  const resolveTopicModuleInstanceKey: RuntimeStore['resolveTopicModuleInstanceKey'] = (topicKey) =>
+    resolveTopicInfo(topicKey)?.moduleInstanceKey
 
   const commitTopicBump = (topicKey: TopicKey, priority: StateCommitPriority): void => {
     const prev = topicVersions.get(topicKey) ?? 0
@@ -138,8 +210,68 @@ export const makeRuntimeStore = (): RuntimeStore => {
     state.snapshot = Array.from(state.listeners)
   }
 
+  const bumpReadQuerySubscriberCount = (moduleInstanceKey: ModuleInstanceKey, selectorId: string): void => {
+    const bySelector = subscriberCountByReadQuery.get(moduleInstanceKey) ?? new Map<string, number>()
+    const prev = bySelector.get(selectorId) ?? 0
+    bySelector.set(selectorId, prev + 1)
+    if (!subscriberCountByReadQuery.has(moduleInstanceKey)) {
+      subscriberCountByReadQuery.set(moduleInstanceKey, bySelector)
+    }
+  }
+
+  const decReadQuerySubscriberCount = (moduleInstanceKey: ModuleInstanceKey, selectorId: string): void => {
+    const bySelector = subscriberCountByReadQuery.get(moduleInstanceKey)
+    if (!bySelector) return
+    const prev = bySelector.get(selectorId) ?? 0
+    const next = prev - 1
+    if (next <= 0) {
+      bySelector.delete(selectorId)
+      if (bySelector.size === 0) {
+        subscriberCountByReadQuery.delete(moduleInstanceKey)
+      }
+      return
+    }
+    bySelector.set(selectorId, next)
+  }
+
+  const getReadQuerySubscriberCount: RuntimeStore['getReadQuerySubscriberCount'] = (moduleInstanceKey, selectorId) =>
+    subscriberCountByReadQuery.get(moduleInstanceKey)?.get(selectorId) ?? 0
+
+  const retainSelectorInterest: RuntimeStore['retainSelectorInterest'] = (moduleInstanceKey, selectorId) => {
+    const bySelector = selectorInterestRefCountByReadQuery.get(moduleInstanceKey) ?? new Map<string, number>()
+    const prev = bySelector.get(selectorId) ?? 0
+    bySelector.set(selectorId, prev + 1)
+    if (!selectorInterestRefCountByReadQuery.has(moduleInstanceKey)) {
+      selectorInterestRefCountByReadQuery.set(moduleInstanceKey, bySelector)
+    }
+
+    let released = false
+    return () => {
+      if (released) return
+      released = true
+
+      const bucket = selectorInterestRefCountByReadQuery.get(moduleInstanceKey)
+      if (!bucket) return
+
+      const current = bucket.get(selectorId) ?? 0
+      const next = current - 1
+      if (next <= 0) {
+        bucket.delete(selectorId)
+        if (bucket.size === 0) {
+          selectorInterestRefCountByReadQuery.delete(moduleInstanceKey)
+        }
+        return
+      }
+
+      bucket.set(selectorId, next)
+    }
+  }
+
+  const hasSelectorInterest: RuntimeStore['hasSelectorInterest'] = (moduleInstanceKey, selectorId) =>
+    (selectorInterestRefCountByReadQuery.get(moduleInstanceKey)?.get(selectorId) ?? 0) > 0
+
   const subscribeTopic = (topicKey: TopicKey, listener: () => void): (() => void) => {
-    const info = parseTopicKey(topicKey)
+    const info = resolveTopicInfo(topicKey)
     const existing = listenersByTopic.get(topicKey)
     const state = existing ?? { listeners: new Set<() => void>(), snapshot: EMPTY_LISTENER_SNAPSHOT }
     const alreadyHas = state.listeners.has(listener)
@@ -154,6 +286,9 @@ export const makeRuntimeStore = (): RuntimeStore => {
     if (!alreadyHas && info) {
       const prev = subscriberCountByModule.get(info.moduleInstanceKey) ?? 0
       subscriberCountByModule.set(info.moduleInstanceKey, prev + 1)
+      if (info.kind === 'readQuery') {
+        bumpReadQuerySubscriberCount(info.moduleInstanceKey, info.selectorId)
+      }
     }
 
     return () => {
@@ -167,6 +302,9 @@ export const makeRuntimeStore = (): RuntimeStore => {
           subscriberCountByModule.delete(info.moduleInstanceKey)
         } else {
           subscriberCountByModule.set(info.moduleInstanceKey, next)
+        }
+        if (info.kind === 'readQuery') {
+          decReadQuerySubscriberCount(info.moduleInstanceKey, info.selectorId)
         }
       }
       if (currentState.listeners.size === 0) {
@@ -187,6 +325,7 @@ export const makeRuntimeStore = (): RuntimeStore => {
     readonly initialState: unknown
   }): void => {
     moduleStates.set(args.moduleInstanceKey, args.initialState)
+    rememberTopicInfo(args.moduleInstanceKey, { kind: 'module', moduleInstanceKey: args.moduleInstanceKey })
     // Ensure the module topic exists with a stable baseline version/priority.
     if (!topicVersions.has(args.moduleInstanceKey)) {
       topicVersions.set(args.moduleInstanceKey, 0)
@@ -196,6 +335,9 @@ export const makeRuntimeStore = (): RuntimeStore => {
 
   const unregisterModuleInstance = (moduleInstanceKey: ModuleInstanceKey): void => {
     moduleStates.delete(moduleInstanceKey)
+    readQueryTopicKeysByModule.delete(moduleInstanceKey)
+    subscriberCountByReadQuery.delete(moduleInstanceKey)
+    selectorInterestRefCountByReadQuery.delete(moduleInstanceKey)
     // Keep topic versions by default (helps debugging). Subscribers are expected to detach on module destroy.
   }
 
@@ -314,18 +456,28 @@ export const makeRuntimeStore = (): RuntimeStore => {
     moduleStates.clear()
     topicVersions.clear()
     topicPriorities.clear()
+    topicInfoByTopic.clear()
+    readQueryTopicKeysByModule.clear()
     listenersByTopic.clear()
     subscriberCountByModule.clear()
+    subscriberCountByReadQuery.clear()
+    selectorInterestRefCountByReadQuery.clear()
   }
 
   return {
     getTickSeq: () => tickSeq,
+    getModuleTopicKey,
+    getReadQueryTopicKey,
+    resolveTopicModuleInstanceKey,
     getModuleState,
     getTopicVersion,
     getTopicPriority,
     subscribeTopic,
     getTopicSubscriberCount,
     getModuleSubscriberCount,
+    getReadQuerySubscriberCount,
+    retainSelectorInterest,
+    hasSelectorInterest,
     registerModuleInstance,
     unregisterModuleInstance,
     commitTick,

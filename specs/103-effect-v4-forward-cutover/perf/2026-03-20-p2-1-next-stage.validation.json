@@ -1,0 +1,38 @@
+{
+  "cutId": "p2-1-next-stage",
+  "validatedAtUtc": "2026-03-20T02:59:42Z",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p2-1-next-stage",
+  "branch": "agent/v4-perf-p2-1-next-stage",
+  "commands": [
+    {
+      "name": "focused-tests",
+      "cmd": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.TxnLanes.DefaultOn.test.ts test/internal/observability/TxnLaneEvidence.Schema.test.ts",
+      "exitCode": 0,
+      "result": "passed",
+      "summary": {
+        "testFilesPassed": 3,
+        "testsPassed": 9
+      },
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p2-1-next-stage.focused-tests.txt"
+    },
+    {
+      "name": "next-blocker-probe",
+      "cmd": "python3 fabfile.py probe_next_blocker --json",
+      "exitCode": 42,
+      "result": "blocked",
+      "summary": {
+        "status": "blocked",
+        "blockerSuite": "externalStore.ingest.tickNotify",
+        "budgetId": "full/off<=1.25",
+        "executed": 1,
+        "thresholdAnomalyCount": 1
+      },
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p2-1-next-stage.probe-next-blocker.json"
+    }
+  ],
+  "decisionGate": {
+    "focusedTests": "green",
+    "probeNextBlocker": "blocked",
+    "overall": "fail_docs_only"
+  }
+}

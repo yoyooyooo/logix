@@ -1,0 +1,32 @@
+{
+  "id": "2026-03-20-p0-2-hot-snapshot-next.validation",
+  "capturedAt": "2026-03-20",
+  "commands": {
+    "typecheckTest": {
+      "command": "pnpm -C packages/logix-core typecheck:test",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-2-hot-snapshot-next.validation.typecheck.txt",
+      "passed": true
+    },
+    "targetedVitest": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-2-hot-snapshot-next.validation.vitest.txt",
+      "passed": true,
+      "testFilesPassed": 2,
+      "testsPassed": 2
+    },
+    "runtimeSnapshotResolveShellPerf": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.RuntimeSnapshot.ResolveShell.Perf.off.test.ts",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-2-hot-snapshot-next.runtime-snapshot-resolve-shell.perf.txt",
+      "passed": true,
+      "speedupX": 1.289,
+      "savedPercent": 22.41
+    },
+    "probeNextBlocker": {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-2-hot-snapshot-next.probe-next-blocker.json",
+      "status": "clear",
+      "blocker": null,
+      "executedCount": 3
+    }
+  }
+}

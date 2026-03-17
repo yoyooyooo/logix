@@ -1,0 +1,57 @@
+{
+  "task": "P1-2.1 whole-state fallback 收紧扩面",
+  "date": "2026-03-19",
+  "classification": "partial_pending",
+  "codeChanges": [
+    "packages/logix-core/src/internal/runtime/core/StateTransaction.ts",
+    "packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts"
+  ],
+  "noCodeChange": [
+    "packages/logix-core/src/internal/state-trait/external-store.ts"
+  ],
+  "verification": {
+    "stateTraitConvergeAuto": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/StateTrait/StateTrait.ConvergeAuto.DirtySetFromMutate.test.ts",
+      "status": "passed"
+    },
+    "reducerWholeStateFallbackPerf": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.reducerWholeStateFallback.Perf.off.test.ts",
+      "status": "passed"
+    },
+    "boundApiWholeStateFallbackPerf": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/Bound/BoundApiRuntime.stateUpdateWholeStateFallback.Perf.off.test.ts",
+      "status": "passed",
+      "metrics": {
+        "single": {
+          "legacy": { "p95Ms": 0.107, "avgMs": 0.089 },
+          "current": { "p95Ms": 0.108, "avgMs": 0.113 }
+        },
+        "eight": {
+          "legacy": { "p95Ms": 0.09, "avgMs": 0.066 },
+          "current": { "p95Ms": 0.066, "avgMs": 0.052 }
+        },
+        "many": {
+          "legacy": { "p95Ms": 0.099, "avgMs": 0.069 },
+          "current": { "p95Ms": 0.079, "avgMs": 0.063 }
+        }
+      }
+    },
+    "probeNextBlocker": {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "status": "clear"
+    },
+    "externalStoreRuntimeAndTickGuard": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts test/internal/Runtime/ModuleAsSource.tick.test.ts",
+      "status": "failed",
+      "failedTests": [
+        "StateTrait.externalStore runtime semantics > perf skeleton: externalStore ingest proxy phases",
+        "Module-as-Source (tick semantics) > should settle A->B writeback and downstream derived within the same tick",
+        "Module-as-Source (tick semantics) > should apply Module-as-Source during scheduled microtask tick (no manual flushNow)"
+      ]
+    }
+  },
+  "decision": {
+    "recommendBackToMainline": false,
+    "reason": "BoundApi 扩面已落地且有正向证据，但 external-store 邻近守门未收敛，当前不满足整刀收口条件。"
+  }
+}

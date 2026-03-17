@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-03-21",
+  "cutId": "p0-2-operation-empty-default-next",
+  "commands": [
+    {
+      "command": "pnpm -C packages/logix-core typecheck:test",
+      "status": "passed",
+      "evidenceRef": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p0-2-operation-empty-default-next.validation.typecheck.txt"
+    },
+    {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.RuntimeSnapshot.ResolveShell.Perf.off.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.FastPath.test.ts",
+      "status": "passed",
+      "evidenceRef": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p0-2-operation-empty-default-next.validation.vitest.txt"
+    },
+    {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "status": "passed",
+      "evidenceRef": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p0-2-operation-empty-default-next.probe-next-blocker.json",
+      "probeStatus": "clear"
+    }
+  ],
+  "notes": [
+    "本轮目标为遗漏切口复核，未提交 runtime 代码修改。",
+    "验证命令与最小门一致，结果全绿。"
+  ]
+}

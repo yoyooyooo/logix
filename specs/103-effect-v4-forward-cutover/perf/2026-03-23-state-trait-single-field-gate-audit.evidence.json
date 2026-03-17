@@ -1,0 +1,124 @@
+{
+  "id": "2026-03-23-state-trait-single-field-gate-audit",
+  "capturedAt": "2026-03-23",
+  "decision": {
+    "status": "docs_only_watch_retained",
+    "openImplementationLine": false,
+    "reasons": [
+      "current-head probe_refresh 仍为 clear",
+      "isolated replay 5/5 全部通过，multi-8 未再越过 1.08 门",
+      "相对 2026-03-19 / 2026-03-20 accepted 基线，本轮 single-field 正收益仍稳定，邻位 multi 案例维持门内"
+    ]
+  },
+  "probe": {
+    "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-23-current-head-probe-refresh.probe-next-blocker.json",
+    "status": "clear"
+  },
+  "historicalBaseline": {
+    "single-shallow": {
+      "2026-03-19": 0.7942270741289208,
+      "2026-03-20": 0.8049618162728314
+    },
+    "single-deep": {
+      "2026-03-19": 0.8742570889653307,
+      "2026-03-20": 0.8949759995064166
+    },
+    "single-same-value-noop": {
+      "2026-03-19": 0.5526357918237259,
+      "2026-03-20": 0.5381044947831951
+    },
+    "multi-2": {
+      "2026-03-19": 0.9812271188489904,
+      "2026-03-20": 1.048831261445851
+    },
+    "multi-8": {
+      "2026-03-19": 1.0038644521547937,
+      "2026-03-20": 0.9820316421167485
+    },
+    "multi-64": {
+      "2026-03-19": 0.9993765021510586,
+      "2026-03-20": 1.0085169720376546
+    }
+  },
+  "isolatedReplay": [
+    {
+      "run": 1,
+      "returncode": 0,
+      "ratios": {
+        "single-shallow": 0.7187834867047426,
+        "single-deep": 0.9386694768320423,
+        "single-same-value-noop": 0.5549767501318291,
+        "multi-2": 0.9944816262209126,
+        "multi-8": 1.004360298883001,
+        "multi-64": 0.9401491544360665
+      }
+    },
+    {
+      "run": 2,
+      "returncode": 0,
+      "ratios": {
+        "single-shallow": 0.6727209692451072,
+        "single-deep": 0.6074563125747581,
+        "single-same-value-noop": 0.550110291011208,
+        "multi-2": 0.998917375824167,
+        "multi-8": 0.9679055727889921,
+        "multi-64": 1.0070790136975278
+      }
+    },
+    {
+      "run": 3,
+      "returncode": 0,
+      "ratios": {
+        "single-shallow": 0.7131698550724638,
+        "single-deep": 0.8854189050589443,
+        "single-same-value-noop": 0.5654844836331004,
+        "multi-2": 0.9596803128153544,
+        "multi-8": 1.0050260135309415,
+        "multi-64": 0.9494001355738519
+      }
+    },
+    {
+      "run": 4,
+      "returncode": 0,
+      "ratios": {
+        "single-shallow": 0.7026709886570297,
+        "single-deep": 0.7469613598900835,
+        "single-same-value-noop": 0.5305509521348502,
+        "multi-2": 1.0153474987646427,
+        "multi-8": 1.0084982239011473,
+        "multi-64": 0.98613782827514
+      }
+    },
+    {
+      "run": 5,
+      "returncode": 0,
+      "ratios": {
+        "single-shallow": 0.7017615843385324,
+        "single-deep": 0.8667540526513184,
+        "single-same-value-noop": 0.5109689218289117,
+        "multi-2": 0.97136195912355,
+        "multi-8": 0.9917421355975256,
+        "multi-64": 1.0000660655538443
+      }
+    }
+  ],
+  "summary": {
+    "failureCount": 0,
+    "singleShallowRange": {
+      "min": 0.6727209692451072,
+      "max": 0.7187834867047426
+    },
+    "singleDeepRange": {
+      "min": 0.6074563125747581,
+      "max": 0.9386694768320423
+    },
+    "multi8Range": {
+      "min": 0.9679055727889921,
+      "max": 1.0084982239011473
+    },
+    "multi64Range": {
+      "min": 0.9401491544360665,
+      "max": 1.0070790136975278
+    }
+  }
+}

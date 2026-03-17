@@ -1,0 +1,14 @@
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p0-2-hot-snapshot-next/packages/logix-core
+
+stdout | test/internal/Runtime/ModuleRuntime/ModuleRuntime.RuntimeSnapshot.ResolveShell.Perf.off.test.ts > ModuleRuntime runtime snapshot resolve shell · microbench (Diagnostics=off) > keeps resolver semantics and cuts repeated serviceOption shell tax
+[perf] runtime-snapshot-resolve-shell diagnostics=off iters=2000 warmup=200 batch=128 noSnapshot.p50=0.492ms noSnapshot.p95=1.012ms noSnapshot.avg=0.574ms snapshot.p50=0.362ms snapshot.p95=0.945ms snapshot.avg=0.445ms speedup=1.289x saved=22.41%
+
+ ✓ test/internal/Runtime/ModuleRuntime/ModuleRuntime.RuntimeSnapshot.ResolveShell.Perf.off.test.ts (1 test) 2277ms
+     ✓ keeps resolver semantics and cuts repeated serviceOption shell tax  2277ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  11:38:38
+   Duration  2.66s (transform 120ms, setup 0ms, import 313ms, tests 2.28s, environment 0ms)
+

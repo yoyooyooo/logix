@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Schema } from 'effect'
 import * as Logix from '../../../src/index.js'
@@ -83,6 +83,26 @@ describe('StateTrait nested list rowId stability', () => {
 
       expect(bRowIdAfter).toBe(bRowId)
       expect(aRowIdAfter).toBe(aRowId)
+    }),
+  )
+
+  it.effect('child list $rowId remains stable after row-field update', () =>
+    Effect.gen(function* () {
+      const orderA: Order = { orderNo: 'A', items: [{ sku: 'A1' }] }
+      const orderB: Order = { orderNo: 'B', items: [{ sku: 'B1' }] }
+      const orderAUpdated: Order = { orderNo: 'A', items: [{ sku: 'A1-updated' }] }
+
+      const rowIdStore = new RowId.RowIdStore('i-nested-rowid-update-then-reorder')
+
+      const first = yield* run(rowIdStore, { orders: [orderA, orderB], errors: {} } as any)
+      const aRowId = first.errors.orders?.rows?.[0]?.items?.rows?.[0]?.$rowId as string | undefined
+      const bRowId = first.errors.orders?.rows?.[1]?.items?.rows?.[0]?.$rowId as string | undefined
+
+      const second = yield* run(rowIdStore, { orders: [orderAUpdated, orderB], errors: {} } as any)
+      const aRowIdAfterFieldUpdate = second.errors.orders?.rows?.[0]?.items?.rows?.[0]?.$rowId as string | undefined
+      const bRowIdAfterFieldUpdate = second.errors.orders?.rows?.[1]?.items?.rows?.[0]?.$rowId as string | undefined
+      expect(aRowIdAfterFieldUpdate).toBe(aRowId)
+      expect(bRowIdAfterFieldUpdate).toBe(bRowId)
     }),
   )
 })

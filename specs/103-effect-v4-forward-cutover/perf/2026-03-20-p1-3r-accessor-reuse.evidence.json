@@ -1,0 +1,46 @@
+{
+  "cutId": "p1-3r-accessor-reuse",
+  "date": "2026-03-20",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p1-3r-accessor-reuse",
+  "branch": "agent/v4-perf-p1-3r-accessor-reuse",
+  "allowedHypothesisRef": "docs/perf/archive/2026-03/2026-03-19-p1-3r-reopen-plan.md",
+  "codeChange": {
+    "file": "packages/logix-core/src/internal/state-trait/external-store.ts",
+    "batchedReadPath": {
+      "before": "RowId.getAtPath(prevState, req.fieldPath)",
+      "after": "req.accessor.get(prevState)",
+      "line": 204
+    },
+    "batchedWritePath": {
+      "before": "RowId.setAtPathMutating(draft, request.fieldPath, request.nextValue)",
+      "after": "request.accessor.set(draft, request.nextValue)",
+      "line": 214
+    }
+  },
+  "hotPathPathParseCompare": {
+    "unit": "fieldPath parse per changed request in batched writeback",
+    "before": {
+      "readParseCount": 1,
+      "writeParseCount": 1,
+      "totalParseCount": 2,
+      "mechanism": "RowId.getAtPath + RowId.setAtPathMutating both parse path string on hot path"
+    },
+    "after": {
+      "readParseCount": 0,
+      "writeParseCount": 0,
+      "totalParseCount": 0,
+      "mechanism": "producer-side prebuilt accessor.get/set reused in batched writeback"
+    },
+    "delta": {
+      "removedParseCount": 2,
+      "removedRatio": 1
+    }
+  },
+  "scopeCheck": {
+    "forbiddenCutsTouched": [],
+    "transactionBoundaryChanged": false,
+    "batchSizeForkAdded": false,
+    "directFallbackAdded": false
+  },
+  "result": "positive_structural"
+}

@@ -1,0 +1,4 @@
+
+> @logixjs/devtools-react@1.0.2-beta.1 typecheck:test /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.sw-n3-evidence-20260323/packages/logix-devtools-react
+> tsc -p tsconfig.test.json --noEmit
+

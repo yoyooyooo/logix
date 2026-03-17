@@ -1,4 +1,3 @@
-import { Schema } from 'effect'
 import { isDevEnv } from './env.js'
 import {
   normalizeBoolean,
@@ -7,11 +6,13 @@ import {
   normalizePositiveNumber,
 } from './normalize.js'
 
-const PositiveIntSchema = Schema.Int.pipe(Schema.positive())
-const PositiveNumberSchema = Schema.Number.pipe(Schema.positive())
-const ConvergeModeSchema = Schema.Union(Schema.Literal('auto'), Schema.Literal('full'), Schema.Literal('dirty'))
-const InstrumentationSchema = Schema.Union(Schema.Literal('full'), Schema.Literal('light'))
-const ConcurrencyLimitSchema = Schema.Union(Schema.Literal('unbounded'), PositiveIntSchema)
+const isConvergeMode = (value: unknown): value is 'auto' | 'full' | 'dirty' =>
+  value === 'auto' || value === 'full' || value === 'dirty'
+
+const isInstrumentation = (value: unknown): value is 'full' | 'light' => value === 'full' || value === 'light'
+
+const isConcurrencyLimit = (value: unknown): value is 'unbounded' | number =>
+  value === 'unbounded' || normalizePositiveInt(value) != null
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -45,7 +46,7 @@ const validateConcurrencyPolicyPatch = (obj: Record<string, unknown>, prefix: st
   const issues: string[] = []
 
   if ('concurrencyLimit' in obj && obj.concurrencyLimit != null) {
-    if (!Schema.is(ConcurrencyLimitSchema)(obj.concurrencyLimit)) {
+    if (!isConcurrencyLimit(obj.concurrencyLimit)) {
       issues.push(`${prefix}concurrencyLimit: expected positive int | "unbounded"`)
     }
   }
@@ -193,7 +194,7 @@ const validateStateTransactionTraitOverrides = (
   const issues: string[] = []
 
   if ('traitConvergeMode' in obj && obj.traitConvergeMode != null) {
-    if (!Schema.is(ConvergeModeSchema)(obj.traitConvergeMode)) {
+    if (!isConvergeMode(obj.traitConvergeMode)) {
       issues.push(`${prefix}traitConvergeMode: expected "auto" | "full" | "dirty"`)
     }
   }
@@ -339,7 +340,7 @@ export const warnInvalidStateTransactionRuntimeConfigDevOnly = (value: unknown, 
   )
 
   if ('instrumentation' in value && value.instrumentation != null) {
-    if (!Schema.is(InstrumentationSchema)(value.instrumentation)) {
+    if (!isInstrumentation(value.instrumentation)) {
       issues.push(`instrumentation: expected "full" | "light"`)
     }
   }

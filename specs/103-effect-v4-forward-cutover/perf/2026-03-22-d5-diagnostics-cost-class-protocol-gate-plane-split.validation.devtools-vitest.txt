@@ -1,0 +1,10 @@
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.d5-diagnostics-gate-split/packages/logix-devtools-react
+
+ ✓ test/internal/DevtoolsStateProjectionBudget.test.ts (2 tests) 3ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  16:02:51
+   Duration  1.65s (transform 856ms, setup 0ms, import 1.15s, tests 3ms, environment 419ms)
+

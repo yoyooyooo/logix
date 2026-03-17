@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-03-19",
+  "cutId": "p0-2plus-hot-context",
+  "command": "python3 fabfile.py probe_next_blocker --json",
+  "status": "clear",
+  "processReturnCode": 0,
+  "returnCode": 0,
+  "executed": [
+    {
+      "suiteId": "externalStore.ingest.tickNotify",
+      "gate": "残余复核门",
+      "status": "passed",
+      "durationMs": 2112,
+      "thresholdAnomalyCount": 0
+    },
+    {
+      "suiteId": "runtimeStore.noTearing.tickNotify",
+      "gate": "防回归门",
+      "status": "passed",
+      "durationMs": 15246,
+      "thresholdAnomalyCount": 0
+    },
+    {
+      "suiteId": "form.listScopeCheck",
+      "gate": "防回归门",
+      "status": "passed",
+      "durationMs": 1543,
+      "thresholdAnomalyCount": 0
+    }
+  ],
+  "pending": [],
+  "thresholdAnomalies": []
+}

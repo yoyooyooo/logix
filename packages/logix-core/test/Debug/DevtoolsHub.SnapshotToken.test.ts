@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer } from 'effect'
 import * as Logix from '../../src/index.js'
@@ -14,7 +14,7 @@ describe('DevtoolsHub (SnapshotToken)', () => {
 
       const layer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 5,
-        mode: 'light',
+        diagnosticsLevel: 'light',
       }) as Layer.Layer<any, never, never>
 
       yield* Logix.Debug.record({
@@ -36,7 +36,7 @@ describe('DevtoolsHub (SnapshotToken)', () => {
 
       const layer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 0,
-        mode: 'full',
+        diagnosticsLevel: 'full',
       }) as Layer.Layer<any, never, never>
 
       const base = Logix.Debug.getDevtoolsSnapshotToken()

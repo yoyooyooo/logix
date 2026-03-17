@@ -1,0 +1,14 @@
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p1-3r-env-ready-impl-check-v2/packages/logix-core
+
+ ✓ test/internal/Runtime/ModuleAsSource.tick.test.ts (2 tests) 36ms
+stdout | test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts > StateTrait.externalStore runtime semantics > perf skeleton: externalStore ingest proxy phases
+PERF_EXTERNAL_STORE_INGEST_PROXY {"phaseSetMs":0.012791999999990367,"phaseCommitMs":2.831042000000025,"phaseCommitWithStateMs":0.8123750000000882,"phasePreStoreCommitMs":0.4769169999999576,"phaseStoreCommitInnerMs":0.045040999999969245,"phasePostStoreCommitMs":0,"phaseTickFlushLagMs":0.5552500000000009,"phaseWaitForBatchOrEnqueueMs":0,"phaseYieldMicrotaskMs":0,"phaseFlushBeforeCommitMs":0.5552500000000009,"phaseTailMs":0.005250000000046384,"phaseTopicBumpMs":0.002173828125,"phaseListenerSnapshotFlattenMs":0.00034000390625000014,"phaseListenerCallbackFanoutMs":0.0016997109375,"tickDelta":1,"finalValues":[100,101,102,103]}
+
+ ✓ test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts (12 tests) 56ms
+
+ Test Files  2 passed (2)
+      Tests  14 passed (14)
+   Start at  09:46:23
+   Duration  870ms (transform 971ms, setup 0ms, import 1.46s, tests 92ms, environment 0ms)
+

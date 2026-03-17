@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-03-21",
+  "cutId": "p0-2-operation-empty-default-next",
+  "baseline": {
+    "motherlineRef": "v4-perf@8786410c",
+    "note": "当前 worktree HEAD 与母线锚点一致，复核目标是判定是否存在遗漏切口。"
+  },
+  "codeReviewFinding": {
+    "hasMissingMinimalCut": false,
+    "reason": "operation-empty-default fast path 与 snapshot/hot-context 复用链路已在母线提交中落地，当前守门测试覆盖完整。"
+  },
+  "perfSignals": {
+    "resolveShell": {
+      "noSnapshotAvgMs": 0.626,
+      "snapshotAvgMs": 0.256,
+      "speedupX": 2.442,
+      "savedPercent": 59.04
+    },
+    "operationRunnerTxnHotContext": {
+      "batch256SpeedupX": 1.526,
+      "batch1024SpeedupX": 1.623
+    }
+  },
+  "probeNextBlocker": {
+    "ref": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p0-2-operation-empty-default-next.probe-next-blocker.json",
+    "status": "clear",
+    "blocker": null,
+    "thresholdAnomalyCount": 0
+  },
+  "conclusion": {
+    "resultClass": "docs/evidence-only",
+    "accepted_with_evidence": false,
+    "keepCodeChanges": false,
+    "reason": "本轮没有新增可归因代码收益点，按 docs/evidence-only 收口。"
+  }
+}

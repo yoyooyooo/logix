@@ -1,0 +1,22 @@
+{
+  "date": "2026-03-19",
+  "topic": "P1-6-owner-aware-resolve",
+  "checks": [
+    {
+      "command": "pnpm --filter @logixjs/react typecheck:test",
+      "status": "passed"
+    },
+    {
+      "command": "pnpm --filter @logixjs/react exec vitest run test/internal/integration/reactConfigRuntimeProvider.test.tsx --pool forks",
+      "status": "passed",
+      "summary": {
+        "testFilesPassed": 1,
+        "testsPassed": 8,
+        "testsFailed": 0
+      }
+    }
+  ],
+  "notes": [
+    "worktree 初始缺少 workspace 依赖链接；本次验证通过补齐本地 node_modules 软链后完成。"
+  ]
+}

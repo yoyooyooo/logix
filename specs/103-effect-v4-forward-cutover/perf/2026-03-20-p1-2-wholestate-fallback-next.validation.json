@@ -1,0 +1,24 @@
+{
+  "id": "2026-03-20-p1-2-wholestate-fallback-next.validation",
+  "capturedAt": "2026-03-20",
+  "commands": {
+    "typecheckTest": {
+      "command": "pnpm -C packages/logix-core typecheck:test",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p1-2-wholestate-fallback-next.validation.typecheck.txt",
+      "passed": true
+    },
+    "targetedVitest": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/Bound/BoundApiRuntime.stateUpdateWholeStateFallback.Perf.off.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.reducerWholeStateFallback.Perf.off.test.ts",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p1-2-wholestate-fallback-next.validation.vitest.txt",
+      "passed": true,
+      "mixedUnknownCasePresent": true
+    },
+    "probeNextBlocker": {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p1-2-wholestate-fallback-next.probe-next-blocker.json",
+      "status": "clear",
+      "blocker": null,
+      "thresholdAnomalyCount": 0
+    }
+  }
+}

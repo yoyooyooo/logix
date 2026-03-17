@@ -1,0 +1,13 @@
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.r2-controlplane-synergy/packages/logix-core
+
+ ✓ test/internal/Runtime/ModuleRuntime/ModuleRuntime.txnQueue.Lanes.test.ts (6 tests) 22ms
+ ✓ test/internal/Runtime/ModuleRuntime/ModuleRuntime.TxnLanes.DefaultOn.test.ts (5 tests) 89ms
+ ✓ test/internal/Runtime/ModuleRuntime/ModuleRuntime.TxnLanes.Overrides.test.ts (5 tests) 109ms
+ ✓ test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts (1 test) 126ms
+
+ Test Files  4 passed (4)
+      Tests  17 passed (17)
+   Start at  10:56:09
+   Duration  1.31s (transform 1.91s, setup 0ms, import 3.65s, tests 345ms, environment 0ms)
+

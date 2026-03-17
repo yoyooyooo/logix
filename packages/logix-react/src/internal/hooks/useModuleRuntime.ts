@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useContext } from 'react'
+import { useEffect, useMemo, useContext, useRef } from 'react'
 import * as Logix from '@logixjs/core'
 import { Effect, Scope } from 'effect'
 import { useRuntime } from './useRuntime.js'
 import { isModuleRef, type ModuleRef } from '../store/ModuleRef.js'
 import { RuntimeContext } from '../provider/ReactContext.js'
+import { emitRuntimeDebugEventBestEffort, readRuntimeDiagnosticsLevel } from '../provider/runtimeDebugBridge.js'
 import { RuntimeProviderNotFoundError } from '../provider/errors.js'
-import { getModuleCache, type ModuleCacheFactory } from '../store/ModuleCache.js'
-import { isDevEnv } from '../provider/env.js'
+import { getModuleCache, type ModuleCacheFactory, type ModuleCacheResolvePhase } from '../store/ModuleCache.js'
 
 const isModuleRuntime = (value: unknown): value is Logix.ModuleRuntime<any, any> =>
   typeof value === 'object' && value !== null && 'dispatch' in value && 'getState' in value
@@ -38,13 +38,26 @@ export function useModuleRuntime<H extends ReactModuleHandle>(
 export function useModuleRuntime(handle: ReactModuleHandle): Logix.ModuleRuntime<any, any> {
   const runtime = useRuntime()
   const runtimeContext = useContext(RuntimeContext)
+  const resolvePhaseRef = useRef<ModuleCacheResolvePhase>('boot')
+  useEffect(() => {
+    resolvePhaseRef.current = 'ready'
+  }, [])
+  const resolvePhase = resolvePhaseRef.current
+  const moduleTagResolveTraceRef = useRef<
+    | {
+        readonly tokenId: string
+        readonly durationMs: number
+        readonly cacheMode: 'sync' | 'suspend'
+      }
+    | undefined
+  >(undefined)
   if (!runtimeContext) {
     throw new RuntimeProviderNotFoundError('useModuleRuntime')
   }
 
   const cache = useMemo(
-    () => getModuleCache(runtimeContext.runtime, runtimeContext.reactConfigSnapshot, runtimeContext.configVersion),
-    [runtimeContext.runtime, runtimeContext.reactConfigSnapshot, runtimeContext.configVersion],
+    () => getModuleCache(runtimeContext.runtime, runtimeContext.reactConfigSnapshot),
+    [runtimeContext.runtime, runtimeContext.reactConfigSnapshot],
   )
 
   const isTagHandle = !isModuleRef(handle) && !isModuleRuntime(handle)
@@ -65,34 +78,48 @@ export function useModuleRuntime(handle: ReactModuleHandle): Logix.ModuleRuntime
     const key = preloadKey ?? `tag:${tokenId}`
 
     const mode = runtimeContext.policy.moduleTagMode
+    const startedAtMs = performance.now()
 
     const factory: ModuleCacheFactory = (scope: Scope.Scope) =>
-      (tag as unknown as Effect.Effect<Logix.ModuleRuntime<any, any>, never, any>).pipe(Scope.extend(scope))
+      Scope.provide(scope)(Effect.service(tag).pipe(Effect.orDie))
 
-    return (
+    const resolvedRuntime = (
       mode === 'suspend'
         ? cache.read(key, factory, undefined, tokenId, {
             entrypoint: 'react.useModuleRuntime',
             policyMode: runtimeContext.policy.mode,
+            resolvePhase,
             yield: runtimeContext.policy.yield,
+            optimisticSyncBudgetMs: runtimeContext.policy.syncBudgetMs,
           })
         : cache.readSync(key, factory, undefined, tokenId, {
             entrypoint: 'react.useModuleRuntime',
             policyMode: runtimeContext.policy.mode,
+            resolvePhase,
             warnSyncBlockingThresholdMs: 5,
           })
     ) as Logix.ModuleRuntime<any, any>
-  }, [cache, runtimeContext.policy, handle])
+
+    moduleTagResolveTraceRef.current = {
+      tokenId,
+      durationMs: Math.round((performance.now() - startedAtMs) * 100) / 100,
+      cacheMode: mode,
+    }
+
+    return resolvedRuntime
+  }, [cache, runtimeContext.policy, resolvePhase, handle])
 
   useEffect(() => {
     if (!isTagHandle) {
       return
     }
-    if (!isDevEnv() && !Logix.Debug.isDevtoolsEnabled()) {
+    const diagnosticsLevel = readRuntimeDiagnosticsLevel(runtime)
+    if (diagnosticsLevel === 'off') {
       return
     }
 
     const tokenId = (handle as any)?.id ?? 'ModuleTag'
+    const trace = moduleTagResolveTraceRef.current
 
     const effect = Logix.Debug.record({
       type: 'trace:react.moduleTag.resolve',
@@ -102,10 +129,12 @@ export function useModuleRuntime(handle: ReactModuleHandle): Logix.ModuleRuntime
         mode: runtimeContext.policy.moduleTagMode,
         tokenId,
         yieldStrategy: runtimeContext.policy.yield.strategy,
+        durationMs: trace?.durationMs,
+        cacheMode: trace?.cacheMode ?? runtimeContext.policy.moduleTagMode,
       },
     })
 
-    runtime.runFork(effect)
+    emitRuntimeDebugEventBestEffort(runtime, effect)
   }, [runtime, runtimeContext.policy, resolved, handle, isTagHandle])
 
   return resolved as Logix.ModuleRuntime<any, any>

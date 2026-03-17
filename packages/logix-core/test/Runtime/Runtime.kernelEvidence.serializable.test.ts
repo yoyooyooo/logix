@@ -17,7 +17,7 @@ describe('Runtime (048): kernel evidence serializable (diagnostics=off)', () => 
     })
 
     const readEvidence = Effect.gen(function* () {
-      const moduleRuntime = yield* Root.tag
+      const moduleRuntime = yield* Effect.service(Root.tag).pipe(Effect.orDie)
       const kernel = Logix.Kernel.getKernelImplementationRef(moduleRuntime)
       const evidence = Logix.Kernel.getRuntimeServicesEvidence(moduleRuntime)
       const gate = Logix.Kernel.evaluateFullCutoverGate({

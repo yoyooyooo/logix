@@ -1,0 +1,64 @@
+{
+  "id": "2026-03-23-p1-6pp-owner-resolve-impl",
+  "capturedAt": "2026-03-23",
+  "scope": "react-controlplane-owner-resolve-four-entry-contract",
+  "baseHead": "f8d015b5",
+  "decision": {
+    "status": "accepted_with_evidence",
+    "acceptedWithEvidence": true,
+    "mergeToMain": true,
+    "reasons": [
+      "四入口 owner resolve 合同已统一接入 phase-trace 主链路",
+      "phase-machine 事件已具备 method/cause/reasonCode/epoch/ticket/fingerprint/readiness 字段",
+      "typecheck、phase-trace 测试与 probe_next_blocker 全部通过，未引入新的 hard blocker"
+    ]
+  },
+  "constraints": {
+    "publicApiChange": false,
+    "touchedCorePath": false,
+    "writeScope": [
+      "packages/logix-react/src/internal/provider/**",
+      "packages/logix-react/test/RuntimeProvider/**",
+      "docs/perf/**",
+      "specs/103-effect-v4-forward-cutover/perf/**"
+    ],
+    "keptUntouched": [
+      "packages/logix-core/**",
+      "packages/logix-react public API"
+    ]
+  },
+  "verification": {
+    "commands": [
+      "pnpm --filter @logixjs/react typecheck:test",
+      "pnpm -C packages/logix-react exec vitest run test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx --pool forks",
+      "python3 fabfile.py probe_next_blocker --json"
+    ],
+    "artifacts": {
+      "typecheck": "specs/103-effect-v4-forward-cutover/perf/2026-03-23-p1-6pp-owner-resolve-impl.validation.typecheck.txt",
+      "phaseTraceTest": "specs/103-effect-v4-forward-cutover/perf/2026-03-23-p1-6pp-owner-resolve-impl.validation.vitest.txt",
+      "probeNextBlocker": "specs/103-effect-v4-forward-cutover/perf/2026-03-23-p1-6pp-owner-resolve-impl.probe-next-blocker.json"
+    },
+    "phaseTrace": {
+      "testFile": "test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx",
+      "passed": true,
+      "total": 8,
+      "assertions": [
+        "四入口 phase-machine 事件包含 method/cause/reasonCode/epoch/ticket/fingerprint/readiness",
+        "config ready skip 统一为 config-fingerprint-unchanged",
+        "同 ownerKey+lane+epoch 的 config resolve-commit 计数稳定为 1"
+      ]
+    },
+    "probe": {
+      "status": "clear",
+      "softWatch": [
+        {
+          "suiteId": "externalStore.ingest.tickNotify",
+          "budgetId": "full/off<=1.25",
+          "gateClass": "soft",
+          "costClass": "devtools_projection",
+          "firstFailLevel": 128
+        }
+      ]
+    }
+  }
+}

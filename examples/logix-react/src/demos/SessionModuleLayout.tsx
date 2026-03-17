@@ -68,8 +68,8 @@ const sessionRuntime = ManagedRuntime.make(
     Logix.Debug.devtoolsHubLayer(),
     Layer.empty,
     ReactPlatformLayer,
-    Logger.pretty,
-  ),
+    Logger.layer([Logger.consolePretty()]),
+  ) as Layer.Layer<any, never, never>,
 )
 
 interface SessionTabProps {

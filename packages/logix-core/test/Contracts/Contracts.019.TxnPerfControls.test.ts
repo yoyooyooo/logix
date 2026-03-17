@@ -7,12 +7,21 @@ test('019 contracts: schema surface sanity', () => {
   expect((dirtySetSchema as any).title).toBe('DirtySetV2')
   expect((dirtySetSchema as any).type).toBe('object')
   expect((dirtySetSchema as any).properties?.dirtyAll).toBeTruthy()
+  expect((dirtySetSchema as any).properties?.pathIds).toBeTruthy()
+  expect((dirtySetSchema as any).properties?.pathCount).toBeTruthy()
+  expect((dirtySetSchema as any).properties?.keySize).toBeTruthy()
+  expect((dirtySetSchema as any).properties?.keyHash).toBeTruthy()
+  expect((dirtySetSchema as any).properties?.pathIdsTruncated).toBeTruthy()
   expect((dirtySetSchema as any).properties?.reason?.enum).toEqual([
     'unknownWrite',
     'customMutation',
     'nonTrackablePatch',
     'fallbackPolicy',
   ])
+  expect((dirtySetSchema as any).properties?.paths).toBeUndefined()
+  expect((dirtySetSchema as any).required).toEqual(
+    expect.arrayContaining(['dirtyAll', 'pathIds', 'pathCount', 'keySize', 'keyHash', 'pathIdsTruncated']),
+  )
 
   expect((txnCommitEvidenceSchema as any).$schema).toContain('json-schema')
   expect((txnCommitEvidenceSchema as any).title).toBe('TxnCommitEvidence')

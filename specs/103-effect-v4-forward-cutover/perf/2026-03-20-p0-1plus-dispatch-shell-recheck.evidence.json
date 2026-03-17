@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-03-20",
+  "cutId": "p0-1plus-dispatch-shell-recheck",
+  "baseline": {
+    "motherlineRef": "v4-perf@97be4b0c",
+    "p0_1plusRef": "specs/103-effect-v4-forward-cutover/perf/2026-03-19-p0-1plus-dispatch-shell.after.json",
+    "metrics": {
+      "dispatch.p50.ms": 0.086,
+      "dispatch.p95.ms": 0.154,
+      "residual.avg.ms": 0.063,
+      "bodyShell.avg.ms": 0.016
+    }
+  },
+  "current": {
+    "waveRef": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-1plus-dispatch-shell-recheck.wave5.json",
+    "summaryMedian": {
+      "dispatch.p50.ms": 0.077,
+      "dispatch.p95.ms": 0.144,
+      "residual.avg.ms": 0.06,
+      "bodyShell.avg.ms": 0.015
+    }
+  },
+  "deltaVsP0_1plusAfter": {
+    "dispatch.p50.ms": -0.009,
+    "dispatch.p95.ms": -0.01,
+    "residual.avg.ms": -0.003,
+    "bodyShell.avg.ms": -0.001
+  },
+  "probeNextBlocker": {
+    "ref": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-1plus-dispatch-shell-recheck.probe-next-blocker.json",
+    "status": "clear",
+    "executedSuites": [
+      "externalStore.ingest.tickNotify",
+      "runtimeStore.noTearing.tickNotify",
+      "form.listScopeCheck"
+    ],
+    "regression": false
+  },
+  "conclusion": {
+    "resultClass": "docs/evidence-only",
+    "accepted_with_evidence": false,
+    "hasNewAttributableResidualToCut": false,
+    "reason": "5轮重复采样没有出现可稳定放大的新 residual，且 blocker probe 保持 clear。"
+  }
+}

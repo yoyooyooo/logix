@@ -43,7 +43,7 @@ describe('process: uiSubtree stop → start (re-install)', () => {
                   ticks += 1
                 }),
               ),
-              Effect.zipRight(Effect.sleep('5 millis')),
+              Effect.flatMap(() => Effect.sleep('5 millis')),
             ),
           )
         }).pipe(Effect.ensuring(Effect.uninterruptible(Effect.sleep('80 millis')))),
@@ -53,7 +53,7 @@ describe('process: uiSubtree stop → start (re-install)', () => {
         layer: Layer.empty as Layer.Layer<any, never, never>,
       })
 
-      const installOnce = (scope: Scope.CloseableScope, mode?: 'switch' | 'exhaust') =>
+      const installOnce = (scope: Scope.Scope, mode?: 'switch' | 'exhaust') =>
         runtime.runPromise(
           Logix.InternalContracts.installProcess(Ticker as any, {
             scope: { type: 'uiSubtree', subtreeId } as const,
@@ -69,12 +69,12 @@ describe('process: uiSubtree stop → start (re-install)', () => {
       const getValue = () =>
         runtime.runPromise(
           Effect.gen(function* () {
-            const counter = yield* CounterDef.tag
+            const counter = yield* Effect.service(CounterDef.tag).pipe(Effect.orDie)
             return (yield* counter.getState).value
           }),
         )
 
-      const scope1 = Effect.runSync(Scope.make()) as Scope.CloseableScope
+      const scope1 = Effect.runSync(Scope.make()) as Scope.Scope
       yield* Effect.promise(() => installOnce(scope1))
 
       yield* Effect.promise(() => runtime.runPromise(Effect.sleep('40 millis') as any))
@@ -93,7 +93,7 @@ describe('process: uiSubtree stop → start (re-install)', () => {
 
       const stopPromise = runtime.runPromise(Scope.close(scope1, Exit.void) as any)
 
-      const scope2 = Effect.runSync(Scope.make()) as Scope.CloseableScope
+      const scope2 = Effect.runSync(Scope.make()) as Scope.Scope
       yield* Effect.promise(() => installOnce(scope2, mode))
 
       yield* Effect.promise(() => stopPromise)
@@ -132,6 +132,6 @@ describe('process: uiSubtree stop → start (re-install)', () => {
       yield* Effect.promise(() => runtime.dispose())
     })
 
-  it.scoped('mode=switch: should restart even if re-install happens during stopping', () => runCase('switch', true))
-  it.scoped('mode=exhaust: should not restart if re-install happens during stopping', () => runCase('exhaust', false))
+  it.effect('mode=switch: should restart even if re-install happens during stopping', () => runCase('switch', true))
+  it.effect('mode=exhaust: should not restart if re-install happens during stopping', () => runCase('exhaust', false))
 })

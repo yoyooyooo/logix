@@ -1,11 +1,17 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
 
+const waitForAsync = Effect.promise(
+  () =>
+    new Promise<void>((resolve) => {
+      setTimeout(resolve, 20)
+    }),
+)
+
 describe('Form refactor regressions (US3)', () => {
-  it.scoped('setValue clears manual+schema errors and keeps errorCount consistent', () =>
+  it.effect('setValue clears manual+schema errors and keeps errorCount consistent', () =>
     Effect.gen(function* () {
       const ValuesSchema = Schema.Struct({
         name: Schema.String,
@@ -24,7 +30,7 @@ describe('Form refactor regressions (US3)', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* module.tag
+        const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const controller = module.controller.make(rt)
 
         // Manually write a schema error (avoid relying on Schema decoding details) + a manual error (setError).
@@ -109,7 +115,7 @@ describe('Form refactor regressions (US3)', () => {
     ).toThrow(/Duplicate trait path "name".*traits\/derived.*rules/)
   })
 
-  it.scoped('rowId error ownership remains stable across swap/move/remove', () =>
+  it.effect('rowId error ownership remains stable across swap/move/remove', () =>
     Effect.gen(function* () {
       const RowSchema = Schema.Struct({
         id: Schema.String,
@@ -177,12 +183,13 @@ describe('Form refactor regressions (US3)', () => {
         new Map(items.map((row, i) => [String(row?.id ?? i), i]))
 
       const program = Effect.gen(function* () {
-        const rt = yield* module.tag
+        const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
         const controller = module.controller.make(rt)
+        yield* waitForAsync
 
         yield* controller.field('items.0.warehouseId').set('WH-DUP')
         yield* controller.field('items.1.warehouseId').set('WH-DUP')
-        yield* Effect.sleep('20 millis')
+        yield* waitForAsync
 
         const s1: any = yield* controller.getState
         const rows1 = getRows(s1)
@@ -197,7 +204,7 @@ describe('Form refactor regressions (US3)', () => {
         ])
 
         yield* controller.fieldArray('items').swap(0, 2)
-        yield* Effect.sleep('20 millis')
+        yield* waitForAsync
 
         const s2: any = yield* controller.getState
         const idx2 = indexById(s2.items ?? [])
@@ -211,7 +218,7 @@ describe('Form refactor regressions (US3)', () => {
 
         const from = idx2.get('row-0') ?? 0
         yield* controller.fieldArray('items').move(from, 0)
-        yield* Effect.sleep('20 millis')
+        yield* waitForAsync
 
         const s3: any = yield* controller.getState
         const idx3 = indexById(s3.items ?? [])
@@ -225,7 +232,7 @@ describe('Form refactor regressions (US3)', () => {
 
         const removeIndex = idx3.get('row-1') ?? 0
         yield* controller.fieldArray('items').remove(removeIndex)
-        yield* Effect.sleep('20 millis')
+        yield* waitForAsync
 
         const s4: any = yield* controller.getState
         const rows4 = getRows(s4)

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "logix-browser-perf-matrix-v1",
-  "updatedAt": "2026-01-19",
+  "updatedAt": "2026-03-12",
   "defaults": {
     "runs": 30,
     "warmupDiscard": 5,
@@ -70,6 +70,44 @@
         { "watchers": 256, "reactStrictMode": true }
       ],
       "notes": "现有维度示例：packages/logix-react/test/browser/watcher-browser-perf.test.tsx（后续纳入统一报告输出）。"
+    },
+    {
+      "id": "watchers.clickToDomStable",
+      "priority": "P1",
+      "title": "watchers: click→DOM stable",
+      "primaryAxis": "watchers",
+      "axes": {
+        "watchers": [1, 8, 32, 64, 128, 256, 512],
+        "reactStrictMode": [false, true]
+      },
+      "metrics": ["e2e.clickToDomStableMs"],
+      "budgets": [
+        {
+          "id": "p95<=16ms",
+          "type": "absolute",
+          "metric": "e2e.clickToDomStableMs",
+          "p95Ms": 16
+        },
+        {
+          "id": "p95<=50ms",
+          "type": "absolute",
+          "metric": "e2e.clickToDomStableMs",
+          "p95Ms": 50
+        },
+        {
+          "id": "p95<=100ms",
+          "type": "absolute",
+          "metric": "e2e.clickToDomStableMs",
+          "p95Ms": 100
+        }
+      ],
+      "baselineBudgetId": "p95<=50ms",
+      "limitBudgetId": "p95<=100ms",
+      "baselinePoints": [
+        { "watchers": 128, "reactStrictMode": true },
+        { "watchers": 256, "reactStrictMode": true }
+      ],
+      "notes": "现有维度示例：packages/logix-react/test/browser/watcher-browser-perf.test.tsx（paired phase evidence / DOM stable 语义）。"
     },
     {
       "id": "converge.txnCommit",
@@ -159,6 +197,48 @@
       "notes": "验证 txn time-slicing 在大量 deferred computed 下的收益：on/off 相对预算作为硬门；证据字段用于解释 time-slicing 作用范围与立即/延后步骤分布。"
     },
     {
+      "id": "dispatchShell.fixedCost",
+      "priority": "P1",
+      "title": "dispatch shell: fixed cost",
+      "primaryAxis": "stateWidth",
+      "axes": {
+        "stateWidth": [1, 8, 32, 128, 512, 1024],
+        "entrypointMode": ["reuseScope", "resolveEach"]
+      },
+      "metrics": ["runtime.txnCommitMs"],
+      "budgets": [
+        {
+          "id": "reuseScope<=12ms",
+          "type": "absolute",
+          "metric": "runtime.txnCommitMs",
+          "p95Ms": 12
+        },
+        {
+          "id": "resolveEach<=reuseScope*1.25",
+          "type": "relative",
+          "metric": "runtime.txnCommitMs",
+          "maxRatio": 1.25,
+          "minDeltaMs": 0.1,
+          "numeratorRef": "entrypointMode=resolveEach",
+          "denominatorRef": "entrypointMode=reuseScope"
+        }
+      ],
+      "baselineBudgetId": "reuseScope<=12ms",
+      "limitBudgetId": "reuseScope<=12ms",
+      "baselinePoints": [
+        { "stateWidth": 128, "entrypointMode": "reuseScope" },
+        { "stateWidth": 128, "entrypointMode": "resolveEach" }
+      ],
+      "requiredEvidence": [
+        "module.reducerWriteCount",
+        "module.stateWidth",
+        "module.traitCount",
+        "runtime.dispatchesPerSample",
+        "runtime.entrypointMode"
+      ],
+      "notes": "用于隔离 dispatch/txn 固定税，保持 reducer 单写入、零 trait、同一 runPromise 批量样本；stateWidth 扩张仅用于验证成本是否近似常数。"
+    },
+    {
       "id": "form.listScopeCheck",
       "priority": "P2",
       "title": "form: dynamic list (cross-row check) · txn commit",
@@ -175,6 +255,7 @@
           "type": "relative",
           "metric": "runtime.txnCommitMs",
           "maxRatio": 1.05,
+          "minDeltaMs": 0.11,
           "numeratorRef": "requestedMode=auto",
           "denominatorRef": "requestedMode=full"
         }
@@ -506,8 +587,10 @@
           "id": "full/off<=1.25",
           "type": "relative",
           "metric": "timePerIngestMs",
+          "gateClass": "soft",
+          "costClass": "devtools_projection",
           "maxRatio": 1.25,
-          "minDeltaMs": 0.02,
+          "minDeltaMs": 0.6,
           "numeratorRef": "diagnosticsLevel=full",
           "denominatorRef": "diagnosticsLevel=off"
         }

@@ -4,7 +4,7 @@ import * as Logix from '../../../src/index.js'
 import * as Debug from '../../../src/Debug.js'
 
 describe('Reflection.extractManifest actions[] (US1)', () => {
-  it.scoped('should output stable actions[] and allow joining action events', () =>
+  it.effect('should output stable actions[] and allow joining action events', () =>
     Effect.gen(function* () {
       const State = Schema.Struct({ count: Schema.Number })
       type S = Schema.Schema.Type<typeof State>
@@ -60,7 +60,7 @@ describe('Reflection.extractManifest actions[] (US1)', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* M.tag
+        const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
         yield* rt.dispatch({ _tag: 'a', payload: 2 } as any)
         yield* rt.dispatch({ _tag: 'z', payload: undefined } as any)
       })
@@ -88,7 +88,7 @@ describe('Reflection.extractManifest actions[] (US1)', () => {
     }),
   )
 
-  it.scoped('should prefer per-action source from ActionToken when provided', () =>
+  it.effect('should prefer per-action source from ActionToken when provided', () =>
     Effect.gen(function* () {
       const State = Schema.Struct({ count: Schema.Number })
 

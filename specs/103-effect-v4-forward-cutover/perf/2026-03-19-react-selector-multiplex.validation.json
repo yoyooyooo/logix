@@ -1,0 +1,32 @@
+{
+  "capturedAt": "2026-03-19T08:43:55Z",
+  "scope": "react selector listener multiplex by component instance",
+  "branch": "agent/v4-perf-react-selector-multiplex",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.react-selector-multiplex",
+  "commands": [
+    {
+      "id": "react.selector-multiplex.targeted",
+      "command": "pnpm --dir packages/logix-react test -- --run test/Hooks/useSelector.sharedSubscription.test.tsx test/Hooks/useSelector.laneSubscription.test.tsx test/Hooks/useSelector.structMemo.test.tsx test/Hooks/useSelector.readQueryRetainScope.test.tsx test/internal/RuntimeExternalStore.lowPriority.test.ts test/internal/RuntimeExternalStore.idleTeardown.test.ts",
+      "status": "passed",
+      "testFiles": 6,
+      "tests": 8
+    },
+    {
+      "id": "react.typecheck",
+      "command": "pnpm --dir packages/logix-react typecheck",
+      "status": "passed"
+    },
+    {
+      "id": "probe.next-blocker",
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "status": "clear",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-19-react-selector-multiplex.probe-next-blocker.json"
+    }
+  ],
+  "summary": {
+    "publicApiChanged": false,
+    "sameComponentSameTopicStoreSubscribeCalls": 1,
+    "sameComponentSameTopicListenerCallbacksPerUpdate": 1,
+    "currentProbeStatus": "clear"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "id": "2026-03-19-p2-1a-converge-continuation.before",
+  "capturedAt": "2026-03-19",
+  "scope": "p2-1a-deferred-converge-continuation-handle",
+  "source": {
+    "suite": "packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.transaction.HotSnapshot.Perf.off.test.ts",
+    "command": "LOGIX_DEFERRED_CONVERGE_CONTINUATION=0 LOGIX_PERF_ITERS=160 LOGIX_PERF_WARMUP=30 pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.transaction.HotSnapshot.Perf.off.test.ts",
+    "mode": "continuation_off"
+  },
+  "sample": {
+    "deferred": 128,
+    "iterations": 160,
+    "warmup": 30
+  },
+  "metricsMs": {
+    "return": {
+      "avg": 0.608,
+      "p50": 0.553,
+      "p95": 0.945
+    },
+    "settle": {
+      "avg": 5.329,
+      "p50": 5.048,
+      "p95": 6.138
+    }
+  }
+}

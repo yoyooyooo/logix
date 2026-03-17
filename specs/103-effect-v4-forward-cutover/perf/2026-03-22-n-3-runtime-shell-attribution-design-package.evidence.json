@@ -1,0 +1,40 @@
+{
+  "id": "2026-03-22-n-3-runtime-shell-attribution-design-package",
+  "capturedAt": "2026-03-22",
+  "scope": "runtime-shell-n3-docs-proposal-only",
+  "decision": {
+    "status": "discarded_or_pending",
+    "acceptedWithEvidence": false,
+    "mergeToMain": false,
+    "classification": "docs/evidence-only",
+    "reasons": [
+      "N-3 当前缺少 design package 级别的协议冻结，不能直接开 implementation line",
+      "boundary decision 合同、reason taxonomy、ledger v1.1 字段分层仍未统一",
+      "focused validation matrix 尚未冻结，直接实施会让 correctness 与 comparability 混线"
+    ]
+  },
+  "constraints": {
+    "publicApiChange": false,
+    "touchedCorePath": false,
+    "codeImplementationRetained": false,
+    "writeScope": [
+      "docs/perf/**",
+      "specs/103-effect-v4-forward-cutover/perf/**"
+    ]
+  },
+  "designGaps": [
+    "D1: resolveRuntimeShellBoundary(...) 合同冻结",
+    "D2: reason taxonomy 冻结",
+    "D3: ledger v1.1 字段分层",
+    "D4: focused validation matrix"
+  ],
+  "nextGates": [
+    "Gate-A protocol-freeze",
+    "Gate-B ledger-freeze",
+    "Gate-C validation-freeze"
+  ],
+  "artifacts": {
+    "designPackage": "docs/perf/2026-03-22-n-3-runtime-shell-attribution-design-package.md",
+    "summary": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-n-3-runtime-shell-attribution-design-package.summary.md"
+  }
+}

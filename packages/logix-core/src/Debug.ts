@@ -17,14 +17,13 @@ export type Event = Internal.Event
 export interface Sink extends Internal.Sink {}
 export interface RuntimeDebugEventRef extends Internal.RuntimeDebugEventRef {}
 export type DiagnosticsLevel = Internal.DiagnosticsLevel
+export type DiagnosticsMaterialization = Internal.DiagnosticsMaterialization
+export type TraceMode = Internal.TraceMode
+export type DiagnosticsCostClass = Internal.DiagnosticsCostClass
+export type DiagnosticsGateClass = Internal.DiagnosticsGateClass
+export type DiagnosticsSamplingPolicy = Internal.DiagnosticsSamplingPolicy
 export type TraitConvergeDiagnosticsSamplingConfig = Internal.TraitConvergeDiagnosticsSamplingConfig
 export type SnapshotToken = DevtoolsHub.SnapshotToken
-export type DevtoolsProjectionTier = DevtoolsHub.DevtoolsProjectionTier
-export type DevtoolsProjectionMode = 'off' | 'light' | 'full'
-export type DevtoolsSnapshotProjection = DevtoolsHub.DevtoolsSnapshotProjection
-export type DevtoolsSnapshotDegradedReason = DevtoolsHub.DevtoolsSnapshotDegradedReason
-export type DevtoolsProjectionDegradeReasonCode = DevtoolsHub.DevtoolsProjectionDegradeReasonCode
-export const DEVTOOLS_PROJECTION_DEGRADE_REASON_CATALOG = DevtoolsHub.DEVTOOLS_PROJECTION_DEGRADE_REASON_CATALOG
 
 export const toRuntimeDebugEventRef = Internal.toRuntimeDebugEventRef
 
@@ -32,19 +31,30 @@ export const internal = {
   currentDebugSinks: Internal.currentDebugSinks,
   currentRuntimeLabel: Internal.currentRuntimeLabel,
   currentDiagnosticsLevel: Internal.currentDiagnosticsLevel,
+  currentDiagnosticsMaterialization: Internal.currentDiagnosticsMaterialization,
+  currentTraceMode: Internal.currentTraceMode,
   currentTraitConvergeDiagnosticsSampling: Internal.currentTraitConvergeDiagnosticsSampling,
   toRuntimeDebugEventRef: Internal.toRuntimeDebugEventRef,
 }
 
 export interface DevtoolsSnapshot extends DevtoolsHub.DevtoolsSnapshot {}
-export interface DevtoolsHubOptions {
-  readonly bufferSize?: number
+export interface ProjectionBudgetAttribution extends DevtoolsHub.ProjectionBudgetAttribution {}
+export interface DirtyEvidenceMaterializationSliceSummary extends DevtoolsHub.DirtyEvidenceMaterializationSliceSummary {}
+export interface DirtyEvidenceMaterializationSummary extends DevtoolsHub.DirtyEvidenceMaterializationSummary {}
+export interface DevtoolsHubOptions extends DevtoolsHub.DevtoolsHubOptions {
+  readonly diagnosticsLevel?: DiagnosticsLevel
   /**
-   * Unified Devtools observation mode (single knob).
-   * Default: `"light"`.
+   * Diagnostics materialization mode:
+   * - eager: include heavy payloads (e.g. state snapshot) in exportable events.
+   * - lazy: keep slim anchors only; heavy payloads must be materialized on-demand by higher layers.
    */
-  readonly mode?: DevtoolsProjectionMode
-  readonly runtimeLabel?: string
+  readonly materialization?: DiagnosticsMaterialization
+  /**
+   * Trace mode:
+   * - on: enables `trace:*` events (e.g. trace:tick / trace:effectop).
+   * - off: drops trace events at the Debug.record boundary (keeps non-trace diagnostics/events).
+   */
+  readonly traceMode?: TraceMode
   readonly traitConvergeDiagnosticsSampling?: TraitConvergeDiagnosticsSamplingConfig
 }
 
@@ -58,6 +68,7 @@ export const setDevtoolsRunId = DevtoolsHub.setDevtoolsRunId
 export const startDevtoolsRun = DevtoolsHub.startDevtoolsRun
 export const setInstanceLabel = DevtoolsHub.setInstanceLabel
 export const getInstanceLabel = DevtoolsHub.getInstanceLabel
+export const materializeDirtyEvidenceEventRef = DevtoolsHub.materializeDirtyEvidenceEventRef
 
 export const exportEvidencePackage = (options?: {
   readonly runId?: string
@@ -71,11 +82,15 @@ export const exportEvidencePackage = (options?: {
  * Controls what DevtoolsHub exports (ring buffer / snapshots), without changing Debug.record's fallback semantics.
  */
 export const diagnosticsLevel = (level: DiagnosticsLevel): Layer.Layer<any, never, never> =>
-  Layer.fiberRefLocallyScopedWith(Internal.currentDiagnosticsLevel as any, () => level) as Layer.Layer<
-    any,
-    never,
-    never
-  >
+  Internal.diagnosticsLevel(level) as Layer.Layer<any, never, never>
+
+export const diagnosticsMaterialization = (
+  mode: DiagnosticsMaterialization,
+): Layer.Layer<any, never, never> =>
+  Internal.diagnosticsMaterialization(mode) as Layer.Layer<any, never, never>
+
+export const traceMode = (mode: TraceMode): Layer.Layer<any, never, never> =>
+  Internal.traceMode(mode) as Layer.Layer<any, never, never>
 
 export const traitConvergeDiagnosticsSampling = (
   config: TraitConvergeDiagnosticsSamplingConfig,
@@ -303,28 +318,28 @@ export const layer = (options?: DebugLayerOptions): Layer.Layer<any, never, neve
     }
   })()
 
-  return diagnostics
-    ? (Layer.mergeAll(sinks, diagnosticsLevel(diagnostics)) as Layer.Layer<any, never, never>)
-    : sinks
+  const trace = mode === 'dev' ? traceMode('on') : traceMode('off')
+
+  const base = Layer.mergeAll(sinks, trace) as Layer.Layer<any, never, never>
+
+  return diagnostics ? (Layer.mergeAll(base, diagnosticsLevel(diagnostics)) as Layer.Layer<any, never, never>) : base
 }
 
-/**
- * PrettyLoggerOptions: parameters of Effect.Logger.prettyLogger.
- */
-export type PrettyLoggerOptions = Parameters<typeof Logger.prettyLogger>[0]
+export type PrettyLoggerOptions = Parameters<typeof Logger.consolePretty>[0]
 
-/**
- * Replace the default Effect logger with a pretty logger (as a Layer).
- *
- * Equivalent to `Logger.replace(Logger.defaultLogger, Logger.prettyLogger(options))`.
- */
 export const withPrettyLogger = (
   base: Layer.Layer<any, any, any>,
   options?: PrettyLoggerOptions,
 ): Layer.Layer<any, any, any> =>
   Layer.merge(
     base,
-    Logger.replace(Logger.defaultLogger, Logger.prettyLogger(options)) as unknown as Layer.Layer<any, any, any>,
+    Layer.effect(
+      Logger.CurrentLoggers,
+      Effect.gen(function* () {
+        const current = yield* Effect.service(Logger.CurrentLoggers)
+        return new Set([...current].filter((logger) => logger !== Logger.defaultLogger).concat(Logger.consolePretty(options)))
+      }),
+    ) as Layer.Layer<any, never, never>,
   )
 
 /**
@@ -333,39 +348,19 @@ export const withPrettyLogger = (
  * Advanced: use either `Debug.layer` or `Debug.replace` in a scope, not both.
  */
 export const replace = (sinks: ReadonlyArray<Sink>): Layer.Layer<any, never, never> =>
-  Layer.locallyScoped(internal.currentDebugSinks, sinks as ReadonlyArray<Internal.Sink>) as Layer.Layer<
-    any,
-    never,
-    never
-  >
+  Layer.succeed(internal.currentDebugSinks, sinks as ReadonlyArray<Internal.Sink>) as Layer.Layer<any, never, never>
 
 /**
  * Append sinks to the current Fiber's sink set (without overriding existing sinks).
  */
 export const appendSinks = (sinks: ReadonlyArray<Sink>): Layer.Layer<any, never, never> =>
-  Layer.fiberRefLocallyScopedWith(Internal.currentDebugSinks, (current) => [
-    ...current,
-    ...(sinks as ReadonlyArray<Internal.Sink>),
-  ]) as Layer.Layer<any, never, never>
-
-const resolveDevtoolsObservationOptions = (
-  options: DevtoolsHubOptions | undefined,
-): {
-  readonly bufferSize: number | undefined
-  readonly projectionTier: DevtoolsProjectionTier
-  readonly diagnosticsLevel: DiagnosticsLevel
-  readonly traitConvergeDiagnosticsSampling: TraitConvergeDiagnosticsSamplingConfig | undefined
-  readonly runtimeLabel: string | undefined
-} => {
-  const mode = options?.mode ?? 'light'
-  return {
-    bufferSize: options?.bufferSize,
-    projectionTier: mode === 'full' ? 'full' : 'light',
-    diagnosticsLevel: mode === 'off' ? 'off' : mode,
-    traitConvergeDiagnosticsSampling: options?.traitConvergeDiagnosticsSampling,
-    runtimeLabel: options?.runtimeLabel,
-  }
-}
+  Layer.effect(
+    internal.currentDebugSinks,
+    Effect.gen(function* () {
+      const current = yield* internal.currentDebugSinks
+      return [...current, ...(sinks as ReadonlyArray<Internal.Sink>)]
+    }),
+  ) as Layer.Layer<any, never, never>
 
 /**
  * Append the DevtoolsHub sink to aggregate Debug events into snapshots.
@@ -381,38 +376,42 @@ export function devtoolsHubLayer(
   baseOrOptions?: Layer.Layer<any, any, any> | DevtoolsHubOptions,
   maybeOptions?: DevtoolsHubOptions,
 ): Layer.Layer<any, never, any> {
-  // In effect v3, Layer values are objects tagged with `_op_layer`.
-  const isLayerValue = (value: unknown): value is Layer.Layer<any, any, any> =>
-    typeof value === 'object' && value !== null && '_op_layer' in (value as Record<string, unknown>)
+  const isLayerValue = (value: unknown): value is Layer.Layer<any, any, any> => Layer.isLayer(value)
 
   const hasBase = isLayerValue(baseOrOptions)
   const base = hasBase
     ? (baseOrOptions as Layer.Layer<any, any, any>)
     : (Layer.empty as unknown as Layer.Layer<any, any, any>)
   const options = hasBase ? maybeOptions : (baseOrOptions as DevtoolsHubOptions | undefined)
-  const resolvedOptions = resolveDevtoolsObservationOptions(options)
-  const shouldEmitPolicyDiagnostics = options?.mode !== undefined
-  const configureOptions = {
-    bufferSize: resolvedOptions.bufferSize,
-    projectionTier: resolvedOptions.projectionTier,
-    runtimeLabel: resolvedOptions.runtimeLabel,
-    diagnosticsLevel: shouldEmitPolicyDiagnostics ? resolvedOptions.diagnosticsLevel : undefined,
-  } satisfies Pick<DevtoolsHub.DevtoolsHubOptions, 'bufferSize' | 'projectionTier' | 'runtimeLabel' | 'diagnosticsLevel'>
 
-  DevtoolsHub.configureDevtoolsHub(configureOptions)
+  DevtoolsHub.configureDevtoolsHub(options)
   const append = appendSinks([DevtoolsHub.devtoolsHubSink])
   const appendConvergeStaticIr = ConvergeStaticIrCollector.appendConvergeStaticIrCollectors([
     DevtoolsHub.devtoolsHubConvergeStaticIrCollector,
   ])
-  const enableExportableDiagnostics = diagnosticsLevel(resolvedOptions.diagnosticsLevel ?? 'light')
-  const convergeSamplingLayer = resolvedOptions.traitConvergeDiagnosticsSampling
-    ? traitConvergeDiagnosticsSampling(resolvedOptions.traitConvergeDiagnosticsSampling)
+  const resolvedDiagnosticsLevel = options?.diagnosticsLevel ?? 'light'
+  const resolvedTraceMode = options?.traceMode ?? (resolvedDiagnosticsLevel === 'off' ? 'off' : getNodeEnv() === 'production' ? 'off' : 'on')
+  const enableExportableDiagnostics = diagnosticsLevel(resolvedDiagnosticsLevel)
+  const enableMaterialization = diagnosticsMaterialization(
+    options?.materialization ??
+      (resolvedDiagnosticsLevel === 'full' && getNodeEnv() === 'production' ? 'lazy' : 'eager'),
+  )
+  const enableTraceMode = traceMode(resolvedTraceMode)
+  const convergeSamplingLayer = options?.traitConvergeDiagnosticsSampling
+    ? traitConvergeDiagnosticsSampling(options.traitConvergeDiagnosticsSampling)
     : (Layer.empty as unknown as Layer.Layer<any, never, never>)
 
   // FiberRef layers must build base sinks first, then append; provideMerge(append, base)
   // builds base first and then applies append's FiberRefs patch, avoiding overrides.
   return Layer.provideMerge(
-    Layer.mergeAll(append, enableExportableDiagnostics, convergeSamplingLayer, appendConvergeStaticIr) as Layer.Layer<
+    Layer.mergeAll(
+      append,
+      enableExportableDiagnostics,
+      enableMaterialization,
+      enableTraceMode,
+      convergeSamplingLayer,
+      appendConvergeStaticIr,
+    ) as Layer.Layer<
       any,
       never,
       any
@@ -427,7 +426,7 @@ export function devtoolsHubLayer(
  * DevTools can group events by this label.
  */
 export const runtimeLabel = (label: string): Layer.Layer<any, never, never> =>
-  Layer.fiberRefLocallyScopedWith(internal.currentRuntimeLabel as any, () => label) as Layer.Layer<any, never, never>
+  Layer.succeed(internal.currentRuntimeLabel, label) as Layer.Layer<any, never, never>
 
 /**
  * StateTrait debug view for Devtools/scripts.
@@ -529,7 +528,7 @@ export const getModuleFinalTraits = (runtime: ModuleRuntime<any, any>): Readonly
  * ```
  */
 const isLayer = (value: unknown): value is Layer.Layer<any, any, any> =>
-  typeof value === 'object' && value !== null && '_op_layer' in (value as Record<string, unknown>)
+  typeof value === 'object' && value !== null && 'build' in (value as Record<string, unknown>)
 
 export function traceLayer(onTrace?: (event: Event) => Effect.Effect<void>): Layer.Layer<any, never, never>
 export function traceLayer(
@@ -557,7 +556,13 @@ export function traceLayer(
 
   // Append the trace sink via FiberRef: extend the current Fiber's sink set.
   // Do not depend on DebugHub/Tag; use FiberRef.currentDebugSinks as the single source of truth.
-  const appendTrace = Layer.fiberRefLocallyScopedWith(Internal.currentDebugSinks, (sinks) => [...sinks, traceSink])
+  const appendTrace = Layer.effect(
+    Internal.currentDebugSinks,
+    Effect.gen(function* () {
+      const sinks = yield* Internal.currentDebugSinks
+      return [...sinks, traceSink]
+    }),
+  )
 
   // Same as devtoolsHubLayer: build base first, then appendTrace updates FiberRef sinks.
   return Layer.provideMerge(appendTrace, base as Layer.Layer<any, any, any>) as Layer.Layer<any, never, any>

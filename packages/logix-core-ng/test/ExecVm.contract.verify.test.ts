@@ -169,7 +169,7 @@ describe('core-ng: Exec VM evidence', () => {
             })
 
             const program = Effect.gen(function* () {
-              const rt: any = yield* M.tag
+              const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
               yield* rt.dispatch({ _tag: 'mutateA', payload: undefined } as any)
               yield* Effect.sleep('10 millis')
 

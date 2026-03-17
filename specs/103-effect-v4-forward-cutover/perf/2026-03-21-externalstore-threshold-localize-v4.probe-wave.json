@@ -1,0 +1,60 @@
+{
+  "createdAt": "2026-03-20T16:26:18.036462Z",
+  "runs": [
+    {
+      "run": 1,
+      "returncode": 0,
+      "status": "clear",
+      "blocker_suite": null,
+      "external_status": null,
+      "external_failure_kind": null,
+      "external_threshold_anomaly_count": 0,
+      "external_first_fail_level": null,
+      "threshold_anomalies": []
+    },
+    {
+      "run": 2,
+      "returncode": 0,
+      "status": "clear",
+      "blocker_suite": null,
+      "external_status": null,
+      "external_failure_kind": null,
+      "external_threshold_anomaly_count": 0,
+      "external_first_fail_level": null,
+      "threshold_anomalies": []
+    },
+    {
+      "run": 3,
+      "returncode": 0,
+      "status": "clear",
+      "blocker_suite": null,
+      "external_status": null,
+      "external_failure_kind": null,
+      "external_threshold_anomaly_count": 0,
+      "external_first_fail_level": null,
+      "threshold_anomalies": []
+    },
+    {
+      "run": 4,
+      "returncode": 0,
+      "status": "clear",
+      "blocker_suite": null,
+      "external_status": null,
+      "external_failure_kind": null,
+      "external_threshold_anomaly_count": 0,
+      "external_first_fail_level": null,
+      "threshold_anomalies": []
+    },
+    {
+      "run": 5,
+      "returncode": 0,
+      "status": "clear",
+      "blocker_suite": null,
+      "external_status": null,
+      "external_failure_kind": null,
+      "external_threshold_anomaly_count": 0,
+      "external_first_fail_level": null,
+      "threshold_anomalies": []
+    }
+  ]
+}

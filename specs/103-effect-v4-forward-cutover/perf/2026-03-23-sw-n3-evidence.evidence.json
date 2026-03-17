@@ -1,0 +1,82 @@
+{
+  "id": "2026-03-23-sw-n3-evidence",
+  "capturedAt": "2026-03-23",
+  "scope": "state-write-ledger-first-comparable-artifact",
+  "baseHead": "f8d015b5",
+  "decision": {
+    "status": "accepted_with_evidence",
+    "acceptedWithEvidence": true,
+    "mergeToMain": true,
+    "reasons": [
+      "stateWrite.degradeRatio 与 stateWrite.degradeUnknownShare 已进入 Devtools 的稳定读取面",
+      "imported evidence 可复现 readCoverage=0.75, degradeRatio=2/3, degradeUnknownShare=1/2",
+      "typecheck、devtools 测试与 probe_next_blocker 全部通过，未引入新的 blocker"
+    ]
+  },
+  "constraints": {
+    "publicApiChange": false,
+    "touchedCorePath": false,
+    "writeScope": [
+      "packages/logix-devtools-react/src/internal/state/**",
+      "packages/logix-devtools-react/test/internal/**",
+      "docs/perf/**",
+      "specs/103-effect-v4-forward-cutover/perf/**"
+    ],
+    "keptUntouched": [
+      "packages/logix-core/**",
+      "public API"
+    ]
+  },
+  "verification": {
+    "commands": [
+      "pnpm -C packages/logix-devtools-react typecheck:test",
+      "pnpm -C packages/logix-devtools-react exec vitest run test/internal/devtools-react.integration.test.tsx test/internal/ConvergeTimelinePane.test.tsx",
+      "python3 fabfile.py probe_next_blocker --json"
+    ],
+    "artifacts": {
+      "typecheck": "specs/103-effect-v4-forward-cutover/perf/2026-03-23-sw-n3-evidence.validation.typecheck.txt",
+      "devtoolsTest": "specs/103-effect-v4-forward-cutover/perf/2026-03-23-sw-n3-evidence.validation.devtools.txt",
+      "probeNextBlocker": "specs/103-effect-v4-forward-cutover/perf/2026-03-23-sw-n3-evidence.probe-next-blocker.json"
+    },
+    "stateWrite": {
+      "observedCount": 3,
+      "missingCount": 1,
+      "readCoverage": 0.75,
+      "degradedCount": 2,
+      "unknownReasonCount": 1,
+      "degradeRatio": 0.6666666666666666,
+      "degradeUnknownShare": 0.5,
+      "bySource": {
+        "reducer": {
+          "total": 1,
+          "degraded": 1,
+          "unknownReason": 0
+        },
+        "boundApiUpdate": {
+          "total": 1,
+          "degraded": 0,
+          "unknownReason": 0
+        },
+        "traitExternalStore": {
+          "total": 1,
+          "degraded": 1,
+          "unknownReason": 1
+        },
+        "moduleAsSource": {
+          "total": 0,
+          "degraded": 0,
+          "unknownReason": 0
+        },
+        "unknown": {
+          "total": 0,
+          "degraded": 0,
+          "unknownReason": 0
+        }
+      }
+    },
+    "probe": {
+      "status": "clear",
+      "thresholdAnomalyCount": 0
+    }
+  }
+}

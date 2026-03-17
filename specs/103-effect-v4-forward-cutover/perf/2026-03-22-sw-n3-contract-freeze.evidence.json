@@ -1,0 +1,35 @@
+{
+  "id": "2026-03-22-sw-n3-contract-freeze",
+  "capturedAt": "2026-03-22",
+  "scope": "state-write-sw-n3-contract-freeze-docs-only",
+  "decision": {
+    "status": "docs_only_ready_for_impl",
+    "acceptedWithEvidence": false,
+    "mergeToMain": true,
+    "classification": "docs/evidence-only",
+    "reasons": [
+      "SW-N3 所需的 D1/D2/D3/D4 已冻结为单一合同包",
+      "source/coverage/degradeReason/event/projection/perf 词表已对齐",
+      "focused validation matrix 已冻结，可直接开独立 implementation line"
+    ]
+  },
+  "constraints": {
+    "publicApiChange": false,
+    "touchedCorePath": false,
+    "codeImplementationRetained": false,
+    "writeScope": [
+      "docs/perf/**",
+      "specs/103-effect-v4-forward-cutover/perf/**"
+    ]
+  },
+  "frozenItems": [
+    "StateWriteIntent minimal contract",
+    "ReducerPatchSink decision matrix",
+    "state:update / devtools / perf shared vocabulary",
+    "focused validation matrix"
+  ],
+  "artifacts": {
+    "contractFreeze": "docs/perf/2026-03-22-sw-n3-contract-freeze.md",
+    "summary": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-sw-n3-contract-freeze.summary.md"
+  }
+}

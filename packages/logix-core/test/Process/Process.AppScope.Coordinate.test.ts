@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema, Stream } from 'effect'
 import * as Logix from '../../src/index.js'
@@ -21,19 +21,18 @@ const TargetModule = Logix.Module.make('ProcessAppScopeTarget', {
 
 const SourceLogic = SourceModule.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction('increment').run({ effect: () => $.state.update((s) => ({ ...s, count: s.count + 1 })) })
+    yield* $.onAction('increment').run(() => $.state.update((s) => ({ ...s, count: s.count + 1 })))
   }),
 )
 
 const TargetLogic = TargetModule.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction('log').run({
-      effect: (action: any) =>
-        $.state.update((s) => ({
-          ...s,
-          logs: [...s.logs, action.payload],
-        })),
-    })
+    yield* $.onAction('log').run((action) =>
+      $.state.update((s) => ({
+        ...s,
+        logs: [...s.logs, action.payload],
+      })),
+    )
   }),
 )
 
@@ -60,7 +59,7 @@ const AppProcess = Logix.Process.link(
 )
 
 describe('process: app-scope coordinate', () => {
-  it.scoped('should coordinate actions between modules', () =>
+  it.effect('should coordinate actions between modules', () =>
     Effect.gen(function* () {
       const RootModule = Logix.Module.make('ProcessAppScopeRoot', {
         state: Schema.Void,
@@ -87,8 +86,8 @@ describe('process: app-scope coordinate', () => {
       })
 
       const program = Effect.gen(function* () {
-        const source = yield* SourceModule.tag
-        const target = yield* TargetModule.tag
+        const source = yield* Effect.service(SourceModule.tag).pipe(Effect.orDie)
+        const target = yield* Effect.service(TargetModule.tag).pipe(Effect.orDie)
 
         yield* Effect.sleep('50 millis')
         yield* source.dispatch({ _tag: 'increment', payload: undefined })

@@ -41,7 +41,7 @@ type DepsArgs<S extends object, Deps extends ReadonlyArray<StateFieldPath<S>>> =
  * - At runtime this returns the raw spec object; normalization is handled by internal layers.
  */
 export const from =
-  <S extends object, I>(_schema: Schema.Schema<S, I>) =>
+  <S extends object>(_schema: Schema.Schema<S>) =>
   (spec: StateTraitSpec<S>): StateTraitSpec<S> =>
     spec
 
@@ -170,7 +170,7 @@ export const link = <S extends object, P extends StateFieldPath<S>>(meta: {
  * - When DSL and build constraints differ, build is the final authority (e.g. requiring explicit deps).
  */
 export const build = <S extends object>(
-  stateSchema: Schema.Schema<S, any>,
+  stateSchema: Schema.Schema<S>,
   spec: StateTraitSpec<S>,
 ): StateTraitProgram<S> => InternalBuild.build(stateSchema, spec)
 

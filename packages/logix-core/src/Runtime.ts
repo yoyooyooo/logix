@@ -1,4 +1,4 @@
-import { Effect, Layer, ManagedRuntime, Option, Scope } from 'effect'
+import { Effect, Layer, ManagedRuntime, Option, Scope, ServiceMap } from 'effect'
 import type { AnyModuleShape, ModuleImpl } from './internal/module.js'
 import type { AnyModule } from './Module.js'
 import * as AppRuntimeImpl from './internal/runtime/AppRuntime.js'
@@ -24,7 +24,9 @@ import {
   type StateTransactionInstrumentation,
   type StateTransactionTraitConvergeOverrides,
   type TraitConvergeTimeSlicingPatch,
+  type TxnLanePolicyInput,
   type TxnLanesPatch,
+  normalizeTxnLanePolicyInput,
 } from './internal/runtime/core/env.js'
 import * as Middleware from './Middleware.js'
 import { getRuntimeInternals } from './internal/runtime/core/runtimeInternalsAccessor.js'
@@ -74,48 +76,13 @@ type HostScheduler = {
 
 const resolveRootImpl = <Sh extends AnyModuleShape>(
   root: ModuleImpl<any, Sh, any> | AnyModule,
-): ModuleImpl<any, Sh, any> => {
-  const isModuleImpl = (value: unknown): value is ModuleImpl<any, Sh, any> => {
-    if (!value || typeof value !== 'object') return false
-    const candidate = value as any
-    return candidate._tag === 'ModuleImpl' && candidate.module != null && candidate.layer != null
-  }
-
-  if (isModuleImpl(root)) {
-    return root
-  }
-
-  const rootModule = root as AnyModule & {
-    readonly _kind?: string
-    readonly createInstance?: (() => ModuleImpl<any, Sh, any>) | undefined
-  }
-  // Only runtime-ready Module objects (kind=Module) can be instantiated with zero-arg createInstance().
-  // ModuleDef also exposes createInstance(config), but passing ModuleDef to Runtime.make is invalid.
-  const fromCreateInstanceRaw =
-    rootModule._kind === 'Module' && typeof rootModule.createInstance === 'function'
-      ? rootModule.createInstance()
-      : undefined
-  if (fromCreateInstanceRaw !== undefined && !isModuleImpl(fromCreateInstanceRaw)) {
-    throw new Error('[InvalidModuleRoot] Runtime.make expects ModuleImpl or Module.build(...) result.')
-  }
-  if (isModuleImpl(fromCreateInstanceRaw)) {
-    return fromCreateInstanceRaw
-  }
-
-  throw new Error(
-    '[InvalidModuleRoot] Runtime.make expects ModuleImpl (e.g. root.createInstance() / root.impl) or Module.build(...) result.',
-  )
-}
+): ModuleImpl<any, Sh, any> =>
+  ((root as any)?._tag === 'ModuleImpl'
+    ? (root as ModuleImpl<any, Sh, any>)
+    : ((root as any)?.impl as ModuleImpl<any, Sh, any>)) satisfies ModuleImpl<any, Sh, any>
 
 const resolveSchedulingPolicySurface = (options: RuntimeOptions | undefined): SchedulingPolicySurface | undefined =>
   options?.schedulingPolicy ?? options?.concurrencyPolicy
-
-const resolveDevtoolsObservationMode = (
-  options: DevtoolsRuntimeOptions | undefined,
-): { readonly mode: Debug.DevtoolsProjectionMode; readonly useVacuumPath: boolean } => {
-  const mode = options?.mode ?? 'light'
-  return { mode, useVacuumPath: mode === 'off' }
-}
 
 /**
  * Runtime-level StateTransaction defaults.
@@ -128,11 +95,116 @@ export interface RuntimeStateTransactionOptions {
   readonly traitConvergeDecisionBudgetMs?: number
   readonly traitConvergeMode?: 'auto' | 'full' | 'dirty'
   readonly traitConvergeTimeSlicing?: TraitConvergeTimeSlicingPatch
+  /** R2-A tier-first policy surface. */
+  readonly txnLanePolicy?: TxnLanePolicyInput
   /** Txn lanes configuration at the `runtime_default` baseline (enabled by default). */
   readonly txnLanes?: TxnLanesPatch
   readonly traitConvergeOverridesByModuleId?: Readonly<Record<string, StateTransactionTraitConvergeOverrides>>
+  /** R2-A tier-first runtime_module overrides. */
+  readonly txnLanePolicyOverridesByModuleId?: Readonly<Record<string, TxnLanePolicyInput>>
   /** Txn lanes overrides at the `runtime_module` layer. */
   readonly txnLanesOverridesByModuleId?: Readonly<Record<string, TxnLanesPatch>>
+}
+
+const toCanonicalTxnLanePolicyInput = (
+  normalized: NonNullable<ReturnType<typeof normalizeTxnLanePolicyInput>>,
+): TxnLanePolicyInput => {
+  if (normalized.tier === 'off' || normalized.tier === 'sync') {
+    return { tier: normalized.tier }
+  }
+  return {
+    tier: normalized.tier,
+    tuning: {
+      budgetMs: normalized.patch.budgetMs,
+      debounceMs: normalized.patch.debounceMs,
+      maxLagMs: normalized.patch.maxLagMs,
+      allowCoalesce: normalized.patch.allowCoalesce,
+      yieldStrategy: normalized.patch.yieldStrategy,
+    },
+  }
+}
+
+const withTxnLanePolicyMetadata = (
+  normalized: NonNullable<ReturnType<typeof normalizeTxnLanePolicyInput>>,
+): TxnLanesPatch => {
+  const patch: TxnLanesPatch = { ...normalized.patch }
+  Object.defineProperty(patch, 'txnLanePolicy', {
+    value: toCanonicalTxnLanePolicyInput(normalized),
+    enumerable: false,
+    configurable: true,
+    writable: false,
+  })
+  return patch
+}
+
+const normalizeTxnLanePolicyPatch = (value: TxnLanePolicyInput | undefined): TxnLanesPatch | undefined => {
+  const normalized = normalizeTxnLanePolicyInput(value)
+  return normalized ? withTxnLanePolicyMetadata(normalized) : undefined
+}
+
+const normalizeTxnLanePolicyOverridesByModuleId = (
+  tierOverrides: Readonly<Record<string, TxnLanePolicyInput>> | undefined,
+): Readonly<Record<string, TxnLanesPatch>> | undefined => {
+  if (!tierOverrides) return undefined
+  const next: Record<string, TxnLanesPatch> = {}
+  for (const [moduleId, input] of Object.entries(tierOverrides)) {
+    const normalizedPatch = normalizeTxnLanePolicyPatch(input)
+    if (normalizedPatch) next[moduleId] = normalizedPatch
+  }
+  return Object.keys(next).length > 0 ? next : undefined
+}
+
+const resolveRuntimeStateTransactionOptions = (
+  stateTransaction: RuntimeStateTransactionOptions | undefined,
+): RuntimeStateTransactionOptions | undefined => {
+  if (!stateTransaction) return undefined
+
+  const normalizedDefaultPatch = normalizeTxnLanePolicyPatch(stateTransaction.txnLanePolicy)
+  const normalizedByModule = normalizeTxnLanePolicyOverridesByModuleId(stateTransaction.txnLanePolicyOverridesByModuleId)
+
+  const txnLanes = normalizedDefaultPatch ?? stateTransaction.txnLanes
+  const txnLanesOverridesByModuleId =
+    normalizedByModule || stateTransaction.txnLanesOverridesByModuleId
+      ? {
+          ...(stateTransaction.txnLanesOverridesByModuleId ?? {}),
+          ...(normalizedByModule ?? {}),
+        }
+      : undefined
+
+  return {
+    instrumentation: stateTransaction.instrumentation,
+    traitConvergeBudgetMs: stateTransaction.traitConvergeBudgetMs,
+    traitConvergeDecisionBudgetMs: stateTransaction.traitConvergeDecisionBudgetMs,
+    traitConvergeMode: stateTransaction.traitConvergeMode,
+    traitConvergeTimeSlicing: stateTransaction.traitConvergeTimeSlicing,
+    txnLanes,
+    traitConvergeOverridesByModuleId: stateTransaction.traitConvergeOverridesByModuleId,
+    txnLanesOverridesByModuleId,
+  }
+}
+
+const resolveStateTransactionOverrides = (overrides: StateTransactionOverrides): StateTransactionOverrides => {
+  const normalizedDefaultPatch = normalizeTxnLanePolicyPatch(overrides.txnLanePolicy)
+  const normalizedByModule = normalizeTxnLanePolicyOverridesByModuleId(overrides.txnLanePolicyOverridesByModuleId)
+
+  const txnLanes = normalizedDefaultPatch ?? overrides.txnLanes
+  const txnLanesOverridesByModuleId =
+    normalizedByModule || overrides.txnLanesOverridesByModuleId
+      ? {
+          ...(overrides.txnLanesOverridesByModuleId ?? {}),
+          ...(normalizedByModule ?? {}),
+        }
+      : undefined
+
+  return {
+    traitConvergeMode: overrides.traitConvergeMode,
+    traitConvergeBudgetMs: overrides.traitConvergeBudgetMs,
+    traitConvergeDecisionBudgetMs: overrides.traitConvergeDecisionBudgetMs,
+    traitConvergeTimeSlicing: overrides.traitConvergeTimeSlicing,
+    traitConvergeOverridesByModuleId: overrides.traitConvergeOverridesByModuleId,
+    txnLanes,
+    txnLanesOverridesByModuleId,
+  }
 }
 
 export type ReadQueryFallbackReason = ReadQueryFallbackReasonCore
@@ -232,16 +304,14 @@ export interface DevtoolsRuntimeOptions {
   /** Hub ring buffer capacity (events). Default: 500. */
   readonly bufferSize?: number
   /**
-   * Unified Devtools observation mode.
+   * Diagnostics level for exportable Devtools events.
    *
-   * - `off`: disable exportable Devtools observation (vacuum path).
-   * - `light`: summary-only projection with degraded semantics.
-   * - `full`: keep heavy latest* assets for high-fidelity consumers.
-   *
-   * This knob only changes observation depth, not business execution semantics.
+   * Forwarded to `Debug.devtoolsHubLayer({ diagnosticsLevel })`.
+   * When explicitly set to `"off"`, `Runtime.make` enters a vacuum path:
+   * it skips both DevtoolsHub sink mounting and DebugObserver middleware wiring.
    * Default: `"light"`.
    */
-  readonly mode?: Debug.DevtoolsProjectionMode
+  readonly diagnosticsLevel?: Debug.DiagnosticsLevel
   /**
    * Trait converge diagnostics sampling config.
    *
@@ -250,6 +320,7 @@ export interface DevtoolsRuntimeOptions {
   readonly traitConvergeDiagnosticsSampling?: Debug.TraitConvergeDiagnosticsSamplingConfig
   /** DebugObserver config for `trace:effectop`; undefined means full observation. */
   readonly observer?: Middleware.DebugObserverConfig | false
+  readonly traceMode?: Debug.TraceMode
   /** Reserved: React render sampling / throttling config (consumed by `@logixjs/react`). */
   readonly sampling?: {
     readonly reactRenderSampleRate?: number
@@ -269,13 +340,14 @@ export const make = (
 ): ManagedRuntime.ManagedRuntime<any, never> => {
   const rootImpl = resolveRootImpl(root)
   const schedulingPolicy = resolveSchedulingPolicySurface(options)
+  const stateTransaction = resolveRuntimeStateTransactionOptions(options?.stateTransaction)
 
   if (options?.schedulingPolicy !== undefined) {
     warnInvalidSchedulingPolicySurfaceDevOnly(options.schedulingPolicy, 'Runtime.make options.schedulingPolicy')
   } else {
     warnInvalidConcurrencyPolicyDevOnly(options?.concurrencyPolicy, 'Runtime.make options.concurrencyPolicy')
   }
-  warnInvalidStateTransactionRuntimeConfigDevOnly(options?.stateTransaction, 'Runtime.make options.stateTransaction')
+  warnInvalidStateTransactionRuntimeConfigDevOnly(stateTransaction, 'Runtime.make options.stateTransaction')
 
   const debugLayer =
     options?.debug === true
@@ -295,8 +367,7 @@ export const make = (
   // 1) Append DebugObserver (`trace:effectop`).
   // 2) Mount the DevtoolsHub sink in appLayer (process-level event aggregation).
   const devtoolsOptions: DevtoolsRuntimeOptions | undefined = options?.devtools === true ? {} : options?.devtools
-  const devtoolsObservation = resolveDevtoolsObservationMode(devtoolsOptions)
-  const useDevtoolsVacuumPath = devtoolsObservation.useVacuumPath
+  const useDevtoolsVacuumPath = devtoolsOptions?.diagnosticsLevel === 'off'
 
   if (options?.devtools && !useDevtoolsVacuumPath) {
     const observerConfig = devtoolsOptions?.observer === false ? false : devtoolsOptions?.observer
@@ -322,11 +393,11 @@ export const make = (
 
   const baseWithDevtools = options?.devtools && !useDevtoolsVacuumPath
     ? (Debug.devtoolsHubLayer(baseLayer, {
-         bufferSize: devtoolsOptions?.bufferSize,
-         mode: devtoolsOptions?.mode,
-         runtimeLabel: options?.label,
-         traitConvergeDiagnosticsSampling: devtoolsOptions?.traitConvergeDiagnosticsSampling,
-       }) as Layer.Layer<any, never, never>)
+        bufferSize: devtoolsOptions?.bufferSize,
+        diagnosticsLevel: devtoolsOptions?.diagnosticsLevel,
+        traceMode: devtoolsOptions?.traceMode ?? 'on',
+        traitConvergeDiagnosticsSampling: devtoolsOptions?.traitConvergeDiagnosticsSampling,
+      }) as Layer.Layer<any, never, never>)
     : baseLayer
 
   // NOTE: runSession should be overrideable by callers (e.g. CI/trial-run injecting a stable runId).
@@ -358,7 +429,7 @@ export const make = (
     processes: rootImpl.processes ?? [],
     onError: options?.onError,
     hostScheduler: options?.hostScheduler,
-    stateTransaction: options?.stateTransaction,
+    stateTransaction,
     schedulingPolicy,
     readQueryStrictGate,
   }
@@ -421,8 +492,9 @@ export const runProgram = async <Sh extends AnyModuleShape, Args, A, E, R>(
 export const stateTransactionOverridesLayer = (
   overrides: StateTransactionOverrides,
 ): Layer.Layer<any, never, never> => {
-  warnInvalidStateTransactionOverridesDevOnly(overrides, 'Runtime.stateTransactionOverridesLayer')
-  return Layer.succeed(StateTransactionOverridesTag, overrides) as Layer.Layer<any, never, never>
+  const normalized = resolveStateTransactionOverrides(overrides)
+  warnInvalidStateTransactionOverridesDevOnly(normalized, 'Runtime.stateTransactionOverridesLayer')
+  return Layer.succeed(StateTransactionOverridesTag, normalized) as Layer.Layer<any, never, never>
 }
 
 /**
@@ -457,33 +529,30 @@ export const setTraitConvergeOverride = (
   runtime: ManagedRuntime.ManagedRuntime<any, never>,
   moduleId: string,
   overrides: StateTransactionTraitConvergeOverrides | undefined,
-): void => {
+): Effect.Effect<void, never, never> => {
   warnInvalidStateTransactionTraitConvergeOverridesDevOnly(overrides, `Runtime.setTraitConvergeOverride(${moduleId})`)
 
-  runtime.runSync(
-    Effect.gen(function* () {
-      const runtimeConfigOpt = yield* Effect.serviceOption(StateTransactionConfigTag)
+  return Effect.map(runtime.servicesEffect, (services) => {
+    const runtimeConfigOpt = ServiceMap.getOption(services, StateTransactionConfigTag as any)
+    if (Option.isNone(runtimeConfigOpt)) {
+      return
+    }
 
-      if (Option.isNone(runtimeConfigOpt)) {
-        return
-      }
+    // NOTE: runtime config lives in Env as a Service; hot-switch by replacing the per-module patch map.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const runtimeConfig: any = runtimeConfigOpt.value
+    const next = {
+      ...(runtimeConfig.traitConvergeOverridesByModuleId ?? {}),
+    }
 
-      // NOTE: runtime config lives in Env as a Service; hot-switch by replacing the per-module patch map.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const runtimeConfig: any = runtimeConfigOpt.value
-      const next = {
-        ...(runtimeConfig.traitConvergeOverridesByModuleId ?? {}),
-      }
+    if (overrides) {
+      next[moduleId] = overrides
+    } else {
+      delete next[moduleId]
+    }
 
-      if (overrides) {
-        next[moduleId] = overrides
-      } else {
-        delete next[moduleId]
-      }
-
-      runtimeConfig.traitConvergeOverridesByModuleId = next
-    }),
-  )
+    runtimeConfig.traitConvergeOverridesByModuleId = next
+  }) as Effect.Effect<void, never, never>
 }
 
 /**
@@ -495,33 +564,30 @@ export const setSchedulingPolicyOverride = (
   runtime: ManagedRuntime.ManagedRuntime<any, never>,
   moduleId: string,
   patch: SchedulingPolicySurfacePatch | undefined,
-): void => {
+): Effect.Effect<void, never, never> => {
   warnInvalidSchedulingPolicySurfacePatchDevOnly(patch, `Runtime.setSchedulingPolicyOverride(${moduleId})`)
 
-  runtime.runSync(
-    Effect.gen(function* () {
-      const runtimeConfigOpt = yield* Effect.serviceOption(SchedulingPolicySurfaceTag)
+  return Effect.map(runtime.servicesEffect, (services) => {
+    const runtimeConfigOpt = ServiceMap.getOption(services, SchedulingPolicySurfaceTag as any)
+    if (Option.isNone(runtimeConfigOpt)) {
+      return
+    }
 
-      if (Option.isNone(runtimeConfigOpt)) {
-        return
-      }
+    // NOTE: runtime config lives in Env as a Service; hot-switch by replacing the per-module patch map.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const runtimeConfig: any = runtimeConfigOpt.value
+    const next = {
+      ...(runtimeConfig.overridesByModuleId ?? {}),
+    }
 
-      // NOTE: runtime config lives in Env as a Service; hot-switch by replacing the per-module patch map.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const runtimeConfig: any = runtimeConfigOpt.value
-      const next = {
-        ...(runtimeConfig.overridesByModuleId ?? {}),
-      }
+    if (patch) {
+      next[moduleId] = patch
+    } else {
+      delete next[moduleId]
+    }
 
-      if (patch) {
-        next[moduleId] = patch
-      } else {
-        delete next[moduleId]
-      }
-
-      runtimeConfig.overridesByModuleId = next
-    }),
-  )
+    runtimeConfig.overridesByModuleId = next
+  }) as Effect.Effect<void, never, never>
 }
 
 /**
@@ -533,8 +599,8 @@ export const setConcurrencyPolicyOverride = (
   runtime: ManagedRuntime.ManagedRuntime<any, never>,
   moduleId: string,
   patch: ConcurrencyPolicyPatch | undefined,
-): void => {
-  setSchedulingPolicyOverride(runtime, moduleId, patch)
+): Effect.Effect<void, never, never> => {
+  return setSchedulingPolicyOverride(runtime, moduleId, patch)
 }
 
 /**

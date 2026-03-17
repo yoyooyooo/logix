@@ -1,0 +1,60 @@
+{
+  "id": "2026-03-22-p1-4d-min-single-path-cleanup.evidence",
+  "capturedAt": "2026-03-22",
+  "scope": "p1-4d-min-single-path-cleanup",
+  "baseHead": "450bc529",
+  "assumptions": [
+    "P1-4B-min 与 P1-4C-min 已 accepted_with_evidence",
+    "本轮按既定写入范围尝试 P1-4D-min，验证不足即回滚实现"
+  ],
+  "attempt": {
+    "implementedInWorkingTree": true,
+    "rolledBack": true,
+    "rolledBackReason": "verification_insufficient_environment",
+    "codeFilesTouchedDuringAttempt": [
+      "packages/logix-core/src/internal/runtime/core/TickScheduler.ts",
+      "packages/logix-react/src/internal/store/RuntimeExternalStore.ts",
+      "packages/logix-core/test/internal/Runtime/TickScheduler.topic-classification.test.ts"
+    ],
+    "finalCodeDiffKept": []
+  },
+  "decision": {
+    "status": "discarded_or_pending",
+    "acceptedWithEvidence": false,
+    "mergeToMain": false,
+    "reasons": [
+      "最小验证链路全部命中 environment blocker，证据不可比",
+      "按门禁要求执行实现回滚，仅保留 docs/evidence-only 收口"
+    ]
+  },
+  "constraints": {
+    "publicApiChange": false,
+    "newRuntimeFlag": false,
+    "topicClassificationContractChanged": false
+  },
+  "verification": {
+    "commands": [
+      "pnpm -C packages/logix-core typecheck:test",
+      "pnpm -C packages/logix-react typecheck:test",
+      "python3 fabfile.py probe_next_blocker --json"
+    ],
+    "results": {
+      "coreTypecheck": {
+        "status": "failed",
+        "failureKind": "environment",
+        "report": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-p1-4d-min-single-path-cleanup.validation.core-typecheck.txt"
+      },
+      "reactTypecheck": {
+        "status": "failed",
+        "failureKind": "environment",
+        "report": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-p1-4d-min-single-path-cleanup.validation.react-typecheck.txt"
+      },
+      "probeNextBlocker": {
+        "status": "blocked",
+        "failureKind": "environment",
+        "report": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-p1-4d-min-single-path-cleanup.probe-next-blocker.json"
+      }
+    }
+  }
+}
+

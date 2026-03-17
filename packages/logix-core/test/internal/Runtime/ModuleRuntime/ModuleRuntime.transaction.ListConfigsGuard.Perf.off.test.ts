@@ -1,6 +1,7 @@
 import { describe, it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
-import { hashFieldPathIds, makeFieldPathIdRegistry, type DirtySet } from '../../../../src/internal/field-path.js'
+import { makeFieldPathIdRegistry } from '../../../../src/internal/field-path.js'
+import type { TxnDirtyEvidenceSnapshot } from '../../../../src/internal/runtime/core/StateTransaction.js'
 import * as RowId from '../../../../src/internal/state-trait/rowid.js'
 
 type BenchMode = 'legacy' | 'guarded'
@@ -34,24 +35,22 @@ const quantile = (samples: ReadonlyArray<number>, q: number): number => {
   return sorted[idx]!
 }
 
-const makeDirtySet = (rootIds: ReadonlyArray<number>, dirtyAll = false): DirtySet => {
+const makeDirty = (dirtyPathIds: ReadonlyArray<number>, dirtyAll = false): TxnDirtyEvidenceSnapshot => {
   if (dirtyAll) {
     return {
       dirtyAll: true,
-      reason: 'unknownWrite',
-      rootIds: [],
-      rootCount: 0,
-      keySize: 0,
-      keyHash: 0,
+      dirtyAllReason: 'unknownWrite',
+      dirtyPathIds: [],
+      dirtyPathsKeyHash: 0,
+      dirtyPathsKeySize: 0,
     }
   }
 
   return {
     dirtyAll: false,
-    rootIds,
-    rootCount: rootIds.length,
-    keySize: rootIds.length,
-    keyHash: hashFieldPathIds(rootIds),
+    dirtyPathIds,
+    dirtyPathsKeyHash: 0,
+    dirtyPathsKeySize: dirtyPathIds.length,
   }
 }
 
@@ -78,17 +77,23 @@ const makeListConfigs = (listCount: number): ReadonlyArray<RowId.ListConfig> =>
     trackBy: 'id',
   }))
 
+const cloneListConfigs = (configs: ReadonlyArray<RowId.ListConfig>): ReadonlyArray<RowId.ListConfig> =>
+  configs.map((cfg) => ({
+    path: cfg.path,
+    trackBy: cfg.trackBy,
+  }))
+
 const runBench = (args: {
   readonly mode: BenchMode
   readonly iterations: number
   readonly warmup: number
   readonly txnsPerIteration: number
   readonly getListConfigs: () => ReadonlyArray<RowId.ListConfig>
-  readonly dirtySet: DirtySet
+  readonly dirty: TxnDirtyEvidenceSnapshot
   readonly state: BenchState
   readonly fieldPathIdRegistry: ReturnType<typeof makeFieldPathIdRegistry> | undefined
 }): BenchResult => {
-  const { mode, iterations, warmup, txnsPerIteration, getListConfigs, dirtySet, state, fieldPathIdRegistry } = args
+  const { mode, iterations, warmup, txnsPerIteration, getListConfigs, dirty, state, fieldPathIdRegistry } = args
 
   const rowIdStore = new RowId.RowIdStore(`i-list-configs-guard-perf-${mode}`)
   const primeListConfigs = getListConfigs()
@@ -110,8 +115,8 @@ const runBench = (args: {
         continue
       }
 
-      const shouldSyncRowIds = RowId.shouldReconcileListConfigsByDirtySet({
-        dirtySet,
+      const shouldSyncRowIds = RowId.shouldReconcileListConfigsByDirtyEvidence({
+        dirty,
         listConfigs,
         fieldPathIdRegistry,
       })
@@ -158,24 +163,30 @@ describe('ModuleRuntime.transaction listConfigs guard · perf baseline (Diagnost
       const rowCount = Number(process.env.LOGIX_PERF_ROWS ?? 32)
 
       const state = makeBenchState(listCount, rowCount)
-      const listConfigs = makeListConfigs(listCount)
-      const getListConfigs = () => listConfigs
+      const stableListConfigs = makeListConfigs(listCount)
+      const getStableListConfigs = () => stableListConfigs
+      const getFreshListConfigs = () => cloneListConfigs(stableListConfigs)
 
       const fieldPathIdRegistry = makeFieldPathIdRegistry([
         ['meta', 'updatedAt'],
-        ['list0', '0', 'value'],
+        // Structural list root dirtiness must trigger RowId reconciliation.
+        ['list0'],
+        // Non-structural list item field updates (e.g. list0.value) should be gated.
+        ['list0', 'value'],
+        // TrackBy dirtiness must still trigger reconciliation (identity can change).
+        ['list0', 'id'],
       ])
 
-      const noOverlapDirtySet = makeDirtySet([0])
-      const overlapDirtySet = makeDirtySet([1])
+      const noOverlapDirty = makeDirty([0])
+      const overlapDirty = makeDirty([1])
 
       const noOverlapLegacy = runBench({
         mode: 'legacy',
         iterations,
         warmup,
         txnsPerIteration,
-        getListConfigs,
-        dirtySet: noOverlapDirtySet,
+        getListConfigs: getStableListConfigs,
+        dirty: noOverlapDirty,
         state,
         fieldPathIdRegistry,
       })
@@ -185,8 +196,8 @@ describe('ModuleRuntime.transaction listConfigs guard · perf baseline (Diagnost
         iterations,
         warmup,
         txnsPerIteration,
-        getListConfigs,
-        dirtySet: noOverlapDirtySet,
+        getListConfigs: getStableListConfigs,
+        dirty: noOverlapDirty,
         state,
         fieldPathIdRegistry,
       })
@@ -196,8 +207,8 @@ describe('ModuleRuntime.transaction listConfigs guard · perf baseline (Diagnost
         iterations,
         warmup,
         txnsPerIteration,
-        getListConfigs,
-        dirtySet: overlapDirtySet,
+        getListConfigs: getStableListConfigs,
+        dirty: overlapDirty,
         state,
         fieldPathIdRegistry,
       })
@@ -207,8 +218,30 @@ describe('ModuleRuntime.transaction listConfigs guard · perf baseline (Diagnost
         iterations,
         warmup,
         txnsPerIteration,
-        getListConfigs,
-        dirtySet: overlapDirtySet,
+        getListConfigs: getStableListConfigs,
+        dirty: overlapDirty,
+        state,
+        fieldPathIdRegistry,
+      })
+
+      const overlapLegacyCachedTraversalPlan = runBench({
+        mode: 'legacy',
+        iterations,
+        warmup,
+        txnsPerIteration,
+        getListConfigs: getStableListConfigs,
+        dirty: overlapDirty,
+        state,
+        fieldPathIdRegistry,
+      })
+
+      const overlapLegacyUncachedTraversalPlan = runBench({
+        mode: 'legacy',
+        iterations,
+        warmup,
+        txnsPerIteration,
+        getListConfigs: getFreshListConfigs,
+        dirty: overlapDirty,
         state,
         fieldPathIdRegistry,
       })
@@ -219,9 +252,16 @@ describe('ModuleRuntime.transaction listConfigs guard · perf baseline (Diagnost
       expect(overlapLegacy.updateAllCalls).toBe(expectedUpdateAllCalls)
       expect(overlapGuarded.updateAllCalls).toBe(expectedUpdateAllCalls)
       expect(overlapGuarded.shouldSyncTrueCount).toBe(expectedUpdateAllCalls)
+      expect(overlapLegacyCachedTraversalPlan.updateAllCalls).toBe(expectedUpdateAllCalls)
+      expect(overlapLegacyUncachedTraversalPlan.updateAllCalls).toBe(expectedUpdateAllCalls)
 
       const noOverlapSpeedup = noOverlapLegacy.p50 / Math.max(noOverlapGuarded.p50, Number.EPSILON)
       const overlapOverheadRatio = overlapGuarded.p50 / Math.max(overlapLegacy.p50, Number.EPSILON)
+      const overlapTraversalCacheSpeedup =
+        overlapLegacyUncachedTraversalPlan.p50 / Math.max(overlapLegacyCachedTraversalPlan.p50, Number.EPSILON)
+
+      // Focused acceptance: overlap path must keep positive gain from updateAll traversal plan cache itself.
+      expect(overlapTraversalCacheSpeedup).toBeGreaterThan(0.85)
 
       console.log(
         `[perf] ModuleRuntime.transaction.listConfigsGuard no-overlap iters=${iterations} txns=${txnsPerIteration} ` +
@@ -236,7 +276,13 @@ describe('ModuleRuntime.transaction listConfigs guard · perf baseline (Diagnost
           `guarded.p50=${overlapGuarded.p50.toFixed(3)}ms guarded.p95=${overlapGuarded.p95.toFixed(3)}ms ` +
           `guardedOverhead=${overlapOverheadRatio.toFixed(2)}x updateAll(legacy=${overlapLegacy.updateAllCalls},guarded=${overlapGuarded.updateAllCalls})`,
       )
+
+      console.log(
+        `[perf] ModuleRuntime.transaction.listConfigsGuard overlapTraversalPlanCache iters=${iterations} txns=${txnsPerIteration} ` +
+          `cached.p50=${overlapLegacyCachedTraversalPlan.p50.toFixed(3)}ms cached.p95=${overlapLegacyCachedTraversalPlan.p95.toFixed(3)}ms ` +
+          `uncached.p50=${overlapLegacyUncachedTraversalPlan.p50.toFixed(3)}ms uncached.p95=${overlapLegacyUncachedTraversalPlan.p95.toFixed(3)}ms ` +
+          `speedup=${overlapTraversalCacheSpeedup.toFixed(2)}x`,
+      )
       }),
-    15000,
   )
 })

@@ -1,0 +1,25 @@
+{
+  "id": "p1-1-patchanchor-next-validation",
+  "date": "2026-03-20",
+  "branch": "agent/v4-perf-p1-1-patchanchor-next",
+  "status": "passed",
+  "commands": [
+    {
+      "command": "pnpm -C packages/logix-core typecheck:test",
+      "status": "passed"
+    },
+    {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/FieldPath/FieldPath.DirtySetReason.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.reducerWholeStateFallback.Perf.off.test.ts test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts",
+      "status": "passed",
+      "testsPassed": 28,
+      "testsFailed": 0
+    },
+    {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "status": "passed",
+      "probeStatus": "clear",
+      "thresholdAnomalyCount": 0
+    }
+  ],
+  "note": "Validation is executed on rollback state; this branch keeps docs/evidence-only and no runtime code changes."
+}

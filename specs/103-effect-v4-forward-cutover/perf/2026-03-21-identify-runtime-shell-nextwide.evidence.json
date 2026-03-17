@@ -1,0 +1,82 @@
+{
+  "id": "2026-03-21-identify-runtime-shell-nextwide",
+  "capturedAt": "2026-03-21T12:55:13+08:00",
+  "scope": {
+    "kind": "docs/evidence-only",
+    "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.scout-runtime-shell-nextwide",
+    "branch": "agent/v4-perf-scout-runtime-shell-nextwide",
+    "writeScope": [
+      "docs/perf/**",
+      "specs/103-effect-v4-forward-cutover/perf/**"
+    ]
+  },
+  "decision": {
+    "status": "docs_evidence_only",
+    "top2": [
+      {
+        "id": "N-1 runtime-shell.freeze",
+        "summary": "把 resolver 壳税从每次 dispatch/operation 移出热路径，形成可复用的 Frozen RuntimeShell"
+      },
+      {
+        "id": "N-2 runtime-shell.ledger",
+        "summary": "建立 Node 端到端 micro 基线与 phase ledger，替换 browser trace 的 sub-ms 归因盲区"
+      }
+    ],
+    "recommendedNextLine": "N-1 runtime-shell.freeze",
+    "whyNow": [
+      "P0-1/P0-2 方向已多刀吸收，dispatch shell residual 进入 sub-ms 区间，继续在 inner txn body 挖洞难以形成可解释归因",
+      "resolve-shell noSnapshot 与 snapshot 差距仍大，继续压缩 noSnapshot 边界属于仍可预期收益面"
+    ]
+  },
+  "sources": {
+    "docsNote": {
+      "artifact": "docs/perf/2026-03-21-identify-runtime-shell-nextwide.md"
+    },
+    "probeRun": {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-identify-runtime-shell-nextwide.probe-next-blocker.json",
+      "status": "blocked",
+      "failureKind": "environment"
+    },
+    "baseline": {
+      "dispatchShell": {
+        "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-19-p0-2plus-hot-context.after.json",
+        "dispatchP95Ms": 0.132,
+        "residualAvgMs": 0.06
+      },
+      "operationResolveShell": {
+        "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-2-operation-shell-next.evidence.json",
+        "noSnapshotAvgMs": 0.633,
+        "snapshotAvgMs": 0.258,
+        "speedupX": 2.458,
+        "operationRunnerBatch256SpeedupX": 1.544,
+        "operationRunnerBatch1024SpeedupX": 1.642
+      },
+      "p0_2_recheck": {
+        "artifact": "docs/perf/archive/2026-03/2026-03-21-p0-2-operation-empty-default-next.md",
+        "result": "docs/evidence-only"
+      }
+    }
+  },
+  "invariants": [
+    {
+      "id": "identify-runtime-shell-nextwide.write-scope",
+      "expectation": "仅写入 docs/perf 与 specs/103-effect-v4-forward-cutover/perf",
+      "status": "passed"
+    },
+    {
+      "id": "identify-runtime-shell-nextwide.no-code-changes",
+      "expectation": "本线只落 docs/evidence-only，不改任何 packages 代码",
+      "status": "passed"
+    }
+  ],
+  "summary": {
+    "result": "docs_evidence_only",
+    "recommendedNextLine": "N-1 runtime-shell.freeze",
+    "notes": [
+      "本 worktree 的 probe_next_blocker 阻塞为 environment（node_modules 缺失导致 vitest 不可执行），不能作为 runtime regression 证据",
+      "实现建议与验收门见 docsNote"
+    ]
+  }
+}
+

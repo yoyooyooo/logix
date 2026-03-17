@@ -1,0 +1,77 @@
+{
+  "id": "2026-03-20-p2-1a-continuation-v3.evidence",
+  "capturedAt": "2026-03-20",
+  "scope": "p2-1a-continuation-v3-revalidation",
+  "decision": {
+    "status": "merged_but_provisional",
+    "mergeToMain": false,
+    "reasons": [
+      "focused core 测试通过，说明 P2-1A continuation v3 触点上的核心语义保持稳定",
+      "probe_next_blocker 出现 blocked/clear 摆动，但阻塞仅落在既有 externalStore 相对预算门，属于已知 residual gate noise",
+      "现有证据可支持 continuation v3 方向暂存为 provisional，不满足 accepted 所需的稳定闭环强度"
+    ]
+  },
+  "sources": {
+    "focusedTests": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.TxnLanes.DefaultOn.test.ts test/internal/observability/TxnLaneEvidence.Schema.test.ts",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p2-1a-continuation-v3.focused-tests.txt",
+      "result": {
+        "testFilesPassed": 3,
+        "testsPassed": 6
+      }
+    },
+    "probeRuns": [
+      {
+        "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p2-1a-continuation-v3.probe-next-blocker.json",
+        "status": "blocked",
+        "blockerSuite": "externalStore.ingest.tickNotify",
+        "failureKind": "threshold",
+        "thresholdAnomaly": {
+          "budgetId": "full/off<=1.25",
+          "firstFailLevel": 256,
+          "maxLevel": 128
+        }
+      },
+      {
+        "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p2-1a-continuation-v3.probe-next-blocker.r2.json",
+        "status": "blocked",
+        "blockerSuite": "externalStore.ingest.tickNotify",
+        "failureKind": "threshold",
+        "thresholdAnomaly": {
+          "budgetId": "full/off<=1.25",
+          "firstFailLevel": 128,
+          "maxLevel": null
+        }
+      },
+      {
+        "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p2-1a-continuation-v3.probe-next-blocker.r3.json",
+        "status": "clear",
+        "blockerSuite": null,
+        "failureKind": null,
+        "thresholdAnomaly": null
+      }
+    ]
+  },
+  "invariants": [
+    {
+      "id": "continuation-v3.core-focused-tests",
+      "expectation": "ModuleRuntime timeslicing/txn lane/observability schema focused tests stay green",
+      "status": "passed",
+      "evidenceType": "test-run"
+    },
+    {
+      "id": "continuation-v3.probe-closure-stability",
+      "expectation": "probe_next_blocker remains clear across repeated runs under same baseline",
+      "status": "blocked",
+      "evidenceType": "probe-replay"
+    }
+  ],
+  "summary": {
+    "result": "merged_but_provisional",
+    "notes": [
+      "本次 continuation v3 未引入任何 runtime 代码改动",
+      "本次按 evidence-only 方式收口，保留复测样本供后续稳定性判定",
+      "对应结论文档：docs/perf/archive/2026-03/2026-03-20-p2-1a-continuation-v3.md"
+    ]
+  }
+}

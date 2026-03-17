@@ -1,0 +1,90 @@
+{
+  "id": "2026-03-21-n-1-runtime-shell-freeze-nextwide.validation",
+  "capturedAt": "2026-03-21",
+  "baselineRef": "v4-perf@1f53693f",
+  "commands": {
+    "typecheckTest": {
+      "command": "pnpm -C packages/logix-core typecheck:test",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-n-1-runtime-shell-freeze-nextwide.validation.typecheck.txt",
+      "passed": true
+    },
+    "targetedVitest": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.RuntimeSnapshot.ResolveShell.Perf.off.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.dispatchShell.Phases.Perf.light.test.ts",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-n-1-runtime-shell-freeze-nextwide.validation.vitest.txt",
+      "passed": true,
+      "testFilesPassed": 4,
+      "testsPassed": 4
+    },
+    "probeNextBlocker": {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-n-1-runtime-shell-freeze-nextwide.probe-next-blocker.json",
+      "status": "clear",
+      "blocker": null,
+      "thresholdAnomalyCount": 0
+    }
+  },
+  "postRollbackPerfSummary": {
+    "runtimeSnapshotResolveShell": {
+      "noSnapshotAvgMs": 0.634,
+      "snapshotAvgMs": 0.255,
+      "speedupX": 2.491,
+      "savedPercent": 59.85
+    },
+    "dispatchShellPhases": {
+      "dispatchP95Ms": 0.183,
+      "residualAvgMs": 0.065
+    },
+    "operationRunnerTxnHotContext": {
+      "batch256SpeedupX": 1.551,
+      "batch1024SpeedupX": 1.561
+    }
+  },
+  "trialVsBaselineOnSameMachine": {
+    "trialRun": {
+      "codeStatus": "discarded",
+      "runtimeSnapshotResolveShell": {
+        "noSnapshotAvgMs": 0.784,
+        "snapshotAvgMs": 0.28,
+        "speedupX": 2.799
+      },
+      "dispatchShellPhases": {
+        "dispatchP95Ms": 0.277,
+        "residualAvgMs": 0.079
+      },
+      "operationRunnerTxnHotContext": {
+        "batch256SpeedupX": 1.623,
+        "batch1024SpeedupX": 1.611
+      }
+    },
+    "baselineRun": {
+      "ref": "v4-perf@1f53693f",
+      "runtimeSnapshotResolveShell": {
+        "noSnapshotAvgMs": 0.634,
+        "snapshotAvgMs": 0.259,
+        "speedupX": 2.445
+      },
+      "dispatchShellPhases": {
+        "dispatchP95Ms": 0.193,
+        "residualAvgMs": 0.073
+      },
+      "operationRunnerTxnHotContext": {
+        "batch256SpeedupX": 1.855,
+        "batch1024SpeedupX": 1.612
+      }
+    },
+    "deltaTrialMinusBaseline": {
+      "runtimeSnapshotResolveShell": {
+        "noSnapshotAvgDeltaMs": 0.15,
+        "snapshotAvgDeltaMs": 0.021
+      },
+      "dispatchShellPhases": {
+        "dispatchP95DeltaMs": 0.084,
+        "residualAvgDeltaMs": 0.006
+      },
+      "operationRunnerTxnHotContext": {
+        "batch256SpeedupDeltaX": -0.232,
+        "batch1024SpeedupDeltaX": -0.001
+      }
+    }
+  }
+}

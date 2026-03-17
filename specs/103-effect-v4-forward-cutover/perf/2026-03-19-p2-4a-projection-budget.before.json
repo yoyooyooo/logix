@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-03-19",
+  "cutId": "p2-4a-projection-budget",
+  "phase": "before",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p2-4a-projection-budget",
+  "branch": "agent/v4-perf-p2-4a-projection-budget",
+  "scenario": "devtools.projectionBudget.attribution.synthetic",
+  "command": "pnpm exec tsx <p2-4a synthetic projection budget probe>",
+  "snapshot": {
+    "runtimeLabel": "R-P2-4A",
+    "exportBudget": {
+      "dropped": 0,
+      "oversized": 2
+    },
+    "attribution": {
+      "available": false,
+      "reason": "legacy devtools snapshot only exposed aggregate dropped/oversized counters"
+    }
+  },
+  "capturedAt": "2026-03-19T15:52:01+08:00"
+}

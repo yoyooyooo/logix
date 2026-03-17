@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
 import { getGlobalHostScheduler } from '../../../src/internal/runtime/core/HostScheduler.js'
@@ -152,6 +152,99 @@ describe('TickScheduler topic classification', () => {
       for (const unsubscribe of unsubscribes) {
         unsubscribe()
       }
+    }),
+  )
+
+  it.effect('should skip module topic bump when module topic has no subscribers', () =>
+    Effect.gen(function* () {
+      const store = makeRuntimeStore()
+      const queue = makeJobQueue()
+      const scheduler = makeTickScheduler({
+        runtimeStore: store,
+        queue,
+        hostScheduler: getGlobalHostScheduler(),
+        config: { maxSteps: 64, urgentStepCap: 64, maxDrainRounds: 4 },
+      })
+
+      const moduleKey = makeModuleInstanceKey('NoSubscribers', 'i-1')
+      store.registerModuleInstance({
+        moduleId: 'NoSubscribers',
+        instanceId: 'i-1',
+        moduleInstanceKey: moduleKey,
+        initialState: { v: 0 },
+      })
+
+      yield* scheduler.onModuleCommit({
+        moduleId: 'NoSubscribers',
+        instanceId: 'i-1',
+        moduleInstanceKey: moduleKey,
+        state: { v: 1 },
+        meta: {
+          txnSeq: 1,
+          txnId: 'i-1::t1',
+          commitMode: 'normal',
+          priority: 'normal',
+          originKind: 'dispatch',
+          originName: 'update',
+        },
+        opSeq: 1,
+      })
+
+      yield* scheduler.flushNow
+
+      expect(store.getTickSeq()).toBe(1)
+      expect(store.getModuleState(moduleKey)).toEqual({ v: 1 })
+      expect(store.getTopicVersion(moduleKey)).toBe(0)
+    }),
+  )
+
+  it.effect('should skip selector topic bump when selector topic has no subscribers', () =>
+    Effect.gen(function* () {
+      const store = makeRuntimeStore()
+      const queue = makeJobQueue()
+      const scheduler = makeTickScheduler({
+        runtimeStore: store,
+        queue,
+        hostScheduler: getGlobalHostScheduler(),
+        config: { maxSteps: 64, urgentStepCap: 64, maxDrainRounds: 4 },
+      })
+
+      const moduleKey = makeModuleInstanceKey('NoSelectorSubscribers', 'i-1')
+      const selectorTopic = makeReadQueryTopicKey(moduleKey, 'view')
+      store.registerModuleInstance({
+        moduleId: 'NoSelectorSubscribers',
+        instanceId: 'i-1',
+        moduleInstanceKey: moduleKey,
+        initialState: { v: 0 },
+      })
+
+      yield* scheduler.onModuleCommit({
+        moduleId: 'NoSelectorSubscribers',
+        instanceId: 'i-1',
+        moduleInstanceKey: moduleKey,
+        state: { v: 1 },
+        meta: {
+          txnSeq: 1,
+          txnId: 'i-1::t1',
+          commitMode: 'normal',
+          priority: 'normal',
+          originKind: 'dispatch',
+          originName: 'update',
+        },
+        opSeq: 1,
+      })
+      scheduler.onSelectorChanged({
+        moduleInstanceKey: moduleKey,
+        selectorId: 'view',
+        priority: 'normal',
+      })
+
+      yield* scheduler.flushNow
+
+      expect(store.getTickSeq()).toBe(1)
+      expect(store.getModuleState(moduleKey)).toEqual({ v: 1 })
+      expect(store.getTopicVersion(moduleKey)).toBe(0)
+      expect(store.getTopicVersion(selectorTopic)).toBe(0)
     }),
   )
 })

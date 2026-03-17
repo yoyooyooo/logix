@@ -21,7 +21,9 @@ export const makeConstructionGuardError = (options: {
   }) as ConstructionGuardError
 
 const extractMissingService = (cause: Cause.Cause<unknown>): string | undefined => {
-  const candidates = [...Array.from(Cause.defects(cause)), ...Array.from(Cause.failures(cause))]
+  const candidates = cause.reasons
+    .filter((reason) => Cause.isDieReason(reason) || Cause.isFailReason(reason))
+    .map((reason) => (Cause.isDieReason(reason) ? reason.defect : reason.error))
 
   for (const candidate of candidates) {
     const message =
@@ -45,7 +47,7 @@ export const guardBuildTime = <A, E, R>(
   self: Effect.Effect<A, E, R>,
 ): Effect.Effect<A, E | ConstructionGuardError, R> =>
   self.pipe(
-    Effect.catchAllCause((cause): Effect.Effect<never, ConstructionGuardError | E, never> => {
+    Effect.catchCause((cause): Effect.Effect<never, ConstructionGuardError | E, never> => {
       const missing = extractMissingService(cause)
       if (missing) {
         return Effect.fail(

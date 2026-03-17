@@ -1,0 +1,87 @@
+{
+  "id": "p1-1.1-fieldpathid-extended",
+  "date": "2026-03-20",
+  "branch": "agent/v4-perf-p1-1-2-fieldpathid-extended",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p1-1-2-fieldpathid-extended",
+  "result": "accepted_with_evidence",
+  "goal": "close remaining P1-1.1 surface by extending producer-side single-field prefetch reuse in externalStore module-as-source writeback",
+  "scope": {
+    "in": [
+      "packages/logix-core/src/internal/state-trait/external-store.ts"
+    ],
+    "out": [
+      "reducer dynamic pathId detection",
+      "single-field pathId direct-write chain",
+      "dispatch PatchAnchor precompile",
+      "draft primitive path"
+    ]
+  },
+  "validation": {
+    "commands": [
+      {
+        "command": "pnpm -C packages/logix-core typecheck:test",
+        "status": "passed"
+      },
+      {
+        "command": "pnpm -C packages/logix-core exec vitest run test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts",
+        "status": "passed",
+        "testsPassed": 12,
+        "testsFailed": 0
+      },
+      {
+        "command": "pnpm -C packages/logix-core exec vitest run test/internal/StateTrait/StateTrait.ExternalStoreTrait.SingleFieldFastPath.Perf.off.test.ts",
+        "status": "passed"
+      },
+      {
+        "command": "python3 fabfile.py probe_next_blocker --json",
+        "status": "passed",
+        "probeStatus": "clear"
+      }
+    ]
+  },
+  "perf": {
+    "suite": "StateTrait.ExternalStoreTrait.SingleFieldFastPath.Perf.off",
+    "metrics": [
+      {
+        "name": "single-shallow",
+        "legacyP95Ms": 10.371041,
+        "optimizedP95Ms": 8.348292,
+        "ratio": 0.8049618162728314
+      },
+      {
+        "name": "single-deep",
+        "legacyP95Ms": 32.416,
+        "optimizedP95Ms": 29.011542,
+        "ratio": 0.8949759995064166
+      },
+      {
+        "name": "single-same-value-noop",
+        "legacyP95Ms": 15.754375,
+        "optimizedP95Ms": 8.4775,
+        "ratio": 0.5381044947831951
+      },
+      {
+        "name": "multi-2",
+        "legacyP95Ms": 13.730958,
+        "optimizedP95Ms": 14.401458,
+        "ratio": 1.048831261445851
+      },
+      {
+        "name": "multi-8",
+        "legacyP95Ms": 28.640625,
+        "optimizedP95Ms": 28.126,
+        "ratio": 0.9820316421167485
+      },
+      {
+        "name": "multi-64",
+        "legacyP95Ms": 56.827708,
+        "optimizedP95Ms": 57.311708,
+        "ratio": 1.0085169720376546
+      }
+    ]
+  },
+  "gateAssessment": {
+    "singleFieldPositive": true,
+    "neighborNoRegression": true
+  }
+}

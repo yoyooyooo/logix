@@ -1,10 +1,10 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Context, Effect, Exit, Layer, Schema } from 'effect'
+import {Effect, Exit, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('TrialRun evidence demo (regression)', () => {
-  it.scoped('should complete and export runtime.services + converge Static IR summary', () =>
+  it.effect('should complete and export runtime.services + converge Static IR summary', () =>
     Effect.gen(function* () {
       const State = Schema.Struct({
         a: Schema.Number,
@@ -34,10 +34,10 @@ describe('TrialRun evidence demo (regression)', () => {
 
       const program = Effect.gen(function* () {
         const ctx = yield* Mod.impl.layer.pipe(Layer.build)
-        const runtime = Context.get(ctx, Def.tag)
+        const runtime = ServiceMap.get(ctx, Def.tag)
 
         yield* runtime.dispatch({ _tag: 'noop', payload: undefined })
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
 
         return runtime.instanceId as string
       })

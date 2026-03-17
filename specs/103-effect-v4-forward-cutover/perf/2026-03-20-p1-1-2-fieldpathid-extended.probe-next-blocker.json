@@ -1,0 +1,32 @@
+{
+  "id": "p1-1.1-fieldpathid-extended-probe",
+  "date": "2026-03-20",
+  "command": "python3 fabfile.py probe_next_blocker --json",
+  "status": "clear",
+  "targets": [
+    {
+      "order": 1,
+      "suite_id": "externalStore.ingest.tickNotify",
+      "gate": "残余复核门",
+      "status": "passed",
+      "threshold_anomaly_count": 0
+    },
+    {
+      "order": 2,
+      "suite_id": "runtimeStore.noTearing.tickNotify",
+      "gate": "防回归门",
+      "status": "passed",
+      "threshold_anomaly_count": 0
+    },
+    {
+      "order": 3,
+      "suite_id": "form.listScopeCheck",
+      "gate": "防回归门",
+      "status": "passed",
+      "threshold_anomaly_count": 0
+    }
+  ],
+  "blocker": null,
+  "pending": [],
+  "threshold_anomaly_count": 0
+}

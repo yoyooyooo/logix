@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-n-2-runtime-shell-ledger.example.ledger.v1.ndjson"
+  },
+  "segments": [
+    {
+      "segmentId": "dispatchShell.phases.light",
+      "metrics": {
+        "dispatch.p50.ms": 0.08,
+        "dispatch.p95.ms": 0.09,
+        "residual.avg.ms": 0.037
+      },
+      "notes": ["example only; aggregated from 2 samples"]
+    },
+    {
+      "segmentId": "resolveShell.snapshot.off",
+      "metrics": {
+        "noSnapshot.avg.ms": 0.62,
+        "snapshot.avg.ms": 0.25,
+        "speedup.x": 2.48,
+        "attribution": {
+          "reasonShare": {
+            "snapshot_missing": 1
+          },
+          "boundaryClassShare": {
+            "snapshot_blocked": 1
+          },
+          "noSnapshotTopReason": "snapshot_missing"
+        }
+      },
+      "notes": ["example only; based on 1+1 paired samples"]
+    },
+    {
+      "segmentId": "operationRunner.txnHotContext.off",
+      "metrics": {
+        "shared.avg.ms": 0.7,
+        "fallback.avg.ms": 1.1,
+        "speedup.x": 1.57,
+        "attribution": {
+          "reasonShare": {
+            "middleware_env_mismatch": 1
+          },
+          "boundaryClassShare": {
+            "policy_fallback": 1
+          },
+          "noSnapshotTopReason": "middleware_env_mismatch"
+        }
+      },
+      "notes": ["example only; based on 1+1 paired samples"]
+    }
+  ]
+}

@@ -9,12 +9,6 @@ const asString = (value: unknown): string | undefined =>
 const asNumber = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isFinite(value) ? value : undefined
 
-const readStaticIrDigest = (evidence: Record<string, unknown>): string | undefined => {
-  const lookupKey = isRecord(evidence.traceLookupKey) ? evidence.traceLookupKey : undefined
-  const digestFromLookup = asString(lookupKey?.staticIrDigest)
-  return digestFromLookup ?? asString(evidence.staticIrDigest)
-}
-
 const asStringArray = (value: unknown): ReadonlyArray<string> | undefined => {
   if (!Array.isArray(value)) return undefined
   const out: string[] = []
@@ -68,7 +62,7 @@ export const parseConvergeDecisionEvidence = (evidence: unknown): ConvergeDecisi
     executedMode: asString(evidence.executedMode) as 'full' | 'dirty' | undefined,
     outcome: asString(evidence.outcome) as 'Converged' | 'Noop' | 'Degraded' | undefined,
     configScope: asString(evidence.configScope) as any,
-    staticIrDigest: readStaticIrDigest(evidence),
+    staticIrDigest: asString(evidence.staticIrDigest),
     executionBudgetMs: asNumber(evidence.executionBudgetMs),
     executionDurationMs: asNumber(evidence.executionDurationMs),
     decisionBudgetMs: asNumber(evidence.decisionBudgetMs),

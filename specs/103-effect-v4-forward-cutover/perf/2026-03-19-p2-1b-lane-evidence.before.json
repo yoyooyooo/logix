@@ -1,0 +1,31 @@
+{
+  "id": "2026-03-19-p2-1b-lane-evidence.before",
+  "capturedAt": "2026-03-19",
+  "scope": "p2-1b-lane-evidence-sequence-remap",
+  "source": {
+    "baseRef": "docs/perf/archive/2026-03/2026-03-19-p2-1a-converge-continuation.md",
+    "mode": "continuation_hot_context_only",
+    "note": "P2-1A 只复用 transaction prelude，不含 lane evidence/replay 序列重映射。"
+  },
+  "semanticBaseline": {
+    "laneEvidence": {
+      "anchorModel": "per_slice_txn_anchor",
+      "anchorFields": ["txnSeq", "opSeq"],
+      "continuationStableAnchor": false
+    },
+    "originDetails": {
+      "continuationId": true,
+      "continuationSliceSeq": false,
+      "continuationAnchorTxnSeq": false,
+      "continuationSliceTxnSeq": false,
+      "continuationAnchorOpSeq": false,
+      "continuationSliceOpSeq": false
+    },
+    "replayEvent": {
+      "continuationRemapApplied": false,
+      "continuationObjectAttached": false,
+      "anchorAndSliceDualSemantics": false
+    }
+  }
+}
+

@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "eval_name": "identify-real-bottlenecks",
+  "prompt": "继续狠狠干。先看当前项目最新的 full-matrix 和 docs/perf，告诉我现在真正还剩哪些性能瓶颈，哪些只是 benchmark 测歪了，然后只选最值的一刀往下做。",
+  "assertions": [
+    { "text": "明确区分真实瓶颈与测量伪影/门禁噪声", "passed": false, "evidence": "待人工评估" },
+    { "text": "只给出一个主推下一刀", "passed": false, "evidence": "待人工评估" },
+    { "text": "基于 docs/perf 或 specs/.../perf 证据判断", "passed": false, "evidence": "待人工评估" }
+  ]
+}

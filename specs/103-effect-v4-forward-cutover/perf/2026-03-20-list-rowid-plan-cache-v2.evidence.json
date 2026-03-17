@@ -1,0 +1,84 @@
+{
+  "id": "list-rowid-plan-cache-v2",
+  "date": "2026-03-20",
+  "branch": "agent/v4-perf-list-rowid-plan-cache-v2",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.list-rowid-plan-cache-v2",
+  "result": "accepted_with_evidence",
+  "goal": "rework RowId updateAll traversal plan cache with stricter cache-key closure and focused overlap-path gain",
+  "scope": {
+    "in": [
+      "packages/logix-core/src/internal/state-trait/rowid.ts",
+      "packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.transaction.ListConfigsGuard.Perf.off.test.ts",
+      "packages/logix-core/test/internal/StateTrait/StateTrait.RowIdMatrix.test.ts"
+    ],
+    "optional": [
+      "packages/logix-core/test/internal/StateTrait/StateTrait.NestedList.RowId.Stability.test.ts"
+    ],
+    "out": [
+      "D-4 gate redesign",
+      "RowId identity semantics rewrite",
+      "React/controlplane paths"
+    ]
+  },
+  "implementation": {
+    "cache": {
+      "name": "updateAllTraversalPlanCache",
+      "key": "listConfigs array reference + path/trackBy signature guard",
+      "value": [
+        "cfgByPath",
+        "suffixByPath",
+        "childrenByParent(sorted)",
+        "roots(sorted)"
+      ]
+    },
+    "safety": [
+      "signature drift auto-rebuild when listConfigs are mutated in place",
+      "unit test covers in-place mutation path"
+    ]
+  },
+  "perf": {
+    "suite": "ModuleRuntime.transaction.ListConfigsGuard.Perf.off",
+    "focusedScenario": "overlap path, legacy mode, stable-ref configs vs fresh-cloned configs",
+    "metrics": {
+      "noOverlap": {
+        "legacy": {
+          "p50Ms": 9.328,
+          "p95Ms": 9.536
+        },
+        "guarded": {
+          "p50Ms": 0.066,
+          "p95Ms": 0.074
+        },
+        "speedupX": 140.63
+      },
+      "overlapGuard": {
+        "legacy": {
+          "p50Ms": 9.229,
+          "p95Ms": 9.411
+        },
+        "guarded": {
+          "p50Ms": 8.729,
+          "p95Ms": 9.137
+        },
+        "guardedOverheadRatio": 0.95
+      },
+      "overlapTraversalPlanCache": {
+        "cached": {
+          "p50Ms": 8.57,
+          "p95Ms": 9.206
+        },
+        "uncached": {
+          "p50Ms": 9.687,
+          "p95Ms": 10.365
+        },
+        "speedupX": 1.13
+      }
+    }
+  },
+  "gateAssessment": {
+    "focusedOverlapPositive": true,
+    "cacheKeyAssumptionStable": true,
+    "semanticGateGreen": true,
+    "probeAddsBlocker": false
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "mode": "probe_next_blocker",
+  "executedAtUtc": "2026-03-20T02:29:29Z",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p2-1b-lane-evidence-impl",
+  "branch": "agent/v4-perf-p2-1b-lane-evidence-impl",
+  "status": "clear",
+  "blocker": null,
+  "executed": [
+    {
+      "order": 1,
+      "suite_id": "externalStore.ingest.tickNotify",
+      "status": "passed",
+      "returncode": 0,
+      "threshold_anomaly_count": 0
+    },
+    {
+      "order": 2,
+      "suite_id": "runtimeStore.noTearing.tickNotify",
+      "status": "passed",
+      "returncode": 0,
+      "threshold_anomaly_count": 0
+    },
+    {
+      "order": 3,
+      "suite_id": "form.listScopeCheck",
+      "status": "passed",
+      "returncode": 0,
+      "threshold_anomaly_count": 0
+    }
+  ],
+  "threshold_anomalies": []
+}

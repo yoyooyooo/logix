@@ -1,0 +1,67 @@
+{
+  "id": "2026-03-21-p1-4b-module-pulse-hub-impl.evidence",
+  "capturedAt": "2026-03-21",
+  "scope": "p1-4b-min-runtime-external-store-module-pulse-hub",
+  "baseHead": "1f53693f",
+  "decision": {
+    "status": "accepted_with_evidence",
+    "acceptedWithEvidence": true,
+    "mergeToMain": true,
+    "reasons": [
+      "RuntimeExternalStore 新增 module 级 pulse hub，bridge pulse 收敛成立",
+      "lowPriority 场景新增跨 topic 合并测试，module/readQuery 共享单个 raf 窗口",
+      "typecheck + targeted tests + probe_next_blocker 全部通过，无语义回归信号"
+    ]
+  },
+  "constraints": {
+    "forbiddenSlices": [
+      "shared microtask flush",
+      "dirtyTopics single-pass classification"
+    ],
+    "publicApiChange": false,
+    "touchedCorePath": false
+  },
+  "implementation": {
+    "writeScope": [
+      "packages/logix-react/src/internal/store/RuntimeExternalStore.ts",
+      "packages/logix-react/test/internal/RuntimeExternalStore.lowPriority.test.ts"
+    ],
+    "keptUntouched": [
+      "packages/logix-core/**",
+      "public API surface"
+    ]
+  },
+  "verification": {
+    "commands": [
+      "pnpm -C packages/logix-react typecheck:test",
+      "pnpm -C packages/logix-react test -- RuntimeExternalStore.lowPriority.test.ts",
+      "pnpm -C packages/logix-react test -- useSelector.sharedSubscription.test.tsx",
+      "python3 fabfile.py probe_next_blocker --json"
+    ],
+    "artifacts": {
+      "typecheck": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p1-4b-module-pulse-hub-impl.validation.typecheck.txt",
+      "lowPriorityTest": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p1-4b-module-pulse-hub-impl.validation.lowpriority.txt",
+      "sharedSubscriptionTest": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p1-4b-module-pulse-hub-impl.validation.shared-subscription.txt",
+      "probeNextBlocker": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-p1-4b-module-pulse-hub-impl.probe-next-blocker.json"
+    },
+    "probeStatus": "clear",
+    "probeFailureKind": null,
+    "probeSuites": [
+      {
+        "suiteId": "externalStore.ingest.tickNotify",
+        "status": "passed",
+        "thresholdAnomalyCount": 0
+      },
+      {
+        "suiteId": "runtimeStore.noTearing.tickNotify",
+        "status": "passed",
+        "thresholdAnomalyCount": 0
+      },
+      {
+        "suiteId": "form.listScopeCheck",
+        "status": "passed",
+        "thresholdAnomalyCount": 0
+      }
+    ]
+  }
+}

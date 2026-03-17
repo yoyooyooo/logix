@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Ref } from 'effect'
 import { performance } from 'node:perf_hooks'
@@ -247,6 +247,5 @@ describe('process: trigger moduleStateChange dedupe perf evidence (Diagnostics=o
       )
       console.log(`[perf:evidence] ${JSON.stringify(evidence)}`)
     }),
-    15000,
   )
 })

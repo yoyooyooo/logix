@@ -1,0 +1,57 @@
+{
+  "id": "2026-03-21-n-2-runtime-shell-ledger.design",
+  "capturedAt": "2026-03-21T19:10:00+08:00",
+  "scope": {
+    "kind": "docs/evidence-only",
+    "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.runtime-shell-ledger",
+    "branch": "agent/v4-perf-runtime-shell-ledger",
+    "writeScope": ["docs/perf/**", "specs/103-effect-v4-forward-cutover/perf/**"],
+    "noCodeChanges": true
+  },
+  "decision": {
+    "id": "N-2 runtime-shell.ledger",
+    "summary": "建立 Node 端到端 micro 基线与 phase ledger，替换 browser trace 的 sub-ms 归因盲区",
+    "status": "design_package_landed",
+    "accepted_with_evidence": false,
+    "note": "本提交只落 schema 与设计包，不包含任何运行时实现与采集脚本。"
+  },
+  "artifacts": {
+    "designDoc": "docs/perf/2026-03-21-n-2-runtime-shell-ledger-design-package.md",
+    "schema": "specs/103-effect-v4-forward-cutover/perf/runtime-shell.ledger.schema.v1.json",
+    "exampleLedger": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-n-2-runtime-shell-ledger.example.ledger.v1.ndjson",
+    "exampleSummary": "specs/103-effect-v4-forward-cutover/perf/2026-03-21-n-2-runtime-shell-ledger.example.ledger.summary.v1.json"
+  },
+  "alignment": {
+    "mustAlignToExistingSuites": true,
+    "suiteAnchors": [
+      {
+        "id": "dispatchShell.phases.light",
+        "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.dispatchShell.Phases.Perf.light.test.ts",
+        "aggregateArtifactExample": "specs/103-effect-v4-forward-cutover/perf/2026-03-19-p0-2plus-hot-context.after.json"
+      },
+      {
+        "id": "resolveShell.snapshot.off",
+        "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.RuntimeSnapshot.ResolveShell.Perf.off.test.ts",
+        "aggregateLogPrefix": "[perf] runtime-snapshot-resolve-shell"
+      },
+      {
+        "id": "operationRunner.txnHotContext.off",
+        "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts",
+        "aggregateLogPrefix": "[perf] operation-runner txn-hot-context"
+      }
+    ]
+  },
+  "invariants": [
+    {
+      "id": "n-2-runtime-shell-ledger.write-scope",
+      "expectation": "仅写入 docs/perf 与 specs/103-effect-v4-forward-cutover/perf",
+      "status": "passed"
+    },
+    {
+      "id": "n-2-runtime-shell-ledger.no-code-changes",
+      "expectation": "本线只落 docs/evidence-only，不改任何 packages 代码",
+      "status": "passed"
+    }
+  ]
+}
+

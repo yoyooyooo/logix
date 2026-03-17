@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@effect/vitest'
+import { describe, expect, it } from 'vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 import * as Debug from '../../src/Debug.js'
@@ -48,7 +48,7 @@ const makePlanCacheFixture = (options: { readonly moduleId: string; readonly ste
     logics: [],
   })
 
-  const ring = Debug.makeRingBufferSink(1024)
+  const ring = Debug.makeRingBufferSink(2048)
   const layer = Layer.mergeAll(
     Debug.replace([ring.sink]) as Layer.Layer<any, never, never>,
     Debug.diagnosticsLevel('light'),
@@ -75,36 +75,34 @@ const pickDecisionSummaries = (ring: Debug.RingBufferSink): ReadonlyArray<any> =
     .map((e) => (e as any).data)
 
 describe('StateTrait converge auto plan cache protection', () => {
-  it.scoped('enforces capacity/eviction and triggers low-hit-rate self-protection', () =>
-    Effect.gen(function* () {
-      const steps = 200
-      const { M, runtime, ring } = makePlanCacheFixture({
-        moduleId: 'StateTraitConvergeAuto_PlanCacheProtection',
-        steps,
-      })
+  it('enforces capacity/eviction and triggers low-hit-rate self-protection', async () => {
+    const steps = 200
+    const { M, runtime, ring } = makePlanCacheFixture({
+      moduleId: 'StateTraitConvergeAuto_PlanCacheProtection',
+      steps,
+    })
 
-      const program = Effect.gen(function* () {
-        const rt: any = yield* M.tag
-        for (let i = 0; i < steps; i++) {
-          const input = `in${i}`
-          yield* rt.dispatch({ _tag: 'bump', payload: input } as any)
-        }
-      })
+    const program = Effect.gen(function* () {
+      const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
+      for (let i = 0; i < steps; i++) {
+        const input = `in${i}`
+        yield* rt.dispatch({ _tag: 'bump', payload: input } as any)
+      }
+    })
 
-      yield* Effect.promise(() => runtime.runPromise(program))
+    await runtime.runPromise(program as any)
 
-      const decisions = pickDecisionSummaries(ring)
-      expect(decisions.length).toBe(steps)
+    const decisions = pickDecisionSummaries(ring)
+    expect(decisions.length).toBe(steps)
 
-      const last = decisions[decisions.length - 1]!
-      expect(last.cache).toBeDefined()
-      expect(typeof last.cache.capacity).toBe('number')
-      expect(typeof last.cache.size).toBe('number')
-      expect(last.cache.size).toBeLessThanOrEqual(last.cache.capacity)
-      expect(last.cache.evicts).toBeGreaterThan(0)
+    const last = decisions[decisions.length - 1]!
+    expect(last.cache).toBeDefined()
+    expect(typeof last.cache.capacity).toBe('number')
+    expect(typeof last.cache.size).toBe('number')
+    expect(last.cache.size).toBeLessThanOrEqual(last.cache.capacity)
+    expect(last.cache.evicts).toBeGreaterThan(0)
 
-      expect(last.cache.disabled).toBe(true)
-      expect(last.cache.disableReason).toBe('low_hit_rate')
-    }),
-  )
+    expect(last.cache.disabled).toBe(true)
+    expect(last.cache.disableReason).toBe('low_hit_rate')
+  })
 })

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Context, Effect, Exit, Layer, Schema } from 'effect'
+import { Effect, Exit, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 
 const State = Schema.Struct({
@@ -41,10 +41,10 @@ export const TrialRunEvidenceDemo: React.FC = () => {
 
     const program = Effect.gen(function* () {
       const ctx = yield* TrialRunModule.impl.layer.pipe(Layer.build)
-      const runtime = Context.get(ctx, TrialRunDef.tag)
+      const runtime = ServiceMap.get(ctx, TrialRunDef.tag)
 
       yield* runtime.dispatch({ _tag: 'noop', payload: undefined })
-      yield* Effect.yieldNow()
+      yield* Effect.yieldNow
 
       return runtime.instanceId as string
     })
@@ -60,7 +60,7 @@ export const TrialRunEvidenceDemo: React.FC = () => {
           },
           maxEvents: 300,
         }),
-      ),
+      ).pipe(Effect.orDie),
     )
       .then((result) => {
         if (Exit.isFailure(result.exit)) {

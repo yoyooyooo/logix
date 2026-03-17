@@ -2,12 +2,12 @@ import React from 'react'
 import { describe, it, expect } from 'vitest'
 // @vitest-environment happy-dom
 import { renderHook, waitFor } from '@testing-library/react'
-import { Context, Layer, ManagedRuntime, Effect } from 'effect'
+import { Effect, Layer, ManagedRuntime, ServiceMap } from 'effect'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
 import { useRuntime } from '../../src/Hooks.js'
 
-class ServiceA extends Context.Tag('ServiceA')<ServiceA, { readonly value: string }>() {}
-class ServiceB extends Context.Tag('ServiceB')<ServiceB, { readonly value: number }>() {}
+class ServiceA extends ServiceMap.Service<ServiceA, { readonly value: string }>()('ServiceA') {}
+class ServiceB extends ServiceMap.Service<ServiceB, { readonly value: number }>()('ServiceB') {}
 
 const baseRuntime = ManagedRuntime.make(Layer.succeed(ServiceA, { value: 'base' }) as Layer.Layer<any, never, never>)
 
@@ -23,7 +23,7 @@ describe('RuntimeProvider layer merge & override', () => {
       () =>
         useRuntime().runSync(
           Effect.gen(function* () {
-            const svc = yield* ServiceA
+            const svc = yield* Effect.service(ServiceA).pipe(Effect.orDie)
             return svc.value
           }),
         ),
@@ -46,7 +46,7 @@ describe('RuntimeProvider layer merge & override', () => {
       () =>
         useRuntime().runSync(
           Effect.gen(function* () {
-            const svc = yield* ServiceA
+            const svc = yield* Effect.service(ServiceA).pipe(Effect.orDie)
             return svc.value
           }),
         ),
@@ -71,7 +71,7 @@ describe('RuntimeProvider layer merge & override', () => {
       () =>
         useRuntime().runSync(
           Effect.gen(function* () {
-            const svc = yield* ServiceA
+            const svc = yield* Effect.service(ServiceA).pipe(Effect.orDie)
             return svc.value
           }),
         ),
@@ -103,8 +103,8 @@ describe('RuntimeProvider layer merge & override', () => {
         try {
           return runtime.runSync(
             Effect.gen(function* () {
-              const a = yield* ServiceA
-              const b = yield* ServiceB
+              const a = yield* Effect.service(ServiceA).pipe(Effect.orDie)
+              const b = yield* Effect.service(ServiceB).pipe(Effect.orDie)
               return `${a.value}-${b.value}`
             }),
           )
@@ -140,7 +140,7 @@ describe('RuntimeProvider layer merge & override', () => {
 
         return runtime.runSync(
           Effect.gen(function* () {
-            const a = yield* ServiceA
+            const a = yield* Effect.service(ServiceA).pipe(Effect.orDie)
             return a.value
           }),
         )

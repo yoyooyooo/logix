@@ -1,10 +1,11 @@
-import { Context, Effect, Layer } from 'effect'
+import { Effect, Layer, ServiceMap } from 'effect'
 import type { TraitConvergeRequestedMode } from '../../state-trait/model.js'
 import type { ReadQueryStrictGateConfig } from './ReadQuery.js'
 import { getGlobalHostScheduler, type HostScheduler } from './HostScheduler.js'
 import { makeRuntimeStore, type RuntimeStore } from './RuntimeStore.js'
 import { makeTickScheduler, type TickScheduler, type TickSchedulerConfig } from './TickScheduler.js'
 import { makeDeclarativeLinkRuntime, type DeclarativeLinkRuntime } from './DeclarativeLinkRuntime.js'
+import { normalizeBoolean, normalizeNonNegativeNumber } from './normalize.js'
 
 // Unified runtime env detection, avoiding bundlers inlining NODE_ENV at build time.
 export const getNodeEnv = (): string | undefined => {
@@ -68,6 +69,11 @@ export interface StateTransactionRuntimeConfig {
    */
   readonly txnLanes?: TxnLanesPatch
   /**
+   * R2-A: high-level Txn Lane policy surface (tier-first).
+   * - When provided, it is treated as canonical over txnLanes.
+   */
+  readonly txnLanePolicy?: TxnLanePolicyInput
+  /**
    * Runtime-level per-module overrides (hotfix path):
    * - Only affects converge behavior for the specified moduleId.
    * - Lower priority than Provider overrides.
@@ -79,21 +85,27 @@ export interface StateTransactionRuntimeConfig {
    * - Lower priority than Provider overrides.
    */
   readonly txnLanesOverridesByModuleId?: Readonly<Record<string, TxnLanesPatch>>
+  /**
+   * R2-A: tier-first runtime_module overrides.
+   * - Only affects the specified moduleId.
+   * - Lower priority than Provider overrides.
+   */
+  readonly txnLanePolicyOverridesByModuleId?: Readonly<Record<string, TxnLanePolicyInput>>
 }
 
-class StateTransactionConfigTagImpl extends Context.Tag('@logixjs/core/StateTransactionRuntimeConfig')<
+class StateTransactionConfigTagImpl extends ServiceMap.Service<
   StateTransactionConfigTagImpl,
   StateTransactionRuntimeConfig
->() {}
+>()('@logixjs/core/StateTransactionRuntimeConfig') {}
 
 export const StateTransactionConfigTag = StateTransactionConfigTagImpl
 
 export type ReadQueryStrictGateRuntimeConfig = ReadQueryStrictGateConfig
 
-class ReadQueryStrictGateConfigTagImpl extends Context.Tag('@logixjs/core/ReadQueryStrictGateRuntimeConfig')<
+class ReadQueryStrictGateConfigTagImpl extends ServiceMap.Service<
   ReadQueryStrictGateConfigTagImpl,
   ReadQueryStrictGateRuntimeConfig
->() {}
+>()('@logixjs/core/ReadQueryStrictGateRuntimeConfig') {}
 
 export const ReadQueryStrictGateConfigTag = ReadQueryStrictGateConfigTagImpl
 
@@ -103,10 +115,10 @@ export interface ReplayModeConfig {
   readonly mode: ReplayMode
 }
 
-class ReplayModeConfigTagImpl extends Context.Tag('@logixjs/core/ReplayModeConfig')<
+class ReplayModeConfigTagImpl extends ServiceMap.Service<
   ReplayModeConfigTagImpl,
   ReplayModeConfig
->() {}
+>()('@logixjs/core/ReplayModeConfig') {}
 
 export const ReplayModeConfigTag = ReplayModeConfigTagImpl
 
@@ -119,6 +131,20 @@ export interface StateTransactionTraitConvergeOverrides {
   readonly traitConvergeDecisionBudgetMs?: number
   readonly traitConvergeTimeSlicing?: TraitConvergeTimeSlicingPatch
 }
+
+export type TxnLanePolicyTier = 'off' | 'sync' | 'interactive' | 'throughput'
+
+export interface TxnLanePolicyTuning {
+  readonly budgetMs?: number
+  readonly debounceMs?: number
+  readonly maxLagMs?: number
+  readonly allowCoalesce?: boolean
+  readonly yieldStrategy?: 'baseline' | 'inputPending'
+}
+
+export type TxnLanePolicyInput =
+  | { readonly tier: TxnLanePolicyTier }
+  | { readonly tier: TxnLanePolicyTier; readonly tuning: TxnLanePolicyTuning }
 
 export interface TxnLanesPatch {
   /**
@@ -154,6 +180,72 @@ export interface TxnLanesPatch {
   readonly yieldStrategy?: 'baseline' | 'inputPending'
 }
 
+type NormalizedTxnLanePolicyInput = {
+  readonly tier: TxnLanePolicyTier
+  readonly patch: TxnLanesPatch
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const presetPatchByTier: Readonly<Record<TxnLanePolicyTier, TxnLanesPatch>> = {
+  off: { overrideMode: 'forced_off', enabled: false },
+  sync: { overrideMode: 'forced_sync', enabled: false },
+  interactive: {
+    enabled: true,
+    budgetMs: 1,
+    debounceMs: 0,
+    maxLagMs: 50,
+    allowCoalesce: true,
+    yieldStrategy: 'baseline',
+  },
+  throughput: {
+    enabled: true,
+    budgetMs: 4,
+    debounceMs: 0,
+    maxLagMs: 100,
+    allowCoalesce: true,
+    yieldStrategy: 'baseline',
+  },
+}
+
+export const normalizeTxnLanePolicyInput = (value: unknown): NormalizedTxnLanePolicyInput | undefined => {
+  if (!isRecord(value)) return undefined
+  const rawTier = value.tier
+  if (rawTier !== 'off' && rawTier !== 'sync' && rawTier !== 'interactive' && rawTier !== 'throughput') {
+    return undefined
+  }
+
+  const base = presetPatchByTier[rawTier]
+  if (rawTier === 'off' || rawTier === 'sync') {
+    return { tier: rawTier, patch: base }
+  }
+
+  let patch: TxnLanesPatch = base
+  const rawTuning = value.tuning
+  if (!isRecord(rawTuning)) {
+    return { tier: rawTier, patch }
+  }
+
+  const nextBudgetMs = normalizeNonNegativeNumber(rawTuning.budgetMs)
+  if (nextBudgetMs != null) patch = { ...patch, budgetMs: nextBudgetMs }
+
+  const nextDebounceMs = normalizeNonNegativeNumber(rawTuning.debounceMs)
+  if (nextDebounceMs != null) patch = { ...patch, debounceMs: nextDebounceMs }
+
+  const nextMaxLagMs = normalizeNonNegativeNumber(rawTuning.maxLagMs)
+  if (nextMaxLagMs != null) patch = { ...patch, maxLagMs: nextMaxLagMs }
+
+  const nextAllowCoalesce = normalizeBoolean(rawTuning.allowCoalesce)
+  if (nextAllowCoalesce != null) patch = { ...patch, allowCoalesce: nextAllowCoalesce }
+
+  if (rawTuning.yieldStrategy === 'baseline' || rawTuning.yieldStrategy === 'inputPending') {
+    patch = { ...patch, yieldStrategy: rawTuning.yieldStrategy }
+  }
+
+  return { tier: rawTier, patch }
+}
+
 export interface TraitConvergeTimeSlicingPatch {
   /**
    * enabled：
@@ -184,14 +276,18 @@ export interface StateTransactionOverrides {
   readonly traitConvergeOverridesByModuleId?: Readonly<Record<string, StateTransactionTraitConvergeOverrides>>
   /** 060: Txn Lanes provider-level overrides (delta overrides). */
   readonly txnLanes?: TxnLanesPatch
+  /** R2-A: tier-first provider-level overrides (delta overrides). */
+  readonly txnLanePolicy?: TxnLanePolicyInput
   /** 060: Txn Lanes provider_module overrides (by moduleId). */
   readonly txnLanesOverridesByModuleId?: Readonly<Record<string, TxnLanesPatch>>
+  /** R2-A: tier-first provider_module overrides (by moduleId). */
+  readonly txnLanePolicyOverridesByModuleId?: Readonly<Record<string, TxnLanePolicyInput>>
 }
 
-class StateTransactionOverridesTagImpl extends Context.Tag('@logixjs/core/StateTransactionOverrides')<
+class StateTransactionOverridesTagImpl extends ServiceMap.Service<
   StateTransactionOverridesTagImpl,
   StateTransactionOverrides
->() {}
+>()('@logixjs/core/StateTransactionOverrides') {}
 
 export const StateTransactionOverridesTag = StateTransactionOverridesTagImpl
 
@@ -221,10 +317,10 @@ export interface SchedulingPolicySurface extends SchedulingPolicySurfacePatch {
   readonly overridesByModuleId?: Readonly<Record<string, SchedulingPolicySurfacePatch>>
 }
 
-class SchedulingPolicySurfaceTagImpl extends Context.Tag('@logixjs/core/SchedulingPolicySurface')<
+class SchedulingPolicySurfaceTagImpl extends ServiceMap.Service<
   SchedulingPolicySurfaceTagImpl,
   SchedulingPolicySurface
->() {}
+>()('@logixjs/core/SchedulingPolicySurface') {}
 
 export const SchedulingPolicySurfaceTag = SchedulingPolicySurfaceTagImpl
 
@@ -237,10 +333,10 @@ export interface SchedulingPolicySurfaceOverrides extends SchedulingPolicySurfac
   readonly overridesByModuleId?: Readonly<Record<string, SchedulingPolicySurfacePatch>>
 }
 
-class SchedulingPolicySurfaceOverridesTagImpl extends Context.Tag('@logixjs/core/SchedulingPolicySurfaceOverrides')<
+class SchedulingPolicySurfaceOverridesTagImpl extends ServiceMap.Service<
   SchedulingPolicySurfaceOverridesTagImpl,
   SchedulingPolicySurfaceOverrides
->() {}
+>()('@logixjs/core/SchedulingPolicySurfaceOverrides') {}
 
 export const SchedulingPolicySurfaceOverridesTag = SchedulingPolicySurfaceOverridesTagImpl
 
@@ -260,9 +356,9 @@ export const ConcurrencyPolicyOverridesTag = SchedulingPolicySurfaceOverridesTag
 
 export interface RuntimeStoreService extends RuntimeStore {}
 
-export class RuntimeStoreTag extends Context.Tag('@logixjs/core/RuntimeStore')<RuntimeStoreTag, RuntimeStoreService>() {}
+export class RuntimeStoreTag extends ServiceMap.Service<RuntimeStoreTag, RuntimeStoreService>()('@logixjs/core/RuntimeStore') {}
 
-export const runtimeStoreLayer: Layer.Layer<any, never, never> = Layer.scoped(
+export const runtimeStoreLayer: Layer.Layer<any, never, never> = Layer.effect(
   RuntimeStoreTag,
   Effect.acquireRelease(
     Effect.sync(() => makeRuntimeStore() as RuntimeStoreService),
@@ -275,10 +371,10 @@ export const runtimeStoreTestStubLayer = (store: RuntimeStoreService): Layer.Lay
 
 export interface HostSchedulerService extends HostScheduler {}
 
-export class HostSchedulerTag extends Context.Tag('@logixjs/core/HostScheduler')<
+export class HostSchedulerTag extends ServiceMap.Service<
   HostSchedulerTag,
   HostSchedulerService
->() {}
+>()('@logixjs/core/HostScheduler') {}
 
 export const hostSchedulerLayer: Layer.Layer<any, never, never> = Layer.succeed(
   HostSchedulerTag,
@@ -290,10 +386,10 @@ export const hostSchedulerTestStubLayer = (scheduler: HostSchedulerService): Lay
 
 export interface DeclarativeLinkRuntimeService extends DeclarativeLinkRuntime {}
 
-export class DeclarativeLinkRuntimeTag extends Context.Tag('@logixjs/core/DeclarativeLinkRuntime')<
+export class DeclarativeLinkRuntimeTag extends ServiceMap.Service<
   DeclarativeLinkRuntimeTag,
   DeclarativeLinkRuntimeService
->() {}
+>()('@logixjs/core/DeclarativeLinkRuntime') {}
 
 export const declarativeLinkRuntimeLayer: Layer.Layer<any, never, never> = Layer.succeed(
   DeclarativeLinkRuntimeTag,
@@ -306,15 +402,15 @@ export const declarativeLinkRuntimeTestStubLayer = (
 
 export interface TickSchedulerService extends TickScheduler {}
 
-export class TickSchedulerTag extends Context.Tag('@logixjs/core/TickScheduler')<TickSchedulerTag, TickSchedulerService>() {}
+export class TickSchedulerTag extends ServiceMap.Service<TickSchedulerTag, TickSchedulerService>()('@logixjs/core/TickScheduler') {}
 
 export const tickSchedulerLayer = (config?: TickSchedulerConfig): Layer.Layer<any, never, never> =>
   Layer.effect(
     TickSchedulerTag,
     Effect.gen(function* () {
-      const store = yield* RuntimeStoreTag
-      const declarativeLinkRuntime = yield* DeclarativeLinkRuntimeTag
-      const hostScheduler = yield* HostSchedulerTag
+      const store = yield* Effect.service(RuntimeStoreTag).pipe(Effect.orDie)
+      const declarativeLinkRuntime = yield* Effect.service(DeclarativeLinkRuntimeTag).pipe(Effect.orDie)
+      const hostScheduler = yield* Effect.service(HostSchedulerTag).pipe(Effect.orDie)
       return makeTickScheduler({ runtimeStore: store, declarativeLinkRuntime, hostScheduler, config }) as TickSchedulerService
     }),
   ) as Layer.Layer<any, never, never>

@@ -1,0 +1,66 @@
+{
+  "id": "2026-03-22-d5-diagnostics-cost-class-protocol-gate-plane-split",
+  "capturedAt": "2026-03-22",
+  "decision": {
+    "cut": "D-5-min",
+    "title": "Diagnostics Cost-Class Protocol + Gate Plane Split",
+    "classification": "accepted_with_evidence",
+    "keptCode": true
+  },
+  "worktree": {
+    "path": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.d5-diagnostics-gate-split",
+    "branch": "agent/v4-perf-d5-diagnostics-gate-split",
+    "baseHead": "765d4bd8"
+  },
+  "fallback": {
+    "spawnAgentAttempted": true,
+    "fallbackToMainSession": true,
+    "reason": "spawn_agent created threads but failed to produce usable output or file changes in the implementation worktree"
+  },
+  "verification": {
+    "coreVitest": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-d5-diagnostics-cost-class-protocol-gate-plane-split.validation.core-vitest.txt",
+    "devtoolsVitest": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-d5-diagnostics-cost-class-protocol-gate-plane-split.validation.devtools-vitest.txt",
+    "pythonUnit": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-d5-diagnostics-cost-class-protocol-gate-plane-split.validation.python.txt",
+    "externalStoreSuite": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-d5-diagnostics-cost-class-protocol-gate-plane-split.validation.external-store.txt",
+    "probeNextBlocker": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-d5-diagnostics-cost-class-protocol-gate-plane-split.probe-next-blocker.json",
+    "workspaceTypecheck": "passed",
+    "workspaceTestTurbo": "failed_preexisting_core_suites"
+  },
+  "observations": {
+    "softGateBudget": {
+      "suiteId": "externalStore.ingest.tickNotify",
+      "budgetId": "full/off<=1.25",
+      "gateClass": "soft",
+      "costClass": "devtools_projection"
+    },
+    "probe": {
+      "status": "clear",
+      "blocker": null,
+      "pending": []
+    },
+    "workspaceValidation": {
+      "typecheck": "passed",
+      "testTurbo": {
+        "status": "failed",
+        "failedPackage": "@logixjs/core",
+        "representativeMotherlineRepro": [
+          "test/internal/Runtime/WorkflowRuntime.075.test.ts",
+          "test/StateTrait/StateTrait.ConvergeAuto.DiagnosticsLevels.test.ts"
+        ]
+      }
+    }
+  },
+  "scope": {
+    "implemented": [
+      "RuntimeDebugEventRef costClass/gateClass/samplingPolicy",
+      "DevtoolsHub exportBudget attribution metadata",
+      "projection budget synthetic event metadata",
+      "probe_next_blocker hard/soft threshold split",
+      "externalStore relative budget soft classification"
+    ],
+    "notImplemented": [
+      "wider diagnostics budget reclassification across all suites",
+      "public API changes",
+      "runtime hot-path rewrites"
+    ]
+  }

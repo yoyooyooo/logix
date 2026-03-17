@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-03-19",
+  "cutId": "p2-4b-dirty-materialization",
+  "phase": "after",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p2-4b-dirty-materialization",
+  "branch": "agent/v4-perf-p2-4b-dirty-materialization",
+  "scenario": "devtools.dirtyEvidence.materialization.synthetic",
+  "command": "pnpm exec tsx <p2-4b synthetic dirty materialization probe>",
+  "snapshot": {
+    "runtimeLabel": "R-P2-4B",
+    "stateUpdateDirtySet": {
+      "dirtyAll": false,
+      "pathIds": [
+        1,
+        2
+      ],
+      "rootPaths": [
+        [
+          "profile",
+          "name"
+        ],
+        [
+          "count"
+        ]
+      ],
+      "rootPathsAvailable": true
+    },
+    "traitConvergeDirty": {
+      "dirtyAll": false,
+      "rootIds": [
+        1
+      ],
+      "rootPaths": [
+        [
+          "profile",
+          "name"
+        ]
+      ],
+      "rootPathsAvailable": true
+    },
+    "liveImportParity": {
+      "sameMaterializationPipeline": true,
+      "pipeline": "single-materialization-v1"
+    }
+  },
+  "evidenceSummary": {
+    "dirtyEvidence": {
+      "pipeline": "single-materialization-v1",
+      "stateUpdate": {
+        "total": 1,
+        "materializedWithRootPaths": 1
+      },
+      "traitConverge": {
+        "total": 1,
+        "materializedWithRootPaths": 1
+      }
+    }
+  },
+  "capturedAt": "2026-03-19T16:06:30+08:00"
+}

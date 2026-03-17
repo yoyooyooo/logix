@@ -1,0 +1,43 @@
+{
+  "id": "2026-03-22-identify-state-write-next-cut-post-sw-n2.evidence",
+  "capturedAt": "2026-03-22",
+  "scope": "identify-state-write-next-cut-post-sw-n1-accepted-and-sw-n2-docs-only",
+  "decision": {
+    "status": "docs_only_identify",
+    "acceptedWithEvidence": false,
+    "mergeToMain": false,
+    "top2": [
+      {
+        "id": "SW-N3",
+        "title": "Degradation-Ledger + ReducerPatchSink contract",
+        "recommendedNextLane": true,
+        "publicApiChange": false
+      },
+      {
+        "id": "SW-N2",
+        "title": "Static FieldPathId table and stable anchor plumbing",
+        "recommendedNextLane": false,
+        "reopenPrerequisite": "packages/logix-core correctness gate reproducibly green"
+      }
+    ],
+    "reasons": [
+      "SW-N1 已将降级语义显式化，当前主要缺口转为 customMutation/dirtyAll 的跨入口可归因与预算门",
+      "SW-N2 本轮被 correctness gate 阻断，继续推进静态表与 anchor 管线会提高归因复杂度",
+      "先建立 SW-N3 的降级账本与 reason code 预算门，可以提升后续 SW-N2 是否重开的判定效率"
+    ],
+    "apiProposal": {
+      "requiredNow": false,
+      "optionalTrigger": "SW-N3 后 degradeRatio 仍持续高位"
+    }
+  },
+  "sources": {
+    "requiredReads": [
+      "docs/perf/README.md",
+      "docs/perf/07-optimization-backlog-and-routing.md",
+      "docs/perf/2026-03-21-identify-state-write-nextwide.md",
+      "docs/perf/2026-03-22-sw-n2-fieldpathid-table-and-stable-anchor-impl-check.md"
+    ],
+    "resultDoc": "docs/perf/2026-03-22-identify-state-write-next-cut-post-sw-n2.md",
+    "summary": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-identify-state-write-next-cut-post-sw-n2.summary.md"
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "id": "2026-03-22-crossplane-single-pulse-contract-nextwide-scout.evidence",
+  "capturedAt": "2026-03-22",
+  "scope": "crossplane-post-p1-4c-single-pulse-contract-scout",
+  "baseBranch": "v4-perf",
+  "assumptions": [
+    "P1-4B-min 与 P1-4C-min 已 accepted_with_evidence",
+    "本轮为 docs-only scout，目标是给出唯一下一刀，不进入实现",
+    "零存量用户模式允许后续按收益做破坏式内部重排"
+  ],
+  "readonlyFindings": {
+    "singlePathBaseline": {
+      "confirmed": true,
+      "details": [
+        "packages/logix-core/** 与 packages/logix-react/** 中未发现 LOGIX_CROSSPLANE_TOPIC/crossPlaneTopicEnabled 分支",
+        "TickScheduler 与 RuntimeExternalStore 已固定走 RuntimeStore topic 接口"
+      ]
+    },
+    "residualTaxAnchor": {
+      "kind": "fanout_after_topic_dispatch",
+      "details": [
+        "TickScheduler.onSelectorChanged 仍按 selector topic 标记 dirty",
+        "RuntimeStore.commitTick 仍按 dirty topic 执行 listener snapshot fanout",
+        "RuntimeExternalStore.modulePulseHub 在 requestPulse 之后做合并",
+        "useSelector multiplex 去重粒度为 componentOwner+store，跨 store fanout 仍存在"
+      ]
+    }
+  },
+  "decision": {
+    "status": "implementation_ready_docs_only",
+    "acceptedWithEvidence": false,
+    "uniqueNextCut": "P1-4F-min core->react single pulse contract",
+    "reasons": [
+      "single-path 在当前代码基线已成立，继续押注 P1-4D 的边际收益较低",
+      "真实结构税位于 topic fanout 之后的 bridge 侧重复调度与 selector notify 扇出",
+      "P1-4F 可同时覆盖 core/react 多模块路径，具备更高横向收益面"
+    ]
+  },
+  "top2Directions": {
+    "top1": {
+      "name": "P1-4F-min core->react single pulse contract",
+      "unique": true,
+      "apiChange": {
+        "publicApi": false,
+        "internalContract": true
+      }
+    },
+    "top2": {
+      "name": "P1-4E-min remove unused ModuleRuntimeExternalStore*",
+      "unique": false,
+      "droppedAsPrimaryReason": "清理收益主要在维护面，无法直接覆盖 core/react 交界 fanout 结构税"
+    }
+  },
+  "references": {
+    "docs": [
+      "docs/perf/2026-03-22-crossplane-single-pulse-contract-nextwide-scout.md",
+      "docs/perf/2026-03-21-crossplane-post-p1-4c-nextwide-identify.md",
+      "docs/perf/2026-03-21-p1-4c-min-pulse-envelope-selector-delta-impl.md",
+      "docs/perf/2026-03-22-p1-4d-min-single-path-cleanup.md"
+    ],
+    "codeAnchors": [
+      "packages/logix-core/src/internal/runtime/core/TickScheduler.ts",
+      "packages/logix-core/src/internal/runtime/core/RuntimeStore.ts",
+      "packages/logix-react/src/internal/store/RuntimeExternalStore.ts",
+      "packages/logix-react/src/internal/hooks/useSelector.ts"
+    ]
+  },
+  "verification": {
+    "requiredCommand": "git diff --stat v4-perf..HEAD",
+    "executedInThisScout": true
+  }
+}

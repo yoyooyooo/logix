@@ -1,0 +1,38 @@
+{
+  "id": "p1-1-patchanchor-next",
+  "date": "2026-03-20",
+  "branch": "agent/v4-perf-p1-1-patchanchor-next",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p1-1-patchanchor-next",
+  "result": "discarded_or_pending",
+  "accepted_with_evidence": false,
+  "goal": "evaluate whether a minimal producer-side PatchAnchor/FieldPathId tokenization slice can be harvested",
+  "scope": {
+    "in": [
+      "packages/logix-core/src/internal/runtime/core/StateTransaction.ts",
+      "packages/logix-core/src/internal/runtime/core/ModuleRuntime.dispatch.ts",
+      "packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts",
+      "packages/logix-core/src/internal/state-trait/external-store.ts"
+    ],
+    "out": [
+      "p3 no-prod-txn-history",
+      "p4 DevtoolsHub projection hints",
+      "p5 full-lazy raw eager-only meta",
+      "p6 full-lazy traitConverge heavy decision/detail",
+      "public API changes"
+    ]
+  },
+  "trial": {
+    "slice": "dispatch/boundapi producer-side patchPath array prefetch completion",
+    "microEvidence": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.patchPathArrayPrefetch.Perf.off.test.ts",
+      "rawMs": 10.982,
+      "prefetchedMs": 21.76,
+      "ratioPrefetchedOverRaw": 1.9815
+    },
+    "decision": "negative ROI, rollback implementation and keep docs/evidence-only"
+  },
+  "links": {
+    "archiveNote": "docs/perf/archive/2026-03/2026-03-20-p1-1-patchanchor-next.md",
+    "validation": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p1-1-patchanchor-next.validation.json"
+  }
+}

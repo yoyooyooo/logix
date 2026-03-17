@@ -1,0 +1,110 @@
+{
+  "source": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p2-1a-continuation-v2/docs/perf/04-agent-execution-playbook.md",
+  "mode": "probe_next_blocker",
+  "dry_run": false,
+  "tail_lines": 20,
+  "targets": [
+    {
+      "order": 1,
+      "suite_id": "externalStore.ingest.tickNotify",
+      "gate": "残余复核门",
+      "command": "pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/external-store-ingest.test.tsx -t \"perf: externalStore ingest\""
+    },
+    {
+      "order": 2,
+      "suite_id": "runtimeStore.noTearing.tickNotify",
+      "gate": "防回归门",
+      "command": "pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx -t \"perf: runtimeStore tick\""
+    },
+    {
+      "order": 3,
+      "suite_id": "form.listScopeCheck",
+      "gate": "防回归门",
+      "command": "pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/form-list-scope-check.test.tsx"
+    }
+  ],
+  "status": "blocked",
+  "executed": [
+    {
+      "order": 1,
+      "suite_id": "externalStore.ingest.tickNotify",
+      "gate": "残余复核门",
+      "command": "pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/external-store-ingest.test.tsx -t \"perf: externalStore ingest\"",
+      "status": "failed",
+      "failure_kind": "suite",
+      "process_returncode": 1,
+      "returncode": 1,
+      "duration_ms": 1389,
+      "perf_report_count": 0,
+      "threshold_anomaly_count": 0,
+      "threshold_anomalies": [],
+      "perf_report_parse_errors": [],
+      "stdout_tail": [
+        "> @logixjs/react@1.0.2-beta.1 test /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p2-1a-continuation-v2/packages/logix-react",
+        "> vitest run --project browser test/browser/perf-boundaries/external-store-ingest.test.tsx -t 'perf: externalStore ingest'",
+        " RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p2-1a-continuation-v2/packages/logix-react",
+        "Port 63315 is in use, trying another one...",
+        " Test Files  1 failed (1)",
+        "      Tests  no tests",
+        "   Start at  00:27:34",
+        "   Duration  748ms (transform 0ms, setup 0ms, import 0ms, tests 0ms, environment 0ms)",
+        " ELIFECYCLE  Test failed. See above for more details."
+      ],
+      "stderr_tail": [
+        "⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  |browser (chromium)| test/browser/perf-boundaries/external-store-ingest.test.tsx [ test/browser/perf-boundaries/external-store-ingest.test.tsx ]",
+        "Error: Failed to import test file /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p2-1a-continuation-v2/packages/logix-react/test/browser/perf-boundaries/external-store-ingest.test.tsx",
+        "Caused by: SyntaxError: The requested module '/.vitest-browser-cache/vitest/ef98362b8a6b0c8cd804b0d227aa1ffeaba89786/deps/effect.js?v=6c3da21b' does not provide an export named 'Context'",
+        "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯"
+      ]
+    }
+  ],
+  "blocker": {
+    "order": 1,
+    "suite_id": "externalStore.ingest.tickNotify",
+    "gate": "残余复核门",
+    "command": "pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/external-store-ingest.test.tsx -t \"perf: externalStore ingest\"",
+    "status": "failed",
+    "failure_kind": "suite",
+    "process_returncode": 1,
+    "returncode": 1,
+    "duration_ms": 1389,
+    "perf_report_count": 0,
+    "threshold_anomaly_count": 0,
+    "threshold_anomalies": [],
+    "perf_report_parse_errors": [],
+    "stdout_tail": [
+      "> @logixjs/react@1.0.2-beta.1 test /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p2-1a-continuation-v2/packages/logix-react",
+      "> vitest run --project browser test/browser/perf-boundaries/external-store-ingest.test.tsx -t 'perf: externalStore ingest'",
+      " RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p2-1a-continuation-v2/packages/logix-react",
+      "Port 63315 is in use, trying another one...",
+      " Test Files  1 failed (1)",
+      "      Tests  no tests",
+      "   Start at  00:27:34",
+      "   Duration  748ms (transform 0ms, setup 0ms, import 0ms, tests 0ms, environment 0ms)",
+      " ELIFECYCLE  Test failed. See above for more details."
+    ],
+    "stderr_tail": [
+      "⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯",
+      " FAIL  |browser (chromium)| test/browser/perf-boundaries/external-store-ingest.test.tsx [ test/browser/perf-boundaries/external-store-ingest.test.tsx ]",
+      "Error: Failed to import test file /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.p2-1a-continuation-v2/packages/logix-react/test/browser/perf-boundaries/external-store-ingest.test.tsx",
+      "Caused by: SyntaxError: The requested module '/.vitest-browser-cache/vitest/ef98362b8a6b0c8cd804b0d227aa1ffeaba89786/deps/effect.js?v=6c3da21b' does not provide an export named 'Context'",
+      "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯"
+    ]
+  },
+  "pending": [
+    {
+      "order": 2,
+      "suite_id": "runtimeStore.noTearing.tickNotify",
+      "gate": "防回归门",
+      "command": "pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx -t \"perf: runtimeStore tick\""
+    },
+    {
+      "order": 3,
+      "suite_id": "form.listScopeCheck",
+      "gate": "防回归门",
+      "command": "pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/form-list-scope-check.test.tsx"
+    }
+  ],
+  "threshold_anomalies": []
+}

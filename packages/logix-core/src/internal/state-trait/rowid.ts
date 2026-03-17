@@ -1,9 +1,5 @@
-import {
-  normalizeFieldPath,
-  type DirtySet,
-  type FieldPath,
-  type FieldPathIdRegistry,
-} from '../field-path.js'
+import { normalizeFieldPath, type FieldPath, type FieldPathIdRegistry } from '../field-path.js'
+import type { TxnDirtyEvidence, TxnDirtyEvidenceSnapshot } from '../runtime/core/StateTransaction.js'
 
 export type RowId = string
 
@@ -84,7 +80,8 @@ export const unsetAtPathMutating = (draft: unknown, path: string): void => {
 
   const last = segments[segments.length - 1]!
   if (Array.isArray(current) && typeof last === 'number') {
-    current[last] = undefined
+    // Keep arrays sparse (holes) rather than dense-undefined: improves perf in common "sparse rows" trees.
+    delete current[last]
     return
   }
 
@@ -178,6 +175,39 @@ const didReorderByReference = (prevItems: ReadonlyArray<unknown>, nextItems: Rea
   }
 
   return false
+}
+
+type NoTrackByReconcileEvidence = 'stable' | 'dirty' | 'unknown'
+
+export const toListInstanceKey = (listPath: string, listIndexPath?: ReadonlyArray<number>): string => {
+  if (!listIndexPath || listIndexPath.length === 0) return `${listPath}@@`
+  return `${listPath}@@${listIndexPath.join(',')}`
+}
+
+const readNoTrackByReconcileEvidence = (
+  txnDirtyEvidence: TxnDirtyEvidence | undefined,
+  listInstanceKey: string,
+): NoTrackByReconcileEvidence => {
+  if (!txnDirtyEvidence) return 'unknown'
+  if (txnDirtyEvidence.dirtyAll) return 'dirty'
+
+  const listEvidence = txnDirtyEvidence.list
+  if (!listEvidence) return 'unknown'
+  if (listEvidence.rootTouched.has(listInstanceKey)) return 'dirty'
+
+  const itemTouched = listEvidence.itemTouched.get(listInstanceKey)
+  if (itemTouched && itemTouched.size > 0) return 'dirty'
+
+  return 'stable'
+}
+
+const canKeepNoTrackByListStructure = (
+  prevItems: ReadonlyArray<unknown>,
+  nextItems: ReadonlyArray<unknown>,
+): boolean => {
+  if (prevItems === nextItems) return true
+  if (prevItems.length !== nextItems.length) return false
+  return !didReorderByReference(prevItems, nextItems)
 }
 
 const hasStableTrackByKeys = (items: ReadonlyArray<unknown>, trackBy: string): boolean =>
@@ -374,6 +404,32 @@ export class RowIdStore {
     return info.index
   }
 
+  canSkipNoTrackByListReconcile(args: {
+    readonly listPath: string
+    readonly items: ReadonlyArray<unknown>
+    readonly trackBy?: string
+    readonly parentRowId?: RowId
+    readonly listIndexPath?: ReadonlyArray<number>
+    readonly txnDirtyEvidence?: TxnDirtyEvidence
+  }): boolean {
+    const prev = this.lists.get(this.listKey(args.listPath, args.parentRowId))
+    if (!prev) return false
+
+    const effectiveTrackBy = args.trackBy ?? prev.trackBy
+    if (effectiveTrackBy) return false
+
+    if (prev.itemsRef === args.items) return true
+
+    const evidence = readNoTrackByReconcileEvidence(
+      args.txnDirtyEvidence,
+      toListInstanceKey(args.listPath, args.listIndexPath),
+    )
+    if (evidence === 'stable') return true
+    if (evidence === 'dirty') return false
+
+    return canKeepNoTrackByListStructure(prev.itemsRef, args.items)
+  }
+
   /**
    * ensureList：
    * - Align RowID mapping for the given listPath with the current items.
@@ -422,51 +478,15 @@ export class RowIdStore {
    * - configs come from list declarations in StateTraitProgram.spec (may include trackBy).
    */
   updateAll(state: unknown, configs: ReadonlyArray<ListConfig>): void {
-    const cfgByPath = new Map<string, ListConfig>()
-    const paths: Array<string> = []
-    for (const cfg of configs) {
-      if (!cfg || typeof cfg.path !== 'string') continue
-      const p = cfg.path.trim()
-      if (!p) continue
-      cfgByPath.set(p, cfg)
-      paths.push(p)
-    }
-
-    const pathSet = new Set(paths)
-
-    const parentOf = (path: string): string | undefined => {
-      const segments = path.split('.').filter(Boolean)
-      let best: string | undefined
-      for (let i = 1; i < segments.length; i++) {
-        const prefix = segments.slice(0, i).join('.')
-        if (pathSet.has(prefix)) best = prefix
-      }
-      return best
-    }
-
-    const parentByPath = new Map<string, string | undefined>()
-    const suffixByPath = new Map<string, string>()
-    const childrenByParent = new Map<string | undefined, Array<string>>()
-
-    for (const path of paths) {
-      const parent = parentOf(path)
-      parentByPath.set(path, parent)
-      const suffix = parent ? path.slice(parent.length + 1) : path
-      suffixByPath.set(path, suffix)
-      const list = childrenByParent.get(parent) ?? []
-      list.push(path)
-      childrenByParent.set(parent, list)
-    }
-
-    // roots first (and deterministic traversal)
-    const roots = (childrenByParent.get(undefined) ?? []).slice().sort()
+    const traversalPlan = getUpdateAllTraversalPlan(configs)
+    if (traversalPlan.roots.length === 0) return
 
     const visit = (listPath: string, parentRowId: RowId | undefined, listValue: unknown): void => {
-      const cfg = cfgByPath.get(listPath)
+      const cfg = traversalPlan.cfgByPath.get(listPath)
       const items = Array.isArray(listValue) ? (listValue as ReadonlyArray<unknown>) : []
       const ids = this.ensureList(listPath, items, cfg?.trackBy, parentRowId)
 
-      const children = (childrenByParent.get(listPath) ?? []).slice().sort()
+      const children = traversalPlan.childrenByParent.get(listPath) ?? []
       if (children.length === 0) return
 
       for (let i = 0; i < items.length; i++) {
@@ -474,14 +494,14 @@ export class RowIdStore {
         const rowId = ids[i]
         if (!rowId) continue
         for (const childPath of children) {
-          const suffix = suffixByPath.get(childPath) ?? ''
+          const suffix = traversalPlan.suffixByPath.get(childPath) ?? ''
           const childValue = suffix ? getAtPath(row as any, suffix) : undefined
           visit(childPath, rowId, childValue)
         }
       }
     }
 
-    for (const root of roots) {
+    for (const root of traversalPlan.roots) {
       const value = getAtPath(state as any, root)
       visit(root, undefined, value)
     }
@@ -509,15 +529,153 @@ type ListConfigDirtyMatchPlan = {
   readonly fallbackToDirtyAll: boolean
   readonly listPaths: ReadonlyArray<FieldPath>
   readonly listPathsByRootKey: ReadonlyMap<string, ReadonlyArray<FieldPath>>
+  /**
+   * trackByPathsByListPath:
+   * - key: normalized listPath (by reference)
+   * - value: normalized full field path for the list item trackBy field (listPath + trackBy segments)
+   *
+   * Used to decide when RowId mappings must be reconciled even if the list root itself is not dirty:
+   * - changing trackBy values can change row identity, which impacts in-flight gates and nested list bindings.
+   */
+  readonly trackByPathsByListPath: ReadonlyMap<FieldPath, FieldPath>
 }
 
 const listConfigDirtyMatchPlanCache = new WeakMap<ReadonlyArray<ListConfig>, ListConfigDirtyMatchPlan>()
 
+type UpdateAllTraversalPlan = {
+  readonly signature: string
+  readonly cfgByPath: ReadonlyMap<string, ListConfig>
+  readonly suffixByPath: ReadonlyMap<string, string>
+  readonly childrenByParent: ReadonlyMap<string | undefined, ReadonlyArray<string>>
+  readonly roots: ReadonlyArray<string>
+}
+
+const updateAllTraversalPlanCache = new WeakMap<ReadonlyArray<ListConfig>, UpdateAllTraversalPlan>()
+
+type ListConfigEntry = {
+  readonly path: string
+  readonly trackBy: string
+  readonly cfg: ListConfig
+}
+
+const toListConfigEntry = (cfg: ListConfig | undefined): ListConfigEntry | undefined => {
+  if (!cfg || typeof cfg.path !== 'string') return undefined
+  const path = cfg.path.trim()
+  if (!path) return undefined
+  const trackBy = typeof cfg.trackBy === 'string' ? cfg.trackBy.trim() : ''
+  return { path, trackBy, cfg }
+}
+
+const listConfigSignaturePartSep = '\u0000'
+const listConfigSignatureEntrySep = '\u0001'
+
+const buildListConfigEntriesAndSignature = (
+  listConfigs: ReadonlyArray<ListConfig>,
+): { readonly entries: ReadonlyArray<ListConfigEntry>; readonly signature: string } => {
+  const entries: Array<ListConfigEntry> = []
+  for (const cfg of listConfigs) {
+    const entry = toListConfigEntry(cfg)
+    if (!entry) continue
+    entries.push(entry)
+  }
+
+  const signature = entries
+    .map((entry) => `${entry.path}${listConfigSignaturePartSep}${entry.trackBy}`)
+    .join(listConfigSignatureEntrySep)
+  return { entries, signature }
+}
+
+const buildUpdateAllTraversalPlan = (
+  entries: ReadonlyArray<ListConfigEntry>,
+  signature: string,
+): UpdateAllTraversalPlan => {
+  const cfgByPath = new Map<string, ListConfig>()
+  const paths: Array<string> = []
+  for (const entry of entries) {
+    cfgByPath.set(entry.path, entry.cfg)
+    paths.push(entry.path)
+  }
+
+  const pathSet = new Set(paths)
+  const suffixByPath = new Map<string, string>()
+  const childrenByParent = new Map<string | undefined, Array<string>>()
+
+  const parentOf = (path: string): string | undefined => {
+    const segments = path.split('.').filter(Boolean)
+    let best: string | undefined
+    for (let i = 1; i < segments.length; i++) {
+      const prefix = segments.slice(0, i).join('.')
+      if (pathSet.has(prefix)) best = prefix
+    }
+    return best
+  }
+
+  for (const path of paths) {
+    const parent = parentOf(path)
+    const suffix = parent ? path.slice(parent.length + 1) : path
+    suffixByPath.set(path, suffix)
+    const list = childrenByParent.get(parent) ?? []
+    list.push(path)
+    childrenByParent.set(parent, list)
+  }
+
+  for (const children of childrenByParent.values()) {
+    children.sort()
+  }
+
+  const roots = (childrenByParent.get(undefined) ?? []).slice()
+  return {
+    signature,
+    cfgByPath,
+    suffixByPath,
+    childrenByParent,
+    roots,
+  }
+}
+
+const getUpdateAllTraversalPlan = (listConfigs: ReadonlyArray<ListConfig>): UpdateAllTraversalPlan => {
+  const { entries, signature } = buildListConfigEntriesAndSignature(listConfigs)
+  const cached = updateAllTraversalPlanCache.get(listConfigs)
+  if (cached && cached.signature === signature) return cached
+
+  const next = buildUpdateAllTraversalPlan(entries, signature)
+  updateAllTraversalPlanCache.set(listConfigs, next)
+  return next
+}
+
 const getPathRootKey = (path: ReadonlyArray<string>): string => path[0] ?? ''
+
+const isRedundantDirtyRoot = (existingDirtyRoots: ReadonlyArray<FieldPath>, dirtyRoot: FieldPath): boolean => {
+  for (const existing of existingDirtyRoots) {
+    if (isPrefixPath(existing, dirtyRoot)) {
+      return true
+    }
+  }
+  return false
+}
+
+const upsertDirtyRoot = (existingDirtyRoots: Array<FieldPath>, dirtyRoot: FieldPath): void => {
+  if (isRedundantDirtyRoot(existingDirtyRoots, dirtyRoot)) {
+    return
+  }
+
+  let nextLength = 0
+  for (let i = 0; i < existingDirtyRoots.length; i++) {
+    const existing = existingDirtyRoots[i]!
+    if (isPrefixPath(dirtyRoot, existing)) {
+      continue
+    }
+    existingDirtyRoots[nextLength] = existing
+    nextLength += 1
+  }
+  existingDirtyRoots.length = nextLength
+  existingDirtyRoots.push(dirtyRoot)
+}
 
 const buildListConfigDirtyMatchPlan = (listConfigs: ReadonlyArray<ListConfig>): ListConfigDirtyMatchPlan => {
   const listPaths: Array<FieldPath> = []
   const listPathsByRootKey = new Map<string, Array<FieldPath>>()
+  const trackByPathsByListPath = new Map<FieldPath, FieldPath>()
   const seen = new Set<string>()
 
   for (const cfg of listConfigs) {
@@ -531,6 +689,7 @@ const buildListConfigDirtyMatchPlan = (listConfigs: ReadonlyArray<ListConfig>): 
         fallbackToDirtyAll: true,
         listPaths: [],
         listPathsByRootKey: new Map(),
+        trackByPathsByListPath: new Map(),
       }
     }
 
@@ -546,12 +705,28 @@ const buildListConfigDirtyMatchPlan = (listConfigs: ReadonlyArray<ListConfig>): 
     } else {
       listPathsByRootKey.set(rootKey, [normalized])
     }
+
+    const trackBy = typeof cfg.trackBy === 'string' ? cfg.trackBy.trim() : ''
+    if (trackBy) {
+      const trackByNormalized = normalizeFieldPath(`${rawPath}.${trackBy}`)
+      if (!trackByNormalized || trackByNormalized.length === 0) {
+        // Conservative fallback: unknown trackBy encoding must not skip RowID alignment.
+        return {
+          fallbackToDirtyAll: true,
+          listPaths: [],
+          listPathsByRootKey: new Map(),
+          trackByPathsByListPath: new Map(),
+        }
+      }
+      trackByPathsByListPath.set(normalized, trackByNormalized)
+    }
   }
 
   return {
     fallbackToDirtyAll: false,
     listPaths,
     listPathsByRootKey,
+    trackByPathsByListPath,
   }
 }
 
@@ -565,15 +740,15 @@ const getListConfigDirtyMatchPlan = (listConfigs: ReadonlyArray<ListConfig>): Li
   return next
 }
 
-export const shouldReconcileListConfigsByDirtySet = (args: {
-  readonly dirtySet: DirtySet
+export const shouldReconcileListConfigsByDirtyEvidence = (args: {
+  readonly dirty: TxnDirtyEvidenceSnapshot
   readonly listConfigs: ReadonlyArray<ListConfig>
   readonly fieldPathIdRegistry?: FieldPathIdRegistry
 }): boolean => {
-  const { dirtySet, listConfigs, fieldPathIdRegistry } = args
+  const { dirty, listConfigs, fieldPathIdRegistry } = args
   if (listConfigs.length === 0) return false
-  if (dirtySet.dirtyAll) return true
-  if (dirtySet.rootIds.length === 0) return false
+  if (dirty.dirtyAll) return true
+  if (dirty.dirtyPathIds.length === 0) return false
   if (!fieldPathIdRegistry) return true
 
   const plan = getListConfigDirtyMatchPlan(listConfigs)
@@ -581,21 +756,57 @@ export const shouldReconcileListConfigsByDirtySet = (args: {
   if (plan.listPaths.length === 0) return false
 
   const fieldPaths = fieldPathIdRegistry.fieldPaths
-  for (const dirtyRootId of dirtySet.rootIds) {
-    const dirtyPath: FieldPath | undefined = fieldPaths[dirtyRootId]
+  const dirtyRootsToProcessByRoot = new Map<string, Array<FieldPath>>()
+
+  for (const rawId of dirty.dirtyPathIds) {
+    if (!Number.isFinite(rawId)) {
+      // Conservative fallback: non-finite evidence must not skip RowID alignment.
+      return true
+    }
+    const id = Math.floor(rawId)
+    if (id < 0) return true
+
+    const dirtyPath: FieldPath | undefined = fieldPaths[id]
     if (!dirtyPath) {
-      // Conservative fallback: unknown rootId must not accidentally skip RowID alignment.
+      // Conservative fallback: unknown pathId must not accidentally skip RowID alignment.
       return true
     }
 
-    const candidates = plan.listPathsByRootKey.get(getPathRootKey(dirtyPath))
+    const rootKey = getPathRootKey(dirtyPath)
+    const existing = dirtyRootsToProcessByRoot.get(rootKey)
+    if (existing) {
+      upsertDirtyRoot(existing, dirtyPath)
+      continue
+    }
+    dirtyRootsToProcessByRoot.set(rootKey, [dirtyPath])
+  }
+
+  for (const [rootKey, dirtyRootsForRoot] of dirtyRootsToProcessByRoot) {
+    const candidates = plan.listPathsByRootKey.get(rootKey)
     if (!candidates || candidates.length === 0) {
       continue
     }
 
-    for (const listPath of candidates) {
-      if (overlapsPath(dirtyPath, listPath)) {
-        return true
+    for (const dirtyRoot of dirtyRootsForRoot) {
+      for (const listPath of candidates) {
+        // 1) Structural changes: when the dirty root is at/above the list path (prefix),
+        // we must reconcile because insert/remove/reorder in parent lists affects nested list bindings too.
+        if (isPrefixPath(dirtyRoot, listPath)) {
+          return true
+        }
+
+        // 2) TrackBy changes: even if the list root is not dirty, changing trackBy values can change row identity.
+        const trackByPath = plan.trackByPathsByListPath.get(listPath)
+        if (trackByPath && overlapsPath(dirtyRoot, trackByPath)) {
+          return true
+        }
+
+        // 3) No trackBy: tighten commit-time gate to "explicit structural evidence".
+        // We only reconcile when the dirty root is at/above listPath, which indicates potential structural churn.
+        // Nested field updates under listPath should not force commit-time updateAll.
+        if (!trackByPath && isPrefixPath(dirtyRoot, listPath)) {
+          return true
+        }
       }
     }
   }

@@ -1,0 +1,44 @@
+{
+  "date": "2026-03-20",
+  "topic": "boot-preload-sync-confirm",
+  "result": "accepted_with_evidence",
+  "checks": [
+    {
+      "command": "pnpm --filter @logixjs/react typecheck:test",
+      "status": "passed"
+    },
+    {
+      "command": "pnpm --filter @logixjs/react exec vitest run test/RuntimeProvider/runtime-bootresolve-phase-trace.test.tsx --pool forks",
+      "status": "passed",
+      "summary": {
+        "testFilesPassed": 1,
+        "testsPassed": 2,
+        "testsFailed": 0
+      }
+    },
+    {
+      "command": "pnpm --filter @logixjs/react exec vitest run test/internal/integration/reactConfigRuntimeProvider.test.tsx --pool forks",
+      "status": "passed",
+      "summary": {
+        "testFilesPassed": 1,
+        "testsPassed": 9,
+        "testsFailed": 0
+      }
+    },
+    {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "status": "passed",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-boot-preload-sync-confirm.probe-next-blocker.json",
+      "summary": {
+        "probeStatus": "clear",
+        "blocker": null,
+        "executedSuites": 3
+      }
+    }
+  ],
+  "notes": [
+    "已实施 sync-ready neutral lane: 去掉 boot 期默认 async config confirm。",
+    "保留 ready 期一次性 refresh 窗口，token 口径继续使用 owner+lane+phase。",
+    "未触碰 boot-epoch singleflight、RAF/readSync、旧 neutral singleflight、unresolved-only continuation。"
+  ]
+}

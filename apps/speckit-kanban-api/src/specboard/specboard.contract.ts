@@ -1,14 +1,14 @@
-import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from '@effect/platform'
+import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/unstable/httpapi'
 import { Schema } from 'effect'
 
-export const ArtifactName = Schema.Union(
+export const ArtifactName = Schema.Union([
   Schema.Literal('spec.md'),
   Schema.Literal('plan.md'),
   Schema.Literal('tasks.md'),
   Schema.Literal('quickstart.md'),
   Schema.Literal('data-model.md'),
   Schema.Literal('research.md'),
-)
+])
 
 export const SpecTaskStats = Schema.Struct({
   total: Schema.Number,
@@ -87,34 +87,50 @@ export const InternalError = Schema.Struct({
   message: Schema.String,
 })
 
+const SpecboardErrors = [
+  ValidationError.pipe(HttpApiSchema.status(400)),
+  ForbiddenError.pipe(HttpApiSchema.status(403)),
+  NotFoundError.pipe(HttpApiSchema.status(404)),
+  ConflictError.pipe(HttpApiSchema.status(409)),
+  InternalError.pipe(HttpApiSchema.status(500)),
+] as const
+
 export const SpecboardGroup = HttpApiGroup.make('Specboard')
-  .addError(ValidationError, { status: 400 })
-  .addError(ForbiddenError, { status: 403 })
-  .addError(NotFoundError, { status: 404 })
-  .addError(ConflictError, { status: 409 })
-  .addError(InternalError, { status: 500 })
-  .add(HttpApiEndpoint.get('specList')`/specs`.addSuccess(SpecListResponse))
   .add(
-    HttpApiEndpoint.get('taskList')`/specs/${HttpApiSchema.param('specId', Schema.String)}/tasks`.addSuccess(
-      TaskListResponse,
-    ),
-  )
-  .add(
-    HttpApiEndpoint.post('taskToggle')`/specs/${HttpApiSchema.param('specId', Schema.String)}/tasks/toggle`
-      .setPayload(TaskToggleRequest)
-      .addSuccess(TaskListResponse),
-  )
-  .add(
-    HttpApiEndpoint.get(
-      'fileRead',
-    )`/specs/${HttpApiSchema.param('specId', Schema.String)}/files/${HttpApiSchema.param('name', ArtifactName)}`.addSuccess(
-      FileReadResponse,
-    ),
-  )
-  .add(
-    HttpApiEndpoint.put(
-      'fileWrite',
-    )`/specs/${HttpApiSchema.param('specId', Schema.String)}/files/${HttpApiSchema.param('name', ArtifactName)}`
-      .setPayload(FileWriteRequest)
-      .addSuccess(FileWriteResponse),
+    HttpApiEndpoint.get('specList', '/specs', {
+      success: SpecListResponse,
+      error: SpecboardErrors,
+    }),
+    HttpApiEndpoint.get('taskList', '/specs/:specId/tasks', {
+      params: {
+        specId: Schema.String,
+      },
+      success: TaskListResponse,
+      error: SpecboardErrors,
+    }),
+    HttpApiEndpoint.post('taskToggle', '/specs/:specId/tasks/toggle', {
+      params: {
+        specId: Schema.String,
+      },
+      payload: TaskToggleRequest,
+      success: TaskListResponse,
+      error: SpecboardErrors,
+    }),
+    HttpApiEndpoint.get('fileRead', '/specs/:specId/files/:name', {
+      params: {
+        specId: Schema.String,
+        name: ArtifactName,
+      },
+      success: FileReadResponse,
+      error: SpecboardErrors,
+    }),
+    HttpApiEndpoint.put('fileWrite', '/specs/:specId/files/:name', {
+      params: {
+        specId: Schema.String,
+        name: ArtifactName,
+      },
+      payload: FileWriteRequest,
+      success: FileWriteResponse,
+      error: SpecboardErrors,
+    }),
   )

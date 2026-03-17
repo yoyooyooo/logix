@@ -27,7 +27,7 @@ export const TodoTableLive: Layer.Layer<TodoTable, never, Db> = Layer.effect(
     )
 
     yield* ensure.pipe(
-      Effect.catchAll((e) => Effect.logWarning('todo table init failed').pipe(Effect.annotateLogs({ error: e }))),
+      Effect.catch((e) => Effect.logWarning('todo table init failed').pipe(Effect.annotateLogs({ error: e }))),
     )
 
     return { ensure } satisfies TodoTableService

@@ -1,0 +1,34 @@
+{
+  "id": "2026-03-22-sw-n3-degradation-ledger-impl",
+  "capturedAt": "2026-03-22",
+  "scope": "state-write-sw-n3-implementation-line",
+  "decision": {
+    "status": "merged_but_provisional",
+    "acceptedWithEvidence": false,
+    "mergeToMain": false,
+    "classification": "implementation-line",
+    "reasons": [
+      "StateWriteIntent/stateWrite 最小数据面已接入并通过最小验证链路",
+      "probe_next_blocker 保持 clear，只保留既有 externalStore soft watch",
+      "本轮没有直接 before/after perf 增益工件，因此暂不计入正式 perf win"
+    ]
+  },
+  "changedFiles": [
+    "packages/logix-core/src/internal/runtime/core/StateTransaction.ts",
+    "packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts",
+    "packages/logix-core/src/internal/runtime/core/DebugSink.record.ts",
+    "packages/logix-core/test/Debug/Debug.RuntimeDebugEventRef.Serialization.test.ts",
+    "packages/logix-devtools-react/test/internal/devtools-react.integration.test.tsx"
+  ],
+  "verification": {
+    "typecheck": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-sw-n3-degradation-ledger-impl.validation.typecheck.txt",
+    "coreTests": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-sw-n3-degradation-ledger-impl.validation.core.txt",
+    "devtoolsTests": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-sw-n3-degradation-ledger-impl.validation.devtools.txt",
+    "probe": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-sw-n3-degradation-ledger-impl.probe-next-blocker.json"
+  },
+  "probeSummary": {
+    "status": "clear",
+    "softWatchOnly": true,
+    "softWatchBudget": "externalStore.ingest.tickNotify/full/off<=1.25"
+  }
+}

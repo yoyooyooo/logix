@@ -1,0 +1,26 @@
+{
+  "date": "2026-03-20",
+  "worktree": "/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.list-rowid-plan-cache-v2",
+  "branch": "agent/v4-perf-list-rowid-plan-cache-v2",
+  "scope": "RowId updateAll traversal plan cache v2 strict closure",
+  "commands": [
+    {
+      "cmd": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.transaction.ListConfigsGuard.Perf.off.test.ts test/internal/StateTrait/StateTrait.RowIdMatrix.test.ts test/internal/StateTrait/StateTrait.NestedList.RowId.Stability.test.ts",
+      "status": "passed",
+      "testFiles": 3,
+      "testsPassed": 10,
+      "testsFailed": 0
+    },
+    {
+      "cmd": "python3 fabfile.py probe_next_blocker --json",
+      "status": "passed",
+      "probeStatus": "clear",
+      "blockerSuiteId": null,
+      "thresholdAnomalyCount": 0
+    }
+  ],
+  "notes": [
+    "Focused overlap traversal-plan-cache evidence recorded in companion evidence file.",
+    "No new blocker introduced by probe."
+  ]
+}

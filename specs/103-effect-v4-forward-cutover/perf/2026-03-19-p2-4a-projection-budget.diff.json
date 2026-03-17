@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-03-19",
+  "cutId": "p2-4a-projection-budget",
+  "beforeRef": "2026-03-19-p2-4a-projection-budget.before.json",
+  "afterRef": "2026-03-19-p2-4a-projection-budget.after.json",
+  "semanticDeltas": {
+    "snapshot.exportBudget.byEvent": "absent -> present",
+    "snapshot.exportBudget.byEventCount": "0 -> 2",
+    "snapshot.exportBudget.byEvent[runtime-debug-event:action:HugeAction].oversized": "n/a -> 1",
+    "snapshot.exportBudget.byEvent[runtime-debug-event:devtools:trace:test].oversized": "n/a -> 1",
+    "evidence.summary.projectionBudget": "absent -> present"
+  },
+  "invariants": {
+    "exportBudgetTotalsStable": true,
+    "sumByEventMatchesTotals": true,
+    "totalBefore": {
+      "dropped": 0,
+      "oversized": 2
+    },
+    "totalAfter": {
+      "dropped": 0,
+      "oversized": 2
+    }
+  },
+  "verification": {
+    "devtoolsProjectionTests": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/Debug/DevtoolsHub.test.ts",
+      "passed": true
+    },
+    "typecheck": {
+      "command": "pnpm -C packages/logix-core typecheck:test",
+      "passed": true
+    },
+    "probeNextBlocker": {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "statusAfter": "clear",
+      "returnCode": 0
+    }
+  },
+  "summary": {
+    "positiveEvidence": [
+      "projection 预算可以按事件维度归因，能够直接定位热点事件类型。",
+      "归因总和与总量一致，说明证据链自洽且可核对。",
+      "evidence package 已携带 projectionBudget 摘要，支持离线诊断。"
+    ],
+    "negativeEvidence": [
+      "本轮是诊断价值升级，不是 P2-4B 的 dirty evidence 物化统一。"
+    ]
+  },
+  "verdict": "accepted_with_diagnostic_evidence_probe_clear"
+}

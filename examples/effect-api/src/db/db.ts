@@ -1,4 +1,4 @@
-import { Context, Data, Effect } from 'effect'
+import { Data, Effect, ServiceMap } from 'effect'
 
 export class DbError extends Data.TaggedError('DbError')<{
   readonly reason: 'disabled' | 'query'
@@ -14,4 +14,4 @@ export interface DbService {
   ) => Effect.Effect<ReadonlyArray<Row>, DbError>
 }
 
-export class Db extends Context.Tag('Db')<Db, DbService>() {}
+export class Db extends ServiceMap.Service<Db, DbService>()('Db') {}

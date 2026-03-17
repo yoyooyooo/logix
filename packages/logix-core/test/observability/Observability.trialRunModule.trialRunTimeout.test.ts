@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
@@ -13,7 +13,7 @@ describe('Observability.trialRunModule (trialRunTimeout)', () => {
 
       const program = Root.implement({ initial: undefined, logics: [] })
 
-      const hangingLayer = Layer.scopedDiscard(Effect.never) as unknown as Layer.Layer<any, never, never>
+      const hangingLayer = Layer.effectDiscard(Effect.never) as unknown as Layer.Layer<any, never, never>
 
       const report = yield* Logix.Observability.trialRunModule(program, {
         runId: 'run:test:trial-run-timeout',

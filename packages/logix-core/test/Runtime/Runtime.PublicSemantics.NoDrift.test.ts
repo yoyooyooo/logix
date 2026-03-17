@@ -4,7 +4,7 @@ import * as Logix from '../../src/index.js'
 import * as Debug from '../../src/Debug.js'
 
 describe('Runtime public semantics: transaction window fail-fast (US1)', () => {
-  it.scoped('production path should fail-fast on async escape and keep later txns consistent', () =>
+  it.effect('production path should fail-fast on async escape and keep later txns consistent', () =>
     Effect.gen(function* () {
       const previousEnv = process.env.NODE_ENV
       process.env.NODE_ENV = 'production'
@@ -52,7 +52,7 @@ describe('Runtime public semantics: transaction window fail-fast (US1)', () => {
         yield* Effect.promise(() =>
           runtime.runPromise(
             Effect.gen(function* () {
-              const rt: any = yield* M.tag
+              const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
               const escapeExit = yield* Effect.exit(
                 Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 'async_escape' }, () =>
@@ -65,7 +65,7 @@ describe('Runtime public semantics: transaction window fail-fast (US1)', () => {
               )
               expect(escapeExit._tag).toBe('Failure')
               if (escapeExit._tag === 'Failure') {
-                const defects = [...Cause.defects(escapeExit.cause)]
+                const defects = escapeExit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)
                 expect(defects.some((d) => (d as any)?.code === 'state_transaction::async_escape')).toBe(true)
               }
 

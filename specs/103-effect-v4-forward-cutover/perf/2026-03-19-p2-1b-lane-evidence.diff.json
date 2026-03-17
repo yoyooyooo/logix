@@ -1,0 +1,32 @@
+{
+  "id": "2026-03-19-p2-1b-lane-evidence.diff",
+  "capturedAt": "2026-03-19",
+  "scope": "p2-1b-lane-evidence-sequence-remap",
+  "beforeRef": "specs/103-effect-v4-forward-cutover/perf/2026-03-19-p2-1b-lane-evidence.before.json",
+  "afterRef": "specs/103-effect-v4-forward-cutover/perf/2026-03-19-p2-1b-lane-evidence.after.json",
+  "semanticDeltas": {
+    "laneEvidence.anchorModel": "per_slice_txn_anchor -> per_continuation_anchor",
+    "laneEvidence.continuationStableAnchor": "false -> true",
+    "originDetails.continuationSliceSeq": "false -> true",
+    "originDetails.continuationAnchorTxnSeq": "false -> true",
+    "originDetails.continuationSliceTxnSeq": "false -> true",
+    "originDetails.continuationAnchorOpSeq": "false -> true",
+    "originDetails.continuationSliceOpSeq": "false -> true",
+    "replayEvent.continuationRemapApplied": "false -> true",
+    "replayEvent.continuationObjectAttached": "false -> true",
+    "replayEvent.anchorAndSliceDualSemantics": "false -> true"
+  },
+  "summary": {
+    "positiveEvidence": [
+      "continuation 内 lane evidence 使用稳定 anchor，避免 slice 粒度锚点漂移",
+      "slice 序列保留在 origin.details，可追溯 continuation 内部推进",
+      "state:update.replayEvent 同时携带 anchor 与 slice 语义，解释链路更完整"
+    ],
+    "negativeEvidence": [],
+    "notes": [
+      "本刀只做语义重映射，不包含新的 converge 性能优化",
+      "current probe 队列为 clear，未触发回归红线"
+    ]
+  }
+}
+

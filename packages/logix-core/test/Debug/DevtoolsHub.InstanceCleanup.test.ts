@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer } from 'effect'
 import * as Logix from '../../src/index.js'
@@ -17,7 +17,12 @@ describe('DevtoolsHub (instance cleanup)', () => {
 
       const fullLayer = Logix.Debug.devtoolsHubLayer({
         bufferSize: 10,
-        mode: 'full',
+        diagnosticsLevel: 'full',
+      }) as Layer.Layer<any, never, never>
+
+      const offLayer = Logix.Debug.devtoolsHubLayer({
+        bufferSize: 10,
+        diagnosticsLevel: 'off',
       }) as Layer.Layer<any, never, never>
 
       yield* Logix.Debug.record({
@@ -54,12 +59,13 @@ describe('DevtoolsHub (instance cleanup)', () => {
       })
       expect(Logix.Debug.getInstanceLabel(instanceId)).toBe('Cleanup Instance')
 
+      // When diagnosticsLevel=off, refs may early-return, but module:destroy cleanup must still run.
       yield* Logix.Debug.record({
         type: 'module:destroy',
         moduleId,
         instanceId,
         runtimeLabel,
-      } as any).pipe(Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel, 'off'), Effect.provide(fullLayer))
+      } as any).pipe(Effect.provide(offLayer))
 
       expect(Logix.Debug.getDevtoolsSnapshot().instances.get(moduleKey)).toBeUndefined()
       expect(Logix.Debug.getDevtoolsSnapshot().latestStates.has(instanceKey)).toBe(false)

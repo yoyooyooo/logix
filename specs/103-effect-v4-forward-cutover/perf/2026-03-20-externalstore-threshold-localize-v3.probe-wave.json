@@ -1,0 +1,81 @@
+{
+  "runs": [
+    {
+      "run": 1,
+      "returncode": 0,
+      "status": "clear",
+      "blocker_suite": null,
+      "external_status": "passed",
+      "external_failure_kind": null,
+      "external_first_fail_level": null,
+      "external_threshold_anomaly_count": 0,
+      "threshold_anomalies": []
+    },
+    {
+      "run": 2,
+      "returncode": 0,
+      "status": "clear",
+      "blocker_suite": null,
+      "external_status": "passed",
+      "external_failure_kind": null,
+      "external_first_fail_level": null,
+      "external_threshold_anomaly_count": 0,
+      "threshold_anomalies": []
+    },
+    {
+      "run": 3,
+      "returncode": 42,
+      "status": "blocked",
+      "blocker_suite": "externalStore.ingest.tickNotify",
+      "external_status": "failed",
+      "external_failure_kind": "threshold",
+      "external_first_fail_level": 128,
+      "external_threshold_anomaly_count": 1,
+      "threshold_anomalies": [
+        {
+          "probe_order": 1,
+          "suite_id": "externalStore.ingest.tickNotify",
+          "gate": "残余复核门",
+          "report_index": 1,
+          "budget_id": "full/off<=1.25",
+          "first_fail_level": 128,
+          "max_level": null,
+          "where": null
+        }
+      ]
+    },
+    {
+      "run": 4,
+      "returncode": 0,
+      "status": "clear",
+      "blocker_suite": null,
+      "external_status": "passed",
+      "external_failure_kind": null,
+      "external_first_fail_level": null,
+      "external_threshold_anomaly_count": 0,
+      "threshold_anomalies": []
+    },
+    {
+      "run": 5,
+      "returncode": 42,
+      "status": "blocked",
+      "blocker_suite": "externalStore.ingest.tickNotify",
+      "external_status": "failed",
+      "external_failure_kind": "threshold",
+      "external_first_fail_level": 256,
+      "external_threshold_anomaly_count": 1,
+      "threshold_anomalies": [
+        {
+          "probe_order": 1,
+          "suite_id": "externalStore.ingest.tickNotify",
+          "gate": "残余复核门",
+          "report_index": 1,
+          "budget_id": "full/off<=1.25",
+          "first_fail_level": 256,
+          "max_level": 128,
+          "where": null
+        }
+      ]
+    }
+  ]
+}

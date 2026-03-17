@@ -88,6 +88,30 @@
             "improvements": 0
           }
         },
+        "after": {
+          "suites": [
+            {
+              "id": "converge.txnCommit",
+              "thresholds": [
+                {
+                  "budget": {
+                    "id": "commit.p95<=50ms",
+                    "type": "absolute",
+                    "metric": "txn.commit.ms.p95",
+                    "p95Ms": 50
+                  },
+                  "where": {
+                    "convergeMode": "auto",
+                    "dirtyRootsRatio": 0.5
+                  },
+                  "maxLevel": 800,
+                  "firstFailLevel": 1600,
+                  "reason": "budgetExceeded"
+                }
+              ]
+            }
+          ]
+        },
         "capacityLatest": {
           "evaluation": {
             "hardPass": false,

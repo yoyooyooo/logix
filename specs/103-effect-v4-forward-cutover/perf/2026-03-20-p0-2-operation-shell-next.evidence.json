@@ -1,0 +1,89 @@
+{
+  "id": "2026-03-20-p0-2-operation-shell-next.evidence",
+  "capturedAt": "2026-03-20",
+  "scope": "p0-2-operation-shell-next-runtime-operation-resolve-shell-reuse",
+  "decision": {
+    "status": "accepted_with_evidence",
+    "acceptedWithEvidence": true,
+    "mergeToMain": true,
+    "reasons": [
+      "在 ModuleRuntime.operation 层新增 runtime snapshot 入口与 middleware/session 维度的 canonical cache，继续下沉 resolve-shell 复用",
+      "相对 v4-perf@97be4b0c 基线，resolve-shell 与 operationRunner 两组贴边指标均出现正向变化",
+      "最小验证命令通过，probe_next_blocker 为 clear"
+    ]
+  },
+  "sources": {
+    "validation": {
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-2-operation-shell-next.validation.json",
+      "passed": true
+    },
+    "typecheckTest": {
+      "command": "pnpm -C packages/logix-core typecheck:test",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-2-operation-shell-next.validation.typecheck.txt",
+      "passed": true
+    },
+    "targetedVitest": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.RuntimeSnapshot.ResolveShell.Perf.off.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-2-operation-shell-next.validation.vitest.txt",
+      "result": {
+        "runtimeSnapshotResolveShellNoSnapshotAvgMs": 0.633,
+        "runtimeSnapshotResolveShellSnapshotAvgMs": 0.258,
+        "runtimeSnapshotResolveShellSpeedupX": 2.458,
+        "runtimeSnapshotResolveShellSavedPercent": 59.32,
+        "operationRunnerBatch256SpeedupX": 1.544,
+        "operationRunnerBatch1024SpeedupX": 1.642
+      }
+    },
+    "probeRun": {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-2-operation-shell-next.probe-next-blocker.json",
+      "status": "clear",
+      "blocker": null,
+      "executedCount": 3
+    },
+    "baseline": {
+      "ref": "v4-perf@97be4b0c",
+      "artifact": "specs/103-effect-v4-forward-cutover/perf/2026-03-20-p0-2-operation-rollout.validation.vitest.txt",
+      "result": {
+        "runtimeSnapshotResolveShellNoSnapshotAvgMs": 0.715,
+        "runtimeSnapshotResolveShellSnapshotAvgMs": 0.302,
+        "runtimeSnapshotResolveShellSpeedupX": 2.368,
+        "operationRunnerBatch256SpeedupX": 1.452,
+        "operationRunnerBatch1024SpeedupX": 1.497
+      }
+    }
+  },
+  "invariants": [
+    {
+      "id": "p0-2-operation-shell-next.typecheck-test",
+      "expectation": "logix-core typecheck:test 通过",
+      "status": "passed",
+      "evidenceType": "test-run"
+    },
+    {
+      "id": "p0-2-operation-shell-next.targeted-vitest",
+      "expectation": "三项最小 vitest 守门通过",
+      "status": "passed",
+      "evidenceType": "test-run"
+    },
+    {
+      "id": "p0-2-operation-shell-next.resolve-shell-perf",
+      "expectation": "resolve-shell 与 operation-runner 贴边收益相对基线保持正向",
+      "status": "passed",
+      "evidenceType": "perf-run"
+    },
+    {
+      "id": "p0-2-operation-shell-next.probe-next-blocker",
+      "expectation": "probe_next_blocker clear",
+      "status": "passed",
+      "evidenceType": "probe-run"
+    }
+  ],
+  "summary": {
+    "result": "accepted_with_evidence",
+    "notes": [
+      "未触碰 public API",
+      "文档结论见 docs/perf/archive/2026-03/2026-03-20-p0-2-operation-shell-next.md"
+    ]
+  }
+}

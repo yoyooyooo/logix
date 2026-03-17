@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-03-19",
+  "cutId": "p2-4b-dirty-materialization",
+  "beforeRef": "2026-03-19-p2-4b-dirty-materialization.before.json",
+  "afterRef": "2026-03-19-p2-4b-dirty-materialization.after.json",
+  "semanticDeltas": {
+    "snapshot.stateUpdateDirtySet.rootPaths": "absent -> present",
+    "snapshot.traitConvergeDirty.rootPaths": "absent -> present",
+    "snapshot.liveImportParity.sameMaterializationPipeline": "false -> true",
+    "evidence.summary.dirtyEvidence": "absent -> present"
+  },
+  "invariants": {
+    "statePathIdsStable": true,
+    "traitRootIdsStable": true,
+    "rootPathsDerivedFromCanonicalIds": true,
+    "evidenceSummaryMatchesSnapshot": true
+  },
+  "verification": {
+    "typecheck": {
+      "command": "pnpm -C packages/logix-core typecheck:test",
+      "passed": true
+    },
+    "devtoolsDirtyEvidenceTests": {
+      "command": "pnpm -C packages/logix-core exec vitest run test/Debug/DevtoolsHub.test.ts test/Debug/Debug.DiagnosticsLevels.test.ts",
+      "passed": true
+    },
+    "probeNextBlocker": {
+      "command": "python3 fabfile.py probe_next_blocker --json",
+      "statusAfter": "clear",
+      "returnCode": 0
+    }
+  },
+  "summary": {
+    "positiveEvidence": [
+      "dirty evidence 的 rootPaths 在 Hub 单点物化，live 与 exported evidence 使用同一结果。",
+      "state:update 与 trait:converge 两类事件都能从 canonical id-first 证据恢复 rootPaths。",
+      "evidence summary 新增 dirtyEvidence 覆盖度，离线导入可直接核对。"
+    ],
+    "negativeEvidence": [
+      "本轮未改 devtools-react 逻辑代码，只在 core 提供统一物化口径。"
+    ]
+  },
+  "verdict": "accepted_with_dirty_materialization_probe_clear"
+}

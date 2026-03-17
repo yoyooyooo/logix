@@ -1,0 +1,51 @@
+{
+  "scenario": "selectorGraph.pathKeyFastAppend.off",
+  "beforeFile": "2026-03-19-p2-3-selector-process-v3.selector.before.json",
+  "afterFile": "2026-03-19-p2-3-selector-process-v3.selector.after.json",
+  "beforeMode": "legacy.rebuildEveryWrite",
+  "afterMode": "fastAppend.incrementalPathKey",
+  "timestamp": "2026-03-19T15:38:56+08:00",
+  "comparability": {
+    "sameScenario": true,
+    "sameDataset": true,
+    "sameRunConfig": true
+  },
+  "behavior": {
+    "totalRootsBefore": 15873,
+    "totalRootsAfter": 15873,
+    "digestBefore": 2640405965,
+    "digestAfter": 2640405965,
+    "stable": true
+  },
+  "metricsMs": {
+    "before": {
+      "p50": 8.304457999999954,
+      "p95": 10.015750000000025,
+      "mean": 8.691599966666669
+    },
+    "after": {
+      "p50": 5.312874999999963,
+      "p95": 5.910957999999937,
+      "mean": 5.3893888666666685
+    },
+    "delta": {
+      "p50": -2.991582999999991,
+      "p95": -4.104792000000088,
+      "mean": -3.3022111000000005
+    },
+    "ratio": {
+      "p50AfterOverBefore": 0.639761800228262,
+      "p95AfterOverBefore": 0.5901662880962406,
+      "meanAfterOverBefore": 0.6200686740457019
+    }
+  },
+  "conclusion": {
+    "positiveEvidence": [
+      "在 append-dominant dirty-path 数据集中，p50/p95/mean 全部下降。",
+      "行为签名 totalRoots/digest before-after 一致。"
+    ],
+    "negativeEvidence": [
+      "该证据是 selector invalidation 子路径 microbench，仍需和 full matrix 分开解释。"
+    ]
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "createdAt": "2026-03-20T16:27:47.382192Z",
+  "runs": [
+    {
+      "run": 1,
+      "returncode": 0,
+      "status": "clear",
+      "blocker_suite": null,
+      "failure_kind": null,
+      "first_fail_level": null,
+      "threshold_anomalies": []
+    },
+    {
+      "run": 2,
+      "returncode": 42,
+      "status": "blocked",
+      "blocker_suite": "externalStore.ingest.tickNotify",
+      "failure_kind": "threshold",
+      "first_fail_level": 256,
+      "threshold_anomalies": [
+        {
+          "probe_order": 1,
+          "suite_id": "externalStore.ingest.tickNotify",
+          "gate": "残余复核门",
+          "report_index": 1,
+          "budget_id": "full/off<=1.25",
+          "first_fail_level": 256,
+          "max_level": 128,
+          "where": null
+        }
+      ]
+    }
+  ]
+}

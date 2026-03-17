@@ -3,11 +3,11 @@
 import React from 'react'
 import { describe, it, expect } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
-import { Context, Layer, ManagedRuntime } from 'effect'
+import { Effect, Layer, ManagedRuntime, ServiceMap } from 'effect'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
 import { useRuntime } from '../../src/Hooks.js'
 
-const TestTag = Context.GenericTag<string>('@tests/custom-service')
+const TestTag = ServiceMap.Service<string>('@tests/custom-service')
 
 describe('RuntimeProvider layer propagation', () => {
   it('should make provided Layer services visible to descendants', async () => {
@@ -26,7 +26,7 @@ describe('RuntimeProvider layer propagation', () => {
         const [value, setValue] = React.useState<string | null>(null)
 
         React.useEffect(() => {
-          void runtime.runPromise(TestTag).then(setValue)
+          void runtime.runPromise(Effect.service(TestTag).pipe(Effect.orDie)).then(setValue)
         }, [runtime])
 
         return value
@@ -54,7 +54,7 @@ describe('RuntimeProvider layer propagation', () => {
         const [value, setValue] = React.useState<string | null>(null)
 
         React.useEffect(() => {
-          void runtime.runPromise(TestTag).then(setValue)
+          void runtime.runPromise(Effect.service(TestTag).pipe(Effect.orDie)).then(setValue)
         }, [runtime])
 
         return value

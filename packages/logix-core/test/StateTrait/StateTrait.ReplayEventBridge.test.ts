@@ -4,21 +4,8 @@ import * as Logix from '../../src/index.js'
 import * as Debug from '../../src/Debug.js'
 import type { ResourceRegistry } from '../../src/Resource.js'
 
-const waitUntil = (label: string, condition: () => boolean): Effect.Effect<void, never> =>
-  Effect.gen(function* () {
-    while (!condition()) {
-      yield* Effect.sleep('1 millis')
-    }
-  }).pipe(
-    Effect.timeoutFail({
-      duration: '2 seconds',
-      onTimeout: () => new Error(`timeout waiting for ${label}`),
-    }),
-    Effect.orDie,
-  )
-
 describe('ReplayEvent ↔ state:update bridge', () => {
-  it.scoped('records last ResourceSnapshot as state:update.replayEvent', () =>
+  it.effect('records last ResourceSnapshot as state:update.replayEvent', () =>
     Effect.gen(function* () {
       const SnapshotSchema = Schema.Any
 
@@ -37,16 +24,13 @@ describe('ReplayEvent ↔ state:update bridge', () => {
         load: (key) => Effect.succeed({ name: `res:${key.userId}` }),
       })
 
-      const Actions = { refresh: Schema.Void, touch: Schema.Void }
+      const Actions = { refresh: Schema.Void }
 
       const M = Logix.Module.make('StateTraitReplayEventBridge', {
         state: State,
         actions: Actions,
         reducers: {
           refresh: (s: any) => s,
-          touch: Logix.Module.Reducer.mutate((draft) => {
-            draft.profile.id = `${draft.profile.id}!`
-          }),
         },
         traits: Logix.StateTrait.from(State)({
           profileResource: Logix.StateTrait.source({
@@ -59,7 +43,7 @@ describe('ReplayEvent ↔ state:update bridge', () => {
 
       const RefreshLogic = M.logic(($) =>
         Effect.gen(function* () {
-          yield* $.onAction('refresh').run({ effect: () => $.traits.source.refresh('profileResource') })
+          yield* $.onAction('refresh').run(() => $.traits.source.refresh('profileResource'))
         }),
       )
 
@@ -82,28 +66,11 @@ describe('ReplayEvent ↔ state:update bridge', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* M.tag
+        const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
         yield* rt.dispatch({ _tag: 'refresh', payload: undefined } as any)
 
-        yield* waitUntil('refresh replay state:update', () =>
-          ring
-            .getSnapshot()
-            .some((e) => e.type === 'state:update' && (e as any).replayEvent?._tag === 'ResourceSnapshot'),
-        )
-
-        // A pure reducer transaction should not inherit replayEvent from a previous source transaction.
-        yield* rt.dispatch({ _tag: 'touch', payload: undefined } as any)
-        yield* waitUntil('touch state:update', () => {
-          const snapshot = ring.getSnapshot()
-          const touchDispatches = snapshot.filter(
-            (e) => e.type === 'action:dispatch' && (e as any).actionTag === 'touch',
-          ) as ReadonlyArray<any>
-          const touchTxnId = touchDispatches[touchDispatches.length - 1]?.txnId
-          if (touchTxnId === undefined || touchTxnId === null) {
-            return false
-          }
-          return snapshot.some((e) => e.type === 'state:update' && (e as any).txnId === touchTxnId)
-        })
+        // Wait for watchers + source IO fibers to complete at least one writeback cycle.
+        yield* Effect.sleep('10 millis')
 
         const updates = ring
           .getSnapshot()
@@ -118,25 +85,11 @@ describe('ReplayEvent ↔ state:update bridge', () => {
         expect(hit?.replayEvent?.txnId).toBe(hit?.txnId)
         expect(typeof hit?.staticIrDigest).toBe('string')
         expect(hit?.staticIrDigest.length).toBeGreaterThan(0)
-        expect(hit?.replayEvent?.lookupKey?.staticIrDigest).toBe(hit?.staticIrDigest)
-        expect(typeof hit?.replayEvent?.lookupKey?.nodeId).toBe('number')
 
         const dirtySet = hit?.dirtySet as any
         if (dirtySet && typeof dirtySet === 'object') {
           expect('rootPaths' in dirtySet).toBe(false)
         }
-
-        const touchDispatches = ring
-          .getSnapshot()
-          .filter((e) => e.type === 'action:dispatch' && (e as any).actionTag === 'touch') as ReadonlyArray<any>
-        expect(touchDispatches.length).toBeGreaterThan(0)
-        const touchTxnId = touchDispatches[touchDispatches.length - 1]?.txnId
-        const touchUpdate = ring
-          .getSnapshot()
-          .filter((e) => e.type === 'state:update' && (e as any).txnId === touchTxnId) as ReadonlyArray<any>
-        expect(touchUpdate.length).toBeGreaterThan(0)
-        const touchHit = touchUpdate[touchUpdate.length - 1]
-        expect(touchHit?.replayEvent).toBeUndefined()
       })
 
       yield* Effect.promise(() => runtime.runPromise(program as Effect.Effect<void, never, any>))

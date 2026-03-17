@@ -1,0 +1,25 @@
+
+ RUN  v4.0.15 /Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.sw-n3-degradation-ledger-impl/packages/logix-devtools-react
+
+stdout | test/internal/ConvergeTimelinePane.test.tsx > 015 · Converge Performance Pane > light 降级不白屏；点击 audit 与 txn 高亮联动
+[Logix] diagnostic(warning) module=LogixDevtoolsModule
+
+stderr | test/internal/ConvergeTimelinePane.test.tsx > 015 · Converge Performance Pane > light 降级不白屏；点击 audit 与 txn 高亮联动
+  code=state_transaction::patch_contract_degraded message=Reducer writeback did not provide contract-level patch paths; degraded to explicit dirtyAll(customMutation).
+  hint: Prefer Logix.Module.Reducer.mutate(...) or sink patch paths to keep incremental scheduling evidence precise.
+
+stdout | test/internal/devtools-react.integration.test.tsx > @logixjs/devtools-react integration with @logixjs/react > collects Debug events and state updates from a React-driven module
+[Logix] diagnostic(warning) module=LogixDevtoolsModule
+
+stderr | test/internal/devtools-react.integration.test.tsx > @logixjs/devtools-react integration with @logixjs/react > collects Debug events and state updates from a React-driven module
+  code=state_transaction::patch_contract_degraded message=Reducer writeback did not provide contract-level patch paths; degraded to explicit dirtyAll(customMutation).
+  hint: Prefer Logix.Module.Reducer.mutate(...) or sink patch paths to keep incremental scheduling evidence precise.
+
+ ✓ test/internal/ConvergeTimelinePane.test.tsx (1 test) 263ms
+ ✓ test/internal/devtools-react.integration.test.tsx (6 tests) 262ms
+
+ Test Files  2 passed (2)
+      Tests  7 passed (7)
+   Start at  22:18:52
+   Duration  2.76s (transform 2.24s, setup 0ms, import 3.42s, tests 525ms, environment 1.20s)
+

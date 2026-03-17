@@ -41,9 +41,9 @@ describe('ReactPlatformLayer lifecycle integration', () => {
     // First ensure ModuleRuntime + Logic are started and lifecycle hooks are registered,
     // then trigger platform-level lifecycle via ReactPlatformLayer emit* helpers.
     const program = Effect.gen(function* () {
-      yield* LifecycleModule.tag
+      yield* Effect.service(LifecycleModule.tag).pipe(Effect.orDie)
 
-      const platform = yield* Logix.Platform.tag
+      const platform = yield* Effect.service(Logix.Platform.tag).pipe(Effect.orDie)
       yield* platform.emitSuspend()
       yield* platform.emitResume()
     })
@@ -59,7 +59,7 @@ describe('ReactPlatformLayer lifecycle integration', () => {
 
     const finalState = await runtime.runPromise(
       Effect.gen(function* () {
-        const module = yield* LifecycleModule.tag
+        const module = yield* Effect.service(LifecycleModule.tag).pipe(Effect.orDie)
         return yield* module.getState
       }),
     )

@@ -1,0 +1,77 @@
+{
+  "id": "2026-03-23-n-3-runtime-shell-impl",
+  "capturedAt": "2026-03-23",
+  "scope": "runtime-shell-boundary-attribution-contract",
+  "baseHead": "f8d015b5",
+  "decision": {
+    "status": "accepted_with_evidence",
+    "acceptedWithEvidence": true,
+    "mergeToMain": true,
+    "reasons": [
+      "RuntimeShellBoundaryDecision 合同已进入 runtime-shell ledger 真实样本",
+      "resolveShell.snapshot 与 operationRunner.txnHotContext 的 summary 已产出 attribution.reasonShare / boundaryClassShare / noSnapshotTopReason",
+      "typecheck、vitest 与 probe_next_blocker 全部通过"
+    ]
+  },
+  "constraints": {
+    "publicApiChange": false,
+    "touchedCorePath": true,
+    "writeScope": [
+      "packages/logix-core/src/internal/runtime/core/RuntimeShellBoundary.ts",
+      "packages/logix-core/test/internal/Runtime/_perf/runtimeShellLedger.v1.ts",
+      "packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.RuntimeSnapshot.ResolveShell.Perf.off.test.ts",
+      "packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts",
+      "specs/103-effect-v4-forward-cutover/perf/runtime-shell.ledger.schema.v1.json",
+      "specs/103-effect-v4-forward-cutover/perf/2026-03-21-n-2-runtime-shell-ledger.example.ledger.v1.ndjson",
+      "specs/103-effect-v4-forward-cutover/perf/2026-03-21-n-2-runtime-shell-ledger.example.ledger.summary.v1.json"
+    ],
+    "keptUntouched": [
+      "packages/logix-react/**",
+      "public API"
+    ]
+  },
+  "verification": {
+    "commands": [
+      "pnpm -C packages/logix-core typecheck:test",
+      "pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.RuntimeSnapshot.ResolveShell.Perf.off.test.ts test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts",
+      "python3 fabfile.py probe_next_blocker --json"
+    ],
+    "artifacts": {
+      "typecheck": "specs/103-effect-v4-forward-cutover/perf/2026-03-23-n-3-runtime-shell-impl.validation.typecheck.txt",
+      "vitest": "specs/103-effect-v4-forward-cutover/perf/2026-03-23-n-3-runtime-shell-impl.validation.vitest.txt",
+      "probeNextBlocker": "specs/103-effect-v4-forward-cutover/perf/2026-03-23-n-3-runtime-shell-impl.probe-next-blocker.json"
+    },
+    "attributionExamples": {
+      "resolveShell": {
+        "reasonShare": {
+          "snapshot_missing": 1
+        },
+        "boundaryClassShare": {
+          "snapshot_blocked": 1
+        },
+        "noSnapshotTopReason": "snapshot_missing"
+      },
+      "operationRunner": {
+        "reasonShare": {
+          "middleware_env_mismatch": 1
+        },
+        "boundaryClassShare": {
+          "policy_fallback": 1
+        },
+        "noSnapshotTopReason": "middleware_env_mismatch"
+      }
+    },
+    "probe": {
+      "status": "clear",
+      "softWatch": [
+        {
+          "suiteId": "externalStore.ingest.tickNotify",
+          "budgetId": "full/off<=1.25",
+          "gateClass": "soft",
+          "costClass": "devtools_projection",
+          "firstFailLevel": 128
+        }
+      ]
+    }
+  }
+}

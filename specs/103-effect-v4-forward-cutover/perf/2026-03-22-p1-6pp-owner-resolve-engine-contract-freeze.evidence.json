@@ -1,0 +1,35 @@
+{
+  "id": "2026-03-22-p1-6pp-owner-resolve-engine-contract-freeze",
+  "capturedAt": "2026-03-22",
+  "scope": "react-controlplane-p1-6pp-owner-resolve-engine-contract-freeze-docs-only",
+  "decision": {
+    "status": "docs_only_ready_for_impl",
+    "acceptedWithEvidence": false,
+    "mergeToMain": true,
+    "classification": "docs/evidence-only",
+    "reasons": [
+      "P1-6'' design-package 的 D1/D2/D3/D4 已冻结为单一合同包",
+      "四入口 read/readSync/warmSync/preload 已统一到 OwnerResolveRequested + reasonCode taxonomy",
+      "phase-trace 字段集与断言矩阵已冻结，可直接开独立 implementation line"
+    ]
+  },
+  "constraints": {
+    "publicApiChange": false,
+    "touchedCorePath": false,
+    "codeImplementationRetained": false,
+    "writeScope": [
+      "docs/perf/**",
+      "specs/103-effect-v4-forward-cutover/perf/**"
+    ]
+  },
+  "frozenItems": [
+    "OwnerResolveRequested unified contract",
+    "stale/commit reason matrix and reasonCode taxonomy",
+    "four-entry phase-trace stable fields",
+    "runtime-bootresolve-phase-trace assertion matrix"
+  ],
+  "artifacts": {
+    "contractFreeze": "docs/perf/2026-03-22-p1-6pp-owner-resolve-engine-contract-freeze.md",
+    "summary": "specs/103-effect-v4-forward-cutover/perf/2026-03-22-p1-6pp-owner-resolve-engine-contract-freeze.summary.md"
+  }
+}
