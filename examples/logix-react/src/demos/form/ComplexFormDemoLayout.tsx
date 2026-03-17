@@ -5,7 +5,7 @@ import { RuntimeProvider, useModule, useSelector } from '@logixjs/react'
 import * as Form from '@logixjs/form'
 import { useField, useFieldArray, useFormState } from '@logixjs/form/react'
 
-const ChannelSchema = Schema.Union(Schema.Literal('email'), Schema.Literal('phone'))
+const ChannelSchema = Schema.Union([Schema.Literal('email'), Schema.Literal('phone')])
 
 const ItemSchema = Schema.Struct({
   id: Schema.String,

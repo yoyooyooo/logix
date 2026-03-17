@@ -22,7 +22,7 @@ describe('Runtime.make(Module)', () => {
     })
 
     const readCount = Effect.gen(function* () {
-      const rt = yield* Counter.tag
+      const rt = yield* Effect.service(Counter.tag).pipe(Effect.orDie)
       return (yield* rt.getState).count
     }) as Effect.Effect<number, never, any>
 

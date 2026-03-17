@@ -1,4 +1,4 @@
-import type { Context } from 'effect'
+import { ServiceMap } from 'effect'
 
 /**
  * ServiceId contract (specs/078-module-service-manifest/contracts/service-id.md):
@@ -11,12 +11,12 @@ export type ServiceId = string
 const asNonEmptyString = (value: unknown): string | undefined =>
   typeof value === 'string' && value.length > 0 ? value : undefined
 
-export const fromTag = (tag: Context.Tag<any, any>): ServiceId | undefined => {
+export const fromTag = (tag: ServiceMap.Key<any, any>): ServiceId | undefined => {
   const anyTag = tag as any
   return asNonEmptyString(anyTag.key) ?? asNonEmptyString(anyTag.id) ?? asNonEmptyString(anyTag._id)
 }
 
-export const requireFromTag = (tag: Context.Tag<any, any>, options?: { readonly hint?: string }): ServiceId => {
+export const requireFromTag = (tag: ServiceMap.Key<any, any>, options?: { readonly hint?: string }): ServiceId => {
   const id = fromTag(tag)
   if (id) return id
 
@@ -26,3 +26,17 @@ export const requireFromTag = (tag: Context.Tag<any, any>, options?: { readonly 
 
   throw new Error(`[InvalidServiceId] Tag is missing a stable id (tag.key/tag.id/tag._id).\n${hint}`)
 }
+
+
+const tagCache = new Map<string, ServiceMap.Key<any, any>>()
+
+export const tagFromServiceId = <S = unknown>(serviceId: ServiceId): ServiceMap.Key<any, S> => {
+  const cached = tagCache.get(serviceId)
+  if (cached) return cached as ServiceMap.Key<any, S>
+  const created = ServiceMap.Service<any, S>(serviceId) as ServiceMap.Key<any, S>
+  tagCache.set(serviceId, created)
+  return created
+}
+
+export const moduleRuntimeTagFromModuleId = <S = unknown>(moduleId: string): ServiceMap.Key<any, S> =>
+  tagFromServiceId<S>(`@logixjs/Module/${moduleId}`)

@@ -1,5 +1,5 @@
 import * as Logix from '@logixjs/core'
-import { Duration, Effect, Fiber } from 'effect'
+import { Duration, Effect, Fiber, ServiceMap } from 'effect'
 import type { QuerySourceConfig, QueryTrigger } from '../../Traits.js'
 import { Engine } from '../../Engine.js'
 
@@ -41,7 +41,7 @@ export const autoTrigger = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
     type _State = Logix.StateOf<Sh> & { readonly queries: Record<string, unknown> }
     type QueryName = Extract<keyof typeof config.queries, string>
 
-    const pending = new Map<string, Fiber.RuntimeFiber<void, any>>()
+    const pending = new Map<string, Fiber.Fiber<void, any>>()
     const lastKeyHash = new Map<string, string | undefined>()
 
     const hydrateFromFreshCache = (
@@ -50,7 +50,7 @@ export const autoTrigger = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
       keyHash: string,
     ): Effect.Effect<boolean, never, any> =>
       Effect.gen(function* () {
-        const engineOpt = yield* Effect.serviceOption(Engine)
+        const engineOpt = yield* Effect.serviceOption(Engine as unknown as ServiceMap.Key<any, import('../../Engine.js').Engine>)
         if (engineOpt._tag === 'None') return false
 
         const engine = engineOpt.value
@@ -78,7 +78,7 @@ export const autoTrigger = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
         const prev = pending.get(name)
         if (!prev) return
         pending.delete(name)
-        yield* Fiber.interruptFork(prev)
+        yield* Fiber.interrupt(prev)
       })
 
     const sourcePathOf = (name: QueryName): string => `queries.${name}`
@@ -89,13 +89,13 @@ export const autoTrigger = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
     const scheduleDebounced = (name: QueryName, ms: number): Effect.Effect<void, never, any> =>
       Effect.gen(function* () {
         yield* cancelPending(name)
-        const fiber = yield* Effect.forkScoped(
-          Effect.sleep(Duration.millis(ms)).pipe(
-            Effect.zipRight(refresh(name)),
-            Effect.ensuring(Effect.sync(() => pending.delete(name))),
-            Effect.catchAllCause(() => Effect.void),
-          ),
-        )
+          const fiber = yield* Effect.forkScoped(
+            Effect.sleep(Duration.millis(ms)).pipe(
+              Effect.flatMap(() => refresh(name)),
+              Effect.ensuring(Effect.sync(() => pending.delete(name))),
+              Effect.catchCause(() => Effect.void),
+            ),
+          )
         pending.set(name, fiber)
       })
 
@@ -189,7 +189,7 @@ export const autoTrigger = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
 
     const refreshAll = (options?: { readonly force?: boolean }): Effect.Effect<void, never, any> =>
       Effect.forEach(Object.keys(config.queries), (name) =>
-        cancelPending(name).pipe(Effect.zipRight(refresh(name as QueryName, options))),
+        cancelPending(name).pipe(Effect.flatMap(() => refresh(name as QueryName, options))),
       ).pipe(Effect.asVoid)
 
     const setup = $.lifecycle.onStart(maybeAutoRefresh('mount'))
@@ -198,14 +198,16 @@ export const autoTrigger = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
       Effect.all(
         [
           // params/ui changes: handled by Query's default logic, avoiding scattered UI-side useEffect triggers.
-          $.onAction('setParams').runFork((action: any) =>
+          // Keep params/ui-driven auto refresh aligned with action stream order.
+          // `source.refresh` already forks IO internally, so the watcher itself can stay ordered.
+          $.onAction('setParams').run((action: any) =>
             Effect.gen(function* () {
               const state = (yield* $.state.read) as any
               const next = { ...state, params: action.payload }
               yield* maybeAutoRefresh('keyChange', next)
             }),
           ),
-          $.onAction('setUi').runFork((action: any) =>
+          $.onAction('setUi').run((action: any) =>
             Effect.gen(function* () {
               const state = (yield* $.state.read) as any
               const next = { ...state, ui: action.payload }

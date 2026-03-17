@@ -21,9 +21,9 @@ const toTodo = (row: TodoRow): Todo => ({
 export const TodoRepoLive: Layer.Layer<TodoRepo, never, Db> = Layer.effect(
   TodoRepo,
   Effect.gen(function* () {
-    const db = yield* Db
+    const db = yield* Effect.service(Db)
 
-    const ensureTable = yield* Effect.once(
+    const ensureTable = yield* Effect.cached(
       db
         .query(
           `create table if not exists todos (
@@ -38,7 +38,7 @@ export const TodoRepoLive: Layer.Layer<TodoRepo, never, Db> = Layer.effect(
 
     const create: TodoRepoService['create'] = (input: TodoCreateInput) =>
       ensureTable.pipe(
-        Effect.zipRight(
+        Effect.andThen(
           db
             .query<TodoRow>(
               `insert into todos (title, completed)
@@ -48,7 +48,7 @@ export const TodoRepoLive: Layer.Layer<TodoRepo, never, Db> = Layer.effect(
             )
             .pipe(
               Effect.flatMap((rows) =>
-                rows[0] ? Effect.succeed(toTodo(rows[0])) : Effect.dieMessage('insert should return one row'),
+                rows[0] ? Effect.succeed(toTodo(rows[0])) : Effect.die(new Error('insert should return one row')),
               ),
             ),
         ),
@@ -56,7 +56,7 @@ export const TodoRepoLive: Layer.Layer<TodoRepo, never, Db> = Layer.effect(
 
     const get: TodoRepoService['get'] = (id: number) =>
       ensureTable.pipe(
-        Effect.zipRight(
+        Effect.andThen(
           db
             .query<TodoRow>(
               `select id, title, completed, created_at::text as "createdAt"
@@ -64,12 +64,12 @@ export const TodoRepoLive: Layer.Layer<TodoRepo, never, Db> = Layer.effect(
               where id = $1`,
               [id],
             )
-            .pipe(Effect.map((rows) => Option.fromNullable(rows[0]).pipe(Option.map(toTodo)))),
+            .pipe(Effect.map((rows) => Option.fromNullishOr(rows[0]).pipe(Option.map(toTodo)))),
         ),
       )
 
     const list: TodoRepoService['list'] = ensureTable.pipe(
-      Effect.zipRight(
+      Effect.andThen(
         db
           .query<TodoRow>(
             `select id, title, completed, created_at::text as "createdAt"
@@ -82,7 +82,7 @@ export const TodoRepoLive: Layer.Layer<TodoRepo, never, Db> = Layer.effect(
 
     const update: TodoRepoService['update'] = (id: number, patch: TodoUpdateInput) =>
       ensureTable.pipe(
-        Effect.zipRight(
+        Effect.andThen(
           db
             .query<TodoRow>(
               `update todos
@@ -93,13 +93,13 @@ export const TodoRepoLive: Layer.Layer<TodoRepo, never, Db> = Layer.effect(
               returning id, title, completed, created_at::text as "createdAt"`,
               [id, patch.title ?? null, patch.completed ?? null],
             )
-            .pipe(Effect.map((rows) => Option.fromNullable(rows[0]).pipe(Option.map(toTodo)))),
+            .pipe(Effect.map((rows) => Option.fromNullishOr(rows[0]).pipe(Option.map(toTodo)))),
         ),
       )
 
     const remove: TodoRepoService['remove'] = (id: number) =>
       ensureTable.pipe(
-        Effect.zipRight(
+        Effect.andThen(
           db
             .query<{ readonly id: number }>(
               `delete from todos

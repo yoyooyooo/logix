@@ -1,6 +1,6 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Chunk, Context, Effect, Fiber, Layer, Queue, PubSub, Schema, Stream, Deferred } from 'effect'
+import { Chunk, Effect, Fiber, Layer, Queue, PubSub, Schema, Stream, Deferred, ServiceMap } from 'effect'
 import * as Logix from '../../../src/index.js'
 import * as ModuleRuntimeImpl from '../../../src/internal/runtime/ModuleRuntime.js'
 import type { RuntimeInternals } from '../../../src/internal/runtime/core/RuntimeInternals.js'
@@ -30,7 +30,7 @@ const setupActionCollector = <A>(hub: PubSub.PubSub<A>, count: number) =>
         const subscription = yield* PubSub.subscribe(hub)
         yield* Deferred.succeed(ready, undefined)
         return yield* Effect.all(
-          Array.from({ length: count }, () => Queue.take(subscription)),
+          Array.from({ length: count }, () => PubSub.take(subscription)),
           { concurrency: 'unbounded' },
         )
       }),
@@ -38,6 +38,37 @@ const setupActionCollector = <A>(hub: PubSub.PubSub<A>, count: number) =>
 
     yield* Deferred.await(ready)
     return fiber
+  })
+
+
+const waitUntil = <A>(
+  read: Effect.Effect<A, never, any>,
+  predicate: (value: A) => boolean,
+): Effect.Effect<A, Error, any> =>
+  Effect.gen(function* () {
+    for (let i = 0; i < 400; i += 1) {
+      const value = yield* read
+      if (predicate(value)) return value
+      yield* Effect.sleep('5 millis')
+    }
+    return yield* Effect.fail(new Error('timeout waiting for bound state'))
+  })
+
+const waitUntilStable = <A>(
+  read: Effect.Effect<A, never, any>,
+  predicate: (value: A) => boolean,
+  rounds = 20,
+): Effect.Effect<A, Error, any> =>
+  Effect.gen(function* () {
+    const value = yield* waitUntil(read, predicate)
+    for (let i = 0; i < rounds; i += 1) {
+      yield* Effect.sleep('5 millis')
+      const next = yield* read
+      if (!predicate(next)) {
+        return yield* Effect.fail(new Error('bound state changed again after reaching target'))
+      }
+    }
+    return value
   })
 
 describe('Bound API (public)', () => {
@@ -73,24 +104,65 @@ describe('Bound API (public)', () => {
     const runtime = Logix.Runtime.make(impl, {
       layer: Layer.empty as Layer.Layer<any, never, never>,
     })
-
     const program = Effect.gen(function* () {
-      const rt = yield* CounterModule.tag
+      const rt = yield* Effect.service(CounterModule.tag).pipe(Effect.orDie)
 
       // Wait for logic subscriptions to be installed.
       yield* Effect.sleep('10 millis')
 
       // inc：update( +1 ) + mutate( +4 ) = +5
       yield* rt.dispatch({ _tag: 'inc', payload: undefined })
-      yield* Effect.sleep('10 millis')
-      let state = yield* rt.getState
+      let state = yield* waitUntilStable(rt.getState as any, (s: any) => s.count === 5)
       expect(state.count).toBe(5)
 
       // setValue: tag-based onAction + map + update
       yield* rt.dispatch({ _tag: 'setValue', payload: 'hello' })
-      yield* Effect.sleep('10 millis')
-      state = yield* rt.getState
+      state = yield* waitUntil(rt.getState as any, (s: any) => s.value === 'HELLO')
       expect(state.value).toBe('HELLO')
+    })
+
+    await runtime.runPromise(program as Effect.Effect<void, never, any>)
+  })
+
+  it('should settle repeated matching dispatches without late duplicate commits', async () => {
+    const CounterLogic = CounterModule.logic(($) =>
+      Effect.gen(function* () {
+        yield* Effect.all(
+          [
+            $.onAction('inc').update((state) => ({
+              ...state,
+              count: state.count + 1,
+            })),
+            $.onAction((a): a is Logix.ActionOf<typeof CounterModule.shape> => a._tag === 'inc').mutate((draft) => {
+              draft.count += 4
+            }),
+          ],
+          { concurrency: 'unbounded' },
+        )
+      }),
+    )
+
+    const impl = CounterModule.implement({
+      initial: { count: 0, value: 'init' },
+      logics: [CounterLogic],
+    })
+
+    const runtime = Logix.Runtime.make(impl, {
+      layer: Layer.empty as Layer.Layer<any, never, never>,
+    })
+
+    const program = Effect.gen(function* () {
+      const rt = yield* Effect.service(CounterModule.tag).pipe(Effect.orDie)
+
+      yield* Effect.sleep('10 millis')
+
+      yield* Effect.all(
+        Array.from({ length: 3 }, () => rt.dispatch({ _tag: 'inc', payload: undefined })),
+        { concurrency: 'unbounded' },
+      )
+
+      const state = yield* waitUntilStable(rt.getState as any, (s: any) => s.count === 15)
+      expect(state.count).toBe(15)
     })
 
     await runtime.runPromise(program as Effect.Effect<void, never, any>)
@@ -128,7 +200,7 @@ describe('Bound API (public)', () => {
 
     const program = Effect.gen(function* () {
       // Entering the logic scope is enough to execute match/matchTag.
-      yield* CounterModule.tag
+      yield* Effect.service(CounterModule.tag).pipe(Effect.orDie)
     })
 
     await runtime.runPromise(program as Effect.Effect<void, never, any>)
@@ -192,9 +264,9 @@ describe('Bound API (public)', () => {
     const sourceLogic = Source.logic(($) =>
       Effect.gen(function* () {
         const $Target = yield* $.use(Target)
-        yield* $.on($Target.changes((s) => s.count)).run({
-          effect: (count: number) => $.state.update((prev) => ({ ...prev, lastCount: count })),
-        })
+        yield* $.on($Target.changes((s) => s.count)).run((count) =>
+          $.state.update((prev) => ({ ...prev, lastCount: count })),
+        )
       }),
     )
 
@@ -214,8 +286,8 @@ describe('Bound API (public)', () => {
     try {
       await runtime.runPromise(
         Effect.gen(function* () {
-          const sourceRuntime = yield* Source.tag
-          const targetRuntime = yield* Target.tag
+          const sourceRuntime = yield* Effect.service(Source.tag).pipe(Effect.orDie)
+          const targetRuntime = yield* Effect.service(Target.tag).pipe(Effect.orDie)
 
           // Wait for logic subscriptions to be installed.
           yield* Effect.sleep('50 millis')
@@ -261,13 +333,12 @@ describe('Bound API (public)', () => {
 
         yield* $.on($Counter.actions$)
           .filter((a: any) => a._tag === 'inc')
-          .run({
-            effect: () =>
-              $.state.update((s) => ({
-                ...s,
-                logs: [...s.logs, 'counter/inc'],
-              })),
-          })
+          .run(() =>
+            $.state.update((s) => ({
+              ...s,
+              logs: [...s.logs, 'counter/inc'],
+            })),
+          )
       }),
     )
 
@@ -287,8 +358,8 @@ describe('Bound API (public)', () => {
     try {
       await runtime.runPromise(
         Effect.gen(function* () {
-          const loggerRuntime = yield* Logger.tag
-          const counterRuntime = yield* Counter.tag
+          const loggerRuntime = yield* Effect.service(Logger.tag).pipe(Effect.orDie)
+          const counterRuntime = yield* Effect.service(Counter.tag).pipe(Effect.orDie)
 
           // Wait for logic subscriptions to be installed.
           yield* Effect.sleep('50 millis')
@@ -350,8 +421,8 @@ describe('Bound API (public)', () => {
     )
 
     const program = Effect.gen(function* () {
-      const source = yield* SourceModule.tag
-      const consumer = yield* ConsumerModule.tag
+      const source = yield* Effect.service(SourceModule.tag).pipe(Effect.orDie)
+      const consumer = yield* Effect.service(ConsumerModule.tag).pipe(Effect.orDie)
 
       expect((yield* consumer.getState).received).toBe(0)
 
@@ -388,7 +459,7 @@ describe('Bound API (public)', () => {
   })
 
   it('should construct services() and advanced onAction builders', () => {
-    const ServiceTag = Context.GenericTag<{ readonly label: string }>('@logixjs/test/BoundService')
+    const ServiceTag = ServiceMap.Service<{ readonly label: string }>('@logixjs/test/BoundService')
 
     const AdvancedModule = Logix.Module.make('BoundAdvanced', {
       state: Schema.Struct({ count: Schema.Number }),
@@ -438,6 +509,10 @@ describe('Bound API (public)', () => {
       txn: {
         instrumentation: 'light',
         registerReducer: () => {},
+        registerActionStateWriteback: () => {},
+        dispatchWithOriginOverride: () => Effect.void,
+        dispatchLowPriorityWithOriginOverride: () => Effect.void,
+        dispatchBatchWithOriginOverride: () => Effect.void,
         runWithStateTransaction: (_origin, body) => body(),
         updateDraft: () => {},
         recordStatePatch: () => {},
@@ -497,7 +572,13 @@ describe('Bound API (public)', () => {
     const $ = Logix.Bound.make(AdvancedModule.shape, dummyRuntime)
 
     const svcEffect = $.use(ServiceTag)
-    expect(svcEffect).toBe(ServiceTag)
+    const resolvedService = Effect.runSync(
+      svcEffect.pipe(
+        Effect.provideService(ServiceTag, { label: 'svc' }),
+        Effect.provideService(AdvancedModule.tag, dummyRuntime),
+      ),
+    )
+    expect(resolvedService).toEqual({ label: 'svc' })
 
     const builderProp = $.onAction.inc
     const builderValue = $.onAction({
@@ -509,6 +590,58 @@ describe('Bound API (public)', () => {
     expect(typeof (builderProp as any).run).toBe('function')
     expect(typeof (builderValue as any).run).toBe('function')
     expect(typeof (builderSchema as any).run).toBe('function')
+  })
+
+  it('should ignore invalid actions for $.onAction(schema) without terminating the stream', async () => {
+    const SchemaModule = Logix.Module.make('BoundSchemaSafe', {
+      state: Schema.Struct({ count: Schema.Number }),
+      actions: {
+        inc: Schema.Number,
+      },
+    })
+
+    const IncActionSchema = Schema.Struct({
+      _tag: Schema.Literal('inc'),
+      payload: Schema.Number,
+    })
+
+    const SchemaLogic = SchemaModule.logic(($) =>
+      Effect.gen(function* () {
+        yield* $.onAction(IncActionSchema).update((state, action) => ({
+          ...state,
+          count: state.count + action.payload,
+        }))
+      }),
+    )
+
+    const impl = SchemaModule.implement({
+      initial: { count: 0 },
+      logics: [SchemaLogic],
+    })
+
+    const runtime = Logix.Runtime.make(impl, {
+      layer: Layer.empty as Layer.Layer<any, never, never>,
+    })
+
+    const program = Effect.gen(function* () {
+      const rt = yield* Effect.service(SchemaModule.tag).pipe(Effect.orDie)
+
+      yield* Effect.sleep('50 millis')
+
+      yield* rt.dispatch({ _tag: 'inc', payload: 'oops' } as any)
+      yield* Effect.sleep('20 millis')
+      expect((yield* rt.getState).count).toBe(0)
+
+      yield* rt.dispatch({ _tag: 'inc', payload: 2 } as any)
+      yield* Effect.sleep('50 millis')
+      expect((yield* rt.getState).count).toBe(2)
+    })
+
+    try {
+      await runtime.runPromise(program as Effect.Effect<void, never, any>)
+    } finally {
+      await runtime.dispose()
+    }
   })
 
   it('should dispatch actions via $.dispatchers', async () => {

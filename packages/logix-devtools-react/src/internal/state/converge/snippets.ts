@@ -1,4 +1,5 @@
 import type { ConvergeActionSnippet } from './model.js'
+// Snippet text only: runtime hot-switch APIs are now effectful and should be executed via Effect.runPromise / yield*.
 
 export type TraitConvergeRequestedMode = 'auto' | 'full' | 'dirty'
 
@@ -26,9 +27,9 @@ export const makeTraitConvergeOverrideSnippets = (params: {
     },
   })})`
 
-  const moduleOverride = `Logix.Runtime.setTraitConvergeOverride(runtime, ${stableStringify(moduleId)}, ${stableStringify(
+  const moduleOverride = `await Effect.runPromise(Logix.Runtime.setTraitConvergeOverride(runtime, ${stableStringify(moduleId)}, ${stableStringify(
     patch,
-  )})`
+  )}))`
 
   return [
     {

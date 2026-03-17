@@ -1,5 +1,5 @@
 import type * as EffectOp from '@logixjs/core/EffectOp'
-import { Effect, Option } from 'effect'
+import { Effect, Option, ServiceMap } from 'effect'
 import { Engine } from '../../Engine.js'
 import type { Engine as EngineService } from '../../Engine.js'
 
@@ -41,7 +41,7 @@ export const middleware = (config?: MiddlewareConfig): EffectOp.Middleware =>
         return cachedEngine.fetch({ resourceId, keyHash, effect: op.effect as any })
       }
 
-      return Effect.serviceOption(Engine).pipe(
+      return Effect.serviceOption(Engine as unknown as ServiceMap.Key<any, EngineService>).pipe(
         Effect.flatMap((engineOpt) => {
           if (Option.isNone(engineOpt)) {
             return Effect.fail(

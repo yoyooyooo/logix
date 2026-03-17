@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "@logixjs/core": "workspace:*",
-    "effect": "^3.19.8"
+    "effect": "4.0.0-beta.28"
   },
   "devDependencies": {
     "@types/react": "^19.2.2",

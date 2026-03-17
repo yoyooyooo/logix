@@ -1,5 +1,5 @@
 import * as Logix from '@logixjs/core'
-import { Effect, Stream } from 'effect'
+import { Effect, Queue, Stream } from 'effect'
 import {
   clearDevtoolsEvents,
   clearDevtoolsSnapshotOverride,
@@ -21,26 +21,6 @@ const asNonEmptyString = (value: unknown): string | undefined =>
 
 const asFiniteNumber = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isFinite(value) ? value : undefined
-
-const readTraceLookupKey = (
-  meta: Record<string, unknown>,
-): { readonly staticIrDigest: string; readonly nodeId?: number; readonly stepId?: string } | undefined => {
-  const raw = (meta as any).traceLookupKey
-  if (!isRecord(raw)) return undefined
-  const staticIrDigest = asNonEmptyString(raw.staticIrDigest)
-  if (!staticIrDigest) return undefined
-  const nodeId =
-    typeof raw.nodeId === 'number' && Number.isFinite(raw.nodeId) && raw.nodeId >= 0 ? Math.floor(raw.nodeId) : undefined
-  const stepId = asNonEmptyString(raw.stepId)
-  return {
-    staticIrDigest,
-    ...(nodeId !== undefined ? { nodeId } : null),
-    ...(stepId ? { stepId } : null),
-  }
-}
-
-const readStaticIrDigest = (meta: Record<string, unknown>): string | undefined =>
-  readTraceLookupKey(meta)?.staticIrDigest ?? asNonEmptyString((meta as any).staticIrDigest)
 
 type ConvergeFieldPathsByDigest = ReadonlyMap<string, ReadonlyArray<ReadonlyArray<string>>>
 
@@ -95,21 +75,56 @@ const readConvergeFieldPathsByDigest = (summary: unknown): ConvergeFieldPathsByD
   return out
 }
 
+const isPrefixPath = (prefix: ReadonlyArray<string>, path: ReadonlyArray<string>): boolean => {
+  if (prefix.length > path.length) return false
+  for (let i = 0; i < prefix.length; i++) {
+    if (prefix[i] !== path[i]) return false
+  }
+  return true
+}
+
+const minimizeRootPaths = (paths: ReadonlyArray<ReadonlyArray<string>>): ReadonlyArray<ReadonlyArray<string>> => {
+  const roots: Array<ReadonlyArray<string>> = []
+  for (const path of paths) {
+    let redundant = false
+    for (const existing of roots) {
+      if (isPrefixPath(existing, path)) {
+        redundant = true
+        break
+      }
+    }
+    if (redundant) continue
+
+    let nextLen = 0
+    for (let i = 0; i < roots.length; i++) {
+      const existing = roots[i]!
+      if (isPrefixPath(path, existing)) continue
+      roots[nextLen] = existing
+      nextLen += 1
+    }
+    roots.length = nextLen
+    roots.push(path)
+  }
+  return roots
+}
+
 const resolveRootPaths = (args: {
-  readonly rootIds: unknown
+  readonly ids: unknown
   readonly fieldPaths: ReadonlyArray<ReadonlyArray<string>>
 }): ReadonlyArray<ReadonlyArray<string>> | undefined => {
-  const rootIds = args.rootIds
-  if (!Array.isArray(rootIds) || rootIds.length === 0) return undefined
+  const ids = args.ids
+  if (!Array.isArray(ids) || ids.length === 0) return undefined
 
-  const out: Array<ReadonlyArray<string>> = []
-  for (const rawId of rootIds) {
+  const candidates: Array<ReadonlyArray<string>> = []
+  for (const rawId of ids) {
     if (!Number.isInteger(rawId)) continue
     const id = rawId
     if (id < 0 || id >= args.fieldPaths.length) continue
-    out.push(args.fieldPaths[id]!)
+    candidates.push(args.fieldPaths[id]!)
   }
-  return out.length > 0 ? out : undefined
+  if (candidates.length === 0) return undefined
+  const minimized = minimizeRootPaths(candidates)
+  return minimized.length > 0 ? minimized : undefined
 }
 
 const stripRootPathsField = (value: Record<string, unknown>): Record<string, unknown> => {
@@ -159,7 +174,7 @@ const materializeDirtyRootPathsFromCanonical = (args: {
   const meta = isRecord(args.event.meta) ? args.event.meta : undefined
   if (!meta) return args.event
 
-  const staticIrDigest = readStaticIrDigest(meta)
+  const staticIrDigest = asNonEmptyString((meta as any).staticIrDigest)
   if (!staticIrDigest) return args.event
 
   const fieldPaths = args.fieldPathsByDigest.get(staticIrDigest)
@@ -168,13 +183,8 @@ const materializeDirtyRootPathsFromCanonical = (args: {
   if (args.event.kind === 'state' && args.event.label === 'state:update') {
     const dirtySet = isRecord((meta as any).dirtySet) ? ((meta as any).dirtySet as Record<string, unknown>) : undefined
     if (!dirtySet) return args.event
-    const lookupKey = readTraceLookupKey(meta)
-    const rootIds = Array.isArray(dirtySet.rootIds)
-      ? dirtySet.rootIds
-      : lookupKey && lookupKey.nodeId !== undefined
-        ? [lookupKey.nodeId]
-        : undefined
-    const rootPaths = resolveRootPaths({ rootIds, fieldPaths })
+    const ids = Object.prototype.hasOwnProperty.call(dirtySet, 'pathIds') ? (dirtySet as any).pathIds : (dirtySet as any).rootIds
+    const rootPaths = resolveRootPaths({ ids, fieldPaths })
     if (!rootPaths) return args.event
 
     return {
@@ -192,13 +202,7 @@ const materializeDirtyRootPathsFromCanonical = (args: {
   if (args.event.kind === 'trait:converge') {
     const dirty = isRecord((meta as any).dirty) ? ((meta as any).dirty as Record<string, unknown>) : undefined
     if (!dirty) return args.event
-    const lookupKey = readTraceLookupKey(meta)
-    const rootIds = Array.isArray(dirty.rootIds)
-      ? dirty.rootIds
-      : lookupKey && lookupKey.nodeId !== undefined
-        ? [lookupKey.nodeId]
-        : undefined
-    const rootPaths = resolveRootPaths({ rootIds, fieldPaths })
+    const rootPaths = resolveRootPaths({ ids: (dirty as any).rootIds, fieldPaths })
     if (!rootPaths) return args.event
 
     return {
@@ -218,16 +222,20 @@ const materializeDirtyRootPathsFromCanonical = (args: {
 
 // Helper to create a stream from DOM events
 const fromDomEvent = <K extends keyof WindowEventMap>(event: K): Stream.Stream<WindowEventMap[K]> =>
-  Stream.async<WindowEventMap[K]>((emit) => {
-    const handler = (e: WindowEventMap[K]) => emit.single(e)
-    window.addEventListener(event, handler)
-    return Effect.sync(() => window.removeEventListener(event, handler))
-  })
+  Stream.callback<WindowEventMap[K]>((queue) =>
+    Effect.gen(function* () {
+      const handler = (e: WindowEventMap[K]) => {
+        Queue.offerUnsafe(queue, e)
+      }
+      window.addEventListener(event, handler)
+      yield* Effect.addFinalizer(() => Effect.sync(() => window.removeEventListener(event, handler)))
+    }),
+  )
 
 export const DevtoolsLogic = DevtoolsModule.logic<DevtoolsSnapshotStore>(($) => ({
   setup: $.lifecycle.onStart(
     Effect.gen(function* () {
-      const snapshotStore = yield* DevtoolsSnapshotStore
+      const snapshotStore = yield* $.use(DevtoolsSnapshotStore)
 
       // Initialization: sync once with the current snapshot.
       const initialSnapshot = yield* snapshotStore.get
@@ -241,7 +249,7 @@ export const DevtoolsLogic = DevtoolsModule.logic<DevtoolsSnapshotStore>(($) => 
 
   // run section: initialize snapshot subscription + register all onAction watchers and dragging logic.
   run: Effect.gen(function* () {
-    const snapshotStore = yield* DevtoolsSnapshotStore
+    const snapshotStore = yield* $.use(DevtoolsSnapshotStore)
 
     // Subscribe to Snapshot changes: recompute DevtoolsState on every Snapshot update.
     yield* $.on(snapshotStore.changes).runFork((snapshot) =>
@@ -373,11 +381,6 @@ export const DevtoolsLogic = DevtoolsModule.logic<DevtoolsSnapshotStore>(($) => 
 
         const snapshot: DevtoolsSnapshot = {
           snapshotToken: 0,
-          projection: {
-            tier: 'full',
-            degraded: false,
-            visibleFields: ['instances', 'events', 'latestStates', 'latestTraitSummaries', 'exportBudget'],
-          },
           instances: new Map(),
           events,
           latestStates: new Map(),

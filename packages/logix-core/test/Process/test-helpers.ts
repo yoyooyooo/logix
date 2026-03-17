@@ -1,4 +1,4 @@
-import { Context, Effect, Exit, Layer, Scope } from 'effect'
+import { Effect, Exit, Layer, Scope, ServiceMap } from 'effect'
 import * as Logix from '../../src/index.js'
 import * as ProcessRuntime from '../../src/internal/runtime/core/process/ProcessRuntime.js'
 
@@ -6,9 +6,9 @@ export const withProcessRuntime = (layer: Layer.Layer<any, any, any>): Layer.Lay
   Layer.provideMerge(ProcessRuntime.layer())(layer)
 
 export const withProcessRuntimeScope = <A, E = never, R = never>(options: {
-  readonly layer: Layer.Layer<any, any, any>
-  readonly run: (params: {
-    readonly env: Context.Context<any>
+    readonly layer: Layer.Layer<any, any, any>
+    readonly run: (params: {
+    readonly env: ServiceMap.ServiceMap<any>
     readonly runtime: ProcessRuntime.ProcessRuntime
   }) => Effect.Effect<A, E, R>
 }): Effect.Effect<A, E, R> =>
@@ -16,12 +16,9 @@ export const withProcessRuntimeScope = <A, E = never, R = never>(options: {
     const scope = yield* Scope.make()
     try {
       const env = yield* Layer.buildWithScope(options.layer, scope)
-      const runtime = Context.get(
-        env as Context.Context<any>,
-        ProcessRuntime.ProcessRuntimeTag as any,
-      ) as ProcessRuntime.ProcessRuntime
+      const runtime = ServiceMap.get(env as ServiceMap.ServiceMap<any>, ProcessRuntime.ProcessRuntimeTag as any) as ProcessRuntime.ProcessRuntime
       return yield* options.run({
-        env: env as Context.Context<any>,
+        env: env as ServiceMap.ServiceMap<any>,
         runtime,
       })
     } finally {
@@ -61,7 +58,7 @@ export const collectProcessErrorEvent = (options: {
             break
           }
           result = { errorEvent: undefined, events }
-          yield* Effect.yieldNow()
+          yield* Effect.yieldNow
         }
 
         if (options.onBeforeClose) {

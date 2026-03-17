@@ -1,4 +1,5 @@
 import React from 'react'
+import { Effect } from 'effect'
 import * as Logix from '@logixjs/core'
 import type { ModuleRef, ModuleRefOfModule, ModuleRefOfTag } from './internal/store/ModuleRef.js'
 import { useModule } from './internal/hooks/useModule.js'
@@ -76,7 +77,9 @@ const makeModuleScope = <Id extends string, Sh extends Logix.AnyModuleShape, R =
 
   const getRegistryOrThrow = (runtime: unknown, where: string): Logix.ScopeRegistry.ScopeRegistry => {
     try {
-      const registry = (runtime as any).runSync(Logix.ScopeRegistry.ScopeRegistryTag) as
+      const registry = (runtime as any).runSync(
+        Effect.service(Logix.ScopeRegistry.ScopeRegistryTag).pipe(Effect.orDie),
+      ) as
         | Logix.ScopeRegistry.ScopeRegistry
         | undefined
       if (!registry) {

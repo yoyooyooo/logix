@@ -1,4 +1,5 @@
-import type { Duration, Effect, TestClock } from 'effect'
+import type { Duration, Effect } from 'effect'
+import type { TestClock } from 'effect/testing'
 import type * as Logix from '@logixjs/core'
 import type { ProgramRunContext } from '@logixjs/core/Runtime'
 import type { WaitUntilOptions } from '../utils/waitUntil.js'
@@ -14,7 +15,7 @@ export interface TestApi<Sh extends Logix.AnyModuleShape> {
    *   for time to move forward.
    * - The runner does not implicitly keep-alive / auto-advance time, keeping time semantics controllable and explainable.
    */
-  readonly advance: (duration: Duration.DurationInput) => Effect.Effect<void, never, TestClock.TestClock>
+  readonly advance: (duration: Duration.Input) => Effect.Effect<void, never, TestClock.TestClock>
   readonly assert: {
     readonly state: (
       predicate: (s: Logix.StateOf<Sh>) => boolean,

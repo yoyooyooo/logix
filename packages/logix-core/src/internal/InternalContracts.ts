@@ -1,4 +1,4 @@
-import { Effect, Layer } from 'effect'
+import { Effect, Layer, Option } from 'effect'
 import type { ManagedRuntime } from 'effect'
 import type { ImportsScope } from './runtime/core/RuntimeInternals.js'
 import type { StateTransactionInstrumentation } from './runtime/core/env.js'
@@ -55,7 +55,12 @@ export const getRuntimeStore = (runtime: ManagedRuntime.ManagedRuntime<any, any>
   const cached = RUNTIME_STORE_CACHE.get(key)
   if (cached) return cached
 
-  const store = runtime.runSync(Effect.serviceOptional(RuntimeStoreTag) as any) as RuntimeStore
+  const storeOpt = runtime.runSync(Effect.serviceOption(RuntimeStoreTag) as any) as Option.Option<unknown>
+  if (!Option.isSome(storeOpt)) {
+    throw new Error('[Logix][InternalContracts] RuntimeStoreTag is not available on the provided runtime')
+  }
+
+  const store = storeOpt.value as RuntimeStore
   RUNTIME_STORE_CACHE.set(key, store)
   return store
 }
@@ -67,8 +72,8 @@ export const getHostScheduler = (runtime: ManagedRuntime.ManagedRuntime<any, any
   const cached = HOST_SCHEDULER_CACHE.get(key)
   if (cached) return cached
 
-  const resolved = runtime.runSync(Effect.serviceOptional(HostSchedulerTag) as any) as HostScheduler | undefined
-  const scheduler = resolved ?? getGlobalHostScheduler()
+  const resolved = runtime.runSync(Effect.serviceOption(HostSchedulerTag) as any) as Option.Option<unknown>
+  const scheduler = Option.isSome(resolved) ? (resolved.value as HostScheduler) : getGlobalHostScheduler()
   HOST_SCHEDULER_CACHE.set(key, scheduler)
   return scheduler
 }
@@ -131,11 +136,12 @@ export const applyTransactionSnapshot = (
   mode: 'before' | 'after',
 ): Effect.Effect<void, never, any> => getRuntimeInternals(runtime).txn.applyTransactionSnapshot(txnId, mode)
 
-export const withCurrentLinkId = (linkId: string) => Effect.locally(EffectOpCore.currentLinkId, linkId)
+export const withCurrentLinkId = <A, E, R>(effect: Effect.Effect<A, E, R>, linkId: string): Effect.Effect<A, E, R> =>
+  Effect.provideService(effect, EffectOpCore.currentLinkId, linkId)
 
 /** 049: Exec VM (core-ng) switch: enable the Exec VM hot path within the current Effect scope. */
 export const withExecVmMode = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-  Effect.locally(currentExecVmMode, true)(effect)
+  Effect.provideService(effect, currentExecVmMode, true)
 
 /** 049: Exec VM (core-ng) switch: enable/disable the Exec VM hot path within the current runtime scope. */
 export const execVmModeLayer = (enabled: boolean): Layer.Layer<any, never, never> =>
@@ -150,7 +156,7 @@ export const getProcessInstallations = (options?: {
   ProcessRuntime.ProcessRuntimeTag
 > =>
   Effect.gen(function* () {
-    const rt = yield* ProcessRuntime.ProcessRuntimeTag
+    const rt = yield* Effect.service(ProcessRuntime.ProcessRuntimeTag)
     return yield* rt.listInstallations(options)
   })
 
@@ -162,7 +168,7 @@ export const getProcessInstanceStatus = (
   ProcessRuntime.ProcessRuntimeTag
 > =>
   Effect.gen(function* () {
-    const rt = yield* ProcessRuntime.ProcessRuntimeTag
+    const rt = yield* Effect.service(ProcessRuntime.ProcessRuntimeTag)
     return yield* rt.getInstanceStatus(processInstanceId)
   })
 
@@ -171,7 +177,7 @@ export const controlProcessInstance = (
   request: import('./runtime/core/process/protocol.js').ProcessControlRequest,
 ): Effect.Effect<void, never, ProcessRuntime.ProcessRuntimeTag> =>
   Effect.gen(function* () {
-    const rt = yield* ProcessRuntime.ProcessRuntimeTag
+    const rt = yield* Effect.service(ProcessRuntime.ProcessRuntimeTag)
     yield* rt.controlInstance(processInstanceId, request)
   })
 
@@ -179,7 +185,7 @@ export const deliverProcessPlatformEvent = (
   event: import('./runtime/core/process/protocol.js').ProcessPlatformEvent,
 ): Effect.Effect<void, never, ProcessRuntime.ProcessRuntimeTag> =>
   Effect.gen(function* () {
-    const rt = yield* ProcessRuntime.ProcessRuntimeTag
+    const rt = yield* Effect.service(ProcessRuntime.ProcessRuntimeTag)
     yield* rt.deliverPlatformEvent(event)
   })
 
@@ -189,7 +195,7 @@ export const getProcessEvents = (): Effect.Effect<
   ProcessRuntime.ProcessRuntimeTag
 > =>
   Effect.gen(function* () {
-    const rt = yield* ProcessRuntime.ProcessRuntimeTag
+    const rt = yield* Effect.service(ProcessRuntime.ProcessRuntimeTag)
     return yield* rt.getEventsSnapshot()
   })
 
@@ -203,6 +209,6 @@ export const installProcess = <E, R>(
   },
 ): Effect.Effect<ProcessProtocol.ProcessInstallation | undefined, never, ProcessRuntime.ProcessRuntimeTag | R> =>
   Effect.gen(function* () {
-    const rt = yield* ProcessRuntime.ProcessRuntimeTag
+    const rt = yield* Effect.service(ProcessRuntime.ProcessRuntimeTag)
     return yield* rt.install(process, options)
   })

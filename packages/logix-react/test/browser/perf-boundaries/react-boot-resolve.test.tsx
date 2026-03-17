@@ -7,6 +7,7 @@ import matrix from '@logixjs/perf-evidence/assets/matrix.json'
 import { RuntimeProvider, type RuntimeProviderPolicyMode, type YieldStrategy } from '../../../src/RuntimeProvider.js'
 import { useModule } from '../../../src/Hooks.js'
 import { emitPerfReport, type PerfReport } from './protocol.js'
+import { waitForBodyText } from './react-boot-resolve.wait.js'
 import {
   getProfileConfig,
   makePerfKernelLayer,
@@ -49,17 +50,6 @@ const App: React.FC<{ readonly keyMode: 'auto' | 'explicit' }> = ({ keyMode }) =
       <p>Tag: {tagCount}</p>
     </div>
   )
-}
-
-const nextFrame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()))
-
-const waitForBodyText = async (text: string, timeoutMs: number): Promise<void> => {
-  const deadline = performance.now() + timeoutMs
-  while (performance.now() < deadline) {
-    if (document.body.textContent?.includes(text)) return
-    await nextFrame()
-  }
-  throw new Error(`waitForBodyText timeout: ${text}`)
 }
 
 test(

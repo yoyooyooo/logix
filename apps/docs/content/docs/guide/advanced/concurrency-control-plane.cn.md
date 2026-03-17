@@ -85,11 +85,12 @@ const runtime = Logix.Runtime.make(RootImpl, {
 ### 配方 C：运行时热切换某个模块（排查/止血）
 
 ```ts
+import { Effect } from "effect"
 import * as Logix from "@logixjs/core"
 
-Logix.Runtime.setConcurrencyPolicyOverride(runtime, "OrderForm", { concurrencyLimit: 4 })
+await Effect.runPromise(Logix.Runtime.setConcurrencyPolicyOverride(runtime, "OrderForm", { concurrencyLimit: 4 }))
 // 取消覆盖：传 undefined
-Logix.Runtime.setConcurrencyPolicyOverride(runtime, "OrderForm", undefined)
+await Effect.runPromise(Logix.Runtime.setConcurrencyPolicyOverride(runtime, "OrderForm", undefined))
 ```
 
 ### 配方 D：在 Provider 子树范围内覆盖（页面级试探）

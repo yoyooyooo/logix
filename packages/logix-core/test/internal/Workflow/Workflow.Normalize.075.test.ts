@@ -1,17 +1,11 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Context, Effect, Layer, Schema } from 'effect'
+import {Effect, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../../src/index.js'
 import { flushAllHostScheduler, makeTestHostScheduler, testHostSchedulerLayer } from '../testkit/hostSchedulerTestKit.js'
 
-class OuterPort extends Context.Tag('Workflow.Normalize.075.OuterPort')<
-  OuterPort,
-  (input: unknown) => Effect.Effect<unknown, unknown, unknown>
->() {}
+class OuterPort extends ServiceMap.Service<OuterPort, (input: unknown) => Effect.Effect<unknown, unknown, unknown>>()('Workflow.Normalize.075.OuterPort') {}
 
-class InnerPort extends Context.Tag('Workflow.Normalize.075.InnerPort')<
-  InnerPort,
-  (input: unknown) => Effect.Effect<unknown, unknown, unknown>
->() {}
+class InnerPort extends ServiceMap.Service<InnerPort, (input: unknown) => Effect.Effect<unknown, unknown, unknown>>()('Workflow.Normalize.075.InnerPort') {}
 
 describe('Workflow normalize (075)', () => {
   it.effect('fills nested call branches (onSuccess/onFailure default arrays) for both Static IR and runtime compilation', () =>
@@ -67,7 +61,7 @@ describe('Workflow normalize (075)', () => {
         yield* Effect.promise(() =>
           runtime.runPromise(
             Effect.gen(function* () {
-              const rt = yield* M.tag
+              const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
               yield* rt.dispatch({ _tag: 'start' })
               yield* flushAllHostScheduler(hostScheduler)
               expect(yield* rt.getState).toEqual({ done: 1, fail: 0 })

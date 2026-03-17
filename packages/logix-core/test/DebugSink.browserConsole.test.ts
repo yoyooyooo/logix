@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
 
-import { describe, expect, vi } from 'vitest'
-import { it } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
+import { vi } from 'vitest'
 import { Effect } from 'effect'
 import * as Debug from '../src/Debug.js'
 
 describe('Debug.layer({ mode: dev }) browser console severity', () => {
-  it.scoped('should map diagnostic severity to console method', () =>
+  it.effect('should map diagnostic severity to console method', () =>
     Effect.gen(function* () {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
       const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
@@ -64,7 +64,7 @@ describe('Debug.layer({ mode: dev }) browser console severity', () => {
     }),
   )
 
-  it.scoped('should not print trace events when devConsole=diagnostic', () =>
+  it.effect('should not print trace events when devConsole=diagnostic', () =>
     Effect.gen(function* () {
       const groupSpy = vi.spyOn(console, 'groupCollapsed').mockImplementation(() => {})
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})

@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react'
-import { Layer, ManagedRuntime, Effect, Cause, FiberRef, Context, Scope } from 'effect'
+import { Cause, Effect, Layer, ManagedRuntime, Scope, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 import { RuntimeContext, ReactRuntimeContextValue } from './ReactContext.js'
 import { DEFAULT_CONFIG_SNAPSHOT, ReactRuntimeConfigSnapshot, type ReactConfigSnapshot } from './config.js'
@@ -66,6 +66,9 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
 }) => {
   const parent = useContext(RuntimeContext)
   const baseRuntime = useRuntimeResolution(runtime, parent)
+  const providerStartedAtRef = React.useRef(performance.now())
+  const providerReadyAtRef = React.useRef<number | undefined>(undefined)
+  const didReportProviderGatingRef = React.useRef(false)
   const resolvedPolicy = useMemo(
     () =>
       resolveRuntimeProviderPolicy({
@@ -112,7 +115,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
             moduleId: event.moduleId,
             instanceId: event.instanceId,
             runtimeLabel: event.runtimeLabel,
-          }).pipe(Effect.catchAllCause(() => Effect.void))
+          }).pipe(Effect.catchCause(() => Effect.void))
         }
 
         if (event.type === 'diagnostic' && event.severity === 'error') {
@@ -132,7 +135,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
               instanceId: event.instanceId,
               runtimeLabel: event.runtimeLabel,
             },
-          ).pipe(Effect.catchAllCause(() => Effect.void))
+          ).pipe(Effect.catchCause(() => Effect.void))
         }
 
         return Effect.void
@@ -149,9 +152,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
       return layerBinding.debugSinks
     }
     try {
-      return baseRuntime.runSync(
-        FiberRef.get(Logix.Debug.internal.currentDebugSinks as FiberRef.FiberRef<ReadonlyArray<Logix.Debug.Sink>>),
-      )
+      return baseRuntime.runSync(Effect.service(Logix.Debug.internal.currentDebugSinks).pipe(Effect.orDie))
     } catch {
       return []
     }
@@ -329,6 +330,51 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
     return resolveRuntimeProviderFallback({ fallback, phase, policyMode: resolvedPolicy.mode })
   }
 
+  const preloadCache = useMemo(
+    () => getModuleCache(runtimeWithBindings, configState.snapshot, configState.version),
+    [runtimeWithBindings, configState.snapshot, configState.version],
+  )
+
+  const syncWarmPreloadReady = useMemo(() => {
+    if (resolvedPolicy.mode !== 'defer') return false
+    if (!resolvedPolicy.preload) return true
+    if (!isLayerReady || !isConfigReady) return false
+
+    const handles = resolvedPolicy.preload.handles
+    if (handles.length === 0) return true
+
+    for (const handle of handles) {
+      if ((handle as any)?._tag === 'ModuleImpl') {
+        const moduleId = (handle as any).module?.id ?? 'ModuleImpl'
+        const key = resolvedPolicy.preload.keysByModuleId.get(moduleId) ?? getPreloadKeyForModuleId(moduleId)
+        const factory: ModuleCacheFactory = (scope: Scope.Scope) =>
+          Layer.buildWithScope((handle as any).layer, scope).pipe(
+            Effect.map((context) => ServiceMap.get(context, (handle as any).module) as any),
+          )
+
+        const value = preloadCache.warmSync(key, factory, configState.snapshot.gcTime, moduleId, {
+          entrypoint: 'react.runtime.preload.sync-warm',
+          policyMode: 'defer',
+        })
+        if (!value) return false
+        continue
+      }
+
+      const tagId = (handle as any).id ?? 'ModuleTag'
+      const key = resolvedPolicy.preload.keysByTagId.get(tagId) ?? getPreloadKeyForTagId(tagId)
+      const factory: ModuleCacheFactory = (scope: Scope.Scope) =>
+        Scope.provide(scope)(Effect.service(handle as any).pipe(Effect.orDie)) as Effect.Effect<any, unknown, unknown>
+
+      const value = preloadCache.warmSync(key, factory, configState.snapshot.gcTime, tagId, {
+        entrypoint: 'react.runtime.preload.sync-warm',
+        policyMode: 'defer',
+      })
+      if (!value) return false
+    }
+
+    return true
+  }, [resolvedPolicy, isLayerReady, isConfigReady, preloadCache, configState.snapshot.gcTime])
+
   const [deferReady, setDeferReady] = useState(false)
   useEffect(() => {
     if (resolvedPolicy.mode !== 'defer') {
@@ -344,6 +390,10 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
     if (resolvedPolicy.mode !== 'defer') {
       return
     }
+    if (syncWarmPreloadReady) {
+      setDeferReady(true)
+      return
+    }
     setDeferReady(false)
     if (!resolvedPolicy.preload) {
       setDeferReady(true)
@@ -355,7 +405,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
 
     let cancelled = false
 
-    const cache = getModuleCache(runtimeWithBindings, configState.snapshot, configState.version)
+    const cache = preloadCache
 
     const preloadHandles = resolvedPolicy.preload.handles
     if (preloadHandles.length === 0) {
@@ -381,7 +431,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
 
           const factory: ModuleCacheFactory = (scope: Scope.Scope) =>
             Layer.buildWithScope((handle as any).layer, scope).pipe(
-              Effect.map((context) => Context.get(context, (handle as any).module) as any),
+              Effect.map((context) => ServiceMap.get(context, (handle as any).module) as any),
             )
 
           const op = cache.preload(key, factory, {
@@ -389,6 +439,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
             yield: resolvedPolicy.preload!.yield,
             entrypoint: 'react.runtime.preload',
             policyMode: 'defer',
+            optimisticSyncBudgetMs: resolvedPolicy.syncBudgetMs,
           })
           allCancels.add(op.cancel)
           await op.promise
@@ -418,15 +469,14 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
         const tagId = (handle as any).id ?? 'ModuleTag'
         const key = resolvedPolicy.preload!.keysByTagId.get(tagId) ?? getPreloadKeyForTagId(tagId)
         const factory: ModuleCacheFactory = (scope: Scope.Scope) =>
-          (handle as unknown as Effect.Effect<{ readonly instanceId?: string }, unknown, unknown>).pipe(
-            Scope.extend(scope),
-          )
+          Scope.provide(scope)(Effect.service(handle as any).pipe(Effect.orDie)) as Effect.Effect<any, unknown, unknown>
 
         const op = cache.preload(key, factory, {
           ownerId: tagId,
           yield: resolvedPolicy.preload!.yield,
           entrypoint: 'react.runtime.preload',
           policyMode: 'defer',
+          optimisticSyncBudgetMs: resolvedPolicy.syncBudgetMs,
         })
         allCancels.add(op.cancel)
         await op.promise
@@ -473,7 +523,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
           runtimeWithBindings.runFork(
             onErrorRef
               .current(Cause.die(error), { source: 'provider', phase: 'provider.layer.build' })
-              .pipe(Effect.catchAllCause(() => Effect.void)),
+              .pipe(Effect.catchCause(() => Effect.void)),
           )
         }
         setDeferReady(true)
@@ -513,14 +563,60 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
     }
   }, [resolvedPolicy.mode, deferReady])
 
-  const isReady = isTickServicesReady && isLayerReady && isConfigReady && (resolvedPolicy.mode !== 'defer' || deferReady)
+  const isReady = isTickServicesReady && isLayerReady && isConfigReady && (resolvedPolicy.mode !== 'defer' || deferReady || syncWarmPreloadReady)
+  if (isReady && providerReadyAtRef.current === undefined) {
+    providerReadyAtRef.current = performance.now()
+  }
+
+  useEffect(() => {
+    if (!isReady) {
+      return
+    }
+    if (didReportProviderGatingRef.current) {
+      return
+    }
+    let diagnosticsLevel: Logix.Debug.DiagnosticsLevel = 'off'
+    try {
+      diagnosticsLevel = runtimeWithBindings.runSync(
+        Effect.service(Logix.Debug.internal.currentDiagnosticsLevel).pipe(Effect.orDie),
+      )
+    } catch {
+      diagnosticsLevel = isDevEnv() ? 'light' : 'off'
+    }
+    if (diagnosticsLevel === 'off') {
+      return
+    }
+    didReportProviderGatingRef.current = true
+
+    const readyAt = providerReadyAtRef.current ?? performance.now()
+    const durationMs = Math.round((readyAt - providerStartedAtRef.current) * 100) / 100
+    const effectDelayMs = Math.round((performance.now() - readyAt) * 100) / 100
+
+    void runtimeWithBindings
+      .runPromise(
+        Logix.Debug.record({
+          type: 'trace:react.provider.gating',
+          data: {
+            event: 'ready',
+            policyMode: resolvedPolicy.mode,
+            durationMs,
+            effectDelayMs,
+            configLoadMode: configState.loadMode,
+            syncOverBudget: Boolean(configState.syncOverBudget),
+            syncDurationMs:
+              configState.syncDurationMs !== undefined ? Math.round(configState.syncDurationMs * 100) / 100 : undefined,
+          },
+        }) as unknown as Effect.Effect<void, never, never>,
+      )
+      .catch(() => {})
+  }, [configState.loadMode, configState.syncDurationMs, configState.syncOverBudget, isReady, resolvedPolicy.mode, runtimeWithBindings])
 
   if (!isReady) {
     const blockersList = [
       isTickServicesReady ? null : 'tick',
       isLayerReady ? null : 'layer',
       isConfigReady ? null : 'config',
-      resolvedPolicy.mode !== 'defer' || deferReady ? null : 'preload',
+      resolvedPolicy.mode !== 'defer' || deferReady || syncWarmPreloadReady ? null : 'preload',
     ].filter((x): x is string => x !== null)
     const blockers = blockersList.length > 0 ? blockersList.join('+') : undefined
 

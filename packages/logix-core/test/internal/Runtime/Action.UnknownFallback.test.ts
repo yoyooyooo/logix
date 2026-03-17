@@ -4,7 +4,7 @@ import * as Logix from '../../../src/index.js'
 import * as Debug from '../../../src/Debug.js'
 
 describe('Runtime action unknown fallback (US1)', () => {
-  it.scoped('should mark undeclared actions as unknown/opaque', () =>
+  it.effect('should mark undeclared actions as unknown/opaque', () =>
     Effect.gen(function* () {
       const State = Schema.Struct({ count: Schema.Number })
 
@@ -26,7 +26,7 @@ describe('Runtime action unknown fallback (US1)', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* M.tag
+        const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
         yield* rt.dispatch({ _tag: 'inc', payload: undefined } as any)
         yield* rt.dispatch({ _tag: 'boom', payload: 1 } as any)
       })

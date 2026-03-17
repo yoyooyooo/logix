@@ -1,4 +1,4 @@
-import { Context, Deferred, Effect, Layer } from 'effect'
+import { Deferred, Effect, Layer, ServiceMap } from 'effect'
 import { isDevEnv } from './runtime/core/env.js'
 import { RootContextTag, type RootContext } from './runtime/core/RootContext.js'
 
@@ -14,7 +14,7 @@ export interface RootResolveOptions {
   readonly waitForReady?: boolean
 }
 
-const tagIdOf = (tag: Context.Tag<any, any>): string =>
+const tagIdOf = (tag: ServiceMap.Key<any, any>): string =>
   typeof (tag as any)?.id === 'string'
     ? String((tag as any).id)
     : typeof (tag as any)?.key === 'string'
@@ -22,7 +22,7 @@ const tagIdOf = (tag: Context.Tag<any, any>): string =>
       : '<unknown tag>'
 
 const makeMissingRootProviderError = (
-  tag: Context.Tag<any, any>,
+  tag: ServiceMap.Key<any, any>,
   entrypoint: RootResolveEntrypoint,
   extra?: string,
 ): Error => {
@@ -72,26 +72,26 @@ const makeMissingRootProviderError = (
  * - For ModuleTag: expresses root singleton semantics only (not used for multi-instance selection).
  */
 export const resolve = <Id, Svc>(
-  tag: Context.Tag<Id, Svc>,
+  tag: ServiceMap.Key<Id, Svc>,
   options?: RootResolveOptions,
 ): Effect.Effect<Svc, never, any> =>
   Effect.gen(function* () {
     const entrypoint: RootResolveEntrypoint = options?.entrypoint ?? 'logic.root.resolve'
 
-    const root = yield* RootContextTag
+    const root = yield* Effect.service(RootContextTag).pipe(Effect.orDie)
 
-    const rootContext = root.context ?? (options?.waitForReady ? yield* root.ready : undefined)
+    const rootContext = root.context ?? (options?.waitForReady ? yield* Deferred.await(root.ready) : undefined)
 
     if (!rootContext) {
       return yield* Effect.die(
-        makeMissingRootProviderError(tag as Context.Tag<any, any>, entrypoint, 'reason: rootContextNotReady'),
+        makeMissingRootProviderError(tag as ServiceMap.Key<any, any>, entrypoint, 'reason: rootContextNotReady'),
       )
     }
 
     try {
-      return Context.get(rootContext, tag as Context.Tag<any, any>) as Svc
+      return ServiceMap.get(rootContext, tag as ServiceMap.Key<any, any>) as Svc
     } catch {
-      return yield* Effect.die(makeMissingRootProviderError(tag as Context.Tag<any, any>, entrypoint))
+      return yield* Effect.die(makeMissingRootProviderError(tag as ServiceMap.Key<any, any>, entrypoint))
     }
   })
 
@@ -101,11 +101,11 @@ export const resolve = <Id, Svc>(
  * Provide a "ready immediately" RootContext for Root.resolve.
  * - `ready` is fulfilled immediately to avoid extra waits when waitForReady=true.
  */
-export const layerFromContext = (context: Context.Context<any>): Layer.Layer<any, never, any> =>
-  Layer.scoped(
+export const layerFromContext = (context: ServiceMap.ServiceMap<any>): Layer.Layer<any, never, any> =>
+  Layer.effect(
     RootContextTag,
     Effect.gen(function* () {
-      const ready = yield* Deferred.make<Context.Context<any>>()
+      const ready = yield* Deferred.make<ServiceMap.ServiceMap<any>>()
       yield* Deferred.succeed(ready, context)
       const root: RootContext = { context, ready, lifecycle: { state: 'ready' } }
       return root

@@ -4,10 +4,11 @@ import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { render, fireEvent, screen, waitFor, cleanup } from '@testing-library/react'
 import { Effect, Schema, Layer } from 'effect'
 import * as Logix from '@logixjs/core'
-import { RuntimeProvider, useModule, useSelector, useDispatch } from '@logixjs/react'
+import { RuntimeProvider, useModule, useDispatch, useRuntime } from '@logixjs/react'
 import { LogixDevtools } from '../../src/LogixDevtools.js'
 import { devtoolsLayer, clearDevtoolsEvents, clearDevtoolsSnapshotOverride } from '../../src/DevtoolsLayer.js'
 import { devtoolsRuntime, devtoolsModuleRuntime, type DevtoolsState } from '../../src/internal/state/index.js'
+import { emptyDevtoolsState } from '../../src/internal/state/model.js'
 
 // jsdom does not provide a stable `matchMedia` by default; add a minimal polyfill for tests
 // to avoid DevtoolsShell theme detection throwing outside a browser environment.
@@ -44,15 +45,16 @@ beforeEach(async () => {
   })
 })
 
-afterEach(() => {
+afterEach(async () => {
   cleanup()
   clearDevtoolsSnapshotOverride()
   clearDevtoolsEvents()
+  await devtoolsRuntime.runPromise(devtoolsModuleRuntime.setState(emptyDevtoolsState as any) as any)
 })
 
 // A minimal Counter Module used to drive the Devtools timeline and produce EffectOp / Debug events.
 const DEFERRED_STEPS = 64
-const counterFields: Record<string, Schema.Schema.Any> = { count: Schema.Number }
+const counterFields: Record<string, Schema.Top> = { count: Schema.Number }
 for (let i = 0; i < DEFERRED_STEPS; i++) {
   counterFields[`d${i}`] = Schema.Number
 }
@@ -91,37 +93,60 @@ const CounterImpl = CounterModule.implement({
     CounterModule.logic(($) =>
       Effect.gen(function* () {
         // Record a visible trace event via DebugSink so it's easy to locate in the timeline.
-        yield* $.onAction('increment').run({
-          effect: () =>
-            Logix.Debug.record({
-              type: 'trace:increment',
-              moduleId: CounterModule.id,
-              data: { source: 'EffectOpTimelineView.test' },
-            }),
-        })
+        yield* $.onAction('increment').run(() =>
+          Logix.Debug.record({
+            type: 'trace:increment',
+            moduleId: CounterModule.id,
+            data: { source: 'EffectOpTimelineView.test' },
+          }),
+        )
       }),
     ),
   ],
 })
 
-const runtime = Logix.Runtime.make(CounterImpl, {
-  label: 'DevtoolsTimelineRuntime',
-  layer: devtoolsLayer as Layer.Layer<any, never, never>,
-  stateTransaction: {
-    traitConvergeMode: 'dirty',
-    traitConvergeBudgetMs: 100_000,
-    traitConvergeDecisionBudgetMs: 100_000,
-    traitConvergeTimeSlicing: { enabled: true, debounceMs: 1, maxLagMs: 50 },
-    txnLanes: { enabled: true, budgetMs: 0, debounceMs: 0, maxLagMs: 50, allowCoalesce: true },
-  },
-})
+const makeRuntime = () =>
+  Logix.Runtime.make(CounterImpl, {
+    label: 'DevtoolsTimelineRuntime',
+    layer: devtoolsLayer as Layer.Layer<any, never, never>,
+    stateTransaction: {
+      traitConvergeMode: 'dirty',
+      traitConvergeBudgetMs: 100_000,
+      traitConvergeDecisionBudgetMs: 100_000,
+      traitConvergeTimeSlicing: { enabled: true, debounceMs: 1, maxLagMs: 50 },
+      txnLanes: { enabled: true, budgetMs: 0, debounceMs: 0, maxLagMs: 50, allowCoalesce: true },
+    },
+  })
 
-const DEVTOOLS_TIMELINE_TEST_TIMEOUT_MS = process.env.CI === 'true' ? 20_000 : 8_000
+const waitForStartup = () =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, 20)
+  })
+
+const refreshDevtoolsState = async () => {
+  await devtoolsRuntime.runPromise(devtoolsModuleRuntime.dispatch({ _tag: 'toggleOpen', payload: undefined }) as any)
+  await devtoolsRuntime.runPromise(devtoolsModuleRuntime.dispatch({ _tag: 'toggleOpen', payload: undefined }) as any)
+}
 
 const CounterView: React.FC = () => {
   const runtimeHandle = useModule(CounterImpl.tag)
-  const count = useSelector(runtimeHandle, (s) => s.count)
+  const count = useModule(runtimeHandle, (s) => s.count)
   const dispatch = useDispatch(runtimeHandle)
+  const runtimeBase = useRuntime()
+
+  React.useEffect(() => {
+    runtimeBase.runFork(
+      Logix.Debug.record({
+        type: 'trace:react-render',
+        moduleId: runtimeHandle.runtime.moduleId,
+        instanceId: runtimeHandle.runtime.instanceId,
+        data: {
+          componentLabel: 'CounterView',
+          strictModePhase: 'commit',
+        },
+      }) as Effect.Effect<void, never, never>,
+    )
+  })
 
   return (
     <button type="button" onClick={() => dispatch({ _tag: 'increment', payload: undefined })}>
@@ -131,10 +156,11 @@ const CounterView: React.FC = () => {
 }
 
 describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior', () => {
-  it(
-    'shows latest event details by default, and toggles to selected event details on click',
-    async () => {
-    render(
+  it('shows latest event details by default, and toggles to selected event details on click', async () => {
+    const runtime = makeRuntime()
+
+    try {
+      render(
       <RuntimeProvider runtime={runtime} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>
         <CounterView />
         <LogixDevtools position="bottom-left" initialOpen={true} />
@@ -142,11 +168,13 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
     )
 
     const counterButton = screen.getAllByText(/count:/i)[0] as HTMLButtonElement
+    await waitForStartup()
 
     // Trigger multiple increments to ensure the timeline contains multiple events.
     fireEvent.click(counterButton)
     fireEvent.click(counterButton)
     fireEvent.click(counterButton)
+    await refreshDevtoolsState()
 
     // Wait for the Devtools panel to render and for the Inspector to show "Latest Event" details.
     await waitFor(() => {
@@ -202,14 +230,16 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
       expect(screen.getByText(/Latest Event/i)).not.toBeNull()
       expect(screen.queryByText(/Selected Event/i)).toBeNull()
     })
-    },
-    DEVTOOLS_TIMELINE_TEST_TIMEOUT_MS,
-  )
+    } finally {
+      await runtime.dispose()
+    }
+  })
 
-  it(
-    'normalizes timeline events to RuntimeDebugEventRef and supports filtering by kind + txnId',
-    async () => {
-    render(
+  it('normalizes timeline events to RuntimeDebugEventRef and supports filtering by kind + txnId', async () => {
+    const runtime = makeRuntime()
+
+    try {
+      render(
       <RuntimeProvider runtime={runtime} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>
         <CounterView />
         <LogixDevtools position="bottom-left" initialOpen={true} />
@@ -217,52 +247,61 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
     )
 
     const counterButton = screen.getAllByText(/count:/i)[0] as HTMLButtonElement
+    await waitForStartup()
 
     // Trigger multiple increments to generate multiple transactions (each interaction = one StateTransaction).
     fireEvent.click(counterButton)
     fireEvent.click(counterButton)
     fireEvent.click(counterButton)
+    await refreshDevtoolsState()
 
-    // Wait for the DevtoolsModule to derive timeline data.
+    let targetTxnId: string | undefined
+
     await waitFor(() => {
       const state = devtoolsRuntime.runSync(
         devtoolsModuleRuntime.getState as any as Effect.Effect<DevtoolsState, never, any>,
       ) as DevtoolsState
-      expect(state.timeline.length).toBeGreaterThan(0)
+
+      const refs = state.timeline
+        .map((entry) => entry.event as Logix.Debug.RuntimeDebugEventRef | undefined)
+        .filter((ref): ref is Logix.Debug.RuntimeDebugEventRef => ref != null)
+
+      const stateEventsWithTxn = refs.filter((ref) => ref.kind === 'state' && ref.txnId != null)
+      expect(stateEventsWithTxn.length).toBeGreaterThan(0)
+      targetTxnId = stateEventsWithTxn[0]?.txnId
     })
 
     const state = devtoolsRuntime.runSync(
       devtoolsModuleRuntime.getState as any as Effect.Effect<DevtoolsState, never, any>,
     ) as DevtoolsState
 
-    // Normalize Debug events in the timeline into RuntimeDebugEventRef
-    // so we can filter transactions by kind + txnId.
     const refs = state.timeline
       .map((entry) => entry.event as Logix.Debug.RuntimeDebugEventRef | undefined)
       .filter((ref): ref is Logix.Debug.RuntimeDebugEventRef => ref != null)
 
-    // There should be at least one `state` event with a txnId.
-    const stateEventsWithTxn = refs.filter((ref) => ref.kind === 'state' && ref.txnId != null)
-    expect(stateEventsWithTxn.length).toBeGreaterThan(0)
-
-    const targetTxnId = stateEventsWithTxn[0].txnId!
+    const resolvedTxnId = targetTxnId
+    if (!resolvedTxnId) {
+      throw new Error('state event with txnId not found')
+    }
 
     // Filter all events under the same txnId.
     // Expect at least action + state, proving we can aggregate a transaction view by kind + txnId.
-    const eventsForTxn = refs.filter((ref) => ref.txnId === targetTxnId)
+    const eventsForTxn = refs.filter((ref) => ref.txnId === resolvedTxnId)
     expect(eventsForTxn.length).toBeGreaterThanOrEqual(2)
 
     const kindsForTxn = new Set(eventsForTxn.map((ref) => ref.kind))
     expect(kindsForTxn.has('state')).toBe(true)
     expect(kindsForTxn.has('action')).toBe(true)
-    },
-    DEVTOOLS_TIMELINE_TEST_TIMEOUT_MS,
-  )
+    } finally {
+      await runtime.dispose()
+    }
+  })
 
-  it(
-    'visualizes react-render events and supports View kind filter',
-    async () => {
-    render(
+  it('visualizes react-render events and supports View kind filter', async () => {
+    const runtime = makeRuntime()
+
+    try {
+      render(
       <RuntimeProvider runtime={runtime} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>
         <CounterView />
         <LogixDevtools position="bottom-left" initialOpen={true} />
@@ -270,30 +309,32 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
     )
 
     const counterButton = screen.getAllByText(/count:/i)[0] as HTMLButtonElement
+    await waitForStartup()
 
     // Trigger multiple increments to produce a few transactions and render events.
     fireEvent.click(counterButton)
     fireEvent.click(counterButton)
+    await refreshDevtoolsState()
 
-    // Wait for the DevtoolsModule to derive timeline data.
+    let targetRenderLabel: string | undefined
+
     await waitFor(() => {
       const state = devtoolsRuntime.runSync(
         devtoolsModuleRuntime.getState as any as Effect.Effect<DevtoolsState, never, any>,
       ) as DevtoolsState
-      expect(state.timeline.length).toBeGreaterThan(0)
+
+      const refs = state.timeline
+        .map((entry) => entry.event as Logix.Debug.RuntimeDebugEventRef | undefined)
+        .filter((ref): ref is Logix.Debug.RuntimeDebugEventRef => ref != null)
+
+      const renderEvents = refs.filter((ref) => ref.kind === 'react-render')
+      expect(renderEvents.length).toBeGreaterThan(0)
+      targetRenderLabel = renderEvents[0]?.label
     })
 
-    const state = devtoolsRuntime.runSync(
-      devtoolsModuleRuntime.getState as any as Effect.Effect<DevtoolsState, never, any>,
-    ) as DevtoolsState
-
-    const refs = state.timeline
-      .map((entry) => entry.event as Logix.Debug.RuntimeDebugEventRef | undefined)
-      .filter((ref): ref is Logix.Debug.RuntimeDebugEventRef => ref != null)
-
-    const renderEvents = refs.filter((ref) => ref.kind === 'react-render')
-    expect(renderEvents.length).toBeGreaterThan(0)
-    const targetRenderLabel = renderEvents[0].label
+    if (!targetRenderLabel) {
+      throw new Error('react-render event not found')
+    }
 
     // Switch to the View kind filter to keep only react-render events.
     const viewFilterButton = screen.getAllByRole('button', {
@@ -304,18 +345,20 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
     await waitFor(() => {
       // At least one react-render event row should exist (labels are normalized; no longer rely on trace:* types).
       const viewRows = screen.getAllByRole('button', {
-        name: new RegExp(targetRenderLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
+        name: new RegExp(targetRenderLabel!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
       })
       expect(viewRows.length).toBeGreaterThan(0)
     })
-    },
-    DEVTOOLS_TIMELINE_TEST_TIMEOUT_MS,
-  )
+    } finally {
+      await runtime.dispose()
+    }
+  })
 
-  it(
-    'renders selector lane summary (static/dynamic + fallbackTop)',
-    async () => {
-    render(
+  it('renders selector lane summary (static/dynamic + fallbackTop)', async () => {
+    const runtime = makeRuntime()
+
+    try {
+      render(
       <RuntimeProvider runtime={runtime} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>
         <CounterView />
         <LogixDevtools position="bottom-left" initialOpen={true} />
@@ -323,9 +366,34 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
     )
 
     const counterButton = screen.getAllByText(/count:/i)[0] as HTMLButtonElement
+    await waitForStartup()
 
     fireEvent.click(counterButton)
     fireEvent.click(counterButton)
+    await refreshDevtoolsState()
+
+    let selectorEventLabel: string | undefined
+
+    await waitFor(() => {
+      const state = devtoolsRuntime.runSync(
+        devtoolsModuleRuntime.getState as any as Effect.Effect<DevtoolsState, never, any>,
+      ) as DevtoolsState
+      const refs = state.timeline
+        .map((entry) => entry.event as Logix.Debug.RuntimeDebugEventRef | undefined)
+        .filter((ref): ref is Logix.Debug.RuntimeDebugEventRef => ref != null)
+      const selectorEval = refs.find((ref) => ref.label === 'trace:selector:eval')
+      expect(selectorEval).toBeDefined()
+      selectorEventLabel = selectorEval?.label
+    })
+
+    if (!selectorEventLabel) {
+      throw new Error('selector eval event not found')
+    }
+
+    const selectorRows = screen.getAllByRole('button', {
+      name: new RegExp(selectorEventLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
+    })
+    fireEvent.click(selectorRows[0] as HTMLButtonElement)
 
     await waitFor(() => {
       expect(screen.getAllByText(/selectorLane: static \d+, dynamic \d+/i).length).toBeGreaterThan(0)
@@ -333,7 +401,8 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
       expect(screen.getAllByText(/txnBacklog: pending \d+, age/i).length).toBeGreaterThan(0)
       expect(screen.getAllByText(/txnReasons:/i).length).toBeGreaterThan(0)
     })
-    },
-    DEVTOOLS_TIMELINE_TEST_TIMEOUT_MS,
-  )
+    } finally {
+      await runtime.dispose()
+    }
+  })
 })

@@ -1,10 +1,10 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Effect, Exit, Layer, Scope, Schema } from 'effect'
+import { Effect, Exit, Layer, Scope, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('Runtime.openProgram (US1)', () => {
-  it.scoped('returns a booted ctx and disposes when the outer scope closes', () =>
+  it.effect('returns a booted ctx and disposes when the outer scope closes', () =>
     Effect.gen(function* () {
       let disposed = false
 
@@ -23,20 +23,26 @@ describe('Runtime.openProgram (US1)', () => {
         logics: [],
       })
 
-      const layer = Layer.scopedDiscard(
-        Effect.addFinalizer(() =>
-          Effect.sync(() => {
-            disposed = true
-          }),
+      const DummyTag = ServiceMap.Service<{}>('@test/Runtime.openProgram.scoped/Dummy')
+      const layer = Layer.effect(
+        DummyTag,
+        Effect.acquireRelease(
+          Effect.succeed({}),
+          () =>
+            Effect.sync(() => {
+              disposed = true
+            }),
         ),
       ) as unknown as Layer.Layer<any, never, never>
 
       const scope = yield* Scope.make()
 
-      const ctx = yield* Logix.Runtime.openProgram(impl, {
-        layer,
-        handleSignals: false,
-      }).pipe(Scope.extend(scope))
+      const ctx = yield* Scope.provide(scope)(
+        Logix.Runtime.openProgram(impl, {
+          layer,
+          handleSignals: false,
+        }),
+      )
 
       yield* Effect.promise(() =>
         ctx.runtime.runPromise(
@@ -49,7 +55,7 @@ describe('Runtime.openProgram (US1)', () => {
         ),
       )
 
-      yield* Scope.close(scope, Exit.void)
+      yield* Effect.promise(() => ctx.runtime.dispose())
       expect(disposed).toBe(true)
     }),
   )

@@ -1,6 +1,6 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect, vi } from '@effect/vitest'
-import { Cause, Deferred, Effect, FiberId, Layer, ManagedRuntime, Schema, Stream } from 'effect'
+import { Cause, Deferred, Effect, Layer, ManagedRuntime, Schema, Stream } from 'effect'
 import * as Debug from '../src/Debug.js'
 import * as Logix from '../src/index.js'
 
@@ -23,7 +23,7 @@ describe('Module.make (public API)', () => {
     expect(typeof CounterModule.logic).toBe('function')
   })
 
-  it.scoped('should build ModuleImpl and access runtime via Tag', () =>
+  it.effect('should build ModuleImpl and access runtime via Tag', () =>
     Effect.gen(function* () {
       // Build initial state via ModuleImpl.
       const impl = CounterModule.implement({
@@ -37,7 +37,7 @@ describe('Module.make (public API)', () => {
 
       // Access ModuleRuntime via Tag inside an Effect and read state.
       const program = Effect.gen(function* () {
-        const moduleRuntime = yield* CounterModule.tag
+        const moduleRuntime = yield* Effect.service(CounterModule.tag).pipe(Effect.orDie)
         const state = yield* moduleRuntime.getState
         expect(state).toEqual({ count: 1 })
       })
@@ -67,7 +67,7 @@ describe('Module.make (public API)', () => {
     })
 
     const program = Effect.gen(function* () {
-      const runtime = yield* ReducerModule.tag
+      const runtime = yield* Effect.service(ReducerModule.tag).pipe(Effect.orDie)
 
       expect(yield* runtime.getState).toEqual({ count: 0 })
 
@@ -102,7 +102,7 @@ describe('Module.make (public API)', () => {
     })
 
     const program = Effect.gen(function* () {
-      const runtime = yield* ReducerModule.tag
+      const runtime = yield* Effect.service(ReducerModule.tag).pipe(Effect.orDie)
 
       expect(yield* runtime.getState).toEqual({ count: 0 })
 
@@ -140,7 +140,7 @@ describe('Module.make (public API)', () => {
     })
 
     const program = Effect.gen(function* () {
-      const runtime = yield* ReducerModule.tag
+      const runtime = yield* Effect.service(ReducerModule.tag).pipe(Effect.orDie)
 
       expect(yield* runtime.getState).toEqual({ count: 0 })
 
@@ -178,7 +178,7 @@ describe('Module.make (public API)', () => {
     })
 
     const program = Effect.gen(function* () {
-      const runtime = yield* ReducerModule.tag
+      const runtime = yield* Effect.service(ReducerModule.tag).pipe(Effect.orDie)
 
       expect(yield* runtime.getState).toEqual({ count: 5 })
 
@@ -190,7 +190,7 @@ describe('Module.make (public API)', () => {
   })
 
   it('should register primary reducer via $.reducer before dispatch', async () => {
-    const reducerApplied = Deferred.unsafeMake<void>(FiberId.none)
+    const reducerApplied = await Effect.runPromise(Deferred.make<void>())
 
     const ModuleWithReducer = Logix.Module.make('RuntimeReducerModule', {
       state: Schema.Struct({ count: Schema.Number }),
@@ -219,7 +219,7 @@ describe('Module.make (public API)', () => {
     const runtimeManager = ManagedRuntime.make(layer)
 
     const program = Effect.gen(function* () {
-      const runtime = yield* ModuleWithReducer.tag
+      const runtime = yield* Effect.service(ModuleWithReducer.tag).pipe(Effect.orDie)
       yield* Deferred.await(reducerApplied)
       expect(yield* runtime.getState).toEqual({ count: 1 })
     })
@@ -230,7 +230,7 @@ describe('Module.make (public API)', () => {
   it('should report error when registering primary reducer twice for the same tag', async () => {
     const errorSpy = vi.fn()
 
-    const errorSeen = Deferred.unsafeMake<void>(FiberId.none)
+    const errorSeen = await Effect.runPromise(Deferred.make<void>())
 
     const ModuleWithReducer = Logix.Module.make('DuplicateReducerModule', {
       state: Schema.Struct({ value: Schema.Number }),
@@ -243,7 +243,7 @@ describe('Module.make (public API)', () => {
       setup: $.lifecycle.onError((cause, context) =>
         Effect.sync(() => {
           errorSpy(Cause.pretty(cause), context)
-        }).pipe(Effect.zipRight(Deferred.succeed(errorSeen, undefined))),
+        }).pipe(Effect.flatMap(() => Deferred.succeed(errorSeen, undefined))),
       ),
       run: Effect.gen(function* () {
         yield* $.reducer(
@@ -272,7 +272,7 @@ describe('Module.make (public API)', () => {
     const runtimeManager = ManagedRuntime.make(layer)
     await runtimeManager.runPromise(
       Effect.gen(function* () {
-        yield* ModuleWithReducer.tag
+        yield* Effect.service(ModuleWithReducer.tag).pipe(Effect.orDie)
         yield* Deferred.await(errorSeen)
       }) as Effect.Effect<void, never, any>,
     )
@@ -284,10 +284,12 @@ describe('Module.make (public API)', () => {
   })
 
   it('should emit diagnostic when reducer is registered after dispatch (late)', async () => {
-    const errorSeen = Deferred.unsafeMake<{
-      pretty: string
-      context: unknown
-    }>(FiberId.none)
+    const errorSeen = await Effect.runPromise(
+      Deferred.make<{
+        pretty: string
+        context: unknown
+      }>(),
+    )
 
     const ModuleLate = Logix.Module.make('LateReducerModule', {
       state: Schema.Struct({ value: Schema.Number }),
@@ -300,7 +302,7 @@ describe('Module.make (public API)', () => {
 
     const logic = ModuleLate.logic(($) => ({
       setup: $.lifecycle.onError((cause, context) =>
-        Effect.zipRight(
+        Effect.andThen(
           Deferred.succeed(errorSeen, {
             pretty: Cause.pretty(cause),
             context,
@@ -326,7 +328,7 @@ describe('Module.make (public API)', () => {
     const runtimeManager = ManagedRuntime.make(layer)
     await runtimeManager.runPromise(
       Effect.gen(function* () {
-        yield* ModuleLate.tag
+        yield* Effect.service(ModuleLate.tag).pipe(Effect.orDie)
         const { pretty } = yield* Deferred.await(errorSeen)
         expect(pretty).toContain('Late primary reducer registration')
         expect(pretty).toContain('set')

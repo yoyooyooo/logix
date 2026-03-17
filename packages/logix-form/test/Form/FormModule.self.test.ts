@@ -1,11 +1,10 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
-import { Deferred, Effect, FiberId, Layer, Schema } from 'effect'
+import { describe, it, expect } from '@effect/vitest'
+import { Deferred, Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
 
 describe('FormModule $.self', () => {
-  it.scoped('module.logic can yield* $.self and access controller', () =>
+  it.effect('module.logic can yield* $.self and access controller', () =>
     Effect.gen(function* () {
       const ValuesSchema = Schema.Struct({
         name: Schema.String,
@@ -28,7 +27,7 @@ describe('FormModule $.self', () => {
         }),
       })
 
-      const done = Deferred.unsafeMake<void>(FiberId.none)
+      const done = yield* Deferred.make<void>()
 
       const SelfValidate = form.logic(
         ($) =>
@@ -47,7 +46,7 @@ describe('FormModule $.self', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* live.tag
+        const rt = yield* Effect.service(live.tag).pipe(Effect.orDie)
         yield* Deferred.await(done)
         const state: any = yield* rt.getState
         expect(state.errors?.name).toBe('required')

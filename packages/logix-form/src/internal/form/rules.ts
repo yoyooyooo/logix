@@ -285,7 +285,7 @@ export const rulesManifestWarningsBase = (params: {
 
 export const buildRulesManifest = <TValues extends object>(params: {
   readonly moduleId: string
-  readonly valuesSchema: Schema.Schema<TValues, any>
+  readonly valuesSchema: Schema.Schema<TValues>
   readonly rules?: RulesSpec<TValues>
   readonly traits?: Logix.StateTrait.StateTraitSpec<TValues>
 }): RulesManifest => {

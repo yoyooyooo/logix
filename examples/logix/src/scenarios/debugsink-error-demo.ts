@@ -32,12 +32,11 @@ export const ErrorDef = Logix.Module.make('DebugDemoModule', {
 export const ErrorLogic = ErrorDef.logic(($) =>
   Effect.gen(function* () {
     // 在 run 段监听 triggerError，避免 setup 阶段触发 Phase Guard
-    yield* $.onAction('triggerError').run({
-      effect: () =>
-        // 使用 dieMessage 将错误作为 defect 抛出，错误通道仍为 never，
-        // 由 ModuleRuntime 捕获后通过 DebugSink 以 lifecycle:error 上报。
-        Effect.dieMessage('Boom from DebugDemoModule'),
-    })
+    yield* $.onAction('triggerError').run(() =>
+      // 使用 dieMessage 将错误作为 defect 抛出，错误通道仍为 never，
+      // 由 ModuleRuntime 捕获后通过 DebugSink 以 lifecycle:error 上报。
+      Effect.die(new Error('Boom from DebugDemoModule')),
+    )
   }),
 )
 
@@ -65,16 +64,15 @@ const consoleDebugSink: Logix.Debug.Sink = {
 // ---------------------------------------------------------------------------
 
 export const main = Effect.gen(function* () {
-  const program = Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [consoleDebugSink])(
+  const program = Effect.provideService(
     Effect.gen(function* () {
-      const runtime = yield* ErrorDef.tag
+      const runtime = yield* Effect.service(ErrorDef.tag).pipe(Effect.orDie)
 
-      // 派发一个会失败的 Action（在 DebugSink 中观测 lifecycle:error）
       yield* runtime.dispatch({ _tag: 'triggerError', payload: undefined })
-
-      // 等待后台 watcher 执行并上报错误
       yield* Effect.sleep(50)
     }).pipe(Effect.provide(ErrorImpl.layer)),
+    Logix.Debug.internal.currentDebugSinks,
+    [consoleDebugSink],
   ) as Effect.Effect<void, never, never>
 
   yield* program

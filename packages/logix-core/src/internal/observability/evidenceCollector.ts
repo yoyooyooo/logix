@@ -1,4 +1,4 @@
-import { Context, Effect, FiberRef, Layer } from 'effect'
+import { Effect, Layer, ServiceMap } from 'effect'
 import type { JsonValue } from './jsonValue.js'
 import { projectJsonValue } from './jsonValue.js'
 import type { EvidencePackage } from './evidence.js'
@@ -22,10 +22,10 @@ export interface EvidenceCollector {
   readonly clear: () => void
 }
 
-class EvidenceCollectorTagImpl extends Context.Tag('@logixjs/core/EvidenceCollector')<
+class EvidenceCollectorTagImpl extends ServiceMap.Service<
   EvidenceCollectorTagImpl,
   EvidenceCollector
->() {}
+>()('@logixjs/core/EvidenceCollector') {}
 
 export const EvidenceCollectorTag = EvidenceCollectorTagImpl
 
@@ -50,16 +50,10 @@ export const makeEvidenceCollector = (session: RunSession): EvidenceCollector =>
     nonSerializable: 0,
   }
 
-  const traceDigestDegradeCounts = {
-    digest_missing: 0,
-    lookup_key_missing: 0,
-    digest_mismatch: 0,
-  }
-
   const debugSink: DebugSink = {
     record: (event: DebugEvent) =>
       Effect.gen(function* () {
-        const level = yield* FiberRef.get(currentDiagnosticsLevel)
+        const level = yield* Effect.service(currentDiagnosticsLevel)
         const instanceIdRaw = (event as any).instanceId
         const instanceId = typeof instanceIdRaw === 'string' && instanceIdRaw.length > 0 ? instanceIdRaw : 'unknown'
         const eventSeq = level === 'off' ? undefined : session.local.nextSeq('eventSeq', instanceId)
@@ -72,22 +66,6 @@ export const makeEvidenceCollector = (session: RunSession): EvidenceCollector =>
           },
         })
         if (!ref) return
-
-        const digestDegradeReason = (() => {
-          const meta = (ref as any).meta
-          if (!isRecord(meta)) return undefined
-          const degrade = (meta as any).traceDigestDegrade
-          if (!isRecord(degrade)) return undefined
-          const reasonCode = degrade.reasonCode
-          return reasonCode === 'digest_missing' ||
-            reasonCode === 'lookup_key_missing' ||
-            reasonCode === 'digest_mismatch'
-            ? reasonCode
-            : undefined
-        })()
-        if (digestDegradeReason) {
-          traceDigestDegradeCounts[digestDegradeReason] += 1
-        }
 
         const projected = projectJsonValue(ref)
         exportBudget.dropped += projected.stats.dropped
@@ -132,7 +110,6 @@ export const makeEvidenceCollector = (session: RunSession): EvidenceCollector =>
       convergeStaticIrByDigest,
       kernelImplementationRef,
       runtimeServicesEvidence,
-      traceDigestDegradeCounts,
     })
     const summary = summarizeEvidenceExport(collection)
 
@@ -151,9 +128,6 @@ export const makeEvidenceCollector = (session: RunSession): EvidenceCollector =>
     exportBudget.dropped = 0
     exportBudget.oversized = 0
     exportBudget.nonSerializable = 0
-    traceDigestDegradeCounts.digest_missing = 0
-    traceDigestDegradeCounts.lookup_key_missing = 0
-    traceDigestDegradeCounts.digest_mismatch = 0
   }
 
   return {

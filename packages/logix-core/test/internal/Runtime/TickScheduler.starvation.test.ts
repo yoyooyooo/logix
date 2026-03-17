@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
 import * as Logix from '../../../src/index.js'
@@ -76,9 +76,8 @@ describe('TickScheduler (anti-starvation)', () => {
         unsubscribe()
       }
     }).pipe(
-      Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel as any, 'light'),
+      Effect.provideService(Logix.Debug.internal.currentDiagnosticsLevel as any, 'light'),
       Effect.provide(Logix.Debug.devtoolsHubLayer({ bufferSize: 512 })),
     ),
   )
 })
-

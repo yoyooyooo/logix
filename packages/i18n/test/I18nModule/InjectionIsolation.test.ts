@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { Schema } from 'effect'
+import { describe, it, expect } from '@effect/vitest'
+import { Effect, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import { I18n, I18nTag, I18nModule, type I18nDriver } from '../../src/index.js'
 
@@ -48,8 +48,8 @@ describe('I18n injection isolation', () => {
       expect(svcB.instance).toBe(driverB)
       expect(svcA.instance).not.toBe(svcB.instance)
 
-      const modA = runtimeA.runSync(I18nModule.tag)
-      const modB = runtimeB.runSync(I18nModule.tag)
+      const modA = runtimeA.runSync(Effect.service(I18nModule.tag).pipe(Effect.orDie))
+      const modB = runtimeB.runSync(Effect.service(I18nModule.tag).pipe(Effect.orDie))
 
       await runtimeA.runPromise(modA.dispatch({ _tag: 'changeLanguage', payload: 'zh' } as any))
       await runtimeB.runPromise(modB.dispatch({ _tag: 'changeLanguage', payload: 'en' } as any))

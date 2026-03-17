@@ -1,4 +1,4 @@
-import { Effect, Fiber, Ref, Stream, SubscriptionRef, Schedule } from 'effect'
+import { Effect, Fiber, Queue, Ref, Schedule, Stream, SubscriptionRef } from 'effect'
 import * as Logix from '@logixjs/core'
 import { getDevtoolsSnapshot, subscribeDevtoolsSnapshot } from '../snapshot/index.js'
 
@@ -43,12 +43,14 @@ export const IslandStore = {
 const IDLE_TIMEOUT_MS = 600
 const SETTLE_DURATION_MS = 2000
 
-const rawStream = Stream.async<void>((emit) => {
-  const unsub = subscribeDevtoolsSnapshot(() => {
-    emit.single(void 0)
-  })
-  return Effect.sync(unsub)
-})
+const rawStream = Stream.callback<void>((queue) =>
+  Effect.gen(function* () {
+    const unsub = subscribeDevtoolsSnapshot(() => {
+      Queue.offerUnsafe(queue, undefined)
+    })
+    yield* Effect.addFinalizer(() => Effect.sync(unsub))
+  }),
+)
 
 const pulseLogic = Effect.gen(function* () {
   const { state, context } = IslandStore
@@ -123,7 +125,7 @@ const pulseLogic = Effect.gen(function* () {
               }
             }),
           ),
-          Effect.fork,
+          Effect.forkChild,
         )
       }
     }
@@ -136,7 +138,7 @@ const pulseLogic = Effect.gen(function* () {
   yield* rawStream.pipe(
     Stream.tap(() => handleUpdate),
     Stream.runDrain,
-    Effect.fork,
+    Effect.forkChild,
   )
 
   // 2. Poll for idle (Heartbeat) - every 200ms
@@ -152,9 +154,9 @@ import { useSyncExternalStore } from 'react'
 export const useIslandState = () => {
   return useSyncExternalStore(
     (cb) => {
-      const fiber = Effect.runFork(IslandStore.state.changes.pipe(Stream.runForEach(() => Effect.sync(cb))))
+      const fiber = Effect.runFork(SubscriptionRef.changes(IslandStore.state).pipe(Stream.runForEach(() => Effect.sync(cb))))
       return () => {
-        Effect.runSync(Fiber.interruptFork(fiber))
+        Effect.runSync(Fiber.interrupt(fiber))
       }
     },
     () => Effect.runSync(SubscriptionRef.get(IslandStore.state)),

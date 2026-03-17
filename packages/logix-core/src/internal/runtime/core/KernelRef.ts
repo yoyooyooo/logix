@@ -1,4 +1,4 @@
-import { Context, Effect, Option } from 'effect'
+import { Effect, Option, ServiceMap } from 'effect'
 import { isDevEnv } from './env.js'
 
 /**
@@ -84,10 +84,10 @@ export const normalizeKernelImplementationRef = (
   }
 }
 
-class KernelImplementationRefTagImpl extends Context.Tag('@logixjs/core/KernelImplementationRef')<
+class KernelImplementationRefTagImpl extends ServiceMap.Service<
   KernelImplementationRefTagImpl,
   KernelImplementationRef
->() {}
+>()('@logixjs/core/KernelImplementationRef') {}
 
 export const KernelImplementationRefTag = KernelImplementationRefTagImpl
 

@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 // @vitest-environment happy-dom
 import React from 'react'
 import { render, fireEvent, waitFor, cleanup } from '@testing-library/react'
-import { Schema, ManagedRuntime, Layer, Effect, Context } from 'effect'
+import { Effect, Layer, ManagedRuntime, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
 import { useModule } from '../../src/Hooks.js'
@@ -14,7 +14,7 @@ const Counter = Logix.Module.make('useModuleImplKeyedCounter', {
 
 const CounterLogic = Counter.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction('increment').run({ effect: $.state.update((s) => ({ count: s.count + 1 })) })
+    yield* $.onAction('increment').run($.state.update((s) => ({ count: s.count + 1 })))
   }),
 )
 
@@ -32,7 +32,7 @@ describe('useModule(ModuleImpl, { key })', () => {
 
   it('reuses the same local instance for the same key across components', async () => {
     const runtime = makeRuntime()
-    const EnvTag = Context.GenericTag<{ readonly name: string }>('@logixjs/react-test/useModuleImplKeyed/env')
+    const EnvTag = ServiceMap.Service<{ readonly name: string }>('@logixjs/react-test/useModuleImplKeyed/env')
     const EnvLayer = Layer.succeed(EnvTag, { name: 'env' })
 
     const Wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -139,7 +139,7 @@ describe('useModule(ModuleImpl, { key })', () => {
 
   it('does not share instances across different RuntimeProvider.layer scopes even with the same key', async () => {
     const runtime = makeRuntime()
-    const EnvTag = Context.GenericTag<{ readonly name: string }>('@logixjs/react-test/useModuleImplKeyed/scope-env')
+    const EnvTag = ServiceMap.Service<{ readonly name: string }>('@logixjs/react-test/useModuleImplKeyed/scope-env')
     const LayerA = Layer.succeed(EnvTag, { name: 'A' })
     const LayerB = Layer.succeed(EnvTag, { name: 'B' })
 

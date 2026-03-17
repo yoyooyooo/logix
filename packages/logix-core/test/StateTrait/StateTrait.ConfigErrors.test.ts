@@ -4,7 +4,7 @@ import * as Logix from '../../src/index.js'
 import * as Debug from '../../src/Debug.js'
 
 describe('StateTrait config errors', () => {
-  it.scoped('computed cycle should hard fail and block commit', () =>
+  it.effect('computed cycle should hard fail and block commit', () =>
     Effect.gen(function* () {
       const State = Schema.Struct({
         base: Schema.Number,
@@ -48,7 +48,7 @@ describe('StateTrait config errors', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* M.tag
+        const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
         const exit = yield* Effect.exit(rt.dispatch({ _tag: 'bump', payload: undefined } as any))
 

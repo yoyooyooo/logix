@@ -27,7 +27,7 @@ import { runUploadAndStartImportPattern, FileUploadService, ImportService } from
 const CompositionStateSchema = Schema.Struct({
   lastBulkCount: Schema.Number,
   lastImportTaskId: Schema.optional(Schema.String),
-  status: Schema.Literal('idle', 'running', 'done'),
+  status: Schema.Literals(['idle', 'running', 'done']),
 })
 
 const CompositionActionMap = {
@@ -72,16 +72,16 @@ export const CompositionLogic = CompositionDef.logic<CompositionServices>(
         // 使用两个独立的 Pattern：
         // - 先执行批量操作（例如批量归档），记录作用条数；
         // - 再启动一次导入任务，记录 taskId。
-        const bulkResult = yield* Effect.either(runBulkOperationPattern({ operation: 'archive' }))
-        const bulkCount = bulkResult._tag === 'Right' ? bulkResult.right : 0
+        const bulkResult = yield* Effect.exit(runBulkOperationPattern({ operation: 'archive' }))
+        const bulkCount = bulkResult._tag === 'Success' ? bulkResult.value : 0
 
-        const importResult = yield* Effect.either(
+        const importResult = yield* Effect.exit(
           runUploadAndStartImportPattern({
             fileName: 'demo.csv',
             fileSize: 123,
           }),
         )
-        const taskId = importResult._tag === 'Right' ? importResult.right : undefined
+        const taskId = importResult._tag === 'Success' ? importResult.value : undefined
 
         // 更新组合场景的 State
         yield* $.state.update((prev: CompositionState) => ({
@@ -99,8 +99,8 @@ export const CompositionLogic = CompositionDef.logic<CompositionServices>(
         status: 'idle',
       }))
 
-      yield* $.onAction('combo/run').run({ mode: 'exhaust', effect: handleRun })
-      yield* $.onAction('combo/reset').run({ effect: handleReset })
+      yield* $.onAction('combo/run').runExhaust(handleRun)
+      yield* $.onAction('combo/reset').run(handleReset)
     }),
 )
 
@@ -115,7 +115,7 @@ export const CompositionModule = CompositionDef.implement<
     lastBulkCount: 0,
     lastImportTaskId: undefined,
     status: 'idle',
-  },
+  } as CompositionState,
   logics: [CompositionLogic],
 })
 

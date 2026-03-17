@@ -1,9 +1,9 @@
-import { Context, Layer } from 'effect'
+import { Layer, ServiceMap } from 'effect'
 import { isDevEnv } from './runtime/core/env.js'
 
 export interface ResourceSpec<Key, Out, Err, Env> {
   readonly id: string
-  readonly keySchema: import('effect').Schema.Schema<Key, any>
+  readonly keySchema: import('effect').Schema.Schema<Key>
   readonly load: (key: Key) => import('effect').Effect.Effect<Out, Err, Env>
   readonly meta?: {
     readonly cacheGroup?: string
@@ -104,10 +104,10 @@ export interface ResourceRegistry {
   readonly specs: ReadonlyMap<string, AnyResourceSpec>
 }
 
-export class ResourceRegistryTag extends Context.Tag('@logixjs/core/ResourceRegistry')<
+export class ResourceRegistryTag extends ServiceMap.Service<
   ResourceRegistryTag,
   ResourceRegistry
->() {}
+>()('@logixjs/core/ResourceRegistry') {}
 
 export const internal = {
   ResourceRegistryTag,

@@ -13,15 +13,12 @@
  * 运行：
  *   pnpm -C examples/logix exec tsx src/scenarios/external-store-tick.ts
  */
-import { Context, Effect, Layer, Queue, Schema, Stream, SubscriptionRef } from 'effect'
+import { Effect, Layer, Queue, Schema, ServiceMap, Stream, SubscriptionRef } from 'effect'
 import * as Logix from '@logixjs/core'
 
-export class UsersRepo extends Effect.Service<UsersRepo>()('Accounts/UsersRepo', {
-  effect: Effect.gen(function* () {
-    return {} as const
-  }),
-  dependencies: [],
-}) {}
+export class UsersRepo extends ServiceMap.Service<UsersRepo, {}>()('Accounts/UsersRepo') {}
+
+export const UsersRepoLive = Layer.succeed(UsersRepo, {})
 
 type Listener = () => void
 
@@ -52,7 +49,7 @@ type DemoHostService = {
   readonly location: Logix.ExternalStore.ExternalStore<{ readonly pathname: string }>
 }
 
-class DemoHostServiceTag extends Context.Tag('ExternalStoreTickDemoHost')<DemoHostServiceTag, DemoHostService>() {}
+class DemoHostServiceTag extends ServiceMap.Service<DemoHostServiceTag, DemoHostService>()('ExternalStoreTickDemoHost') { }
 
 const DemoHostLive = Layer.succeed(DemoHostServiceTag, {
   location: LocationStore.store,
@@ -65,7 +62,10 @@ const main = Effect.scoped(
     const flag$ = Stream.fromQueue(flagQueue)
 
     const LocationExternalStore = Logix.ExternalStore.fromService(DemoHostServiceTag, (svc) => svc.location)
-    const UserIdExternalStore = Logix.ExternalStore.fromSubscriptionRef(userIdRef)
+    const UserIdExternalStore = Logix.ExternalStore.fromSubscriptionRef({
+      get: SubscriptionRef.get(userIdRef),
+      changes: SubscriptionRef.changes(userIdRef),
+    })
     const FeatureFlagExternalStore = Logix.ExternalStore.fromStream(flag$, { initial: 'flag:off' })
 
     const SourceState = Schema.Struct({ value: Schema.Number })
@@ -167,12 +167,10 @@ const main = Effect.scoped(
       yield* Effect.promise(() =>
         runtime.runPromise(
           Effect.gen(function* () {
-            const demo: any = yield* DemoDef.tag
+            const demo: any = yield* Effect.service(DemoDef.tag).pipe(Effect.orDie)
             const source: any = Logix.InternalContracts.getImportsScope(demo as any).get(SourceDef.tag)
             if (!source) {
-              return yield* Effect.dieMessage(
-                '[external-store-tick] Missing Source import: DemoModule must include SourceModule.impl in `imports` for Module-as-Source.',
-              )
+              return yield* Effect.die(new Error('[external-store-tick] Missing Source import: DemoModule must include SourceModule.impl in `imports` for Module-as-Source.'))
             }
 
             const demoModuleInstanceKey = `${demo.moduleId}::${demo.instanceId}`

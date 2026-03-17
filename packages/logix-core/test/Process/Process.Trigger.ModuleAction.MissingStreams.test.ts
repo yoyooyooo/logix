@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@effect/vitest'
-import { Context, Effect, Layer, Schema } from 'effect'
+import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
+import { moduleRuntimeTagFromModuleId } from '../../src/internal/serviceId.js'
 import { collectProcessErrorEvent, withProcessRuntime } from './test-helpers.js'
 
 type DiagnosticsLevel = 'off' | 'light'
@@ -36,7 +37,7 @@ const makeProcessLayer = (options: {
     instanceId: `${options.triggerModuleId}#fake`,
   }
 
-  const triggerModuleTag = Context.Tag(`@logixjs/Module/${options.triggerModuleId}`)() as Context.Tag<any, any>
+  const triggerModuleTag = moduleRuntimeTagFromModuleId(options.triggerModuleId) as any
   const fakeTriggerModuleLayer = Layer.succeed(triggerModuleTag, missingStreamsRuntime as any)
 
   const hostImpl = Host.implement({
@@ -47,7 +48,7 @@ const makeProcessLayer = (options: {
 }
 
 describe('process: trigger moduleAction missing streams', () => {
-  it.scoped('should fail with process::missing_action_stream when diagnostics is off', () =>
+  it.effect('should fail with process::missing_action_stream when diagnostics is off', () =>
     Effect.gen(function* () {
       const processId = 'ProcessTriggerMissingActionStream'
       const triggerModuleId = 'ProcessTriggerMissingActionStreamTarget'
@@ -76,7 +77,7 @@ describe('process: trigger moduleAction missing streams', () => {
     }),
   )
 
-  it.scoped('should fail with process::missing_action_meta_stream when diagnostics is on', () =>
+  it.effect('should fail with process::missing_action_meta_stream when diagnostics is on', () =>
     Effect.gen(function* () {
       const processId = 'ProcessTriggerMissingActionMetaStream'
       const triggerModuleId = 'ProcessTriggerMissingActionMetaStreamTarget'

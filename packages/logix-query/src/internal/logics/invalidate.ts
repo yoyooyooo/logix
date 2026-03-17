@@ -1,5 +1,5 @@
 import * as Logix from '@logixjs/core'
-import { Effect } from 'effect'
+import { Effect, ServiceMap } from 'effect'
 import { Engine, type InvalidateRequest } from '../../Engine.js'
 import type { QuerySourceConfig } from '../../Traits.js'
 
@@ -47,7 +47,7 @@ export const invalidate = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
           })
 
           // 2) Call external engine (optional): does not block the fallback path.
-          const engineOpt = yield* Effect.serviceOption(Engine)
+          const engineOpt = yield* Effect.serviceOption(Engine as unknown as ServiceMap.Key<any, import('../../Engine.js').Engine>)
           if (engineOpt._tag !== 'None') {
             yield* engineOpt.value.invalidate(request)
           }

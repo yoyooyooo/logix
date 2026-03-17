@@ -21,7 +21,7 @@ describe('RuntimeProvider onError (observer bridge)', () => {
     let calls = 0
     let lastContext: any = null
 
-    const failingLayer = Layer.scopedDiscard(Effect.die(new Error('layer build failed'))) as unknown as Layer.Layer<
+const failingLayer = Layer.effectDiscard(Effect.die(new Error('layer build failed'))) as unknown as Layer.Layer<
       any,
       any,
       never

@@ -5,10 +5,10 @@ import { Db, DbError, type DbService } from './db.js'
 
 const databaseUrl = Effect.sync(() => process.env.DATABASE_URL)
 
-export const DbLive: Layer.Layer<Db, never, never> = Layer.scoped(
+export const DbLive: Layer.Layer<Db, never, never> = Layer.effect(
   Db,
   Effect.gen(function* () {
-    const urlOpt = Option.fromNullable(yield* databaseUrl)
+    const urlOpt = Option.fromNullishOr(yield* databaseUrl)
     if (Option.isNone(urlOpt)) {
       const disabled = new DbError({
         reason: 'disabled',

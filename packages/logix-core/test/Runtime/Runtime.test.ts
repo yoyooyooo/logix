@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
@@ -13,18 +13,17 @@ const RootModule = Logix.Module.make('RuntimeRoot', {
 
 const RootLogic = RootModule.logic(($) =>
   Effect.gen(function* () {
-    yield* $.onAction('bump').run({
-      effect: () =>
-        $.state.update((s) => ({
-          ...s,
-          value: s.value + 1,
-        })),
-    })
+    yield* $.onAction('bump').run(() =>
+      $.state.update((s) => ({
+        ...s,
+        value: s.value + 1,
+      })),
+    )
   }),
 )
 
 describe('Runtime.make (public API)', () => {
-  it.scoped('should run a simple ModuleImpl program', () =>
+  it.effect('should run a simple ModuleImpl program', () =>
     Effect.gen(function* () {
       const impl = RootModule.implement({
         initial: { value: 0 },
@@ -36,7 +35,7 @@ describe('Runtime.make (public API)', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* RootModule.tag
+        const rt = yield* Effect.service(RootModule.tag).pipe(Effect.orDie)
 
         yield* rt.dispatch({ _tag: 'bump', payload: undefined })
         yield* rt.dispatch({ _tag: 'bump', payload: undefined })

@@ -1,4 +1,4 @@
-import { Effect, FiberRef } from 'effect'
+import { Effect } from 'effect'
 import * as ModuleFactory from './internal/runtime/ModuleFactory.js'
 import * as Debug from './internal/runtime/core/DebugSink.js'
 import { currentConvergeStaticIrCollectors } from './internal/runtime/core/ConvergeStaticIrCollector.js'
@@ -152,7 +152,7 @@ export function link<Ms extends readonly LinkModuleToken<string, AnyModuleShape>
   )
 
   const wrapped = Effect.gen(function* () {
-    const level = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
+    const level = yield* Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie)
     if (level !== 'off') {
       yield* Debug.record({
         type: 'diagnostic',
@@ -278,15 +278,15 @@ export function linkDeclarative<Ms extends readonly LinkModuleToken<string, AnyM
     })
 
   const program: Effect.Effect<void, never, any> = Effect.gen(function* () {
-    const runtime = yield* DeclarativeLinkRuntimeTag
-    const collectors = yield* FiberRef.get(currentConvergeStaticIrCollectors)
+    const runtime = yield* Effect.service(DeclarativeLinkRuntimeTag).pipe(Effect.orDie)
+    const collectors = yield* Effect.service(currentConvergeStaticIrCollectors).pipe(Effect.orDie)
 
     const runtimeByTag = new Map<ModuleTag<string, AnyModuleShape>, any>()
-    const resolveRuntime = (tag: ModuleTag<string, AnyModuleShape>): Effect.Effect<any> =>
+    const resolveRuntime = (tag: ModuleTag<string, AnyModuleShape>): Effect.Effect<any, never, any> =>
       Effect.suspend(() => {
         const cached = runtimeByTag.get(tag)
         if (cached) return Effect.succeed(cached)
-        return (tag as any).pipe(
+        return Effect.service(tag as any).pipe(
           Effect.tap((rt: any) =>
             Effect.sync(() => {
               runtimeByTag.set(tag, rt)

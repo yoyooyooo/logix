@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
 import * as Logix from '../../src/index.js'
@@ -87,111 +87,6 @@ describe('Debug diagnosticsLevel (off|light|full)', () => {
       expect(ref.meta?.staticIrDigest).toBeUndefined()
       expect(ref.meta?.dirtySet?.rootPaths).toBeUndefined()
       expect(ref.meta?.dirtySet?.rootIds).toEqual([0])
-      expect(ref.meta?.traceDigestDegrade?.reasonCode).toBe('digest_missing')
-      expect(ref.meta?.traceDigestDegrade?.fallbackMode).toBe('legacy_payload')
-      expect(ref.meta?.traceDigestDegrade?.anchor).toEqual({
-        moduleId: 'M',
-        instanceId: 'i-legacy',
-        txnSeq: 2,
-        txnId: 'i-legacy::t2',
-      })
-    }),
-  )
-
-  it.effect('state:update should propagate opSeq into traceDigestPayload.anchor when available', () =>
-    Effect.sync(() => {
-      const event = {
-        type: 'state:update',
-        moduleId: 'M',
-        instanceId: 'i-opseq',
-        txnSeq: 3,
-        txnId: 'i-opseq::t3',
-        opSeq: 42,
-        state: { count: 3 },
-        traceLookupKey: {
-          staticIrDigest: 'converge_ir_v2:digest',
-          nodeId: 7,
-        },
-      } as any
-
-      const ref = Logix.Debug.internal.toRuntimeDebugEventRef(event, { diagnosticsLevel: 'light' }) as any
-      expect(ref).toBeDefined()
-      expect(ref.meta?.traceDigestPayload?.anchor?.opSeq).toBe(42)
-      expect(ref.meta?.traceDigestDegrade).toBeUndefined()
-    }),
-  )
-
-  it.effect('state:update should materialize traceLookupKey/traceDigestPayload when lookup key is provided', () =>
-    Effect.sync(() => {
-      const event = {
-        type: 'state:update',
-        moduleId: 'M',
-        instanceId: 'i-digest',
-        txnSeq: 11,
-        txnId: 'i-digest::t11',
-        state: { count: 11 },
-        traceLookupKey: {
-          staticIrDigest: 'converge_ir_v2:digest',
-          nodeId: 3,
-        },
-        dirtySet: {
-          dirtyAll: false,
-          rootIds: [3],
-          rootCount: 1,
-          keySize: 1,
-          keyHash: 7,
-          rootIdsTruncated: false,
-        },
-      } as any
-
-      const ref = Logix.Debug.internal.toRuntimeDebugEventRef(event, { diagnosticsLevel: 'light' }) as any
-      expect(ref).toBeDefined()
-      expect(ref.meta?.traceLookupKey).toEqual({
-        staticIrDigest: 'converge_ir_v2:digest',
-        nodeId: 3,
-      })
-      expect(ref.meta?.traceDigestPayload?.schemaVersion).toBe(1)
-      expect(ref.meta?.traceDigestPayload?.digestAlgoVersion).toBe('converge_ir_v2')
-      expect(ref.meta?.traceDigestPayload?.lookupKey).toEqual({
-        staticIrDigest: 'converge_ir_v2:digest',
-        nodeId: 3,
-      })
-      expect(ref.meta?.traceDigestPayload?.anchor?.instanceId).toBe('i-digest')
-      expect(ref.meta?.traceDigestPayload?.anchor?.txnSeq).toBe(11)
-      expect(ref.meta?.traceDigestDegrade).toBeUndefined()
-    }),
-  )
-
-  it.effect('state:update should prefer runtime staticIrDigest when lookup digest mismatches', () =>
-    Effect.sync(() => {
-      const event = {
-        type: 'state:update',
-        moduleId: 'M',
-        instanceId: 'i-digest-mismatch',
-        txnSeq: 17,
-        staticIrDigest: 'converge_ir_v2:new',
-        traceLookupKey: {
-          staticIrDigest: 'converge_ir_v2:old',
-          nodeId: 3,
-        },
-        dirtySet: {
-          dirtyAll: false,
-          rootIds: [5],
-          rootCount: 1,
-          keySize: 1,
-          keyHash: 9,
-          rootIdsTruncated: false,
-        },
-      } as any
-
-      const ref = Logix.Debug.internal.toRuntimeDebugEventRef(event, { diagnosticsLevel: 'light' }) as any
-      expect(ref).toBeDefined()
-      expect(ref.meta?.staticIrDigest).toBe('converge_ir_v2:new')
-      expect(ref.meta?.traceLookupKey?.staticIrDigest).toBe('converge_ir_v2:new')
-      expect(ref.meta?.traceLookupKey?.nodeId).toBe(5)
-      expect(ref.meta?.traceDigestPayload?.lookupKey?.staticIrDigest).toBe('converge_ir_v2:new')
-      expect(ref.meta?.traceDigestPayload?.lookupKey?.nodeId).toBe(5)
-      expect(ref.meta?.traceDigestDegrade?.reasonCode).toBe('digest_mismatch')
     }),
   )
 
@@ -216,12 +111,6 @@ describe('Debug diagnosticsLevel (off|light|full)', () => {
       expect(ref).toBeDefined()
       expect(ref.meta?.dirty?.rootPaths).toBeUndefined()
       expect(ref.meta?.dirty?.rootIds).toEqual([1])
-      expect(ref.meta?.traceLookupKey?.staticIrDigest).toBe('converge_ir_v2:test')
-      expect(ref.meta?.traceLookupKey?.nodeId).toBe(1)
-      expect(ref.meta?.traceDigestPayload?.lookupKey?.staticIrDigest).toBe('converge_ir_v2:test')
-      expect(ref.meta?.traceDigestPayload?.lookupKey?.nodeId).toBe(1)
-      expect(ref.meta?.traceDigestPayload?.anchor?.instanceId).toBe('i-legacy-trait')
-      expect(ref.meta?.traceDigestPayload?.anchor?.txnSeq).toBe(0)
     }),
   )
 
@@ -257,7 +146,7 @@ describe('Debug diagnosticsLevel (off|light|full)', () => {
       } satisfies Logix.Debug.Event
 
       yield* Logix.Debug.record(event).pipe(
-        Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel, 'off'),
+        (effect) => Effect.provideService(effect, Logix.Debug.internal.currentDiagnosticsLevel, 'off'),
         Effect.provide(Logix.Debug.devtoolsHubLayer({ bufferSize: 10 })),
       )
 

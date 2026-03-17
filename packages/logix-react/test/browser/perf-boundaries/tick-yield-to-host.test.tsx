@@ -80,13 +80,9 @@ test(
         if (cached) return cached
 
         const instrumentation = args.diagnosticsLevel === 'full' ? 'full' : 'light'
-        const mode: Logix.Debug.DevtoolsProjectionMode = args.diagnosticsLevel
-        const debugLayer = Layer.mergeAll(
-          Logix.Debug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
-            mode,
-          }) as Layer.Layer<any, never, never>,
-          Logix.Debug.diagnosticsLevel(args.diagnosticsLevel),
-        ) as Layer.Layer<any, never, never>
+        const debugLayer = Logix.Debug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
+          diagnosticsLevel: args.diagnosticsLevel,
+        }) as Layer.Layer<any, never, never>
 
         const telemetry: TelemetryCounters = {
           capture: false,
@@ -119,7 +115,7 @@ test(
         )
 
         const moduleRuntimes = (await runtime.runPromise(
-          Effect.all(moduleDefs.map((m) => m.tag), { concurrency: 'unbounded' }) as any,
+          Effect.all(moduleDefs.map((m) => Effect.service(m.tag).pipe(Effect.orDie)), { concurrency: 'unbounded' }) as any,
         )) as ReadonlyArray<any>
 
         const storeOptions = { lowPriorityDelayMs: 0, lowPriorityMaxDelayMs: 0 }

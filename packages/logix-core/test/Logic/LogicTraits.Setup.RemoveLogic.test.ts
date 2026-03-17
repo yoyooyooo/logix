@@ -46,7 +46,7 @@ describe('LogicTraits (setup) - remove logic', () => {
     })
 
     const readFinalTraits = Effect.gen(function* () {
-      const rt = yield* M.tag
+      const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
       return Logix.Debug.getModuleFinalTraits(rt).map((t) => t.traitId)
     }) as Effect.Effect<ReadonlyArray<string>, never, any>
 

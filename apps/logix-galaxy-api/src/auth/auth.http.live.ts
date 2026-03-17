@@ -1,9 +1,9 @@
-import { HttpApiBuilder } from '@effect/platform'
-import * as Headers from '@effect/platform/Headers'
-import * as HttpServerRequest from '@effect/platform/HttpServerRequest'
+import * as Headers from 'effect/unstable/http/Headers'
+import * as HttpServerRequest from 'effect/unstable/http/HttpServerRequest'
+import { HttpApiBuilder } from 'effect/unstable/httpapi'
 import { Effect, Option } from 'effect'
 
-import { EffectApi } from '../app/effect-api.js'
+import { EffectApiAuth } from '../app/effect-api.js'
 import { DbError } from '../db/db.js'
 import { AuthEventRepo } from './auth-event.repo.js'
 import { AuthRateLimit } from './auth.rate-limit.js'
@@ -16,17 +16,17 @@ const toServiceUnavailable = (e: DbError): { readonly _tag: 'ServiceUnavailableE
 
 const getRequestMeta = Effect.gen(function* () {
   const req = yield* HttpServerRequest.HttpServerRequest
-  const userAgent = Option.getOrUndefined(Headers.get(req.headers, 'user-agent')) ?? undefined
-  const xff = Option.getOrUndefined(Headers.get(req.headers, 'x-forwarded-for'))
-  const xri = Option.getOrUndefined(Headers.get(req.headers, 'x-real-ip'))
+  const userAgent = Headers.get(req.headers, 'user-agent')
+  const xff = Headers.get(req.headers, 'x-forwarded-for')
+  const xri = Headers.get(req.headers, 'x-real-ip')
   const ipFromForwarded = xff?.split(',')[0]?.trim()
-  const ip = (ipFromForwarded || xri?.trim() || Option.getOrUndefined(req.remoteAddress) || undefined) ?? undefined
+  const ip = (ipFromForwarded || xri?.trim() || req.remoteAddress || undefined) ?? undefined
   return { ip, userAgent }
 })
 
 const getAuthHeaders = Effect.gen(function* () {
   const req = yield* HttpServerRequest.HttpServerRequest
-  const authorization = Option.getOrUndefined(Headers.get(req.headers, 'authorization')) ?? undefined
+  const authorization = Headers.get(req.headers, 'authorization')
   return { authorization } satisfies AuthHeaders
 })
 
@@ -45,20 +45,20 @@ const validateIsoRange = (from: string | undefined, to: string | undefined) =>
     }
   })
 
-export const AuthLive = HttpApiBuilder.group(EffectApi, 'Auth', (handlers) =>
+export const AuthLive = HttpApiBuilder.group(EffectApiAuth, 'Auth', (handlers) =>
   handlers
     .handle('authLogin', ({ payload }) =>
       Effect.gen(function* () {
-        const auth = yield* Auth
-        const events = yield* AuthEventRepo
-        const rateLimit = yield* AuthRateLimit
+        const auth = yield* Effect.service(Auth)
+        const events = yield* Effect.service(AuthEventRepo)
+        const rateLimit = yield* Effect.service(AuthRateLimit)
         const meta = yield* getRequestMeta
 
         const identifier = payload.email.trim().toLowerCase()
         const key = { identifier, ip: meta.ip }
 
         const attempt = rateLimit.check(key).pipe(
-          Effect.zipRight(auth.login({ ...payload, email: identifier })),
+          Effect.andThen(auth.login({ ...payload, email: identifier })),
           Effect.tap(() => rateLimit.recordSuccess(key)),
           Effect.tapError(() => rateLimit.recordFailure(key)),
         )
@@ -74,7 +74,7 @@ export const AuthLive = HttpApiBuilder.group(EffectApi, 'Auth', (handlers) =>
                 ip: meta.ip,
                 userAgent: meta.userAgent,
               })
-              .pipe(Effect.catchAll(() => Effect.void)),
+              .pipe(Effect.catch(() => Effect.void)),
           ),
           Effect.tapError((e) =>
             events
@@ -85,7 +85,7 @@ export const AuthLive = HttpApiBuilder.group(EffectApi, 'Auth', (handlers) =>
                 userAgent: meta.userAgent,
                 detail: { _tag: (e as any)?._tag },
               })
-              .pipe(Effect.catchAll(() => Effect.void)),
+              .pipe(Effect.catch(() => Effect.void)),
           ),
         )
 
@@ -94,19 +94,19 @@ export const AuthLive = HttpApiBuilder.group(EffectApi, 'Auth', (handlers) =>
     )
     .handle('authMe', () =>
       Effect.gen(function* () {
-        const auth = yield* Auth
+        const auth = yield* Effect.service(Auth)
         const headers = yield* getAuthHeaders
         return yield* auth.me(headers)
       }),
     )
     .handle('authLogout', () =>
       Effect.gen(function* () {
-        const auth = yield* Auth
-        const events = yield* AuthEventRepo
+        const auth = yield* Effect.service(Auth)
+        const events = yield* Effect.service(AuthEventRepo)
         const meta = yield* getRequestMeta
         const headers = yield* getAuthHeaders
 
-        const me = yield* auth.me(headers).pipe(Effect.catchAll(() => Effect.succeed(undefined)))
+        const me = yield* auth.me(headers).pipe(Effect.catch(() => Effect.succeed(undefined)))
 
         yield* auth.logout(headers).pipe(
           Effect.tap(() =>
@@ -120,16 +120,16 @@ export const AuthLive = HttpApiBuilder.group(EffectApi, 'Auth', (handlers) =>
                     ip: meta.ip,
                     userAgent: meta.userAgent,
                   })
-                  .pipe(Effect.catchAll(() => Effect.void))
+                  .pipe(Effect.catch(() => Effect.void))
               : Effect.void,
           ),
         )
       }),
     )
-    .handle('authEventList', ({ urlParams }) =>
+    .handle('authEventList', ({ query }) =>
       Effect.gen(function* () {
-        const auth = yield* Auth
-        const events = yield* AuthEventRepo
+        const auth = yield* Effect.service(Auth)
+        const events = yield* Effect.service(AuthEventRepo)
         const headers = yield* getAuthHeaders
 
         const me = yield* auth.requireAdmin(headers)
@@ -137,9 +137,9 @@ export const AuthLive = HttpApiBuilder.group(EffectApi, 'Auth', (handlers) =>
           return yield* Effect.fail({ _tag: 'ForbiddenError', message: 'Forbidden' } as const)
         }
 
-        yield* validateIsoRange(urlParams.from, urlParams.to)
+        yield* validateIsoRange(query.from, query.to)
 
-        return yield* events.list(urlParams).pipe(Effect.mapError(toServiceUnavailable))
+        return yield* events.list(query).pipe(Effect.mapError(toServiceUnavailable))
       }),
     ),
 )

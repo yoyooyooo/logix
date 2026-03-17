@@ -1,8 +1,8 @@
 ---
 title: Logix Core 待办优化机会池
 status: living
-updatedAt: 2026-02-27
-owner: pr/o021-module-api-unification
+updatedAt: 2026-02-26
+owner: pr/o014-doc-impl-bidirectional-convergence
 ---
 
 # Logix Core 待办优化机会池
@@ -63,13 +63,4 @@ owner: pr/o021-module-api-unification
 
 - 条目索引：[`items/README.md`](./items/README.md)
 - 状态注册表：[`status-registry.json`](./status-registry.json)
-## 7. O 状态追踪（滚动维护）
 
-| ID | Priority | Status | Spec | Owner |
-| --- | --- | --- | --- | --- |
-| O-021 | P1 | writeback | [102-o021-module-api-unification](../../specs/102-o021-module-api-unification/spec.md) | pr/o021-module-api-unification |
-| O-022 | P1 | spec | [103-o022-action-intent-api](../../specs/103-o022-action-intent-api/spec.md) | refactor |
-| O-023 | P1 | spec | [104-o023-flow-run-config](../../specs/104-o023-flow-run-config/spec.md) | refactor |
-| O-024 | P1 | spec | [105-o024-txn-lane-policy-cache](../../specs/105-o024-txn-lane-policy-cache/spec.md) | refactor |
-| O-025 | P1 | spec | [106-o025-devtoolshub-tiered-projection](../../specs/106-o025-devtoolshub-tiered-projection/spec.md) | refactor |
-| O-026 | P1 | spec | [107-o026-trace-digest-first](../../specs/107-o026-trace-digest-first/spec.md) | refactor |

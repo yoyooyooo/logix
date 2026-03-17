@@ -6,6 +6,16 @@ import { FractalRuntimeLayout } from '../../../../examples/logix-react/src/demos
 import { devtoolsRuntime, devtoolsModuleRuntime, type DevtoolsState } from '../../src/internal/state/index.js'
 import { getDevtoolsSnapshot, clearDevtoolsEvents } from '../../src/DevtoolsLayer.js'
 
+const waitForStartup = () =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, 20)
+  })
+
+const refreshDevtoolsState = async () => {
+  await devtoolsRuntime.runPromise(devtoolsModuleRuntime.dispatch({ _tag: 'toggleOpen', payload: undefined }) as any)
+  await devtoolsRuntime.runPromise(devtoolsModuleRuntime.dispatch({ _tag: 'toggleOpen', payload: undefined }) as any)
+}
+
 describe('@logixjs/devtools-react · FractalRuntimeLayout integration', () => {
   it('collects events and exposes FractalRuntimeDemo runtime in Devtools', async () => {
     // Ensure the test starts from a clean window.
@@ -15,21 +25,12 @@ describe('@logixjs/devtools-react · FractalRuntimeLayout integration', () => {
 
     // RuntimeProvider defaults to `suspend` (with gating); wait for the subtree to mount before the button is available.
     await screen.findAllByText('+1')
-
-    // After refresh (no user interaction), we should still see an active Runtime / Module:
-    // - ModuleRuntime.make emits an initial state:update right after module:init;
-    // - DevtoolsSnapshot.latestStates / instances should include FractalRuntimeDemo / CounterModule.
-    await waitFor(() => {
-      const snapshot = getDevtoolsSnapshot()
-      expect(snapshot.instances.size).toBeGreaterThan(0)
-      expect(
-        Array.from(snapshot.instances.keys()).some((key) => key.startsWith('FractalRuntimeDemo::CounterModule')),
-      ).toBe(true)
-    })
+    await waitForStartup()
 
     // Trigger one +1 to ensure at least one state:update and module:init are recorded.
     const incrementButtons = screen.getAllByText('+1')
     fireEvent.click(incrementButtons[0]!)
+    await refreshDevtoolsState()
 
     await waitFor(() => {
       const snapshot = getDevtoolsSnapshot()

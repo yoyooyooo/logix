@@ -19,7 +19,7 @@ export const makeMatch = <V>(value: V) => {
       if (result) {
         return result
       }
-      return Effect.dieMessage('[FluentMatch] Non-exhaustive match: no pattern matched value')
+      return Effect.die(new Error('[FluentMatch] Non-exhaustive match: no pattern matched value'))
     },
   }
 
@@ -45,7 +45,7 @@ export const makeMatchTag = <V extends { _tag: string }>(value: V) => {
       if (result) {
         return result
       }
-      return Effect.dieMessage('[FluentMatchTag] Non-exhaustive match: no tag handler matched value')
+      return Effect.die(new Error('[FluentMatchTag] Non-exhaustive match: no tag handler matched value'))
     },
   }
 

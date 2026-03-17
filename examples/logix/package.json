@@ -13,7 +13,7 @@
     "@logixjs/i18n": "workspace:*",
     "@logixjs/query": "workspace:*",
     "@tanstack/query-core": "^5.90.12",
-    "effect": "^3.19.8",
+    "effect": "4.0.0-beta.28",
     "zod": "^3.23.8"
   },
   "devDependencies": {

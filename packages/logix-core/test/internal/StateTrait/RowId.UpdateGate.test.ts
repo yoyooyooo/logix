@@ -1,33 +1,32 @@
 import { describe, it, expect } from '@effect/vitest'
-import { hashFieldPathIds, makeFieldPathIdRegistry, type DirtySet } from '../../../src/internal/field-path.js'
-import { shouldReconcileListConfigsByDirtySet, type ListConfig } from '../../../src/internal/state-trait/rowid.js'
+import { makeFieldPathIdRegistry } from '../../../src/internal/field-path.js'
+import type { TxnDirtyEvidenceSnapshot } from '../../../src/internal/runtime/core/StateTransaction.js'
+import { shouldReconcileListConfigsByDirtyEvidence, type ListConfig } from '../../../src/internal/state-trait/rowid.js'
 
-const makeDirtySet = (rootIds: ReadonlyArray<number>, dirtyAll = false): DirtySet => {
+const makeDirty = (dirtyPathIds: ReadonlyArray<number>, dirtyAll = false): TxnDirtyEvidenceSnapshot => {
   if (dirtyAll) {
     return {
       dirtyAll: true,
-      reason: 'unknownWrite',
-      rootIds: [],
-      rootCount: 0,
-      keySize: 0,
-      keyHash: 0,
+      dirtyAllReason: 'unknownWrite',
+      dirtyPathIds: [],
+      dirtyPathsKeyHash: 0,
+      dirtyPathsKeySize: 0,
     }
   }
 
   return {
     dirtyAll: false,
-    rootIds,
-    rootCount: rootIds.length,
-    keySize: rootIds.length,
-    keyHash: hashFieldPathIds(rootIds),
+    dirtyPathIds,
+    dirtyPathsKeyHash: 0,
+    dirtyPathsKeySize: dirtyPathIds.length,
   }
 }
 
 describe('RowId update gate', () => {
   it('should return false when list configs are empty', () => {
     const registry = makeFieldPathIdRegistry([['counter']])
-    const shouldSync = shouldReconcileListConfigsByDirtySet({
-      dirtySet: makeDirtySet([0]),
+    const shouldSync = shouldReconcileListConfigsByDirtyEvidence({
+      dirty: makeDirty([0]),
       listConfigs: [],
       fieldPathIdRegistry: registry,
     })
@@ -35,8 +34,8 @@ describe('RowId update gate', () => {
   })
 
   it('should return true for dirtyAll regardless of rootIds', () => {
-    const shouldSync = shouldReconcileListConfigsByDirtySet({
-      dirtySet: makeDirtySet([], true),
+    const shouldSync = shouldReconcileListConfigsByDirtyEvidence({
+      dirty: makeDirty([], true),
       listConfigs: [{ path: 'orders.items' }],
       fieldPathIdRegistry: undefined,
     })
@@ -44,8 +43,8 @@ describe('RowId update gate', () => {
   })
 
   it('should conservatively return true when rootIds exist but registry is missing', () => {
-    const shouldSync = shouldReconcileListConfigsByDirtySet({
-      dirtySet: makeDirtySet([0]),
+    const shouldSync = shouldReconcileListConfigsByDirtyEvidence({
+      dirty: makeDirty([0]),
       listConfigs: [{ path: 'orders.items' }],
       fieldPathIdRegistry: undefined,
     })
@@ -57,8 +56,8 @@ describe('RowId update gate', () => {
       ['orders', 'items', 'name'],
       ['meta', 'updatedAt'],
     ])
-    const shouldSync = shouldReconcileListConfigsByDirtySet({
-      dirtySet: makeDirtySet([0]),
+    const shouldSync = shouldReconcileListConfigsByDirtyEvidence({
+      dirty: makeDirty([0]),
       listConfigs: [{ path: 'orders.items' }],
       fieldPathIdRegistry: registry,
     })
@@ -70,8 +69,8 @@ describe('RowId update gate', () => {
       ['orders'],
       ['meta', 'updatedAt'],
     ])
-    const shouldSync = shouldReconcileListConfigsByDirtySet({
-      dirtySet: makeDirtySet([0]),
+    const shouldSync = shouldReconcileListConfigsByDirtyEvidence({
+      dirty: makeDirty([0]),
       listConfigs: [{ path: 'orders.items' }],
       fieldPathIdRegistry: registry,
     })
@@ -83,8 +82,8 @@ describe('RowId update gate', () => {
       ['profile', 'name'],
       ['meta', 'updatedAt'],
     ])
-    const shouldSync = shouldReconcileListConfigsByDirtySet({
-      dirtySet: makeDirtySet([0]),
+    const shouldSync = shouldReconcileListConfigsByDirtyEvidence({
+      dirty: makeDirty([0]),
       listConfigs: [{ path: 'orders.items' }],
       fieldPathIdRegistry: registry,
     })
@@ -93,8 +92,8 @@ describe('RowId update gate', () => {
 
   it('should conservatively return true for unknown rootIds', () => {
     const registry = makeFieldPathIdRegistry([['profile', 'name']])
-    const shouldSync = shouldReconcileListConfigsByDirtySet({
-      dirtySet: makeDirtySet([99]),
+    const shouldSync = shouldReconcileListConfigsByDirtyEvidence({
+      dirty: makeDirty([99]),
       listConfigs: [{ path: 'orders.items' }],
       fieldPathIdRegistry: registry,
     })
@@ -104,8 +103,8 @@ describe('RowId update gate', () => {
   it('should ignore invalid/empty list config paths', () => {
     const registry = makeFieldPathIdRegistry([['orders', 'items', 'name']])
     const listConfigs: ReadonlyArray<ListConfig> = [{ path: '   ' }, { path: 'orders.items' }]
-    const shouldSync = shouldReconcileListConfigsByDirtySet({
-      dirtySet: makeDirtySet([0]),
+    const shouldSync = shouldReconcileListConfigsByDirtyEvidence({
+      dirty: makeDirty([0]),
       listConfigs,
       fieldPathIdRegistry: registry,
     })
@@ -114,8 +113,8 @@ describe('RowId update gate', () => {
 
   it('should conservatively return true when list path normalization fails', () => {
     const registry = makeFieldPathIdRegistry([['profile', 'name']])
-    const shouldSync = shouldReconcileListConfigsByDirtySet({
-      dirtySet: makeDirtySet([0]),
+    const shouldSync = shouldReconcileListConfigsByDirtyEvidence({
+      dirty: makeDirty([0]),
       listConfigs: [{ path: '*' }],
       fieldPathIdRegistry: registry,
     })
@@ -124,12 +123,12 @@ describe('RowId update gate', () => {
 
   it('should match only same-root list paths when multiple list roots exist', () => {
     const registry = makeFieldPathIdRegistry([
-      ['profile', 'friends', 'name'],
-      ['orders', 'items', 'sku'],
+      ['profile', 'friends'],
+      ['orders', 'items'],
     ])
 
-    const shouldSync = shouldReconcileListConfigsByDirtySet({
-      dirtySet: makeDirtySet([0]),
+    const shouldSync = shouldReconcileListConfigsByDirtyEvidence({
+      dirty: makeDirty([0]),
       listConfigs: [{ path: 'orders.items' }, { path: 'profile.friends' }],
       fieldPathIdRegistry: registry,
     })
@@ -143,18 +142,44 @@ describe('RowId update gate', () => {
     ])
     const listConfigs: ReadonlyArray<ListConfig> = [{ path: 'orders.items' }, { path: 'orders.items' }]
 
-    const first = shouldReconcileListConfigsByDirtySet({
-      dirtySet: makeDirtySet([0]),
+    const first = shouldReconcileListConfigsByDirtyEvidence({
+      dirty: makeDirty([0]),
       listConfigs,
       fieldPathIdRegistry: registry,
     })
-    const second = shouldReconcileListConfigsByDirtySet({
-      dirtySet: makeDirtySet([0]),
+    const second = shouldReconcileListConfigsByDirtyEvidence({
+      dirty: makeDirty([0]),
       listConfigs,
       fieldPathIdRegistry: registry,
     })
 
     expect(first).toBe(true)
     expect(second).toBe(true)
+  })
+
+  it('should return false when dirty roots are nested under a list path but do not overlap trackBy', () => {
+    const registry = makeFieldPathIdRegistry([
+      ['items', 'warehouseId'],
+      ['items', 'id'],
+    ])
+    const shouldSync = shouldReconcileListConfigsByDirtyEvidence({
+      dirty: makeDirty([0]),
+      listConfigs: [{ path: 'items', trackBy: 'id' }],
+      fieldPathIdRegistry: registry,
+    })
+    expect(shouldSync).toBe(false)
+  })
+
+  it('should return true when dirty roots overlap a list trackBy field path', () => {
+    const registry = makeFieldPathIdRegistry([
+      ['items', 'warehouseId'],
+      ['items', 'id'],
+    ])
+    const shouldSync = shouldReconcileListConfigsByDirtyEvidence({
+      dirty: makeDirty([1]),
+      listConfigs: [{ path: 'items', trackBy: 'id' }],
+      fieldPathIdRegistry: registry,
+    })
+    expect(shouldSync).toBe(true)
   })
 })

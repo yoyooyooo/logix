@@ -9,7 +9,6 @@ import { LogixDevtools } from '../../src/LogixDevtools.js'
 import {
   devtoolsLayer,
   getDevtoolsSnapshot,
-  setDevtoolsSnapshotOverride,
   clearDevtoolsEvents,
   clearDevtoolsSnapshotOverride,
 } from '../../src/DevtoolsLayer.js'
@@ -34,14 +33,13 @@ const CounterImpl = CounterModule.implement({
     CounterModule.logic(($) =>
       Effect.gen(function* () {
         // Record one debug event to verify the Debug Sink receives events.
-        yield* $.onAction('increment').run({
-          effect: () =>
-            Logix.Debug.record({
-              type: 'trace:increment',
-              moduleId: CounterModule.id,
-              data: { source: 'devtools-react.integration.test' },
-            }),
-        })
+        yield* $.onAction('increment').run(() =>
+          Logix.Debug.record({
+            type: 'trace:increment',
+            moduleId: CounterModule.id,
+            data: { source: 'devtools-react.integration.test' },
+          }),
+        )
       }),
     ),
   ],
@@ -62,6 +60,16 @@ const CounterView: React.FC = () => {
       count: {count}
     </button>
   )
+}
+
+const waitForStartup = () =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, 20)
+  })
+
+const refreshDevtoolsState = async () => {
+  await devtoolsRuntime.runPromise(devtoolsModuleRuntime.dispatch({ _tag: 'toggleOpen', payload: undefined }) as any)
+  await devtoolsRuntime.runPromise(devtoolsModuleRuntime.dispatch({ _tag: 'toggleOpen', payload: undefined }) as any)
 }
 
 describe('@logixjs/devtools-react integration with @logixjs/react', () => {
@@ -103,9 +111,11 @@ describe('@logixjs/devtools-react integration with @logixjs/react', () => {
 
     // Initial state
     expect(button.textContent).toContain('count: 0')
+    await waitForStartup()
 
     // Trigger one increment
     fireEvent.click(button)
+    await refreshDevtoolsState()
 
     // Wait for Effect/Debug Sink to process this event and update the snapshot.
     await waitFor(() => {
@@ -125,6 +135,7 @@ describe('@logixjs/devtools-react integration with @logixjs/react', () => {
     // Trigger two more increments to verify state:update snapshots are preserved in order on the timeline.
     fireEvent.click(button)
     fireEvent.click(button)
+    await refreshDevtoolsState()
 
     await waitFor(() => {
       const snapshot = getDevtoolsSnapshot()
@@ -269,11 +280,11 @@ describe('@logixjs/devtools-react integration with @logixjs/react', () => {
               staticIrDigest: digest,
               dirtySet: {
                 dirtyAll: false,
-                rootIds: [1],
-                rootCount: 1,
+                pathIds: [1],
+                pathCount: 1,
                 keySize: 1,
                 keyHash: 123,
-                rootIdsTruncated: false,
+                pathIdsTruncated: false,
               },
             },
           },
@@ -296,77 +307,6 @@ describe('@logixjs/devtools-react integration with @logixjs/react', () => {
       const rootPaths = imported?.meta?.dirtySet?.rootPaths as any
       expect(Array.isArray(rootPaths)).toBe(true)
       expect(rootPaths).toEqual([['profile', 'name']])
-    })
-  })
-
-  it('supports digest-first lookup key on evidence import when staticIrDigest/rootIds are omitted from legacy slots', async () => {
-    render(<LogixDevtools position="bottom-left" initialOpen={true} />)
-
-    const protocolVersion = Logix.Observability.protocolVersion
-    const digest = 'digest-lookup-only-1'
-
-    const evidence = {
-      protocolVersion,
-      runId: 'run-root-paths-lookup-only',
-      createdAt: 21,
-      source: { host: 'test' },
-      summary: {
-        converge: {
-          staticIrByDigest: {
-            [digest]: {
-              fieldPaths: [['profile'], ['profile', 'nickname']],
-            },
-          },
-        },
-      },
-      events: [
-        {
-          protocolVersion,
-          runId: 'run-root-paths-lookup-only',
-          seq: 1,
-          timestamp: 21,
-          type: 'debug:event',
-          payload: {
-            eventSeq: 1,
-            eventId: 'i1::e11',
-            timestamp: 21,
-            kind: 'state',
-            label: 'state:update',
-            moduleId: 'M',
-            instanceId: 'i1',
-            runtimeLabel: 'R',
-            txnSeq: 11,
-            txnId: 'txn-11',
-            meta: {
-              traceLookupKey: {
-                staticIrDigest: digest,
-                nodeId: 1,
-              },
-              dirtySet: {
-                dirtyAll: false,
-                rootCount: 1,
-                keySize: 1,
-                keyHash: 110,
-                rootIdsTruncated: false,
-              },
-            },
-          },
-        },
-      ],
-    }
-
-    devtoolsRuntime.runFork(
-      devtoolsModuleRuntime.dispatch({
-        _tag: 'importEvidenceJson',
-        payload: JSON.stringify(evidence),
-      }) as any,
-    )
-
-    await waitFor(() => {
-      const snapshot = getDevtoolsSnapshot()
-      const imported = snapshot.events.find((event) => event.kind === 'state' && event.label === 'state:update') as any
-      expect(imported).toBeDefined()
-      expect(imported?.meta?.dirtySet?.rootPaths).toEqual([['profile', 'nickname']])
     })
   })
 
@@ -533,118 +473,6 @@ describe('@logixjs/devtools-react integration with @logixjs/react', () => {
       const imported = snapshot.events.find((event) => event.kind === 'trait:converge') as any
       expect(imported).toBeDefined()
       expect(imported?.meta?.dirty?.rootPaths).toEqual([['profile', 'email']])
-    })
-  })
-
-  it('shows projection degraded badge for light summary snapshots', async () => {
-    setDevtoolsSnapshotOverride({
-      snapshotToken: 1,
-      projection: {
-        tier: 'light',
-        degraded: true,
-        visibleFields: ['instances', 'events', 'exportBudget'],
-        reason: {
-          code: 'projection_tier_light',
-          message: 'summary-only',
-          recommendedAction: 'switch to full',
-          hiddenFields: ['latestStates', 'latestTraitSummaries'],
-        },
-      },
-      instances: new Map(),
-      events: [],
-      latestStates: new Map(),
-      latestTraitSummaries: new Map(),
-      exportBudget: { dropped: 0, oversized: 0 },
-    })
-
-    render(<LogixDevtools position="bottom-left" initialOpen={true} />)
-
-    await waitFor(() => {
-      expect(screen.getByText(/projection:light/i)).not.toBeNull()
-      expect(screen.getByText(/degraded · projection_tier_light/i)).not.toBeNull()
-    })
-  })
-
-  it('projection badge should follow selected runtime tier in mixed runtime view', async () => {
-    const moduleId = 'DevtoolsProjectionBadgeMixedRuntime'
-    const fullRuntimeLabel = 'R::DevtoolsProjectionBadge::Full'
-    const lightRuntimeLabel = 'R::DevtoolsProjectionBadge::Light'
-    const findRuntimeButton = (runtimeLabel: string): HTMLButtonElement => {
-      const button = screen
-        .getAllByText(runtimeLabel)
-        .map((node) => node.closest('button'))
-        .find((node): node is HTMLButtonElement => node instanceof HTMLButtonElement)
-      if (!button) {
-        throw new Error(`runtime button not found for ${runtimeLabel}`)
-      }
-      return button
-    }
-
-    const emitRuntimeEvents = async (args: {
-      readonly runtimeLabel: string
-      readonly mode: Logix.Debug.DevtoolsProjectionMode
-      readonly instanceId: string
-      readonly count: number
-    }) => {
-      const layer = Logix.Debug.devtoolsHubLayer({
-        bufferSize: 32,
-        mode: args.mode,
-        runtimeLabel: args.runtimeLabel,
-      }) as Layer.Layer<any, never, never>
-
-      await Effect.runPromise(
-        Effect.gen(function* () {
-          yield* Logix.Debug.record({
-            type: 'module:init',
-            moduleId,
-            instanceId: args.instanceId,
-            runtimeLabel: args.runtimeLabel,
-          } as any)
-          yield* Logix.Debug.record({
-            type: 'state:update',
-            moduleId,
-            instanceId: args.instanceId,
-            runtimeLabel: args.runtimeLabel,
-            txnSeq: 1,
-            txnId: `${args.instanceId}::t1`,
-            state: { count: args.count },
-            traitSummary: { t: args.count },
-          } as any)
-        }).pipe(Effect.provide(layer)),
-      )
-    }
-
-    Logix.Debug.devtoolsHubLayer({ mode: 'light' })
-    await emitRuntimeEvents({
-      runtimeLabel: fullRuntimeLabel,
-      mode: 'full',
-      instanceId: 'i-projection-badge-full',
-      count: 1,
-    })
-    await emitRuntimeEvents({
-      runtimeLabel: lightRuntimeLabel,
-      mode: 'light',
-      instanceId: 'i-projection-badge-light',
-      count: 2,
-    })
-
-    render(<LogixDevtools position="bottom-left" initialOpen={true} />)
-
-    await waitFor(() => {
-      expect(screen.getAllByText(fullRuntimeLabel).length).toBeGreaterThan(0)
-      expect(screen.getAllByText(lightRuntimeLabel).length).toBeGreaterThan(0)
-    })
-
-    fireEvent.click(findRuntimeButton(lightRuntimeLabel))
-    await waitFor(() => {
-      expect(screen.getByText(/projection:light/i)).not.toBeNull()
-      expect(screen.getByText(/degraded · projection_tier_light/i)).not.toBeNull()
-    })
-
-    fireEvent.click(findRuntimeButton(fullRuntimeLabel))
-    await waitFor(() => {
-      expect(screen.getByText(/projection:full/i)).not.toBeNull()
-      expect(screen.queryByText(/degraded · projection_tier_light/i)).toBeNull()
     })
   })
 })

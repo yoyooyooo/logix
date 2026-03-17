@@ -1,15 +1,16 @@
 import { describe, expect, it } from '@effect/vitest'
-import { Context, Effect, Layer, Schema } from 'effect'
+import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
+import { moduleRuntimeTagFromModuleId } from '../../src/internal/serviceId.js'
 import { setRuntimeInternals } from '../../src/internal/runtime/core/runtimeInternalsAccessor.js'
 import { collectProcessErrorEvent, withProcessRuntime } from './test-helpers.js'
 
 describe('process: trigger moduleStateChange missing streams', () => {
-  it.scoped('should fail with process::missing_changes_stream when fallback stream is missing', () =>
+  it.effect('should fail with process::missing_changes_stream when fallback stream is missing', () =>
     Effect.gen(function* () {
       const processId = 'ProcessTriggerMissingStateChangeStream'
       const triggerModuleId = 'ProcessTriggerMissingStateChangeStreamTarget'
-      const triggerModuleTag = Context.Tag(`@logixjs/Module/${triggerModuleId}`)() as Context.Tag<any, any>
+      const triggerModuleTag = moduleRuntimeTagFromModuleId(triggerModuleId) as any
 
       const Host = Logix.Module.make(`${processId}Host`, {
         state: Schema.Void,

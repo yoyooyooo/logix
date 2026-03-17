@@ -6,7 +6,7 @@ let effectRootPath = '/sandbox/effect.js'
 
 const ESM_SH_ORIGIN = 'https://esm.sh'
 const EFFECT_SCOPE_VERSION = '0.94.0'
-const LOCAL_AT_EFFECT_PACKAGES = new Set<string>(['platform'])
+const LOCAL_AT_EFFECT_PACKAGES = new Set<string>()
 
 const remoteModuleCache = new Map<string, string>()
 
@@ -208,7 +208,6 @@ const remoteBundlePlugin: esbuild.Plugin = {
       return { path: toEffectPath(subpath), external: true }
     })
 
-    // Prefer mapping @effect/platform (root + subpaths) to sandbox built-in artifacts to avoid falling back to esm.sh.
     build.onResolve({ filter: /^@effect\/[^/]+(?:@[^/]+)?$/ }, (args) => {
       const match = args.path.match(/^@effect\/([^@/]+)(?:@[^/]+)?$/)
       const pkg = match?.[1]

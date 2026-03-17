@@ -1,4 +1,5 @@
-import { Chunk, Clock, Effect, Layer, Ref, Scope, Stream, TestClock, TestContext } from 'effect'
+import { Chunk, Clock, Effect, Layer, Ref, Scope, Stream } from 'effect'
+import { TestClock } from 'effect/testing'
 import * as Logix from '@logixjs/core'
 import type { AnyModuleShape } from '@logixjs/core'
 import type { OpenProgramOptions, ProgramRunContext } from '@logixjs/core/Runtime'
@@ -15,7 +16,7 @@ export type TestProgramOptions = Omit<OpenProgramOptions, 'handleSignals'> & {
 const defaultOptions = (options?: TestProgramOptions): OpenProgramOptions => {
   const base = options ?? {}
   const userLayer = (base.layer ?? Layer.empty) as Layer.Layer<any, never, never>
-  const layer = Layer.mergeAll(TestContext.TestContext as Layer.Layer<any, never, never>, userLayer) as Layer.Layer<
+  const layer = Layer.mergeAll(TestClock.layer() as Layer.Layer<any, never, never>, userLayer) as Layer.Layer<
     any,
     never,
     never
@@ -90,7 +91,7 @@ const startTraceCollectors = <Sh extends AnyModuleShape>(
         yield* Ref.update(traceRef, Chunk.append(event))
         yield* Ref.update(actionsRef, Chunk.append(action as any))
       }),
-    ).pipe(Effect.forkScoped, Scope.extend(ctx.scope))
+    ).pipe((effect) => Effect.forkIn(effect, ctx.scope), Effect.asVoid)
 
     yield* Stream.runForEach(
       ctx.module.changes((s) => s),
@@ -100,12 +101,21 @@ const startTraceCollectors = <Sh extends AnyModuleShape>(
           const event: TraceEvent<Sh> = { _tag: 'State', state: state as any, timestamp }
           yield* Ref.update(traceRef, Chunk.append(event))
         }),
-    ).pipe(Effect.forkScoped, Scope.extend(ctx.scope))
+    ).pipe((effect) => Effect.forkIn(effect, ctx.scope), Effect.asVoid)
 
     // Give subscriptions/watchers a chance to start (in TestContext, advance the test clock + yield the scheduler).
     yield* TestClock.adjust(1)
-    yield* Effect.yieldNow()
+    yield* Effect.yieldNow
   })
+
+const runInProgramScope = <Sh extends AnyModuleShape, A, E, R>(
+  ctx: ProgramRunContext<Sh>,
+  effect: Effect.Effect<A, E, R | Scope.Scope>,
+): Effect.Effect<A, never, never> =>
+  Effect.tryPromise({
+    try: () => ctx.runtime.runPromise(Effect.provideService(effect, Scope.Scope, ctx.scope)),
+    catch: (e) => e,
+  }).pipe(Effect.orDie)
 
 export const runProgram = <Sh extends AnyModuleShape>(
   program: Logix.ModuleImpl<any, Sh, any> | Logix.AnyModule,
@@ -135,38 +145,28 @@ export const runProgram = <Sh extends AnyModuleShape>(
 
     const resolved = defaultOptions(options)
 
-    const ctx = yield* Effect.locally(Logix.Debug.internal.currentDebugSinks as any, [debugSink])(
+    const ctx = yield* Effect.provideService(
       Logix.Runtime.openProgram(program, resolved),
+      Logix.Debug.internal.currentDebugSinks,
+      [debugSink],
     )
 
-    yield* Effect.tryPromise({
-      try: () => ctx.runtime.runPromise(startTraceCollectors(ctx, traceRef, actionsRef) as any),
-      catch: (e) => e,
-    }).pipe(Effect.orDie)
+    yield* runInProgramScope(ctx, startTraceCollectors(ctx, traceRef, actionsRef))
 
     const api = makeTestApi(ctx, actionsRef)
 
-    yield* Effect.tryPromise({
-      try: () => ctx.runtime.runPromise(body(api).pipe(Scope.extend(ctx.scope)) as any),
-      catch: (e) => e,
-    }).pipe(Effect.orDie)
+    yield* runInProgramScope(ctx, body(api))
 
     // flush: give pending actions/state collectors a chance to settle.
-    yield* Effect.tryPromise({
-      try: () =>
-        ctx.runtime.runPromise(
-          Effect.gen(function* () {
-            yield* TestClock.adjust(1)
-            yield* Effect.yieldNow()
-          }) as any,
-        ),
-      catch: (e) => e,
-    }).pipe(Effect.orDie)
+    yield* runInProgramScope(
+      ctx,
+      Effect.gen(function* () {
+        yield* TestClock.adjust(1)
+        yield* Effect.yieldNow
+      }),
+    )
 
-    const finalState = yield* Effect.tryPromise({
-      try: () => ctx.runtime.runPromise(ctx.module.getState as any),
-      catch: (e) => e,
-    }).pipe(Effect.orDie)
+    const finalState = yield* runInProgramScope(ctx, ctx.module.getState)
 
     const actionsChunk = yield* Ref.get(actionsRef)
     const traceChunk = yield* Ref.get(traceRef)

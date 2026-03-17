@@ -1,5 +1,6 @@
 import { describe, it, expect } from '@effect/vitest'
-import { Context, Effect, Exit, Layer, Schema, TestClock } from 'effect'
+import {Effect, Exit, Layer, Schema, ServiceMap } from 'effect'
+import { TestClock } from 'effect/testing'
 import * as Logix from '../../src/index.js'
 import { coreNgRuntimeServicesRegistry } from '../../src/internal/runtime/core/RuntimeServices.impls.coreNg.js'
 
@@ -107,7 +108,7 @@ describe('contracts (045): Kernel contract verification harness', () => {
           Logix.Observability.trialRun(
             Effect.gen(function* () {
               const ctx = yield* program.impl.layer.pipe(Layer.build)
-              const runtime = Context.get(ctx, Root.tag) as any
+              const runtime = ServiceMap.get(ctx, Root.tag) as any
 
               yield* TestClock.adjust('1 millis')
               yield* runtime.dispatch({ _tag: 'inc', payload: undefined } as any)

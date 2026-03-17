@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "eval_name": "api-change-gate",
+  "prompt": "我不介意为了性能轻微改 API，但如果要动表面 API，请你先跟我对齐。你现在判断一下：txnLanes 或 watcher 这条线里，有没有值得为了收益去动 API 的地方？",
+  "assertions": [
+    { "text": "如果建议改 API，先停在提案层", "passed": false, "evidence": "待人工评估" },
+    { "text": "明确收益面和影响范围", "passed": false, "evidence": "待人工评估" }
+  ]
+}

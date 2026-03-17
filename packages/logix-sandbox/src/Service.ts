@@ -1,4 +1,4 @@
-import { Context, Effect, Layer, Stream } from 'effect'
+import { Effect, Layer, PubSub, ServiceMap, Stream } from 'effect'
 import { createSandboxClient, type SandboxClient, type SandboxClientConfig } from './Client.js'
 import type {
   SandboxStatus,
@@ -65,13 +65,21 @@ export interface SandboxClientService {
   }>
 }
 
-export class SandboxClientTag extends Context.Tag('SandboxClientTag')<SandboxClientTag, SandboxClientService>() {}
+export class SandboxClientTag extends ServiceMap.Service<SandboxClientTag, SandboxClientService>()('SandboxClientTag') {}
 
 export const SandboxClientLayer = (config?: SandboxClientConfig) =>
   Layer.effect(
     SandboxClientTag,
-    Effect.sync(() => {
+    Effect.gen(function* () {
       let client: SandboxClient | null = null
+      const pubsub = yield* PubSub.unbounded<{
+        status: SandboxStatus
+        logs: ReadonlyArray<LogEntry>
+        traces: ReadonlyArray<TraceSpan>
+        error: SandboxErrorInfo | null
+        uiIntents: ReadonlyArray<UiIntentPacket>
+      }>()
+
       const getClient = () => {
         if (!client) {
           client = createSandboxClient(config)
@@ -79,27 +87,26 @@ export const SandboxClientLayer = (config?: SandboxClientConfig) =>
         return client
       }
 
-      const events = Stream.async<{
-        status: SandboxStatus
-        logs: ReadonlyArray<LogEntry>
-        traces: ReadonlyArray<TraceSpan>
-        error: SandboxErrorInfo | null
-        uiIntents: ReadonlyArray<UiIntentPacket>
-      }>((emit) => {
-        const c = getClient()
-        const unsubscribe = c.subscribe((state) => emit.single(state))
-        return Effect.sync(() => unsubscribe())
+      const sandboxClient = getClient()
+      const unsubscribe = sandboxClient.subscribe((state) => {
+        PubSub.publishUnsafe(pubsub, state)
       })
 
+      const events = Stream.fromPubSub(pubsub)
+
       return {
-        init: () => Effect.tryPromise(() => getClient().init()),
-        listKernels: () => Effect.sync(() => getClient().listKernels()),
+        init: () => Effect.tryPromise(() => sandboxClient.init()),
+        listKernels: () => Effect.sync(() => sandboxClient.listKernels()),
         compile: (code, filename, mockManifest, options) =>
-          Effect.tryPromise(() => getClient().compile(code, filename, mockManifest, options)),
-        run: (options) => Effect.tryPromise(() => getClient().run(options)),
-        trialRunModule: (options) => Effect.tryPromise(() => getClient().trialRunModule(options)),
-        uiCallback: (payload) => Effect.tryPromise(() => getClient().uiCallback(payload)),
-        terminate: () => Effect.sync(() => getClient().terminate()),
+          Effect.tryPromise(() => sandboxClient.compile(code, filename, mockManifest, options)),
+        run: (options) => Effect.tryPromise(() => sandboxClient.run(options)),
+        trialRunModule: (options) => Effect.tryPromise(() => sandboxClient.trialRunModule(options)),
+        uiCallback: (payload) => Effect.tryPromise(() => sandboxClient.uiCallback(payload)),
+        terminate: () =>
+          Effect.sync(() => {
+            unsubscribe()
+            sandboxClient.terminate()
+          }),
         events,
       }
     }),

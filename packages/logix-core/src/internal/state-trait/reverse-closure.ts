@@ -9,10 +9,12 @@ import type { DependencyGraph } from './graph.js'
 export const reverseClosure = (graph: DependencyGraph, target: string): ReadonlySet<string> => {
   const visited = new Set<string>()
   const queue: Array<string> = [target]
+  let cursor = 0
 
-  while (queue.length) {
-    const current = queue.shift()
-    if (!current) break
+  while (cursor < queue.length) {
+    const current = queue[cursor]
+    cursor += 1
+    if (!current) continue
     if (visited.has(current)) continue
     visited.add(current)
 

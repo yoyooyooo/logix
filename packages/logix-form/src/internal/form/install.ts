@@ -58,14 +58,14 @@ export const install = <TValues extends object>(
         target: Logix.TraitLifecycle.Ref.root(),
       })
 
-    const pending = new Map<string, Fiber.RuntimeFiber<void, never>>()
+    const pending = new Map<string, Fiber.Fiber<void, never>>()
 
     const cancelPending = (path: string): Effect.Effect<void, never, any> =>
       Effect.gen(function* () {
         const prev = pending.get(path)
         if (!prev) return
         pending.delete(path)
-        yield* Fiber.interruptFork(prev)
+        yield* Fiber.interrupt(prev)
       })
 
     const scheduleDebouncedValidate = (path: string): Effect.Effect<void, never, any> =>
@@ -79,9 +79,9 @@ export const install = <TValues extends object>(
         yield* cancelPending(path)
         const fiber = yield* Effect.forkScoped(
           Effect.sleep(Duration.millis(ms)).pipe(
-            Effect.zipRight(validate('valueChange', path)),
+            Effect.flatMap(() => validate('valueChange', path)),
             Effect.ensuring(Effect.sync(() => pending.delete(path))),
-            Effect.catchAllCause(() => Effect.void),
+            Effect.catchCause(() => Effect.void),
           ),
         )
         pending.set(path, fiber)

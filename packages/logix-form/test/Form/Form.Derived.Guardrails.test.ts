@@ -1,5 +1,4 @@
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
+import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
@@ -56,7 +55,7 @@ describe('Form derived guardrails', () => {
     ).toThrow(/only values\/ui are allowed/)
   })
 
-  it.scoped('exposes controller.* via $.use(form) ModuleHandle', () =>
+  it.effect('exposes controller.* via $.use(form) ModuleHandle', () =>
     Effect.gen(function* () {
       const ValuesSchema = Schema.Struct({
         name: Schema.String,
@@ -123,9 +122,15 @@ describe('Form derived guardrails', () => {
       })
 
       const program = Effect.gen(function* () {
-        const hostRuntime = yield* Host.tag
-        yield* Effect.sleep('50 millis')
-        const state = yield* hostRuntime.getState
+        const hostRuntime = yield* Effect.service(Host.tag).pipe(Effect.orDie)
+
+        let state = yield* hostRuntime.getState
+        for (let i = 0; i < 100; i += 1) {
+          if (state.hasController === true && state.nameError === 'required') break
+          yield* Effect.sleep('5 millis')
+          state = yield* hostRuntime.getState
+        }
+
         expect(state.hasController).toBe(true)
         expect(state.nameError).toBe('required')
       })

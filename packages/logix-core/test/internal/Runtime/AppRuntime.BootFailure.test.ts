@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../../src/index.js'
@@ -12,7 +12,11 @@ describe('AppRuntime boot failure report', () => {
     })
 
     const app = AppRuntimeImpl.makeApp({
-      layer: Layer.fail(new Error('injected base-layer failure')) as unknown as Layer.Layer<never, never, never>,
+      layer: Layer.effectDiscard(Effect.fail(new Error('injected base-layer failure'))) as unknown as Layer.Layer<
+        never,
+        never,
+        never
+      >,
       modules: [AppRuntimeImpl.provide(Module.tag, Module.live({ value: 1 }))],
       processes: [],
     })

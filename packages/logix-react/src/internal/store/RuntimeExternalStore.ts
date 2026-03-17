@@ -91,6 +91,8 @@ const makeTopicExternalStore = <S>(args: {
 
   const listeners = new Set<() => void>()
   let unsubscribeFromRuntimeStore: (() => void) | undefined
+  let teardownScheduled = false
+  let teardownToken = 0
 
   const lowPriorityDelayMs = args.options?.lowPriorityDelayMs ?? 16
   const lowPriorityMaxDelayMs = args.options?.lowPriorityMaxDelayMs ?? 50
@@ -197,7 +199,47 @@ const makeTopicExternalStore = <S>(args: {
     return next
   }
 
+  const cancelScheduledTeardown = (): void => {
+    if (!teardownScheduled) return
+    teardownScheduled = false
+    teardownToken += 1
+  }
+
+  const finalizeTeardown = (): void => {
+    if (listeners.size > 0) return
+
+    try {
+      args.onLastListener?.()
+    } catch {
+      // ignore best-effort failures
+    }
+
+    const unsub = unsubscribeFromRuntimeStore
+    unsubscribeFromRuntimeStore = undefined
+    cancelLow()
+
+    try {
+      unsub?.()
+    } catch {
+      // ignore best-effort unsubscribe failures
+    }
+
+    removeStore(runtime, topicKey)
+  }
+
+  const scheduleTeardown = (): void => {
+    if (teardownScheduled) return
+    teardownScheduled = true
+    const token = ++teardownToken
+    hostScheduler.scheduleMicrotask(() => {
+      if (!teardownScheduled || token !== teardownToken) return
+      teardownScheduled = false
+      finalizeTeardown()
+    })
+  }
+
   const subscribe = (listener: () => void): (() => void) => {
+    cancelScheduledTeardown()
     const isFirst = listeners.size === 0
     listeners.add(listener)
     ensureSubscription()
@@ -212,24 +254,7 @@ const makeTopicExternalStore = <S>(args: {
     return () => {
       listeners.delete(listener)
       if (listeners.size > 0) return
-
-      try {
-        args.onLastListener?.()
-      } catch {
-        // ignore best-effort failures
-      }
-
-      const unsub = unsubscribeFromRuntimeStore
-      unsubscribeFromRuntimeStore = undefined
-      cancelLow()
-
-      try {
-        unsub?.()
-      } catch {
-        // ignore best-effort unsubscribe failures
-      }
-
-      removeStore(runtime, topicKey)
+      scheduleTeardown()
     }
   }
 

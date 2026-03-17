@@ -16,7 +16,7 @@ export const ComplexTraitFormStateSchema = Schema.Struct({
   contact: Schema.Struct({
     email: Schema.String,
     phone: Schema.String,
-    preferredChannel: Schema.Literal('email', 'phone'),
+    preferredChannel: Schema.Literals(['email', 'phone']),
   }),
   shipping: Schema.Struct({
     recipientName: Schema.String,
@@ -43,13 +43,13 @@ export const ComplexTraitFormStateSchema = Schema.Struct({
   }),
   // UI 侧辅助字段：由 Traits + Logic 一起驱动，用于错误提示与提交流程状态。
   errors: Schema.Struct({
-    email: Schema.Union(Schema.String, Schema.Null),
-    phone: Schema.Union(Schema.String, Schema.Null),
-    items: Schema.Union(Schema.String, Schema.Null),
+    email: Schema.Union([Schema.String, Schema.Null]),
+    phone: Schema.Union([Schema.String, Schema.Null]),
+    items: Schema.Union([Schema.String, Schema.Null]),
   }),
   submit: Schema.Struct({
     attempted: Schema.Boolean,
-    result: Schema.Literal('idle', 'success', 'error'),
+    result: Schema.Literals(['idle', 'success', 'error']),
   }),
 })
 
@@ -60,7 +60,7 @@ export const ComplexTraitFormActions = {
   changeLastName: Schema.String,
   changeEmail: Schema.String,
   changePhone: Schema.String,
-  changePreferredChannel: Schema.Literal('email', 'phone'),
+  changePreferredChannel: Schema.Literals(['email', 'phone']),
 
   addItem: Schema.Void,
   removeItem: Schema.String, // id

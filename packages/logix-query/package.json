@@ -1,6 +1,11 @@
 {
   "name": "@logixjs/query",
-  "version": "0.0.2",
+  "version": "1.0.2-beta.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yoyooyooo/logix",
+    "directory": "packages/logix-query"
+  },
   "license": "Apache-2.0",
   "description": "Query domain package for Logix v3 Trait system",
   "files": [
@@ -49,17 +54,17 @@
   "dependencies": {
     "@logixjs/core": "workspace:*",
     "@tanstack/query-core": "^5.90.12",
-    "effect": "^3.19.8"
+    "effect": "4.0.0-beta.28"
   },
   "devDependencies": {
-    "@effect/vitest": "^0.27.0",
+    "@effect/vitest": "4.0.0-beta.28",
     "tsup": "^8.0.0",
     "typescript": "^5.8.2",
     "vitest": "^4.0.15"
   },
   "peerDependencies": {
     "@logixjs/core": "workspace:*",
-    "effect": "^3.19.8",
+    "effect": "4.0.0-beta.28",
     "react": ">=18.0.0"
   }
 }

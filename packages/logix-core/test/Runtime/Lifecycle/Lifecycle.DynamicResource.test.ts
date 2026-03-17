@@ -1,10 +1,11 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Deferred, Effect, Layer, Schema, TestClock } from 'effect'
+import { Deferred, Effect, Layer, Schema } from 'effect'
+import { TestClock } from 'effect/testing'
 import * as Logix from '../../../src/index.js'
 
 describe('Lifecycle dynamic resources', () => {
-  it.scoped('should clean up via acquireRelease without late onDestroy', () =>
+  it.effect('should clean up via acquireRelease without late onDestroy', () =>
     Effect.gen(function* () {
       const cleaned = yield* Deferred.make<void>()
       let released = false
@@ -20,7 +21,7 @@ describe('Lifecycle dynamic resources', () => {
           yield* Effect.acquireRelease(Effect.void, () =>
             Effect.sync(() => {
               released = true
-            }).pipe(Effect.zipRight(Deferred.succeed(cleaned, undefined))),
+            }).pipe(Effect.flatMap(() => Deferred.succeed(cleaned, undefined))),
           )
           yield* Effect.never
         }),
@@ -34,7 +35,7 @@ describe('Lifecycle dynamic resources', () => {
 
       yield* Effect.scoped(
         Effect.gen(function* () {
-          yield* TestModule.tag
+          yield* Effect.service(TestModule.tag).pipe(Effect.orDie)
           yield* TestClock.adjust('10 millis')
         }).pipe(Effect.provide(layer)),
       )

@@ -1,4 +1,4 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Debug from '../src/Debug.js'
@@ -36,7 +36,7 @@ class TestPlatform implements Logix.Platform.Service {
 }
 
 describe('Platform signals (no handlers)', () => {
-  it.scoped(
+  it.effect(
     'should be safe no-op and not emit error noise',
     () =>
       Effect.gen(function* () {
@@ -66,18 +66,16 @@ describe('Platform signals (no handlers)', () => {
           never
         >
 
-        yield* Effect.locally(Debug.internal.currentDebugSinks, [sink])(
-          Effect.gen(function* () {
-            const runtime = yield* TestModule.tag
-            expect((yield* runtime.lifecycleStatus!).status).toBe('ready')
-
-            yield* platform.emitSuspend()
-            yield* platform.emitResume()
-            yield* platform.emitReset()
-
-            expect((yield* runtime.lifecycleStatus!).status).toBe('ready')
-          }).pipe(Effect.provide(layer)),
-        )
+        yield* Effect.provideService(Effect.gen(function* () {
+          const runtime = yield* Effect.service(TestModule.tag).pipe(Effect.orDie)
+          expect((yield* runtime.lifecycleStatus!).status).toBe('ready')
+        
+          yield* platform.emitSuspend()
+          yield* platform.emitResume()
+          yield* platform.emitReset()
+        
+          expect((yield* runtime.lifecycleStatus!).status).toBe('ready')
+        }).pipe(Effect.provide(layer)), Debug.internal.currentDebugSinks, [sink])
 
         const errorLike = events.filter(
           (e) => e.type === 'lifecycle:error' || (e.type === 'diagnostic' && e.severity === 'error'),

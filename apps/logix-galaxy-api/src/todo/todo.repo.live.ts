@@ -22,8 +22,8 @@ const toTodo = (row: TodoRow): Todo => ({
 export const TodoRepoLive: Layer.Layer<TodoRepo, never, Db | TodoTable> = Layer.effect(
   TodoRepo,
   Effect.gen(function* () {
-    const db = yield* Db
-    yield* TodoTable
+    const db = yield* Effect.service(Db)
+    yield* Effect.service(TodoTable)
 
     const run = <Row extends object = Record<string, unknown>>(strings: TemplateStringsArray, ...args: Array<any>) =>
       db.sql.pipe(Effect.flatMap((sql) => db.run(sql<Row>(strings, ...args))))
@@ -34,7 +34,7 @@ export const TodoRepoLive: Layer.Layer<TodoRepo, never, Db | TodoTable> = Layer.
         values (${input.title}, ${input.completed ?? false})
         returning id, title, completed, created_at::text as "createdAt"
       `.pipe(
-        Effect.flatMap((rows) => rows[0] ? Effect.succeed(toTodo(rows[0])) : Effect.dieMessage('insert should return one row')),
+        Effect.flatMap((rows) => rows[0] ? Effect.succeed(toTodo(rows[0])) : Effect.die(new Error('insert should return one row'))),
       )
 
     const get: TodoRepoService['get'] = (id: number) =>
@@ -42,7 +42,7 @@ export const TodoRepoLive: Layer.Layer<TodoRepo, never, Db | TodoTable> = Layer.
         select id, title, completed, created_at::text as "createdAt"
         from todos
         where id = ${id}
-      `.pipe(Effect.map((rows) => Option.fromNullable(rows[0]).pipe(Option.map(toTodo))))
+      `.pipe(Effect.map((rows) => Option.fromNullishOr(rows[0]).pipe(Option.map(toTodo))))
 
     const list: TodoRepoService['list'] = run<TodoRow>`
       select id, title, completed, created_at::text as "createdAt"
@@ -58,7 +58,7 @@ export const TodoRepoLive: Layer.Layer<TodoRepo, never, Db | TodoTable> = Layer.
           completed = coalesce(${patch.completed ?? null}, completed)
         where id = ${id}
         returning id, title, completed, created_at::text as "createdAt"
-      `.pipe(Effect.map((rows) => Option.fromNullable(rows[0]).pipe(Option.map(toTodo))))
+      `.pipe(Effect.map((rows) => Option.fromNullishOr(rows[0]).pipe(Option.map(toTodo))))
 
     const remove: TodoRepoService['remove'] = (id: number) =>
       run<{ readonly id: number }>`

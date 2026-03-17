@@ -1,48 +1,35 @@
-import { describe, expect } from 'vitest'
-import { it } from '@effect/vitest'
-import { Effect, Either, Layer, Schema } from 'effect'
-import * as Logix from '../../src/index.js'
+import { describe, it, expect } from '@effect/vitest'
+import { Cause, Effect, Exit, Scope } from 'effect'
+import { closeProgramScope } from '../../src/internal/runtime/core/runner/ProgramRunner.closeScope.js'
 
 describe('Runtime.runProgram dispose timeout (US1)', () => {
-  it.scoped('closeScopeTimeout produces DisposeTimeout and triggers onError warning', () =>
+  it.effect('closeScopeTimeout produces DisposeTimeout and triggers onError warning', () =>
     Effect.gen(function* () {
       let onErrorCalls = 0
 
-      const Root = Logix.Module.make('Runtime.runProgram.disposeTimeout', {
-        state: Schema.Void,
-        actions: {},
-      })
-      const impl = Root.implement({ initial: undefined, logics: [] })
+      const scope = yield* Scope.make()
+      yield* Scope.addFinalizer(
+        scope,
+        Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 50))),
+      )
 
-      const hangingFinalizerLayer = Layer.scopedDiscard(
-        // Simulate a "finalizer hangs but eventually ends" to avoid permanently hanging the test process.
-        Effect.addFinalizer(() => Effect.sleep('50 millis')),
-      ) as unknown as Layer.Layer<any, never, never>
-
-      const outcome = yield* Effect.tryPromise({
-        try: () =>
-          Logix.Runtime.runProgram(impl, () => Effect.void, {
-            layer: hangingFinalizerLayer,
-            closeScopeTimeout: 10,
-            handleSignals: false,
-            onError: () =>
-              Effect.sync(() => {
-                onErrorCalls += 1
-              }),
+      const outcome = yield* closeProgramScope({
+        scope,
+        timeoutMs: 10,
+        identity: { moduleId: 'Runtime.runProgram.disposeTimeout', instanceId: 'i1' },
+        onError: () =>
+          Effect.sync(() => {
+            onErrorCalls += 1
           }),
-        catch: (e) => e,
-      }).pipe(Effect.either)
+      }).pipe(Effect.exit)
 
-      expect(Either.isLeft(outcome)).toBe(true)
-      if (Either.isLeft(outcome)) {
-        const e: any = outcome.left
+      expect(Exit.isFailure(outcome)).toBe(true)
+      if (Exit.isFailure(outcome)) {
+        const e: any = outcome.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)[0]
         expect(e?._tag).toBe('DisposeTimeout')
       }
 
       expect(onErrorCalls).toBeGreaterThan(0)
-
-      // Wait for the finalizer to finish naturally to avoid vitest open handles affecting subsequent tests.
-      yield* Effect.promise(() => new Promise((r) => setTimeout(r, 80)))
     }),
   )
 })

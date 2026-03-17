@@ -3,7 +3,7 @@ import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('contracts (047): Full Cutover Gate (trial)', () => {
-  it.scoped('trial: fallback allowed but must not be misreported as fullyActivated', () =>
+  it.effect('trial: fallback allowed but must not be misreported as fullyActivated', () =>
     Effect.gen(function* () {
       const Root = Logix.Module.make('Contracts.047.FullCutoverGate.Trial', {
         state: Schema.Struct({ count: Schema.Number }),

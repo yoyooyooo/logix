@@ -201,11 +201,12 @@ export function App({ runtime }: { runtime: Logix.ManagedRuntime<any, any> }) {
 ### Recipe D: hot switch one module at runtime (for diagnosis; avoid frequent releases)
 
 ```ts
+import { Effect } from "effect"
 import * as Logix from "@logixjs/core"
 
-Logix.Runtime.setTraitConvergeOverride(runtime, "OrderForm", { traitConvergeMode: "full" })
+await Effect.runPromise(Logix.Runtime.setTraitConvergeOverride(runtime, "OrderForm", { traitConvergeMode: "full" }))
 // Remove override: pass undefined
-Logix.Runtime.setTraitConvergeOverride(runtime, "OrderForm", undefined)
+await Effect.runPromise(Logix.Runtime.setTraitConvergeOverride(runtime, "OrderForm", undefined))
 ```
 
 > Tip: hot switching is a rollback/diagnosis tool; don’t treat it as a long-term configuration system. Long-term defaults should live in Runtime/Provider config.

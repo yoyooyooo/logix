@@ -1,4 +1,4 @@
-import { Config, Context, Effect, Layer, Option } from 'effect'
+import { Effect, Layer, Option, ServiceMap } from 'effect'
 
 import { Db, DbError } from '../db/db.js'
 
@@ -6,24 +6,23 @@ export interface ProjectSchemaService {
   readonly ready: Effect.Effect<void, DbError>
 }
 
-export class ProjectSchema extends Context.Tag('ProjectSchema')<ProjectSchema, ProjectSchemaService>() {}
+export class ProjectSchema extends ServiceMap.Service<ProjectSchema, ProjectSchemaService>()('ProjectSchema') {}
 
-const isDbDisabled = (e: DbError): boolean => e.reason === 'disabled'
+const isDbDisabled = (e: unknown): e is DbError => e instanceof DbError && e.reason === 'disabled'
+
+const autoMigrateOpt = Option.fromNullishOr(process.env.LOGIX_GALAXY_AUTO_MIGRATE_PROJECT_RBAC)
 
 const shouldAutoMigrate = Effect.gen(function* () {
-  const rawOpt = yield* Config.option(Config.string('LOGIX_GALAXY_AUTO_MIGRATE_PROJECT_RBAC')).pipe(
-    Effect.catchAll(() => Effect.succeed(Option.none())),
-  )
-  return Option.getOrElse(rawOpt, () => '1') !== '0'
+  return Option.getOrElse(autoMigrateOpt, () => '1') !== '0'
 })
 
 export const ProjectSchemaLive: Layer.Layer<ProjectSchema, never, Db> = Layer.effect(
   ProjectSchema,
   Effect.gen(function* () {
-    const db = yield* Db
+    const db = yield* Effect.service(Db)
     const autoMigrate = yield* shouldAutoMigrate
 
-    const ready = yield* Effect.once(
+    const ready = yield* Effect.cached(
       autoMigrate
         ? Effect.gen(function* () {
             const sql = yield* db.sql
@@ -209,11 +208,10 @@ export const ProjectSchemaLive: Layer.Layer<ProjectSchema, never, Db> = Layer.ef
 
     yield* ready.pipe(
       Effect.catchIf(isDbDisabled, () => Effect.void),
-      Effect.catchAll((e) =>
+      Effect.catch((e) =>
         Effect.logWarning('project schema init failed').pipe(
           Effect.annotateLogs({ error: e }),
-        ),
-      ),
+        )),
     )
 
     return { ready } satisfies ProjectSchemaService

@@ -28,7 +28,7 @@ describe('LogicTraits - evidence stability (US3)', () => {
 
           const layer = Debug.devtoolsHubLayer({
             bufferSize: 128,
-            mode: 'full',
+            diagnosticsLevel: 'full',
           }) as Layer.Layer<any, never, never>
 
           const M = Logix.Module.make('LogicTraitsEvidenceStability', {
@@ -57,7 +57,7 @@ describe('LogicTraits - evidence stability (US3)', () => {
             yield* Effect.promise(() =>
               runtime.runPromise(
                 Effect.gen(function* () {
-                  yield* M.tag
+                  yield* Effect.service(M.tag).pipe(Effect.orDie)
                 }) as Effect.Effect<void, never, any>,
               ),
             )

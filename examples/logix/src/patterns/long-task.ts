@@ -14,7 +14,7 @@ import * as Logix from '@logixjs/core'
 // ---------------------------------------------------------------------------
 
 export const LongTaskStateSchema = Schema.Struct({
-  status: Schema.Literal('idle', 'running', 'done'),
+  status: Schema.Literals(['idle', 'running', 'done']),
   progress: Schema.Number,
 })
 

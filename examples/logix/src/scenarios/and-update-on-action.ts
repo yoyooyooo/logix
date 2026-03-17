@@ -48,23 +48,21 @@ export const FormLogic = FormDef.logic(($) =>
     yield* Effect.all(
       [
         // 监听 input/change，更新 value 并标记为脏
-        $.onAction('input/change').run({
-          effect: (action: any) =>
-            $.state.update((prev) => ({
-              ...prev,
-              value: action.payload,
-              isDirty: true,
-            })),
-        }),
+        $.onAction('input/change').run((action) =>
+          $.state.update((prev) => ({
+            ...prev,
+            value: action.payload,
+            isDirty: true,
+          })),
+        ),
 
         // 监听 input/reset，重置 value 和 isDirty
-        $.onAction('input/reset').run({
-          effect: () =>
-            $.state.update(() => ({
-              value: '',
-              isDirty: false,
-            })),
-        }),
+        $.onAction('input/reset').run(() =>
+          $.state.update(() => ({
+            value: '',
+            isDirty: false,
+          })),
+        ),
       ],
       { concurrency: 'unbounded' },
     )
@@ -91,10 +89,10 @@ export const DirtyFormLive = DirtyFormModule.impl.layer
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const program = Effect.gen(function* () {
-    const runtime = yield* FormDef.tag
+    const runtime = yield* Effect.service(FormDef.tag).pipe(Effect.orDie)
 
     // Log state changes
-    yield* Effect.fork(
+    yield* Effect.forkChild(
       runtime
         .changes((s) => s)
         .pipe(Stream.runForEach((s) => Effect.log(`[State] value="${s.value}", isDirty=${s.isDirty}`))),

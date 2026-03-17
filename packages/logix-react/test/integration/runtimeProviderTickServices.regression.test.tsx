@@ -2,7 +2,7 @@
 import React from 'react'
 import { describe, it, expect } from 'vitest'
 import { render, fireEvent, screen, waitFor } from '@testing-library/react'
-import { Context, Effect, Layer, ManagedRuntime, Schema } from 'effect'
+import { Effect, Layer, ManagedRuntime, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 import { RuntimeProvider, useModule, useRuntime, useSelector } from '../../src/index.js'
 
@@ -43,7 +43,9 @@ const CounterApp: React.FC = () => {
 
   const onInc = React.useCallback(() => {
     void runtime.runPromise(
-      Effect.flatMap(CounterDef.tag as any, (counter: any) => counter.dispatch({ _tag: 'inc', payload: undefined })),
+      Effect.flatMap(Effect.service(CounterDef.tag).pipe(Effect.orDie) as any, (counter: any) =>
+        counter.dispatch({ _tag: 'inc', payload: undefined }),
+      ),
     )
   }, [runtime])
 
@@ -75,10 +77,10 @@ const CounterImplApp: React.FC = () => {
   )
 }
 
-class StepConfigTag extends Context.Tag('T073.RuntimeProviderTickServices.StepConfig')<
+class StepConfigTag extends ServiceMap.Service<
   StepConfigTag,
   { readonly step: number }
->() {}
+>()('T073.RuntimeProviderTickServices.StepConfig') {}
 
 const BaseStepLayer = Layer.succeed(StepConfigTag, { step: 1 })
 const BigStepLayer = Layer.succeed(StepConfigTag, { step: 5 })
@@ -90,8 +92,8 @@ const StepCounterPanel: React.FC<{ readonly variant: 'root' | 'nested' }> = ({ v
   const onInc = React.useCallback(() => {
     void runtime.runPromise(
       Effect.gen(function* () {
-        const cfg = yield* StepConfigTag
-        const counter = yield* CounterDef.tag
+        const cfg = yield* Effect.service(StepConfigTag).pipe(Effect.orDie)
+        const counter = yield* Effect.service(CounterDef.tag).pipe(Effect.orDie)
         for (let i = 0; i < cfg.step; i++) {
           yield* counter.dispatch({ _tag: 'inc', payload: undefined })
         }
@@ -115,7 +117,7 @@ const CounterBatchApp: React.FC = () => {
 
   const onBatch = React.useCallback(() => {
     void runtime.runPromise(
-      Effect.flatMap(CounterDef.tag as any, (counter: any) =>
+      Effect.flatMap(Effect.service(CounterDef.tag).pipe(Effect.orDie) as any, (counter: any) =>
         counter.dispatchBatch([
           { _tag: 'inc', payload: undefined },
           { _tag: 'inc', payload: undefined },
@@ -141,7 +143,7 @@ const CounterLowPriorityApp: React.FC = () => {
 
   const onLowInc = React.useCallback(() => {
     void runtime.runPromise(
-      Effect.flatMap(CounterDef.tag as any, (counter: any) =>
+      Effect.flatMap(Effect.service(CounterDef.tag).pipe(Effect.orDie) as any, (counter: any) =>
         counter.dispatchLowPriority({ _tag: 'inc', payload: undefined }),
       ),
     )

@@ -7,7 +7,7 @@ import { CounterDef, CounterImpl } from '../modules/counter'
 const SubtreeTicker = Logix.Process.link({ modules: [CounterDef] as const }, ($) =>
   Effect.gen(function* () {
     const counter = $[CounterDef.id]
-    yield* Effect.forever(counter.actions.inc().pipe(Effect.zipRight(Effect.sleep('200 millis'))))
+    yield* Effect.forever(counter.actions.inc().pipe(Effect.flatMap(() => Effect.sleep('200 millis'))))
   }),
 )
 

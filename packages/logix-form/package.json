@@ -1,6 +1,11 @@
 {
   "name": "@logixjs/form",
-  "version": "0.0.2",
+  "version": "1.0.2-beta.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yoyooyooo/logix",
+    "directory": "packages/logix-form"
+  },
   "license": "Apache-2.0",
   "description": "Form domain package for Logix v3 Trait system",
   "files": [
@@ -55,10 +60,10 @@
   "dependencies": {
     "@logixjs/core": "workspace:*",
     "@logixjs/react": "workspace:*",
-    "effect": "^3.19.8"
+    "effect": "4.0.0-beta.28"
   },
   "devDependencies": {
-    "@effect/vitest": "^0.27.0",
+    "@effect/vitest": "4.0.0-beta.28",
     "@types/react": "^19.2.2",
     "react": "^19.2.0",
     "tsup": "^8.0.0",
@@ -67,7 +72,7 @@
   },
   "peerDependencies": {
     "@logixjs/core": "workspace:*",
-    "effect": "^3.19.8",
+    "effect": "4.0.0-beta.28",
     "react": ">=18.0.0"
   }
 }

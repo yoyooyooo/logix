@@ -153,7 +153,7 @@ const computeConvergeTopoOrder = (
   return { order }
 }
 
-const collectSchemaFieldPaths = (schema: Schema.Schema<any, any>): ReadonlyArray<FieldPath> => {
+const collectSchemaFieldPaths = (schema: Schema.Schema<any>): ReadonlyArray<FieldPath> => {
   const byKey = new Map<string, FieldPath>()
 
   const add = (path: FieldPath): void => {
@@ -163,27 +163,12 @@ const collectSchemaFieldPaths = (schema: Schema.Schema<any, any>): ReadonlyArray
   }
 
   const visit = (ast: SchemaAST.AST, prefix: ReadonlyArray<string>, seen: Set<SchemaAST.AST>): void => {
-    let current: SchemaAST.AST = ast
+    let current: SchemaAST.AST = SchemaAST.toType(ast)
 
-    // Unwrap Suspend/Refinement (recursive schema / branded schema).
-    while (true) {
-      if (SchemaAST.isSuspend(current)) {
-        if (seen.has(current)) return
-        seen.add(current)
-        current = current.f()
-        continue
-      }
-      if (SchemaAST.isRefinement(current)) {
-        current = current.from
-        continue
-      }
-      break
-    }
-
-    if (SchemaAST.isTransformation(current)) {
-      visit(current.to, prefix, seen)
-      visit(current.from, prefix, seen)
-      return
+    while (SchemaAST.isSuspend(current)) {
+      if (seen.has(current)) return
+      seen.add(current)
+      current = SchemaAST.toType(current.thunk())
     }
 
     if (SchemaAST.isUnion(current)) {
@@ -194,17 +179,17 @@ const collectSchemaFieldPaths = (schema: Schema.Schema<any, any>): ReadonlyArray
     }
 
     // Array / Tuple: indices do not enter the FieldPathId space; recurse into element types to support `items[0].name -> items.name`.
-    if (SchemaAST.isTupleType(current)) {
+    if (SchemaAST.isArrays(current)) {
       for (const e of current.elements) {
-        visit(e.type, prefix, seen)
+        visit(e, prefix, seen)
       }
       for (const r of current.rest) {
-        visit(r.type, prefix, seen)
+        visit(r, prefix, seen)
       }
       return
     }
 
-    if (SchemaAST.isTypeLiteral(current)) {
+    if (SchemaAST.isObjects(current)) {
       for (const ps of current.propertySignatures) {
         const seg = String(ps.name)
         if (!seg) continue
@@ -224,7 +209,7 @@ const collectSchemaFieldPaths = (schema: Schema.Schema<any, any>): ReadonlyArray
 }
 
 const buildConvergeIr = (
-  stateSchema: Schema.Schema<any, any>,
+  stateSchema: Schema.Schema<any>,
   entries: ReadonlyArray<StateTraitEntry<any, string>>,
 ): ConvergeStaticIrRegistry => {
   const startedAt = nowPerf()
@@ -712,7 +697,7 @@ const collectSchemaPaths = (
  * evolve it inside this module without changing the public API surface.
  */
 export const build = <S extends object>(
-  stateSchema: Schema.Schema<S, any>,
+  stateSchema: Schema.Schema<S>,
   spec: StateTraitSpec<S>,
 ): StateTraitProgram<S> => {
   const entries = normalizeSpec(spec) as ReadonlyArray<StateTraitEntry<S, string>>

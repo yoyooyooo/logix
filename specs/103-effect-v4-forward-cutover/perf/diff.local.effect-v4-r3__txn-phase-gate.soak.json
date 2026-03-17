@@ -1,0 +1,287 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-03-13T17:10:32.899Z",
+    "from": {
+      "file": "../../../../../../../tmp/logix-perf-sweeps-20260313-r3/effect-v4.external-store.r3.soak.json",
+      "commit": "fd2a10240108f0848dc66c45e94e9e12d9a31eac"
+    },
+    "to": {
+      "file": "specs/103-effect-v4-forward-cutover/perf/after.local.txn-phase-gate.soak.json",
+      "commit": "601947226885e4b7b97e2bf9bdcd48d1d8a56009"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": true,
+      "allowEnvDrift": true,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.after=true",
+        "git.commit: before=fd2a10240108f0848dc66c45e94e9e12d9a31eac after=601947226885e4b7b97e2bf9bdcd48d1d8a56009"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 0,
+    "budgetViolations": 0,
+    "slices": {
+      "total": 3,
+      "compared": 3,
+      "skippedCoverage": 0,
+      "skippedData": 0,
+      "beforeOnly": 0,
+      "afterOnly": 0
+    }
+  },
+  "suites": [
+    {
+      "id": "externalStore.ingest.tickNotify",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=0 ok=2 unavailable=0 missing=0] after[value=0 ok=2 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.level",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "message": "diagnostics.level(points) unit=count: before[value=full ok=6 unavailable=0 missing=0] after[value=full ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=6 unavailable=0 missing=0] after[value=core ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "workload.externalStores",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 10
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 10
+          },
+          "message": "workload.externalStores(points) unit=count: before[value=10 ok=6 unavailable=0 missing=0] after[value=10 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "workload.modules",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 10
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 10
+          },
+          "message": "workload.modules(points) unit=count: before[value=10 ok=6 unavailable=0 missing=0] after[value=10 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "workload.ticksPerRun",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1
+          },
+          "message": "workload.ticksPerRun(points) unit=count: before[value=1 ok=6 unavailable=0 missing=0] after[value=1 ok=6 unavailable=0 missing=0]"
+        }
+      ],
+      "metricDeltas": [
+        {
+          "metric": "timePerIngestMs",
+          "unit": "ms",
+          "compared": 6,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [
+            {
+              "params": {
+                "watchers": 256,
+                "diagnosticsLevel": "off"
+              },
+              "before": {
+                "n": 8,
+                "medianMs": 5.100000023841858,
+                "p95Ms": 5.199999928474426
+              },
+              "after": {
+                "n": 8,
+                "medianMs": 6,
+                "p95Ms": 6.100000023841858
+              },
+              "deltaMs": {
+                "medianMs": 0.8999999761581421,
+                "p95Ms": 0.9000000953674316
+              },
+              "ratio": {
+                "median": 1.1764705827354422,
+                "p95": 1.1730769437974728
+              }
+            },
+            {
+              "params": {
+                "watchers": 512,
+                "diagnosticsLevel": "off"
+              },
+              "before": {
+                "n": 8,
+                "medianMs": 5.5,
+                "p95Ms": 5.5
+              },
+              "after": {
+                "n": 8,
+                "medianMs": 5.299999952316284,
+                "p95Ms": 5.899999976158142
+              },
+              "deltaMs": {
+                "medianMs": -0.20000004768371582,
+                "p95Ms": 0.3999999761581421
+              },
+              "ratio": {
+                "median": 0.9636363549665972,
+                "p95": 1.0727272683923894
+              }
+            },
+            {
+              "params": {
+                "watchers": 128,
+                "diagnosticsLevel": "off"
+              },
+              "before": {
+                "n": 8,
+                "medianMs": 5.799999952316284,
+                "p95Ms": 5.899999976158142
+              },
+              "after": {
+                "n": 8,
+                "medianMs": 5.899999976158142,
+                "p95Ms": 6
+              },
+              "deltaMs": {
+                "medianMs": 0.10000002384185791,
+                "p95Ms": 0.10000002384185791
+              },
+              "ratio": {
+                "median": 1.0172413835627572,
+                "p95": 1.0169491566518571
+              }
+            }
+          ],
+          "topImprovements": [
+            {
+              "params": {
+                "watchers": 256,
+                "diagnosticsLevel": "full"
+              },
+              "before": {
+                "n": 8,
+                "medianMs": 5.399999976158142,
+                "p95Ms": 6
+              },
+              "after": {
+                "n": 8,
+                "medianMs": 5.5,
+                "p95Ms": 5.600000023841858
+              },
+              "deltaMs": {
+                "medianMs": 0.10000002384185791,
+                "p95Ms": -0.3999999761581421
+              },
+              "ratio": {
+                "median": 1.0185185230154397,
+                "p95": 0.9333333373069763
+              }
+            },
+            {
+              "params": {
+                "watchers": 512,
+                "diagnosticsLevel": "full"
+              },
+              "before": {
+                "n": 8,
+                "medianMs": 5.5,
+                "p95Ms": 6
+              },
+              "after": {
+                "n": 8,
+                "medianMs": 5.799999952316284,
+                "p95Ms": 5.900000095367432
+              },
+              "deltaMs": {
+                "medianMs": 0.2999999523162842,
+                "p95Ms": -0.09999990463256836
+              },
+              "ratio": {
+                "median": 1.054545445875688,
+                "p95": 0.9833333492279053
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

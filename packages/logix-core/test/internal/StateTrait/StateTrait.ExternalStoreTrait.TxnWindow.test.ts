@@ -7,7 +7,7 @@ import * as TaskRunner from '../../../src/internal/runtime/core/TaskRunner.js'
 import { flushAllHostScheduler, makeTestHostScheduler, testHostSchedulerLayer } from '../testkit/hostSchedulerTestKit.js'
 
 describe('StateTrait.externalStore txn-window discipline', () => {
-  it.scoped('writeback runs in a transaction; getSnapshot is never called inside txn-window', () => {
+  it.effect('writeback runs in a transaction; getSnapshot is never called inside txn-window', () => {
     const hostScheduler = makeTestHostScheduler()
     return Effect.gen(function* () {
       const StateSchema = Schema.Struct({ value: Schema.Number })

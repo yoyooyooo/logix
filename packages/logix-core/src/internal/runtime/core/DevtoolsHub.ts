@@ -1,4 +1,4 @@
-import { Effect, FiberRef } from 'effect'
+import { Effect } from 'effect'
 import type { JsonValue } from '../../observability/jsonValue.js'
 import type { EvidencePackage, EvidencePackageSource } from '../../observability/evidence.js'
 import { exportEvidencePackage, OBSERVABILITY_PROTOCOL_VERSION } from '../../observability/evidence.js'
@@ -6,9 +6,11 @@ import type { ConvergeStaticIrExport } from '../../state-trait/converge-ir.js'
 import type { ConvergeStaticIrCollector } from './ConvergeStaticIrCollector.js'
 import {
   currentDiagnosticsLevel,
+  currentDiagnosticsMaterialization,
   clearRuntimeDebugEventSeq,
   toRuntimeDebugEventRef,
   type DiagnosticsLevel,
+  type DiagnosticsMaterialization,
   type Event,
   type RuntimeDebugEventRef,
   type Sink,
@@ -37,7 +39,6 @@ export interface DevtoolsSnapshot {
    * - If the token does not change, externally visible snapshot fields must not change (avoid tearing / missed updates).
    */
   readonly snapshotToken: SnapshotToken
-  readonly projection: DevtoolsSnapshotProjection
   readonly instances: ReadonlyMap<string, number>
   readonly events: ReadonlyArray<RuntimeDebugEventRef>
   readonly latestStates: ReadonlyMap<string, JsonValue>
@@ -53,79 +54,9 @@ export interface DevtoolsSnapshot {
   }
 }
 
-export type DevtoolsProjectionTier = 'light' | 'full'
-export type DevtoolsSnapshotVisibleField =
-  | 'instances'
-  | 'events'
-  | 'latestStates'
-  | 'latestTraitSummaries'
-  | 'exportBudget'
-export type DevtoolsSnapshotHiddenField = 'latestStates' | 'latestTraitSummaries'
-export type DevtoolsProjectionDegradeReasonCode = 'projection_tier_light'
-
-export interface DevtoolsSnapshotDegradedReason {
-  readonly code: DevtoolsProjectionDegradeReasonCode
-  readonly message: string
-  readonly recommendedAction: string
-  readonly hiddenFields: ReadonlyArray<DevtoolsSnapshotHiddenField>
-}
-
-export interface DevtoolsSnapshotProjection {
-  readonly tier: DevtoolsProjectionTier
-  readonly degraded: boolean
-  readonly visibleFields: ReadonlyArray<DevtoolsSnapshotVisibleField>
-  readonly reason?: DevtoolsSnapshotDegradedReason
-}
-
-const FULL_VISIBLE_FIELDS = [
-  'instances',
-  'events',
-  'latestStates',
-  'latestTraitSummaries',
-  'exportBudget',
-] as const satisfies ReadonlyArray<DevtoolsSnapshotVisibleField>
-const LIGHT_VISIBLE_FIELDS = ['instances', 'events', 'exportBudget'] as const satisfies ReadonlyArray<
-  DevtoolsSnapshotVisibleField
->
-
-type DevtoolsProjectionDegradeReasonTemplate = Omit<DevtoolsSnapshotDegradedReason, 'code'>
-
-export const DEVTOOLS_PROJECTION_DEGRADE_REASON_CATALOG: Readonly<
-  Record<DevtoolsProjectionDegradeReasonCode, DevtoolsProjectionDegradeReasonTemplate>
-> = {
-  projection_tier_light: {
-    message: 'Projection tier=light keeps summary-only views and omits heavy latest* assets.',
-    recommendedAction: 'Switch projectionTier to "full" when consumers require latest state/trait snapshots.',
-    hiddenFields: ['latestStates', 'latestTraitSummaries'],
-  },
-}
-
-const getProjectionSnapshot = (tier: DevtoolsProjectionTier): DevtoolsSnapshotProjection => {
-  if (tier === 'full') {
-    return {
-      tier,
-      degraded: false,
-      visibleFields: FULL_VISIBLE_FIELDS,
-    }
-  }
-
-  const reason = DEVTOOLS_PROJECTION_DEGRADE_REASON_CATALOG.projection_tier_light
-  return {
-    tier,
-    degraded: true,
-    visibleFields: LIGHT_VISIBLE_FIELDS,
-    reason: {
-      code: 'projection_tier_light',
-      ...reason,
-    },
-  }
-}
-
 export interface DevtoolsHubOptions {
   readonly bufferSize?: number
   readonly diagnosticsLevel?: DiagnosticsLevel
-  readonly projectionTier?: DevtoolsProjectionTier
-  readonly runtimeLabel?: string
 }
 
 export type SnapshotToken = number
@@ -136,9 +67,118 @@ const instances = new Map<string, number>()
 const instanceLabels = new Map<string, string>()
 const convergeStaticIrByDigest = new Map<string, ConvergeStaticIrExport>()
 
+// ---- Event window (ring buffer) ----
+//
+// Perf:
+// - DevtoolsHub runs on hot paths under diagnostics=full (and even light in dev).
+// - Avoid splice/shift based trimming per event; keep O(1) append and rebuild an ordered view only when needed
+//   (snapshot read / export / buffer resize).
+type EventRing = {
+  capacity: number
+  start: number
+  size: number
+  data: Array<RuntimeDebugEventRef | undefined>
+  readonly view: RuntimeDebugEventRef[]
+  dirty: boolean
+}
+
+const toCapacity = (value: number): number => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 0
+  const n = Math.floor(value)
+  return n > 0 ? n : 0
+}
+
+const makeEventRing = (capacity: number): EventRing => {
+  const cap = toCapacity(capacity)
+  return {
+    capacity: cap,
+    start: 0,
+    size: 0,
+    data: cap > 0 ? new Array<RuntimeDebugEventRef | undefined>(cap) : [],
+    view: [],
+    dirty: true,
+  }
+}
+
+const clearEventRing = (ring: EventRing): void => {
+  ring.start = 0
+  ring.size = 0
+  ring.data = ring.capacity > 0 ? new Array<RuntimeDebugEventRef | undefined>(ring.capacity) : []
+  ring.view.length = 0
+  ring.dirty = true
+}
+
+const pushEventRing = (ring: EventRing, ref: RuntimeDebugEventRef): void => {
+  const cap = ring.capacity
+  if (cap <= 0) return
+
+  if (ring.size < cap) {
+    ring.data[(ring.start + ring.size) % cap] = ref
+    ring.size += 1
+  } else {
+    ring.data[ring.start] = ref
+    ring.start = (ring.start + 1) % cap
+  }
+
+  ring.dirty = true
+}
+
+const getEventRingView = (ring: EventRing): RuntimeDebugEventRef[] => {
+  if (!ring.dirty) return ring.view
+
+  const cap = ring.capacity
+  const size = ring.size
+  const out = ring.view
+  out.length = size
+
+  if (cap <= 0 || size === 0) {
+    ring.dirty = false
+    return out
+  }
+
+  const start = ring.start
+  const data = ring.data
+  for (let i = 0; i < size; i++) {
+    out[i] = data[(start + i) % cap]!
+  }
+
+  ring.dirty = false
+  return out
+}
+
+const resizeEventRing = (ring: EventRing, capacity: number): void => {
+  const cap = toCapacity(capacity)
+  if (cap === ring.capacity) return
+
+  const snapshot = getEventRingView(ring)
+  const keepStart = cap <= 0 ? snapshot.length : Math.max(0, snapshot.length - cap)
+  const keep: RuntimeDebugEventRef[] = []
+  for (let i = keepStart; i < snapshot.length; i++) {
+    keep.push(snapshot[i]!)
+  }
+
+  ring.capacity = cap
+  ring.start = 0
+  ring.size = 0
+  ring.data = cap > 0 ? new Array<RuntimeDebugEventRef | undefined>(cap) : []
+  ring.view.length = 0
+  ring.dirty = true
+
+  for (let i = 0; i < keep.length; i++) {
+    pushEventRing(ring, keep[i]!)
+  }
+}
+
+const rebuildEventRingFromOrdered = (ring: EventRing, ordered: ReadonlyArray<RuntimeDebugEventRef>): void => {
+  clearEventRing(ring)
+  for (let i = 0; i < ordered.length; i++) {
+    pushEventRing(ring, ordered[i]!)
+  }
+}
+
 interface RuntimeDevtoolsBucket {
   readonly runtimeLabel: string
-  readonly ringBuffer: RuntimeDebugEventRef[]
+  readonly ring: EventRing
   readonly latestStates: Map<string, JsonValue>
   readonly latestTraitSummaries: Map<string, JsonValue>
   readonly exportBudget: {
@@ -156,7 +196,7 @@ const getOrCreateRuntimeBucket = (runtimeLabel: string): RuntimeDevtoolsBucket =
   if (existing) return existing
   const created: RuntimeDevtoolsBucket = {
     runtimeLabel,
-    ringBuffer: [],
+    ring: makeEventRing(bufferSize),
     latestStates: new Map<string, JsonValue>(),
     latestTraitSummaries: new Map<string, JsonValue>(),
     exportBudget: {
@@ -253,10 +293,10 @@ const nextRunId = (): string => {
 let currentRunId = nextRunId()
 
 let bufferSize = 500
-const ringBuffer: RuntimeDebugEventRef[] = []
+const globalRing = makeEventRing(bufferSize)
 
-type RingTrimMode = 'disabled' | 'strict' | 'burst'
-let ringTrimMode: RingTrimMode = 'burst'
+type RingTrimMode = 'disabled' | 'strict'
+let ringTrimMode: RingTrimMode = 'strict'
 let ringTrimThreshold = bufferSize
 
 const RING_TRIM_POLICY_EVENT_LABEL = 'trace:devtools:ring-trim-policy' as const
@@ -282,138 +322,23 @@ const refreshRingTrimPolicy = (): boolean => {
     return prevMode !== ringTrimMode || prevThreshold !== ringTrimThreshold
   }
 
-  if (bufferSize <= 64) {
-    ringTrimMode = 'strict'
-    ringTrimThreshold = bufferSize
-    return prevMode !== ringTrimMode || prevThreshold !== ringTrimThreshold
-  }
-
-  ringTrimMode = 'burst'
-  const slack = Math.min(1024, Math.floor(bufferSize / 2))
-  ringTrimThreshold = bufferSize + Math.max(1, slack)
+  // With O(1) ring storage, the window is always a strict capacity bound.
+  ringTrimMode = 'strict'
+  ringTrimThreshold = bufferSize
   return prevMode !== ringTrimMode || prevThreshold !== ringTrimThreshold
 }
 
 refreshRingTrimPolicy()
 
-let defaultProjectionTier: DevtoolsProjectionTier = 'light'
-const projectionTierByRuntimeLabel = new Map<string, DevtoolsProjectionTier>()
-
-const getProjectionTierForRuntime = (runtimeLabel: string): DevtoolsProjectionTier =>
-  projectionTierByRuntimeLabel.get(runtimeLabel) ?? defaultProjectionTier
-
-const setProjectionTierForRuntime = (runtimeLabel: string, tier: DevtoolsProjectionTier): boolean => {
-  const previousTier = getProjectionTierForRuntime(runtimeLabel)
-  if (previousTier === tier) return false
-  if (tier === defaultProjectionTier) {
-    projectionTierByRuntimeLabel.delete(runtimeLabel)
-  } else {
-    projectionTierByRuntimeLabel.set(runtimeLabel, tier)
-  }
-  return true
-}
-
-const clearMapByRuntimePrefix = <T>(map: Map<string, T>, runtimeLabel: string): boolean => {
-  let changed = false
-  const prefix = `${runtimeLabel}::`
-  for (const key of map.keys()) {
-    if (key.startsWith(prefix)) {
-      map.delete(key)
-      changed = true
-    }
-  }
-  return changed
-}
-
-const clearLatestProjectionAssets = (runtimeLabel?: string): boolean => {
-  if (runtimeLabel !== undefined) {
-    let changed = false
-    if (clearMapByRuntimePrefix(latestStates, runtimeLabel)) {
-      changed = true
-    }
-    if (clearMapByRuntimePrefix(latestTraitSummaries, runtimeLabel)) {
-      changed = true
-    }
-    const bucket = getRuntimeBucket(runtimeLabel)
-    if (bucket) {
-      if (bucket.latestStates.size > 0) {
-        bucket.latestStates.clear()
-        changed = true
-      }
-      if (bucket.latestTraitSummaries.size > 0) {
-        bucket.latestTraitSummaries.clear()
-        changed = true
-      }
-    }
-    return changed
-  }
-
-  let changed = false
-  if (latestStates.size > 0) {
-    latestStates.clear()
-    changed = true
-  }
-  if (latestTraitSummaries.size > 0) {
-    latestTraitSummaries.clear()
-    changed = true
-  }
-  for (const bucket of runtimeBuckets.values()) {
-    if (bucket.latestStates.size > 0) {
-      bucket.latestStates.clear()
-      changed = true
-    }
-    if (bucket.latestTraitSummaries.size > 0) {
-      bucket.latestTraitSummaries.clear()
-      changed = true
-    }
-  }
-  return changed
-}
-
-const parseProjectionTier = (value: unknown): DevtoolsProjectionTier => (value === 'full' ? 'full' : 'light')
-
 let snapshotToken: SnapshotToken = 0
-
-const ensureRingBufferSize = (targetRingBuffer: RuntimeDebugEventRef[]): void => {
-  if (ringTrimMode === 'disabled') {
-    targetRingBuffer.length = 0
-    return
-  }
-
-  if (targetRingBuffer.length <= bufferSize) return
-  const excess = targetRingBuffer.length - bufferSize
-  targetRingBuffer.splice(0, excess)
-}
-
-const trimRingBufferIfNeeded = (targetRingBuffer: RuntimeDebugEventRef[]): void => {
-  if (ringTrimMode === 'disabled') {
-    targetRingBuffer.length = 0
-    return
-  }
-
-  // Small windows keep a strict upper bound to avoid "size=5 but events.length briefly > 5" surprises.
-  // Large windows allow short bursts + batch trimming to avoid linear shift() costs under sustained load.
-  if (ringTrimMode === 'strict') {
-    ensureRingBufferSize(targetRingBuffer)
-    return
-  }
-
-  if (targetRingBuffer.length <= ringTrimThreshold) return
-
-  const excess = targetRingBuffer.length - bufferSize
-  targetRingBuffer.splice(0, excess)
-}
 
 const parseDiagnosticsLevel = (value: unknown): DiagnosticsLevel =>
   value === 'off' || value === 'light' || value === 'sampled' || value === 'full' ? value : 'light'
 
 const appendRuntimeRef = (runtimeLabel: string, ref: RuntimeDebugEventRef): void => {
   const bucket = getOrCreateRuntimeBucket(runtimeLabel)
-  bucket.ringBuffer.push(ref)
-  trimRingBufferIfNeeded(bucket.ringBuffer)
-
-  ringBuffer.push(ref)
-  trimRingBufferIfNeeded(ringBuffer)
+  pushEventRing(bucket.ring, ref)
+  pushEventRing(globalRing, ref)
 }
 
 const clearRuntimeBucketEvents = (runtimeLabel: string): boolean => {
@@ -421,8 +346,8 @@ const clearRuntimeBucketEvents = (runtimeLabel: string): boolean => {
   if (!bucket) return false
 
   let changed = false
-  if (bucket.ringBuffer.length > 0) {
-    bucket.ringBuffer.length = 0
+  if (bucket.ring.size > 0) {
+    clearEventRing(bucket.ring)
     changed = true
   }
   if (bucket.exportBudget.dropped !== 0 || bucket.exportBudget.oversized !== 0) {
@@ -433,13 +358,8 @@ const clearRuntimeBucketEvents = (runtimeLabel: string): boolean => {
 
   if (!changed) return false
 
-  let writeIndex = 0
-  for (const event of ringBuffer) {
-    if (normalizeRuntimeLabel(event.runtimeLabel) !== runtimeLabel) {
-      ringBuffer[writeIndex++] = event
-    }
-  }
-  ringBuffer.length = writeIndex
+  const kept = getEventRingView(globalRing).filter((event) => normalizeRuntimeLabel(event.runtimeLabel) !== runtimeLabel)
+  rebuildEventRingFromOrdered(globalRing, kept)
   recalculateGlobalExportBudget()
   return true
 }
@@ -447,8 +367,8 @@ const clearRuntimeBucketEvents = (runtimeLabel: string): boolean => {
 const clearAllRuntimeBucketEvents = (): boolean => {
   let changed = false
   for (const bucket of runtimeBuckets.values()) {
-    if (bucket.ringBuffer.length > 0) {
-      bucket.ringBuffer.length = 0
+    if (bucket.ring.size > 0) {
+      clearEventRing(bucket.ring)
       changed = true
     }
     if (bucket.exportBudget.dropped !== 0 || bucket.exportBudget.oversized !== 0) {
@@ -457,8 +377,8 @@ const clearAllRuntimeBucketEvents = (): boolean => {
       changed = true
     }
   }
-  if (ringBuffer.length > 0) {
-    ringBuffer.length = 0
+  if (globalRing.size > 0) {
+    clearEventRing(globalRing)
     changed = true
   }
   recalculateGlobalExportBudget()
@@ -487,9 +407,8 @@ const emitRingTrimPolicyEvent = (diagnosticsLevel: DiagnosticsLevel): void => {
 // Snapshot references internal structures directly (read-only convention) to avoid copy costs in hot paths.
 const currentSnapshot: DevtoolsSnapshot = {
   snapshotToken,
-  projection: getProjectionSnapshot(defaultProjectionTier),
   instances,
-  events: ringBuffer,
+  events: globalRing.view,
   latestStates,
   latestTraitSummaries,
   exportBudget,
@@ -524,46 +443,24 @@ const markSnapshotChanged = (): void => {
 
 export const configureDevtoolsHub = (options?: DevtoolsHubOptions) => {
   devtoolsEnabled = true
-  let changed = false
-
-  const configuredRuntimeLabel =
-    typeof options?.runtimeLabel === 'string' && options.runtimeLabel.length > 0
-      ? normalizeRuntimeLabel(options.runtimeLabel)
-      : undefined
-  const nextTier = parseProjectionTier(options?.projectionTier)
-  if (configuredRuntimeLabel) {
-    if (setProjectionTierForRuntime(configuredRuntimeLabel, nextTier)) {
-      clearLatestProjectionAssets(configuredRuntimeLabel)
-      changed = true
-    }
-  } else if (nextTier !== defaultProjectionTier) {
-    defaultProjectionTier = nextTier
-    clearLatestProjectionAssets()
-    ;(currentSnapshot as any).projection = getProjectionSnapshot(defaultProjectionTier)
-    changed = true
-  }
-
   if (typeof options?.bufferSize === 'number' && Number.isFinite(options.bufferSize)) {
     const next = Math.floor(options.bufferSize)
     const nextBufferSize = next >= 0 ? next : 0
     if (nextBufferSize !== bufferSize) {
       bufferSize = nextBufferSize
       const policyChanged = refreshRingTrimPolicy()
+      // Resize rings first so the policy event lands in the new window capacity (avoid overwriting on expand).
+      resizeEventRing(globalRing, bufferSize)
+      for (const bucket of runtimeBuckets.values()) {
+        resizeEventRing(bucket.ring, bufferSize)
+      }
       // Respect the caller's diagnostics setting when emitting hub policy metadata.
       // If diagnosticsLevel is omitted, keep previous behavior for snapshots but skip extra policy events.
       if (policyChanged && options?.diagnosticsLevel !== undefined) {
         emitRingTrimPolicyEvent(parseDiagnosticsLevel(options.diagnosticsLevel))
       }
-      ensureRingBufferSize(ringBuffer)
-      for (const bucket of runtimeBuckets.values()) {
-        ensureRingBufferSize(bucket.ringBuffer)
-      }
-      changed = true
+      markSnapshotChanged()
     }
-  }
-
-  if (changed) {
-    markSnapshotChanged()
   }
 }
 
@@ -571,7 +468,10 @@ export const isDevtoolsEnabled = (): boolean => devtoolsEnabled
 
 // ---- Snapshot public helpers ----
 
-export const getDevtoolsSnapshot = (): DevtoolsSnapshot => currentSnapshot
+export const getDevtoolsSnapshot = (): DevtoolsSnapshot => {
+  getEventRingView(globalRing)
+  return currentSnapshot
+}
 export const getDevtoolsSnapshotToken = (): SnapshotToken => snapshotToken
 export const getDevtoolsSnapshotByRuntimeLabel = (runtimeLabel: string): DevtoolsSnapshot => {
   const normalizedRuntimeLabel = normalizeRuntimeLabel(runtimeLabel)
@@ -586,9 +486,8 @@ export const getDevtoolsSnapshotByRuntimeLabel = (runtimeLabel: string): Devtool
 
   return {
     snapshotToken,
-    projection: getProjectionSnapshot(getProjectionTierForRuntime(normalizedRuntimeLabel)),
     instances: runtimeInstances,
-    events: bucket?.ringBuffer ?? [],
+    events: bucket ? getEventRingView(bucket.ring) : [],
     latestStates: bucket?.latestStates ?? new Map<string, JsonValue>(),
     latestTraitSummaries: bucket?.latestTraitSummaries ?? new Map<string, JsonValue>(),
     exportBudget: bucket?.exportBudget ?? { dropped: 0, oversized: 0 },
@@ -655,7 +554,8 @@ export const exportDevtoolsEvidencePackage = (options?: {
   const runId = options?.runId ?? currentRunId
   const source = options?.source ?? { host: 'unknown' }
 
-  const events = ringBuffer.map((payload, i) => ({
+  const refs = getEventRingView(globalRing)
+  const events = refs.map((payload, i) => ({
     protocolVersion,
     runId,
     seq:
@@ -670,23 +570,36 @@ export const exportDevtoolsEvidencePackage = (options?: {
   const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value)
 
-  // Export canonical static IR mapping by digest for any diagnostics tier that emits trait:converge:
+  // Export canonical static IR mapping by digest for any diagnostics tier that emits:
+  // - trait:converge (trace) events, or
+  // - state:update events with id-first dirty evidence (pathIds/rootIds).
+  //
+  // Policy:
   // - full: keep full ConvergeStaticIrExport payload for offline explanation/replay.
-  // - light/sampled: export minimal fieldPaths-only entries so consumers can still materialize rootIds -> rootPaths.
+  // - light/sampled: export minimal fieldPaths-only entries so consumers can materialize ids -> paths.
   const convergeDigests = new Set<string>()
   const sawFullByDigest = new Set<string>()
 
-  for (const ref of ringBuffer) {
-    if (ref.kind !== 'trait:converge') continue
-    const meta = ref.meta
-    if (!isRecord(meta)) continue
+  for (const ref of refs) {
+    const meta = isRecord(ref.meta) ? (ref.meta as Record<string, unknown>) : undefined
+    if (!meta) continue
 
-    const digest = meta.staticIrDigest
-    if (typeof digest === 'string' && digest.length > 0) {
-      convergeDigests.add(digest)
-      const dirty = meta.dirty
-      if (isRecord(dirty) && typeof dirty.rootCount === 'number') {
-        sawFullByDigest.add(digest)
+    if (ref.kind === 'trait:converge') {
+      const digest = meta.staticIrDigest
+      if (typeof digest === 'string' && digest.length > 0) {
+        convergeDigests.add(digest)
+        const dirty = meta.dirty
+        if (isRecord(dirty) && typeof dirty.rootCount === 'number') {
+          sawFullByDigest.add(digest)
+        }
+      }
+      continue
+    }
+
+    if (ref.kind === 'state' && ref.label === 'state:update') {
+      const digest = meta.staticIrDigest
+      if (typeof digest === 'string' && digest.length > 0) {
+        convergeDigests.add(digest)
       }
     }
   }
@@ -723,7 +636,8 @@ export const devtoolsHubSink: Sink = {
     Effect.gen(function* () {
       // NOTE: the hub is a global singleton, but whether events are exportable/written to the buffer is controlled by FiberRef,
       // enabling different perf baselines/diagnostics tiers across scopes within the same process.
-      const level = yield* FiberRef.get(currentDiagnosticsLevel)
+      const level = yield* Effect.service(currentDiagnosticsLevel).pipe(Effect.orDie)
+      const materialization = yield* Effect.service(currentDiagnosticsMaterialization).pipe(Effect.orDie)
       const eventRuntimeLabel = normalizeRuntimeLabel((event as any).runtimeLabel)
 
       let changed = false
@@ -802,6 +716,7 @@ export const devtoolsHubSink: Sink = {
       let projectedOversized = 0
       const ref = toRuntimeDebugEventRef(event, {
         diagnosticsLevel: level,
+        materialization: materialization as DiagnosticsMaterialization,
         onMetaProjection: ({ stats }) => {
           projectedDropped += stats.dropped
           projectedOversized += stats.oversized
@@ -826,10 +741,9 @@ export const devtoolsHubSink: Sink = {
 
       const refRuntimeLabel = normalizeRuntimeLabel(ref.runtimeLabel)
       const runtimeBucket = getOrCreateRuntimeBucket(refRuntimeLabel)
-      const runtimeProjectionTier = getProjectionTierForRuntime(refRuntimeLabel)
 
       // latestStates / latestTraitSummaries: record latest snapshots by runtimeLabel::moduleId::instanceId.
-      if (runtimeProjectionTier === 'full' && ref.kind === 'state' && ref.label === 'state:update') {
+      if (ref.kind === 'state' && ref.label === 'state:update') {
         const instanceKey = resolveLiveInstanceKey(refRuntimeLabel, ref.moduleId, ref.instanceId)
 
         // Late/replayed events after module:destroy: allow entering the window for replay, but do not rebuild latest* caches.
@@ -837,16 +751,12 @@ export const devtoolsHubSink: Sink = {
           if (ref.meta && typeof ref.meta === 'object' && !Array.isArray(ref.meta)) {
             const anyMeta = ref.meta as any
             if ('state' in anyMeta) {
-              if (defaultProjectionTier === 'full') {
-                latestStates.set(instanceKey, anyMeta.state as JsonValue)
-              }
+              latestStates.set(instanceKey, anyMeta.state as JsonValue)
               runtimeBucket.latestStates.set(instanceKey, anyMeta.state as JsonValue)
               changed = true
             }
             if ('traitSummary' in anyMeta && anyMeta.traitSummary !== undefined) {
-              if (defaultProjectionTier === 'full') {
-                latestTraitSummaries.set(instanceKey, anyMeta.traitSummary as JsonValue)
-              }
+              latestTraitSummaries.set(instanceKey, anyMeta.traitSummary as JsonValue)
               runtimeBucket.latestTraitSummaries.set(instanceKey, anyMeta.traitSummary as JsonValue)
               changed = true
             }

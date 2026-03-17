@@ -6,7 +6,7 @@
  *   - runPollImportStatusPattern：根据 taskId 轮询任务状态，返回最终结果。
  */
 
-import { Data, Duration, Effect } from 'effect'
+import { Data, Duration, Effect, Layer, ServiceMap } from 'effect'
 
 // ---------------------------------------------------------------------------
 // 错误建模：FileImportPatternError
@@ -21,8 +21,14 @@ export class FileImportPatternError extends Data.TaggedError('FileImportPatternE
 // Services：文件上传与导入任务
 // ---------------------------------------------------------------------------
 
-export class FileUploadService extends Effect.Service<FileUploadService>()('FileUploadService', {
-  effect: Effect.gen(function* () {
+export class FileUploadService extends ServiceMap.Service<
+  FileUploadService,
+  { readonly upload: (input: { name: string; size: number }) => Effect.Effect<{ fileId: string }> }
+>()('FileUploadService') {}
+
+export const FileUploadServiceLive = Layer.effect(
+  FileUploadService,
+  Effect.gen(function* () {
     const upload = (input: { name: string; size: number }) =>
       Effect.gen(function* () {
         console.log('[FileUploadService] upload', input.name, input.size)
@@ -33,10 +39,19 @@ export class FileUploadService extends Effect.Service<FileUploadService>()('File
       upload,
     }
   }),
-}) {}
+)
 
-export class ImportService extends Effect.Service<ImportService>()('ImportService', {
-  effect: Effect.gen(function* () {
+export class ImportService extends ServiceMap.Service<
+  ImportService,
+  {
+    readonly startImport: (input: { fileId: string }) => Effect.Effect<{ taskId: string }>
+    readonly getImportStatus: (input: { taskId: string }) => Effect.Effect<{ status: 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILED' }>
+  }
+>()('ImportService') {}
+
+export const ImportServiceLive = Layer.effect(
+  ImportService,
+  Effect.gen(function* () {
     const startImport = (input: { fileId: string }) =>
       Effect.gen(function* () {
         console.log('[ImportService] startImport', input.fileId)
@@ -48,7 +63,6 @@ export class ImportService extends Effect.Service<ImportService>()('ImportServic
     const getImportStatus = (input: { taskId: string }) =>
       Effect.gen(function* () {
         console.log('[ImportService] getImportStatus', input.taskId)
-        // PoC：简单模拟为立即成功
         return { status: 'SUCCESS' as ImportStatus }
       })
 
@@ -57,7 +71,7 @@ export class ImportService extends Effect.Service<ImportService>()('ImportServic
       getImportStatus,
     }
   }),
-}) {}
+)
 
 // ---------------------------------------------------------------------------
 // Pattern 1：上传文件并启动导入任务，返回 taskId
@@ -70,8 +84,8 @@ export interface UploadAndStartInput {
 
 export const runUploadAndStartImportPattern = (input: UploadAndStartInput) =>
   Effect.gen(function* () {
-    const uploader = yield* FileUploadService
-    const importer = yield* ImportService
+    const uploader = yield* Effect.service(FileUploadService).pipe(Effect.orDie)
+    const importer = yield* Effect.service(ImportService).pipe(Effect.orDie)
 
     // PoC：当文件名为 "fail" 时模拟上传阶段失败，映射为领域错误。
     if (input.fileName === 'fail') {
@@ -99,7 +113,7 @@ export interface PollImportStatusInput {
 
 export const runPollImportStatusPattern = (input: PollImportStatusInput) =>
   Effect.gen(function* () {
-    const importer = yield* ImportService
+    const importer = yield* Effect.service(ImportService).pipe(Effect.orDie)
 
     // PoC：当 taskId 为 "fail" 时模拟轮询阶段失败。
     if (input.taskId === 'fail') {

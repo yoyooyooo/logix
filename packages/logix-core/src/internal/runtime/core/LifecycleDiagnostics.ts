@@ -5,14 +5,13 @@ import type { LifecycleManager } from './Lifecycle.js'
 export type UnhandledErrorKind = 'interrupt' | 'diagnostic' | 'assembly' | 'defect'
 
 export const classifyUnhandledCause = (cause: Cause.Cause<unknown>): UnhandledErrorKind => {
-  if (Cause.isInterrupted(cause)) {
+  if (Cause.hasInterruptsOnly(cause)) {
     return 'interrupt'
   }
 
-  const all = [
-    ...Chunk.toReadonlyArray(Cause.failures(cause)),
-    ...Chunk.toReadonlyArray(Cause.defects(cause)),
-  ] as ReadonlyArray<any>
+  const all = cause.reasons
+    .filter((reason) => Cause.isFailReason(reason) || Cause.isDieReason(reason))
+    .map((reason) => (Cause.isFailReason(reason) ? reason.error : reason.defect)) as ReadonlyArray<any>
 
   if (all.some((err) => err && typeof err === 'object' && err._tag === 'LogicPhaseError')) {
     return 'diagnostic'
@@ -62,7 +61,7 @@ export const emitAssemblyFailureDiagnosticIfNeeded = (
   moduleId?: string,
 ): Effect.Effect<void, never, any> =>
   Effect.sync(() => {
-    const defects = Chunk.toReadonlyArray(Cause.defects(cause))
+    const defects = cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)
     const missing = defects.find(
       (e) => e && typeof e === 'object' && (e as any).name === 'MissingModuleRuntimeError',
     ) as any

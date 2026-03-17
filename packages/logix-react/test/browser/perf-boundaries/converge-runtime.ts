@@ -154,7 +154,7 @@ export const makeConvergeRuntime = (
 
 export const runConvergeTxnCommit = (rt: ConvergeRuntime, dirtyRoots: number): Effect.Effect<void, never, any> =>
   Effect.gen(function* () {
-    const moduleScope = (yield* rt.module.tag) as any
+    const moduleScope = (yield* Effect.service(rt.module.tag).pipe(Effect.orDie)) as any
     yield* moduleScope.dispatch({ _tag: 'bump', payload: dirtyRoots } as any)
   }) as Effect.Effect<void, never, any>
 
@@ -164,5 +164,5 @@ export const runConvergeTxnCommitWithDiagnosticsLevel = (
   diagnosticsLevel: DiagnosticsLevel,
 ): Effect.Effect<void, never, any> =>
   runConvergeTxnCommit(rt, dirtyRoots).pipe(
-    Effect.locally(Logix.Debug.internal.currentDiagnosticsLevel, diagnosticsLevel),
+    (effect) => Effect.provideService(effect, Logix.Debug.internal.currentDiagnosticsLevel, diagnosticsLevel),
   )

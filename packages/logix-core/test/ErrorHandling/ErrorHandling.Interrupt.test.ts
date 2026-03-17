@@ -1,11 +1,11 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Deferred, Effect, Fiber, Layer, Schema } from 'effect'
 import * as Debug from '../../src/Debug.js'
 import * as Logix from '../../src/index.js'
 
 describe('Error handling - interrupt', () => {
-  it.scoped('should not emit lifecycle:error or invoke onError on interrupt', () =>
+  it.effect('should not emit lifecycle:error or invoke onError on interrupt', () =>
     Effect.gen(function* () {
       const events: Debug.Event[] = []
       const onErrorCalls: Array<unknown> = []
@@ -41,22 +41,20 @@ describe('Error handling - interrupt', () => {
         never
       >
 
-      yield* Effect.locally(Debug.internal.currentDebugSinks as any, [sink])(
-        Effect.gen(function* () {
-          const program = Effect.scoped(
-            Effect.gen(function* () {
-              yield* TestModule.tag
-              yield* Deferred.succeed(acquired, undefined)
-              yield* Effect.never
-            }).pipe(Effect.provide(layer)),
-          )
-
-          const fiber = yield* Effect.fork(program)
-          yield* Deferred.await(acquired)
-
-          yield* Fiber.interrupt(fiber)
-        }),
-      )
+      yield* Effect.provideService(Effect.gen(function* () {
+        const program = Effect.scoped(
+          Effect.gen(function* () {
+            yield* Effect.service(TestModule.tag).pipe(Effect.orDie)
+            yield* Deferred.succeed(acquired, undefined)
+            yield* Effect.never
+          }).pipe(Effect.provide(layer)),
+        )
+      
+        const fiber = yield* Effect.forkChild(program)
+        yield* Deferred.await(acquired)
+      
+        yield* Fiber.interrupt(fiber)
+      }), Debug.internal.currentDebugSinks as any, [sink])
 
       expect(onErrorCalls.length).toBe(0)
       expect(events.some((e) => e.type === 'lifecycle:error')).toBe(false)

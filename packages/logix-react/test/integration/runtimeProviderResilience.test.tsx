@@ -2,12 +2,12 @@ import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 // @vitest-environment happy-dom
 import { renderHook, waitFor } from '@testing-library/react'
-import { Context, Effect, Layer, ManagedRuntime } from 'effect'
+import { Effect, Layer, ManagedRuntime, ServiceMap } from 'effect'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
 import { useRuntime } from '../../src/Hooks.js'
 
-class ServiceA extends Context.Tag('ServiceA')<ServiceA, { readonly value: string }>() {}
-class ServiceB extends Context.Tag('ServiceB')<ServiceB, { readonly value: number }>() {}
+class ServiceA extends ServiceMap.Service<ServiceA, { readonly value: string }>()('ServiceA') {}
+class ServiceB extends ServiceMap.Service<ServiceB, { readonly value: number }>()('ServiceB') {}
 
 const baseRuntime = ManagedRuntime.make(Layer.succeed(ServiceA, { value: 'base' }) as Layer.Layer<any, never, never>)
 
@@ -23,8 +23,8 @@ describe('RuntimeProvider resilience', () => {
   it('should close scoped resources when layer build fails', async () => {
     let activeResources = 0
 
-    const ResourceTag = Context.GenericTag<number>('@test/ResFail')
-    const ResourceLayer = Layer.scoped(
+    const ResourceTag = ServiceMap.Service<number>('@test/ResFail')
+    const ResourceLayer = Layer.effect(
       ResourceTag,
       Effect.acquireRelease(
         Effect.sync(() => {
@@ -39,7 +39,7 @@ describe('RuntimeProvider resilience', () => {
     )
 
     // First acquire the resource successfully, then fail intentionally; verify Scope closes and triggers release.
-    const FailingLayer = Layer.merge(ResourceLayer, Layer.fail('boom'))
+    const FailingLayer = Layer.merge(ResourceLayer, Layer.effectDiscard(Effect.fail('boom'))) as Layer.Layer<any, any, never>
 
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
@@ -60,8 +60,8 @@ describe('RuntimeProvider resilience', () => {
 
   it('should not leak when parent unmounts during slow layer build', async () => {
     let activeResources = 0
-    const SlowTag = Context.GenericTag<number>('@test/Slow')
-    const SlowLayer = Layer.scoped(
+    const SlowTag = ServiceMap.Service<number>('@test/Slow')
+    const SlowLayer = Layer.effect(
       SlowTag,
       Effect.acquireRelease(
         Effect.gen(function* () {
@@ -93,8 +93,8 @@ describe('RuntimeProvider resilience', () => {
 
   it('should remain balanced under React StrictMode double render', async () => {
     let activeResources = 0
-    const StrictTag = Context.GenericTag<number>('@test/Strict')
-    const StrictLayer = Layer.scoped(
+    const StrictTag = ServiceMap.Service<number>('@test/Strict')
+    const StrictLayer = Layer.effect(
       StrictTag,
       Effect.acquireRelease(
         Effect.sync(() => {
@@ -177,7 +177,7 @@ describe('RuntimeProvider resilience', () => {
 
         return runtime.runSync(
           Effect.gen(function* () {
-            const a = yield* ServiceA
+            const a = yield* Effect.service(ServiceA).pipe(Effect.orDie)
             return a.value
           }),
         )

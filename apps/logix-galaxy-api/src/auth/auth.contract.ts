@@ -1,8 +1,8 @@
-import { HttpApiEndpoint, HttpApiGroup } from '@effect/platform'
+import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/unstable/httpapi'
 import { Schema } from 'effect'
 
-export const UserStatus = Schema.Literal('active', 'disabled')
-export const RoleCode = Schema.Literal('admin', 'user')
+export const UserStatus = Schema.Union([Schema.Literal('active'), Schema.Literal('disabled')])
+export const RoleCode = Schema.Union([Schema.Literal('admin'), Schema.Literal('user')])
 
 export const UserDto = Schema.Struct({
   id: Schema.String,
@@ -27,15 +27,15 @@ export const AuthLoginResponse = Schema.Struct({
   user: UserDto,
 })
 
-export const AuthEventType = Schema.Literal(
-  'login_succeeded',
-  'login_failed',
-  'logout',
-  'user_created',
-  'user_disabled',
-  'user_enabled',
-  'password_reset',
-)
+export const AuthEventType = Schema.Union([
+  Schema.Literal('login_succeeded'),
+  Schema.Literal('login_failed'),
+  Schema.Literal('logout'),
+  Schema.Literal('user_created'),
+  Schema.Literal('user_disabled'),
+  Schema.Literal('user_enabled'),
+  Schema.Literal('password_reset'),
+])
 
 export const AuthEventDto = Schema.Struct({
   eventId: Schema.Number,
@@ -89,28 +89,43 @@ export const ServiceUnavailableError = Schema.Struct({
   message: Schema.String,
 })
 
+const AuthCommonErrors = [
+  ValidationError.pipe(HttpApiSchema.status(400)),
+  UnauthorizedError.pipe(HttpApiSchema.status(401)),
+  ForbiddenError.pipe(HttpApiSchema.status(403)),
+  TooManyRequestsError.pipe(HttpApiSchema.status(429)),
+  ServiceUnavailableError.pipe(HttpApiSchema.status(503)),
+] as const
+
 export const AuthGroup = HttpApiGroup.make('Auth')
-  .addError(ServiceUnavailableError, { status: 503 })
   .add(
-    HttpApiEndpoint.post('authLogin')`/auth/login`
-      .setPayload(AuthLoginRequest)
-      .addSuccess(AuthLoginResponse)
-      .addError(ValidationError, { status: 400 })
-      .addError(UnauthorizedError, { status: 401 })
-      .addError(ForbiddenError, { status: 403 })
-      .addError(TooManyRequestsError, { status: 429 }),
-  )
-  .add(
-    HttpApiEndpoint.post('authLogout')`/auth/logout`
-      .addSuccess(Schema.Void, { status: 204 })
-      .addError(UnauthorizedError, { status: 401 }),
-  )
-  .add(HttpApiEndpoint.get('authMe')`/me`.addSuccess(UserDto).addError(UnauthorizedError, { status: 401 }))
-  .add(
-    HttpApiEndpoint.get('authEventList')`/auth/events`
-      .setUrlParams(AuthEventListUrlParams)
-      .addSuccess(Schema.Array(AuthEventDto))
-      .addError(ValidationError, { status: 400 })
-      .addError(UnauthorizedError, { status: 401 })
-      .addError(ForbiddenError, { status: 403 }),
+    HttpApiEndpoint.post('authLogin', '/auth/login', {
+      payload: AuthLoginRequest,
+      success: AuthLoginResponse,
+      error: AuthCommonErrors,
+    }),
+    HttpApiEndpoint.post('authLogout', '/auth/logout', {
+      success: HttpApiSchema.NoContent,
+      error: [UnauthorizedError.pipe(HttpApiSchema.status(401)), ServiceUnavailableError.pipe(HttpApiSchema.status(503))],
+    }),
+    HttpApiEndpoint.get('authMe', '/me', {
+      success: UserDto,
+      error: [UnauthorizedError.pipe(HttpApiSchema.status(401)), ServiceUnavailableError.pipe(HttpApiSchema.status(503))],
+    }),
+    HttpApiEndpoint.get('authEventList', '/auth/events', {
+      query: {
+        from: Schema.optional(Schema.String),
+        to: Schema.optional(Schema.String),
+        subjectUserId: Schema.optional(Schema.String),
+        actorUserId: Schema.optional(Schema.String),
+        identifier: Schema.optional(Schema.String),
+      },
+      success: Schema.Array(AuthEventDto),
+      error: [
+        ValidationError.pipe(HttpApiSchema.status(400)),
+        UnauthorizedError.pipe(HttpApiSchema.status(401)),
+        ForbiddenError.pipe(HttpApiSchema.status(403)),
+        ServiceUnavailableError.pipe(HttpApiSchema.status(503)),
+      ],
+    }),
   )

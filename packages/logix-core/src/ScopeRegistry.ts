@@ -1,9 +1,9 @@
-import { Context, Layer, ManagedRuntime } from 'effect'
+import { Layer, ManagedRuntime, ServiceMap } from 'effect'
 import { isDevEnv } from './Env.js'
 
 export type ScopeId = string
 
-type AnyTag = Context.Tag<any, any>
+type AnyTag = ServiceMap.Key<any, any>
 
 type LeaseId = number
 
@@ -18,12 +18,12 @@ export interface ScopeRegistry {
    *
    * Returns a release function that revokes this registration.
    */
-  readonly register: <A>(scopeId: ScopeId, token: Context.Tag<any, A>, value: A) => { readonly release: () => void }
+  readonly register: <A>(scopeId: ScopeId, token: ServiceMap.Key<any, A>, value: A) => { readonly release: () => void }
 
   /**
    * Reads the current value for a token under a scope (the last registered value).
    */
-  readonly get: <A>(scopeId: ScopeId, token: Context.Tag<any, A>) => A | undefined
+  readonly get: <A>(scopeId: ScopeId, token: ServiceMap.Key<any, A>) => A | undefined
 
   /**
    * Deletes all registrations of a token under a scope (regardless of who registered them).
@@ -41,7 +41,7 @@ export interface ScopeRegistry {
   readonly clearAll: () => void
 }
 
-export class ScopeRegistryTag extends Context.Tag('@logixjs/core/ScopeRegistry')<ScopeRegistryTag, ScopeRegistry>() {}
+export class ScopeRegistryTag extends ServiceMap.Service<ScopeRegistryTag, ScopeRegistry>()('@logixjs/core/ScopeRegistry') {}
 
 /**
  * Stores a "ManagedRuntime handle for a scope" in ScopeRegistry.
@@ -49,10 +49,10 @@ export class ScopeRegistryTag extends Context.Tag('@logixjs/core/ScopeRegistry')
  * Typical use case: reusing the same runtime scope (Env/Scope/FiberRef) across React subtrees / independent roots
  * by registering the runtime under a scopeId and retrieving it elsewhere.
  */
-export class ScopedRuntimeTag extends Context.Tag('@logixjs/core/ScopeRegistry/ScopedRuntime')<
+export class ScopedRuntimeTag extends ServiceMap.Service<
   ScopedRuntimeTag,
   ManagedRuntime.ManagedRuntime<any, any>
->() {}
+>()('@logixjs/core/ScopeRegistry/ScopedRuntime') {}
 
 export const internal = {
   ScopeRegistryTag,

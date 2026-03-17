@@ -1,15 +1,12 @@
-import { describe } from 'vitest'
+import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Context, Effect, Schema } from 'effect'
+import {Effect, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('Observability.trialRunModule (missing service)', () => {
   it.effect('should fail with MissingDependency and include missingServices', () =>
     Effect.gen(function* () {
-      class BusinessService extends Context.Tag('BusinessService')<
-        BusinessService,
-        { readonly ping: Effect.Effect<void> }
-      >() {}
+      class BusinessService extends ServiceMap.Service<BusinessService, { readonly ping: Effect.Effect<void> }>()('BusinessService') {}
 
       const Root = Logix.Module.make('TrialRunModule.MissingService', {
         state: Schema.Struct({ ok: Schema.Boolean }),
@@ -21,7 +18,7 @@ describe('Observability.trialRunModule (missing service)', () => {
         logics: [
           Root.logic(() => ({
             setup: Effect.gen(function* () {
-              yield* BusinessService
+              yield* Effect.service(BusinessService).pipe(Effect.orDie)
             }),
             run: Effect.void,
           })),

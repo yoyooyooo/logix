@@ -4,7 +4,7 @@ import * as Logix from '../../src/index.js'
 import * as Debug from '../../src/Debug.js'
 
 describe('StateTrait converge execution semantics', () => {
-  it.scoped('computed chain reads prior writeback within the same txn window', () =>
+  it.effect('computed chain reads prior writeback within the same txn window', () =>
     Effect.gen(function* () {
       const State = Schema.Struct({
         a: Schema.Number,
@@ -51,7 +51,7 @@ describe('StateTrait converge execution semantics', () => {
       })
 
       const program = Effect.gen(function* () {
-        const rt: any = yield* M.tag
+        const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
         yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 't1' }, () =>
           Effect.gen(function* () {

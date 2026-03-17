@@ -36,12 +36,11 @@ describe('core-ng: Exec VM (converge smoke)', () => {
 
         const MutateLogic = M.logic(($) =>
           Effect.gen(function* () {
-            yield* $.onAction('mutateA').run({
-              effect: () =>
-                $.state.mutate((draft) => {
-                  draft.a += 1
-                }),
-            })
+            yield* $.onAction('mutateA').run(() =>
+              $.state.mutate((draft) => {
+                draft.a += 1
+              }),
+            )
           }),
         )
 
@@ -63,7 +62,7 @@ describe('core-ng: Exec VM (converge smoke)', () => {
         })
 
         const program = Effect.gen(function* () {
-          const rt = yield* M.tag
+          const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
           yield* rt.dispatch({ _tag: 'mutateA', payload: undefined })
           yield* Effect.sleep('10 millis')
 

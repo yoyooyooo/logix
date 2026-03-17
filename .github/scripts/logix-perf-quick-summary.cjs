@@ -745,7 +745,11 @@ const comparable = diff?.meta?.comparability?.comparable === true
 const regressions = diff?.summary?.regressions ?? 0
 const improvements = diff?.summary?.improvements ?? 0
 const dynamicEvaluation =
-  capacityLatest?.evaluation && typeof capacityLatest.evaluation === 'object' ? capacityLatest.evaluation : null
+  afterCapacitySummary &&
+  capacityLatest?.evaluation &&
+  typeof capacityLatest.evaluation === 'object'
+    ? capacityLatest.evaluation
+    : null
 const dynamicHardFailed = dynamicEvaluation?.hardPass === false
 const tailRecheckCounts =
   tailRecheckSummary?.counts && typeof tailRecheckSummary.counts === 'object' ? tailRecheckSummary.counts : null
