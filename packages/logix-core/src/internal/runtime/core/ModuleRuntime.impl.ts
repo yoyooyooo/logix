@@ -612,7 +612,7 @@ export const make = <S, A, R = never>(
       selectorGraph.hasAnyEntries() ||
       (runtimeStore?.getModuleSubscriberCount(moduleInstanceKey) ?? 0) > 0
 
-    const shouldCaptureTickSchedulerAtEnqueue = (): boolean => shouldObservePostCommit()
+    const shouldCaptureTickSchedulerAtEnqueue = (): boolean => true
 
     const enqueueTransaction: EnqueueTransaction = ((a0: any, a1?: any) =>
       Effect.gen(function* () {
