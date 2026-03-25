@@ -644,7 +644,7 @@ export const make = <S, A, R = never>(
         stateRef,
         commitHub,
         shouldPublishCommitHub: () => commitHubSubscriberCount > 0,
-        shouldRunPostCommitObservation: () => shouldObservePostCommit(),
+        shouldRunPostCommitObservation: () => true,
         recordStatePatch,
         onCommit: ({ state, meta, dirtySet, diagnosticsLevel }) =>
           Effect.gen(function* () {

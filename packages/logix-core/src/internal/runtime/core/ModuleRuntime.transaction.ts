@@ -362,7 +362,6 @@ export const makeTransactionOps = <S>(args: {
   const readState: Effect.Effect<S> = Effect.gen(function* () {
     const current = txnContext.current
     if (TaskRunner.isInSyncTransactionShadow() && current) return current.draft
-
     const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
     if (inTxn && current) return current.draft
     return yield* SubscriptionRef.get(stateRef)
@@ -717,39 +716,76 @@ export const makeTransactionOps = <S>(args: {
                       body() as Effect.Effect<void, E2, any>,
                     )
                   : (body() as Effect.Effect<void, E2, any>)
-                const bodyExit = yield* Effect.sync(() =>
-                  runSyncExitWithServices(
-                    runtime as Runtime.Runtime<any>,
-                    bodyEffect,
-                    currentServices as Context.Context<any>,
-                  ) as Exit.Exit<void, E2>,
-                )
-
-                if (Exit.isFailure(bodyExit)) {
-                  const asyncEscapeDefect = [...Cause.defects(bodyExit.cause)].find(Runtime.isAsyncFiberException)
-
-                  if (asyncEscapeDefect) {
-                    if (diagnosticsLevelAtBody !== 'off') {
-                      yield* Debug.record({
-                        type: 'diagnostic',
-                        moduleId: optionsModuleId,
-                        instanceId,
-                        txnSeq,
-                        txnId,
-                        trigger: origin,
-                        code: ASYNC_ESCAPE_DIAGNOSTIC_CODE,
-                        severity: 'error',
-                        message: ASYNC_ESCAPE_MESSAGE,
-                        hint: ASYNC_ESCAPE_HINT,
-                        kind: ASYNC_ESCAPE_KIND,
-                      })
-                    }
-                    const asyncEscapeError = makeAsyncEscapeError()
-                    yield* Fiber.interruptFork(asyncEscapeDefect.fiber)
-                    return yield* Effect.die(asyncEscapeError)
+                if (isDevEnv()) {
+                  const bodyFiber = yield* Effect.fork(
+                    Effect.provide(
+                      bodyEffect,
+                      currentServices as Context.Context<any>,
+                    ) as Effect.Effect<void, E2, never>,
+                  )
+                  const YIELD_BUDGET = 5
+                  let polled = yield* Fiber.poll(bodyFiber)
+                  for (let index = 0; index < YIELD_BUDGET && Option.isNone(polled); index += 1) {
+                    yield* Effect.yieldNow()
+                    polled = yield* Fiber.poll(bodyFiber)
                   }
 
-                  return yield* Effect.failCause(bodyExit.cause)
+                  if (Option.isNone(polled) && diagnosticsLevelAtBody !== 'off') {
+                    yield* Debug.record({
+                      type: 'diagnostic',
+                      moduleId: optionsModuleId,
+                      instanceId,
+                      txnSeq,
+                      txnId,
+                      trigger: origin,
+                      code: ASYNC_ESCAPE_DIAGNOSTIC_CODE,
+                      severity: 'error',
+                      message: ASYNC_ESCAPE_MESSAGE,
+                      hint: ASYNC_ESCAPE_HINT,
+                      kind: ASYNC_ESCAPE_KIND,
+                    })
+                  }
+
+                  const bodyExit = yield* Fiber.await(bodyFiber)
+                  yield* Exit.match(bodyExit, {
+                    onFailure: (cause) => Effect.failCause(cause),
+                    onSuccess: () => Effect.void,
+                  })
+                } else {
+                  const bodyExit = yield* Effect.sync(() =>
+                    runSyncExitWithServices(
+                      runtime as Runtime.Runtime<any>,
+                      bodyEffect,
+                      currentServices as Context.Context<any>,
+                    ) as Exit.Exit<void, E2>,
+                  )
+
+                  if (Exit.isFailure(bodyExit)) {
+                    const asyncEscapeDefect = [...Cause.defects(bodyExit.cause)].find(Runtime.isAsyncFiberException)
+
+                    if (asyncEscapeDefect) {
+                      if (diagnosticsLevelAtBody !== 'off') {
+                        yield* Debug.record({
+                          type: 'diagnostic',
+                          moduleId: optionsModuleId,
+                          instanceId,
+                          txnSeq,
+                          txnId,
+                          trigger: origin,
+                          code: ASYNC_ESCAPE_DIAGNOSTIC_CODE,
+                          severity: 'error',
+                          message: ASYNC_ESCAPE_MESSAGE,
+                          hint: ASYNC_ESCAPE_HINT,
+                          kind: ASYNC_ESCAPE_KIND,
+                        })
+                      }
+                      const asyncEscapeError = makeAsyncEscapeError()
+                      yield* Fiber.interruptFork(asyncEscapeDefect.fiber)
+                      return yield* Effect.die(asyncEscapeError)
+                    }
+
+                    return yield* Effect.failCause(bodyExit.cause)
+                  }
                 }
 
                 const stateTraitProgram = traitRuntime.getProgram()

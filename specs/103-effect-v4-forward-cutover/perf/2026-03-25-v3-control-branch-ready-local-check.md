@@ -37,6 +37,10 @@
 
 这只是 branch-ready local check，不是 full CI green。
 
+`verify` 首轮红线的本地复现、根因与修复证据，见：
+
+- `specs/103-effect-v4-forward-cutover/perf/2026-03-25-v3-control-verify-failure-local-fix.md`
+
 当前若要进一步扩大验证，下一步应是：
 
 1. 单独形成 debug commit
