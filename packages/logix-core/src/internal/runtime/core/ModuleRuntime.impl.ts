@@ -570,6 +570,7 @@ export const make = <S, A, R = never>(
     )
 
     const runtimeStoreOpt = yield* Effect.serviceOption(RuntimeStoreTag)
+    const runtimeStore = Option.isSome(runtimeStoreOpt) ? runtimeStoreOpt.value : undefined
     if (Option.isSome(runtimeStoreOpt)) {
       runtimeStoreOpt.value.registerModuleInstance({
         moduleId,
@@ -606,19 +607,28 @@ export const make = <S, A, R = never>(
         return undefined
       })
 
+    const shouldObservePostCommit = (): boolean =>
+      externalOwnedFieldPaths.length > 0 ||
+      selectorGraph.hasAnyEntries() ||
+      (runtimeStore?.getModuleSubscriberCount(moduleInstanceKey) ?? 0) > 0
+
+    const shouldCaptureTickSchedulerAtEnqueue = (): boolean => shouldObservePostCommit()
+
     const enqueueTransaction: EnqueueTransaction = ((a0: any, a1?: any) =>
       Effect.gen(function* () {
+        if (tickSchedulerCached || !shouldCaptureTickSchedulerAtEnqueue()) {
+          return yield* (a1 !== undefined ? (enqueueTransactionBase as any)(a0, a1) : (enqueueTransactionBase as any)(a0))
+        }
+
         // Cache TickScheduler from the current fiber Env whenever possible:
         // - ManagedRuntime scenarios (e.g. React RuntimeProvider injecting tick services) may not have TickSchedulerTag
         //   visible during ModuleRuntime initialization.
         // - But it is often available at enqueue-time (callsite), and caching it ensures onCommit can publish into RuntimeStore.
-        if (!tickSchedulerCached) {
-          const refreshed = yield* refreshTickSchedulerFromEnv()
-          if (!refreshed) {
-            const fromRoot = readTickSchedulerFromRootContext(rootContext)
-            if (fromRoot) {
-              tickSchedulerCached = fromRoot
-            }
+        const refreshed = yield* refreshTickSchedulerFromEnv()
+        if (!refreshed) {
+          const fromRoot = readTickSchedulerFromRootContext(rootContext)
+          if (fromRoot) {
+            tickSchedulerCached = fromRoot
           }
         }
 
@@ -634,6 +644,7 @@ export const make = <S, A, R = never>(
         stateRef,
         commitHub,
         shouldPublishCommitHub: () => commitHubSubscriberCount > 0,
+        shouldRunPostCommitObservation: () => shouldObservePostCommit(),
         recordStatePatch,
         onCommit: ({ state, meta, dirtySet, diagnosticsLevel }) =>
           Effect.gen(function* () {
@@ -755,11 +766,13 @@ export const make = <S, A, R = never>(
       runtimeServicesOverrides,
     )
 
-    const { readState, setStateInternal, runWithStateTransaction } = yield* withRuntimeServiceBuiltins(
-      'transaction',
-      makeTransactionBuiltin,
-      transactionSel.impl.make,
-    )
+    const {
+      readState,
+      setStateInternal,
+      runWithStateTransaction,
+      createRunWithStateTransactionContinuationHandle,
+      runWithStateTransactionWithContinuationHandle,
+    } = yield* withRuntimeServiceBuiltins('transaction', makeTransactionBuiltin, transactionSel.impl.make)
 
     let deferredFlushCoalescedCount = 0
     let deferredFlushCanceledCount = 0
@@ -1831,6 +1844,8 @@ export const make = <S, A, R = never>(
         instrumentation,
         registerReducer: dispatchOps.registerReducer as any,
         runWithStateTransaction: runWithStateTransactionInternal as any,
+        createRunWithStateTransactionContinuationHandle: createRunWithStateTransactionContinuationHandle as any,
+        runWithStateTransactionWithContinuationHandle: runWithStateTransactionWithContinuationHandle as any,
         updateDraft,
         recordStatePatch,
         recordReplayEvent,

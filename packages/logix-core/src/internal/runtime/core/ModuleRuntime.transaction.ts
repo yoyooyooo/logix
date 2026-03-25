@@ -1,4 +1,4 @@
-import { Cause, Effect, Exit, Fiber, FiberRef, Option, PubSub, Queue, Runtime, SubscriptionRef } from 'effect'
+import { Cause, Context, Effect, Exit, Fiber, FiberRef, Option, PubSub, Queue, Runtime, SubscriptionRef } from 'effect'
 import type { StateChangeWithMeta, StateCommitMeta, StateCommitMode, StateCommitPriority } from './module.js'
 import type {
   StateTraitProgram,
@@ -10,14 +10,18 @@ import * as Debug from './DebugSink.js'
 import * as StateTransaction from './StateTransaction.js'
 import * as TaskRunner from './TaskRunner.js'
 import * as StateTraitConverge from '../../state-trait/converge.js'
+import { getMiddlewareStack } from '../../state-trait/converge-step.js'
+import { currentExecVmMode } from '../../state-trait/exec-vm-mode.js'
 import * as StateTraitValidate from '../../state-trait/validate.js'
 import * as StateTraitSource from '../../state-trait/source.js'
 import * as RowId from '../../state-trait/rowid.js'
+import type { ResolvedConvergeEnv } from '../../state-trait/converge.types.js'
 import type * as ReplayLog from './ReplayLog.js'
 import type { RunOperation } from './ModuleRuntime.operation.js'
 import type { ResolvedTraitConvergeConfig } from './ModuleRuntime.traitConvergeConfig.js'
 import type { EnqueueTransaction } from './ModuleRuntime.txnQueue.js'
-import { StateTransactionOverridesTag, type StateTransactionOverrides } from './env.js'
+import { currentTxnQueuePhaseTiming } from './ModuleRuntime.txnQueue.js'
+import { RuntimeStoreTag, StateTransactionOverridesTag, TickSchedulerTag, type StateTransactionOverrides } from './env.js'
 import type { TxnLanePolicyCacheEntry } from './ModuleRuntime.txnLanePolicy.js'
 
 const DIRTY_ALL_SET_STATE_HINT = Symbol.for('@logixjs/core/dirtyAllSetStateHint')
@@ -32,6 +36,81 @@ const makeAsyncEscapeError = (): Error =>
     code: ASYNC_ESCAPE_DIAGNOSTIC_CODE,
     hint: ASYNC_ESCAPE_HINT,
     kind: ASYNC_ESCAPE_KIND,
+  })
+
+const hasSourceTraits = (program: StateTraitProgram<any> | undefined): boolean =>
+  program?.entries.some((entry) => entry.kind === 'source') === true
+
+const runSyncExitWithServices = <A, E>(
+  runtime: Runtime.Runtime<any>,
+  effect: Effect.Effect<A, E, any>,
+  services: Context.Context<any>,
+): Exit.Exit<A, E> => Runtime.runSyncExit(runtime, Effect.provide(effect, services) as Effect.Effect<A, E, never>)
+
+const resolveConvergeEnv = (): Effect.Effect<ResolvedConvergeEnv> =>
+  Effect.gen(function* () {
+    const [middlewareStack, diagnosticsLevel, debugSinks, execVmMode] = yield* Effect.all([
+      getMiddlewareStack(),
+      FiberRef.get(Debug.currentDiagnosticsLevel),
+      FiberRef.get(Debug.currentDebugSinks),
+      FiberRef.get(currentExecVmMode),
+    ] as const)
+
+    return {
+      diagnosticsLevel,
+      debugSinks,
+      middlewareStack,
+      execVmMode,
+    }
+  })
+
+const stripSyncBodyRunnerDynamicServices = (services: Context.Context<any>): Context.Context<any> =>
+  Context.omit(
+    StateTransactionOverridesTag,
+    RuntimeStoreTag,
+    TickSchedulerTag,
+    currentTxnQueuePhaseTiming as any,
+  )(services as any) as Context.Context<any>
+
+const withSyncBodyRunnerDynamicServices = (
+  baseServices: Context.Context<any>,
+): Effect.Effect<Context.Context<any>, never, never> =>
+  Effect.gen(function* () {
+    let nextServices = baseServices
+
+    const overridesOpt = yield* Effect.serviceOption(StateTransactionOverridesTag)
+    if (Option.isSome(overridesOpt)) {
+      nextServices = Context.add(nextServices, StateTransactionOverridesTag, overridesOpt.value)
+    }
+
+    const runtimeStoreOpt = yield* Effect.serviceOption(RuntimeStoreTag)
+    if (Option.isSome(runtimeStoreOpt)) {
+      nextServices = Context.add(nextServices, RuntimeStoreTag, runtimeStoreOpt.value)
+    }
+
+    const tickSchedulerOpt = yield* Effect.serviceOption(TickSchedulerTag)
+    if (Option.isSome(tickSchedulerOpt)) {
+      nextServices = Context.add(nextServices, TickSchedulerTag, tickSchedulerOpt.value)
+    }
+
+    const diagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
+    if (diagnosticsLevel !== 'off') {
+      const currentServices = (yield* Effect.context<never>()) as Context.Context<any>
+      const queuePhaseTimingOpt = Context.getOption(
+        currentServices as any,
+        currentTxnQueuePhaseTiming as any,
+      ) as Option.Option<unknown>
+
+      if (Option.isSome(queuePhaseTimingOpt) && queuePhaseTimingOpt.value !== undefined) {
+        nextServices = Context.add(
+          nextServices as any,
+          currentTxnQueuePhaseTiming as any,
+          queuePhaseTimingOpt.value as any,
+        ) as Context.Context<any>
+      }
+    }
+
+    return nextServices
   })
 
 const readDeferredFlushSlice = (details: unknown): { readonly start: number; readonly end: number } | undefined => {
@@ -149,6 +228,22 @@ export type RunWithStateTransaction = <E>(
   body: () => Effect.Effect<void, E, never>,
 ) => Effect.Effect<void, E, never>
 
+type TxnEntryHotContext = {
+  readonly syncBodyRunnerServices: Context.Context<any>
+}
+
+export type RunWithStateTransactionContinuationHandle = {
+  readonly id: string
+  readonly phaseDiagnosticsLevel: Debug.DiagnosticsLevel
+  readonly txnEntryHotContext: TxnEntryHotContext
+}
+
+export type RunWithStateTransactionWithContinuationHandle = <E>(
+  continuationHandle: RunWithStateTransactionContinuationHandle,
+  origin: StateTransaction.StateTxnOrigin,
+  body: () => Effect.Effect<void, E, never>,
+) => Effect.Effect<void, E, never>
+
 export type SetStateInternal<S> = (
   next: S,
   path: StateTransaction.StatePatchPath,
@@ -195,6 +290,7 @@ export const makeTransactionOps = <S>(args: {
   readonly stateRef: SubscriptionRef.SubscriptionRef<S>
   readonly commitHub: PubSub.PubSub<StateChangeWithMeta<S>>
   readonly shouldPublishCommitHub?: () => boolean
+  readonly shouldRunPostCommitObservation?: () => boolean
   readonly recordStatePatch: (
     path: StateTransaction.StatePatchPath | undefined,
     reason: StateTransaction.PatchReason,
@@ -227,6 +323,12 @@ export const makeTransactionOps = <S>(args: {
   readonly readState: Effect.Effect<S>
   readonly setStateInternal: SetStateInternal<S>
   readonly runWithStateTransaction: RunWithStateTransaction
+  readonly createRunWithStateTransactionContinuationHandle: () => Effect.Effect<
+    RunWithStateTransactionContinuationHandle,
+    never,
+    never
+  >
+  readonly runWithStateTransactionWithContinuationHandle: RunWithStateTransactionWithContinuationHandle
   readonly __logixGetExecVmAssemblyEvidence?: () => unknown
 } => {
   const {
@@ -236,6 +338,7 @@ export const makeTransactionOps = <S>(args: {
     stateRef,
     commitHub,
     shouldPublishCommitHub,
+    shouldRunPostCommitObservation,
     recordStatePatch,
     onCommit,
     enqueueTransaction,
@@ -257,11 +360,90 @@ export const makeTransactionOps = <S>(args: {
    * - Otherwise, fall back to the underlying SubscriptionRef snapshot.
    */
   const readState: Effect.Effect<S> = Effect.gen(function* () {
-    const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
     const current = txnContext.current
+    if (TaskRunner.isInSyncTransactionShadow() && current) return current.draft
+
+    const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
     if (inTxn && current) return current.draft
     return yield* SubscriptionRef.get(stateRef)
   })
+
+  let syncBodyRunnerBaseServices: Context.Context<any> | undefined
+
+  const resolveSyncBodyRunnerServices = (): Effect.Effect<Context.Context<any>, never, never> =>
+    Effect.gen(function* () {
+      if (!syncBodyRunnerBaseServices) {
+        const currentServices = (yield* Effect.context<never>()) as Context.Context<any>
+        syncBodyRunnerBaseServices = stripSyncBodyRunnerDynamicServices(currentServices)
+      }
+
+      return yield* withSyncBodyRunnerDynamicServices(syncBodyRunnerBaseServices)
+    })
+
+  let nextTxnContinuationHandleSeq = 0
+  const defaultTxnContinuationHandleByDiagnostics = new Map<
+    Debug.DiagnosticsLevel,
+    RunWithStateTransactionContinuationHandle
+  >()
+  let sameTickOffTxnContinuationHandle: RunWithStateTransactionContinuationHandle | undefined
+  let sameTickOffTxnContinuationResetQueued = false
+
+  const createRunWithStateTransactionContinuationHandle = (): Effect.Effect<
+    RunWithStateTransactionContinuationHandle,
+    never,
+    never
+  > =>
+    Effect.gen(function* () {
+      const phaseDiagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
+      const syncBodyRunnerServices = yield* resolveSyncBodyRunnerServices()
+      nextTxnContinuationHandleSeq += 1
+      return {
+        id: `${instanceId}::txncont${nextTxnContinuationHandleSeq}`,
+        phaseDiagnosticsLevel,
+        txnEntryHotContext: {
+          syncBodyRunnerServices,
+        },
+      }
+    })
+
+  const scheduleSameTickOffTxnContinuationReset = (): void => {
+    if (sameTickOffTxnContinuationResetQueued) return
+    sameTickOffTxnContinuationResetQueued = true
+    setTimeout(() => {
+      sameTickOffTxnContinuationHandle = undefined
+      sameTickOffTxnContinuationResetQueued = false
+    }, 0)
+  }
+
+  const getOrCreateSameTickTxnContinuationHandle = (): Effect.Effect<
+    RunWithStateTransactionContinuationHandle,
+    never,
+    never
+  > => {
+    if (sameTickOffTxnContinuationHandle) {
+      return Effect.succeed(sameTickOffTxnContinuationHandle)
+    }
+
+    return Effect.gen(function* () {
+      const phaseDiagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
+      const cached = defaultTxnContinuationHandleByDiagnostics.get(phaseDiagnosticsLevel)
+      if (cached) {
+        if (phaseDiagnosticsLevel === 'off') {
+          sameTickOffTxnContinuationHandle = cached
+          scheduleSameTickOffTxnContinuationReset()
+        }
+        return cached
+      }
+
+      const created = yield* createRunWithStateTransactionContinuationHandle()
+      defaultTxnContinuationHandleByDiagnostics.set(phaseDiagnosticsLevel, created)
+      if (phaseDiagnosticsLevel === 'off') {
+        sameTickOffTxnContinuationHandle = created
+        scheduleSameTickOffTxnContinuationReset()
+      }
+      return created
+    })
+  }
 
   const runPostCommitPhases = (args: {
     readonly txn: StateTransaction.StateTransaction<S>
@@ -286,8 +468,12 @@ export const makeTransactionOps = <S>(args: {
       } = args
       const shouldWarnDirtyAllSetState =
         dirtyAllSetStateHint || (txn.origin.kind === 'state' && txn.origin.name === 'setState')
+      const diagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
+      const shouldEmitDirtyAllFallbackDiagnostic =
+        shouldWarnDirtyAllSetState && isDevEnv() && (txn.dirtySet as any)?.dirtyAll === true
+      const shouldRetainTxnHistory = isDevEnv() || txnContext.config.instrumentation === 'full'
 
-      if (shouldWarnDirtyAllSetState && isDevEnv() && (txn.dirtySet as any)?.dirtyAll === true) {
+      if (shouldEmitDirtyAllFallbackDiagnostic) {
         yield* Debug.record({
           type: 'diagnostic',
           moduleId: optionsModuleId,
@@ -306,7 +492,7 @@ export const makeTransactionOps = <S>(args: {
 
       // Record txn history: only for dev/test or explicit full instrumentation (devtools/debugging).
       // In production (default light), keep zero retention to avoid turning "txn history" into an implicit memory tax.
-      if (isDevEnv() || txnContext.config.instrumentation === 'full') {
+      if (shouldRetainTxnHistory) {
         txnHistory.push(txn)
         txnById.set(txn.txnId, txn)
         if (txnHistory.length > maxTxnHistory) {
@@ -320,12 +506,32 @@ export const makeTransactionOps = <S>(args: {
       // RowID virtual identity layer: align mappings after each observable commit
       // so in-flight gates and cache reuse remain stable under insert/remove/reorder.
       const listConfigs = traitRuntime.getListConfigs()
-      if (listConfigs.length > 0) {
-        const shouldSyncRowIds = RowId.shouldReconcileListConfigsByDirtySet({
+      const shouldSyncRowIds =
+        listConfigs.length > 0 &&
+        RowId.shouldReconcileListConfigsByDirtySet({
           dirtySet: txn.dirtySet,
           listConfigs,
           fieldPathIdRegistry,
         })
+      const shouldPublishCommit = shouldPublishCommitHub ? shouldPublishCommitHub() : true
+      const shouldObservePostCommit =
+        onCommit != null && (shouldRunPostCommitObservation ? shouldRunPostCommitObservation() : true)
+      const debugSinks = yield* FiberRef.get(Debug.currentDebugSinks)
+      const shouldRecordStateUpdate = debugSinks.length > 0 && !Debug.isErrorOnlyOnlySinks(debugSinks)
+
+      if (
+        diagnosticsLevel === 'off' &&
+        !shouldEmitDirtyAllFallbackDiagnostic &&
+        !shouldRetainTxnHistory &&
+        !shouldSyncRowIds &&
+        !shouldPublishCommit &&
+        !shouldObservePostCommit &&
+        !shouldRecordStateUpdate
+      ) {
+        return
+      }
+
+      if (listConfigs.length > 0) {
         if (shouldSyncRowIds) {
           traitRuntime.rowIdStore.updateAll(nextState as any, listConfigs)
         }
@@ -340,7 +546,7 @@ export const makeTransactionOps = <S>(args: {
         originName: txn.origin.name,
       }
 
-      if (!shouldPublishCommitHub || shouldPublishCommitHub()) {
+      if (shouldPublishCommit) {
         yield* PubSub.publish(commitHub, {
           value: nextState,
           meta,
@@ -352,8 +558,7 @@ export const makeTransactionOps = <S>(args: {
       //   before state:update debug recording so React external store subscribers can start flushing earlier.
       // - In diagnostics=light/full, keep the original ordering so any selector eval trace stays after state:update
       //   (preserves a more intuitive txn → selector → render causal chain in devtools).
-      const diagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
-      if (onCommit && diagnosticsLevel === 'off') {
+      if (shouldObservePostCommit && diagnosticsLevel === 'off' && onCommit) {
         yield* onCommit({
           state: nextState,
           meta,
@@ -361,9 +566,6 @@ export const makeTransactionOps = <S>(args: {
           diagnosticsLevel,
         })
       }
-
-      const debugSinks = yield* FiberRef.get(Debug.currentDebugSinks)
-      const shouldRecordStateUpdate = debugSinks.length > 0 && !Debug.isErrorOnlyOnlySinks(debugSinks)
 
       if (shouldRecordStateUpdate) {
         const shouldComputeEvidence = diagnosticsLevel !== 'off'
@@ -442,7 +644,7 @@ export const makeTransactionOps = <S>(args: {
         })
       }
 
-      if (onCommit && diagnosticsLevel !== 'off') {
+      if (shouldObservePostCommit && diagnosticsLevel !== 'off' && onCommit) {
         yield* onCommit({
           state: nextState,
           meta,
@@ -458,9 +660,10 @@ export const makeTransactionOps = <S>(args: {
    * - Aggregate all state writes within body; at the end commit once and emit a state:update debug event.
    * - The caller must ensure body does not cross long IO boundaries (see the spec constraints on the transaction window).
    */
-  const runWithStateTransaction: RunWithStateTransaction = <E2>(
+  const runWithStateTransactionInternal = <E2>(
     origin: StateTransaction.StateTxnOrigin,
     body: () => Effect.Effect<void, E2, never>,
+    continuationHandle?: RunWithStateTransactionContinuationHandle,
   ): Effect.Effect<void, E2, never> =>
     Effect.locally(
       TaskRunner.inSyncTransactionFiber,
@@ -500,43 +703,33 @@ export const makeTransactionOps = <S>(args: {
                 // Execute logic inside the transaction window (reducer / watcher writeback / traits, etc.).
                 // Contract: no long IO/await in the transaction window.
                 const diagnosticsLevelAtBody = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
-                if (isDevEnv()) {
-                  const bodyFiber = yield* Effect.fork(body())
-                  const YIELD_BUDGET = 5
-                  let polled = yield* Fiber.poll(bodyFiber)
-                  for (let index = 0; index < YIELD_BUDGET && Option.isNone(polled); index += 1) {
-                    yield* Effect.yieldNow()
-                    polled = yield* Fiber.poll(bodyFiber)
-                  }
+                const runtime = yield* Effect.runtime<never>()
+                const currentServices =
+                  continuationHandle?.txnEntryHotContext.syncBodyRunnerServices ??
+                  (yield* resolveSyncBodyRunnerServices())
+                const stateTraitProgramAtBody = traitRuntime.getProgram()
+                const shouldPropagateForceSourceRefresh = hasSourceTraits(stateTraitProgramAtBody)
+                const forceSourceRefreshAtBody = shouldPropagateForceSourceRefresh
+                  ? yield* FiberRef.get(TaskRunner.forceSourceRefresh)
+                  : false
+                const bodyEffect = shouldPropagateForceSourceRefresh
+                  ? Effect.locally(TaskRunner.forceSourceRefresh, forceSourceRefreshAtBody)(
+                      body() as Effect.Effect<void, E2, any>,
+                    )
+                  : (body() as Effect.Effect<void, E2, any>)
+                const bodyExit = yield* Effect.sync(() =>
+                  runSyncExitWithServices(
+                    runtime as Runtime.Runtime<any>,
+                    bodyEffect,
+                    currentServices as Context.Context<any>,
+                  ) as Exit.Exit<void, E2>,
+                )
 
-                  if (Option.isNone(polled) && diagnosticsLevelAtBody !== 'off') {
-                    yield* Debug.record({
-                      type: 'diagnostic',
-                      moduleId: optionsModuleId,
-                      instanceId,
-                      txnSeq,
-                      txnId,
-                      trigger: origin,
-                      code: ASYNC_ESCAPE_DIAGNOSTIC_CODE,
-                      severity: 'error',
-                      message: ASYNC_ESCAPE_MESSAGE,
-                      hint: ASYNC_ESCAPE_HINT,
-                      kind: ASYNC_ESCAPE_KIND,
-                    })
-                  }
-                  const bodyExit = yield* Fiber.await(bodyFiber)
-                  yield* Exit.match(bodyExit, {
-                    onFailure: (cause) => Effect.failCause(cause),
-                    onSuccess: () => Effect.void,
-                  })
-                } else {
-                  const runtime = yield* Effect.runtime<never>()
-                  const bodyExit = yield* Effect.sync(() => Runtime.runSyncExit(runtime, body()))
+                if (Exit.isFailure(bodyExit)) {
+                  const asyncEscapeDefect = [...Cause.defects(bodyExit.cause)].find(Runtime.isAsyncFiberException)
 
-                  if (Exit.isFailure(bodyExit)) {
-                    const asyncEscapeDefect = [...Cause.defects(bodyExit.cause)].find(Runtime.isAsyncFiberException)
-
-                    if (asyncEscapeDefect) {
+                  if (asyncEscapeDefect) {
+                    if (diagnosticsLevelAtBody !== 'off') {
                       yield* Debug.record({
                         type: 'diagnostic',
                         moduleId: optionsModuleId,
@@ -550,13 +743,13 @@ export const makeTransactionOps = <S>(args: {
                         hint: ASYNC_ESCAPE_HINT,
                         kind: ASYNC_ESCAPE_KIND,
                       })
-                      const asyncEscapeError = makeAsyncEscapeError()
-                      yield* Fiber.interruptFork(asyncEscapeDefect.fiber)
-                      return yield* Effect.die(asyncEscapeError)
                     }
-
-                    return yield* Effect.failCause(bodyExit.cause)
+                    const asyncEscapeError = makeAsyncEscapeError()
+                    yield* Fiber.interruptFork(asyncEscapeDefect.fiber)
+                    return yield* Effect.die(asyncEscapeError)
                   }
+
+                  return yield* Effect.failCause(bodyExit.cause)
                 }
 
                 const stateTraitProgram = traitRuntime.getProgram()
@@ -585,6 +778,7 @@ export const makeTransactionOps = <S>(args: {
                           deferredSlice.end,
                         )
                       : undefined
+                  const resolvedEnv = yield* resolveConvergeEnv()
 
                   const convergeExit = yield* Effect.exit(
                     StateTraitConverge.convergeInTransaction(
@@ -606,6 +800,7 @@ export const makeTransactionOps = <S>(args: {
                         allowInPlaceDraft:
                           txnContext.current != null &&
                           !Object.is(txnContext.current.draft, txnContext.current.baseState),
+                        resolvedEnv,
                         planCache: traitRuntime.getConvergePlanCache(),
                         generation: traitRuntime.getConvergeGeneration(),
                         cacheMissReasonHint: traitRuntime.getPendingCacheMissReason(),
@@ -879,6 +1074,21 @@ export const makeTransactionOps = <S>(args: {
       }),
     )
 
+  const runWithStateTransaction: RunWithStateTransaction = <E2>(
+    origin: StateTransaction.StateTxnOrigin,
+    body: () => Effect.Effect<void, E2, never>,
+  ): Effect.Effect<void, E2, never> =>
+    Effect.gen(function* () {
+      const continuationHandle = yield* getOrCreateSameTickTxnContinuationHandle()
+      return yield* runWithStateTransactionInternal(origin, body, continuationHandle)
+    })
+
+  const runWithStateTransactionWithContinuationHandle: RunWithStateTransactionWithContinuationHandle = <E2>(
+    continuationHandle: RunWithStateTransactionContinuationHandle,
+    origin: StateTransaction.StateTxnOrigin,
+    body: () => Effect.Effect<void, E2, never>,
+  ): Effect.Effect<void, E2, never> => runWithStateTransactionInternal(origin, body, continuationHandle)
+
   /**
    * setStateInternal：
    * - Inside an active transaction: only update the draft and record patches (whole-State granularity), without writing to the underlying Ref.
@@ -899,6 +1109,18 @@ export const makeTransactionOps = <S>(args: {
     stepId?: number,
   ): Effect.Effect<void> =>
     Effect.gen(function* () {
+      if (TaskRunner.isInSyncTransactionShadow() && txnContext.current) {
+        const current: any = txnContext.current
+
+        StateTransaction.updateDraft(txnContext, next)
+        recordStatePatch(path, reason, from, to, traitNodeId, stepId)
+
+        if (path === '*') {
+          current[DIRTY_ALL_SET_STATE_HINT] = true
+        }
+        return
+      }
+
       const inTxn = yield* FiberRef.get(TaskRunner.inSyncTransactionFiber)
       if (inTxn && txnContext.current) {
         const current: any = txnContext.current
@@ -950,6 +1172,8 @@ export const makeTransactionOps = <S>(args: {
     readState,
     setStateInternal,
     runWithStateTransaction,
+    createRunWithStateTransactionContinuationHandle,
+    runWithStateTransactionWithContinuationHandle,
     __logixGetExecVmAssemblyEvidence: getExecVmAssemblyEvidence,
   }
 }

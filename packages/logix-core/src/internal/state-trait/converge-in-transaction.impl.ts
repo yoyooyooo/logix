@@ -135,15 +135,17 @@ export const convergeInTransaction = <S extends object>(
       return { _tag: 'Noop' } as const
     }
 
-    const stack = yield* getMiddlewareStack()
-    const diagnosticsLevel: Debug.DiagnosticsLevel = yield* FiberRef.get(Debug.currentDiagnosticsLevel)
-    const debugSinks = yield* FiberRef.get(Debug.currentDebugSinks)
+    const resolvedEnv = ctx.resolvedEnv
+    const stack = resolvedEnv?.middlewareStack ?? (yield* getMiddlewareStack())
+    const diagnosticsLevel: Debug.DiagnosticsLevel =
+      resolvedEnv?.diagnosticsLevel ?? (yield* FiberRef.get(Debug.currentDiagnosticsLevel))
+    const debugSinks = resolvedEnv?.debugSinks ?? (yield* FiberRef.get(Debug.currentDebugSinks))
     // Decision / TraitSummary gate is based on "will it be consumed" (sinks), not diagnosticsLevel.
     // diagnosticsLevel only controls exportable/heavy details (trace payload, hotspots, static IR export, etc.).
     const shouldCollectDecision = debugSinks.length > 0 && !Debug.isErrorOnlyOnlySinks(debugSinks)
     const shouldCollectDecisionDetails = shouldCollectDecision
     const shouldCollectDecisionHeavyDetails = shouldCollectDecision && diagnosticsLevel !== 'off'
-    const execVmMode = yield* FiberRef.get(currentExecVmMode)
+    const execVmMode = resolvedEnv?.execVmMode ?? (yield* FiberRef.get(currentExecVmMode))
 
     // 044: deterministic sampling for sampled mode (uses txnSeq as a stable anchor by default).
     let diagnosticsSampling: TraitConvergeDiagnosticsSamplingSummary | undefined

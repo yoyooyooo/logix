@@ -29,6 +29,7 @@ type SelectorEntry<S, V> = {
 }
 
 export interface SelectorGraph<S> {
+  readonly hasAnyEntries: () => boolean
   readonly ensureEntry: <V>(
     readQuery: ReadQueryCompiled<S, V>,
   ) => Effect.Effect<SelectorEntry<S, V>, never, Scope.Scope>
@@ -475,5 +476,7 @@ export const make = <S>(args: {
       }
     })
 
-  return { ensureEntry, releaseEntry, onCommit }
+  const hasAnyEntries: SelectorGraph<S>['hasAnyEntries'] = () => selectorsById.size > 0
+
+  return { hasAnyEntries, ensureEntry, releaseEntry, onCommit }
 }

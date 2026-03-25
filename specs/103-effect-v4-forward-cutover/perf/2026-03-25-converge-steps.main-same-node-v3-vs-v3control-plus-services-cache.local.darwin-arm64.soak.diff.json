@@ -1,0 +1,543 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-03-25T03:15:42.741Z",
+    "from": {
+      "file": "../v4-perf.converge-tax-debug/specs/103-effect-v4-forward-cutover/perf/2026-03-24-converge-steps.before.main-same-node-v22.19.0.local.darwin-arm64.soak.json",
+      "commit": "8c41a2633a717eecbdd3498b3c450ef5192fabb8"
+    },
+    "to": {
+      "file": "specs/103-effect-v4-forward-cutover/perf/2026-03-25-converge-steps.after.v3control-plus-services-cache.local.darwin-arm64.soak.json",
+      "commit": "8c41a2633a717eecbdd3498b3c450ef5192fabb8"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.after=true",
+        "git.branch: before=main after=agent/v3-control-accepted-cuts-20260325"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 1,
+    "improvements": 0,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "converge.txnCommit",
+      "thresholdDeltas": [
+        {
+          "budget": {
+            "id": "auto<=full*1.05",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.05,
+            "minDeltaMs": 0.1,
+            "numeratorRef": "convergeMode=auto",
+            "denominatorRef": "convergeMode=full"
+          },
+          "where": {
+            "dirtyRootsRatio": 1
+          },
+          "beforeMaxLevel": 2000,
+          "afterMaxLevel": 1200,
+          "message": "[category=runtime] auto<=full*1.05 {dirtyRootsRatio=1}: before=2000 after=1200 (after:budgetExceeded)",
+          "recommendations": [
+            {
+              "id": "014-boundary.converge.reduce-steps-or-dirty-roots",
+              "title": "降低 steps/dirty-roots 规模或优化收敛策略",
+              "detail": "事务收敛相关边界回归，可优先检查 steps/dirty-roots 配置，或回退到更保守的收敛策略。"
+            }
+          ]
+        }
+      ],
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "converge.affectedSteps",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 400
+          },
+          "after": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 400
+          },
+          "message": "converge.affectedSteps(points) unit=count: before[value=400 ok=357 unavailable=0 missing=0] after[value=400 ok=357 unavailable=0 missing=0]"
+        },
+        {
+          "name": "converge.decisionDurationMs",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 119,
+            "unavailable": 238,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 119,
+            "unavailable": 238,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "converge.decisionDurationMs(points) unit=ratio: before[value=0 ok=119 unavailable=238 missing=0] after[value=0 ok=119 unavailable=238 missing=0]"
+        },
+        {
+          "name": "converge.executedMode",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "after": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "message": "converge.executedMode(points) unit=count: before[value=full ok=357 unavailable=0 missing=0] after[value=full ok=357 unavailable=0 missing=0]"
+        },
+        {
+          "name": "converge.executedSteps",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 400
+          },
+          "after": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 400
+          },
+          "message": "converge.executedSteps(points) unit=count: before[value=400 ok=357 unavailable=0 missing=0] after[value=400 ok=357 unavailable=0 missing=0]"
+        },
+        {
+          "name": "converge.executionDurationMs",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0.09999990463256836
+          },
+          "after": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0.09999990463256836
+          },
+          "message": "converge.executionDurationMs(points) unit=ratio: before[value=0.09999990463256836 ok=357 unavailable=0 missing=0] after[value=0.09999990463256836 ok=357 unavailable=0 missing=0]"
+        },
+        {
+          "name": "converge.outcome",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "Converged"
+          },
+          "after": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "Converged"
+          },
+          "message": "converge.outcome(points) unit=count: before[value=Converged ok=357 unavailable=0 missing=0] after[value=Converged ok=357 unavailable=0 missing=0]"
+        },
+        {
+          "name": "converge.reasons",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "near_full"
+          },
+          "after": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "near_full"
+          },
+          "message": "converge.reasons(points) unit=count: before[value=near_full ok=357 unavailable=0 missing=0] after[value=near_full ok=357 unavailable=0 missing=0]"
+        },
+        {
+          "name": "converge.requestedMode",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "auto"
+          },
+          "after": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "auto"
+          },
+          "message": "converge.requestedMode(points) unit=count: before[value=auto ok=357 unavailable=0 missing=0] after[value=auto ok=357 unavailable=0 missing=0]"
+        },
+        {
+          "name": "converge.totalSteps",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 800
+          },
+          "after": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 800
+          },
+          "message": "converge.totalSteps(points) unit=count: before[value=800 ok=357 unavailable=0 missing=0] after[value=800 ok=357 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 357,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=357 unavailable=0 missing=0] after[value=core ok=357 unavailable=0 missing=0]"
+        }
+      ],
+      "metricDeltas": [
+        {
+          "metric": "runtime.decisionMs",
+          "unit": "ms",
+          "compared": 7,
+          "missing": 0,
+          "unavailable": 350,
+          "topRegressions": [
+            {
+              "params": {
+                "convergeMode": "auto",
+                "steps": 1600,
+                "dirtyRootsRatio": 0.6
+              },
+              "before": {
+                "n": 70,
+                "medianMs": 0.09999990463256836,
+                "p95Ms": 0.10000014305114746
+              },
+              "after": {
+                "n": 70,
+                "medianMs": 0.09999990463256836,
+                "p95Ms": 0.20000004768371582
+              },
+              "deltaMs": {
+                "medianMs": 0,
+                "p95Ms": 0.09999990463256836
+              },
+              "ratio": {
+                "median": 1,
+                "p95": 1.9999976158176196
+              }
+            }
+          ],
+          "topImprovements": []
+        },
+        {
+          "metric": "runtime.txnCommitMs",
+          "unit": "ms",
+          "compared": 357,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [
+            {
+              "params": {
+                "convergeMode": "full",
+                "steps": 2000,
+                "dirtyRootsRatio": 0.4
+              },
+              "before": {
+                "n": 70,
+                "medianMs": 1.1120000028610229,
+                "p95Ms": 1.1959999990463257
+              },
+              "after": {
+                "n": 70,
+                "medianMs": 1.6240000009536744,
+                "p95Ms": 2.2640000009536743
+              },
+              "deltaMs": {
+                "medianMs": 0.5119999980926515,
+                "p95Ms": 1.0680000019073486
+              },
+              "ratio": {
+                "median": 1.4604316517763902,
+                "p95": 1.8929765909355831
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "full",
+                "steps": 1600,
+                "dirtyRootsRatio": 0.4
+              },
+              "before": {
+                "n": 70,
+                "medianMs": 0.8660000038146972,
+                "p95Ms": 0.9259999990463257
+              },
+              "after": {
+                "n": 70,
+                "medianMs": 1.3840000009536744,
+                "p95Ms": 1.9780000019073487
+              },
+              "deltaMs": {
+                "medianMs": 0.5179999971389772,
+                "p95Ms": 1.052000002861023
+              },
+              "ratio": {
+                "median": 1.598152419003703,
+                "p95": 2.1360691187305214
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "auto",
+                "steps": 1600,
+                "dirtyRootsRatio": 0.4
+              },
+              "before": {
+                "n": 70,
+                "medianMs": 0.7819999980926514,
+                "p95Ms": 0.8359999990463257
+              },
+              "after": {
+                "n": 70,
+                "medianMs": 1.0819999980926513,
+                "p95Ms": 1.6120000028610229
+              },
+              "deltaMs": {
+                "medianMs": 0.29999999999999993,
+                "p95Ms": 0.7760000038146971
+              },
+              "ratio": {
+                "median": 1.3836317144906898,
+                "p95": 1.9282296706936912
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "dirty",
+                "steps": 2000,
+                "dirtyRootsRatio": 0.7
+              },
+              "before": {
+                "n": 70,
+                "medianMs": 1.42,
+                "p95Ms": 1.5260000038146972
+              },
+              "after": {
+                "n": 70,
+                "medianMs": 1.6420000028610229,
+                "p95Ms": 2.012000002861023
+              },
+              "deltaMs": {
+                "medianMs": 0.22200000286102295,
+                "p95Ms": 0.48599999904632574
+              },
+              "ratio": {
+                "median": 1.156338030183819,
+                "p95": 1.3184796840310762
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "auto",
+                "steps": 1600,
+                "dirtyRootsRatio": 0.02
+              },
+              "before": {
+                "n": 70,
+                "medianMs": 0.2959999990463257,
+                "p95Ms": 0.34
+              },
+              "after": {
+                "n": 70,
+                "medianMs": 0.6180000019073486,
+                "p95Ms": 0.7759999990463257
+              },
+              "deltaMs": {
+                "medianMs": 0.3220000028610229,
+                "p95Ms": 0.43599999904632564
+              },
+              "ratio": {
+                "median": 2.087837851008331,
+                "p95": 2.2823529383715457
+              }
+            }
+          ],
+          "topImprovements": [
+            {
+              "params": {
+                "convergeMode": "auto",
+                "steps": 2000,
+                "dirtyRootsRatio": 0.005
+              },
+              "before": {
+                "n": 70,
+                "medianMs": 0.53,
+                "p95Ms": 0.59
+              },
+              "after": {
+                "n": 70,
+                "medianMs": 0.34799999713897706,
+                "p95Ms": 0.40400000095367433
+              },
+              "deltaMs": {
+                "medianMs": -0.18200000286102297,
+                "p95Ms": -0.18599999904632564
+              },
+              "ratio": {
+                "median": 0.6566037681867491,
+                "p95": 0.6847457643282616
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "auto",
+                "steps": 2000,
+                "dirtyRootsRatio": 0.05
+              },
+              "before": {
+                "n": 70,
+                "medianMs": 0.5819999980926513,
+                "p95Ms": 0.6440000009536743
+              },
+              "after": {
+                "n": 70,
+                "medianMs": 0.4380000019073486,
+                "p95Ms": 0.5240000009536743
+              },
+              "deltaMs": {
+                "medianMs": -0.14399999618530274,
+                "p95Ms": -0.12
+              },
+              "ratio": {
+                "median": 0.7525773253312301,
+                "p95": 0.8136645965492287
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "auto",
+                "steps": 2000,
+                "dirtyRootsRatio": 0.02
+              },
+              "before": {
+                "n": 70,
+                "medianMs": 0.58,
+                "p95Ms": 0.64
+              },
+              "after": {
+                "n": 70,
+                "medianMs": 0.44799999713897704,
+                "p95Ms": 0.6180000019073486
+              },
+              "deltaMs": {
+                "medianMs": -0.13200000286102292,
+                "p95Ms": -0.021999998092651407
+              },
+              "ratio": {
+                "median": 0.7724137881706501,
+                "p95": 0.9656250029802321
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "dirty",
+                "steps": 600,
+                "dirtyRootsRatio": 0.5
+              },
+              "before": {
+                "n": 70,
+                "medianMs": 0.41800000190734865,
+                "p95Ms": 0.47600000381469726
+              },
+              "after": {
+                "n": 70,
+                "medianMs": 0.4360000038146973,
+                "p95Ms": 0.46199999809265135
+              },
+              "deltaMs": {
+                "medianMs": 0.01800000190734863,
+                "p95Ms": -0.014000005722045905
+              },
+              "ratio": {
+                "median": 1.0430622053234784,
+                "p95": 0.9705882235087209
+              }
+            },
+            {
+              "params": {
+                "convergeMode": "full",
+                "steps": 2000,
+                "dirtyRootsRatio": 0.1
+              },
+              "before": {
+                "n": 70,
+                "medianMs": 0.6779999971389771,
+                "p95Ms": 0.7580000019073486
+              },
+              "after": {
+                "n": 70,
+                "medianMs": 0.7019999980926513,
+                "p95Ms": 0.7480000019073486
+              },
+              "deltaMs": {
+                "medianMs": 0.024000000953674272,
+                "p95Ms": -0.010000000000000009
+              },
+              "ratio": {
+                "median": 1.035398231644468,
+                "p95": 0.9868073878959933
+              }
+            }
+          ]
+        }
+      ],
+      "notes": "mostSignificantRegression: auto<=full*1.05 {dirtyRootsRatio=1} (before=2000, after=1200)"
+    }
+  ]
+}

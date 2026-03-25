@@ -25,7 +25,7 @@ const waitUntil = (cond: Effect.Effect<boolean>, maxIterations = 100_000): Effec
     }
   })
 
-const makeDeferredModule = (args: { readonly deferred: number }) => {
+const makeDeferredModule = (args: { readonly deferred: number; readonly moduleId: string }) => {
   const fields: Record<string, Schema.Schema.Any> = {
     a: Schema.Number,
     b: Schema.Number,
@@ -46,7 +46,7 @@ const makeDeferredModule = (args: { readonly deferred: number }) => {
     } as any)
   }
 
-  const M = Logix.Module.make('ModuleRuntime_TxnLanePolicy', {
+  const M = Logix.Module.make(args.moduleId, {
     state: State as any,
     actions: Actions,
     reducers: { noop: (s: any) => s },
@@ -126,58 +126,61 @@ describe('ModuleRuntime txn lane policy capture cache (O-024)', () => {
       >
 
       const DEFERRED = 512
-      const { M, impl } = makeDeferredModule({ deferred: DEFERRED })
+      const { M, impl } = makeDeferredModule({ deferred: DEFERRED, moduleId: 'ModuleRuntime_TxnLanePolicy_t1' })
       const runtime = makeRuntime({ impl, layer })
 
       const forcedOff: StateTransactionOverrides = {
         txnLanes: { overrideMode: 'forced_off' },
       }
 
-      yield* Effect.promise(() =>
-        runtime.runPromise(
-          Effect.gen(function* () {
-            const rt: any = yield* M.tag
+      yield* Effect.ensuring(
+        Effect.promise(() =>
+          runtime.runPromise(
+            Effect.gen(function* () {
+              const rt: any = yield* M.tag
 
-            yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 't1' }, () =>
-              Effect.gen(function* () {
-                const prev = yield* rt.getState
-                yield* rt.setState({ ...prev, a: 1 })
-                Logix.InternalContracts.recordStatePatch(rt, 'a', 'unknown')
-              }),
-            )
+              yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 't1' }, () =>
+                Effect.gen(function* () {
+                  const prev = yield* rt.getState
+                  yield* rt.setState({ ...prev, a: 1 })
+                  Logix.InternalContracts.recordStatePatch(rt, 'a', 'unknown')
+                }),
+              )
 
-            const expectedD0 = computeValue(1, 0)
-            const expectedLast1 = computeValue(1, DEFERRED - 1)
-            const lastKey = `d${DEFERRED - 1}`
+              const expectedD0 = computeValue(1, 0)
+              const expectedLast1 = computeValue(1, DEFERRED - 1)
+              const lastKey = `d${DEFERRED - 1}`
 
-            yield* waitUntil(
-              rt.getState.pipe(Effect.map((s: any) => s.d0 === expectedD0 && s[lastKey] !== expectedLast1)),
-            )
+              yield* waitUntil(
+                rt.getState.pipe(Effect.map((s: any) => s.d0 === expectedD0 && s[lastKey] !== expectedLast1)),
+              )
 
-            // No re-capture: provider override is injected on this fiber only, current cache must stay unchanged.
-            yield* Effect.yieldNow().pipe(Effect.provideService(StateTransactionOverridesTag, forcedOff))
+              // No re-capture: provider override is injected on this fiber only, current cache must stay unchanged.
+              yield* Effect.yieldNow().pipe(Effect.provideService(StateTransactionOverridesTag, forcedOff))
 
-            yield* waitUntil(rt.getState.pipe(Effect.map((s: any) => s[lastKey] === expectedLast1)))
-            const forcedOffBeforeRecapture = events.some(
-              (e: any) =>
-                e.type === 'trace:txn-lane' &&
-                Array.isArray(e.data?.evidence?.reasons) &&
-                e.data.evidence.reasons.includes('forced_off'),
-            )
-            expect(forcedOffBeforeRecapture).toBe(false)
+              yield* waitUntil(rt.getState.pipe(Effect.map((s: any) => s[lastKey] === expectedLast1)))
+              const forcedOffBeforeRecapture = events.some(
+                (e: any) =>
+                  e.type === 'trace:txn-lane' &&
+                  Array.isArray(e.data?.evidence?.reasons) &&
+                  e.data.evidence.reasons.includes('forced_off'),
+              )
+              expect(forcedOffBeforeRecapture).toBe(false)
 
-            yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 't2' }, () =>
-              Effect.gen(function* () {
-                const prev = yield* rt.getState
-                yield* rt.setState({ ...prev, a: 2 })
-                Logix.InternalContracts.recordStatePatch(rt, 'a', 'unknown')
-              }),
-            ).pipe(Effect.provideService(StateTransactionOverridesTag, forcedOff))
+              yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 't2' }, () =>
+                Effect.gen(function* () {
+                  const prev = yield* rt.getState
+                  yield* rt.setState({ ...prev, a: 2 })
+                  Logix.InternalContracts.recordStatePatch(rt, 'a', 'unknown')
+                }),
+              ).pipe(Effect.provideService(StateTransactionOverridesTag, forcedOff))
 
-            const expectedLast2 = computeValue(2, DEFERRED - 1)
-            yield* waitUntil(rt.getState.pipe(Effect.map((s: any) => s[lastKey] === expectedLast2)))
-          }),
+              const expectedLast2 = computeValue(2, DEFERRED - 1)
+              yield* waitUntil(rt.getState.pipe(Effect.map((s: any) => s[lastKey] === expectedLast2)))
+            }),
+          ),
         ),
+        Effect.promise(() => runtime.dispose()),
       )
 
       const forcedOffAfterRecapture = events.some(
@@ -207,48 +210,51 @@ describe('ModuleRuntime txn lane policy capture cache (O-024)', () => {
       >
 
       const DEFERRED = 512
-      const { M, impl } = makeDeferredModule({ deferred: DEFERRED })
+      const { M, impl } = makeDeferredModule({ deferred: DEFERRED, moduleId: 'ModuleRuntime_TxnLanePolicy_seq' })
       const runtime = makeRuntime({ impl, layer })
 
       const forcedOff: StateTransactionOverrides = {
         txnLanes: { overrideMode: 'forced_off' },
       }
 
-      yield* Effect.promise(() =>
-        runtime.runPromise(
-          Effect.gen(function* () {
-            const rt: any = yield* M.tag
-            const lastKey = `d${DEFERRED - 1}`
+      yield* Effect.ensuring(
+        Effect.promise(() =>
+          runtime.runPromise(
+            Effect.gen(function* () {
+              const rt: any = yield* M.tag
+              const lastKey = `d${DEFERRED - 1}`
 
-            yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 'seq-1' }, () =>
-              Effect.gen(function* () {
-                const prev = yield* rt.getState
-                yield* rt.setState({ ...prev, a: 1 })
-                Logix.InternalContracts.recordStatePatch(rt, 'a', 'unknown')
-              }),
-            )
+              yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 'seq-1' }, () =>
+                Effect.gen(function* () {
+                  const prev = yield* rt.getState
+                  yield* rt.setState({ ...prev, a: 1 })
+                  Logix.InternalContracts.recordStatePatch(rt, 'a', 'unknown')
+                }),
+              )
 
-            const expectedD0 = computeValue(1, 0)
-            const expectedLast1 = computeValue(1, DEFERRED - 1)
-            yield* waitUntil(
-              rt.getState.pipe(Effect.map((s: any) => s.d0 === expectedD0 && s[lastKey] !== expectedLast1)),
-            )
+              const expectedD0 = computeValue(1, 0)
+              const expectedLast1 = computeValue(1, DEFERRED - 1)
+              yield* waitUntil(
+                rt.getState.pipe(Effect.map((s: any) => s.d0 === expectedD0 && s[lastKey] !== expectedLast1)),
+              )
 
-            // Timing constraint:
-            // while seq-1 backlog is still draining from its captured policy cache,
-            // inject a new override and force seq-2 re-capture.
-            yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 'seq-2' }, () =>
-              Effect.gen(function* () {
-                const prev = yield* rt.getState
-                yield* rt.setState({ ...prev, a: 2 })
-                Logix.InternalContracts.recordStatePatch(rt, 'a', 'unknown')
-              }),
-            ).pipe(Effect.provideService(StateTransactionOverridesTag, forcedOff))
+              // Timing constraint:
+              // while seq-1 backlog is still draining from its captured policy cache,
+              // inject a new override and force seq-2 re-capture.
+              yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 'seq-2' }, () =>
+                Effect.gen(function* () {
+                  const prev = yield* rt.getState
+                  yield* rt.setState({ ...prev, a: 2 })
+                  Logix.InternalContracts.recordStatePatch(rt, 'a', 'unknown')
+                }),
+              ).pipe(Effect.provideService(StateTransactionOverridesTag, forcedOff))
 
-            const expectedLast2 = computeValue(2, DEFERRED - 1)
-            yield* waitUntil(rt.getState.pipe(Effect.map((s: any) => s[lastKey] === expectedLast2)))
-          }),
+              const expectedLast2 = computeValue(2, DEFERRED - 1)
+              yield* waitUntil(rt.getState.pipe(Effect.map((s: any) => s[lastKey] === expectedLast2)))
+            }),
+          ),
         ),
+        Effect.promise(() => runtime.dispose()),
       )
 
       const detailsList = collectResolvedDetails(events)
@@ -291,42 +297,45 @@ describe('ModuleRuntime txn lane policy capture cache (O-024)', () => {
       >
 
       const DEFERRED = 128
-      const { M, impl } = makeDeferredModule({ deferred: DEFERRED })
+      const { M, impl } = makeDeferredModule({ deferred: DEFERRED, moduleId: 'ModuleRuntime_TxnLanePolicy_capture' })
       const runtime = makeRuntime({ impl, layer })
 
       const forcedSync: StateTransactionOverrides = {
         txnLanes: { overrideMode: 'forced_sync' },
       }
 
-      yield* Effect.promise(() =>
-        runtime.runPromise(
-          Effect.gen(function* () {
-            const rt: any = yield* M.tag
-            const lastKey = `d${DEFERRED - 1}`
+      yield* Effect.ensuring(
+        Effect.promise(() =>
+          runtime.runPromise(
+            Effect.gen(function* () {
+              const rt: any = yield* M.tag
+              const lastKey = `d${DEFERRED - 1}`
 
-            yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 'capture-1' }, () =>
-              Effect.gen(function* () {
-                const prev = yield* rt.getState
-                yield* rt.setState({ ...prev, a: 1 })
-                Logix.InternalContracts.recordStatePatch(rt, 'a', 'unknown')
-              }),
-            )
+              yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 'capture-1' }, () =>
+                Effect.gen(function* () {
+                  const prev = yield* rt.getState
+                  yield* rt.setState({ ...prev, a: 1 })
+                  Logix.InternalContracts.recordStatePatch(rt, 'a', 'unknown')
+                }),
+              )
 
-            const expectedLast1 = computeValue(1, DEFERRED - 1)
-            yield* waitUntil(rt.getState.pipe(Effect.map((s: any) => s[lastKey] === expectedLast1)))
+              const expectedLast1 = computeValue(1, DEFERRED - 1)
+              yield* waitUntil(rt.getState.pipe(Effect.map((s: any) => s[lastKey] === expectedLast1)))
 
-            yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 'capture-2' }, () =>
-              Effect.gen(function* () {
-                const prev = yield* rt.getState
-                yield* rt.setState({ ...prev, a: 2 })
-                Logix.InternalContracts.recordStatePatch(rt, 'a', 'unknown')
-              }),
-            ).pipe(Effect.provideService(StateTransactionOverridesTag, forcedSync))
+              yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 'capture-2' }, () =>
+                Effect.gen(function* () {
+                  const prev = yield* rt.getState
+                  yield* rt.setState({ ...prev, a: 2 })
+                  Logix.InternalContracts.recordStatePatch(rt, 'a', 'unknown')
+                }),
+              ).pipe(Effect.provideService(StateTransactionOverridesTag, forcedSync))
 
-            const expectedLast2 = computeValue(2, DEFERRED - 1)
-            yield* waitUntil(rt.getState.pipe(Effect.map((s: any) => s[lastKey] === expectedLast2)))
-          }),
+              const expectedLast2 = computeValue(2, DEFERRED - 1)
+              yield* waitUntil(rt.getState.pipe(Effect.map((s: any) => s[lastKey] === expectedLast2)))
+            }),
+          ),
         ),
+        Effect.promise(() => runtime.dispose()),
       )
 
       const detailsList = collectResolvedDetails(events)
@@ -386,27 +395,30 @@ describe('ModuleRuntime txn lane policy capture cache (O-024)', () => {
       >
 
       const DEFERRED = 256
-      const { M, impl } = makeDeferredModule({ deferred: DEFERRED })
+      const { M, impl } = makeDeferredModule({ deferred: DEFERRED, moduleId: 'ModuleRuntime_TxnLanePolicy_slice' })
       const runtime = makeRuntime({ impl, layer })
 
-      yield* Effect.promise(() =>
-        runtime.runPromise(
-          Effect.gen(function* () {
-            const rt: any = yield* M.tag
-            const lastKey = `d${DEFERRED - 1}`
+      yield* Effect.ensuring(
+        Effect.promise(() =>
+          runtime.runPromise(
+            Effect.gen(function* () {
+              const rt: any = yield* M.tag
+              const lastKey = `d${DEFERRED - 1}`
 
-            yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 'slice-flood' }, () =>
-              Effect.gen(function* () {
-                const prev = yield* rt.getState
-                yield* rt.setState({ ...prev, a: 1 })
-                Logix.InternalContracts.recordStatePatch(rt, 'a', 'unknown')
-              }),
-            )
+              yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 'slice-flood' }, () =>
+                Effect.gen(function* () {
+                  const prev = yield* rt.getState
+                  yield* rt.setState({ ...prev, a: 1 })
+                  Logix.InternalContracts.recordStatePatch(rt, 'a', 'unknown')
+                }),
+              )
 
-            const expectedLast = computeValue(1, DEFERRED - 1)
-            yield* waitUntil(rt.getState.pipe(Effect.map((s: any) => s[lastKey] === expectedLast)))
-          }),
+              const expectedLast = computeValue(1, DEFERRED - 1)
+              yield* waitUntil(rt.getState.pipe(Effect.map((s: any) => s[lastKey] === expectedLast)))
+            }),
+          ),
         ),
+        Effect.promise(() => runtime.dispose()),
       )
 
       const deferredFlushTxnCount = events.filter(

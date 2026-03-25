@@ -1,4 +1,4 @@
-import { Deferred, Effect, Exit, FiberRef, Option, Queue, Ref, Scope } from 'effect'
+import { Context, Deferred, Effect, Exit, FiberRef, Option, Queue, Ref, Scope } from 'effect'
 import * as EffectOpCore from './EffectOpCore.js'
 import * as Debug from './DebugSink.js'
 import * as TaskRunner from './TaskRunner.js'
@@ -7,6 +7,24 @@ import { RuntimeStoreTag, StateTransactionOverridesTag, TickSchedulerTag, type S
 import type { ResolvedConcurrencyPolicy } from './ModuleRuntime.concurrencyPolicy.js'
 
 export type TxnLane = 'urgent' | 'nonUrgent'
+
+export type TxnQueuePhaseTiming = {
+  readonly lane: TxnLane
+  readonly waiterSeq: number
+  readonly contextLookupMs: number
+  readonly resolvePolicyMs: number
+  readonly backpressureMs: number
+  readonly enqueueBookkeepingMs: number
+  readonly queueWaitMs: number
+  readonly startHandoffMs: number
+}
+
+export const currentTxnQueuePhaseTiming = Context.Reference<TxnQueuePhaseTiming | undefined>()(
+  '@logixjs/core/TxnQueue.currentTxnQueuePhaseTiming',
+  {
+    defaultValue: () => undefined,
+  },
+)
 
 export interface EnqueueTransaction {
   <A, E>(eff: Effect.Effect<A, E, never>): Effect.Effect<A, E, never>
@@ -230,9 +248,6 @@ export const makeEnqueueTransaction = (args: {
         }
       })
 
-    // wakePendingRef contract:
-    // - false: consumer is sleeping, first enqueue must publish a wake token and set true.
-    // - true: consumer is active (or wake already queued), subsequent enqueues can skip duplicate wake tokens.
     const offerWakeIfNeeded = (): Effect.Effect<void> =>
       Ref.modify(wakePendingRef, (isPending) => {
         if (isPending) {
@@ -259,7 +274,6 @@ export const makeEnqueueTransaction = (args: {
             continue
           }
 
-          // Transition to sleep state, then re-check queues once to avoid missing a wake-up race.
           yield* Ref.set(wakePendingRef, false)
 
           const urgentAfterSleep = yield* Queue.poll(urgentQueue)
@@ -281,7 +295,6 @@ export const makeEnqueueTransaction = (args: {
       }),
     )
 
-    // Background consumer fiber: executes queued transaction Effects sequentially (urgent first).
     yield* Effect.forkScoped(consumerLoop)
 
     const enqueueTransaction: EnqueueTransaction = <A2, E2>(
@@ -309,7 +322,6 @@ export const makeEnqueueTransaction = (args: {
           Effect.ensuring(release(stateRef)),
         )
 
-        // Important: slot is already acquired; offer must be uninterruptible to avoid leaking backlog counters.
         const targetQueue = lane === 'urgent' ? urgentQueue : nonUrgentQueue
         yield* Effect.uninterruptible(Queue.offer(targetQueue, task).pipe(Effect.zipRight(offerWakeIfNeeded())))
 

@@ -142,6 +142,9 @@ interface StateTxnState<S> {
    * - Independent of instrumentation: light mode does not keep patches, but still maintains dirtyPathIds/dirtyAllReason for low-cost semantics (e.g. scheduling/diagnostics).
    */
   readonly dirtyPathIds: Set<FieldPathId>
+  dirtyPathIdSnapshot: Array<FieldPathId>
+  dirtyPathIdsKeyHash?: number
+  dirtyPathIdsKeySize: number
   dirtyAllReason?: DirtyAllReason
 }
 
@@ -153,6 +156,8 @@ interface DirtySetBuildInput {
   readonly registry?: FieldPathIdRegistry
   readonly dirtyAllReason?: DirtyAllReason
   readonly dirtyPathIds?: ReadonlyArray<FieldPathId>
+  readonly dirtyPathIdsKeyHash?: number
+  readonly dirtyPathIdsKeySize?: number
 }
 
 const defaultNow = () => {
@@ -222,6 +227,20 @@ const captureDirtySetBuildInput = <S>(state: StateTxnState<S>): DirtySetBuildInp
     }
   }
 
+  if (
+    state.dirtyPathIdsKeySize === 1 &&
+    state.dirtyPathIdSnapshot.length === 1 &&
+    typeof state.dirtyPathIdsKeyHash === 'number' &&
+    Number.isFinite(state.dirtyPathIdsKeyHash)
+  ) {
+    return {
+      registry,
+      dirtyPathIds: state.dirtyPathIdSnapshot,
+      dirtyPathIdsKeyHash: state.dirtyPathIdsKeyHash,
+      dirtyPathIdsKeySize: state.dirtyPathIdsKeySize,
+    }
+  }
+
   return {
     registry,
     dirtyPathIds: state.dirtyPathIds.size > 0 ? Array.from(state.dirtyPathIds) : EMPTY_DIRTY_PATH_IDS,
@@ -241,11 +260,53 @@ const buildDirtySet = (input: DirtySetBuildInput): DirtySet => {
     }
   }
 
+  if (
+    input.dirtyAllReason == null &&
+    input.dirtyPathIdsKeySize === 1 &&
+    input.dirtyPathIds?.length === 1 &&
+    typeof input.dirtyPathIdsKeyHash === 'number' &&
+    Number.isFinite(input.dirtyPathIdsKeyHash)
+  ) {
+    const id = input.dirtyPathIds[0]!
+    if (registry.fieldPaths[id]) {
+      return {
+        dirtyAll: false,
+        rootIds: input.dirtyPathIds,
+        rootCount: 1,
+        keySize: 1,
+        keyHash: input.dirtyPathIdsKeyHash,
+      }
+    }
+  }
+
   return dirtyPathIdsToRootIds({
     dirtyPathIds: input.dirtyPathIds,
     registry,
     dirtyAllReason: input.dirtyAllReason,
   })
+}
+
+const recordDirtyPathId = <S>(state: StateTxnState<S>, id: FieldPathId): FieldPathId => {
+  state.dirtyPathIds.add(id)
+  const afterSize = state.dirtyPathIds.size
+  if (afterSize === state.dirtyPathIdsKeySize) {
+    return id
+  }
+
+  state.dirtyPathIdsKeySize = afterSize
+  if (afterSize === 1) {
+    state.dirtyPathIdSnapshot[0] = id
+    state.dirtyPathIdSnapshot.length = 1
+    let hash = 2166136261 >>> 0
+    hash ^= id >>> 0
+    hash = Math.imul(hash, 16777619)
+    state.dirtyPathIdsKeyHash = hash >>> 0
+    return id
+  }
+
+  state.dirtyPathIdsKeyHash = undefined
+  state.dirtyPathIdSnapshot.length = 0
+  return id
 }
 
 const buildCommittedTransaction = <S>(
@@ -305,6 +366,9 @@ export const makeContext = <S>(config: StateTxnConfig): StateTxnContext<S> => {
     patchCount: 0,
     patchesTruncated: false,
     dirtyPathIds: new Set(),
+    dirtyPathIdSnapshot: [],
+    dirtyPathIdsKeyHash: undefined,
+    dirtyPathIdsKeySize: 0,
     dirtyAllReason: undefined,
   }
 
@@ -392,6 +456,9 @@ export const beginTransaction = <S>(ctx: StateTxnContext<S>, origin: StateTxnOri
   state.patchesTruncated = false
   state.fieldPathIdRegistry = ctx.config.getFieldPathIdRegistry?.()
   state.dirtyPathIds.clear()
+  state.dirtyPathIdSnapshot.length = 0
+  state.dirtyPathIdsKeyHash = undefined
+  state.dirtyPathIdsKeySize = 0
   state.dirtyAllReason = undefined
   ctx.current = state
 }
@@ -458,8 +525,7 @@ const resolveAndRecordDirtyPathId = <S>(
     id = next
   }
 
-  state.dirtyPathIds.add(id)
-  return id
+  return recordDirtyPathId(state, id)
 }
 
 /**

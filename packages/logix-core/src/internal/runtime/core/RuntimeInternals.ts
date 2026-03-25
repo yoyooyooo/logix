@@ -46,6 +46,12 @@ export type RuntimeInternalsTxn = {
     origin: StateTransaction.StateTxnOrigin,
     body: () => Effect.Effect<void, never, any>,
   ) => Effect.Effect<void, never, any>
+  readonly createRunWithStateTransactionContinuationHandle?: () => Effect.Effect<unknown, never, any>
+  readonly runWithStateTransactionWithContinuationHandle?: (
+    continuationHandle: unknown,
+    origin: StateTransaction.StateTxnOrigin,
+    body: () => Effect.Effect<void, never, any>,
+  ) => Effect.Effect<void, never, any>
   /**
    * updateDraft：
    * - Use only within an active transaction: update the current transaction draft state;

@@ -125,6 +125,33 @@ export const runWithStateTransaction = <E, R>(
 ): Effect.Effect<void, E, R> =>
   getRuntimeInternals(runtime).txn.runWithStateTransaction(origin as any, body as any) as any
 
+export const createRunWithStateTransactionContinuationHandle = (
+  runtime: object,
+): Effect.Effect<unknown, never, any> => {
+  const createHandle = getRuntimeInternals(runtime).txn.createRunWithStateTransactionContinuationHandle
+  if (!createHandle) {
+    throw new Error('RuntimeInternals.txn.createRunWithStateTransactionContinuationHandle is not available')
+  }
+  return createHandle()
+}
+
+export const runWithStateTransactionWithContinuationHandle = <E, R>(
+  runtime: object,
+  continuationHandle: unknown,
+  origin: { readonly kind: string; readonly name?: string; readonly details?: unknown },
+  body: () => Effect.Effect<void, E, R>,
+): Effect.Effect<void, E, R> => {
+  const runWithHandle = getRuntimeInternals(runtime).txn.runWithStateTransactionWithContinuationHandle
+  if (!runWithHandle) {
+    throw new Error('RuntimeInternals.txn.runWithStateTransactionWithContinuationHandle is not available')
+  }
+  return runWithHandle(
+    continuationHandle,
+    origin as any,
+    body as any,
+  ) as any
+}
+
 export const applyTransactionSnapshot = (
   runtime: object,
   txnId: string,

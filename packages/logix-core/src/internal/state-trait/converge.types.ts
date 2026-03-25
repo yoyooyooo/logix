@@ -1,8 +1,10 @@
 import type { PatchReason } from '../runtime/core/StateTransaction.js'
+import type * as EffectOp from '../effect-op.js'
 import type {
   DowngradeReason as ErrorDowngradeReason,
   SerializableErrorSummary,
 } from '../runtime/core/errorSummary.js'
+import type * as Debug from '../runtime/core/DebugSink.js'
 import type { DirtyAllReason, FieldPath, FieldPathId } from '../field-path.js'
 import type {
   TraitConvergeConfigScope,
@@ -48,6 +50,13 @@ export interface ConvergeSummary {
   readonly skippedSteps: number
   readonly changedSteps: number
   readonly top3: ReadonlyArray<ConvergeStepSummary>
+}
+
+export interface ResolvedConvergeEnv {
+  readonly diagnosticsLevel: Debug.DiagnosticsLevel
+  readonly debugSinks: ReadonlyArray<Debug.Sink>
+  readonly middlewareStack: EffectOp.MiddlewareStack
+  readonly execVmMode: boolean
 }
 
 export type ConvergeOutcome =
@@ -104,6 +113,7 @@ export interface ConvergeContext<S> {
   readonly dirtyAllReason?: DirtyAllReason
   readonly dirtyPaths?: ReadonlySet<string | FieldPath | FieldPathId> | ReadonlyArray<string | FieldPath | FieldPathId>
   readonly allowInPlaceDraft?: boolean
+  readonly resolvedEnv?: ResolvedConvergeEnv
   readonly planCache?: ConvergePlanCache
   readonly getDraft: () => S
   readonly setDraft: (next: S) => void
