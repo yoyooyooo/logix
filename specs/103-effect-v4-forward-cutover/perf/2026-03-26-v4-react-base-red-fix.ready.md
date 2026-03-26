@@ -61,3 +61,28 @@ pnpm -C packages/logix-react test -- test/Hooks/asyncLocalModuleLocalRuntime.tes
 ## 待执行
 
 - 等待用户授权 `git add` / `git commit` / `git push`
+
+## 后续 CI 收口补记
+
+PR `#140` 第二轮 `verify` 的失败点已定位为 core perf 微基准 CI 稳定性：
+
+- `StateTrait.ExternalStoreTrait.SingleFieldFastPath.Perf.off`
+- `ModuleRuntime.operationRunner.Perf.off`
+
+已移植两条稳定化提交：
+
+- `test(core): stabilize perf microbenches on CI`
+- `test(core): relax CI-only multi-field perf guard`
+
+对应补充验证：
+
+```bash
+pnpm check:forbidden-patterns
+pnpm -C packages/logix-core test -- \
+  test/internal/StateTrait/StateTrait.ExternalStoreTrait.SingleFieldFastPath.Perf.off.test.ts \
+  test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.Perf.off.test.ts \
+  test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts
+pnpm -C packages/logix-core typecheck:test
+```
+
+结果均通过。
