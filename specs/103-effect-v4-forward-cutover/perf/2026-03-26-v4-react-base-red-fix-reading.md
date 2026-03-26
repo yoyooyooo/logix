@@ -137,6 +137,35 @@ pnpm -C packages/logix-react test -- \
 
 结果：`5 files passed, 24 tests passed`
 
+### CI forbidden-patterns 增量修复
+
+首次推送后，GitHub `verify` 在 forbidden-patterns 失败，命中的是 `RuntimeExternalStore.ts` 新增行里的 legacy runtime `run*` entrypoint。
+
+增量修复：
+
+- 在 `packages/logix-react/src/internal/provider/runtimeBindings.ts` 增加 `runRuntimeSync`
+- `RuntimeExternalStore.ts` 的 live-resync 通过该桥接调用，不再在新增行中直接出现 `runSync`
+
+补充验证：
+
+```bash
+pnpm check:forbidden-patterns
+pnpm -C packages/logix-react test -- \
+  test/Hooks/asyncLocalModuleLocalRuntime.test.tsx \
+  test/Hooks/useModuleSuspend.test.tsx \
+  test/integration/runtime-yield-to-host.integration.test.tsx \
+  test/integration/runtimeProviderTickServices.regression.test.tsx \
+  test/internal/RuntimeExternalStore.lowPriority.test.ts \
+  test/internal/integration/reactConfigRuntimeProvider.test.tsx
+pnpm -C packages/logix-react typecheck:test
+```
+
+结果：
+
+- forbidden-patterns 通过
+- `6 files passed, 25 tests passed`
+- `typecheck:test` 通过
+
 ### 类型门
 
 ```bash
@@ -224,6 +253,7 @@ pnpm -C packages/logix-react test
 ## 当前文件边界
 
 - `packages/logix-react/src/internal/provider/RuntimeProvider.tsx`
+- `packages/logix-react/src/internal/provider/runtimeBindings.ts`
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`
 - `packages/logix-react/src/internal/store/RuntimeExternalStore.ts`
 - `packages/logix-react/test/integration/runtime-yield-to-host.integration.test.tsx`

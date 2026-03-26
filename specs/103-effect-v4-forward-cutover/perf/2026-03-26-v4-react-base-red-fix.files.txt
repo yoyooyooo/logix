@@ -1,5 +1,6 @@
 packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts
 packages/logix-react/src/internal/provider/RuntimeProvider.tsx
+packages/logix-react/src/internal/provider/runtimeBindings.ts
 packages/logix-react/src/internal/store/RuntimeExternalStore.ts
 packages/logix-react/test/integration/runtime-yield-to-host.integration.test.tsx
 specs/103-effect-v4-forward-cutover/perf/2026-03-26-v4-react-base-red-fix-reading.md

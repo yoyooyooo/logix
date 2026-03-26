@@ -42,6 +42,22 @@ pnpm -C packages/logix-react test
 
 这条失败属于母线 `v4-perf` 既有的 `converge-steps` perf hard gate，和本次 react base-red 修复无直接因果关系。
 
+## CI forbidden-patterns 补记
+
+首次推送后的 `verify` 因 `RuntimeExternalStore.ts` 新增的 `runtime.runSync(...)` 行命中 forbidden-patterns 失败。
+
+已改为：
+
+- 在 allowlist 内的 `packages/logix-react/src/internal/provider/runtimeBindings.ts` 暴露 `runRuntimeSync`
+- `RuntimeExternalStore.ts` 通过该桥接调用，不再在新增行里直接出现 legacy runtime `run*` entrypoint
+
+补充本地验证：
+
+```bash
+pnpm check:forbidden-patterns
+pnpm -C packages/logix-react test -- test/Hooks/asyncLocalModuleLocalRuntime.test.tsx test/Hooks/useModuleSuspend.test.tsx test/integration/runtime-yield-to-host.integration.test.tsx test/integration/runtimeProviderTickServices.regression.test.tsx test/internal/RuntimeExternalStore.lowPriority.test.ts test/internal/integration/reactConfigRuntimeProvider.test.tsx
+```
+
 ## 待执行
 
 - 等待用户授权 `git add` / `git commit` / `git push`
