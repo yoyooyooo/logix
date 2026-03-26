@@ -166,6 +166,40 @@ pnpm -C packages/logix-react typecheck:test
 - `6 files passed, 25 tests passed`
 - `typecheck:test` 通过
 
+### GitHub verify 二次收口
+
+PR `#140` 第二轮 `verify` 失败点：
+
+- `packages/logix-core/test/internal/StateTrait/StateTrait.ExternalStoreTrait.SingleFieldFastPath.Perf.off.test.ts`
+- `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.Perf.off.test.ts`
+
+失败形态：
+
+- Hosted CI 上 perf microbench 超时/波动超出原本本机阈值
+
+采用修法：
+
+- 直接移植已在 `#139` 证明有效的两条提交
+  - `d97b689a` `test(core): stabilize perf microbenches on CI`
+  - `392167cf` `test(core): relax CI-only multi-field perf guard`
+
+本地补充验证：
+
+```bash
+pnpm check:forbidden-patterns
+pnpm -C packages/logix-core test -- \
+  test/internal/StateTrait/StateTrait.ExternalStoreTrait.SingleFieldFastPath.Perf.off.test.ts \
+  test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.Perf.off.test.ts \
+  test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts
+pnpm -C packages/logix-core typecheck:test
+```
+
+结果：
+
+- forbidden-patterns 通过
+- `3 files passed, 3 tests passed`
+- `typecheck:test` 通过
+
 ### 类型门
 
 ```bash
@@ -256,6 +290,9 @@ pnpm -C packages/logix-react test
 - `packages/logix-react/src/internal/provider/runtimeBindings.ts`
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`
 - `packages/logix-react/src/internal/store/RuntimeExternalStore.ts`
+- `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.Perf.off.test.ts`
+- `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.operationRunner.TransactionHotContext.Perf.off.test.ts`
+- `packages/logix-core/test/internal/StateTrait/StateTrait.ExternalStoreTrait.SingleFieldFastPath.Perf.off.test.ts`
 - `packages/logix-react/test/integration/runtime-yield-to-host.integration.test.tsx`
 
 对应收口工件：
