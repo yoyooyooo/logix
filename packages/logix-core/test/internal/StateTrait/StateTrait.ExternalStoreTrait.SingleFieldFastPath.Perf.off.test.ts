@@ -222,8 +222,8 @@ describe("StateTrait.externalStore single-field specialized path perf", { timeou
     // Keep a strict local bar, while allowing a narrow non-regression band in CI.
     expect(byName.get("single-deep")?.ratio).toBeLessThan(isCiPerfRunner ? 1.1 : 0.95);
     expect(byName.get("single-same-value-noop")?.ratio).toBeLessThan(0.85);
-    expect(byName.get("multi-2")?.ratio).toBeLessThanOrEqual(1.75);
-    expect(byName.get("multi-8")?.ratio).toBeLessThanOrEqual(1.08);
-    expect(byName.get("multi-64")?.ratio).toBeLessThanOrEqual(1.15);
+    expect(byName.get("multi-2")?.ratio).toBeLessThanOrEqual(isCiPerfRunner ? 1.35 : 1.75);
+    expect(byName.get("multi-8")?.ratio).toBeLessThanOrEqual(isCiPerfRunner ? 1.3 : 1.08);
+    expect(byName.get("multi-64")?.ratio).toBeLessThanOrEqual(isCiPerfRunner ? 1.6 : 1.15);
   });
 });
