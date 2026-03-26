@@ -1863,7 +1863,13 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
           }
         })
       })
-      .catch(() => {})
+      .catch((error) => {
+        if (!isDevEnv()) {
+          return
+        }
+        // eslint-disable-next-line no-console
+        console.error('[RuntimeProvider] Failed to refresh config snapshot on ready.', error)
+      })
 
     return () => {
       cancelled = true
