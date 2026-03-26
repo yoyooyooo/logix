@@ -296,3 +296,8 @@ export const createRuntimeAdapter = (
 
   return adapted
 }
+
+export const runRuntimeSync = <A, E>(
+  runtime: ManagedRuntime.ManagedRuntime<any, any>,
+  effect: Effect.Effect<A, E, any>,
+): A => runtime.runSync(effect)

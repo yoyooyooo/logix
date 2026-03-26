@@ -1,6 +1,7 @@
 import * as Logix from '@logixjs/core'
 import { Effect } from 'effect'
 import type { ManagedRuntime } from 'effect'
+import { runRuntimeSync } from '../provider/runtimeBindings.js'
 
 export interface ExternalStore<S> {
   readonly getSnapshot: () => S
@@ -801,7 +802,7 @@ export const getRuntimeModuleExternalStore = <S>(
         if (state !== undefined) return state
         return runtime.runSync(moduleRuntime.getState as unknown as Effect.Effect<S, never, any>)
       },
-      readLiveSnapshot: () => runtime.runSync(moduleRuntime.getState as unknown as Effect.Effect<S, never, any>),
+      readLiveSnapshot: () => runRuntimeSync(runtime, moduleRuntime.getState as unknown as Effect.Effect<S, never, any>),
       options,
     }),
   )
@@ -832,7 +833,7 @@ export const getRuntimeReadQueryExternalStore = <S, V>(
         return selectorReadQuery.select(current)
       },
       readLiveSnapshot: () =>
-        selectorReadQuery.select(runtime.runSync(moduleRuntime.getState as unknown as Effect.Effect<S, never, any>)),
+        selectorReadQuery.select(runRuntimeSync(runtime, moduleRuntime.getState as unknown as Effect.Effect<S, never, any>)),
       isSnapshotEqual: Object.is,
       options,
       teardownDelayMs: READ_QUERY_ACTIVATION_GRACE_MS,
