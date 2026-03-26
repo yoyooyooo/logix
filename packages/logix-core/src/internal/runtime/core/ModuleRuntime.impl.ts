@@ -716,15 +716,13 @@ export const make = <S, A, R = never>(
     }
 
     const hasRuntimeStoreSubscribers = (): boolean => {
-      let runtimeStore = runtimeStoreCached
-      if (!runtimeStore) {
+      if (!runtimeStoreCached) {
         const fromRoot = readRuntimeStoreFromRootContext(rootContext)
         if (fromRoot) {
-          runtimeStore = fromRoot
           runtimeStoreCached = fromRoot
         }
       }
-      return (runtimeStore?.getModuleSubscriberCount(moduleInstanceKey) ?? 0) > 0
+      return (runtimeStoreCached?.getModuleSubscriberCount(moduleInstanceKey) ?? 0) > 0
     }
 
     const shouldObservePostCommit = (): boolean =>
