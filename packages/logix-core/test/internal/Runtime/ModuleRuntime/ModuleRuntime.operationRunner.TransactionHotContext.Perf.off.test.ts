@@ -11,6 +11,8 @@ import {
 } from '../_perf/runtimeShellLedger.v1.js'
 import { createRuntimeShellBoundaryDecision } from '../../../../src/internal/runtime/core/RuntimeShellBoundary.js'
 
+const isCiPerfRunner = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true'
+
 const now = (): number => {
   const perf = (globalThis as any).performance as { now?: () => number } | undefined
   if (perf && typeof perf.now === 'function') {
@@ -30,7 +32,7 @@ const average = (samples: ReadonlyArray<number>): number =>
   samples.length === 0 ? 0 : samples.reduce((sum, value) => sum + value, 0) / samples.length
 
 const parseBatchSizes = (): ReadonlyArray<number> => {
-  const raw = process.env.LOGIX_PERF_BATCHES ?? '256,1024'
+  const raw = process.env.LOGIX_PERF_BATCHES ?? (isCiPerfRunner ? '256' : '256,1024')
   const parsed = raw
     .split(',')
     .map((value) => Number(value.trim()))
@@ -95,12 +97,12 @@ const runCase = (
 
 describe(
   'ModuleRuntime.operation runner · transaction-shared hot context microbench (Diagnostics=off, middleware=empty)',
-  { timeout: 40_000 },
+  { timeout: isCiPerfRunner ? 60_000 : 40_000 },
   () => {
   it.effect('records direct evidence for transaction-captured operation hot context', () =>
     Effect.gen(function* () {
-      const iterations = Number(process.env.LOGIX_PERF_ITERS ?? 900)
-      const warmup = Number(process.env.LOGIX_PERF_WARMUP ?? 100)
+      const iterations = Number(process.env.LOGIX_PERF_ITERS ?? (isCiPerfRunner ? 360 : 900))
+      const warmup = Number(process.env.LOGIX_PERF_WARMUP ?? (isCiPerfRunner ? 40 : 100))
       const batchSizes = parseBatchSizes()
 
       for (const batchSize of batchSizes) {

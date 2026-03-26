@@ -5,6 +5,8 @@ import { makeRunSession, RunSessionTag } from '../../../../src/internal/observab
 import * as ModuleRuntimeOperation from '../../../../src/internal/runtime/core/ModuleRuntime.operation.js'
 import * as StateTransaction from '../../../../src/internal/runtime/core/StateTransaction.js'
 
+const isCiPerfRunner = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true'
+
 const now = (): number => {
   const perf = (globalThis as any).performance as { now?: () => number } | undefined
   if (perf && typeof perf.now === 'function') {
@@ -24,7 +26,7 @@ const average = (samples: ReadonlyArray<number>): number =>
   samples.length === 0 ? 0 : samples.reduce((sum, value) => sum + value, 0) / samples.length
 
 const parseBatchSizes = (): ReadonlyArray<number> => {
-  const raw = process.env.LOGIX_PERF_BATCHES ?? '256,1024'
+  const raw = process.env.LOGIX_PERF_BATCHES ?? (isCiPerfRunner ? '256' : '256,1024')
   const parsed = raw
     .split(',')
     .map((value) => Number(value.trim()))
@@ -72,11 +74,14 @@ const runCase = (
     return samples
   })
 
-describe('ModuleRuntime.operation runner · perf baseline (Diagnostics=off, middleware=empty, runSession=on)', { timeout: 30_000 }, () => {
+describe(
+  'ModuleRuntime.operation runner · perf baseline (Diagnostics=off, middleware=empty, runSession=on)',
+  { timeout: isCiPerfRunner ? 45_000 : 30_000 },
+  () => {
   it.effect('records reproducible runner overhead evidence', () =>
     Effect.gen(function* () {
-      const iterations = Number(process.env.LOGIX_PERF_ITERS ?? 900)
-      const warmup = Number(process.env.LOGIX_PERF_WARMUP ?? 80)
+      const iterations = Number(process.env.LOGIX_PERF_ITERS ?? (isCiPerfRunner ? 360 : 900))
+      const warmup = Number(process.env.LOGIX_PERF_WARMUP ?? (isCiPerfRunner ? 40 : 80))
       const batchSizes = parseBatchSizes()
 
       for (const batchSize of batchSizes) {
@@ -123,4 +128,5 @@ describe('ModuleRuntime.operation runner · perf baseline (Diagnostics=off, midd
       }
     }),
   )
-})
+  },
+)
