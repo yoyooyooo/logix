@@ -599,6 +599,8 @@ const makeTopicExternalStore = <S>(args: {
   readonly moduleInstanceKey: ModuleInstanceKey
   readonly selectorId?: string
   readonly readSnapshot: () => S
+  readonly readLiveSnapshot?: () => S
+  readonly isSnapshotEqual?: (previous: S, next: S) => boolean
   readonly options?: ExternalStoreOptions
   readonly teardownDelayMs?: number
   readonly teardownWhenIdleOnCreate?: boolean
@@ -618,9 +620,11 @@ const makeTopicExternalStore = <S>(args: {
   let teardownToken = 0
   let teardownCancel: Cancel | undefined
   let lastPulseEnvelope: RuntimePulseEnvelope | undefined
+  let pendingLiveResync = false
 
   const lowPriorityDelayMs = args.options?.lowPriorityDelayMs ?? 16
   const lowPriorityMaxDelayMs = args.options?.lowPriorityMaxDelayMs ?? 50
+  const isSnapshotEqual = args.isSnapshotEqual ?? Object.is
   const modulePulseHub = getOrCreateModulePulseHub(runtime, args.moduleInstanceKey, hostScheduler)
   modulePulseHub.retainStore()
 
@@ -668,6 +672,17 @@ const makeTopicExternalStore = <S>(args: {
       const version = runtimeStore.getTopicVersion(topicKey)
       if (currentVersion !== version) {
         scheduleNotify(runtimeStore.getTopicPriority(topicKey))
+        return
+      }
+
+      if (!args.readLiveSnapshot) {
+        return
+      }
+
+      const liveSnapshot = args.readLiveSnapshot()
+      if (!isSnapshotEqual(currentSnapshot as S, liveSnapshot)) {
+        pendingLiveResync = true
+        scheduleNotify(runtimeStore.getTopicPriority(topicKey))
       }
     } catch {
       // ignore best-effort refresh failures
@@ -676,14 +691,15 @@ const makeTopicExternalStore = <S>(args: {
 
   const getSnapshot = (): S => {
     const version = runtimeStore.getTopicVersion(topicKey)
-    if (hasSnapshot && currentVersion === version) {
+    if (hasSnapshot && currentVersion === version && !pendingLiveResync) {
       return currentSnapshot as S
     }
 
-    const next = args.readSnapshot()
+    const next = pendingLiveResync && args.readLiveSnapshot ? args.readLiveSnapshot() : args.readSnapshot()
     currentVersion = version
     hasSnapshot = true
     currentSnapshot = next
+    pendingLiveResync = false
     return next
   }
 
@@ -785,6 +801,7 @@ export const getRuntimeModuleExternalStore = <S>(
         if (state !== undefined) return state
         return runtime.runSync(moduleRuntime.getState as unknown as Effect.Effect<S, never, any>)
       },
+      readLiveSnapshot: () => runtime.runSync(moduleRuntime.getState as unknown as Effect.Effect<S, never, any>),
       options,
     }),
   )
@@ -814,6 +831,9 @@ export const getRuntimeReadQueryExternalStore = <S, V>(
         const current = state ?? runtime.runSync(moduleRuntime.getState as unknown as Effect.Effect<S, never, any>)
         return selectorReadQuery.select(current)
       },
+      readLiveSnapshot: () =>
+        selectorReadQuery.select(runtime.runSync(moduleRuntime.getState as unknown as Effect.Effect<S, never, any>)),
+      isSnapshotEqual: Object.is,
       options,
       teardownDelayMs: READ_QUERY_ACTIVATION_GRACE_MS,
       teardownWhenIdleOnCreate: true,

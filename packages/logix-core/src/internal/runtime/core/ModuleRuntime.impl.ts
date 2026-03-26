@@ -633,7 +633,9 @@ export const make = <S, A, R = never>(
     const runtimeStoreOpt = yield* Effect.serviceOption(
       RuntimeStoreTag as unknown as ServiceMap.Key<any, RuntimeStoreService>,
     )
-    const runtimeStore = Option.isSome(runtimeStoreOpt) ? runtimeStoreOpt.value : undefined
+    let runtimeStoreCached: RuntimeStoreService | undefined = Option.isSome(runtimeStoreOpt)
+      ? runtimeStoreOpt.value
+      : undefined
     if (Option.isSome(runtimeStoreOpt)) {
       runtimeStoreOpt.value.registerModuleInstance({
         moduleId,
@@ -665,6 +667,18 @@ export const make = <S, A, R = never>(
       return Option.isSome(fromRoot) ? fromRoot.value : undefined
     }
 
+    const readRuntimeStoreFromRootContext = (root: RootContext | undefined): RuntimeStoreService | undefined => {
+      if (!root?.context) {
+        return undefined
+      }
+
+      const fromRoot = ServiceMap.getOption(
+        root.context,
+        RuntimeStoreTag as any,
+      ) as Option.Option<RuntimeStoreService>
+      return Option.isSome(fromRoot) ? fromRoot.value : undefined
+    }
+
     const refreshTickSchedulerFromEnv = (): Effect.Effect<TickSchedulerService | undefined> =>
       Effect.gen(function* () {
         const refreshed = (yield* Effect.serviceOption(
@@ -672,6 +686,18 @@ export const make = <S, A, R = never>(
         )) as Option.Option<TickSchedulerService>
         if (Option.isSome(refreshed)) {
           tickSchedulerCached = refreshed.value
+          return refreshed.value
+        }
+        return undefined
+      })
+
+    const refreshRuntimeStoreFromEnv = (): Effect.Effect<RuntimeStoreService | undefined> =>
+      Effect.gen(function* () {
+        const refreshed = (yield* Effect.serviceOption(
+          RuntimeStoreTag as unknown as ServiceMap.Key<any, RuntimeStoreService>,
+        )) as Option.Option<RuntimeStoreService>
+        if (Option.isSome(refreshed)) {
+          runtimeStoreCached = refreshed.value
           return refreshed.value
         }
         return undefined
@@ -689,31 +715,56 @@ export const make = <S, A, R = never>(
       return scheduler?.hasModuleSourceObservers(moduleInstanceKey) ?? false
     }
 
+    const hasRuntimeStoreSubscribers = (): boolean => {
+      let runtimeStore = runtimeStoreCached
+      if (!runtimeStore) {
+        const fromRoot = readRuntimeStoreFromRootContext(rootContext)
+        if (fromRoot) {
+          runtimeStore = fromRoot
+          runtimeStoreCached = fromRoot
+        }
+      }
+      return (runtimeStore?.getModuleSubscriberCount(moduleInstanceKey) ?? 0) > 0
+    }
+
     const shouldObservePostCommit = (): boolean =>
       externalOwnedFieldPaths.length > 0 ||
       selectorGraph.hasAnyEntries() ||
-      (runtimeStore?.getModuleSubscriberCount(moduleInstanceKey) ?? 0) > 0 ||
+      hasRuntimeStoreSubscribers() ||
       hasModuleSourceObservers()
 
-    const shouldCaptureTickSchedulerAtEnqueue = (): boolean => shouldObservePostCommit()
+    const shouldCapturePostCommitObserversAtEnqueue = (): boolean =>
+      runtimeStoreCached === undefined || tickSchedulerCached === undefined || shouldObservePostCommit()
 
     const enqueueTransaction: EnqueueTransaction = ((a0: any, a1?: any) => {
-      // Hot path: when there are no post-commit observers and scheduler is not cached yet,
+      // Hot path: when post-commit observers are already fully known to this ModuleRuntime,
       // skip the enqueue-time env lookup shell and delegate directly to txnQueue.
-      if (tickSchedulerCached || !shouldCaptureTickSchedulerAtEnqueue()) {
+      if (!shouldCapturePostCommitObserversAtEnqueue()) {
         return a1 !== undefined ? (enqueueTransactionBase as any)(a0, a1) : (enqueueTransactionBase as any)(a0)
       }
 
       return Effect.gen(function* () {
+        if (!runtimeStoreCached) {
+          const refreshedRuntimeStore = yield* refreshRuntimeStoreFromEnv()
+          if (!refreshedRuntimeStore) {
+            const fromRoot = readRuntimeStoreFromRootContext(rootContext)
+            if (fromRoot) {
+              runtimeStoreCached = fromRoot
+            }
+          }
+        }
+
         // Cache TickScheduler from the current fiber Env whenever possible:
         // - ManagedRuntime scenarios (e.g. React RuntimeProvider injecting tick services) may not have TickSchedulerTag
         //   visible during ModuleRuntime initialization.
         // - It is often available at enqueue-time (callsite), and caching it ensures onCommit can publish into RuntimeStore.
-        const refreshed = yield* refreshTickSchedulerFromEnv()
-        if (!refreshed) {
-          const fromRoot = readTickSchedulerFromRootContext(rootContext)
-          if (fromRoot) {
-            tickSchedulerCached = fromRoot
+        if (!tickSchedulerCached) {
+          const refreshed = yield* refreshTickSchedulerFromEnv()
+          if (!refreshed) {
+            const fromRoot = readTickSchedulerFromRootContext(rootContext)
+            if (fromRoot) {
+              tickSchedulerCached = fromRoot
+            }
           }
         }
 

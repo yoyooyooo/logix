@@ -610,6 +610,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
   const providerStartedAtRef = React.useRef(performance.now())
   const providerReadyAtRef = React.useRef<number | undefined>(undefined)
   const didReportProviderGatingRef = React.useRef(false)
+  const readyConfigRefreshRuntimeRef = React.useRef<ManagedRuntime.ManagedRuntime<any, any> | null>(null)
   const resolvedPolicy = useMemo(
     () =>
       resolveRuntimeProviderPolicy({
@@ -1829,6 +1830,45 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
   if (isReady && providerReadyAtRef.current === undefined) {
     providerReadyAtRef.current = performance.now()
   }
+
+  useEffect(() => {
+    if (!isReady) {
+      readyConfigRefreshRuntimeRef.current = null
+      return
+    }
+    if (readyConfigRefreshRuntimeRef.current === runtimeWithBindings) {
+      return
+    }
+    readyConfigRefreshRuntimeRef.current = runtimeWithBindings
+
+    let cancelled = false
+
+    void runtimeWithBindings
+      .runPromise(ReactRuntimeConfigSnapshot.load as Effect.Effect<ReactConfigSnapshot, any, any>)
+      .then((snapshot: ReactConfigSnapshot) => {
+        if (cancelled) {
+          return
+        }
+
+        setConfigState((prev) => {
+          if (isSameConfigSnapshot(prev.snapshot, snapshot) && prev.loaded) {
+            return prev
+          }
+
+          return {
+            snapshot,
+            version: prev.version,
+            loaded: true,
+            loadMode: 'async',
+          }
+        })
+      })
+      .catch(() => {})
+
+    return () => {
+      cancelled = true
+    }
+  }, [isReady, runtimeWithBindings])
 
   useEffect(() => {
     if (!isReady) {
