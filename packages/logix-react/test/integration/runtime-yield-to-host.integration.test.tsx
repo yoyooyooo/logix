@@ -104,6 +104,8 @@ describe('TickScheduler yield-to-host (React integration)', () => {
 
       const sourceValue = useModule(source, (s) => (s as any).value as number)
       const targetValue = useModule(target, (s) => (s as any).fromSource as number)
+      const noiseValue1 = useModule(noise1, (s) => (s as any).n as number)
+      const noiseValue2 = useModule(noise2, (s) => (s as any).n as number)
 
       React.useEffect(() => {
         metrics.history.push({ tickSeq: runtimeStore.getTickSeq(), source: sourceValue, target: targetValue, local })
@@ -115,6 +117,8 @@ describe('TickScheduler yield-to-host (React integration)', () => {
           <p>Source: {sourceValue}</p>
           <p>Target: {targetValue}</p>
           <p>Local: {local}</p>
+          <p hidden>Noise1: {noiseValue1}</p>
+          <p hidden>Noise2: {noiseValue2}</p>
           <button type="button" onClick={() => setLocal((x) => x + 1)}>
             LocalInc
           </button>
@@ -171,8 +175,9 @@ describe('TickScheduler yield-to-host (React integration)', () => {
         expect(screen.getByText('Target: 1')).toBeTruthy()
       })
 
-      // Evidence: we should have started at least one tick on a macrotask boundary due to budget deferral.
       const events = Logix.Debug.getDevtoolsSnapshot().events
+
+      // Evidence: observable low-priority noise commits should force a budget continuation on a macrotask boundary.
       const forced = events
         .filter((e) => e.label === 'trace:tick')
         .map((e) => (e.meta ?? {}) as any)
