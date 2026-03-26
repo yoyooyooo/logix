@@ -1,0 +1,5 @@
+packages/logix-core/src/internal/runtime/core/StateTransaction.ts
+specs/103-effect-v4-forward-cutover/perf/2026-03-26-v4-state-txn-cut-reading.md
+specs/103-effect-v4-forward-cutover/perf/2026-03-26-v4-state-txn-soak-win-reading.md
+specs/103-effect-v4-forward-cutover/perf/2026-03-26-v4-state-txn-push-closeout.md
+specs/103-effect-v4-forward-cutover/perf/2026-03-26-v4-state-txn-minimal-closeout-manifest.md

@@ -240,12 +240,12 @@ interface StateTxnState<S> {
   dirtyPathIdSnapshot: Array<FieldPathId>
   /**
    * dirtyPathIdsKeyHash / dirtyPathIdsKeySize:
-   * - Incrementally maintained key for the current dirtyPathIds Set (in insertion order),
-   *   optimized for ultra-hot converge paths (inline_dirty micro-cache).
+   * - Size stays incrementally maintained for hot-path admission checks.
+   * - Hash/snapshot are materialized lazily when a consumer actually needs the inline_dirty key
+   *   or committed dirty evidence.
    * - Hash: FNV-1a (32-bit) over unique FieldPathIds in Set insertion order.
-   * - Size: number of unique ids (mirrors dirtyPathIds.size when no dirtyAllReason).
    */
-  dirtyPathIdsKeyHash: number
+  dirtyPathIdsKeyHash?: number
   dirtyPathIdsKeySize: number
   dirtyAllReason?: DirtyAllReason
   /**
@@ -511,6 +511,53 @@ const buildPatchRecord = (
   return record
 }
 
+const materializeDirtyPathSnapshotAndKey = <S>(state: StateTxnState<S>): {
+  readonly dirtyPathIds: ReadonlyArray<FieldPathId>
+  readonly dirtyPathsKeyHash: number
+  readonly dirtyPathsKeySize: number
+} => {
+  if (state.dirtyPathIds.size === 0) {
+    return {
+      dirtyPathIds: EMPTY_DIRTY_PATH_IDS,
+      dirtyPathsKeyHash: 0,
+      dirtyPathsKeySize: 0,
+    }
+  }
+
+  if (
+    state.dirtyPathIdSnapshot.length === state.dirtyPathIds.size &&
+    state.dirtyPathIdSnapshot.length > 0 &&
+    typeof state.dirtyPathIdsKeyHash === 'number' &&
+    Number.isFinite(state.dirtyPathIdsKeyHash)
+  ) {
+    return {
+      dirtyPathIds: state.dirtyPathIdSnapshot,
+      dirtyPathsKeyHash: state.dirtyPathIdsKeyHash,
+      dirtyPathsKeySize: state.dirtyPathIdsKeySize,
+    }
+  }
+
+  const snapshot = state.dirtyPathIdSnapshot
+  snapshot.length = 0
+  for (const id of state.dirtyPathIds) {
+    snapshot.push(id)
+  }
+  let hash = 2166136261 >>> 0
+  for (let i = 0; i < snapshot.length; i++) {
+    hash ^= snapshot[i]! >>> 0
+    hash = Math.imul(hash, 16777619)
+  }
+
+  state.dirtyPathIdsKeyHash = hash >>> 0
+  state.dirtyPathIdsKeySize = snapshot.length
+
+  return {
+    dirtyPathIds: snapshot,
+    dirtyPathsKeyHash: hash >>> 0,
+    dirtyPathsKeySize: snapshot.length,
+  }
+}
+
 const buildDirtyEvidenceSnapshot = <S>(state: StateTxnState<S>): TxnDirtyEvidenceSnapshot => {
   const registry = state.fieldPathIdRegistry
   const dirtyAllReason = state.dirtyAllReason
@@ -550,11 +597,14 @@ const buildDirtyEvidenceSnapshot = <S>(state: StateTxnState<S>): TxnDirtyEvidenc
     }
   }
 
+  const materialized = materializeDirtyPathSnapshotAndKey(state)
   return {
     dirtyAll: false,
-    dirtyPathIds: state.dirtyPathIdSnapshot,
-    dirtyPathsKeyHash: state.dirtyPathIdsKeyHash,
-    dirtyPathsKeySize: state.dirtyPathIdsKeySize,
+    // Hand off the materialized snapshot by ownership transfer at commit time.
+    // commitWithState will swap the scratch slot to a fresh array before the next txn begins.
+    dirtyPathIds: materialized.dirtyPathIds,
+    dirtyPathsKeyHash: materialized.dirtyPathsKeyHash,
+    dirtyPathsKeySize: materialized.dirtyPathsKeySize,
   }
 }
 
@@ -727,7 +777,7 @@ export const makeContext = <S>(config: StateTxnConfig): StateTxnContext<S> => {
     patchesTruncated: false,
     dirtyPathIds: new Set(),
     dirtyPathIdSnapshot: [],
-    dirtyPathIdsKeyHash: 2166136261 >>> 0,
+    dirtyPathIdsKeyHash: undefined,
     dirtyPathIdsKeySize: 0,
     dirtyAllReason: undefined,
     listIndexEvidence: new Map(),
@@ -762,10 +812,12 @@ export const makeContext = <S>(config: StateTxnConfig): StateTxnContext<S> => {
     const state = ctx.current
     if (!state) return
     state.patchCount += 1
-    if (typeof path === 'string') {
-      recordListIndexEvidenceFromPathString(state, path)
-    } else if (Array.isArray(path)) {
-      recordListIndexEvidenceFromPathArray(state, path)
+    if (state.listPathSet && state.listPathSet.size > 0) {
+      if (typeof path === 'string') {
+        recordListIndexEvidenceFromPathString(state, path)
+      } else if (Array.isArray(path)) {
+        recordListIndexEvidenceFromPathArray(state, path)
+      }
     }
     if (Array.isArray(path) && fastPatchArrayPaths.has(path)) {
       resolveAndRecordDirtyPathIdFromArrayPath(state, path, _reason)
@@ -785,10 +837,12 @@ export const makeContext = <S>(config: StateTxnConfig): StateTxnContext<S> => {
     const state = ctx.current
     if (!state) return
     state.patchCount += 1
-    if (typeof path === 'string') {
-      recordListIndexEvidenceFromPathString(state, path)
-    } else if (Array.isArray(path)) {
-      recordListIndexEvidenceFromPathArray(state, path)
+    if (state.listPathSet && state.listPathSet.size > 0) {
+      if (typeof path === 'string') {
+        recordListIndexEvidenceFromPathString(state, path)
+      } else if (Array.isArray(path)) {
+        recordListIndexEvidenceFromPathArray(state, path)
+      }
     }
     const opSeq = state.patchCount - 1
     const pathId =
@@ -809,17 +863,24 @@ export const makeContext = <S>(config: StateTxnConfig): StateTxnContext<S> => {
 
 const recordDirtyPathId = <S>(state: StateTxnState<S>, id: FieldPathId): FieldPathId => {
   state.dirtyPathIds.add(id)
-  // Maintain an incremental key for inline_dirty micro-cache without scanning the Set.
-  // Only update when the id is newly inserted (Set ignores duplicates but keeps insertion order).
   const afterSize = state.dirtyPathIds.size
-  if (afterSize !== state.dirtyPathIdsKeySize) {
-    state.dirtyPathIdSnapshot.push(id)
-    let h = state.dirtyPathIdsKeyHash >>> 0
-    h ^= id >>> 0
-    h = Math.imul(h, 16777619)
-    state.dirtyPathIdsKeyHash = h >>> 0
-    state.dirtyPathIdsKeySize = afterSize
+  if (afterSize === state.dirtyPathIdsKeySize) return id
+
+  state.dirtyPathIdsKeySize = afterSize
+  if (afterSize === 1) {
+    // Single-path writes are the dominant shape in continuation hot paths.
+    // Seed snapshot/hash immediately so commit/read can reuse them without Set materialization.
+    state.dirtyPathIdSnapshot[0] = id
+    state.dirtyPathIdSnapshot.length = 1
+    let hash = 2166136261 >>> 0
+    hash ^= id >>> 0
+    hash = Math.imul(hash, 16777619)
+    state.dirtyPathIdsKeyHash = hash >>> 0
+    return id
   }
+
+  state.dirtyPathIdsKeyHash = undefined
+  state.dirtyPathIdSnapshot.length = 0
   return id
 }
 
@@ -855,8 +916,8 @@ export const beginTransaction = <S>(ctx: StateTxnContext<S>, origin: StateTxnOri
   state.patchesTruncated = false
   state.fieldPathIdRegistry = ctx.config.getFieldPathIdRegistry?.()
   state.dirtyPathIds.clear()
-  state.dirtyPathIdSnapshot = []
-  state.dirtyPathIdsKeyHash = 2166136261 >>> 0
+  state.dirtyPathIdSnapshot.length = 0
+  state.dirtyPathIdsKeyHash = undefined
   state.dirtyPathIdsKeySize = 0
   state.dirtyAllReason = undefined
   state.listPathSet = ctx.config.getListPathSet?.()
@@ -1256,6 +1317,7 @@ export const collectKnownTopLevelDirtyChanges = <S>(
 export const readDirtyEvidence = <S>(ctx: StateTxnContext<S>): TxnDirtyEvidence | undefined => {
   const state = ctx.current as StateTxnState<S> | undefined
   if (!state) return undefined
+  const materialized = materializeDirtyPathSnapshotAndKey(state)
   const listPathSet = state.listPathSet
   const list =
     listPathSet && listPathSet.size > 0
@@ -1269,8 +1331,8 @@ export const readDirtyEvidence = <S>(ctx: StateTxnContext<S>): TxnDirtyEvidence 
     dirtyAll: state.dirtyAllReason != null,
     dirtyAllReason: state.dirtyAllReason,
     dirtyPathIds: state.dirtyPathIds,
-    dirtyPathsKeyHash: state.dirtyPathIdsKeyHash,
-    dirtyPathsKeySize: state.dirtyPathIdsKeySize,
+    dirtyPathsKeyHash: materialized.dirtyPathsKeyHash,
+    dirtyPathsKeySize: materialized.dirtyPathsKeySize,
     ...(list ? { list } : null),
   }
 }
@@ -1393,9 +1455,11 @@ export const commitWithState = <S>(
     const endedAt = now()
     const transaction = buildCommittedTransaction(ctx, state, finalState, endedAt)
 
-    // Hand off the current patch array to the committed transaction, then switch the scratch
-    // state to a fresh array so later transactions do not mutate the committed snapshot.
+    // Hand off hot arrays to the committed transaction, then switch scratch slots to fresh arrays
+    // so later transactions do not mutate committed snapshots.
     state.patches = []
+    state.dirtyPathIdSnapshot = []
+    state.dirtyPathIdsKeyHash = undefined
 
     // Clear the current transaction.
     ctx.current = undefined
