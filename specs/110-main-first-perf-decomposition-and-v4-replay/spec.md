@@ -284,17 +284,17 @@
   - 当前只能把 `Cut A` 归为 `v4 partial positive`，还不能升成稳定 replay-ready；
   - `TX-C1` 已经不再是当前 residual 主解释，它只提供最小 closeout 候选；
   - `E-1B` clean scout 已完成，当前结论升级为 `inconclusive_after_clean_scout`；
-- 当前 `111` 已完成 cheap local 与 heavier local；before/after paired compare 已确认 node heavier-local fail 是 candidate-specific regression。保持 shadow-only，不允许推进到 live candidate。
+- 当前 `111` 已完成 cheap local 与 heavier local；旧 shadow candidate 的 candidate-specific regression 已由 cutdown v2 在 representative points 上清掉。当前进入新的 shadow local recovery candidate 状态，live candidate 继续 blocked。
 
 ## Current Next Actions _(mandatory)_
 
 - 先保持 `TX-C1` 作为 `local_closeout_ready` 的最小 closeout 候选，只在显式 workflow 决策下进入 PR / CI。
 - 保持 `E-1B` 作为已完成 docs-only scout，并使用 `inconclusive_after_clean_scout` 口径，不再回退到 `blocked_by_browser_noise`。
-- 当前 `111` 已完成 shadow cheap-local 与 heavier local；before/after paired compare 已确认 current shadow candidate 引入 node heavier-local regression。live candidate 继续 blocked。
-- 当前 `111` 的下一步只剩分析/拆包：
-  - 缩小 write scope
-  - 复跑 representative points
-  - 只保留 zero-new-fail 的 additive 子集
+- 当前 `111` 已完成 shadow cheap-local 与 heavier local；旧 shadow candidate 的 candidate-specific regression 已由 cutdown v2 在 representative points 上清掉。live candidate 继续 blocked。
+- 当前 `111` 的下一步改为：
+  - 以 cutdown v2 作为当前 shadow local recovery candidate
+  - 重做 residual refresh / promotion gate 复核
+  - 只有在归因仍指向 `controller_related` 时，才重开 live-candidate 讨论
 - `111 shadow-only package hardening` 当前只证明 additive telemetry wiring 与 unified contract 挂接成立，不覆盖 live controller 有效性。
 - `v4-perf` replay、PR、CI 一律后置到本地证据稳定之后。
 

@@ -65,4 +65,5 @@
 - [x] T506 在 isolated shadow-only candidate 上先跑 `bench:traitConverge:node` 与 focused same-node quick，只验证 `executedMode` 不变、shadow telemetry 可解释
 - [x] T507 cheap local 稳定后再进入 heavier local；browser long-run 继续作为 veto gate，live candidate 讨论后移到 future residual refresh
 - [x] T508 基于 baseline before/after paired compare，确认 current node heavier-local fail 是否为 candidate-specific regression
-- [ ] T509 将当前 shadow package 缩到更小 write scope，并复跑 same-node soak / high-dirty representative points
+- [x] T509 将当前 shadow package 缩到更小 write scope，并复跑 same-node soak / high-dirty representative points
+- [ ] T510 基于 cutdown v2 重新做 residual refresh / promotion gate 复核，只在归因仍指向 `controller_related` 时才重开 live-candidate 讨论

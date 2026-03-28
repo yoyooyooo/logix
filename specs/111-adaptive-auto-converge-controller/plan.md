@@ -23,7 +23,7 @@
   - 已存在 isolated shadow-only code candidate，且边界只覆盖 additive telemetry wiring
 - immediate next package:
   1. 保持 `111` 自身的 `data-model / contracts / checklist` 与 shadow-only candidate 对齐
-  2. 冻结当前 shadow-only candidate，并缩小 write scope
+  2. 将 cutdown v2 视为当前 shadow local recovery candidate
   3. 等 future residual refresh 再重判 live candidate entry
 
 ## Static Heuristic Drift Inventory
@@ -235,6 +235,12 @@ adaptive 增量字段：
   3. `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-heavier-local-browser-veto-reading.md`
   4. `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-heavier-local-summary-reading.md`
   5. `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-before-after-node-paired-reading.md`
+- 当前最强 paired attribution anchor：
+  - high-dirty rerun paired compare
+- 当前 local recovery candidate：
+  - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry-cutdown`
+  - `agent/main-111-shadow-telemetry-cutdown-20260328`
+  - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry-cutdown/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-cutdown-v2-reading.md`
 
 ### PR / CI Last
 
