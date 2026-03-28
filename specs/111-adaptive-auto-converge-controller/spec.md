@@ -77,11 +77,11 @@
 - current readiness: `planning_active`
 - implementation readiness: `shadow_code_poc_ready`
 - current blockers:
-  - `E-1B clean scout` 之后，residual 仍未被稳定压到 `controller_related`
-  - 当前 cutdown v2 已把 local regression 清掉，但 residual attribution 仍未稳定压到 `controller_related`
+  - 最新 residual refresh 结果仍是 `inconclusive_after_clean_scout`
+  - 当前没有新证据把 route classification 推到 `controller_related`
 - immediate allowed actions:
   - 以 cutdown v2 作为当前 `shadow_local_recovery_candidate`
-  - 若继续，只做 residual refresh / promotion gate 复核
+  - 只在出现新的 `controller_related` 证据后再重开 live-candidate 讨论
 - immediate forbidden actions:
   - 直接进入 live candidate
   - 直接把 shadow proxy 字段误读成 final controller cost model
@@ -98,10 +98,12 @@
   - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-before-after-node-paired-reading.md`
   - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry-cutdown/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-cutdown-v2-reading.md`
   - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry-cutdown/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-promotion-gate-reading.md`
+  - `/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf/specs/103-effect-v4-forward-cutover/perf/2026-03-28-e1-residual-refresh-reading.md`
 - meaning:
   - 当前 browser sensitivity 仍存在，但 clean scout 后已不足以单独解释整包 residual
   - 当前旧 shadow candidate 的 local regression 已由 cutdown v2 在 representative points 上清掉
-  - 当前 cutdown v2 只够升级到 `shadow_local_recovery_candidate`，仍不允许把 residual 归因推进到 controller live candidate
+  - 最新 residual refresh 仍把 route classification 留在 `inconclusive_after_clean_scout`
+  - 当前 cutdown v2 继续只保留为 `shadow_local_recovery_candidate`，仍不允许把 residual 归因推进到 controller live candidate
 - re-entry trigger:
   - future residual refresh after shadow cheap/heavier local still points controller-related
 - future residual refresh package:
