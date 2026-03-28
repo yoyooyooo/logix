@@ -21,9 +21,22 @@
   - `TX-C1` 只证明了最小 closeout 边界，不提供 controller residual 证明
   - `E-1B` 已完成 docs-only scout，但结论是 browser long-run 的 capture/order 敏感性仍足以主导 residual
 - immediate next package:
-  1. `111` 自身补齐 `data-model / contracts / checklist`
-  2. 完成 `main` static heuristic drift inventory
-  3. 只有 drift inventory 与后续 residual 再次同向指向 controller，才允许 shadow-code PoC
+  1. 保持 `111` 自身的 `data-model / contracts / checklist` ready
+  2. 形成 static heuristic drift inventory
+  3. 等 future residual refresh 再重判 entry decision
+
+## Static Heuristic Drift Inventory
+
+- source:
+  - `specs/111-adaptive-auto-converge-controller/heuristic-inventory.md`
+- purpose:
+  - freeze the current static decision cutoffs before any shadow-code PoC
+- current first-wave heuristics:
+  - `getNearFullRootRatioThreshold(stepCount)`
+  - `AUTO_FLOOR_RATIO`
+  - `MAX_CACHEABLE_ROOT_RATIO`
+  - `NO_CACHE_NEAR_FULL_STEP_THRESHOLD`
+  - `NEAR_FULL_PLAN_RATIO_THRESHOLD`
 
 ## Static Heuristic Drift Inventory
 
@@ -203,7 +216,7 @@ adaptive 增量字段：
 - browser long-run 当前只作为 veto gate，不充当 live candidate 收益依据
 - 目标：判断 residual 是否稳定指向 controller，并评估 live candidate 是否值得进入下一刀
 - 当前 gate 约束：
-  - 只有 `browser_noise | inconclusive` 被进一步压掉，才允许从 shadow-only 进入 live-candidate 讨论
+  - 只有 future refresh 把当前 `browser_noise` 重判为 `controller_related`，才允许从 shadow-only 进入 live-candidate 讨论
 
 ### PR / CI Last
 
@@ -216,6 +229,9 @@ adaptive 增量字段：
 
 - first implementation form:
   - `telemetry-only / shadow-mode`
+- current status:
+  - package is defined
+  - code entry remains blocked by current `browser_noise` decision
 - minimum write scope after gate clears:
   1. `packages/logix-core/src/internal/state-trait/converge-in-transaction.impl.ts`
   2. `packages/logix-core/src/internal/state-trait/model.ts`

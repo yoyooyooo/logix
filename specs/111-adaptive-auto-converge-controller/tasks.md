@@ -48,6 +48,7 @@
 
 - [x] T401 在 `spec.md` 与 `plan.md` 中写明 `planning_active / shadow_only_not_live_candidate`
 - [x] T402 新建 `specs/111-adaptive-auto-converge-controller/data-model.md`
+- [x] T402b 新建 `specs/111-adaptive-auto-converge-controller/heuristic-inventory.md`
 - [x] T403 新建 `contracts/adaptive-converge-band-state.schema.json`
 - [x] T404 新建 `contracts/adaptive-converge-shadow-summary.schema.json`
 - [x] T405 新建 `checklists/quality-gates.md`
@@ -58,8 +59,8 @@
 
 - [x] T501 同步消费 `110` 的最新 ledger / residual latest / `TX-C1` / `E-1B` 事实，回写 `111` 进入门
 - [x] T502 消费 `E-1B browser long-run capture-order sensitivity` clean docs-only scout 的结论，回写 `111` 当前 blocker
-- [ ] T503 完成 `main` static heuristic drift inventory，至少覆盖 `getNearFullRootRatioThreshold`、`AUTO_FLOOR_RATIO`、`MAX_CACHEABLE_ROOT_RATIO`、`NO_CACHE_NEAR_FULL_STEP_THRESHOLD`、`NEAR_FULL_PLAN_RATIO_THRESHOLD`
-- [ ] T504 基于 `E-1B + drift inventory` 形成 entry decision，明确三态：`controller_related | browser_noise | inconclusive`
+- [x] T503 完成 `main` static heuristic drift inventory，至少覆盖 `getNearFullRootRatioThreshold`、`AUTO_FLOOR_RATIO`、`MAX_CACHEABLE_ROOT_RATIO`、`NO_CACHE_NEAR_FULL_STEP_THRESHOLD`、`NEAR_FULL_PLAN_RATIO_THRESHOLD`
+- [x] T504 基于 `E-1B + drift inventory` 形成 entry decision，明确当前状态为 `browser_noise`
 - [ ] T505 仅在 `controller_related` 下冻结 `telemetry-only / shadow-mode` 最小 PoC 包，write scope 只允许 `converge-in-transaction.impl.ts`、`model.ts` 与必要的 `013` 契约字段
 - [ ] T506 cheap local 先跑 `bench:traitConverge:node` 与 focused same-node quick，只验证 `executedMode` 不变、shadow telemetry 可解释
 - [ ] T507 heavier local 只在 cheap local 稳定后进入，browser long-run 继续作为 veto gate；live candidate 讨论后移到下一轮
