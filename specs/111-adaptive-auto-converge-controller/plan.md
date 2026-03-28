@@ -24,7 +24,7 @@
 - immediate next package:
   1. 保持 `111` 自身的 `data-model / contracts / checklist` 与 shadow-only candidate 对齐
   2. 将 cutdown v2 视为当前 `shadow_local_recovery_candidate`
-  3. 等 future residual refresh 再重判 live candidate entry
+  3. 等新的 `controller_related` 证据后再重判 live candidate entry
 
 ## Static Heuristic Drift Inventory
 
@@ -255,13 +255,14 @@ adaptive 增量字段：
   - `specs/103-effect-v4-forward-cutover/perf/2026-03-28-e1b-clean-scout-reading.md`
 - minimum command bundle:
   1. node residual quick:
-     - `pnpm perf bench:traitConverge:node -- --profile quick --matrix specs/111-adaptive-auto-converge-controller/perf/2026-03-28-shadow-telemetry.highdirty.rerun.same-node.quick.matrix.json --out specs/111-adaptive-auto-converge-controller/perf/<date>-residual-refresh.after.node.highdirty.quick.json`
+     - `pnpm -C .codex/skills/logix-perf-evidence bench:traitConverge:node -- --matrix specs/103-effect-v4-forward-cutover/perf/2026-03-28-e1-highdirty-node-matrix.json --profile quick --out specs/103-effect-v4-forward-cutover/perf/<date>-traitConverge-node.after.t511-residual-refresh.highdirty.quick.json`
   2. browser residual quick:
-     - `VITE_LOGIX_PERF_STEPS_LEVELS=1600,2000 pnpm perf collect -- --profile quick --files test/browser/perf-boundaries/converge-steps.test.tsx --out specs/111-adaptive-auto-converge-controller/perf/<date>-residual-refresh.after.browser.quick.json`
+     - `VITE_LOGIX_PERF_STEPS_LEVELS=1600,2000 pnpm perf collect -- --profile quick --files test/browser/perf-boundaries/converge-steps.test.tsx --out specs/103-effect-v4-forward-cutover/perf/<date>-converge-steps.after.t511-residual-refresh.browser.quick.json`
+     - `pnpm perf diff -- --before specs/103-effect-v4-forward-cutover/perf/2026-03-26-converge-steps.before.currentbest-v4.steps1600-2000.same-node.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/<date>-converge-steps.after.t511-residual-refresh.browser.quick.json --out specs/103-effect-v4-forward-cutover/perf/<date>-converge-steps.currentbest-vs-t511-residual-refresh.browser.quick.diff.json`
   3. browser residual soak veto:
-     - `VITE_LOGIX_PERF_STEPS_LEVELS=1600,2000 pnpm perf collect -- --profile soak --files test/browser/perf-boundaries/converge-steps.test.tsx --out specs/111-adaptive-auto-converge-controller/perf/<date>-residual-refresh.after.browser.soak.json`
+     - `VITE_LOGIX_PERF_STEPS_LEVELS=1600,2000 pnpm perf collect -- --profile soak --files test/browser/perf-boundaries/converge-steps.test.tsx --out specs/103-effect-v4-forward-cutover/perf/<date>-converge-steps.after.t511-residual-refresh.browser.soak.json`
 - required outputs:
-  - one dated residual refresh reading
+  - one dated residual refresh reading under `specs/103-effect-v4-forward-cutover/perf/`
   - updated route classification: `controller_related | not_controller_signal | inconclusive_after_clean_scout`
 - reopen condition:
   - only if refreshed route classification is `controller_related`
