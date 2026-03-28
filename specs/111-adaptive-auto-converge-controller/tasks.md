@@ -56,10 +56,10 @@
 
 目标：把下一轮真正可执行的任务包写出来，而不是只停在设计完成。
 
-- [ ] T501 先把 `110` 的最新 ledger / residual latest / `TX-C1` / `E-1B` 事实同步消费到 `111` 进入门
-- [ ] T502 执行 `E-1B browser long-run capture-order sensitivity` clean docs-only scout
-- [ ] T503 若 `E-1B` 仍指向 controller，先做 `telemetry-only / shadow-mode` 最小 PoC
-- [ ] T504 shadow-mode PoC 的 write scope 只允许 `converge-in-transaction.impl.ts`、`model.ts` 与必要的 `013` 契约字段
-- [ ] T505 cheap local 先跑 `bench:traitConverge:node` 与 focused same-node quick，只验证 `executedMode` 不变、shadow telemetry 可解释
-- [ ] T506 heavier local 只在 cheap local 稳定后进入，browser long-run 继续作为 veto gate
-- [ ] T507 live candidate 只有在 shadow-only、cheap local、heavier local 全过后才允许讨论
+- [x] T501 同步消费 `110` 的最新 ledger / residual latest / `TX-C1` / `E-1B` 事实，回写 `111` 进入门
+- [x] T502 消费 `E-1B browser long-run capture-order sensitivity` clean docs-only scout 的结论，回写 `111` 当前 blocker
+- [ ] T503 完成 `main` static heuristic drift inventory，至少覆盖 `getNearFullRootRatioThreshold`、`AUTO_FLOOR_RATIO`、`MAX_CACHEABLE_ROOT_RATIO`、`NO_CACHE_NEAR_FULL_STEP_THRESHOLD`、`NEAR_FULL_PLAN_RATIO_THRESHOLD`
+- [ ] T504 基于 `E-1B + drift inventory` 形成 entry decision，明确三态：`controller_related | browser_noise | inconclusive`
+- [ ] T505 仅在 `controller_related` 下冻结 `telemetry-only / shadow-mode` 最小 PoC 包，write scope 只允许 `converge-in-transaction.impl.ts`、`model.ts` 与必要的 `013` 契约字段
+- [ ] T506 cheap local 先跑 `bench:traitConverge:node` 与 focused same-node quick，只验证 `executedMode` 不变、shadow telemetry 可解释
+- [ ] T507 heavier local 只在 cheap local 稳定后进入，browser long-run 继续作为 veto gate；live candidate 讨论后移到下一轮

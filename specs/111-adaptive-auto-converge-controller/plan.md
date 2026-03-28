@@ -19,11 +19,35 @@
 - current level: `shadow_only_not_live_candidate`
 - reason:
   - `TX-C1` 只证明了最小 closeout 边界，不提供 controller residual 证明
-  - `E-1B` 当前仍是 docs-only scout，browser long-run capture/order 敏感性还没被 clean scout 压清
+  - `E-1B` 已完成 docs-only scout，但结论是 browser long-run 的 capture/order 敏感性仍足以主导 residual
 - immediate next package:
   1. `111` 自身补齐 `data-model / contracts / checklist`
-  2. `E-1B` clean docs-only scout
-  3. 只有 clean scout 仍指向 controller，才允许 shadow-code PoC
+  2. 完成 `main` static heuristic drift inventory
+  3. 只有 drift inventory 与后续 residual 再次同向指向 controller，才允许 shadow-code PoC
+
+## Static Heuristic Drift Inventory
+
+当前最少先盘这 5 个 static decision cutoffs：
+
+| heuristicId | codeAnchor | currentRuleOrValue | inputDimensions | decisionEffect | currentEvidenceFields | knownDriftSignal | envScope | adaptiveReplacementPlan |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `near_full_root_ratio_threshold` | `getNearFullRootRatioThreshold(stepCount)` | step-count band threshold function | `stepCount`, `dirtyRootRatio` | `auto -> full` near-full fallback | `requestedMode`, `executedMode`, `reasons`, `stepStats`, `dirty.rootCount` | same runtime code change may shift threshold usefulness | `node/browser`, per band | replace with band-level `fullCostEstimate vs dirtyCostEstimate` |
+| `auto_floor_ratio` | `AUTO_FLOOR_RATIO` | `1.05` | `stepCount`, `dirtyRootRatio`, `decision budget` | `auto -> full` floor guard | `executionDurationMs`, `decisionDurationMs`, `reasons` | browser long-run and same-node subset may drift separately | `node/browser`, high-dirty | replace with confidence-aware safety margin |
+| `max_cacheable_root_ratio` | `MAX_CACHEABLE_ROOT_RATIO` | `0.5` | `dirtyRootRatio`, `cacheState` | cacheability / plan reuse | `cache.hit`, `missReason`, `disableReason`, `generation` | cacheability and residual shape may diverge by env bucket | `node/browser`, cache state class | replace with per-band cacheability state |
+| `no_cache_near_full_step_threshold` | `NO_CACHE_NEAR_FULL_STEP_THRESHOLD` | static step cutoff | `stepCount`, `cache disabled state` | force full / bypass dirty planning | `reasons`, `configScope`, `stepStats` | small graph / large graph may react differently after runtime changes | per step band | replace with band-aware `fallbackReason` driven logic |
+| `near_full_plan_ratio_threshold` | `NEAR_FULL_PLAN_RATIO_THRESHOLD` | static plan ratio threshold | `planLength`, `stepCount` | `dirty -> full` near-full plan fallback | `reasons`, `affectedSteps`, `stepStats` | plan-size sensitivity likely drifts with graph topology | per plan band | replace with measured plan-cost estimator |
+
+输出表最少字段约定：
+
+- `heuristicId`
+- `codeAnchor`
+- `currentRuleOrValue`
+- `inputDimensions`
+- `decisionEffect`
+- `currentEvidenceFields`
+- `knownDriftSignal`
+- `envScope`
+- `adaptiveReplacementPlan`
 
 ## Cross-Spec Alignment
 
@@ -167,6 +191,9 @@ adaptive 增量字段：
   - `executedMode` 不变
   - additive shadow summary 导出
 - 目标：确认 telemetry contract、shadow delta、fallback reasons 与 heuristic drift
+- 当前 cheap local 前置包：
+  1. `main` static heuristic drift inventory
+  2. `executedMode unchanged` shadow verification
 
 ### Heavier Local Later
 
@@ -175,6 +202,8 @@ adaptive 增量字段：
 - browser long-run / suite progression probe
 - browser long-run 当前只作为 veto gate，不充当 live candidate 收益依据
 - 目标：判断 residual 是否稳定指向 controller，并评估 live candidate 是否值得进入下一刀
+- 当前 gate 约束：
+  - 只有 `browser_noise | inconclusive` 被进一步压掉，才允许从 shadow-only 进入 live-candidate 讨论
 
 ### PR / CI Last
 
