@@ -19,11 +19,11 @@
 
 ## Heavier Local Gate
 
-- [ ] same-node soak completed
-- [ ] high-dirty rerun completed
-- [ ] browser long-run only used as veto gate
-- [ ] heavier-local shadow package collected for future live decision
-- [ ] shadow telemetry remains additive and zero-impact on live decision
+- [x] same-node soak completed
+- [x] high-dirty rerun completed
+- [x] browser long-run only used as veto gate
+- [x] heavier-local shadow package collected for future live decision
+- [x] shadow telemetry remains additive and zero-impact on live decision
 
 ## Live Candidate Gate
 

@@ -284,13 +284,13 @@
   - 当前只能把 `Cut A` 归为 `v4 partial positive`，还不能升成稳定 replay-ready；
   - `TX-C1` 已经不再是当前 residual 主解释，它只提供最小 closeout 候选；
   - `E-1B` clean scout 已完成，当前结论升级为 `inconclusive_after_clean_scout`；
-  - 当前允许 `111` 继续 shadow-only code PoC，但不允许推进到 live candidate。
+- 当前 `111` 已完成 cheap local 与 heavier local，本地结论更新为 mixed fail；保持 shadow-only，不允许推进到 live candidate。
 
 ## Current Next Actions _(mandatory)_
 
 - 先保持 `TX-C1` 作为 `local_closeout_ready` 的最小 closeout 候选，只在显式 workflow 决策下进入 PR / CI。
 - 保持 `E-1B` 作为已完成 docs-only scout，并使用 `inconclusive_after_clean_scout` 口径，不再回退到 `blocked_by_browser_noise`。
-- 当前 `111` 已完成 shadow cheap-local gate，下一步进入 heavier local veto gate；live candidate 继续 blocked。
+- 当前 `111` 已完成 shadow cheap-local 与 heavier local，本地结论为 mixed fail；live candidate 继续 blocked。
 - `111 shadow-only package hardening` 当前只证明 additive telemetry wiring 与 unified contract 挂接成立，不覆盖 live controller 有效性。
 - `v4-perf` replay、PR、CI 一律后置到本地证据稳定之后。
 
