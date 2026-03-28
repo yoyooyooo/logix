@@ -104,6 +104,10 @@
   - 当前 cutdown v2 只够升级到 `shadow_local_recovery_candidate`，仍不允许把 residual 归因推进到 controller live candidate
 - re-entry trigger:
   - future residual refresh after shadow cheap/heavier local still points controller-related
+- future residual refresh package:
+  - execute on `/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf`
+  - refresh against current `E-1 effect-v4 full-longrun same-node residual route`
+  - require one dated reading that explicitly classifies the refreshed route as `controller_related | not_controller_signal | inconclusive_after_clean_scout`
 
 ## Replay & Docs Sync Gate _(mandatory)_
 
