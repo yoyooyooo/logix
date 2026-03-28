@@ -23,7 +23,7 @@
   - 已存在 isolated shadow-only code candidate，且边界只覆盖 additive telemetry wiring
 - immediate next package:
   1. 保持 `111` 自身的 `data-model / contracts / checklist` 与 shadow-only candidate 对齐
-  2. 进入 heavier local veto gate
+  2. 停留在 shadow-only evidence line
   3. 等 future residual refresh 再重判 live candidate entry
 
 ## Static Heuristic Drift Inventory
@@ -229,6 +229,11 @@ adaptive 增量字段：
 - 目标：判断 residual 是否稳定指向 controller，并评估 live candidate 是否值得进入下一刀
 - 当前 gate 约束：
   - 只有 future refresh 把当前 `inconclusive_after_clean_scout` 重判为 `controller_related`，才允许从 shadow-only 进入 live-candidate 讨论
+- 当前 latest heavier local evidence：
+  1. `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-heavier-local-same-node-soak-reading.md`
+  2. `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-heavier-local-high-dirty-rerun-reading.md`
+  3. `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-heavier-local-browser-veto-reading.md`
+  4. `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-heavier-local-summary-reading.md`
 
 ### PR / CI Last
 

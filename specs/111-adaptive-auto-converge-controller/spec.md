@@ -78,10 +78,10 @@
 - implementation readiness: `shadow_code_poc_ready`
 - current blockers:
   - `E-1B clean scout` 之后，residual 仍未被稳定压到 `controller_related`
-  - 当前 live candidate 仍缺 heavier local shadow 证据链
+  - node heavier-local representative points已触发 veto，当前 live candidate 不成立
 - immediate allowed actions:
   - 继续 isolated shadow-only code PoC
-  - 进入 heavier local veto gate
+  - 保持在 shadow-only evidence line
 - immediate forbidden actions:
   - 直接进入 live candidate
   - 直接把 shadow proxy 字段误读成 final controller cost model
@@ -94,9 +94,10 @@
   - `/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf/specs/103-effect-v4-forward-cutover/perf/2026-03-28-e1b-browser-longrun-capture-order-scout-reading.md`
   - `/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf/specs/103-effect-v4-forward-cutover/perf/2026-03-28-e1b-clean-scout-reading.md`
   - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-cheap-local-reading.md`
+  - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-heavier-local-summary-reading.md`
 - meaning:
   - 当前 browser sensitivity 仍存在，但 clean scout 后已不足以单独解释整包 residual
-  - 当前 shadow cheap-local gate 已通过，但仍不允许把 residual 归因推进到 controller live candidate
+  - 当前 shadow cheap-local gate 已通过，但 heavier-local 结果是 mixed fail，仍不允许把 residual 归因推进到 controller live candidate
 - re-entry trigger:
   - future residual refresh after shadow cheap/heavier local still points controller-related
 
