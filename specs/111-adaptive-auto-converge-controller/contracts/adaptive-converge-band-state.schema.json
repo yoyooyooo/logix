@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AdaptiveConvergeBandState",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bandKey",
+    "sampleCount",
+    "fullCostEstimate",
+    "dirtyCostEstimate",
+    "confidence",
+    "safetyMargin",
+    "generationVersion",
+    "cooldownState"
+  ],
+  "properties": {
+    "bandKey": { "type": "string" },
+    "sampleCount": { "type": "integer", "minimum": 0 },
+    "fullCostEstimate": { "type": "number", "minimum": 0 },
+    "dirtyCostEstimate": { "type": "number", "minimum": 0 },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "safetyMargin": { "type": "number", "minimum": 0 },
+    "fallbackShare": { "type": "number", "minimum": 0, "maximum": 1 },
+    "generationVersion": { "type": "integer", "minimum": 0 },
+    "cooldownState": {
+      "type": "string",
+      "enum": ["ready", "cooldown", "disabled"]
+    },
+    "lastShadowDecisionAt": { "type": "string" }
+  }
+}

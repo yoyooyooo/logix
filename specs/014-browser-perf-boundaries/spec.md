@@ -7,7 +7,7 @@
 
 ## Context & Positioning
 
-本 spec 定义 Logix Runtime 在真实浏览器环境中的性能边界测量基线：以 `vitest` 浏览器模式的“大颗粒度长链路集成测试”作为主跑道，产出稳定可对比的边界地图报告（JSON）与回归 diff。它面向未来复用：任何触及核心路径/诊断协议/收敛策略/渲染与并发语义的特性都复用同一套维度矩阵与报告口径。当前主要消费者包括：`013-auto-converge-planner`（控制面与硬门试点）、`017-perf-tuning-lab`（基于 014 跑道的默认值调参推荐）与 `019-txn-perf-controls`（事务/增量派生与批处理等性能控制的回归防线）。
+本 spec 定义 Logix Runtime 在真实浏览器环境中的性能边界测量基线：以 `vitest` 浏览器模式的“大颗粒度长链路集成测试”作为主跑道，产出稳定可对比的边界地图报告（JSON）与回归 diff。它面向未来复用：任何触及核心路径/诊断协议/收敛策略/渲染与并发语义的特性都复用同一套维度矩阵与报告口径。当前主要消费者包括：`013-auto-converge-planner`（控制面与硬门试点）、`017-perf-tuning-lab`（基于 014 跑道的默认值调参推荐）与 `019-txn-perf-controls`（事务/增量派生与批处理等性能控制的回归防线）。从 `2026-03` 起，当前 perf 主线的 route / promotion / residual latest 统一由 `specs/110-main-first-perf-decomposition-and-v4-replay` 总控；若进入 adaptive controller 后续方向，则由 `specs/111-adaptive-auto-converge-controller` 在 `110` 的门禁下消费 014 的浏览器证据。014 继续承担 runway / evidence framework，不单独承担主线路由裁决。
 
 ### Framework Role（升级为“性能优化的极限框架”）
 

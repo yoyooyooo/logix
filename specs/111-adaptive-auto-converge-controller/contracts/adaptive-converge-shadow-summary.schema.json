@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AdaptiveConvergeShadowSummary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "requestedMode",
+    "executedMode",
+    "bandKey",
+    "fullCostEstimate",
+    "dirtyCostEstimate",
+    "controllerStateVersion",
+    "shadowDecision"
+  ],
+  "properties": {
+    "requestedMode": { "type": "string", "enum": ["auto", "full", "dirty"] },
+    "executedMode": { "type": "string", "enum": ["auto", "full", "dirty"] },
+    "bandKey": { "type": "string" },
+    "fullCostEstimate": { "type": "number", "minimum": 0 },
+    "dirtyCostEstimate": { "type": "number", "minimum": 0 },
+    "fallbackReason": { "type": "string" },
+    "controllerStateVersion": { "type": "integer", "minimum": 0 },
+    "shadowDecision": { "type": "string", "enum": ["prefer_full", "prefer_dirty", "fallback_only"] }
+  }
+}

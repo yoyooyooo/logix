@@ -11,6 +11,7 @@
 
 - **依赖链路（建议顺序）**：`016（Identity/可序列化证据）` → `011（Lifecycle 容器/严格屏障）` → `013（Planner 控制面）` → `010（Form 场景验收）`
 - **013 的定位**：提供与领域无关的性能控制面与可回放证据；010 作为高压场景主要消费者，用于验证 013 的默认策略能否做到“无需手动开关的正确性/高性能”。
+- **2026-03 当前主线路由**：当前 perf 主线的 route / replay / residual 判断，统一以 `specs/110-main-first-perf-decomposition-and-v4-replay` 为总控；若进入 adaptive 后续方向，则由 `specs/111-adaptive-auto-converge-controller` 在 `110` 约束下推进。013 继续充当 `trait:converge` 契约 baseline，不单独承担当前主线裁决。
 - **风险显式化（010 反哺 013）**：`traitConvergeDecisionBudgetMs=0.5ms` 在“简单列表/小 steps”场景可能是显著开销，导致 auto 常回退 full；因此必须把 `budget_cutoff`（决策预算熔断）视为关键刹车片，并把 010 的矩阵点纳入 014/013 的对抗性覆盖候选集（但 013 不引入 form 特判）。
 - **实施 gate（避免实现跑在不稳地基上）**：在 016 的 core hardening（`instanceId` 单锚点 + `JsonValue` 导出边界 + off 近零成本）落地前，013 仅允许推进 contracts/规划；不进入任何运行时实现阶段（避免 `unknown/cause/state` 对象图污染导出链路）。
 
