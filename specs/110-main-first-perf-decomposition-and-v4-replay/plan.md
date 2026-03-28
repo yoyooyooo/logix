@@ -232,11 +232,15 @@
 
 - `111` 的 design / shadow / PoC 只能挂在 `main` 控制线语义下推进。
 - `111` 的输入工件固定为：current best candidate anchor、decision ledger、residual latest、same-node evidence anchors。
-- `111` 的进入门固定为：
+- `111` 的 shadow entry gate 固定为：
   1. decision ledger 已更新；
   2. current best cut 已是 `accepted_with_evidence`；
-  3. heavier local residual 仍稳定指向 controller 相关问题；
+  3. 当前 entry decision 至少达到 `inconclusive_after_clean_scout`；
   4. cheap local 的 static heuristic 漂移盘点已经完成。
+- `111` 的 live candidate gate 固定为：
+  1. shadow-only cheap local 与 heavier local gate 已完成；
+  2. future residual refresh 仍稳定指向 controller 相关问题；
+  3. shadow telemetry 继续保持 additive，且 live `executedMode` 语义未变。
 - `111` 的禁止动作固定为：
   - 跳过 accepted ledger 直接宣布主线变更；
   - 把 `v4-perf` 当收益鉴定线；

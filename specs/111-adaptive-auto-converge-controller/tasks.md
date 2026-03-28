@@ -46,7 +46,7 @@
 
 目标：把 `111` 从规划说明压到可实施状态，但仍保持 shadow-only。
 
-- [x] T401 在 `spec.md` 与 `plan.md` 中写明 `planning_active / shadow_only_not_live_candidate`
+- [x] T401 在 `spec.md` 与 `plan.md` 中写明 `planning_active / shadow_code_poc_ready / live_candidate=blocked`
 - [x] T402 新建 `specs/111-adaptive-auto-converge-controller/data-model.md`
 - [x] T402b 新建 `specs/111-adaptive-auto-converge-controller/heuristic-inventory.md`
 - [x] T403 新建 `contracts/adaptive-converge-band-state.schema.json`
@@ -60,7 +60,7 @@
 - [x] T501 同步消费 `110` 的最新 ledger / residual latest / `TX-C1` / `E-1B` 事实，回写 `111` 进入门
 - [x] T502 消费 `E-1B browser long-run capture-order sensitivity` clean docs-only scout 的结论，回写 `111` 当前 blocker
 - [x] T503 完成 `main` static heuristic drift inventory，至少覆盖 `getNearFullRootRatioThreshold`、`AUTO_FLOOR_RATIO`、`MAX_CACHEABLE_ROOT_RATIO`、`NO_CACHE_NEAR_FULL_STEP_THRESHOLD`、`NEAR_FULL_PLAN_RATIO_THRESHOLD`
-- [x] T504 基于 `E-1B + drift inventory` 形成 entry decision，明确当前状态为 `browser_noise`
-- [ ] T505 仅在 `controller_related` 下冻结 `telemetry-only / shadow-mode` 最小 PoC 包，write scope 只允许 `converge-in-transaction.impl.ts`、`model.ts` 与必要的 `013` 契约字段
-- [ ] T506 cheap local 先跑 `bench:traitConverge:node` 与 focused same-node quick，只验证 `executedMode` 不变、shadow telemetry 可解释
-- [ ] T507 heavier local 只在 cheap local 稳定后进入，browser long-run 继续作为 veto gate；live candidate 讨论后移到下一轮
+- [x] T504 基于 `E-1B + drift inventory` 形成 entry decision，当前结论更新为 `inconclusive_after_clean_scout`，对应状态为 `shadow_code_poc_ready / live_candidate=blocked`
+- [x] T505 冻结 `telemetry-only / shadow-mode` 最小 PoC 包，当前允许在 `inconclusive_after_clean_scout` 下推进 additive shadow-only candidate；write scope 只允许 `converge-in-transaction.impl.ts`、`model.ts` 与必要的 `013` 契约字段
+- [ ] T506 在 isolated shadow-only candidate 上先跑 `bench:traitConverge:node` 与 focused same-node quick，只验证 `executedMode` 不变、shadow telemetry 可解释
+- [ ] T507 cheap local 稳定后再进入 heavier local；browser long-run 继续作为 veto gate，live candidate 讨论后移到 future residual refresh

@@ -3,9 +3,9 @@
 ## Current status
 
 - inventory status: `ready`
-- current entry decision: `browser_noise`
+- current entry decision: `inconclusive_after_clean_scout`
 - note:
-  - 该 inventory 只完成静态 heuristic 盘点，不单独解锁 shadow code PoC
+  - 该 inventory 只完成静态 heuristic 盘点；当前 shadow code PoC 的解锁还依赖 clean scout 与 `110` handoff 更新
 
 ## Inventory Table
 
@@ -27,4 +27,4 @@
 
 - primary source for `T503`
 - referenced by `plan.md` for rollout and validation
-- consumed by `T504` when forming `controller_related | browser_noise | inconclusive`
+- consumed by `T504` when forming `controller_related | inconclusive_after_clean_scout | browser_noise`

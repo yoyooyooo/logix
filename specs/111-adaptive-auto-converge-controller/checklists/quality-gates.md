@@ -4,6 +4,7 @@
 
 - [ ] `110` ledger and residual latest updated
 - [ ] `E-1B` docs-only scout completed and consumed
+- [ ] entry decision is at least `inconclusive_after_clean_scout`
 - [ ] `data-model.md` and `contracts/*` exist
 - [ ] shadow summary fields have single-source contract
 - [ ] write scope stays inside converge controller files
@@ -21,7 +22,7 @@
 - [ ] same-node soak completed
 - [ ] high-dirty rerun completed
 - [ ] browser long-run only used as veto gate
-- [ ] residual still points controller-related after clean scout
+- [ ] heavier-local shadow package collected for future live decision
 - [ ] shadow telemetry remains additive and zero-impact on live decision
 
 ## Live Candidate Gate

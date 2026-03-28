@@ -16,14 +16,15 @@
 
 ## Current Readiness Decision
 
-- current level: `shadow_only_not_live_candidate`
+- current level: `shadow_code_poc_ready`
 - reason:
   - `TX-C1` 只证明了最小 closeout 边界，不提供 controller residual 证明
-  - `E-1B` 已完成 docs-only scout，但结论是 browser long-run 的 capture/order 敏感性仍足以主导 residual
+  - `E-1B clean scout` 已把 route 结论收紧到 `inconclusive_after_clean_scout`
+  - 已存在 isolated shadow-only code candidate，且边界只覆盖 additive telemetry wiring
 - immediate next package:
-  1. 保持 `111` 自身的 `data-model / contracts / checklist` ready
-  2. 形成 static heuristic drift inventory
-  3. 等 future residual refresh 再重判 entry decision
+  1. 保持 `111` 自身的 `data-model / contracts / checklist` 与 shadow-only candidate 对齐
+  2. 继续 shadow-only cheap local gate
+  3. 等 future residual refresh 再重判 live candidate entry
 
 ## Static Heuristic Drift Inventory
 
@@ -91,11 +92,11 @@
 - Diagnosability cost：always-on 字段保持 slim，较重的 comparison / band stats 仅允许 sampled、shadow 或 perf harness 消费。
 - Breaking changes / quality gates：在 live controller 前，以加法扩展为主；quality gates 先跑 cheap local，再跑 heavier local，PR / CI 最后。
 
-## Decomposition Brief _(mandatory before any hot-path PoC)_
+## Decomposition Brief _(mandatory before any live-candidate or wider hot-path PoC)_
 
 目标文件：`packages/logix-core/src/internal/state-trait/converge-in-transaction.impl.ts`
 
-- 当前状态：热路径目标文件已超过模块规模门槛，controller 语义改造前必须先定义无损拆分边界。
+- 当前状态：热路径目标文件已超过模块规模门槛。shadow-only additive telemetry 可先按最小边界落地；live candidate 或更大的 controller 语义改造前，必须先定义无损拆分边界。
 - 拆分形态：单一主体 + 同目录平铺子模块。
 - 候选子模块：
   - `converge-decision.policy.ts`：static heuristic、adaptive controller、fallback ladder
@@ -133,6 +134,13 @@ adaptive 增量字段：
 - `dirtyCostEstimate`
 - `fallbackReason`
 - `controllerStateVersion`
+- `shadowDecision`
+
+当前 shadow-only 候选的边界补充：
+
+- `TraitConvergeDecisionSummary.shadow` 是 additive 容器，不新起事件类型
+- `bandKey / envBucket / fallbackReason / costEstimate` 当前只按 shadow-PoC placeholder semantics 解读
+- `shadow.executedMode` 当前按 live `executedMode` 镜像理解，只允许 `full | dirty`
 
 作用域定义：
 
@@ -216,7 +224,7 @@ adaptive 增量字段：
 - browser long-run 当前只作为 veto gate，不充当 live candidate 收益依据
 - 目标：判断 residual 是否稳定指向 controller，并评估 live candidate 是否值得进入下一刀
 - 当前 gate 约束：
-  - 只有 future refresh 把当前 `browser_noise` 重判为 `controller_related`，才允许从 shadow-only 进入 live-candidate 讨论
+  - 只有 future refresh 把当前 `inconclusive_after_clean_scout` 重判为 `controller_related`，才允许从 shadow-only 进入 live-candidate 讨论
 
 ### PR / CI Last
 
@@ -231,12 +239,17 @@ adaptive 增量字段：
   - `telemetry-only / shadow-mode`
 - current status:
   - package is defined
-  - code entry remains blocked by current `browser_noise` decision
-- minimum write scope after gate clears:
+  - isolated shadow-only candidate already exists
+  - current next gate is cheap local verification, not code entry unblock
+- minimum write scope:
   1. `packages/logix-core/src/internal/state-trait/converge-in-transaction.impl.ts`
   2. `packages/logix-core/src/internal/state-trait/model.ts`
   3. only if shadow fields enter the unified contract:
      - `specs/013-auto-converge-planner/contracts/schemas/trait-converge-data.schema.json`
+- current proven boundary:
+  - optional `TraitConvergeDecisionSummary.shadow`
+  - live decision branch unchanged
+  - live `executedMode` unchanged
 - explicit exclusions:
   - `ModuleRuntime.impl.ts`
   - `ModuleRuntime.transaction.ts`
