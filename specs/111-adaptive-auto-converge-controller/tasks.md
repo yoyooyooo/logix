@@ -62,5 +62,5 @@
 - [x] T503 完成 `main` static heuristic drift inventory，至少覆盖 `getNearFullRootRatioThreshold`、`AUTO_FLOOR_RATIO`、`MAX_CACHEABLE_ROOT_RATIO`、`NO_CACHE_NEAR_FULL_STEP_THRESHOLD`、`NEAR_FULL_PLAN_RATIO_THRESHOLD`
 - [x] T504 基于 `E-1B + drift inventory` 形成 entry decision，当前结论更新为 `inconclusive_after_clean_scout`，对应状态为 `shadow_code_poc_ready / live_candidate=blocked`
 - [x] T505 冻结 `telemetry-only / shadow-mode` 最小 PoC 包，当前允许在 `inconclusive_after_clean_scout` 下推进 additive shadow-only candidate；write scope 只允许 `converge-in-transaction.impl.ts`、`model.ts` 与必要的 `013` 契约字段
-- [ ] T506 在 isolated shadow-only candidate 上先跑 `bench:traitConverge:node` 与 focused same-node quick，只验证 `executedMode` 不变、shadow telemetry 可解释
+- [x] T506 在 isolated shadow-only candidate 上先跑 `bench:traitConverge:node` 与 focused same-node quick，只验证 `executedMode` 不变、shadow telemetry 可解释
 - [ ] T507 cheap local 稳定后再进入 heavier local；browser long-run 继续作为 veto gate，live candidate 讨论后移到 future residual refresh
