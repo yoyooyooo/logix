@@ -24,10 +24,12 @@
 - [x] browser long-run only used as veto gate
 - [x] heavier-local shadow package collected for future live decision
 - [x] shadow telemetry remains additive and zero-impact on live decision
+- [x] before/after paired compare completed when node representative points failed
 
 ## Live Candidate Gate
 
 - [ ] all shadow-only, cheap-local and heavier-local gates passed
+- [ ] no candidate-specific regression on representative node points
 - [ ] residual still points controller rather than browser long-run capture/order noise
 - [ ] PR/CI purpose explicitly declared
 - [ ] replay to `v4-perf` still blocked until `110` marks candidate `accepted_with_evidence`
