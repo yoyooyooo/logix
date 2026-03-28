@@ -63,6 +63,7 @@
   - focused node validate 已通过
   - comparable browser subset soak 已恢复 `comparable=true / regressions=0 / budgetViolations=0`
   - 当前状态为 `local_closeout_ready`
+  - current motherline replay attempt on `v4-perf` is blocked by focused node reopen at `1600 @ 0.8`
 
 ### 当前不该再做的事情
 
@@ -288,7 +289,7 @@
 
 ## Current Next Actions _(mandatory)_
 
-- 先保持 `TX-C1` 作为 `local_closeout_ready` 的最小 closeout 候选，只在显式 workflow 决策下进入 PR / CI。
+- 先保持 `TX-C1` 作为 clean candidate 线上的 `local_closeout_ready` 最小 closeout 候选；当前 motherline replay attempt 已 blocked，只在显式 workflow 决策下考虑是否回到 clean candidate 线进入 PR / CI。
 - 保持 `E-1B` 作为已完成 docs-only scout，并使用 `inconclusive_after_clean_scout` 口径，不再回退到 `blocked_by_browser_noise`。
 - 当前 `111` 已完成 shadow cheap-local 与 heavier local；旧 shadow candidate 的 candidate-specific regression 已由 cutdown v2 在 representative points 上清掉。当前 cutdown v2 进入 `shadow_local_recovery_candidate` 状态，live candidate 继续 blocked。
 - 当前 `111` 的下一步改为：
