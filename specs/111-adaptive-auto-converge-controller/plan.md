@@ -23,7 +23,7 @@
   - 已存在 isolated shadow-only code candidate，且边界只覆盖 additive telemetry wiring
 - immediate next package:
   1. 保持 `111` 自身的 `data-model / contracts / checklist` 与 shadow-only candidate 对齐
-  2. 停留在 shadow-only evidence line
+  2. 冻结当前 shadow-only candidate，并缩小 write scope
   3. 等 future residual refresh 再重判 live candidate entry
 
 ## Static Heuristic Drift Inventory
@@ -234,6 +234,7 @@ adaptive 增量字段：
   2. `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-heavier-local-high-dirty-rerun-reading.md`
   3. `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-heavier-local-browser-veto-reading.md`
   4. `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-heavier-local-summary-reading.md`
+  5. `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-before-after-node-paired-reading.md`
 
 ### PR / CI Last
 

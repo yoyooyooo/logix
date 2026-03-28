@@ -64,3 +64,5 @@
 - [x] T505 冻结 `telemetry-only / shadow-mode` 最小 PoC 包，当前允许在 `inconclusive_after_clean_scout` 下推进 additive shadow-only candidate；write scope 只允许 `converge-in-transaction.impl.ts`、`model.ts` 与必要的 `013` 契约字段
 - [x] T506 在 isolated shadow-only candidate 上先跑 `bench:traitConverge:node` 与 focused same-node quick，只验证 `executedMode` 不变、shadow telemetry 可解释
 - [x] T507 cheap local 稳定后再进入 heavier local；browser long-run 继续作为 veto gate，live candidate 讨论后移到 future residual refresh
+- [x] T508 基于 baseline before/after paired compare，确认 current node heavier-local fail 是否为 candidate-specific regression
+- [ ] T509 将当前 shadow package 缩到更小 write scope，并复跑 same-node soak / high-dirty representative points
