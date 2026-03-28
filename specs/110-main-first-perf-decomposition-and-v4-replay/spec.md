@@ -54,6 +54,8 @@
   - `E-1 browser long-run clean+comparable scout` 已完成，当前 browser pocket 收敛到 `pocket_weakened_no_impl_line`
   - `ModuleRuntime.impl` live-runtimeStore probe 已完成，当前结论为 `no_material_gain_under_current_hypothesis`
   - `E-1` browser code-fact recheck 已完成，当前对 `ModuleRuntime.transaction / RuntimeExternalStore / none_of_them` 的唯一结论为 `none_of_them`
+  - `main effect 3.21.0` small stable bump 已完成 cheap local A/B，当前结论为 `regress_in_cheap_local`，不升级到 focused/heavier
+  - `v4 effect 4.0.0-beta.42` small beta bump 已完成 cheap local A/B + `probe_next_blocker`，当前结论为 `flat_no_material_gain`
   - `111` 继续保持 `shadow_local_recovery_candidate / live_candidate=blocked`
 
 ### 当前 v4 最小 closeout 候选
@@ -250,13 +252,25 @@
 | `replay9-mixed-worktree` | `main_control` | `provisional` | `heavier_local` | `blocked` | `not_full_golden` | `unknown` | mixed worktree 只保留为 decomposition source，不再作为正式 accepted 候选 |
 | `replay9-cutA-runtimeStore-postcommit-gate` | `main_control` | `accepted_with_evidence` | `heavier_local` | `replay_ready` | `not_full_golden` | `suite_progression_or_browser_long_run` | 当前唯一 primary candidate；single-pocket 与 broader high-dirty 复核都已回门 |
 | `replay9-cutB-dirty-snapshot-bookkeeping` | `main_control` | `provisional` | `focused_local` | `blocked` | `not_applicable` | `unknown` | secondary candidate；single-pocket 过门，但暂不作为当前默认下一刀 |
+| `v3-small-stable-upgrade-effect3210` | `main_control` | `discarded` | `cheap_local` | `not_applicable` | `not_applicable` | `version_drift_control` | `effect 3.21.0` cohort cheap local A/B 呈回归倾向，不继续扩到 focused/heavier |
 | `tx-c1-state-txn-closeout` | `v4_closeout` | `accepted_with_evidence` | `heavier_local` | `not_applicable` | `comparable_subset_green` | `not_controller_signal` | isolated `StateTransaction.ts` closeout 已达到 `local_closeout_ready`，但当前只视为最小 closeout 候选，不外推出整条 `v4` 已收口 |
+| `v4-small-beta-upgrade-effect-beta42` | `v4_residual_identification` | `discarded` | `cheap_local` | `not_applicable` | `not_applicable` | `version_drift_control` | `beta.28 -> beta.42` cheap local A/B 与 blocker probe 都未形成增益，不改变 residual route |
 
 ## Residual Pool Latest _(mandatory)_
 
-- 当前 leading residual：`E-1B browser long-run capture-order sensitivity`。
-- 当前最强假设：browser sensitivity 仍存在，但 clean scout 后已不足以单独解释整包 residual；controller attribution 仍待后续 shadow gate 继续判别。
+- 当前 leading residual：`E-1 effect-v4 full-longrun same-node residual route`。
+- 当前最强假设：browser sensitivity 仍存在，但 clean scout 后已不足以单独解释整包 residual；`main effect 3.21.0` small stable bump 已在 cheap local 判回归，`v4 effect 4.0.0-beta.42` small beta bump 已在 cheap local 判 flat，因此当前不把版本 bump 当新的默认解释线。
 - 当前证据面：以 `Current Best Full Evidence` 中的 fresh baseline diff 与 harness probe reading 为准。
+- 当前 version-side checks：
+  - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.effect-3-21-0-scout/specs/014-browser-perf-boundaries/perf/2026-03-28-main-effect3210-reading.md`
+  - `/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.effect-beta-42-scout/specs/103-effect-v4-forward-cutover/perf/2026-03-28-v4-effect-beta42-reading.md`
+- 当前 external-source checks：
+  - `/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.e1-effect-source-scout/specs/103-effect-v4-forward-cutover/perf/2026-03-28-e1-effect-source-scout-reading.md`
+- 当前 shell-bench checks：
+  - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.service-shell-bench/specs/014-browser-perf-boundaries/perf/2026-03-28-main-service-shell-bench-reading.md`
+  - `/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.service-shell-bench/specs/103-effect-v4-forward-cutover/perf/2026-03-28-v4-service-shell-bench-reading.md`
+- 当前 minimal-poc checks：
+  - `/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.e1-service-provide-poc/specs/103-effect-v4-forward-cutover/perf/2026-03-28-e1-service-provide-poc-reading.md`
 - 当前最新 targeted 补证：
   - `steps=800 @ 0.7/0.75/0.8` 全过门；
   - `steps=1600 @ 0.7/0.75/0.8` 全过门；
@@ -293,7 +307,13 @@
 ## Current Next Actions _(mandatory)_
 
 - 先保持 `TX-C1` 作为 clean candidate 线上的 `local_closeout_ready` 最小 closeout 候选；当前 motherline replay attempt 已 blocked，只在显式 workflow 决策下考虑是否回到 clean candidate 线进入 PR / CI。
+- `main effect 3.21.0` small stable bump 已在 cheap local A/B 判 `regress_in_cheap_local`，当前不继续扩到 focused/heavier。
+- `v4 effect 4.0.0-beta.42` small beta bump 已在 cheap local A/B + `probe_next_blocker` 判 `flat_no_material_gain`，当前不继续扩到 focused/heavier。
 - 保持 `E-1B` 作为已完成 docs-only scout，并使用 `inconclusive_after_clean_scout` 口径，不再回退到 `blocked_by_browser_noise`。
+- `E-1 external source scout` 已把单一最优 external anchor 收敛到 `service/provide shell` 家族，下一步只开 targeted local bench wrapper，不直接开新的 runtime implementation line。
+- `E-1 service shell wrapper` 已在 v3/v4 cheap local wrapper 上复现 `1.8x ~ 2.2x` 差额，当前允许只开 `ModuleRuntime.operation.ts` 的最小 PoC 线。
+- `ModuleRuntime.operation.ts` 最小 PoC 已判 `no_go_under_current_boundary`：targeted microbench 正向，但 route-level node quick 负向、browser quick 为平。
+- 当前最稳妥的下一主动作回到 `TX-C1`：若 workflow 允许，优先消费 `local_closeout_ready` 的 PR / CI decision，而不是继续开新的 `E-1` runtime implementation line。
 - 当前 `111` 已完成 shadow cheap-local 与 heavier local；旧 shadow candidate 的 candidate-specific regression 已由 cutdown v2 在 representative points 上清掉。当前 cutdown v2 进入 `shadow_local_recovery_candidate` 状态，live candidate 继续 blocked。
 - 当前 `111` 的下一步改为：
   - 以 cutdown v2 作为当前 `shadow_local_recovery_candidate`
@@ -301,7 +321,10 @@
   - 只有未来出现新的 `controller_related` 证据时，才重开 live-candidate 讨论
 - 当前 `E-1` 的下一步改为：
   - 继续 `docs/evidence-only`
-  - read scope 上移到 `AppRuntime / RuntimeProvider / InternalContracts` 的 browser/runtime assembly boundary
+  - external source scout 已完成
+  - `service/provide shell` 的 targeted local bench wrapper 已完成
+  - `ModuleRuntime.operation.ts` 的最小 PoC 已判 `no_go_under_current_boundary`
+  - 不重复打这条 exact cut
 - `111 shadow-only package hardening` 当前只证明 additive telemetry wiring 与 unified contract 挂接成立，不覆盖 live controller 有效性。
 - `v4-perf` replay、PR、CI 一律后置到本地证据稳定之后。
 
