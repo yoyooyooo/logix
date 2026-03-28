@@ -2,20 +2,20 @@
 
 ## Shadow-Only Gate
 
-- [ ] `110` ledger and residual latest updated
-- [ ] `E-1B` docs-only scout completed and consumed
-- [ ] entry decision is at least `inconclusive_after_clean_scout`
-- [ ] `data-model.md` and `contracts/*` exist
-- [ ] shadow summary fields have single-source contract
-- [ ] write scope stays inside converge controller files
+- [x] `110` ledger and residual latest updated
+- [x] `E-1B` docs-only scout completed and consumed
+- [x] entry decision is at least `inconclusive_after_clean_scout`
+- [x] `data-model.md` and `contracts/*` exist
+- [x] shadow summary fields have single-source contract
+- [x] write scope stays inside converge controller files
 
 ## Cheap Local Gate
 
-- [ ] `bench:traitConverge:node` run on targeted matrix
-- [ ] focused same-node `converge-steps` quick run completed
-- [ ] `executedMode` remains unchanged
-- [ ] shadow telemetry exports `bandKey / costEstimate / fallbackReason`
-- [ ] no browser/runtime sidecar experiment mixed in
+- [x] `bench:traitConverge:node` run on targeted matrix
+- [x] focused same-node `converge-steps` quick run completed
+- [x] `executedMode` remains unchanged
+- [x] shadow telemetry exports `bandKey / costEstimate / fallbackReason`
+- [x] no browser/runtime sidecar experiment mixed in
 
 ## Heavier Local Gate
 
