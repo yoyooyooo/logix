@@ -67,4 +67,4 @@
 - [x] T508 基于 baseline before/after paired compare，确认 current node heavier-local fail 是否为 candidate-specific regression
 - [x] T509 将当前 shadow package 缩到更小 write scope，并复跑 same-node soak / high-dirty representative points
 - [x] T510 基于 cutdown v2 重新做 residual refresh / promotion gate 复核，只在归因仍指向 `controller_related` 时才重开 live-candidate 讨论
-- [ ] T511 在 `/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf` 上执行 residual refresh package：node high-dirty quick、browser quick、browser soak veto 各 1 轮，并产出 dated reading；只有 route classification 更新为 `controller_related` 时，才重开 live-candidate 讨论
+- [x] T511 在 `/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf` 上执行 residual refresh package：node high-dirty quick、browser quick、browser soak veto 各 1 轮，并产出 dated reading；结果维持 `inconclusive_after_clean_scout`，不重开 live-candidate 讨论
