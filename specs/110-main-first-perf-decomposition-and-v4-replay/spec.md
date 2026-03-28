@@ -52,6 +52,7 @@
   - `Cut A` 在 `v4` 侧只形成 `partial positive`
   - `E-1B browser long-run capture-order sensitivity` clean docs-only scout 已完成，当前 route classification 为 `inconclusive_after_clean_scout`
   - `E-1 browser long-run clean+comparable scout` 已完成，当前 browser pocket 收敛到 `pocket_weakened_no_impl_line`
+  - `ModuleRuntime.impl` live-runtimeStore probe 已完成，当前结论为 `no_material_gain_under_current_hypothesis`
   - `111` 继续保持 `shadow_local_recovery_candidate / live_candidate=blocked`
 
 ### 当前 v4 最小 closeout 候选
