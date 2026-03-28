@@ -3,7 +3,7 @@
 ## Readiness
 
 - current mode: `planning_active`
-- implementation mode: `shadow_only_not_live_candidate`
+- implementation mode: `shadow_code_poc_ready`
 
 ## Entities
 
@@ -51,6 +51,8 @@
 
 - `requestedMode`
 - `executedMode`
+  - current shadow-only candidate mirrors live `executedMode`
+  - allowed values in the current proven boundary: `full | dirty`
 - `bandKey`
 - `fullCostEstimate`
 - `dirtyCostEstimate`

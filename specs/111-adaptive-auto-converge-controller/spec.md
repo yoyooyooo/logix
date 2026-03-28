@@ -54,39 +54,50 @@
 
 因此 `111` 的目标是扩展现有 controller 策略与 evidence，不重新发明第二套 diagnostics contract。
 
-## PoC Entry Gate _(mandatory)_
+## Shadow Code PoC Gate _(mandatory)_
 
-`111` 进入 shadow / PoC 前，至少满足：
+`111` 进入 shadow-only code PoC 前，至少满足：
 
 1. `110` 的 decision ledger 与 residual latest 已更新；
-2. 当前 remaining residual 在 heavier local rerun 后，仍稳定指向 controller 相关类别；
+2. 当前 entry decision 至少达到 `inconclusive_after_clean_scout`；
 3. cheap local 的 static heuristic 漂移盘点已经完成；
-4. 第一刀必须是 telemetry-only / shadow，不得直接改 live decision。
+4. 第一刀必须是 telemetry-only / shadow，不得直接改 live decision，且 live `executedMode` 保持原样。
+
+## Live Candidate Gate _(mandatory)_
+
+`111` 若要从 shadow-only 前进到 live candidate，至少满足：
+
+1. shadow-only cheap local gate 已完成；
+2. shadow-only heavier local gate 已完成；
+3. future residual refresh 仍稳定指向 `controller_related`；
+4. shadow telemetry 继续保持 additive，不引入新的 live decision 语义。
 
 ## Current Readiness _(mandatory)_
 
 - current readiness: `planning_active`
-- implementation readiness: `shadow_only_not_live_candidate`
+- implementation readiness: `shadow_code_poc_ready`
 - current blockers:
-  - `E-1B browser long-run capture-order sensitivity scout` 已完成，但 residual 仍未被稳定压到 controller
-  - 当前 entry decision 已收敛为 `browser_noise`
+  - `E-1B clean scout` 之后，residual 仍未被稳定压到 `controller_related`
+  - 当前 live candidate 仍缺 cheap local / heavier local shadow 证据链
 - immediate allowed actions:
-  - 保持 shadow-only package 与 contracts ready
-  - 等待 future residual refresh 再重判 entry decision
+  - 继续 isolated shadow-only code PoC
+  - 运行 cheap local gate，只验证 `executedMode` 不变、shadow telemetry 可解释
 - immediate forbidden actions:
   - 直接进入 live candidate
+  - 直接把 shadow proxy 字段误读成 final controller cost model
   - 把 `TX-C1 local_closeout_ready` 误读成 `111` 已解锁
 
 ## Current Entry Decision _(mandatory)_
 
-- current decision: `browser_noise`
+- current decision: `inconclusive_after_clean_scout`
 - evidence source:
-  - `specs/103-effect-v4-forward-cutover/perf/2026-03-28-e1b-browser-longrun-capture-order-scout-reading.md`
+  - `/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf/specs/103-effect-v4-forward-cutover/perf/2026-03-28-e1b-browser-longrun-capture-order-scout-reading.md`
+  - `/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf/specs/103-effect-v4-forward-cutover/perf/2026-03-28-e1b-clean-scout-reading.md`
 - meaning:
-  - 当前 browser long-run 的 capture/order 敏感性仍足以解释 residual
-  - 当前不允许把 residual 归因推进到 controller live candidate
+  - 当前 browser sensitivity 仍存在，但 clean scout 后已不足以单独解释整包 residual
+  - 当前允许进入 shadow-only code PoC，但仍不允许把 residual 归因推进到 controller live candidate
 - re-entry trigger:
-  - future residual refresh after clean scout still points controller-related
+  - future residual refresh after shadow cheap/heavier local still points controller-related
 
 ## Replay & Docs Sync Gate _(mandatory)_
 
@@ -169,8 +180,8 @@
 - **FR-008**: controller MUST 明确与 plan cache / generation evidence / diagnostics sampling 的关系。
 - **FR-009**: rollout MUST 先在 `main` 控制线规划 / PoC，再决定是否 replay 到 `v4-perf`。
 - **FR-010**: 当前静态 heuristic MUST 被视为 fallback，而不是长期唯一真相源。
-- **FR-011**: controller MUST 在现有 `TraitConvergeDecisionSummary` 基础上做增量扩展，新增 adaptive 字段时至少明确 `bandKey`、`fullCostEstimate`、`dirtyCostEstimate`、`fallbackReason`、`controllerStateVersion`，并禁止并行维护第二套 diagnostics contract。
-- **FR-012**: rollout 的第一刀 MUST 是 telemetry-only / shadow-mode，只有 shadow 证据稳定后才允许进入 live decision candidate。
+- **FR-011**: controller MUST 在现有 `TraitConvergeDecisionSummary` 基础上做增量扩展，新增 adaptive 字段时至少明确 `bandKey`、`fullCostEstimate`、`dirtyCostEstimate`、`fallbackReason`、`controllerStateVersion`、`shadowDecision`，并禁止并行维护第二套 diagnostics contract。
+- **FR-012**: rollout 的第一刀 MUST 是 telemetry-only / shadow-mode，且 live `executedMode` 保持原样；只有 shadow 证据稳定后才允许进入 live decision candidate。
 - **FR-013**: 验证梯度 MUST 明确区分 `cheap local -> heavier local -> PR/CI last`，且每一层都要写清进入门与输出工件。
 - **FR-014**: controller MUST 明确定义 `envBucket`、`bandKey`、`moduleId` 与 per-band state 的作用域和寿命，避免跨 runtime instance / generation 混用统计。
 - **FR-015**: exploration MUST 记录 `ExplorationRecord`，至少包含 `bandKey`、`candidateMode`、`cooldownState`、`rollbackReason`，并保证探索样本不会污染 accepted evidence purity。

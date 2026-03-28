@@ -14,7 +14,7 @@
   ],
   "properties": {
     "requestedMode": { "type": "string", "enum": ["auto", "full", "dirty"] },
-    "executedMode": { "type": "string", "enum": ["auto", "full", "dirty"] },
+    "executedMode": { "type": "string", "enum": ["full", "dirty"] },
     "bandKey": { "type": "string" },
     "fullCostEstimate": { "type": "number", "minimum": 0 },
     "dirtyCostEstimate": { "type": "number", "minimum": 0 },

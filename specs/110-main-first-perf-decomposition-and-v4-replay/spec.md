@@ -50,8 +50,8 @@
   - `Cut A` 的 heavier-local 复核已把 `steps=1600,2000 × dirtyRootsRatio=0.7/0.75/0.8` 全部带回门内
   - 当前 remaining residual 不再由 mixed `replay9` 承担主候选解释
   - `Cut A` 在 `v4` 侧只形成 `partial positive`
-  - `E-1B browser long-run capture-order sensitivity` clean docs-only scout 已完成
-  - 当前下一步已切到 `111` static heuristic drift inventory 与 shadow-only package hardening
+  - `E-1B browser long-run capture-order sensitivity` clean docs-only scout 已完成，当前 route classification 为 `inconclusive_after_clean_scout`
+  - `111` 已具备 isolated shadow-only code PoC 候选，当前下一步切到 shadow cheap-local gate，`live_candidate` 继续 blocked
 
 ### 当前 v4 最小 closeout 候选
 
@@ -251,7 +251,7 @@
 ## Residual Pool Latest _(mandatory)_
 
 - 当前 leading residual：`E-1B browser long-run capture-order sensitivity`。
-- 当前最强假设：browser long-run 的 `capture / no-capture / order` 形状漂移优先于 controller 本身的 live correctness 问题。
+- 当前最强假设：browser sensitivity 仍存在，但 clean scout 后已不足以单独解释整包 residual；controller attribution 仍待后续 shadow gate 继续判别。
 - 当前证据面：以 `Current Best Full Evidence` 中的 fresh baseline diff 与 harness probe reading 为准。
 - 当前最新 targeted 补证：
   - `steps=800 @ 0.7/0.75/0.8` 全过门；
@@ -270,6 +270,7 @@
   - `/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.converge-tax-debug/specs/103-effect-v4-forward-cutover/perf/2026-03-28-v4-cutA-replay-deprioritized-routing-note.md`
   - `/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.converge-tax-debug/specs/103-effect-v4-forward-cutover/perf/2026-03-28-v4-cutA-highdirty-full-longrun-reading.md`
   - `/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.converge-tax-debug/specs/103-effect-v4-forward-cutover/perf/2026-03-28-v4-cutA-highdirty-neighbor-reading.md`
+  - `/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf/specs/103-effect-v4-forward-cutover/perf/2026-03-28-e1b-clean-scout-reading.md`
 - 当前待证任务：
   - 围绕 `steps=2000 @ dirtyRootsRatio=0.7` 的单刀 A/B 已完成；
   - Cut A 的更宽 heavier-local 复核已完成并全点回门；
@@ -282,14 +283,15 @@
   - 但邻近点位 `1600@0.75 / 1600@0.8 / 2000@0.8` 没有同步改善；
   - 当前只能把 `Cut A` 归为 `v4 partial positive`，还不能升成稳定 replay-ready；
   - `TX-C1` 已经不再是当前 residual 主解释，它只提供最小 closeout 候选；
-  - `E-1B` 已完成，但当前结论仍是 `browser_noise`；
-  - 当前不允许把 `111` 直接推进到 live candidate。
+  - `E-1B` clean scout 已完成，当前结论升级为 `inconclusive_after_clean_scout`；
+  - 当前允许 `111` 继续 shadow-only code PoC，但不允许推进到 live candidate。
 
 ## Current Next Actions _(mandatory)_
 
 - 先保持 `TX-C1` 作为 `local_closeout_ready` 的最小 closeout 候选，只在显式 workflow 决策下进入 PR / CI。
-- 保持 `E-1B` 作为已完成 docs-only scout，不再把它误读成实现前证据。
-- 当前 `111` 只允许继续 shadow-only package hardening 与 static heuristic drift inventory，不允许进入 live candidate。
+- 保持 `E-1B` 作为已完成 docs-only scout，并使用 `inconclusive_after_clean_scout` 口径，不再回退到 `blocked_by_browser_noise`。
+- 当前 `111` 允许继续 isolated shadow-only code PoC 与 cheap local gate；live candidate 继续 blocked。
+- `111 shadow-only package hardening` 当前只证明 additive telemetry wiring 与 unified contract 挂接成立，不覆盖 live controller 有效性。
 - `v4-perf` replay、PR、CI 一律后置到本地证据稳定之后。
 
 ## 110 -> 111 Interface _(mandatory)_
@@ -297,8 +299,13 @@
 - `111` 只能在 `main` 控制线语义下推进，且默认先做 telemetry-only / shadow 方案。
 - `111` 启动前必须同时满足：
   1. 本 spec 的 decision ledger 与 residual latest 已更新；
-  2. 当前 best candidate 已拿到 `accepted_with_evidence`，并且 residual 仍指向 controller 相关问题；
-  3. cheap local 的 static heuristic 漂移证据已经在 `main` 线上盘点完成。
+  2. 当前 best candidate 已拿到 `accepted_with_evidence`；
+  3. 当前 entry decision 至少达到 `inconclusive_after_clean_scout`；
+  4. cheap local 的 static heuristic 漂移证据已经在 `main` 线上盘点完成。
+- `111` 若要进入 live candidate，还必须同时满足：
+  1. shadow-only cheap local 与 heavier local gate 已完成；
+  2. future residual refresh 仍稳定指向 `controller_related`；
+  3. shadow telemetry 继续保持 additive 且不改变 live `executedMode`。
 - `111` 必须复用：
   - 当前 best candidate code anchor；
   - accepted / provisional / discarded ledger；
@@ -306,7 +313,7 @@
   - same-node evidence anchors。
 - `111` 当前最新状态：
   - `planning_active`
-  - `shadow_code_poc=blocked_by_browser_noise`
+  - `shadow_code_poc_ready`
   - `live_candidate=blocked`
 - `111` 禁止动作：
   - 把 `v4-perf` 当作收益鉴定主线；
