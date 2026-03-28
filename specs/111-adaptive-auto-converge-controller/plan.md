@@ -23,7 +23,7 @@
   - 已存在 isolated shadow-only code candidate，且边界只覆盖 additive telemetry wiring
 - immediate next package:
   1. 保持 `111` 自身的 `data-model / contracts / checklist` 与 shadow-only candidate 对齐
-  2. 将 cutdown v2 视为当前 shadow local recovery candidate
+  2. 将 cutdown v2 视为当前 `shadow_local_recovery_candidate`
   3. 等 future residual refresh 再重判 live candidate entry
 
 ## Static Heuristic Drift Inventory
@@ -241,6 +241,8 @@ adaptive 增量字段：
   - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry-cutdown`
   - `agent/main-111-shadow-telemetry-cutdown-20260328`
   - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry-cutdown/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-cutdown-v2-reading.md`
+- 当前 promotion gate reading：
+  - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry-cutdown/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-promotion-gate-reading.md`
 
 ### PR / CI Last
 
