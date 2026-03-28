@@ -78,10 +78,10 @@
 - implementation readiness: `shadow_code_poc_ready`
 - current blockers:
   - `E-1B clean scout` 之后，residual 仍未被稳定压到 `controller_related`
-  - before/after paired compare 已确认 node heavier-local representative-point fail 只出现在 current candidate after 上，当前 live candidate 不成立
+  - 当前 cutdown v2 已把 local regression 清掉，但 residual attribution 仍未稳定压到 `controller_related`
 - immediate allowed actions:
-  - 保持在 shadow-only evidence line
-  - 缩小当前 shadow package 的 write scope，再复跑 representative points
+  - 以 cutdown v2 作为当前 shadow local recovery candidate
+  - 若继续，只做 residual refresh / promotion gate 复核
 - immediate forbidden actions:
   - 直接进入 live candidate
   - 直接把 shadow proxy 字段误读成 final controller cost model
@@ -96,9 +96,11 @@
   - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-cheap-local-reading.md`
   - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-heavier-local-summary-reading.md`
   - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-before-after-node-paired-reading.md`
+  - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry-cutdown/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-cutdown-v2-reading.md`
 - meaning:
   - 当前 browser sensitivity 仍存在，但 clean scout 后已不足以单独解释整包 residual
-  - 当前 shadow cheap-local gate 已通过，但 before/after paired compare 已确认 node heavier-local fail 是 current candidate 自身引入的 regression，仍不允许把 residual 归因推进到 controller live candidate
+  - 当前旧 shadow candidate 的 local regression 已由 cutdown v2 在 representative points 上清掉
+  - 当前仍不允许把 residual 归因推进到 controller live candidate
 - re-entry trigger:
   - future residual refresh after shadow cheap/heavier local still points controller-related
 
