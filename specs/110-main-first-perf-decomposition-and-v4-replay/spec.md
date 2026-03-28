@@ -33,6 +33,14 @@
   - 先在 `main` 控制线验证每条性能 cut 的收益真伪；
   - 只把 `accepted_with_evidence` 的 cut replay 到 `v4-perf`；
   - replay 之后若 `v4-perf` 仍落后 `main`，剩余差额统一记入 residual 池。
+- 当前实时里程碑：
+  - `2026-03-28` `#142` 已把 isolated `TX-C1` closeout 同步进 `effect-v4`
+  - `2026-03-28` `#133` 已把 `effect-v4` 主线合入 `main`
+  - `2026-03-28` `#143` 已把 `110/111` 主控规格合入 `main`
+  - `2026-03-28` `#138` 已按 superseded 关闭
+- 当前主线语义：
+  - “合并进主线”这件事已经完成
+  - 剩余工作改为冻结基线解释、residual 识别和历史资产收口
 
 ### 当前最强控制线候选
 
@@ -69,6 +77,9 @@
   - comparable browser subset soak 已恢复 `comparable=true / regressions=0 / budgetViolations=0`
   - 当前状态为 `local_closeout_ready`
   - current motherline replay attempt on `v4-perf` is blocked by focused node reopen at `1600 @ 0.8`
+- 当前主线状态：
+  - isolated `StateTransaction.ts` closeout 已通过 `#142 -> #133` 进入当前 `main`
+  - clean candidate worktree 继续只保留为最小边界与证据锚点
 
 ### 当前不该再做的事情
 
@@ -132,17 +143,21 @@
 
 - **Path**: `/Users/yoyo/Documents/code/personal/logix`
 - **Branch**: `main`
-- **Role**: fresh main baseline / truthful compare base
-- **Writable**: 仅用于 fresh baseline collect、spec 文档、路线治理
-- **Do Not**: 不在此直接做 runtime 实验改动
+- **Role**: 当前已集成 `effect-v4 + TX-C1 + 110/111` 的主线基座
+- **Writable**: 主线代码、规格、后续正式收口
+- **Do Not**: 不把“当前 main”误当成 pre-v4 历史控制基线
+- **Frozen Compare Base**:
+  - 历史 pre-v4 控制基线固定为 `main@8c41a263`
+  - 后续若要继续判断“相对旧 main 还差多少”，默认回到这个冻结基线做比较
 
 ### 2. Route & Planning Base
 
 - **Path**: `/Users/yoyo/Documents/code/personal/logix.worktrees/main.perf-route-and-adaptive-specs`
 - **Branch**: `agent/main-perf-route-and-adaptive-specs-20260327`
-- **Role**: `110/111` 规格事实源
-- **Writable**: 路线 spec、controller 规划、后续主控文档
-- **Do Not**: 不在此直接做 perf hot-path 实现试刀
+- **Role**: 历史规格 staging 线
+- **State**: 当前口径已通过 `#143` 合入 `main`
+- **Writable**: 仅在未来需要新的规格同步 PR 时再继续使用
+- **Do Not**: 不把它继续当成唯一实时事实源
 
 ### 3. Control Experiment: replay7
 
@@ -192,9 +207,9 @@
 
 - **Path**: `/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf`
 - **Branch**: `v4-perf`
-- **Role**: `v4` 侧收益 replay 与 residual attribution 母线
-- **State**: 仍未证明整体不差于 `main`
-- **Decision**: 暂不恢复为最终集成母线
+- **Role**: 历史 replay / residual docs-evidence 母线
+- **State**: 选定资产已通过 `effect-v4 -> main` 进入当前主线
+- **Decision**: 继续保留为 docs/evidence 池，不再承担最终集成职责
 
 ### 9. v4 Residual Debug Line
 
@@ -253,7 +268,7 @@
 | `replay9-cutA-runtimeStore-postcommit-gate` | `main_control` | `accepted_with_evidence` | `heavier_local` | `replay_ready` | `not_full_golden` | `suite_progression_or_browser_long_run` | 当前唯一 primary candidate；single-pocket 与 broader high-dirty 复核都已回门 |
 | `replay9-cutB-dirty-snapshot-bookkeeping` | `main_control` | `provisional` | `focused_local` | `blocked` | `not_applicable` | `unknown` | secondary candidate；single-pocket 过门，但暂不作为当前默认下一刀 |
 | `v3-small-stable-upgrade-effect3210` | `main_control` | `discarded` | `cheap_local` | `not_applicable` | `not_applicable` | `version_drift_control` | `effect 3.21.0` cohort cheap local A/B 呈回归倾向，不继续扩到 focused/heavier |
-| `tx-c1-state-txn-closeout` | `v4_closeout` | `accepted_with_evidence` | `heavier_local` | `not_applicable` | `comparable_subset_green` | `not_controller_signal` | isolated `StateTransaction.ts` closeout 已达到 `local_closeout_ready`，但当前只视为最小 closeout 候选，不外推出整条 `v4` 已收口 |
+| `tx-c1-state-txn-closeout` | `v4_closeout` | `accepted_with_evidence` | `heavier_local` | `not_applicable` | `comparable_subset_green` | `not_controller_signal` | isolated `StateTransaction.ts` closeout 已通过 `#142 -> #133` 进入当前 `main`；clean candidate 继续只保留为证据锚点 |
 | `v4-small-beta-upgrade-effect-beta42` | `v4_residual_identification` | `discarded` | `cheap_local` | `not_applicable` | `not_applicable` | `version_drift_control` | `beta.28 -> beta.42` cheap local A/B 与 blocker probe 都未形成增益，不改变 residual route |
 
 ## Residual Pool Latest _(mandatory)_
@@ -271,6 +286,10 @@
   - `/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.service-shell-bench/specs/103-effect-v4-forward-cutover/perf/2026-03-28-v4-service-shell-bench-reading.md`
 - 当前 minimal-poc checks：
   - `/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf.e1-service-provide-poc/specs/103-effect-v4-forward-cutover/perf/2026-03-28-e1-service-provide-poc-reading.md`
+- 当前 merged-main checkpoints：
+  - `https://github.com/yoyooyooo/logix/pull/142`
+  - `https://github.com/yoyooyooo/logix/pull/133`
+  - `https://github.com/yoyooyooo/logix/pull/143`
 - 当前最新 targeted 补证：
   - `steps=800 @ 0.7/0.75/0.8` 全过门；
   - `steps=1600 @ 0.7/0.75/0.8` 全过门；
@@ -313,7 +332,8 @@
 - `E-1 external source scout` 已把单一最优 external anchor 收敛到 `service/provide shell` 家族，下一步只开 targeted local bench wrapper，不直接开新的 runtime implementation line。
 - `E-1 service shell wrapper` 已在 v3/v4 cheap local wrapper 上复现 `1.8x ~ 2.2x` 差额，当前允许只开 `ModuleRuntime.operation.ts` 的最小 PoC 线。
 - `ModuleRuntime.operation.ts` 最小 PoC 已判 `no_go_under_current_boundary`：targeted microbench 正向，但 route-level node quick 负向、browser quick 为平。
-- 当前最稳妥的下一主动作回到 `TX-C1`：若 workflow 允许，优先消费 `local_closeout_ready` 的 PR / CI decision，而不是继续开新的 `E-1` runtime implementation line。
+- `TX-C1` workflow 选择已完成，且结果已经进入当前 `main`。
+- 当前 `E-1` 已无打开状态的 runtime implementation line；剩余 only docs/evidence 识别。
 - 当前 `111` 已完成 shadow cheap-local 与 heavier local；旧 shadow candidate 的 candidate-specific regression 已由 cutdown v2 在 representative points 上清掉。当前 cutdown v2 进入 `shadow_local_recovery_candidate` 状态，live candidate 继续 blocked。
 - 当前 `111` 的下一步改为：
   - 以 cutdown v2 作为当前 `shadow_local_recovery_candidate`
@@ -325,6 +345,10 @@
   - `service/provide shell` 的 targeted local bench wrapper 已完成
   - `ModuleRuntime.operation.ts` 的最小 PoC 已判 `no_go_under_current_boundary`
   - 不重复打这条 exact cut
+- 当前总控下一步改为：
+  - 用冻结基线 `8c41a263` 解释剩余差额时，只接受新的 docs/evidence 事实
+  - 不自动再开新的 `E-1` 实现线
+  - `111` 继续保持 blocked，直到出现新的 `controller_related` 证据
 - `111 shadow-only package hardening` 当前只证明 additive telemetry wiring 与 unified contract 挂接成立，不覆盖 live controller 有效性。
 - `v4-perf` replay、PR、CI 一律后置到本地证据稳定之后。
 
