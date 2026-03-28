@@ -68,11 +68,11 @@
 - current readiness: `planning_active`
 - implementation readiness: `shadow_only_not_live_candidate`
 - current blockers:
-  - `E-1B browser long-run capture-order sensitivity scout` 仍未把 residual 稳定压到 controller
+  - `E-1B browser long-run capture-order sensitivity scout` 已完成，但 residual 仍未被稳定压到 controller
   - `main` 上的 static heuristic drift inventory 还没完成
 - immediate allowed actions:
   - 补齐 `data-model / contracts / checklist / actionable tasks`
-  - 继续 `E-1B` clean docs-only scout
+  - 完成 static heuristic drift inventory
 - immediate forbidden actions:
   - 直接进入 live candidate
   - 把 `TX-C1 local_closeout_ready` 误读成 `111` 已解锁
