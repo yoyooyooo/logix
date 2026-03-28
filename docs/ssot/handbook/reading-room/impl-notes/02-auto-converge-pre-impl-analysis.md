@@ -6,6 +6,8 @@
 **Target**: `specs/013-auto-converge-planner`
 **Current**: Phase 2/4 (009 Implementation)
 
+> 2026-03 当前 perf 主线路由说明：当前 route / replay / residual 的最新裁决以 `specs/110-main-first-perf-decomposition-and-v4-replay` 为准；adaptive 后续方向以 `specs/111-adaptive-auto-converge-controller` 为准。本文继续只承担 009 -> 013 的实现差距快照，不单独承担当前主线裁决。
+
 ## 0. 全链路概览 (Lifecycle Overview)
 
 | 阶段 (Stage)          | 用户侧 / 调用方 (User Code)                 | 009 现状 (Current Impl)                                          | 013 目标与差距 (Impl Gap)                                           |
