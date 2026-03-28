@@ -23,7 +23,7 @@
   - 已存在 isolated shadow-only code candidate，且边界只覆盖 additive telemetry wiring
 - immediate next package:
   1. 保持 `111` 自身的 `data-model / contracts / checklist` 与 shadow-only candidate 对齐
-  2. 继续 shadow-only cheap local gate
+  2. 进入 heavier local veto gate
   3. 等 future residual refresh 再重判 live candidate entry
 
 ## Static Heuristic Drift Inventory
@@ -215,6 +215,10 @@ adaptive 增量字段：
 - 当前 cheap local 前置包：
   1. `main` static heuristic drift inventory
   2. `executedMode unchanged` shadow verification
+- 当前 latest cheap local evidence：
+  1. `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-cheap-local-reading.md`
+  2. `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry/specs/111-adaptive-auto-converge-controller/perf/2026-03-28-shadow-telemetry.after.node.quick.json`
+  3. `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry/specs/111-adaptive-auto-converge-controller/perf/2026-03-28-shadow-telemetry.after.browser.quick.json`
 
 ### Heavier Local Later
 

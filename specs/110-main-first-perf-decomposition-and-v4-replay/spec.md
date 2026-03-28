@@ -51,7 +51,7 @@
   - 当前 remaining residual 不再由 mixed `replay9` 承担主候选解释
   - `Cut A` 在 `v4` 侧只形成 `partial positive`
   - `E-1B browser long-run capture-order sensitivity` clean docs-only scout 已完成，当前 route classification 为 `inconclusive_after_clean_scout`
-  - `111` 已具备 isolated shadow-only code PoC 候选，当前下一步切到 shadow cheap-local gate，`live_candidate` 继续 blocked
+  - `111` 已具备 isolated shadow-only code PoC 候选，shadow cheap-local gate 已通过，当前下一步切到 heavier local veto gate，`live_candidate` 继续 blocked
 
 ### 当前 v4 最小 closeout 候选
 
@@ -290,7 +290,7 @@
 
 - 先保持 `TX-C1` 作为 `local_closeout_ready` 的最小 closeout 候选，只在显式 workflow 决策下进入 PR / CI。
 - 保持 `E-1B` 作为已完成 docs-only scout，并使用 `inconclusive_after_clean_scout` 口径，不再回退到 `blocked_by_browser_noise`。
-- 当前 `111` 允许继续 isolated shadow-only code PoC 与 cheap local gate；live candidate 继续 blocked。
+- 当前 `111` 已完成 shadow cheap-local gate，下一步进入 heavier local veto gate；live candidate 继续 blocked。
 - `111 shadow-only package hardening` 当前只证明 additive telemetry wiring 与 unified contract 挂接成立，不覆盖 live controller 有效性。
 - `v4-perf` replay、PR、CI 一律后置到本地证据稳定之后。
 
@@ -314,6 +314,7 @@
 - `111` 当前最新状态：
   - `planning_active`
   - `shadow_code_poc_ready`
+  - `shadow_cheap_local_pass`
   - `live_candidate=blocked`
 - `111` 禁止动作：
   - 把 `v4-perf` 当作收益鉴定主线；
