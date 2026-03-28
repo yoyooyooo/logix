@@ -53,6 +53,7 @@
   - `E-1B browser long-run capture-order sensitivity` clean docs-only scout 已完成，当前 route classification 为 `inconclusive_after_clean_scout`
   - `E-1 browser long-run clean+comparable scout` 已完成，当前 browser pocket 收敛到 `pocket_weakened_no_impl_line`
   - `ModuleRuntime.impl` live-runtimeStore probe 已完成，当前结论为 `no_material_gain_under_current_hypothesis`
+  - `E-1` browser code-fact recheck 已完成，当前对 `ModuleRuntime.transaction / RuntimeExternalStore / none_of_them` 的唯一结论为 `none_of_them`
   - `111` 继续保持 `shadow_local_recovery_candidate / live_candidate=blocked`
 
 ### 当前 v4 最小 closeout 候选
@@ -298,6 +299,9 @@
   - 以 cutdown v2 作为当前 `shadow_local_recovery_candidate`
   - 当前 residual refresh 已执行，route classification 仍是 `inconclusive_after_clean_scout`
   - 只有未来出现新的 `controller_related` 证据时，才重开 live-candidate 讨论
+- 当前 `E-1` 的下一步改为：
+  - 继续 `docs/evidence-only`
+  - read scope 上移到 `AppRuntime / RuntimeProvider / InternalContracts` 的 browser/runtime assembly boundary
 - `111 shadow-only package hardening` 当前只证明 additive telemetry wiring 与 unified contract 挂接成立，不覆盖 live controller 有效性。
 - `v4-perf` replay、PR、CI 一律后置到本地证据稳定之后。
 
