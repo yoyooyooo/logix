@@ -244,6 +244,29 @@ adaptive 增量字段：
 - 当前 promotion gate reading：
   - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry-cutdown/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-promotion-gate-reading.md`
 
+### T511 Residual Refresh Package
+
+- execution base:
+  - `/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf`
+- route anchors:
+  - `docs/perf/07-optimization-backlog-and-routing.md`
+  - `docs/perf/2026-03-28-v4-cutA-deprioritized-and-e1-routing.md`
+  - `specs/103-effect-v4-forward-cutover/perf/2026-03-28-e1-effect-v4-full-longrun-route-reading.md`
+  - `specs/103-effect-v4-forward-cutover/perf/2026-03-28-e1b-clean-scout-reading.md`
+- minimum command bundle:
+  1. node residual quick:
+     - `pnpm perf bench:traitConverge:node -- --profile quick --matrix specs/111-adaptive-auto-converge-controller/perf/2026-03-28-shadow-telemetry.highdirty.rerun.same-node.quick.matrix.json --out specs/111-adaptive-auto-converge-controller/perf/<date>-residual-refresh.after.node.highdirty.quick.json`
+  2. browser residual quick:
+     - `VITE_LOGIX_PERF_STEPS_LEVELS=1600,2000 pnpm perf collect -- --profile quick --files test/browser/perf-boundaries/converge-steps.test.tsx --out specs/111-adaptive-auto-converge-controller/perf/<date>-residual-refresh.after.browser.quick.json`
+  3. browser residual soak veto:
+     - `VITE_LOGIX_PERF_STEPS_LEVELS=1600,2000 pnpm perf collect -- --profile soak --files test/browser/perf-boundaries/converge-steps.test.tsx --out specs/111-adaptive-auto-converge-controller/perf/<date>-residual-refresh.after.browser.soak.json`
+- required outputs:
+  - one dated residual refresh reading
+  - updated route classification: `controller_related | not_controller_signal | inconclusive_after_clean_scout`
+- reopen condition:
+  - only if refreshed route classification is `controller_related`
+  - and node/browser representative points stay inside gate on current shadow local recovery candidate
+
 ### PR / CI Last
 
 - 前提：cheap local 与 heavier local 都已经稳定

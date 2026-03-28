@@ -293,7 +293,7 @@
 - 当前 `111` 已完成 shadow cheap-local 与 heavier local；旧 shadow candidate 的 candidate-specific regression 已由 cutdown v2 在 representative points 上清掉。当前 cutdown v2 进入 `shadow_local_recovery_candidate` 状态，live candidate 继续 blocked。
 - 当前 `111` 的下一步改为：
   - 以 cutdown v2 作为当前 `shadow_local_recovery_candidate`
-  - 重做 residual refresh / promotion gate 复核
+  - 在 `/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf` 上执行 residual refresh package
   - 只有在归因仍指向 `controller_related` 时，才重开 live-candidate 讨论
 - `111 shadow-only package hardening` 当前只证明 additive telemetry wiring 与 unified contract 挂接成立，不覆盖 live controller 有效性。
 - `v4-perf` replay、PR、CI 一律后置到本地证据稳定之后。
