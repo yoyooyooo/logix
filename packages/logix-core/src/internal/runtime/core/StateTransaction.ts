@@ -1043,7 +1043,7 @@ const resolveAndRecordDirtyPathId = <S>(
   const afterSize = state.dirtyPathIds.size
   if (afterSize !== state.dirtyPathIdsKeySize) {
     state.dirtyPathIdSnapshot.push(id)
-    let h = state.dirtyPathIdsKeyHash >>> 0
+    let h = (state.dirtyPathIdsKeyHash ?? (2166136261 >>> 0)) >>> 0
     h ^= id >>> 0
     h = Math.imul(h, 16777619)
     state.dirtyPathIdsKeyHash = h >>> 0
