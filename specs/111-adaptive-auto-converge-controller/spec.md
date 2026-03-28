@@ -69,13 +69,24 @@
 - implementation readiness: `shadow_only_not_live_candidate`
 - current blockers:
   - `E-1B browser long-run capture-order sensitivity scout` 已完成，但 residual 仍未被稳定压到 controller
-  - `main` 上的 static heuristic drift inventory 还没完成
+  - 当前 entry decision 已收敛为 `browser_noise`
 - immediate allowed actions:
-  - 补齐 `data-model / contracts / checklist / actionable tasks`
-  - 完成 static heuristic drift inventory
+  - 保持 shadow-only package 与 contracts ready
+  - 等待 future residual refresh 再重判 entry decision
 - immediate forbidden actions:
   - 直接进入 live candidate
   - 把 `TX-C1 local_closeout_ready` 误读成 `111` 已解锁
+
+## Current Entry Decision _(mandatory)_
+
+- current decision: `browser_noise`
+- evidence source:
+  - `specs/103-effect-v4-forward-cutover/perf/2026-03-28-e1b-browser-longrun-capture-order-scout-reading.md`
+- meaning:
+  - 当前 browser long-run 的 capture/order 敏感性仍足以解释 residual
+  - 当前不允许把 residual 归因推进到 controller live candidate
+- re-entry trigger:
+  - future residual refresh after clean scout still points controller-related
 
 ## Replay & Docs Sync Gate _(mandatory)_
 
@@ -181,6 +192,7 @@
 - **ConvergeBandState**
 - **ExplorationRecord**
 - 详细字段定义见 `specs/111-adaptive-auto-converge-controller/data-model.md`
+- static heuristic inventory 见 `specs/111-adaptive-auto-converge-controller/heuristic-inventory.md`
 - 最小契约工件见：
   - `specs/111-adaptive-auto-converge-controller/contracts/adaptive-converge-band-state.schema.json`
   - `specs/111-adaptive-auto-converge-controller/contracts/adaptive-converge-shadow-summary.schema.json`

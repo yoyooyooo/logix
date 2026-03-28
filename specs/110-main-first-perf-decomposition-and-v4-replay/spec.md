@@ -50,7 +50,8 @@
   - `Cut A` 的 heavier-local 复核已把 `steps=1600,2000 × dirtyRootsRatio=0.7/0.75/0.8` 全部带回门内
   - 当前 remaining residual 不再由 mixed `replay9` 承担主候选解释
   - `Cut A` 在 `v4` 侧只形成 `partial positive`
-  - 当前下一步已切到 `E-1B browser long-run capture-order sensitivity` clean docs-only scout
+  - `E-1B browser long-run capture-order sensitivity` clean docs-only scout 已完成
+  - 当前下一步已切到 `111` static heuristic drift inventory 与 shadow-only package hardening
 
 ### 当前 v4 最小 closeout 候选
 
@@ -281,14 +282,14 @@
   - 但邻近点位 `1600@0.75 / 1600@0.8 / 2000@0.8` 没有同步改善；
   - 当前只能把 `Cut A` 归为 `v4 partial positive`，还不能升成稳定 replay-ready；
   - `TX-C1` 已经不再是当前 residual 主解释，它只提供最小 closeout 候选；
-  - `E-1B` 当前仍是 docs-only scout，尚未形成 controller-related residual 的稳定硬指向；
+  - `E-1B` 已完成，但当前结论仍是 `browser_noise`；
   - 当前不允许把 `111` 直接推进到 live candidate。
 
 ## Current Next Actions _(mandatory)_
 
 - 先保持 `TX-C1` 作为 `local_closeout_ready` 的最小 closeout 候选，只在显式 workflow 决策下进入 PR / CI。
-- 再把 `E-1B browser long-run capture-order sensitivity scout` 做成 clean docs-only scout，先把 residual 的 controller 归因真假压清。
-- 在 `E-1B` 未给出 controller-related residual 之前，`111` 只允许继续规划 hardening 与 shadow-only package。
+- 保持 `E-1B` 作为已完成 docs-only scout，不再把它误读成实现前证据。
+- 当前 `111` 只允许继续 shadow-only package hardening 与 static heuristic drift inventory，不允许进入 live candidate。
 - `v4-perf` replay、PR、CI 一律后置到本地证据稳定之后。
 
 ## 110 -> 111 Interface _(mandatory)_
@@ -305,7 +306,7 @@
   - same-node evidence anchors。
 - `111` 当前最新状态：
   - `planning_active`
-  - `shadow_code_poc=blocked_by_e1b`
+  - `shadow_code_poc=blocked_by_browser_noise`
   - `live_candidate=blocked`
 - `111` 禁止动作：
   - 把 `v4-perf` 当作收益鉴定主线；
