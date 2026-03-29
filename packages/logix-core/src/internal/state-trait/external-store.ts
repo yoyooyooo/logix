@@ -32,6 +32,8 @@ type ExternalStoreWritebackRequest = {
 }
 
 type ExternalStoreWritebackCoordinator = {
+  readonly stage: (request: ExternalStoreWritebackRequest) => Effect.Effect<void, never, any>
+  readonly flush: () => Effect.Effect<void, never, any>
   readonly enqueue: (request: ExternalStoreWritebackRequest) => Effect.Effect<void, never, any>
 }
 
@@ -122,11 +124,14 @@ const getOrCreateExternalStoreWritebackCoordinator = (args: {
       })
 
     const coordinator: ExternalStoreWritebackCoordinator = {
-      enqueue: (request) =>
+      stage: (request) =>
+        Effect.sync(() => {
+          if (closed) return
+          pendingWrites.set(request.fieldPath, request)
+        }),
+      flush: () =>
         Effect.gen(function* () {
           if (closed) return
-
-          pendingWrites.set(request.fieldPath, request)
 
           // Single-flusher: avoid an extra per-module fiber by letting the first caller drain the queue.
           if (inFlight) return
@@ -161,6 +166,11 @@ const getOrCreateExternalStoreWritebackCoordinator = (args: {
           } finally {
             inFlight = false
           }
+        }),
+      enqueue: (request) =>
+        Effect.gen(function* () {
+          yield* coordinator.stage(request)
+          yield* coordinator.flush()
         }),
     }
 
@@ -363,6 +373,9 @@ export const installExternalStoreSync = <S>(
       }
 
       const moduleInstanceKey = `${sourceRuntime.moduleId}::${sourceRuntime.instanceId}` as any
+      const coordinator = yield* getOrCreateExternalStoreWritebackCoordinator({ internals, bound, env })
+      const normalizedPatchPath = normalizeFieldPath(fieldPath) ?? []
+      const commitPriority: ExternalStoreWritebackCommitPriority = traitLane === 'nonUrgent' ? 'low' : 'normal'
 
       const writeValue = (nextValue: unknown): Effect.Effect<void, never, never> =>
         Effect.gen(function* () {
@@ -380,8 +393,7 @@ export const installExternalStoreSync = <S>(
               RowId.setAtPathMutating(draft as any, fieldPath, nextValue)
             })
 
-            const normalized = normalizeFieldPath(fieldPath) ?? []
-            internals.txn.recordStatePatch(normalized, 'trait-external-store', prevValue, nextValue, step.id)
+            internals.txn.recordStatePatch(normalizedPatchPath, 'trait-external-store', prevValue, nextValue, step.id)
             internals.txn.updateDraft(nextDraft)
           })
 
@@ -389,20 +401,29 @@ export const installExternalStoreSync = <S>(
             return yield* body
           }
 
-          const stateCommitPriority = traitLane === 'nonUrgent' ? 'low' : 'normal'
           return yield* internals.txn.runWithStateTransaction(
             {
               kind: 'trait-external-store',
               name: fieldPath,
               details: {
                 stateCommit: {
-                  priority: stateCommitPriority,
+                  priority: commitPriority,
                 },
               },
             },
             () => body.pipe(Effect.asVoid),
           )
         }).pipe(Effect.provideServices(env))
+
+      const stageWriteValue = (nextValue: unknown): Effect.Effect<void, never, never> =>
+        coordinator.stage({
+          fieldPath,
+          traitNodeId: step.id,
+          normalizedPatchPath,
+          nextValue,
+          isEqual,
+          commitPriority,
+        })
 
       const unregister = linkRuntimeOpt.value.registerModuleAsSourceLink({
         id: `${internals.instanceId}::externalStore:${step.id}`,
@@ -411,6 +432,9 @@ export const installExternalStoreSync = <S>(
         computeValue,
         equalsValue: isEqual,
         applyValue: writeValue,
+        writebackGroupKey: `${internals.moduleId}::${internals.instanceId}`,
+        stageValue: stageWriteValue,
+        flushStaged: coordinator.flush,
       })
 
       yield* Effect.addFinalizer(() =>
