@@ -21,6 +21,7 @@ describe('DeclarativeLinkRuntime same-target fanout fusion probe', () => {
     Effect.gen(function* () {
       const runScenario = (fanout: 1 | 8 | 32) =>
         Effect.gen(function* () {
+          type SourceAction = { readonly _tag: 'set'; readonly payload: number }
           const targetFields = makeFields(fanout, 'fromSource')
 
           const Source = Logix.Module.make(`SameTargetModuleAsSourceSource${fanout}`, {
@@ -75,8 +76,14 @@ describe('DeclarativeLinkRuntime same-target fanout fusion probe', () => {
           })
 
           try {
-            const sourceRt = runtime.runSync(Effect.service(Source.tag).pipe(Effect.orDie) as any) as any
-            const targetRt = runtime.runSync(Effect.service(Target.tag).pipe(Effect.orDie) as any) as any
+            const sourceRt = runtime.runSync(Effect.service(Source.tag).pipe(Effect.orDie)) as Logix.ModuleRuntime<
+              { value: number },
+              SourceAction
+            >
+            const targetRt = runtime.runSync(Effect.service(Target.tag).pipe(Effect.orDie)) as Logix.ModuleRuntime<
+              Record<string, number>,
+              never
+            >
 
             let commits = 0
             const fiber = runtime.runFork(
@@ -93,22 +100,22 @@ describe('DeclarativeLinkRuntime same-target fanout fusion probe', () => {
               yield* Effect.yieldNow
               commits = 0
 
-              yield* Effect.promise(() => runtime.runPromise(sourceRt.dispatch({ _tag: 'set', payload: 1 }) as any))
+              yield* Effect.promise(() => runtime.runPromise(sourceRt.dispatch({ _tag: 'set', payload: 1 })))
               yield* Effect.promise(() =>
                 runtime.runPromise(
                   Effect.gen(function* () {
                     const scheduler = yield* Effect.service(TickSchedulerTag).pipe(Effect.orDie)
                     yield* scheduler.flushNow
-                  }) as any,
+                  }),
                 ),
               )
               yield* flushAllHostScheduler(hostScheduler)
 
-              const state = yield* Effect.promise(() => runtime.runPromise(targetRt.getState as any))
+              const state = yield* Effect.promise(() => runtime.runPromise(targetRt.getState))
               expect(state).toEqual(makeInitialNumbers(targetFields, 1))
               return commits
             } finally {
-              yield* Effect.promise(() => runtime.runPromise(Fiber.interrupt(fiber).pipe(Effect.asVoid) as any))
+              yield* Effect.promise(() => runtime.runPromise(Fiber.interrupt(fiber).pipe(Effect.asVoid)))
             }
           } finally {
             yield* Effect.promise(() => runtime.dispose())
