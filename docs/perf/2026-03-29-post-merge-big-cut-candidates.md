@@ -35,6 +35,13 @@
     - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.nonreact-fanout-fusion-probe/docs/perf/2026-03-29-nonreact-fanout-fusion-probe.md`
     - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.nonreact-fanout-fusion-probe/docs/perf/2026-03-29-nonreact-fanout-fusion-focused-compare.md`
     - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.nonreact-fanout-fusion-probe/docs/perf/2026-03-29-nonreact-fanout-fusion-heavier-local.md`
+- `postmerge-declarative-dispatch-shell`
+  - current status: `heavier_local_positive_pending_pr`
+  - same-target declarative dispatch batching 已在 latest `main` 上拿到 cheap / focused / heavier local 正向，当前通过 `#148` 独立推进
+  - reading:
+    - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.declarative-dispatch-fusion-v2/docs/perf/2026-03-29-declarative-dispatch-fusion-probe.md`
+    - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.declarative-dispatch-fusion-v2/docs/perf/2026-03-29-declarative-dispatch-fusion-focused-compare.md`
+    - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.declarative-dispatch-fusion-v2/docs/perf/2026-03-29-declarative-dispatch-fusion-heavier-local.md`
 
 ## Ranked strategic candidates
 
@@ -99,11 +106,11 @@
 ### 2.5. `declarative_dispatch_shell`
 
 - current probe status:
-  - `cheap_local_red_pending`
+  - `heavier_local_positive_pending_pr`
 - why next:
     - `postmerge-nonreact-fanout-writeback-fusion` 已通过 `#146` 合入 `main`
     - 当前剩余 non-React fanout 成本更可能集中在 declarative `dispatch` 壳
-    - 当前只允许 cheap-local probe，不直接开实现线
+    - 当前已形成第二条并行代码线，等待 `#148` 收口
 
 ### 3. `commit_packet_notify_fusion`
 
