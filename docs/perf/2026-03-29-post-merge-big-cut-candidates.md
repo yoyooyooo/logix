@@ -28,6 +28,11 @@
   - tighter synthetic gate 已把 packet 本体压到微秒级；当前不值得升为新的大切口
   - reading:
     - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.commit-packet-notify-probe/docs/perf/2026-03-29-commit-packet-notify-probe.md`
+- `nonreact_fanout_writeback_fusion`
+  - current status: `cheap_local_positive_on_module_side`
+  - same-target Module-as-Source probe 已证明 target commits 严格按 `1 / 8 / 32` 线性增长，当前更像每个 target field 各开一笔 writeback txn
+  - reading:
+    - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.nonreact-fanout-fusion-probe/docs/perf/2026-03-29-nonreact-fanout-fusion-probe.md`
 
 ## Ranked strategic candidates
 
