@@ -27,7 +27,10 @@ export interface DeclarativeLinkRegistration {
   }>
   readonly dispatchNodes: ReadonlyArray<{
     readonly nodeId: DeclarativeLinkNodeId
+    readonly actionTag: string
+    readonly batchGroupKey?: string
     readonly dispatch: (payload: unknown) => Effect.Effect<void, never, never>
+    readonly dispatchBatch?: (actions: ReadonlyArray<{ readonly _tag: string; readonly payload: unknown }>) => Effect.Effect<void, never, never>
   }>
 }
 
@@ -48,7 +51,16 @@ type StoredModuleAsSourceLink = ModuleAsSourceLink & {
 
 type StoredDeclarativeLink = DeclarativeLinkRegistration & {
   readonly readNodeById: ReadonlyMap<string, { readonly nodeId: DeclarativeLinkNodeId; readonly moduleInstanceKey: ModuleInstanceKey; readonly readQuery: ReadQueryCompiled<any, any> }>
-  readonly dispatchNodeById: ReadonlyMap<string, { readonly nodeId: DeclarativeLinkNodeId; readonly dispatch: (payload: unknown) => Effect.Effect<void, never, never> }>
+  readonly dispatchNodeById: ReadonlyMap<
+    string,
+    {
+      readonly nodeId: DeclarativeLinkNodeId
+      readonly actionTag: string
+      readonly batchGroupKey?: string
+      readonly dispatch: (payload: unknown) => Effect.Effect<void, never, never>
+      readonly dispatchBatch?: (actions: ReadonlyArray<{ readonly _tag: string; readonly payload: unknown }>) => Effect.Effect<void, never, never>
+    }
+  >
   readonly dispatchTargetsByReadNode: ReadonlyMap<string, ReadonlyArray<DeclarativeLinkNodeId>>
   readonly readNodeState: Map<string, { hasValue: boolean; lastValue: unknown }>
 }
@@ -91,7 +103,13 @@ export const makeDeclarativeLinkRuntime = (): DeclarativeLinkRuntime => {
 
     const dispatchNodeById = new Map<
       string,
-      { readonly nodeId: DeclarativeLinkNodeId; readonly dispatch: (payload: unknown) => Effect.Effect<void, never, never> }
+      {
+        readonly nodeId: DeclarativeLinkNodeId
+        readonly actionTag: string
+        readonly batchGroupKey?: string
+        readonly dispatch: (payload: unknown) => Effect.Effect<void, never, never>
+        readonly dispatchBatch?: (actions: ReadonlyArray<{ readonly _tag: string; readonly payload: unknown }>) => Effect.Effect<void, never, never>
+      }
     >()
     for (const n of link.dispatchNodes) {
       dispatchNodeById.set(n.nodeId, n)
@@ -206,6 +224,13 @@ export const makeDeclarativeLinkRuntime = (): DeclarativeLinkRuntime => {
         if (!refs || refs.length === 0) continue
         const commit = args.acceptedModules.get(sourceKey)
         if (!commit) continue
+        const stagedDispatches = new Map<
+          string,
+          {
+            readonly dispatchBatch: (actions: ReadonlyArray<{ readonly _tag: string; readonly payload: unknown }>) => Effect.Effect<void, never, never>
+            actions: Array<{ readonly _tag: string; readonly payload: unknown }>
+          }
+        >()
 
         for (const ref of refs) {
           const link = declarativeById.get(ref.linkId)
@@ -233,8 +258,28 @@ export const makeDeclarativeLinkRuntime = (): DeclarativeLinkRuntime => {
             const node = link.dispatchNodeById.get(dispatchNodeId)
             if (!node) continue
             scheduled = true
+
+            if (node.batchGroupKey && node.dispatchBatch) {
+              const current =
+                stagedDispatches.get(node.batchGroupKey) ??
+                (() => {
+                  const created = {
+                    dispatchBatch: node.dispatchBatch!,
+                    actions: [] as Array<{ readonly _tag: string; readonly payload: unknown }>,
+                  }
+                  stagedDispatches.set(node.batchGroupKey!, created)
+                  return created
+                })()
+              current.actions.push({ _tag: node.actionTag, payload: value })
+              continue
+            }
+
             yield* node.dispatch(value)
           }
+        }
+
+        for (const batch of stagedDispatches.values()) {
+          yield* batch.dispatchBatch(batch.actions)
         }
       }
 
