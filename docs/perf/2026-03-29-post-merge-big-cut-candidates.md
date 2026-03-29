@@ -28,7 +28,7 @@
   - tighter synthetic gate 已把 packet 本体压到微秒级；当前不值得升为新的大切口
   - reading:
     - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.commit-packet-notify-probe/docs/perf/2026-03-29-commit-packet-notify-probe.md`
-- `nonreact_fanout_writeback_fusion`
+- `postmerge-nonreact-fanout-writeback-fusion`
   - current status: `merged_mainline_after_heavier_local_positive`
   - same-target Module-as-Source probe 已证明 target commits 严格按 `1 / 8 / 32` 线性增长；module-side writeback fusion PoC 已把 same-target focused 与 heavier local p95 都压到近常数，且已通过 `#146` 进入 `main`
   - reading:
@@ -101,7 +101,7 @@
 - current probe status:
   - `cheap_local_red_pending`
 - why next:
-  - `nonreact_fanout_writeback_fusion` 已通过 `#146` 合入 `main`
+    - `postmerge-nonreact-fanout-writeback-fusion` 已通过 `#146` 合入 `main`
   - 当前剩余 non-React fanout 成本更可能集中在 declarative `dispatch` 壳
   - 当前只允许 cheap-local probe，不直接开实现线
 
