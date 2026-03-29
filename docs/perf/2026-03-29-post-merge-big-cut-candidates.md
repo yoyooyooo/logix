@@ -8,9 +8,30 @@
   - after `effect-v4` and `TX-C1` are already in `main`, identify the next round of high-leverage cuts
   - prefer long-chain compression over single-point micro tuning
 
+## Current Probe Snapshot
+
+- `compiled_txn_boundary`
+  - current status: `no_go`
+  - cheap-local gate 已证明 boundary 内部上界小于外层 residual，不再继续升为 runtime 实施线
+  - reading:
+    - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.compiled-txn-boundary-probe/docs/perf/2026-03-29-compiled-txn-boundary-probe.md`
+- `selector_snapshot_mirror_plane`
+  - current status: `inconclusive_after_react_flow_probe`
+  - strengthened probe 已证明 React + Flow 平面没有出现消费面放大；当前只剩 Module-as-Source / process 缺口值得继续验证
+  - reading:
+    - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.selector-snapshot-mirror-probe/docs/perf/2026-03-29-selector-snapshot-mirror-probe.md`
+- `commit_packet_notify_fusion`
+  - current status: `no_go_under_zero_selector_packet_gate`
+  - tighter synthetic gate 已把 packet 本体压到微秒级；当前不值得升为新的大切口
+  - reading:
+    - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.commit-packet-notify-probe/docs/perf/2026-03-29-commit-packet-notify-probe.md`
+
 ## Ranked strategic candidates
 
 ### 1. `compiled_txn_boundary`
+
+- current probe status:
+  - `no_go`
 
 - before chain:
   - `enqueueTransaction`
@@ -36,6 +57,9 @@
 
 ### 2. `selector_snapshot_mirror_plane`
 
+- current probe status:
+  - `inconclusive_after_react_flow_probe`
+
 - before chain:
   - `StateTransaction.commit`
   - `SubscriptionRef.set`
@@ -57,8 +81,13 @@
   - count-only probe first
   - one module + one static selector + React 256 subscribers + one Module-as-Source link + one Flow/process consumer
   - verify per-commit actual selector evaluations collapse toward `1`
+- current continuation rule:
+  - 只有 Module-as-Source / process same-path probe 重新给出 multiplicative signal，才继续这条线
 
 ### 3. `commit_packet_notify_fusion`
+
+- current probe status:
+  - `no_go_under_zero_selector_packet_gate`
 
 - before chain:
   - `commitWithState`
@@ -77,6 +106,8 @@
 - cheap local gate:
   - phase metrics first
   - then one targeted browser `external-store-ingest`
+- current continuation rule:
+  - 当前不继续沿旧 loose aggregate 深挖；若重开，只能从 tighter same-path browser evidence 重启
 
 ## Explicit non-candidate
 
@@ -92,4 +123,5 @@
 
 - the biggest misread to avoid is turning a microbench-visible shell gap into an immediate runtime implementation cut
 - `provideInlineContext` no-go is the current proof of that risk
-- so the next step is probe-first on top1/top2, not direct implementation
+- `selector_snapshot_mirror_plane` 与 `commit_packet_notify_fusion` 的最新 probe 都说明：只要 gate 口径不够窄，就会给出假阳性或夸大候选体量
+- so the next step is not direct implementation; only narrower probe remains on the selector non-React planes

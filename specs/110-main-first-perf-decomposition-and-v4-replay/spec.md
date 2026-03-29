@@ -38,6 +38,9 @@
   - `2026-03-28` `#133` 已把 `effect-v4` 主线合入 `main`
   - `2026-03-28` `#143` 已把 `110/111` 主控规格合入 `main`
   - `2026-03-28` `#138` 已按 superseded 关闭
+  - `2026-03-29` `compiled_txn_boundary` cheap-local gate 已完成，当前结论为 `no_go`
+  - `2026-03-29` `selector_snapshot_mirror_plane` strengthened React+Flow probe 已完成，当前结论为 `inconclusive_after_react_flow_probe`
+  - `2026-03-29` `commit_packet_notify_fusion` zero-selector synthetic gate 已完成，当前结论为 `no_go_under_zero_selector_packet_gate`
 - 当前主线语义：
   - “合并进主线”这件事已经完成
   - 剩余工作改为冻结基线解释、residual 识别和历史资产收口
@@ -268,6 +271,9 @@
 | `replay9-cutA-runtimeStore-postcommit-gate` | `main_control` | `accepted_with_evidence` | `heavier_local` | `replay_ready` | `not_full_golden` | `suite_progression_or_browser_long_run` | 当前唯一 primary candidate；single-pocket 与 broader high-dirty 复核都已回门 |
 | `replay9-cutB-dirty-snapshot-bookkeeping` | `main_control` | `provisional` | `focused_local` | `blocked` | `not_applicable` | `unknown` | secondary candidate；single-pocket 过门，但暂不作为当前默认下一刀 |
 | `v3-small-stable-upgrade-effect3210` | `main_control` | `discarded` | `cheap_local` | `not_applicable` | `not_applicable` | `version_drift_control` | `effect 3.21.0` cohort cheap local A/B 呈回归倾向，不继续扩到 focused/heavier |
+| `postmerge-compiled-txn-boundary` | `main_control` | `discarded` | `cheap_local` | `not_applicable` | `not_applicable` | `unknown` | boundary 内部上界小于外层 residual，当前不升为 runtime 实施线 |
+| `postmerge-selector-mirror-react-flow` | `main_control` | `provisional` | `cheap_local` | `blocked` | `not_applicable` | `unknown` | strengthened probe 显示 React + Flow 平面无消费面放大；只剩 Module-as-Source / process 缺口值得继续验证 |
+| `postmerge-commit-packet-zero-selector` | `main_control` | `discarded` | `cheap_local` | `not_applicable` | `not_applicable` | `unknown` | zero-selector synthetic packet 只有微秒级，当前不值得升为新的大切口 |
 | `tx-c1-state-txn-closeout` | `v4_closeout` | `accepted_with_evidence` | `heavier_local` | `not_applicable` | `comparable_subset_green` | `not_controller_signal` | isolated `StateTransaction.ts` closeout 已通过 `#142 -> #133` 进入当前 `main`；clean candidate 继续只保留为证据锚点 |
 | `v4-small-beta-upgrade-effect-beta42` | `v4_residual_identification` | `discarded` | `cheap_local` | `not_applicable` | `not_applicable` | `version_drift_control` | `beta.28 -> beta.42` cheap local A/B 与 blocker probe 都未形成增益，不改变 residual route |
 
@@ -349,10 +355,11 @@
   - 用冻结基线 `8c41a263` 解释剩余差额时，只接受新的 docs/evidence 事实
   - 不自动再开新的 `E-1` 实现线
   - `111` 继续保持 blocked，直到出现新的 `controller_related` 证据
-  - post-merge big-cut identify 先按 probe-only 排序推进：
-    - `compiled_txn_boundary`
-    - `selector_snapshot_mirror_plane`
-    - `commit_packet_notify_fusion`
+  - post-merge big-cut identify 当前改为：
+    - `compiled_txn_boundary` 已关闭为 `no_go`
+    - `commit_packet_notify_fusion` 已关闭为 `no_go_under_zero_selector_packet_gate`
+    - `selector_snapshot_mirror_plane` 暂不升为实施线；只有 Module-as-Source / process same-path probe 重新给出 multiplicative signal，才继续这条线
+    - 当前没有新的 post-merge runtime implementation line 打开
   - route note:
     - `docs/perf/2026-03-29-post-merge-big-cut-candidates.md`
 - `111 shadow-only package hardening` 当前只证明 additive telemetry wiring 与 unified contract 挂接成立，不覆盖 live controller 有效性。
@@ -380,6 +387,7 @@
   - `shadow_code_poc_ready`
   - `shadow_cheap_local_pass`
   - `live_candidate=blocked`
+  - `2026-03-29` post-merge selector / commit-packet probes stayed in `110` and did not create `controller_related` evidence
 - `111` 禁止动作：
   - 把 `v4-perf` 当作收益鉴定主线；
   - 绕过 accepted ledger 直接宣布新的主线赢家；
