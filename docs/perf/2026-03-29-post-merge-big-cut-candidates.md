@@ -29,10 +29,11 @@
   - reading:
     - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.commit-packet-notify-probe/docs/perf/2026-03-29-commit-packet-notify-probe.md`
 - `nonreact_fanout_writeback_fusion`
-  - current status: `cheap_local_positive_on_module_side`
-  - same-target Module-as-Source probe 已证明 target commits 严格按 `1 / 8 / 32` 线性增长，当前更像每个 target field 各开一笔 writeback txn
+  - current status: `focused_local_positive_on_module_side`
+  - same-target Module-as-Source probe 已证明 target commits 严格按 `1 / 8 / 32` 线性增长；module-side writeback fusion PoC 已把 same-target focused local p95 压到近常数
   - reading:
     - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.nonreact-fanout-fusion-probe/docs/perf/2026-03-29-nonreact-fanout-fusion-probe.md`
+    - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.nonreact-fanout-fusion-probe/docs/perf/2026-03-29-nonreact-fanout-fusion-focused-compare.md`
 
 ## Ranked strategic candidates
 
