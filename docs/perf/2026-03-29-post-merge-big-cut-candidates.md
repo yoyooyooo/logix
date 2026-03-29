@@ -29,8 +29,8 @@
   - reading:
     - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.commit-packet-notify-probe/docs/perf/2026-03-29-commit-packet-notify-probe.md`
 - `nonreact_fanout_writeback_fusion`
-  - current status: `heavier_local_positive_on_module_side`
-  - same-target Module-as-Source probe 已证明 target commits 严格按 `1 / 8 / 32` 线性增长；module-side writeback fusion PoC 已把 same-target focused 与 heavier local p95 都压到近常数
+  - current status: `merged_mainline_after_heavier_local_positive`
+  - same-target Module-as-Source probe 已证明 target commits 严格按 `1 / 8 / 32` 线性增长；module-side writeback fusion PoC 已把 same-target focused 与 heavier local p95 都压到近常数，且已通过 `#146` 进入 `main`
   - reading:
     - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.nonreact-fanout-fusion-probe/docs/perf/2026-03-29-nonreact-fanout-fusion-probe.md`
     - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.nonreact-fanout-fusion-probe/docs/perf/2026-03-29-nonreact-fanout-fusion-focused-compare.md`
@@ -92,10 +92,18 @@
   - one module + one static selector + React 256 subscribers + one Module-as-Source link + one Flow/process consumer
   - verify per-commit actual selector evaluations collapse toward `1`
 - current continuation rule:
-  - React + Flow 平面已判 flat；当前 non-React plane PoC 已正向，但 focused local compare 未给出稳定收益；暂不升 PR / CI
-  - derived next cut:
-    - `nonreact_fanout_writeback_fusion`
-    - 现有 focused compare 说明 selector eval 已去重，但 route-level 仍随 fanout 上升，当前更大的主导成本更像 per-target `applyValue` / `dispatch`
+  - React + Flow 平面已判 flat；non-React plane read-side dedupe 已完成 cheap/focused 识别，但当前 module-side line 已先一步合入 `main`
+  - next route:
+    - 基于最新 `main` 重开 declarative side 的 cheap-local dispatch-shell probe
+
+### 2.5. `declarative_dispatch_shell`
+
+- current probe status:
+  - `cheap_local_red_pending`
+- why next:
+  - `nonreact_fanout_writeback_fusion` 已通过 `#146` 合入 `main`
+  - 当前剩余 non-React fanout 成本更可能集中在 declarative `dispatch` 壳
+  - 当前只允许 cheap-local probe，不直接开实现线
 
 ### 3. `commit_packet_notify_fusion`
 
