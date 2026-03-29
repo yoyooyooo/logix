@@ -42,6 +42,7 @@
   - `2026-03-29` `selector_snapshot_mirror_plane` strengthened React+Flow probe 已完成，当前结论为 `inconclusive_after_react_flow_probe`
   - `2026-03-29` `commit_packet_notify_fusion` zero-selector synthetic gate 已完成，当前结论为 `no_go_under_zero_selector_packet_gate`
   - `2026-03-29` `selector_snapshot_mirror_plane` 的 Module-as-Source same-path probe 已完成，当前结论升级为 `go_narrowed_to_nonreact_plane`
+  - `2026-03-29` `selector_nonreact_plane_dedupe` cheap-local PoC 已完成，当前结论为 `poc_positive_in_cheap_local`
 - 当前主线语义：
   - “合并进主线”这件事已经完成
   - 剩余工作改为冻结基线解释、residual 识别和历史资产收口
@@ -275,6 +276,7 @@
 | `postmerge-compiled-txn-boundary` | `main_control` | `discarded` | `cheap_local` | `not_applicable` | `not_applicable` | `unknown` | boundary 内部上界小于外层 residual，当前不升为 runtime 实施线 |
 | `postmerge-selector-mirror-react-flow` | `main_control` | `provisional` | `cheap_local` | `blocked` | `not_applicable` | `unknown` | strengthened probe 显示 React + Flow 平面无消费面放大；只剩 Module-as-Source / process 缺口值得继续验证 |
 | `postmerge-selector-nonreact-moduleasource` | `main_control` | `provisional` | `cheap_local` | `blocked` | `not_applicable` | `unknown` | Module-as-Source probe 给出 `1 / 8 / 32` 线性信号；当前允许继续开 non-React plane PoC |
+| `postmerge-selector-nonreact-dedupe-poc` | `main_control` | `provisional` | `cheap_local` | `blocked` | `not_applicable` | `unknown` | `DeclarativeLinkRuntime.applyForSources()` 局部 shared select memo 已把 Module-as-Source probe 从 `1 / 8 / 32` 压到 `1 / 1 / 1` |
 | `postmerge-commit-packet-zero-selector` | `main_control` | `discarded` | `cheap_local` | `not_applicable` | `not_applicable` | `unknown` | zero-selector synthetic packet 只有微秒级，当前不值得升为新的大切口 |
 | `tx-c1-state-txn-closeout` | `v4_closeout` | `accepted_with_evidence` | `heavier_local` | `not_applicable` | `comparable_subset_green` | `not_controller_signal` | isolated `StateTransaction.ts` closeout 已通过 `#142 -> #133` 进入当前 `main`；clean candidate 继续只保留为证据锚点 |
 | `v4-small-beta-upgrade-effect-beta42` | `v4_residual_identification` | `discarded` | `cheap_local` | `not_applicable` | `not_applicable` | `version_drift_control` | `beta.28 -> beta.42` cheap local A/B 与 blocker probe 都未形成增益，不改变 residual route |
@@ -361,7 +363,8 @@
     - `compiled_txn_boundary` 已关闭为 `no_go`
     - `commit_packet_notify_fusion` 已关闭为 `no_go_under_zero_selector_packet_gate`
     - `selector_snapshot_mirror_plane` 已收窄成 `selector_nonreact_plane_dedupe`
-    - 当前允许只围绕 `DeclarativeLinkRuntime.applyForSources()` 开 non-React plane PoC
+    - 当前唯一打开的 post-merge runtime implementation line 是 `DeclarativeLinkRuntime.applyForSources()` 的 non-React plane dedupe
+    - 下一步先做 focused local 的 declarative-link fanout probe，再决定是否继续扩覆盖面
   - route note:
     - `docs/perf/2026-03-29-post-merge-big-cut-candidates.md`
 - `111 shadow-only package hardening` 当前只证明 additive telemetry wiring 与 unified contract 挂接成立，不覆盖 live controller 有效性。
