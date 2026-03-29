@@ -42,12 +42,21 @@ const makeNumberStruct = (fields: ReadonlyArray<string>) =>
 const makeInitialNumbers = (fields: ReadonlyArray<string>, value: number) =>
   Object.fromEntries(fields.map((field) => [field, value])) as Record<string, number>
 
+const parseCount = (raw: string | undefined, fallback: number, min: number): number => {
+  const parsed = Number(raw ?? fallback)
+  if (!Number.isFinite(parsed)) {
+    return fallback
+  }
+  return Math.max(min, Math.trunc(parsed))
+}
+
 const benchmarkSameTargetModuleAsSource = (args: {
   readonly fanout: 1 | 8 | 32
   readonly iterations: number
   readonly warmup: number
 }): Effect.Effect<PerfSummary> =>
   Effect.gen(function* () {
+    type SourceAction = { readonly _tag: 'set'; readonly payload: number }
     const fanout = args.fanout
     const targetFields = makeFields(fanout, 'fromSource')
 
@@ -103,20 +112,26 @@ const benchmarkSameTargetModuleAsSource = (args: {
     })
 
     try {
-      const sourceRt = runtime.runSync(Effect.service(Source.tag).pipe(Effect.orDie) as any) as any
-      const targetRt = runtime.runSync(Effect.service(Target.tag).pipe(Effect.orDie) as any) as any
+      const sourceRt = runtime.runSync(Effect.service(Source.tag).pipe(Effect.orDie)) as Logix.ModuleRuntime<
+        { value: number },
+        SourceAction
+      >
+      const targetRt = runtime.runSync(Effect.service(Target.tag).pipe(Effect.orDie)) as Logix.ModuleRuntime<
+        Record<string, number>,
+        never
+      >
 
       const runOne = async (nextValue: number) => {
         const t0 = performance.now()
-        await runtime.runPromise(sourceRt.dispatch({ _tag: 'set', payload: nextValue }) as any)
+        await runtime.runPromise(sourceRt.dispatch({ _tag: 'set', payload: nextValue }))
         await runtime.runPromise(
           Effect.gen(function* () {
             const scheduler = yield* Effect.service(TickSchedulerTag).pipe(Effect.orDie)
             yield* scheduler.flushNow
-          }) as any,
+          }),
         )
-        await runtime.runPromise(flushAllHostScheduler(hostScheduler) as any)
-        const state = await runtime.runPromise(targetRt.getState as any)
+        await runtime.runPromise(flushAllHostScheduler(hostScheduler))
+        const state = await runtime.runPromise(targetRt.getState)
         expect(state).toEqual(makeInitialNumbers(targetFields, nextValue))
         return performance.now() - t0
       }
@@ -141,14 +156,14 @@ const benchmarkSameTargetModuleAsSource = (args: {
 describe('runtime: same-target module-side fanout fusion perf evidence (node focused local)', () => {
   it.effect('should print same-target module fanout metrics', () =>
     Effect.gen(function* () {
-      const iterations = Number(process.env.LOGIX_PERF_ITERS ?? 30)
-      const warmup = Number(process.env.LOGIX_PERF_WARMUP ?? 8)
+      const iterations = parseCount(process.env.LOGIX_PERF_ITERS, 30, 1)
+      const warmup = parseCount(process.env.LOGIX_PERF_WARMUP, 8, 0)
 
       const evidence = {
         scenario: 'runtime.sameTarget.moduleWritebackFusion.node.focused',
         run: {
-          iterations: Math.max(1, iterations),
-          warmup: Math.max(0, warmup),
+          iterations,
+          warmup,
         },
         sameTargetModuleAsSource: {
           fanout1: yield* benchmarkSameTargetModuleAsSource({ fanout: 1, iterations, warmup }),
@@ -162,7 +177,7 @@ describe('runtime: same-target module-side fanout fusion perf evidence (node foc
       )
       console.log(`[perf:evidence] ${JSON.stringify(evidence)}`)
 
-      expect(evidence.sameTargetModuleAsSource.fanout1.n).toBe(Math.max(1, iterations))
+      expect(evidence.sameTargetModuleAsSource.fanout1.n).toBe(iterations)
     }),
   )
 })
