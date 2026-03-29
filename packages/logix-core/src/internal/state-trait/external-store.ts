@@ -32,9 +32,9 @@ type ExternalStoreWritebackRequest = {
 }
 
 type ExternalStoreWritebackCoordinator = {
-  readonly stage: (request: ExternalStoreWritebackRequest) => Effect.Effect<void, never, any>
-  readonly flush: () => Effect.Effect<void, never, any>
-  readonly enqueue: (request: ExternalStoreWritebackRequest) => Effect.Effect<void, never, any>
+  readonly stage: (request: ExternalStoreWritebackRequest) => Effect.Effect<void, never, never>
+  readonly flush: () => Effect.Effect<void, never, never>
+  readonly enqueue: (request: ExternalStoreWritebackRequest) => Effect.Effect<void, never, never>
 }
 
 const writebackCoordinatorByInternals = new WeakMap<object, ExternalStoreWritebackCoordinator>()
