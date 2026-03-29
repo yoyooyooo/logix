@@ -349,6 +349,12 @@
   - 用冻结基线 `8c41a263` 解释剩余差额时，只接受新的 docs/evidence 事实
   - 不自动再开新的 `E-1` 实现线
   - `111` 继续保持 blocked，直到出现新的 `controller_related` 证据
+  - post-merge big-cut identify 先按 probe-only 排序推进：
+    - `compiled_txn_boundary`
+    - `selector_snapshot_mirror_plane`
+    - `commit_packet_notify_fusion`
+  - route note:
+    - `docs/perf/2026-03-29-post-merge-big-cut-candidates.md`
 - `111 shadow-only package hardening` 当前只证明 additive telemetry wiring 与 unified contract 挂接成立，不覆盖 live controller 有效性。
 - `v4-perf` replay、PR、CI 一律后置到本地证据稳定之后。
 
