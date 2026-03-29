@@ -329,8 +329,12 @@ export function linkDeclarative<Ms extends readonly LinkModuleToken<string, AnyM
       readNodes.push({ nodeId: readNodeId, moduleInstanceKey: fromKey, readQuery: edge.from.readQuery })
       dispatchNodes.push({
         nodeId: dispatchNodeId,
+        actionTag: edge.to.actionTag,
+        batchGroupKey: `${toRuntime.moduleId}::${toRuntime.instanceId}`,
         dispatch: (payload: unknown) =>
           (toRuntime.dispatch({ _tag: edge.to.actionTag, payload } as any) as any).pipe(Effect.asVoid),
+        dispatchBatch: (actions: ReadonlyArray<{ readonly _tag: string; readonly payload: unknown }>) =>
+          (toRuntime.dispatchBatch(actions as any) as any).pipe(Effect.asVoid),
       })
     }
 
