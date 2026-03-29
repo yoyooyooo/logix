@@ -133,10 +133,11 @@ const getOrCreateExternalStoreWritebackCoordinator = (args: {
 
     const coordinator: ExternalStoreWritebackCoordinator = {
       stage: (request) =>
-        Effect.sync(() => {
-          if (closed) return
-          pendingWrites.set(request.fieldPath, request)
-        }),
+        closed
+          ? Effect.void
+          : Effect.sync(() => {
+              pendingWrites.set(request.fieldPath, request)
+            }),
       flush: () =>
         Effect.gen(function* () {
           if (closed) return
