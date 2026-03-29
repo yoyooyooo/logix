@@ -124,7 +124,7 @@ describe('DeclarativeLinkRuntime same-target dispatch batch fusion', () => {
                   } finally {
                     runtime.runFork(Fiber.interrupt(fiber).pipe(Effect.asVoid))
                   }
-                }) as any,
+                }),
               ),
             )
           } finally {

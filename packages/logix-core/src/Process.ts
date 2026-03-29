@@ -322,6 +322,7 @@ export function linkDeclarative<Ms extends readonly LinkModuleToken<string, AnyM
         moduleId: toRuntime.moduleId,
         instanceKey: toRuntime.instanceId,
         actionTag: edge.to.actionTag,
+        fusedBatchGroup: `${toRuntime.moduleId}::${toRuntime.instanceId}`,
       })
 
       irEdges.push({ from: readNodeId, to: dispatchNodeId })
