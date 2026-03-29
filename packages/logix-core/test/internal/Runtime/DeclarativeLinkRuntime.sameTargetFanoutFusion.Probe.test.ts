@@ -125,8 +125,8 @@ describe('DeclarativeLinkRuntime same-target fanout fusion probe', () => {
       )
 
       expect(fanout1).toBe(1)
-      expect(fanout8).toBe(8)
-      expect(fanout32).toBe(32)
+      expect(fanout8).toBe(1)
+      expect(fanout32).toBe(1)
     }),
   )
 

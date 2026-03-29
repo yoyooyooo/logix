@@ -10,6 +10,9 @@ export interface ModuleAsSourceLink {
   readonly computeValue: (snapshot: unknown) => unknown
   readonly equalsValue: (a: unknown, b: unknown) => boolean
   readonly applyValue: (next: unknown) => Effect.Effect<void, never, never>
+  readonly writebackGroupKey?: string
+  readonly stageValue?: (next: unknown) => Effect.Effect<void, never, never>
+  readonly flushStaged?: () => Effect.Effect<void, never, never>
 }
 
 export interface DeclarativeLinkRegistration {
@@ -159,6 +162,7 @@ export const makeDeclarativeLinkRuntime = (): DeclarativeLinkRuntime => {
         if (!ids || ids.size === 0) continue
         const commit = args.acceptedModules.get(sourceKey)
         if (!commit) continue
+        const stagedFlushers = new Map<string, () => Effect.Effect<void, never, never>>()
 
         for (const id of ids) {
           const link = moduleAsSourceById.get(id)
@@ -179,7 +183,18 @@ export const makeDeclarativeLinkRuntime = (): DeclarativeLinkRuntime => {
           link.hasValue = true
           link.lastValue = nextValue
           scheduled = true
+
+          if (link.writebackGroupKey && link.stageValue && link.flushStaged) {
+            yield* link.stageValue(nextValue)
+            stagedFlushers.set(link.writebackGroupKey, link.flushStaged)
+            continue
+          }
+
           yield* link.applyValue(nextValue)
+        }
+
+        for (const flush of stagedFlushers.values()) {
+          yield* flush()
         }
       }
 
