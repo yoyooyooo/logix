@@ -86,6 +86,9 @@
   - verify per-commit actual selector evaluations collapse toward `1`
 - current continuation rule:
   - React + Flow 平面已判 flat；当前 non-React plane PoC 已正向，但 focused local compare 未给出稳定收益；暂不升 PR / CI
+  - derived next cut:
+    - `nonreact_fanout_writeback_fusion`
+    - 现有 focused compare 说明 selector eval 已去重，但 route-level 仍随 fanout 上升，当前更大的主导成本更像 per-target `applyValue` / `dispatch`
 
 ### 3. `commit_packet_notify_fusion`
 
