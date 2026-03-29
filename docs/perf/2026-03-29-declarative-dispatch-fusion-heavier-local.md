@@ -43,3 +43,23 @@
 
 - 可以把 declarative dispatch fusion 作为第二条并行主线推进
 - 仍先停在本地，不直接跳 PR / CI
+
+## 验证命令
+
+after：
+
+```sh
+git worktree add ../logix.worktrees/tmp.declarative-after-heavy -b tmp.declarative-after-heavy agent/main-declarative-dispatch-fusion-v2-20260329
+cd ../logix.worktrees/tmp.declarative-after-heavy
+pnpm install
+LOGIX_PERF_ITERS=80 LOGIX_PERF_WARMUP=20 ./packages/logix-core/node_modules/.bin/vitest run --config packages/logix-core/vitest.perf.config.ts packages/logix-core/test/internal/Runtime/DeclarativeLinkRuntime.sameTargetDispatchBatchFusion.Perf.case.ts
+```
+
+baseline：
+
+```sh
+git worktree add ../logix.worktrees/tmp.declarative-before-heavy -b tmp.declarative-before-heavy 2175d0c3
+cd ../logix.worktrees/tmp.declarative-before-heavy
+pnpm install
+LOGIX_PERF_ITERS=80 LOGIX_PERF_WARMUP=20 ./packages/logix-core/node_modules/.bin/vitest run --config packages/logix-core/vitest.perf.config.ts packages/logix-core/test/internal/Runtime/DeclarativeLinkRuntime.sameTargetDispatchBatchFusion.Perf.case.ts
+```

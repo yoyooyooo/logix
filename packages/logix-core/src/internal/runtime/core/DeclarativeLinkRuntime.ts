@@ -224,13 +224,20 @@ export const makeDeclarativeLinkRuntime = (): DeclarativeLinkRuntime => {
         if (!refs || refs.length === 0) continue
         const commit = args.acceptedModules.get(sourceKey)
         if (!commit) continue
-        const stagedDispatches = new Map<
-          string,
-          {
-            readonly dispatchBatch: (actions: ReadonlyArray<{ readonly _tag: string; readonly payload: unknown }>) => Effect.Effect<void, never, never>
-            actions: Array<{ readonly _tag: string; readonly payload: unknown }>
-          }
-        >()
+        let stagedDispatchGroup:
+          | {
+              readonly batchGroupKey: string
+              readonly dispatchBatch: (actions: ReadonlyArray<{ readonly _tag: string; readonly payload: unknown }>) => Effect.Effect<void, never, never>
+              readonly actions: Array<{ readonly _tag: string; readonly payload: unknown }>
+            }
+          | undefined
+
+        const flushStagedDispatchGroup = (): Effect.Effect<void, never, never> =>
+          Effect.gen(function* () {
+            if (!stagedDispatchGroup) return
+            yield* stagedDispatchGroup.dispatchBatch(stagedDispatchGroup.actions)
+            stagedDispatchGroup = undefined
+          })
 
         for (const ref of refs) {
           const link = declarativeById.get(ref.linkId)
@@ -260,27 +267,24 @@ export const makeDeclarativeLinkRuntime = (): DeclarativeLinkRuntime => {
             scheduled = true
 
             if (node.batchGroupKey && node.dispatchBatch) {
-              const current =
-                stagedDispatches.get(node.batchGroupKey) ??
-                (() => {
-                  const created = {
-                    dispatchBatch: node.dispatchBatch!,
-                    actions: [] as Array<{ readonly _tag: string; readonly payload: unknown }>,
-                  }
-                  stagedDispatches.set(node.batchGroupKey!, created)
-                  return created
-                })()
-              current.actions.push({ _tag: node.actionTag, payload: value })
+              if (!stagedDispatchGroup || stagedDispatchGroup.batchGroupKey !== node.batchGroupKey) {
+                yield* flushStagedDispatchGroup()
+                stagedDispatchGroup = {
+                  batchGroupKey: node.batchGroupKey,
+                  dispatchBatch: node.dispatchBatch,
+                  actions: [],
+                }
+              }
+              stagedDispatchGroup.actions.push({ _tag: node.actionTag, payload: value })
               continue
             }
 
+            yield* flushStagedDispatchGroup()
             yield* node.dispatch(value)
           }
         }
 
-        for (const batch of stagedDispatches.values()) {
-          yield* batch.dispatchBatch(batch.actions)
-        }
+        yield* flushStagedDispatchGroup()
       }
 
       return { scheduled } as const

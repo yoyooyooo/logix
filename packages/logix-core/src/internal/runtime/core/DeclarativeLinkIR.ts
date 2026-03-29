@@ -18,6 +18,7 @@ export type DeclarativeLinkNode =
       readonly moduleId: string
       readonly instanceKey?: string
       readonly actionTag: string
+      readonly fusedBatchGroup?: string
     }
 
 export type DeclarativeLinkEdge = {
@@ -59,4 +60,3 @@ export const exportDeclarativeLinkIr = (args: { readonly linkId: string; readonl
   kind: 'declarativeLinkIr',
   ir: args.ir,
 })
-

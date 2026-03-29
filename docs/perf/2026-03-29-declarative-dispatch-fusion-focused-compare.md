@@ -44,11 +44,17 @@
 after：
 
 ```sh
-./packages/logix-core/node_modules/.bin/vitest run --config packages/logix-core/vitest.perf.config.ts packages/logix-core/test/internal/Runtime/DeclarativeLinkRuntime.sameTargetDispatchBatchFusion.Perf.case.ts
+git worktree add ../logix.worktrees/tmp.declarative-after -b tmp.declarative-after agent/main-declarative-dispatch-fusion-v2-20260329
+cd ../logix.worktrees/tmp.declarative-after
+pnpm install
+LOGIX_PERF_ITERS=30 LOGIX_PERF_WARMUP=8 ./packages/logix-core/node_modules/.bin/vitest run --config packages/logix-core/vitest.perf.config.ts packages/logix-core/test/internal/Runtime/DeclarativeLinkRuntime.sameTargetDispatchBatchFusion.Perf.case.ts
 ```
 
 baseline：
 
 ```sh
-./packages/logix-core/node_modules/.bin/vitest run --config packages/logix-core/vitest.perf.config.ts packages/logix-core/test/internal/Runtime/DeclarativeLinkRuntime.sameTargetDispatchBatchFusion.Perf.case.ts
+git worktree add ../logix.worktrees/tmp.declarative-before -b tmp.declarative-before 2175d0c3
+cd ../logix.worktrees/tmp.declarative-before
+pnpm install
+LOGIX_PERF_ITERS=30 LOGIX_PERF_WARMUP=8 ./packages/logix-core/node_modules/.bin/vitest run --config packages/logix-core/vitest.perf.config.ts packages/logix-core/test/internal/Runtime/DeclarativeLinkRuntime.sameTargetDispatchBatchFusion.Perf.case.ts
 ```
