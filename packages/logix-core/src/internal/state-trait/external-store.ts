@@ -37,15 +37,23 @@ type ExternalStoreWritebackCoordinator = {
   readonly enqueue: (request: ExternalStoreWritebackRequest) => Effect.Effect<void, never, never>
 }
 
-const writebackCoordinatorByInternals = new WeakMap<object, ExternalStoreWritebackCoordinator>()
+const writebackCoordinatorByInternals = new WeakMap<object, Map<string, ExternalStoreWritebackCoordinator>>()
 
 const getOrCreateExternalStoreWritebackCoordinator = (args: {
   readonly internals: ReturnType<typeof getBoundInternals>
   readonly bound: BoundApi<any, any>
   readonly env: ServiceMap.ServiceMap<any>
+  readonly coordinatorKey?: string
 }): Effect.Effect<ExternalStoreWritebackCoordinator, never, any> =>
   Effect.gen(function* () {
-    const cached = writebackCoordinatorByInternals.get(args.internals as any)
+    const coordinatorKey = args.coordinatorKey ?? 'default'
+    let byKey = writebackCoordinatorByInternals.get(args.internals as any)
+    if (!byKey) {
+      byKey = new Map()
+      writebackCoordinatorByInternals.set(args.internals as any, byKey)
+    }
+
+    const cached = byKey.get(coordinatorKey)
     if (cached) return cached
 
     let closed = false
@@ -174,12 +182,13 @@ const getOrCreateExternalStoreWritebackCoordinator = (args: {
         }),
     }
 
-    writebackCoordinatorByInternals.set(args.internals as any, coordinator)
+    byKey.set(coordinatorKey, coordinator)
 
     yield* Effect.addFinalizer(() =>
       Effect.sync(() => {
         closed = true
         pendingWrites.clear()
+        byKey?.delete(coordinatorKey)
       }),
     )
 
@@ -373,9 +382,14 @@ export const installExternalStoreSync = <S>(
       }
 
       const moduleInstanceKey = `${sourceRuntime.moduleId}::${sourceRuntime.instanceId}` as any
-      const coordinator = yield* getOrCreateExternalStoreWritebackCoordinator({ internals, bound, env })
       const normalizedPatchPath = normalizeFieldPath(fieldPath) ?? []
       const commitPriority: ExternalStoreWritebackCommitPriority = traitLane === 'nonUrgent' ? 'low' : 'normal'
+      const coordinator = yield* getOrCreateExternalStoreWritebackCoordinator({
+        internals,
+        bound,
+        env,
+        coordinatorKey: `module-source:${commitPriority}`,
+      })
 
       const writeValue = (nextValue: unknown): Effect.Effect<void, never, never> =>
         Effect.gen(function* () {
@@ -432,9 +446,11 @@ export const installExternalStoreSync = <S>(
         computeValue,
         equalsValue: isEqual,
         applyValue: writeValue,
-        writebackGroupKey: `${internals.moduleId}::${internals.instanceId}`,
-        stageValue: stageWriteValue,
-        flushStaged: coordinator.flush,
+        fusedWriteback: {
+          groupKey: `${internals.moduleId}::${internals.instanceId}:${commitPriority}`,
+          stage: stageWriteValue,
+          flush: coordinator.flush,
+        },
       })
 
       yield* Effect.addFinalizer(() =>
