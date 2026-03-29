@@ -17,7 +17,7 @@ const makeInitialNumbers = (fields: ReadonlyArray<string>, value: number) =>
   Object.fromEntries(fields.map((field) => [field, value])) as Record<string, number>
 
 describe('DeclarativeLinkRuntime same-target fanout fusion probe', () => {
-  it.effect('Module-as-Source: same target module commit count scales with link fanout', () =>
+  it.effect('Module-as-Source: same-target fanout is fused to one target commit', () =>
     Effect.gen(function* () {
       const runScenario = (fanout: 1 | 8 | 32) =>
         Effect.gen(function* () {

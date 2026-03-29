@@ -13,7 +13,7 @@
 
 基准文件：
 
-- `packages/logix-core/test/internal/Runtime/DeclarativeLinkRuntime.sameTargetFanoutFusion.Perf.off.test.ts`
+- `packages/logix-core/test/internal/Runtime/DeclarativeLinkRuntime.sameTargetFanoutFusion.Perf.case.ts`
 
 参数：
 
@@ -83,11 +83,17 @@
 after：
 
 ```sh
-PATH=/opt/homebrew/bin:/usr/bin:/bin LOGIX_PERF_ITERS=30 LOGIX_PERF_WARMUP=8 /opt/homebrew/bin/node /Users/yoyo/Documents/code/personal/logix.worktrees/main.commit-packet-notify-probe/packages/logix-core/node_modules/vitest/vitest.mjs run packages/logix-core/test/internal/Runtime/DeclarativeLinkRuntime.sameTargetFanoutFusion.Perf.off.test.ts
+git worktree add ../logix.worktrees/tmp.same-target-after -b tmp.same-target-after agent/main-nonreact-fanout-fusion-probe-20260329
+cd ../logix.worktrees/tmp.same-target-after
+pnpm install
+LOGIX_PERF_ITERS=30 LOGIX_PERF_WARMUP=8 ./packages/logix-core/node_modules/.bin/vitest run --config packages/logix-core/vitest.perf.config.ts packages/logix-core/test/internal/Runtime/DeclarativeLinkRuntime.sameTargetFanoutFusion.Perf.case.ts
 ```
 
 baseline：
 
 ```sh
-PATH=/opt/homebrew/bin:/usr/bin:/bin LOGIX_PERF_ITERS=30 LOGIX_PERF_WARMUP=8 /opt/homebrew/bin/node /Users/yoyo/Documents/code/personal/logix.worktrees/main.commit-packet-notify-probe/packages/logix-core/node_modules/vitest/vitest.mjs run packages/logix-core/test/internal/Runtime/DeclarativeLinkRuntime.sameTargetFanoutFusion.Perf.off.test.ts
+git worktree add ../logix.worktrees/tmp.same-target-before -b tmp.same-target-before d26a8628
+cd ../logix.worktrees/tmp.same-target-before
+pnpm install
+LOGIX_PERF_ITERS=30 LOGIX_PERF_WARMUP=8 ./packages/logix-core/node_modules/.bin/vitest run --config packages/logix-core/vitest.perf.config.ts packages/logix-core/test/internal/Runtime/DeclarativeLinkRuntime.sameTargetFanoutFusion.Perf.case.ts
 ```

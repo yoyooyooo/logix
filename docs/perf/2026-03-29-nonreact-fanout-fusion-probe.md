@@ -31,6 +31,12 @@
 
 ## 实测读数
 
+以下读数是 `pre-fusion baseline`，对应：
+
+- worktree: `main.nonreact-fanout-fusion-probe`
+- commit: `239a5704`
+- phase: 在 module-side writeback fusion PoC 之前
+
 ```json
 {
   "fanout1": 1,
@@ -82,3 +88,7 @@ PATH=/opt/homebrew/bin:/usr/bin:/bin /opt/homebrew/bin/node /Users/yoyo/Document
 
 - `1 file, 1 test passed`
 - `PERF_SAME_TARGET_MODULE_AS_SOURCE_COMMITS {"fanout1":1,"fanout8":8,"fanout32":32}`
+
+当前 fused 之后的结果，见：
+
+- `docs/perf/2026-03-29-nonreact-fanout-fusion-focused-compare.md`
