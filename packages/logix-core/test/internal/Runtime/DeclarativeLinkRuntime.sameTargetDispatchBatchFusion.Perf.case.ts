@@ -125,7 +125,7 @@ const benchmarkSameTargetDeclarative = (args: {
         { value: number },
         SourceAction
       >
-      const targetRt = runtime.runSync(Effect.service(Target.tag).pipe(Effect.orDie)) as Logix.ModuleRuntime<
+      const targetRt = runtime.runSync(Effect.service(Target.tag).pipe(Effect.orDie)) as unknown as Logix.ModuleRuntime<
         Record<string, number>,
         never
       >
