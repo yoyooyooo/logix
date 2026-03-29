@@ -21,6 +21,7 @@
   - `TX-C1` 只证明了最小 closeout 边界，不提供 controller residual 证明
   - `E-1B clean scout` 已把 route 结论收紧到 `inconclusive_after_clean_scout`
   - 已存在 isolated shadow-only code candidate，且边界只覆盖 additive telemetry wiring
+  - `2026-03-29` post-merge selector / commit-packet probes 仍留在 `110` 主控内，未形成新的 controller signal
 - immediate next package:
   1. 保持 `111` 自身的 `data-model / contracts / checklist` 与 shadow-only candidate 对齐
   2. 将 cutdown v2 视为当前 `shadow_local_recovery_candidate`
