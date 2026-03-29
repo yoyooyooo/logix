@@ -16,10 +16,11 @@
   - reading:
     - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.compiled-txn-boundary-probe/docs/perf/2026-03-29-compiled-txn-boundary-probe.md`
 - `selector_snapshot_mirror_plane`
-  - current status: `inconclusive_after_react_flow_probe`
-  - strengthened probe 已证明 React + Flow 平面没有出现消费面放大；当前只剩 Module-as-Source / process 缺口值得继续验证
+  - current status: `go_narrowed_to_nonreact_plane`
+  - strengthened probe 已证明 React + Flow 平面没有出现消费面放大；但 Module-as-Source probe 给出 `1 / 8 / 32` 线性信号，当前应收窄为 non-React plane PoC
   - reading:
     - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.selector-snapshot-mirror-probe/docs/perf/2026-03-29-selector-snapshot-mirror-probe.md`
+    - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.selector-moduleasource-probe/docs/perf/2026-03-29-selector-moduleasource-probe.md`
 - `commit_packet_notify_fusion`
   - current status: `no_go_under_zero_selector_packet_gate`
   - tighter synthetic gate 已把 packet 本体压到微秒级；当前不值得升为新的大切口
@@ -58,7 +59,7 @@
 ### 2. `selector_snapshot_mirror_plane`
 
 - current probe status:
-  - `inconclusive_after_react_flow_probe`
+  - `go_narrowed_to_nonreact_plane`
 
 - before chain:
   - `StateTransaction.commit`
@@ -82,7 +83,7 @@
   - one module + one static selector + React 256 subscribers + one Module-as-Source link + one Flow/process consumer
   - verify per-commit actual selector evaluations collapse toward `1`
 - current continuation rule:
-  - 只有 Module-as-Source / process same-path probe 重新给出 multiplicative signal，才继续这条线
+  - React + Flow 平面已判 flat；当前允许直接开 non-React plane PoC，优先 `DeclarativeLinkRuntime.applyForSources()` 的局部 shared select memo
 
 ### 3. `commit_packet_notify_fusion`
 
