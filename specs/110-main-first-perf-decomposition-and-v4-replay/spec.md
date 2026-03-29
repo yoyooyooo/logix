@@ -368,7 +368,7 @@
     - `selector_snapshot_mirror_plane` 已收窄成 `selector_nonreact_plane_dedupe`
     - `DeclarativeLinkRuntime.applyForSources()` 的 non-React plane dedupe 仍是当前最值得继续看的 post-merge 线
     - 但 focused local compare 当前结论是 `inconclusive_after_focused_local_compare`，暂不升 PR / CI
-    - 若继续，只能补更贴边的 route harness 或回到识别模式
+    - 若继续，只能补更贴边的 route harness，或把下一条识别切到 `nonreact_fanout_writeback_fusion`
   - route note:
     - `docs/perf/2026-03-29-post-merge-big-cut-candidates.md`
 - `111 shadow-only package hardening` 当前只证明 additive telemetry wiring 与 unified contract 挂接成立，不覆盖 live controller 有效性。
