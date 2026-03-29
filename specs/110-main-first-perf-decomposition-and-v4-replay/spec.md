@@ -308,6 +308,7 @@
   - `https://github.com/yoyooyooo/logix/pull/142`
   - `https://github.com/yoyooyooo/logix/pull/133`
   - `https://github.com/yoyooyooo/logix/pull/143`
+  - `https://github.com/yoyooyooo/logix/pull/146`
 - 当前最新 targeted 补证：
   - `steps=800 @ 0.7/0.75/0.8` 全过门；
   - `steps=1600 @ 0.7/0.75/0.8` 全过门；
@@ -371,7 +372,7 @@
     - `compiled_txn_boundary` 已关闭为 `no_go`
     - `commit_packet_notify_fusion` 已关闭为 `no_go_under_zero_selector_packet_gate`
     - `selector_snapshot_mirror_plane` 已收窄成 `selector_nonreact_plane_dedupe`
-    - `external-store.ts` 的 module-side writeback fusion 已拿到 `accepted_with_evidence`，并已进入当前 `main`
+    - `postmerge-nonreact-fanout-writeback-fusion`（即 `external-store.ts` 的 module-side writeback fusion）已拿到 `accepted_with_evidence`，并已进入当前 `main`
     - 当前 post-merge 主实施线已完成一次收口
     - 下一步切到基于最新 `main` 的 `declarative_dispatch_shell` cheap-local probe
   - route note:
