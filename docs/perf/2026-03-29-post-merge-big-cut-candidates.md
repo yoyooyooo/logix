@@ -102,8 +102,8 @@
   - `cheap_local_red_pending`
 - why next:
     - `postmerge-nonreact-fanout-writeback-fusion` 已通过 `#146` 合入 `main`
-  - 当前剩余 non-React fanout 成本更可能集中在 declarative `dispatch` 壳
-  - 当前只允许 cheap-local probe，不直接开实现线
+    - 当前剩余 non-React fanout 成本更可能集中在 declarative `dispatch` 壳
+    - 当前只允许 cheap-local probe，不直接开实现线
 
 ### 3. `commit_packet_notify_fusion`
 
