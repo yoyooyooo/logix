@@ -10,9 +10,11 @@ export interface ModuleAsSourceLink {
   readonly computeValue: (snapshot: unknown) => unknown
   readonly equalsValue: (a: unknown, b: unknown) => boolean
   readonly applyValue: (next: unknown) => Effect.Effect<void, never, never>
-  readonly writebackGroupKey?: string
-  readonly stageValue?: (next: unknown) => Effect.Effect<void, never, never>
-  readonly flushStaged?: () => Effect.Effect<void, never, never>
+  readonly fusedWriteback?: {
+    readonly groupKey: string
+    readonly stage: (next: unknown) => Effect.Effect<void, never, never>
+    readonly flush: () => Effect.Effect<void, never, never>
+  }
 }
 
 export interface DeclarativeLinkRegistration {
@@ -184,9 +186,9 @@ export const makeDeclarativeLinkRuntime = (): DeclarativeLinkRuntime => {
           link.lastValue = nextValue
           scheduled = true
 
-          if (link.writebackGroupKey && link.stageValue && link.flushStaged) {
-            yield* link.stageValue(nextValue)
-            stagedFlushers.set(link.writebackGroupKey, link.flushStaged)
+          if (link.fusedWriteback) {
+            yield* link.fusedWriteback.stage(nextValue)
+            stagedFlushers.set(link.fusedWriteback.groupKey, link.fusedWriteback.flush)
             continue
           }
 
