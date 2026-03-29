@@ -9,7 +9,7 @@
 - `LOGIX_PERF_ITERS=80`
 - `LOGIX_PERF_WARMUP=20`
 - benchmark:
-  - `packages/logix-core/test/internal/Runtime/DeclarativeLinkRuntime.sameTargetFanoutFusion.Perf.off.test.ts`
+  - `packages/logix-core/test/internal/Runtime/DeclarativeLinkRuntime.sameTargetFanoutFusion.Perf.case.ts`
 
 ## before / after
 
@@ -67,11 +67,17 @@
 after：
 
 ```sh
-PATH=/opt/homebrew/bin:/usr/bin:/bin LOGIX_PERF_ITERS=80 LOGIX_PERF_WARMUP=20 /opt/homebrew/bin/node /Users/yoyo/Documents/code/personal/logix.worktrees/main.commit-packet-notify-probe/packages/logix-core/node_modules/vitest/vitest.mjs run packages/logix-core/test/internal/Runtime/DeclarativeLinkRuntime.sameTargetFanoutFusion.Perf.off.test.ts
+git worktree add ../logix.worktrees/tmp.same-target-after-heavy -b tmp.same-target-after-heavy agent/main-nonreact-fanout-fusion-probe-20260329
+cd ../logix.worktrees/tmp.same-target-after-heavy
+pnpm install
+LOGIX_PERF_ITERS=80 LOGIX_PERF_WARMUP=20 ./packages/logix-core/node_modules/.bin/vitest run --config packages/logix-core/vitest.perf.config.ts packages/logix-core/test/internal/Runtime/DeclarativeLinkRuntime.sameTargetFanoutFusion.Perf.case.ts
 ```
 
 baseline：
 
 ```sh
-PATH=/opt/homebrew/bin:/usr/bin:/bin LOGIX_PERF_ITERS=80 LOGIX_PERF_WARMUP=20 /opt/homebrew/bin/node /Users/yoyo/Documents/code/personal/logix.worktrees/main.commit-packet-notify-probe/packages/logix-core/node_modules/vitest/vitest.mjs run packages/logix-core/test/internal/Runtime/DeclarativeLinkRuntime.sameTargetFanoutFusion.Perf.off.test.ts
+git worktree add ../logix.worktrees/tmp.same-target-before-heavy -b tmp.same-target-before-heavy d26a8628
+cd ../logix.worktrees/tmp.same-target-before-heavy
+pnpm install
+LOGIX_PERF_ITERS=80 LOGIX_PERF_WARMUP=20 ./packages/logix-core/node_modules/.bin/vitest run --config packages/logix-core/vitest.perf.config.ts packages/logix-core/test/internal/Runtime/DeclarativeLinkRuntime.sameTargetFanoutFusion.Perf.case.ts
 ```
