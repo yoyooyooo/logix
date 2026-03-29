@@ -131,9 +131,10 @@ const benchmarkSameTargetModuleAsSource = (args: {
           }),
         )
         await runtime.runPromise(flushAllHostScheduler(hostScheduler))
+        const elapsedMs = performance.now() - t0
         const state = await runtime.runPromise(targetRt.getState)
         expect(state).toEqual(makeInitialNumbers(targetFields, nextValue))
-        return performance.now() - t0
+        return elapsedMs
       }
 
       const warmup = Math.max(0, args.warmup)

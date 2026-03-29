@@ -1,6 +1,6 @@
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Effect, Fiber, Layer, Schema, Stream } from 'effect'
+import { Deferred, Effect, Fiber, Layer, Schema, Stream } from 'effect'
 import * as Logix from '../../../src/index.js'
 import { TickSchedulerTag } from '../../../src/internal/runtime/core/env.js'
 import { flushAllHostScheduler, makeTestHostScheduler, testHostSchedulerLayer } from '../testkit/hostSchedulerTestKit.js'
@@ -86,21 +86,35 @@ describe('DeclarativeLinkRuntime same-target fanout fusion probe', () => {
             >
 
             let commits = 0
+            const subscriberReady = yield* Deferred.make<void>()
             const fiber = runtime.runFork(
               Stream.runForEach(
                 targetRt.changesWithMeta((s: any) => s),
                 () =>
-                  Effect.sync(() => {
-                    commits += 1
+                  Effect.gen(function* () {
+                    yield* Deferred.succeed(subscriberReady, undefined).pipe(Effect.ignore)
+                    yield* Effect.sync(() => {
+                      commits += 1
+                    })
                   }),
               ),
             )
 
             try {
-              yield* Effect.yieldNow
+              yield* sourceRt.dispatch({ _tag: 'set', payload: 1 })
+              yield* Effect.promise(() =>
+                runtime.runPromise(
+                  Effect.gen(function* () {
+                    const scheduler = yield* Effect.service(TickSchedulerTag).pipe(Effect.orDie)
+                    yield* scheduler.flushNow
+                  }),
+                ),
+              )
+              yield* flushAllHostScheduler(hostScheduler)
+              yield* Deferred.await(subscriberReady)
               commits = 0
 
-              yield* Effect.promise(() => runtime.runPromise(sourceRt.dispatch({ _tag: 'set', payload: 1 })))
+              yield* Effect.promise(() => runtime.runPromise(sourceRt.dispatch({ _tag: 'set', payload: 2 })))
               yield* Effect.promise(() =>
                 runtime.runPromise(
                   Effect.gen(function* () {
@@ -112,7 +126,7 @@ describe('DeclarativeLinkRuntime same-target fanout fusion probe', () => {
               yield* flushAllHostScheduler(hostScheduler)
 
               const state = yield* Effect.promise(() => runtime.runPromise(targetRt.getState))
-              expect(state).toEqual(makeInitialNumbers(targetFields, 1))
+              expect(state).toEqual(makeInitialNumbers(targetFields, 2))
               return commits
             } finally {
               yield* Effect.promise(() => runtime.runPromise(Fiber.interrupt(fiber).pipe(Effect.asVoid)))
