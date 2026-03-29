@@ -47,6 +47,7 @@
   - `2026-03-29` `selector_nonreact_plane_dedupe` focused local compare 已完成，当前结论收紧为 `inconclusive_after_focused_local_compare`
   - `2026-03-29` `selector_nonreact_plane_dedupe` 已补 `selectorId collision` 与 `shallowStruct` correctness gate，当前 correctness 基线为 green
   - `2026-03-29` `nonreact_fanout_writeback_fusion` 的 same-target Module-as-Source probe 已完成，当前结论为 `cheap_local_positive_on_module_side`
+  - `2026-03-29` `nonreact_fanout_writeback_fusion` 的 module-side writeback fusion PoC 已完成，当前结论升级为 `focused_local_positive_on_module_side`
 - 当前主线语义：
   - “合并进主线”这件事已经完成
   - 剩余工作改为冻结基线解释、residual 识别和历史资产收口
@@ -281,7 +282,7 @@
 | `postmerge-selector-mirror-react-flow` | `main_control` | `provisional` | `cheap_local` | `blocked` | `not_applicable` | `unknown` | strengthened probe 显示 React + Flow 平面无消费面放大；只剩 Module-as-Source / process 缺口值得继续验证 |
 | `postmerge-selector-nonreact-moduleasource` | `main_control` | `provisional` | `cheap_local` | `blocked` | `not_applicable` | `unknown` | Module-as-Source probe 给出 `1 / 8 / 32` 线性信号；当前允许继续开 non-React plane PoC |
 | `postmerge-selector-nonreact-dedupe-poc` | `main_control` | `provisional` | `focused_local` | `blocked` | `not_applicable` | `unknown` | `DeclarativeLinkRuntime.applyForSources()` 局部 shared select memo 已把 Module-as-Source 与 declarative-link fanout 都压到常数，`selectorId collision` 与 `shallowStruct` gate 也已通过，但 focused local compare 尚未给出稳定 route-level 收益 |
-| `postmerge-nonreact-fanout-writeback-fusion` | `main_control` | `provisional` | `cheap_local` | `blocked` | `not_applicable` | `unknown` | same-target Module-as-Source probe 已证明 target commits 按 `1 / 8 / 32` 线性增长；当前允许只围绕 `external-store.ts` 的 module-side writeback 壳开最小 PoC |
+| `postmerge-nonreact-fanout-writeback-fusion` | `main_control` | `provisional` | `focused_local` | `blocked` | `not_applicable` | `unknown` | same-target Module-as-Source probe 已证明 target commits 按 `1 / 8 / 32` 线性增长；module-side writeback fusion PoC 已把 same-target focused local p95 压到近常数 |
 | `postmerge-commit-packet-zero-selector` | `main_control` | `discarded` | `cheap_local` | `not_applicable` | `not_applicable` | `unknown` | zero-selector synthetic packet 只有微秒级，当前不值得升为新的大切口 |
 | `tx-c1-state-txn-closeout` | `v4_closeout` | `accepted_with_evidence` | `heavier_local` | `not_applicable` | `comparable_subset_green` | `not_controller_signal` | isolated `StateTransaction.ts` closeout 已通过 `#142 -> #133` 进入当前 `main`；clean candidate 继续只保留为证据锚点 |
 | `v4-small-beta-upgrade-effect-beta42` | `v4_residual_identification` | `discarded` | `cheap_local` | `not_applicable` | `not_applicable` | `version_drift_control` | `beta.28 -> beta.42` cheap local A/B 与 blocker probe 都未形成增益，不改变 residual route |
@@ -371,7 +372,8 @@
     - `DeclarativeLinkRuntime.applyForSources()` 的 non-React plane dedupe 仍是当前最值得继续看的 post-merge 线
     - 但 focused local compare 当前结论是 `inconclusive_after_focused_local_compare`，暂不升 PR / CI
     - 当前最新 derived candidate 已切到 `nonreact_fanout_writeback_fusion`
-    - same-target Module-as-Source probe 已给出 clean cheap-local positive，下一步允许只围绕 `external-store.ts` 的 module-side writeback 壳开最小 PoC
+    - `external-store.ts` 的 module-side writeback fusion 已拿到 `focused_local_positive_on_module_side`
+    - 当前 post-merge 主实施线已从 selector dedupe 切到 module-side fanout fusion
   - route note:
     - `docs/perf/2026-03-29-post-merge-big-cut-candidates.md`
 - `111 shadow-only package hardening` 当前只证明 additive telemetry wiring 与 unified contract 挂接成立，不覆盖 live controller 有效性。
