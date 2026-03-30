@@ -40,9 +40,9 @@
   - current status: `merged_mainline_after_heavier_local_positive`
   - same-target declarative dispatch batching 已把 target commits 稳定压到 `1 / 1 / 1`；focused local `fanout32.p95` 从 `3.124ms` 降到 `0.615ms`，heavier local `fanout32.p95` 从 `3.051ms` 降到 `0.664ms`；已于 `2026-03-30` 通过 `#148` 进入 `main`
   - reading:
-    - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.declarative-dispatch-fusion-v2/docs/perf/2026-03-29-declarative-dispatch-fusion-probe.md`
-    - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.declarative-dispatch-fusion-v2/docs/perf/2026-03-29-declarative-dispatch-fusion-focused-compare.md`
-    - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.declarative-dispatch-fusion-v2/docs/perf/2026-03-29-declarative-dispatch-fusion-heavier-local.md`
+    - `docs/perf/2026-03-29-declarative-dispatch-fusion-probe.md`
+    - `docs/perf/2026-03-29-declarative-dispatch-fusion-focused-compare.md`
+    - `docs/perf/2026-03-29-declarative-dispatch-fusion-heavier-local.md`
 
 ## Ranked strategic candidates
 

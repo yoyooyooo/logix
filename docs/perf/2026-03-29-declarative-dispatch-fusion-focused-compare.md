@@ -41,11 +41,17 @@
 
 ## 验证命令
 
+可选：
+
+```sh
+export WORKTREE_DIR="${WORKTREE_DIR:-../logix.worktrees}"
+```
+
 after：
 
 ```sh
-git worktree add ../logix.worktrees/tmp.declarative-after -b tmp.declarative-after agent/main-declarative-dispatch-fusion-v2-20260329
-cd ../logix.worktrees/tmp.declarative-after
+git worktree add "${WORKTREE_DIR:-../logix.worktrees}/tmp.declarative-after" -b tmp.declarative-after agent/main-declarative-dispatch-fusion-v2-20260329
+cd "${WORKTREE_DIR:-../logix.worktrees}/tmp.declarative-after"
 pnpm install
 LOGIX_PERF_ITERS=30 LOGIX_PERF_WARMUP=8 ./packages/logix-core/node_modules/.bin/vitest run --config packages/logix-core/vitest.perf.config.ts packages/logix-core/test/internal/Runtime/DeclarativeLinkRuntime.sameTargetDispatchBatchFusion.Perf.case.ts
 ```
@@ -53,8 +59,8 @@ LOGIX_PERF_ITERS=30 LOGIX_PERF_WARMUP=8 ./packages/logix-core/node_modules/.bin/
 baseline：
 
 ```sh
-git worktree add ../logix.worktrees/tmp.declarative-before -b tmp.declarative-before 2175d0c3
-cd ../logix.worktrees/tmp.declarative-before
+git worktree add "${WORKTREE_DIR:-../logix.worktrees}/tmp.declarative-before" -b tmp.declarative-before 2175d0c3
+cd "${WORKTREE_DIR:-../logix.worktrees}/tmp.declarative-before"
 pnpm install
 LOGIX_PERF_ITERS=30 LOGIX_PERF_WARMUP=8 ./packages/logix-core/node_modules/.bin/vitest run --config packages/logix-core/vitest.perf.config.ts packages/logix-core/test/internal/Runtime/DeclarativeLinkRuntime.sameTargetDispatchBatchFusion.Perf.case.ts
 ```
