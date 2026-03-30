@@ -272,7 +272,7 @@ export const makeDispatchOps = <S, A>(args: {
             }
 
             StateTransaction.updateDraft(txnContext, next)
-            recordStatePatch('*', 'reducer', undefined, next)
+            recordStatePatch('*', 'reducer', prev, next)
 
             if (isDevEnv()) {
               yield* Debug.record({

@@ -66,7 +66,7 @@ const pickConfigErrors = (ring: Debug.RingBufferSink): ReadonlyArray<any> =>
     )
 
 describe('StateTrait converge auto correctness invariants', () => {
-  it.effect('unknown_write should fall back to full even after a cache hit', () =>
+  it.effect('trackable top-level replace should stop degrading to unknown_write after a cache hit', () =>
     Effect.gen(function* () {
       const steps = 10
       const shape: Record<string, Schema.Schema<any>> = {}
@@ -116,7 +116,8 @@ describe('StateTrait converge auto correctness invariants', () => {
         yield* bump('in0')
         yield* bump('in0')
 
-        // Writing state without field-level patches -> dirtyPaths="*" -> unknown_write.
+        // Writing state without field-level patches but with a trackable top-level key
+        // should now be inferred early enough for auto admission to stay on dirty.
         yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 'unknown' }, () =>
           Effect.gen(function* () {
             const prev = yield* rt.getState
@@ -131,6 +132,75 @@ describe('StateTrait converge auto correctness invariants', () => {
       expect(decisions.length).toBeGreaterThanOrEqual(4)
       expect(decisions.some((d) => Array.isArray(d?.reasons) && d.reasons.includes('cache_hit'))).toBe(true)
 
+      const last = decisions[decisions.length - 1]
+      expect(last?.executedMode).toBe('dirty')
+      expect(last?.reasons).not.toContain('unknown_write')
+    }),
+  )
+
+  it.effect('explicit wildcard dirty evidence should still fall back to full even after a cache hit', () =>
+    Effect.gen(function* () {
+      const steps = 10
+      const shape: Record<string, Schema.Schema<any>> = {}
+      for (let i = 0; i < steps; i++) {
+        shape[`in${i}`] = Schema.Number
+        shape[`d${i}`] = Schema.Number
+      }
+
+      const State = Schema.Struct(shape)
+
+      const traits: Record<string, any> = {}
+      for (let i = 0; i < steps; i++) {
+        const input = `in${i}`
+        traits[`d${i}`] = Logix.StateTrait.computed<any, any, any>({
+          deps: [input],
+          get: (value: any) => (value as number) + 1,
+        })
+      }
+
+      const spec = Logix.StateTrait.from(State as any)(traits as any)
+
+      const initial: Record<string, unknown> = {}
+      for (let i = 0; i < steps; i++) {
+        initial[`in${i}`] = 0
+        initial[`d${i}`] = 1
+      }
+
+      const { M, runtime, ring } = makeTestRuntime({
+        moduleId: 'StateTraitConvergeAuto_Correctness_ExplicitUnknownWrite',
+        state: State as any,
+        traits: spec,
+        initial,
+        diagnosticsLevel: 'light',
+        stateTransaction: {
+          traitConvergeMode: 'auto',
+          traitConvergeBudgetMs: 100_000,
+          traitConvergeDecisionBudgetMs: 100_000,
+        },
+      })
+
+      const program = Effect.gen(function* () {
+        const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
+
+        const bump = (field: string) => rt.dispatch({ _tag: 'bump', payload: field } as any)
+
+        yield* bump('in0')
+        yield* bump('in0')
+        yield* bump('in0')
+
+        yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 'explicit_unknown' }, () =>
+          Effect.gen(function* () {
+            const prev = yield* rt.getState
+            yield* rt.setState({ ...prev, in0: (prev as any).in0 + 1 })
+            Logix.InternalContracts.recordStatePatch(rt, '*', 'perf')
+          }),
+        )
+      })
+
+      yield* Effect.promise(() => runtime.runPromise(program))
+
+      const decisions = pickDecisionSummaries(ring)
+      expect(decisions.length).toBeGreaterThanOrEqual(4)
       const last = decisions[decisions.length - 1]
       expect(last?.executedMode).toBe('full')
       expect(last?.reasons).toContain('unknown_write')
