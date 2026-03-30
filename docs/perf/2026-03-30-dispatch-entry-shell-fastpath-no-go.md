@@ -19,10 +19,17 @@
 
 ## 验证命令
 
+可选：
+
+```sh
+export BASELINE_REPO_DIR="${BASELINE_REPO_DIR:-/path/to/logix}"
+export AFTER_REPO_DIR="${AFTER_REPO_DIR:-/path/to/logix.worktrees/main.dispatch-entry-shell-cut}"
+```
+
 baseline:
 
 ```sh
-cd /Users/yoyo/Documents/code/personal/logix
+cd "${BASELINE_REPO_DIR}"
 LOGIX_PERF_ITERS=1200 LOGIX_PERF_WARMUP=240 pnpm exec vitest run \
   packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.dispatchOuterShell.Probe.test.ts
 LOGIX_PERF_ITERS=1200 LOGIX_PERF_WARMUP=240 pnpm exec vitest run \
@@ -32,7 +39,7 @@ LOGIX_PERF_ITERS=1200 LOGIX_PERF_WARMUP=240 pnpm exec vitest run \
 after:
 
 ```sh
-cd /Users/yoyo/Documents/code/personal/logix.worktrees/main.dispatch-entry-shell-cut
+cd "${AFTER_REPO_DIR}"
 LOGIX_PERF_ITERS=1200 LOGIX_PERF_WARMUP=240 pnpm exec vitest run \
   packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.dispatchOuterShell.Probe.test.ts
 LOGIX_PERF_ITERS=1200 LOGIX_PERF_WARMUP=240 pnpm exec vitest run \
@@ -58,7 +65,7 @@ dispatchMinusQueued.avg=0.020ms
 queuedMinusDirect.avg=0.012ms
 ```
 
-phase baseline:
+phase after:
 
 ```txt
 dispatch.p50=0.087ms
