@@ -4,7 +4,7 @@
 
 - base:
   - original identify baseline: `main@d26a8628`
-  - latest control snapshot: `main@65f8a3fa`
+  - latest control snapshot: `main@b0af586c`
 - goal:
   - after `effect-v4` and `TX-C1` are already in `main`, identify the next round of high-leverage cuts
   - prefer long-chain compression over single-point micro tuning
@@ -102,7 +102,8 @@
 - current continuation rule:
   - React + Flow 平面已判 flat；non-React plane read-side dedupe 已完成 cheap/focused 识别；module-side 与 declarative-side fanout 壳都已收口进 `main`
   - next route:
-    - 基于 latest `main` 重开新一轮 big-cut identify
+    - `2026-03-30` latest-main quick identify 已完成，见 `docs/perf/2026-03-30-latest-main-quick-identify-reading.md`
+    - 当前唯一下一刀已收窄到 `dispatch` 专属入口壳
     - `selector_snapshot_mirror_plane` 继续只保留为 `provisional` 输入，不默认直接升实现线
 
 ### 2.5. `declarative_dispatch_shell`
@@ -155,3 +156,4 @@
 - `provideInlineContext` no-go is the current proof of that risk
 - `selector_snapshot_mirror_plane` 与 `commit_packet_notify_fusion` 的最新 probe 都说明：只要 gate 口径不够窄，就会给出假阳性或夸大候选体量
 - so the next step is a fresh latest-main identify wave, not reopening old loose aggregate candidates without a narrower gate
+- `2026-03-30` 的 fresh latest-main identify 已经把这个“narrower gate”补出来了，当前下一刀更像 `dispatch` 专属入口壳，而不是旧的 loose aggregate 大切口

@@ -52,9 +52,11 @@
   - `2026-03-29` `#146` 已把 `nonreact_fanout_writeback_fusion` 合入 `main`
   - `2026-03-29` `declarative_dispatch_shell` 已在 latest `main` 上拿到 cheap / focused / heavier local 正向
   - `2026-03-30` `#148` 已把 `declarative_dispatch_shell` 合入 `main`，merge commit = `65f8a3fa`
+  - `2026-03-30` `#151` 已把 latest-main quick identify reading 与 `dispatch_outer_shell_probe` 合入 `main`，merge commit = `b0af586c`
 - 当前主线语义：
   - “合并进主线”这件事已经完成
   - 剩余工作改为冻结基线解释、residual 识别、latest-main 新一轮大切口识别和历史资产收口
+  - latest-main 新一轮 cheap-local identify 已经打开，当前唯一下一刀收敛到 `dispatch` 专属入口壳
 
 ### 当前最强控制线候选
 
@@ -264,6 +266,7 @@
 - 本节自身就是 `110` 的 stable latest pointer，不另起并行真相源。
 - 每个类别只保留一个 canonical latest 指针：
   - candidate runtime code anchor
+  - current latest-main cheap identify
   - current best focused evidence
   - current best full evidence
 - dated artifacts 与细节 diff 继续落在原始 perf 工件目录，`110` 只持有“当前最新应读哪一个”的指针。
@@ -272,6 +275,10 @@
 ### Candidate Runtime Code Anchor
 
 - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.v3-combined-replay9-cutA/packages/logix-core/src/internal/runtime/core/ModuleRuntime.impl.ts`
+
+### Current Latest-Main Cheap Identify
+
+- `/Users/yoyo/Documents/code/personal/logix/docs/perf/2026-03-30-latest-main-quick-identify-reading.md`
 
 ### Current Best Focused Evidence
 
@@ -311,6 +318,7 @@
 | `postmerge-selector-nonreact-dedupe-poc` | `main_control` | `provisional` | `focused_local` | `blocked` | `not_applicable` | `unknown` | `DeclarativeLinkRuntime.applyForSources()` 局部 shared select memo 已把 Module-as-Source 与 declarative-link fanout 都压到常数，`selectorId collision` 与 `shallowStruct` gate 也已通过，但 focused local compare 尚未给出稳定 route-level 收益 |
 | `postmerge-nonreact-fanout-writeback-fusion` | `main_control` | `accepted_with_evidence` | `heavier_local` | `not_applicable` | `merged_mainline` | `unknown` | same-target Module-as-Source probe 已证明 target commits 按 `1 / 8 / 32` 线性增长；module-side writeback fusion PoC 已把 same-target focused 与 heavier local p95 都压到近常数，且已通过 `#146` 进入当前 `main` |
 | `postmerge-declarative-dispatch-shell` | `main_control` | `accepted_with_evidence` | `heavier_local` | `not_applicable` | `merged_mainline` | `unknown` | same-target declarative dispatch batching 已把 target commits 稳定压到 `1 / 1 / 1`；focused local `fanout32.p95` 从 `3.124ms` 降到 `0.615ms`，heavier local `fanout32.p95` 从 `3.051ms` 降到 `0.664ms`，并已于 `2026-03-30` 通过 `#148` 进入当前 `main` |
+| `postmerge-dispatch-outer-shell-probe` | `main_control` | `provisional` | `cheap_local` | `blocked` | `not_applicable` | `unknown` | latest-main quick identify 已证明 browser blocker 继续 `clear`，同时 node 微基线与 split probe 把当前税点收窄到 `dispatch` 专属入口壳；当前通过 `#151` 进入 `main`，但尚未升级到实现线 |
 | `postmerge-commit-packet-zero-selector` | `main_control` | `discarded` | `cheap_local` | `not_applicable` | `not_applicable` | `unknown` | zero-selector synthetic packet 只有微秒级，当前不值得升为新的大切口 |
 | `tx-c1-state-txn-closeout` | `v4_closeout` | `accepted_with_evidence` | `heavier_local` | `not_applicable` | `comparable_subset_green` | `not_controller_signal` | isolated `StateTransaction.ts` closeout 已通过 `#142 -> #133` 进入当前 `main`；clean candidate 继续只保留为证据锚点 |
 | `v4-small-beta-upgrade-effect-beta42` | `v4_residual_identification` | `discarded` | `cheap_local` | `not_applicable` | `not_applicable` | `version_drift_control` | `beta.28 -> beta.42` cheap local A/B 与 blocker probe 都未形成增益，不改变 residual route |
@@ -338,6 +346,8 @@
   - `https://github.com/yoyooyooo/logix/pull/146`
   - `https://github.com/yoyooyooo/logix/pull/147`
   - `https://github.com/yoyooyooo/logix/pull/148`
+  - `https://github.com/yoyooyooo/logix/pull/151`
+  - `https://github.com/yoyooyooo/logix/pull/151`
 - 当前最新 targeted 补证：
   - `steps=800 @ 0.7/0.75/0.8` 全过门；
   - `steps=1600 @ 0.7/0.75/0.8` 全过门；
@@ -393,10 +403,10 @@
   - `service/provide shell` 的 targeted local bench wrapper 已完成
   - `ModuleRuntime.operation.ts` 的最小 PoC 已判 `no_go_under_current_boundary`
   - 不重复打这条 exact cut
-- 当前总控下一步改为：
-  - 用冻结基线 `8c41a263` 解释剩余差额时，只接受新的 docs/evidence 事实
-  - 不自动再开新的 `E-1` 实现线
-  - `111` 继续保持 blocked，直到出现新的 `controller_related` 证据
+  - 当前总控下一步改为：
+    - 用冻结基线 `8c41a263` 解释剩余差额时，只接受新的 docs/evidence 事实
+    - 不自动再开新的 `E-1` 实现线
+    - `111` 继续保持 blocked，直到出现新的 `controller_related` 证据
   - post-merge big-cut identify 当前改为：
     - `compiled_txn_boundary` 已关闭为 `no_go`
     - `commit_packet_notify_fusion` 已关闭为 `no_go_under_zero_selector_packet_gate`
@@ -404,9 +414,11 @@
     - `postmerge-nonreact-fanout-writeback-fusion`（即 `external-store.ts` 的 module-side writeback fusion）已拿到 `accepted_with_evidence`，并已进入当前 `main`
     - `postmerge-declarative-dispatch-shell` 已拿到 `accepted_with_evidence`，并已于 `2026-03-30` 通过 `#148` 进入当前 `main`
     - 当前 post-merge 主实施线已收口为两条 merged-mainline 正向 cut
-    - 下一步改为基于 latest `main` 重开 big-cut identify 与 residual explanation，不默认沿旧 selector non-React plane 直接开实现线
+    - latest-main cheap-local identify 已完成，当前唯一下一刀切到 `dispatch` 专属入口壳
+    - `#151` 只把它提升到 `cheap_local` 的 route candidate，不直接宣布为新实现线
   - route note:
     - `docs/perf/2026-03-29-post-merge-big-cut-candidates.md`
+    - `docs/perf/2026-03-30-latest-main-quick-identify-reading.md`
 - `111 shadow-only package hardening` 当前只证明 additive telemetry wiring 与 unified contract 挂接成立，不覆盖 live controller 有效性。
 - `v4-perf` replay、PR、CI 一律后置到本地证据稳定之后。
 

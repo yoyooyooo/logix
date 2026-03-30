@@ -22,6 +22,7 @@
   - `E-1B clean scout` 已把 route 结论收紧到 `inconclusive_after_clean_scout`
   - 已存在 isolated shadow-only code candidate，且边界只覆盖 additive telemetry wiring
   - `2026-03-30` `#146/#148` 两条 non-React fanout shell 线都已进入 `main`，但仍留在 `110` 主控内，未形成新的 controller signal
+  - `2026-03-30` `#151` 的 latest-main quick identify 已把下一刀收窄到 `dispatch` 专属入口壳，当前不支持把 residual 解释切到 controller
 - immediate next package:
   1. 保持 `111` 自身的 `data-model / contracts / checklist` 与 shadow-only candidate 对齐
   2. 将 cutdown v2 视为当前 `shadow_local_recovery_candidate`

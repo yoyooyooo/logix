@@ -4,13 +4,18 @@
 
 注意：正式 perf 证据（PerfReport/PerfDiff）仍归档在 `specs/<id>/perf/`，本目录负责“结论、约束、路线、执行手册”。
 
-## 当前路由快照（2026-03-06）
+## 当前路由快照（2026-03-30）
 
 - 编号说明：`03/05` 沿用 major-cut 历史编号，`07` 使用 routing track 编号；存在同名如 `F-1`，排期与当前状态一律以 `07-optimization-backlog-and-routing.md` 为准。
-- 当前没有默认 runtime 主线：`R-1` 已由 `S-10` native-anchor benchmark cut 收口，`S-11` post-probe 又确认 remaining browser blocker queue 已清空；`startup-phase` / `handoff-lite` / `urgent-aware handoff` 只保留失败 checkpoint，不再代表活跃排期。
+- 当前没有默认 browser blocker：`probe_next_blocker --json` 在 `main@b4bc9e1d` 上继续为 `clear`，`#146/#148` merged 后的 same-target fanout 收益也继续保持。
+- 当前最新的 cheap-local 实施候选已从“默认不开线”收敛到 `dispatch` 专属入口壳：
+  - 读数锚点：`docs/perf/2026-03-30-latest-main-quick-identify-reading.md`
+  - 当前唯一下一刀：`dispatch_outer_shell_probe`
 - 已完成：`F-1`（perf `fabfile.py` router）、`S-2` 第一刀（watchers 双轨语义）、`S-12`（watchers paired phase evidence）、`S-13`（watchers phase display）、`S-14`（watchers native-anchor pre-handler split）、`S-4`（`RuntimeExternalStore delayed teardown` 最小修复）、`S-10`（`txnLanes` native-anchor benchmark cut）、`S-11`（post-S10 blocker probe）。
 - 已关闭：`R-1` runtime 主线、`S-1` residual audit、`S-3` gate/applicability、`S-5` refresh unblock 审计、`S-6` collect 稳定化副线。
-- 当前只剩显式候选：`R-2` 架构/API 候选；`S-2` 已由 `S-14` 把最后的 native-anchor / pre-handler 不确定性拆开并关闭，不再是默认 runtime blocker 后继。
+- 当前显式候选：
+  - `R-3` latest-main 的 `dispatch` 入口壳 cheap-local probe
+  - `R-2` 架构/API 候选
 - 真正的排期与并行策略以 `07-optimization-backlog-and-routing.md` 为准。
 - 执行协议以 `08-perf-execution-protocol.md` 为准：主会话保持干净，只做协调/审查/合流；每条实施线都在独立 `worktree/branch/subagent` 中推进，并在收口时相对主分支只保留 `1` 个最终 HEAD 提交。
 
@@ -34,6 +39,8 @@
   - `bootResolve` 的真正问题是 RAF 轮询地板。切到 `MutationObserver` 后，`sync/suspend` 都回到 `~1ms` 级。
 - `2026-03-14-c7-current-head-reprobe-clear.md`
   - 在 `U-1` 与 `C-6` 之后重新跑 `probe_next_blocker --json`，结果继续为 `clear`。
+- `2026-03-30-latest-main-quick-identify-reading.md`
+  - latest `main@b4bc9e1d` 的 cheap-local 起始盘面；确认 browser blocker 继续 `clear`，并把唯一下一刀收窄到 `dispatch` 专属入口壳。
 - `2026-03-14-current-effective-conclusions.md`
   - 当前阶段唯一应继续采信的 perf 结论汇总；优先读这页，再回看 dated 记录。
 - `2026-03-13-kept-vs-discarded-cuts.md`
@@ -41,9 +48,9 @@
 - `05-forward-only-vnext-plan.md`
   - 在“零存量用户”前提下的唯一主线方案（破坏式收敛 + API vNext + 执行波次）。
 - `06-current-head-triage.md`
-  - 基于 current-head 证据的四分法裁决：真实瓶颈、伪影、门禁噪声与唯一下一刀。
+  - 基于 current-head 证据的四分法裁决：真实瓶颈、伪影、门禁噪声与唯一下一刀；已吸收 `2026-03-30` latest-main addendum。
 - `07-optimization-backlog-and-routing.md`
-  - 把识别结论收敛成可执行 backlog：收益/成本/冲突面/并行策略/worktree 需求。
+  - 把识别结论收敛成可执行 backlog：收益/成本/冲突面/并行策略/worktree 需求；当前默认主候选已切到 `R-3 dispatch outer shell`。
 
 ## 专题导航（先读）
 

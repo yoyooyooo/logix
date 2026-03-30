@@ -80,6 +80,7 @@
   - 最新 residual refresh 结果仍是 `inconclusive_after_clean_scout`
   - 当前没有新证据把 route classification 推到 `controller_related`
   - `2026-03-30` `#146/#148` 两条 non-React fanout shell 线都已进入 `main`，但仍由 `110` 吸收裁决，未产生新的 controller signal
+  - `2026-03-30` `#151` 的 latest-main quick identify 已把下一刀收窄到 `dispatch` 专属入口壳，仍未形成新的 controller signal
 - immediate allowed actions:
   - 以 cutdown v2 作为当前 `shadow_local_recovery_candidate`
   - 继续把 `110` 的 latest merged-mainline 事实同步回 `111`，但不重开 live-candidate 讨论
@@ -102,11 +103,13 @@
   - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.111-shadow-telemetry-cutdown/specs/111-adaptive-auto-converge-controller/notes/2026-03-28-shadow-telemetry-promotion-gate-reading.md`
   - `/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf/specs/103-effect-v4-forward-cutover/perf/2026-03-28-e1-residual-refresh-reading.md`
   - `/Users/yoyo/Documents/code/personal/logix.worktrees/main.longchain-identify/docs/perf/2026-03-29-post-merge-big-cut-candidates.md`
+  - `/Users/yoyo/Documents/code/personal/logix/docs/perf/2026-03-30-latest-main-quick-identify-reading.md`
 - meaning:
   - 当前 browser sensitivity 仍存在，但 clean scout 后已不足以单独解释整包 residual
   - 当前旧 shadow candidate 的 local regression 已由 cutdown v2 在 representative points 上清掉
   - 最新 residual refresh 仍把 route classification 留在 `inconclusive_after_clean_scout`
   - 最新 post-merge selector / commit-packet / fanout-shell 线继续由 `110` 吸收裁决，不构成 `controller_related` 证据
+  - latest-main quick identify 已把下一刀收窄到 `dispatch` 专属入口壳，进一步说明当前 residual route 仍不指向 controller
   - 当前 cutdown v2 继续只保留为 `shadow_local_recovery_candidate`，仍不允许把 residual 归因推进到 controller live candidate
 - re-entry trigger:
   - future residual refresh after shadow cheap/heavier local still points controller-related
