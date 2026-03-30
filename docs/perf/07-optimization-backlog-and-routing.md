@@ -83,10 +83,10 @@
 问题：
 - 旧的 broad outer-shell 表述还不够窄，容易把 `txnQueue` 公共壳与 `dispatch` 专属入口壳混在一起。
 - 当前最新证据显示：
-  - `dispatch.p95 ≈ 0.162ms`
-  - `queuedSetState.p95 ≈ 0.098ms`
+  - `dispatch.p95 ≈ 0.173ms`
+  - `queuedSetState.p95 ≈ 0.093ms`
   - `directTxnSetState.p95 ≈ 0.081ms`
-  - `dispatchMinusQueued.avg ≈ 0.034ms`
+  - `dispatchMinusQueued.avg ≈ 0.039ms`
   - `queuedMinusDirect.avg ≈ 0.008ms`
 
 预期收益：
