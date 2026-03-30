@@ -347,7 +347,6 @@
   - `https://github.com/yoyooyooo/logix/pull/147`
   - `https://github.com/yoyooyooo/logix/pull/148`
   - `https://github.com/yoyooyooo/logix/pull/151`
-  - `https://github.com/yoyooyooo/logix/pull/151`
 - 当前最新 targeted 补证：
   - `steps=800 @ 0.7/0.75/0.8` 全过门；
   - `steps=1600 @ 0.7/0.75/0.8` 全过门；
