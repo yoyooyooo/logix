@@ -97,14 +97,18 @@ describe('ModuleRuntime dispatch outer shell probe', () => {
           readonly directTxnSetStateSamples: ReadonlyArray<number>
         }
 
-        console.log(
-          `[perf] dispatch-outer-shell-probe iters=${iterations} warmup=${warmup} ` +
-            `dispatch.p50=${quantile(samples.dispatchSamples, 0.5).toFixed(3)}ms dispatch.p95=${quantile(samples.dispatchSamples, 0.95).toFixed(3)}ms ` +
-            `queuedSetState.p50=${quantile(samples.queuedSetStateSamples, 0.5).toFixed(3)}ms queuedSetState.p95=${quantile(samples.queuedSetStateSamples, 0.95).toFixed(3)}ms ` +
-            `directTxnSetState.p50=${quantile(samples.directTxnSetStateSamples, 0.5).toFixed(3)}ms directTxnSetState.p95=${quantile(samples.directTxnSetStateSamples, 0.95).toFixed(3)}ms ` +
-            `dispatchMinusQueued.avg=${(average(samples.dispatchSamples) - average(samples.queuedSetStateSamples)).toFixed(3)}ms ` +
-            `queuedMinusDirect.avg=${(average(samples.queuedSetStateSamples) - average(samples.directTxnSetStateSamples)).toFixed(3)}ms`,
-        )
+        const summary = [
+          `[perf] dispatch-outer-shell-probe iters=${iterations} warmup=${warmup}`,
+          `dispatch.p50=${quantile(samples.dispatchSamples, 0.5).toFixed(3)}ms`,
+          `dispatch.p95=${quantile(samples.dispatchSamples, 0.95).toFixed(3)}ms`,
+          `queuedSetState.p50=${quantile(samples.queuedSetStateSamples, 0.5).toFixed(3)}ms`,
+          `queuedSetState.p95=${quantile(samples.queuedSetStateSamples, 0.95).toFixed(3)}ms`,
+          `directTxnSetState.p50=${quantile(samples.directTxnSetStateSamples, 0.5).toFixed(3)}ms`,
+          `directTxnSetState.p95=${quantile(samples.directTxnSetStateSamples, 0.95).toFixed(3)}ms`,
+          `dispatchMinusQueued.avg=${(average(samples.dispatchSamples) - average(samples.queuedSetStateSamples)).toFixed(3)}ms`,
+          `queuedMinusDirect.avg=${(average(samples.queuedSetStateSamples) - average(samples.directTxnSetStateSamples)).toFixed(3)}ms`,
+        ]
+        console.log(summary.join(' '))
 
         yield* Effect.promise(() => runtime.dispose())
       } finally {

@@ -48,7 +48,7 @@ python3 fabfile.py probe_next_blocker --json
 命令：
 
 ```sh
-./packages/logix-core/node_modules/.bin/vitest run \
+pnpm exec vitest run \
   packages/logix-core/test/internal/Runtime/DeclarativeLinkRuntime.sameTargetDispatchBatchFusion.test.ts \
   packages/logix-core/test/internal/Runtime/DeclarativeLinkRuntime.sameTargetFanoutFusion.Probe.test.ts
 ```
@@ -72,7 +72,7 @@ python3 fabfile.py probe_next_blocker --json
 命令：
 
 ```sh
-./packages/logix-core/node_modules/.bin/vitest run \
+pnpm exec vitest run \
   packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.dispatchShell.Phases.Perf.light.test.ts
 ```
 
