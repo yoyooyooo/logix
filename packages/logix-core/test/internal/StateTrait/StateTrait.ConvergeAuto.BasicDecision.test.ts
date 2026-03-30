@@ -26,7 +26,7 @@ describe('StateTrait converge auto basic decision', () => {
         // txn#3: near-full should fall back to full
         yield* rt.dispatch({ _tag: 'bumpAB' } as any)
 
-        // txn#4: unknown write (only '*') should fall back to full
+        // txn#4: trackable top-level replace should be inferred early enough for dirty admission
         const prev = yield* rt.getState
         yield* rt.setState({ ...prev, a: prev.a + 1 })
       })
@@ -45,8 +45,8 @@ describe('StateTrait converge auto basic decision', () => {
       expect(data[2]?.executedMode).toBe('full')
       expect(data[2]?.reasons).toContain('near_full')
 
-      expect(data[3]?.executedMode).toBe('full')
-      expect(data[3]?.reasons).toContain('unknown_write')
+      expect(data[3]?.executedMode).toBe('dirty')
+      expect(data[3]?.reasons).toEqual(expect.not.arrayContaining(['unknown_write']))
     }),
   )
 })
