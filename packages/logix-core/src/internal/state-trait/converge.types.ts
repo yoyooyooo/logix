@@ -118,6 +118,7 @@ export interface ConvergeContext<S> {
   readonly dirtyPaths?: ReadonlySet<string | FieldPath | FieldPathId> | ReadonlyArray<string | FieldPath | FieldPathId>
   readonly allowInPlaceDraft?: boolean
   readonly planCache?: ConvergePlanCache
+  readonly getBaseState?: () => S
   readonly getDraft: () => S
   readonly setDraft: (next: S) => void
   readonly recordPatch: (

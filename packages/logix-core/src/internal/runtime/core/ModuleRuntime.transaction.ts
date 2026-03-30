@@ -580,6 +580,7 @@ export const makeTransactionOps = <S>(args: {
                       dirtyPaths: txnContext.current?.dirtyPathIds,
                       dirtyPathsKeyHash: (txnContext.current as any)?.dirtyPathIdsKeyHash,
                       dirtyPathsKeySize: (txnContext.current as any)?.dirtyPathIdsKeySize,
+                      getBaseState: () => txnContext.current!.baseState as any,
                       allowInPlaceDraft:
                         txnContext.current != null &&
                         !Object.is(txnContext.current.draft, txnContext.current.baseState),

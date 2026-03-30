@@ -186,6 +186,54 @@ const normalizePositiveInt = (value: unknown): number | undefined => {
   return n > 0 ? n : undefined
 }
 
+const inferTopLevelDirtyPathsForAdmission = (args: {
+  readonly baseState: unknown
+  readonly nextState: unknown
+  readonly fieldPathIdRegistry: {
+    readonly pathStringToId?: ReadonlyMap<string, number>
+  }
+}): ReadonlyArray<string> | undefined => {
+  const { baseState, nextState, fieldPathIdRegistry } = args
+  const pathStringToId = fieldPathIdRegistry.pathStringToId
+  if (!pathStringToId) return undefined
+
+  if (!baseState || !nextState) return undefined
+  if (typeof baseState !== 'object' || typeof nextState !== 'object') return undefined
+  if (Array.isArray(baseState) || Array.isArray(nextState)) return undefined
+
+  const base = baseState as Record<string, unknown>
+  const next = nextState as Record<string, unknown>
+  const inferred: Array<string> = []
+
+  const pushIfTracked = (key: string): void => {
+    if (!key) return
+    if (!pathStringToId.has(key)) return
+    inferred.push(key)
+  }
+
+  const baseKeys = Object.keys(base)
+  for (let i = 0; i < baseKeys.length; i += 1) {
+    const key = baseKeys[i]!
+    if (!Object.prototype.hasOwnProperty.call(next, key)) {
+      pushIfTracked(key)
+      continue
+    }
+    if (!Object.is(base[key], next[key])) {
+      pushIfTracked(key)
+    }
+  }
+
+  const nextKeys = Object.keys(next)
+  for (let i = 0; i < nextKeys.length; i += 1) {
+    const key = nextKeys[i]!
+    if (!Object.prototype.hasOwnProperty.call(base, key)) {
+      pushIfTracked(key)
+    }
+  }
+
+  return inferred.length > 0 ? inferred : undefined
+}
+
 const insertTopKHotspot = (args: {
   readonly hotspots: Array<TraitConvergeHotspot>
   readonly next: TraitConvergeHotspot
@@ -338,7 +386,24 @@ export const convergeInTransaction = <S extends object>(
           })
 
     const registry = ir.fieldPathIdRegistry
-    const dirtyPaths = ctx.dirtyPaths == null ? [] : Array.isArray(ctx.dirtyPaths) ? ctx.dirtyPaths : ctx.dirtyPaths
+    const rawDirtyPaths = ctx.dirtyPaths == null ? [] : Array.isArray(ctx.dirtyPaths) ? ctx.dirtyPaths : ctx.dirtyPaths
+    const dirtyPathCountBeforeInference = Array.isArray(rawDirtyPaths)
+      ? rawDirtyPaths.length
+      : typeof (rawDirtyPaths as any)?.size === 'number'
+        ? ((rawDirtyPaths as any).size as number)
+        : undefined
+    const inferredDirtyPaths =
+      ctx.requestedMode === 'auto' &&
+      ctx.dirtyAllReason == null &&
+      dirtyPathCountBeforeInference === 0 &&
+      typeof ctx.getBaseState === 'function'
+        ? inferTopLevelDirtyPathsForAdmission({
+            baseState: ctx.getBaseState(),
+            nextState: ctx.getDraft(),
+            fieldPathIdRegistry: registry,
+          })
+        : undefined
+    const dirtyPaths = inferredDirtyPaths ?? rawDirtyPaths
     const dirtyPathCountHint = Array.isArray(dirtyPaths)
       ? dirtyPaths.length
       : typeof (dirtyPaths as any)?.size === 'number'
