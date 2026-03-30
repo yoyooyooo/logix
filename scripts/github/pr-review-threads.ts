@@ -110,6 +110,11 @@ type GraphqlReviewThreadsResponse = {
   }
 }
 
+type GraphqlReviewThreadNode =
+  NonNullable<
+    NonNullable<GraphqlReviewThreadsResponse['data']['repository']>['pullRequest']
+  >['reviewThreads']['nodes'][number]
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '..', '..')
 
@@ -126,85 +131,71 @@ Behavior:
 `
 
 export const parseArgs = (argv: ReadonlyArray<string>): CliOptions => {
-  const options: CliOptions = {
-    format: 'markdown',
-    includeResolved: false,
-    failOnUnresolved: false,
-  }
-
-  let pr = options.pr
-  let owner = options.owner
-  let repo = options.repo
-  let format = options.format
-  let includeResolved = options.includeResolved
-  let failOnUnresolved = options.failOnUnresolved
+  let pr: number | undefined
+  let owner: string | undefined
+  let repo: string | undefined
+  let format: OutputFormat = 'markdown'
+  let includeResolved = false
+  let failOnUnresolved = false
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
 
-    if (arg === '--') {
-      continue
-    }
-
-    if (arg === '--pr') {
-      const value = argv[index + 1]
-      if (!value) {
-        throw new Error('Missing value for --pr <number>')
+    switch (arg) {
+      case '--':
+        continue
+      case '--pr': {
+        const value = argv[index + 1]
+        if (!value) {
+          throw new Error('Missing value for --pr <number>')
+        }
+        const parsed = Number.parseInt(value, 10)
+        if (!Number.isInteger(parsed) || parsed <= 0) {
+          throw new Error(`Invalid PR number: ${value}`)
+        }
+        pr = parsed
+        index += 1
+        continue
       }
-      const parsed = Number.parseInt(value, 10)
-      if (!Number.isInteger(parsed) || parsed <= 0) {
-        throw new Error(`Invalid PR number: ${value}`)
+      case '--owner': {
+        const value = argv[index + 1]
+        if (!value) {
+          throw new Error('Missing value for --owner <owner>')
+        }
+        owner = value
+        index += 1
+        continue
       }
-      pr = parsed
-      index += 1
-      continue
-    }
-
-    if (arg === '--owner') {
-      const value = argv[index + 1]
-      if (!value) {
-        throw new Error('Missing value for --owner <owner>')
+      case '--repo': {
+        const value = argv[index + 1]
+        if (!value) {
+          throw new Error('Missing value for --repo <repo>')
+        }
+        repo = value
+        index += 1
+        continue
       }
-      owner = value
-      index += 1
-      continue
-    }
-
-    if (arg === '--repo') {
-      const value = argv[index + 1]
-      if (!value) {
-        throw new Error('Missing value for --repo <repo>')
+      case '--format': {
+        const value = argv[index + 1]
+        if (value !== 'json' && value !== 'markdown') {
+          throw new Error(`Invalid format: ${value ?? '<missing>'}. Expected json or markdown.`)
+        }
+        format = value
+        index += 1
+        continue
       }
-      repo = value
-      index += 1
-      continue
+      case '--include-resolved':
+        includeResolved = true
+        continue
+      case '--fail-on-unresolved':
+        failOnUnresolved = true
+        continue
+      case '--help':
+      case '-h':
+        continue
+      default:
+        throw new Error(`Unknown argument: ${arg}`)
     }
-
-    if (arg === '--format') {
-      const value = argv[index + 1]
-      if (value !== 'json' && value !== 'markdown') {
-        throw new Error(`Invalid format: ${value ?? '<missing>'}. Expected json or markdown.`)
-      }
-      format = value
-      index += 1
-      continue
-    }
-
-    if (arg === '--include-resolved') {
-      includeResolved = true
-      continue
-    }
-
-    if (arg === '--fail-on-unresolved') {
-      failOnUnresolved = true
-      continue
-    }
-
-    if (arg === '--help' || arg === '-h') {
-      continue
-    }
-
-    throw new Error(`Unknown argument: ${arg}`)
   }
 
   return {
@@ -301,7 +292,9 @@ const runGraphql = <T>(query: string, variables: Record<string, string | number 
   const args = ['api', 'graphql', '-f', `query=${query}`]
 
   for (const [key, value] of Object.entries(variables)) {
-    if (value == null) continue
+    if (value == null) {
+      continue
+    }
     args.push('-F', `${key}=${String(value)}`)
   }
 
@@ -342,7 +335,7 @@ query ReviewThreadsPullRequest($owner: String!, $repo: String!, $pr: Int!, $afte
           startLine
           originalLine
           originalStartLine
-          comments(first: 50) {
+          comments(last: 1) {
             nodes {
               id
               body
@@ -390,10 +383,7 @@ const resolvePullRequestNumber = (repo: RepoRef, cliOptions: CliOptions): number
   return candidates[0].number
 }
 
-const mapThread = (
-  node: GraphqlReviewThreadsResponse['data']['repository']['pullRequest']['reviewThreads']['nodes'][number],
-  fallbackUrl: string,
-): ReviewThread => {
+const mapThread = (node: GraphqlReviewThreadNode, fallbackUrl: string): ReviewThread => {
   const comments = node.comments.nodes.map((comment) => ({
     id: comment.id,
     author: comment.author?.login ?? null,
@@ -452,14 +442,13 @@ const loadReviewThreadReport = (repo: RepoRef, prNumber: number): ReviewThreadRe
     cursor = pullRequest.reviewThreads.pageInfo.endCursor
   }
 
+  if (!summary) {
+    throw new Error(`Could not retrieve PR summary for PR #${prNumber}.`)
+  }
+
   return {
     repo,
-    pr: {
-      number: summary.number,
-      title: summary.title,
-      url: summary.url,
-      headRefName: summary.headRefName,
-    },
+    pr: summary,
     totalThreadCount: threads.length,
     unresolvedThreadCount: threads.filter((thread) => !thread.isResolved).length,
     threads,
@@ -548,7 +537,7 @@ export const renderReport = (report: ReviewThreadReport, options: CliOptions): s
 export const getExitCode = (report: ReviewThreadReport, options: CliOptions): number =>
   options.failOnUnresolved && report.unresolvedThreadCount > 0 ? 1 : 0
 
-const main = async (): Promise<void> => {
+const main = (): void => {
   const argv = process.argv.slice(2)
   if (argv.includes('--help') || argv.includes('-h')) {
     // eslint-disable-next-line no-console
@@ -569,9 +558,11 @@ const main = async (): Promise<void> => {
 const isEntrypoint = process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href
 
 if (isEntrypoint) {
-  main().catch((error) => {
+  try {
+    main()
+  } catch (error) {
     // eslint-disable-next-line no-console
     console.error(error instanceof Error ? error.message : error)
     process.exitCode = 1
-  })
+  }
 }
