@@ -2,129 +2,79 @@
 
 ## 目标
 
-在 latest `main@299dfafc` 上验证：
+在 `main@299dfafc` 上做一条最小 node-side probe，只回答两件事：
 
-1. `dispatch` 家族第一条更窄实现线已经 `no-go` 之后，下一刀是否应该切到 `dirty-evidence -> converge admission`
-2. 当前 `converge` 的 `unknown_write / dirty_all / near_full` 是否仍然是 route-level 有信息量的 admission 信号
-3. 这条线当前更像真实瓶颈，还是只是新的测量噪声
+1. `unknown_write / dirty_all / near_full` 这三类 `converge admission` 信号，当前各自对应什么写入形态
+2. `dirty-evidence coverage` 是否值得升为下一刀
 
-## cheap-local package
+本次只做 evidence，不改 runtime 实现。
 
-### 1. browser blocker probe
+## probe 设计
 
-命令：
+- 入口：`packages/logix-core/test/StateTrait/StateTrait.ConvergeAuto.AdmissionProbe.test.ts`
+- 运行方式：`vitest run`，纯 node-side cheap-local
+- 图规模：`64` 个一对一 computed step
+- 采样口径：
+  - 每个场景先跑 `1` 次 warmup，避开 `cold_start`
+  - 再取后续 `5` 次样本
+  - 记录 `requestedMode / executedMode / reasons / dirty summary / stepStats / duration`
 
-```sh
-python3 fabfile.py probe_next_blocker --json
-```
-
-结果：
-
-- `status = blocked`
-- blocker = `externalStore.ingest.tickNotify`
-- failure kind = `suite`
-- 失败原因是 browser 动态导入失败：
-  - `Failed to fetch dynamically imported module`
-
-结论：
-
-- 这不是新的 runtime blocker 证据
-- 当前更像 worktree/browser import 噪声
-- 这条失败不能直接拿来反驳 `latest main blocker = clear`
-
-### 2. core correctness guards
-
-命令：
+## 命令
 
 ```sh
 pnpm -C packages/logix-core exec vitest run \
-  test/StateTrait/StateTrait.ConvergeAuto.CorrectnessInvariants.test.ts \
-  test/StateTrait/StateTrait.ConvergeAuto.DecisionBudget.test.ts \
-  test/StateTrait/StateTrait.ConvergeDirtySet.test.ts
+  test/StateTrait/StateTrait.ConvergeAuto.AdmissionProbe.test.ts
 ```
 
-结果：
+## 结果
 
-- `3 files`
-- `6 tests`
-- 全绿
+| 场景 | 写入形态 | requestedMode | executedMode | reasons | dirty reason | dirtyAll | dirtyRoots | executed / skipped steps | median exec / decision ms | 读数含义 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `covered_single_field` | `Reducer.mutate([in0])` | `auto` | `dirty` | `cache_hit=4/5, cache_miss=1/5` | `-` | `0/5` | `1` | `1 / 63` | `0.018 / 0.040` | 单字段且 dirty-evidence 完整时，admission 稳定走 `dirty` |
+| `unknown_write_setState` | `setState(single-field, no patch)` | `auto` | `full` | `unknown_write=5/5` | `unknownWrite=5/5` | `5/5` | `0` | `64 / 0` | `0.283 / 0.010` | 单字段写入，只因没有 patch evidence 就退回全量 |
+| `dirty_all_non_trackable` | `setState(single-field) + recordStatePatch(NaN)` | `auto` | `full` | `dirty_all=5/5, unknown_write=5/5` | `nonTrackablePatch=5/5` | `5/5` | `0` | `64 / 0` | `0.251 / 0.005` | `dirty_all` 是更强的退化信号，这里由 non-trackable patch 直接触发 |
+| `plain_replace_single_field` | `plain reducer replaceOne(in0)` | `auto` | `full` | `unknown_write=5/5` | `unknownWrite=5/5` | `5/5` | `0` | `64 / 0` | `0.389 / 0.008` | plain reducer 单字段写回当前落在 `unknown_write`，没有命中 `dirty_all` |
+| `near_full_broad_mutate` | `Reducer.mutate(58/64)` | `auto` | `full` | `near_full=5/5` | `-` | `0/5` | `116` | `64 / 0` | `0.284 / 0.005` | 宽写入时 `near_full` 稳定生效；`dirtyRoots=116` 是当前导出的 admission readout，不把它直接解释成“用户只写了 116 个字段” |
 
-结论：
+## 关键结论
 
-- `dirty-evidence / converge admission` 相关 correctness guard 当前可直接复用
-- 若后续真开实现线，不需要先补这一层测试地板
+### 1. `dirty-evidence coverage` 仍然值得升为下一刀
 
-### 3. browser signal · form list scope
+同样是单字段写入：
 
-命令：
+- 有精确 evidence：`1` 个 step 执行，`63` 个 step 跳过，`executedMode=dirty`
+- 没有精确 evidence：直接退回 `64` 个 step 全量执行，`executedMode=full`
 
-```sh
-pnpm -C packages/logix-react test -- --project browser \
-  test/browser/perf-boundaries/form-list-scope-check.test.tsx
-```
+这已经足够说明问题在 admission 面本身，读数差异不是测量噪声。
 
-关键读数：
+### 2. 下一刀优先级应落在 `unknown_write` 覆盖，不该先追 `dirty_all`
 
-- `requestedMode=auto`
-- `executedMode=full`
-- `reasons=near_full`
+本次 probe 里：
 
-覆盖点：
+- `setState(single-field, no patch)` 命中 `unknown_write`
+- `plain reducer replaceOne(in0)` 也命中 `unknown_write`
+- 只有显式制造 non-trackable patch 时，才稳定命中 `dirty_all`
 
-- `rows=10 / 30 / 100 / 300`
-- `diagnosticsLevel=off / light / full`
+因此“收益面更宽”的切口是：
 
-结论：
+- 补窄写入场景的 patch evidence / admission input
+- 让 `setState` 与 plain reducer writeback 不要因为缺证据就直接 full fallback
 
-- 当前 `auto` admission 在这条 list-scope route 上仍高度依赖 `near_full`
-- 这说明 `dirty-evidence coverage` 和 `converge admission` 仍然是有信息量的方向
+`dirty_all` 仍然是重要信号，但当前更像第二优先级。
 
-### 4. node bench tooling signal
+### 3. `near_full` 目前像真实 route-level gate
 
-命令：
+当写入真的已经接近全量时，`near_full` 会稳定把 `auto` 推回 `full`。这类读数不该被当成 dirty-evidence coverage 缺陷。
 
-```sh
-pnpm -C .codex/skills/logix-perf-evidence bench:traitConverge:node
-```
+## 路由裁决
 
-结果：
+- route classification: `accepted_with_evidence`
+- next cut: `yes`
+- cut order:
+  1. 先做 `unknown_write` 覆盖面，重点看 `setState` 与 plain reducer writeback
+  2. `dirty_all` 暂列第二层，优先盯 non-trackable/fallback 类场景
+  3. `near_full` 先保留为 admission gate，不作为这一刀的主目标
 
-- 失败
-- 原因：
-  - `Effect.locally is not a function`
+## 直接回答
 
-结论：
-
-- 这是 `perf-evidence` 脚本与当前 effect 运行态的 tooling mismatch
-- 当前不能把这条失败当作 runtime 证据
-
-## 当前裁决
-
-- route classification: `cheap_local_positive_on_admission_side`
-- 子结论：`dirty_evidence_and_converge_admission_is_now_the_best_next_cut`
-
-## 原因
-
-1. `dispatch` 家族第一条更窄实现线已经满足 `no_go_under_current_boundary`
-2. `actionCommitHub` 和 same-target topic fanout 已被旧证据和 merged-mainline 事实大幅削弱
-3. `form.listScopeCheck` 继续给出 `executedMode=full + reason=near_full`，说明当前 admission 仍有 route-level 信息量
-4. 这条方向的收益面比 `dispatch` 更宽：
-   - `dispatch`
-   - `setState`
-   - `update`
-   - reducer 写回
-
-## 当前还不能下的结论
-
-- 还不能直接宣布某个 static heuristic 就是唯一主税点
-- 还没有拿到一份同轮次的 `converge-steps` latest-main browser 结果
-- 还没有 focused/heavier 级 before/after
-
-## 下一步
-
-1. 把这条线升级成新的 cheap-local 主候选
-2. 下一刀先不直接重写 controller
-3. 优先做一个最小读数刀，回答：
-   - `unknown_write / dirty_all / near_full` 哪个最常把 `executedMode` 推回 `full`
-   - 这些原因里，哪些来自 `dirty-evidence` 覆盖不足
-4. 如果最小读数刀继续稳定指向 `dirty-evidence` 覆盖不足，再开真正的实现线
+`dirty-evidence coverage` 值得升为下一刀，但切口应明确收敛到 `unknown_write` 覆盖，而不是把 `dirty_all` 和 `near_full` 混成同一类问题。
