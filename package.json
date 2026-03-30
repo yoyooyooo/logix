@@ -36,7 +36,7 @@
     "test:browser": "pnpm -C packages/logix-react test -- --project browser && pnpm -C packages/logix-sandbox test:browser",
     "test:browser:release": "pnpm -C packages/logix-react exec vitest run test/browser/browser-environment-smoke.test.tsx --project browser",
     "test:watch": "vitest",
-    "test:turbo": "turbo run test --ui=stream --output-logs=new-only --log-prefix=none --summarize=true --filter='./packages/*' --filter='./apps/logix-galaxy-api' --filter='./examples/effect-api' --filter='./examples/logix-react' -- --run --cache --project=!browser* --silent=passed-only --reporter=dot --hideSkippedTests && pnpm exec vitest run \"scripts/**/*.test.ts\" --silent=passed-only --reporter=dot --hideSkippedTests",
+    "test:turbo": "turbo run test --ui=stream --output-logs=new-only --log-prefix=none --summarize=true --filter='./packages/*' --filter='./apps/logix-galaxy-api' --filter='./examples/effect-api' --filter='./examples/logix-react' -- --run --cache --project=!browser* --silent=passed-only --reporter=dot --hideSkippedTests && pnpm exec vitest run --dir scripts --silent=passed-only --reporter=dot --hideSkippedTests",
     "coverage": "vitest run --coverage",
     "skills": "tsx scripts/skill-runner.ts",
     "api-reference:build": "pnpm -C apps/api-reference docgen",
