@@ -25,6 +25,7 @@
     "format:all": "oxfmt .",
     "format:check": "oxfmt --check apps packages",
     "perf": "tsx scripts/perf.ts",
+    "pr:review-threads": "tsx scripts/github/pr-review-threads.ts",
     "speckit:kanban": "pnpm -C packages/speckit-kit build && speckit-kit kanban",
     "speckit:kanban:dev": "tsx scripts/speckit-kanban.ts",
     "test": "vitest run --cache --silent=passed-only --reporter=dot --hideSkippedTests",
