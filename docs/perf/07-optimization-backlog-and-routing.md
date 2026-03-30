@@ -31,6 +31,11 @@
 - `2026-03-14 / C-6` 又确认：`react.bootResolve.sync` 的旧税点主要是 RAF 轮询地板，不再作为 runtime watchlist。
 - `2026-03-14 / C-7` 再次执行 `probe_next_blocker --json` 仍为 `clear`；当前不新增 backlog 项。
 
+当前判定补充（`2026-03-30 / latest main`）：
+- `main@b4bc9e1d` 上重新补的 cheap-local identify 继续给出 `probe_next_blocker = clear`。
+- `#146/#148` 的 merged-mainline fanout 收益在 HEAD 上继续保持 `1 / 1 / 1`。
+- 当前唯一新开的 cheap-local 候选是 `R-3 dispatch outer shell`，方向是继续把 runtime 主税点从 outer shell 收窄到 `dispatch` 专属入口壳。
+
 ## D-3 执行协议（当前默认）
 
 1. 主会话保持干净，只负责选路、派线、审查、合流。
@@ -65,6 +70,45 @@
 | `S-10` | benchmark 纠偏（已完成） | `txn-lanes` 已改成 `nativeCapture -> MutationObserver DOM stable` 语义；三轮 targeted 与 1 次 clean-HEAD verify 都让 `urgent.p95<=50ms` 通过到 `steps=2000` | 中 | 低到中 | 低 | 已完成 | 不需要 |
 | `S-11` | blocker 识别（已完成） | post-S10 real probe 证明 remaining browser blocker queue clear；current-head 无新的默认 runtime blocker | 中 | 低 | 低 | 已完成；docs/evidence-only 收口 | 不需要 |
 | `R-2` | 架构/API 候选 | `TxnLanePolicy` 对外收敛为高层 policy | 潜在很高 | 高 | 高 | 默认不立项；仅在新 SLA / 新证据下单开 | 需要 |
+| `R-3` | runtime 主线候选 | `dispatch` 专属入口壳仍有稳定固定税；latest-main cheap-local 已把主税点从 broad outer shell 收窄到 `dispatch > public setState > direct txn setState` | 高 | 中 | 中 | 当前默认主线；独立 worktree 串行推进 | 暂不需要 |
+
+### `R-3` · dispatch outer shell residual cut
+
+状态：
+- `2026-03-30` latest-main quick identify 已完成。
+- `probe_next_blocker --json` 继续为 `clear`。
+- merged 的 same-target fanout 两条线在 HEAD 上继续保持 `1 / 1 / 1`。
+- node 微基线与 split probe 已把当前 cheap-local 税点收窄到 `dispatch` 专属入口壳。
+
+问题：
+- 旧的 broad outer-shell 表述还不够窄，容易把 `txnQueue` 公共壳与 `dispatch` 专属入口壳混在一起。
+- 当前最新证据显示：
+  - `dispatch.p95 ≈ 0.162ms`
+  - `queuedSetState.p95 ≈ 0.098ms`
+  - `directTxnSetState.p95 ≈ 0.081ms`
+  - `dispatchMinusQueued.avg ≈ 0.034ms`
+  - `queuedMinusDirect.avg ≈ 0.008ms`
+
+预期收益：
+- 若这条线成立，收益面会打在每次 `dispatch` 都必经的共享入口壳，而不是已收口的 same-target fanout 壳。
+
+实施成本：
+- 中。
+- 先做更窄 probe / 最小实现，不直接回头重开 `compiled_txn_boundary` 或 `commit_packet_notify_fusion`。
+
+主要落点：
+- `packages/logix-core/src/internal/runtime/core/ModuleRuntime.dispatch.ts`
+- `packages/logix-core/src/internal/runtime/core/ModuleRuntime.txnQueue.ts`
+- `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`
+- `docs/perf/2026-03-30-latest-main-quick-identify-reading.md`
+
+并行/串行：
+- 当前默认主线，必须独立 worktree 串行推进。
+- 不与 `111` 并行争抢主线裁决位。
+
+API 变动：
+- 当前不需要。
+- 只有当 `dispatch` 入口壳的内部收敛无法再继续，而收益面仍足够大时，才讨论 API 侧收口。
 
 ## 任务详情
 

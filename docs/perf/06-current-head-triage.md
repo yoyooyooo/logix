@@ -20,6 +20,8 @@
 - `docs/perf/2026-03-06-s10-txn-lanes-native-anchor.md`
 - `docs/perf/2026-03-06-s11-post-s10-blocker-probe.md`
 - `docs/perf/2026-03-14-c7-current-head-reprobe-clear.md`
+- `docs/perf/2026-03-29-post-merge-big-cut-candidates.md`
+- `docs/perf/2026-03-30-latest-main-quick-identify-reading.md`
 - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.s10-txn-lanes-native-anchor.targeted.json`
 - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.s10-txn-lanes-native-anchor.recheck.targeted.json`
 - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.s10-txn-lanes-native-anchor.confirm.targeted.json`
@@ -33,9 +35,11 @@
 
 ## 当前结论摘要
 
-1. current-head 已无默认 runtime blocker。
-- `S-11` 的 real probe 在补齐 worktree 依赖后，对 remaining browser blocker 队列给出 `next_blocker: none`。
-- 这意味着默认 browser/runtime 主线已经清空，不应再硬造新的 queue-side runtime worktree。
+1. current-head 已无默认 browser blocker，但 latest-main cheap-local 已重新识别出一个 node-side runtime 候选。
+- `2026-03-30` 的 latest-main quick identify 在 `main@b4bc9e1d` 上继续给出 `probe_next_blocker = clear`。
+- 同一轮 cheap-local 也证明：
+  - merged 的 same-target fanout 收益继续保持
+  - 当前 residual 更像 `dispatch` 专属入口壳，而不是 inner txn body 或 `txnQueue` 公共壳。
 
 2. `txnLanes` 继续保持关闭结论，不再回到默认 blocker 队列。
 - `S-10` 已证明 native-anchor 语义下 `urgent.p95<=50ms` 在 `mode=default/off` 都能稳定通过到 `steps=2000`。
@@ -46,18 +50,19 @@
 - `runtimeStore.noTearing.tickNotify`：`S-4` 最小修复已吸收，`S-11` real probe 继续通过。
 - `form.listScopeCheck`：`S-11` real probe 继续通过。
 
-4. 剩余只保留架构候选。
+4. 剩余不再只保留架构候选。
 - `S-14` 已把 `watchers.clickToPaint` 的旧 `clickToHandler` 再拆成 `clickInvokeToNativeCapture + nativeCaptureToHandler`，并确认 dominant phase 是页面外 click 注入税；`S-2` 整条 benchmark 解释链已收口，不再是待排期候选。
 - `C-6` 已确认 `react.bootResolve.sync` 的旧“小固定税”主要来自 RAF 轮询地板；当前不再把它当作 runtime watchlist。
 - `C-7` 又在 current-head 上重新执行了 `probe_next_blocker --json`，结果继续是 `clear`。
+- 当前唯一 cheap-local 候选：`R-3 dispatch outer shell`
 - 架构候选：`R-2`，只有在出现新的产品级 SLA 或新的 native-anchor 证据时，才讨论 `TxnLanePolicy` API vNext。
 
 ## 四分法裁决
 
 ### 1. 真实运行时瓶颈
 
-- 当前没有默认 runtime 主线。
-- `R-1` 已由 `S-10` 关闭，`S-11` 也没有识别出新的 current-head 第一失败项。
+- 当前没有默认 browser/runtime blocker。
+- 但 latest-main cheap-local 已把当前最像真实 runtime 瓶颈的一刀收窄到 `dispatch` 专属入口壳。
 
 ### 2. 证据语义错误 / benchmark 候选
 
@@ -84,9 +89,10 @@
 
 ### 默认
 
-- 不开新的 runtime 主线。
-- 若 `probe_next_blocker` 为 `clear`，本轮应以 docs/evidence-only 收口，而不是继续向 `packages/logix-core/**` 下刀。
-- 是否允许继续开新的 perf worktree，统一按 `docs/perf/09-worktree-open-decision-template.md` 裁决；当前默认答案应为“不开”。
+- 当前默认不重开 browser blocker 路线。
+- 这轮已经满足 latest-main cheap-local reopen 条件，允许继续推进一条更窄的 runtime probe 线：
+  - `R-3 dispatch outer shell`
+- 是否继续往实现线升级，取决于更窄 probe 是否继续证明主税点落在 `dispatch` 专属入口壳。
 
 ### 可并行副线 A
 
@@ -96,7 +102,12 @@
 ### 可并行副线 B
 
 - `R-2`：`TxnLanePolicy` API vNext 收敛。
-- 说明：这不是当前 blocker 的自然后继，只能在新 SLA / 新证据成立时单独立项。
+- 说明：这不是当前 cheap-local 候选的自然后继，只能在新 SLA / 新证据成立时单独立项。
+
+### 可并行副线 C
+
+- `R-3`：`dispatch` 专属入口壳 cheap-local probe
+- 说明：已由 `2026-03-30` latest-main quick identify 打开；当前优先级高于 `R-2`
 
 ### 健康检查
 
@@ -105,17 +116,18 @@
 
 ## 建议下一刀（只给一个）
 
-- 当前没有默认 runtime 下一刀。
+- `R-3 dispatch outer shell`
 
-### 为什么是“没有”
+### 为什么是它
 
-1. `S-10` 已经关闭了旧的 `txnLanes` queue-side runtime 主线。
-2. `S-11` 在独立 worktree 中对 remaining blocker 队列做 real probe 后，得到 `next_blocker: none`。
-3. 因而 current-head 已经不再满足“必须立刻开新的 runtime worktree”这一前提。
+1. `probe_next_blocker --json` 继续为 `clear`，所以不该回到 browser blocker 路线。
+2. merged 的 same-target fanout 两条线在 HEAD 上继续保持 `1 / 1 / 1`，所以不该回头重开旧 fanout 候选。
+3. node 微基线与 split probe 一起把当前税点收窄到：
+   - `public dispatch`
+   - 相对 `public setState` 的专属入口壳
 
-### 如果必须继续做 perf
+### 当前执行门
 
-1. 先做 clean/comparable evidence audit，不要在没有新证据时重开新的 code cut。
-2. 只有在新的 native-anchor 证据再次显示页面内 `nativeCapture->handler` 存在稳定税点，或出现新的产品级 SLA 时，才重新讨论 `S-2` 重开或推进 `R-2`。
-3. 在没有新增证据之前，所有结论都以 docs/evidence-only 收口。
-4. `2026-03-14 / C-7` 已再次验证 `status=clear`；当前默认不再重开任何 perf 实施线。
+1. 先保持在 cheap-local / node probe 范围，不直接跳到 focused/heavier。
+2. 若更窄 probe 继续证明 `dispatch` 专属入口壳是主税点，才允许升级成新的 runtime 实施线。
+3. 若更窄实现线只拿到微基线正向、route-level 不动，立即停线并回到 `dirty-evidence -> converge admission` 次选路线。

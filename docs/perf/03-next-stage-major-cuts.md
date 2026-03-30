@@ -38,7 +38,7 @@
 - [x] U-1：`TickScheduler.scheduleTick` immediate start（`forkDetach({ startImmediately: true })`），把 `externalStore.ingest.tickNotify` 的 `p95<=3ms` 与 soak `full/off<=1.25` 一起打穿到 `watchers=512`。
 
 
-## Current-Head 裁决（2026-03-06，含 `S-11` blocker probe 回写）
+## Current-Head 裁决（2026-03-06 基线 + 2026-03-30 addendum）
 
 证据锚点：
 - `ulw123.current-head.full-matrix`：broad/current-head 盘面。
@@ -62,6 +62,14 @@
   - `dispatchActionRecord / dispatchActionCommitHub / txnPrelude / queueResolvePolicy` 都不是 residual 主因
   - browser trace 已到时钟分辨率地板，继续拆这条线时优先用 Node 微基线而不是再堆 browser sub-phase
   - 当前 residual 更像 `enqueueTransaction` 外层 await / Effect 解释器成本；不要再先砍 inner txn body
+
+`2026-03-30` addendum：
+- latest `main@b4bc9e1d` 上的 cheap-local identify 已补齐，见 `docs/perf/2026-03-30-latest-main-quick-identify-reading.md`
+- `probe_next_blocker --json` 继续为 `clear`
+- `#146/#148` 的 merged-mainline fanout 收益在 HEAD 上继续保持
+- 当前唯一下一刀从“不开新线 / 只留 R-2”收紧为：
+  - `R-3 dispatch outer shell`
+  - 先做更窄 node cheap-local probe，再决定是否升实现线
 
 当前不建议先做：
 - `watchers`：先修 suite 语义，不再继续往 runtime 里塞 watcher 优化。

@@ -53,7 +53,7 @@
 5. Runtime 配置语义去重：诊断配置单一入口，不再分散在多处。
 
 
-## 1.1 Current-Head 裁决（2026-03-06，含 `S-11` blocker probe 回写）
+## 1.1 Current-Head 裁决（2026-03-06 基线 + 2026-03-30 addendum）
 
 当前 evidence 以 `S-10 native-anchor targeted/recheck/confirm`、`S-1 externalStore residual audit`、以及 `S-11` real `probe_next_blocker` 为主；旧 broad residual 只保留为背景，不再单独驱动新的 runtime 主线。
 
@@ -72,6 +72,12 @@
   - 目前 residual 不在 `dispatchActionRecord / actionCommitHub / txnPrelude / queueResolvePolicy`
   - browser trace 已无法继续细拆 sub-ms 税点
   - 若 future evidence 要继续这条线，默认改走 Node 微基线 + queue outer await / interpreter cost 假设，不再优先改 inner txn body
+
+`2026-03-30` addendum：
+- latest `main@b4bc9e1d` 的 cheap-local identify 已完成，见 `docs/perf/2026-03-30-latest-main-quick-identify-reading.md`
+- 当前没有新的默认 browser blocker，但已经重新识别出一条 latest-main runtime 候选：
+  - `R-3 dispatch outer shell`
+- 这条线当前仍停在 cheap-local / node probe，不直接改变本页的 forward-only wave 设计；若后续成立，再把它映射回具体 wave
 
 ## 2. API vNext（直接替换，不兼容旧形态）
 
