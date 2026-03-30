@@ -234,7 +234,6 @@
 
 ### 10. Post-Merge Route & Control Sync
 
-- **Path**: `/Users/yoyo/Documents/code/personal/logix.worktrees/main.longchain-identify`
 - **Branch**: `agent/main-longchain-identify-20260329`
 - **Role**: post-merge big-cut identify、`110/111` 控制面回写与下一轮路由笔记
 - **State**:
@@ -244,7 +243,6 @@
 
 ### 11. Post-Merge Module-Side Fusion Anchor
 
-- **Path**: `/Users/yoyo/Documents/code/personal/logix.worktrees/main.nonreact-fanout-fusion-probe`
 - **Branch**: `agent/main-nonreact-fanout-fusion-probe-20260329`
 - **Role**: `postmerge-nonreact-fanout-writeback-fusion` 的代码与 dated evidence 锚点
 - **State**: 已于 `2026-03-29` 通过 `#146` 进入 `main`
@@ -252,7 +250,6 @@
 
 ### 12. Post-Merge Declarative Dispatch Anchor
 
-- **Path**: `/Users/yoyo/Documents/code/personal/logix.worktrees/main.declarative-dispatch-fusion-v2`
 - **Branch**: `agent/main-declarative-dispatch-fusion-v2-20260329`
 - **Role**: `postmerge-declarative-dispatch-shell` 的代码与 dated evidence 锚点
 - **State**: 已于 `2026-03-30` 通过 `#148` 进入 `main`，merge commit = `65f8a3fa`
