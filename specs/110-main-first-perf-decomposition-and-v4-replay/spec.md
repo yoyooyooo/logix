@@ -50,10 +50,11 @@
   - `2026-03-29` `nonreact_fanout_writeback_fusion` 的 module-side writeback fusion PoC 已完成，当前结论升级为 `focused_local_positive_on_module_side`
   - `2026-03-29` `nonreact_fanout_writeback_fusion` 的 heavier local rerun 已完成，当前结论升级为 `heavier_local_positive_on_module_side`
   - `2026-03-29` `#146` 已把 `nonreact_fanout_writeback_fusion` 合入 `main`
-  - `2026-03-29` `declarative_dispatch_shell` 已在 latest `main` 上拿到 cheap / focused / heavier local 正向，当前通过 `#148` 独立推进
+  - `2026-03-29` `declarative_dispatch_shell` 已在 latest `main` 上拿到 cheap / focused / heavier local 正向
+  - `2026-03-30` `#148` 已把 `declarative_dispatch_shell` 合入 `main`，merge commit = `65f8a3fa`
 - 当前主线语义：
   - “合并进主线”这件事已经完成
-  - 剩余工作改为冻结基线解释、residual 识别和历史资产收口
+  - 剩余工作改为冻结基线解释、residual 识别、latest-main 新一轮大切口识别和历史资产收口
 
 ### 当前最强控制线候选
 
@@ -231,6 +232,32 @@
 - **Role**: `v4` 专属 residual、browser-only 路径、dated readings 工件池
 - **Decision**: 保持为调试与证据线，不承担主实现职责
 
+### 10. Post-Merge Route & Control Sync
+
+- **Path**: `/Users/yoyo/Documents/code/personal/logix.worktrees/main.longchain-identify`
+- **Branch**: `agent/main-longchain-identify-20260329`
+- **Role**: post-merge big-cut identify、`110/111` 控制面回写与下一轮路由笔记
+- **State**:
+  - 已吸收 `#146` 与 `#148` 的 merged-mainline 事实
+  - 当前下一职责是基于 latest `main` 重开新一轮 big-cut identify，而不是继续沿旧候选直接开实现线
+- **Decision**: 保持为 docs/spec sync 线，不承担 runtime 实施职责
+
+### 11. Post-Merge Module-Side Fusion Anchor
+
+- **Path**: `/Users/yoyo/Documents/code/personal/logix.worktrees/main.nonreact-fanout-fusion-probe`
+- **Branch**: `agent/main-nonreact-fanout-fusion-probe-20260329`
+- **Role**: `postmerge-nonreact-fanout-writeback-fusion` 的代码与 dated evidence 锚点
+- **State**: 已于 `2026-03-29` 通过 `#146` 进入 `main`
+- **Decision**: 当前 `accepted_with_evidence`，`fullStatus=merged_mainline`
+
+### 12. Post-Merge Declarative Dispatch Anchor
+
+- **Path**: `/Users/yoyo/Documents/code/personal/logix.worktrees/main.declarative-dispatch-fusion-v2`
+- **Branch**: `agent/main-declarative-dispatch-fusion-v2-20260329`
+- **Role**: `postmerge-declarative-dispatch-shell` 的代码与 dated evidence 锚点
+- **State**: 已于 `2026-03-30` 通过 `#148` 进入 `main`，merge commit = `65f8a3fa`
+- **Decision**: 当前 `accepted_with_evidence`，`fullStatus=merged_mainline`
+
 ## Current Evidence Anchors _(mandatory)_
 
 后续任何会话如果需要恢复“当前最好证据”，优先从这里拿路径。
@@ -286,7 +313,7 @@
 | `postmerge-selector-nonreact-moduleasource` | `main_control` | `provisional` | `cheap_local` | `blocked` | `not_applicable` | `unknown` | Module-as-Source probe 给出 `1 / 8 / 32` 线性信号；当前允许继续开 non-React plane PoC |
 | `postmerge-selector-nonreact-dedupe-poc` | `main_control` | `provisional` | `focused_local` | `blocked` | `not_applicable` | `unknown` | `DeclarativeLinkRuntime.applyForSources()` 局部 shared select memo 已把 Module-as-Source 与 declarative-link fanout 都压到常数，`selectorId collision` 与 `shallowStruct` gate 也已通过，但 focused local compare 尚未给出稳定 route-level 收益 |
 | `postmerge-nonreact-fanout-writeback-fusion` | `main_control` | `accepted_with_evidence` | `heavier_local` | `not_applicable` | `merged_mainline` | `unknown` | same-target Module-as-Source probe 已证明 target commits 按 `1 / 8 / 32` 线性增长；module-side writeback fusion PoC 已把 same-target focused 与 heavier local p95 都压到近常数，且已通过 `#146` 进入当前 `main` |
-| `postmerge-declarative-dispatch-shell` | `main_control` | `provisional` | `heavier_local` | `blocked` | `not_applicable` | `unknown` | same-target declarative dispatch batching 已在 latest `main` 上拿到 cheap / focused / heavier local 正向，当前通过 `#148` 独立推进 |
+| `postmerge-declarative-dispatch-shell` | `main_control` | `accepted_with_evidence` | `heavier_local` | `not_applicable` | `merged_mainline` | `unknown` | same-target declarative dispatch batching 已把 target commits 稳定压到 `1 / 1 / 1`；focused local `fanout32.p95` 从 `3.124ms` 降到 `0.615ms`，heavier local `fanout32.p95` 从 `3.051ms` 降到 `0.664ms`，并已于 `2026-03-30` 通过 `#148` 进入当前 `main` |
 | `postmerge-commit-packet-zero-selector` | `main_control` | `discarded` | `cheap_local` | `not_applicable` | `not_applicable` | `unknown` | zero-selector synthetic packet 只有微秒级，当前不值得升为新的大切口 |
 | `tx-c1-state-txn-closeout` | `v4_closeout` | `accepted_with_evidence` | `heavier_local` | `not_applicable` | `comparable_subset_green` | `not_controller_signal` | isolated `StateTransaction.ts` closeout 已通过 `#142 -> #133` 进入当前 `main`；clean candidate 继续只保留为证据锚点 |
 | `v4-small-beta-upgrade-effect-beta42` | `v4_residual_identification` | `discarded` | `cheap_local` | `not_applicable` | `not_applicable` | `version_drift_control` | `beta.28 -> beta.42` cheap local A/B 与 blocker probe 都未形成增益，不改变 residual route |
@@ -310,7 +337,10 @@
   - `https://github.com/yoyooyooo/logix/pull/142`
   - `https://github.com/yoyooyooo/logix/pull/133`
   - `https://github.com/yoyooyooo/logix/pull/143`
+  - `https://github.com/yoyooyooo/logix/pull/145`
   - `https://github.com/yoyooyooo/logix/pull/146`
+  - `https://github.com/yoyooyooo/logix/pull/147`
+  - `https://github.com/yoyooyooo/logix/pull/148`
 - 当前最新 targeted 补证：
   - `steps=800 @ 0.7/0.75/0.8` 全过门；
   - `steps=1600 @ 0.7/0.75/0.8` 全过门；
@@ -375,8 +405,9 @@
     - `commit_packet_notify_fusion` 已关闭为 `no_go_under_zero_selector_packet_gate`
     - `selector_snapshot_mirror_plane` 已收窄成 `selector_nonreact_plane_dedupe`
     - `postmerge-nonreact-fanout-writeback-fusion`（即 `external-store.ts` 的 module-side writeback fusion）已拿到 `accepted_with_evidence`，并已进入当前 `main`
-    - 当前 post-merge 主实施线已完成一次收口
-    - `postmerge-declarative-dispatch-shell` 已在 latest `main` 上拿到 `heavier_local` 正向，当前通过 `#148` 独立推进
+    - `postmerge-declarative-dispatch-shell` 已拿到 `accepted_with_evidence`，并已于 `2026-03-30` 通过 `#148` 进入当前 `main`
+    - 当前 post-merge 主实施线已收口为两条 merged-mainline 正向 cut
+    - 下一步改为基于 latest `main` 重开 big-cut identify 与 residual explanation，不默认沿旧 selector non-React plane 直接开实现线
   - route note:
     - `docs/perf/2026-03-29-post-merge-big-cut-candidates.md`
 - `111 shadow-only package hardening` 当前只证明 additive telemetry wiring 与 unified contract 挂接成立，不覆盖 live controller 有效性。
@@ -404,7 +435,7 @@
   - `shadow_code_poc_ready`
   - `shadow_cheap_local_pass`
   - `live_candidate=blocked`
-  - `2026-03-29` post-merge selector / commit-packet probes stayed in `110` and did not create `controller_related` evidence
+  - `2026-03-30` post-merge selector / commit-packet / fanout-shell 线都继续留在 `110` 主控内，未形成 `controller_related` 证据
 - `111` 禁止动作：
   - 把 `v4-perf` 当作收益鉴定主线；
   - 绕过 accepted ledger 直接宣布新的主线赢家；

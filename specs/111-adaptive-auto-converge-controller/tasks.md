@@ -68,3 +68,10 @@
 - [x] T509 将当前 shadow package 缩到更小 write scope，并复跑 same-node soak / high-dirty representative points
 - [x] T510 基于 cutdown v2 重新做 residual refresh / promotion gate 复核，只在归因仍指向 `controller_related` 时才重开 live-candidate 讨论
 - [x] T511 在 `/Users/yoyo/Documents/code/personal/logix.worktrees/v4-perf` 上执行 residual refresh package：node high-dirty quick、browser quick、browser soak veto 各 1 轮，并产出 dated reading；结果维持 `inconclusive_after_clean_scout`，不重开 live-candidate 讨论
+
+## Phase 7: Ongoing Re-Evaluation
+
+目标：随着 `110` 主控继续吸收 merged-mainline cut，持续重判 `111` 是否得到新的 controller signal。
+
+- [ ] T601 每次 `110` 新的 post-merge merged-mainline cut 进入 `main` 后，同步回写 `111` 的 current blockers / current entry decision
+- [ ] T602 只有 latest-main big-cut identify 或 fresh residual refresh 明确给出 `controller_related`，才把 `shadow_local_recovery_candidate` 升级为 live-candidate re-entry
