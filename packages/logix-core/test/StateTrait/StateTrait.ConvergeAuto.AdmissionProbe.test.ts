@@ -252,7 +252,7 @@ describe('StateTrait converge auto admission probe', () => {
             Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 'unknown-write' }, () =>
               Effect.gen(function* () {
                 const prev = yield* rt.getState
-                yield* rt.setState({ ...prev, in0: (prev as any).in0 + 1 })
+                yield* rt.setState({ ...prev, in0: (prev as any)['in0'] + 1 })
               }),
             ),
           ),
@@ -260,7 +260,7 @@ describe('StateTrait converge auto admission probe', () => {
             Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 'dirty-all' }, () =>
               Effect.gen(function* () {
                 const prev = yield* rt.getState
-                yield* rt.setState({ ...prev, in0: (prev as any).in0 + 1 })
+                yield* rt.setState({ ...prev, in0: (prev as any)['in0'] + 1 })
                 Logix.InternalContracts.recordStatePatch(rt, Number.NaN as any, 'unknown')
               }),
             ),
