@@ -1,8 +1,8 @@
 # Data Model: Module Stage Blueprints（033：StageBlueprint / IntentRule / RowRef）
 
-**Date**: 2025-12-26  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/033-module-stage-blueprints/spec.md`  
-**Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/033-module-stage-blueprints/plan.md`
+**Date**: 2025-12-26
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/033-module-stage-blueprints/spec.md`
+**Plan**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/033-module-stage-blueprints/plan.md`
 
 > 本文件固化 033 的语义蓝图数据模型（画布配置面），不规定 UI/Layout Editor 的实现。
 

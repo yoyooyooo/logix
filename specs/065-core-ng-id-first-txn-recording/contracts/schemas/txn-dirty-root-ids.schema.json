@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://intent-flow.local/specs/065-core-ng-id-first-txn-recording/schemas/txn-dirty-root-ids.schema.json",
+  "$id": "https://logix.local/specs/065-core-ng-id-first-txn-recording/schemas/txn-dirty-root-ids.schema.json",
   "title": "TxnDirtyRootIds",
   "type": "object",
   "additionalProperties": false,

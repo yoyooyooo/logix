@@ -2,7 +2,7 @@ import { describe, expect, it } from '@effect/vitest'
 import { Effect } from 'effect'
 import { readFileSync } from 'node:fs'
 import * as ConcurrencyDiagnostics from '../../../src/internal/runtime/core/ConcurrencyDiagnostics.js'
-import * as Debug from '../../../src/Debug.js'
+import * as Debug from '../../../src/internal/debug-api.js'
 
 const readJson = (url: URL): any => JSON.parse(readFileSync(url, 'utf8'))
 

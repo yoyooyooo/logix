@@ -35,7 +35,7 @@ export const DEFAULT_CONFIG_SNAPSHOT: ReactConfigSnapshot = {
   source: 'default',
 }
 
-// Effect-native config helper: callers can inject override config via RuntimeProvider.layer.
+// Effect-native config helper: callers can inject override config via subtree layer.
 export const ReactRuntimeConfig = {
   tag: ReactRuntimeConfigTag,
 
@@ -101,7 +101,7 @@ const ReactModuleConfigFromEnv = {
  */
 export const ReactModuleConfig = {
   gcTime: Effect.gen(function* () {
-    // 1) Allow overriding defaults via ReactRuntimeConfigTag (RuntimeProvider.layer approach).
+    // 1) Allow overriding defaults via ReactRuntimeConfigTag (subtree layer approach).
     const override = yield* Effect.serviceOption(ReactRuntimeConfigTag)
     if (Option.isSome(override)) {
       return override.value.gcTime

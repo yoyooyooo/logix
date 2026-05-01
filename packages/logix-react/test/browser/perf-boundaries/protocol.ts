@@ -18,8 +18,8 @@ export type PerfReport = {
         readonly maxP95DeltaMs: number
       }
       readonly controlPlane?: {
-        readonly traitConvergeBudgetMs?: number
-        readonly traitConvergeDecisionBudgetMs?: number
+        readonly fieldConvergeBudgetMs?: number
+        readonly fieldConvergeDecisionBudgetMs?: number
         readonly tuningId?: string
       }
     }

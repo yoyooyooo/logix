@@ -2,8 +2,8 @@ import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Deferred, Effect, Fiber, Option, Ref } from 'effect'
 import type { ConcurrencyDiagnostics } from '../../../../src/internal/runtime/core/ConcurrencyDiagnostics.js'
-import type { ResolvedConcurrencyPolicy } from '../../../../src/internal/runtime/ModuleRuntime.concurrencyPolicy.js'
-import { makeEnqueueTransaction } from '../../../../src/internal/runtime/ModuleRuntime.txnQueue.js'
+import type { ResolvedConcurrencyPolicy } from '../../../../src/internal/runtime/core/ModuleRuntime.concurrencyPolicy.js'
+import { makeEnqueueTransaction } from '../../../../src/internal/runtime/core/ModuleRuntime.txnQueue.js'
 
 describe('ModuleRuntime.txnQueue (lanes)', () => {
   it.effect('urgent should run before queued nonUrgent tasks (and nonUrgent should not starve)', () =>

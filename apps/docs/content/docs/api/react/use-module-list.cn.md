@@ -1,23 +1,24 @@
 ---
 title: useModuleList
-description: 把动态数据列表映射为稳定的模块实例列表，确保实例 identity 不随渲染顺序漂移。
+description: 把动态 items 映射为稳定的模块定义或 program 列表。
 ---
 
-`useModuleList` 用于把动态 items 列表映射为**稳定的模块实例列表**，从而在 React 多次渲染中保持实例 identity 不变。
+`useModuleList` 用于把动态 items 映射为稳定的模块定义或 program 列表。
 
-当你渲染一组重复 UI，每个块都“拥有一个本地模块实例”，并且希望实例 identity 绑定到 item id（而不是渲染顺序）时，它很有用。
+当重复渲染的一组 UI 需要按 item key 保持实例 identity，而不跟随 render 顺序漂移时，可以使用它。
 
-## 基本用法
+## 用法
 
 ```tsx
-import { useModuleList } from '@logixjs/react'
-import { RowModule } from './modules/row'
+import { useModuleList } from "@logixjs/react"
+import * as Logix from "@logixjs/core"
+import { RowDef } from "./modules/row"
 
 function RowList({ rows }: { rows: Array<{ id: string; name: string }> }) {
   const modules = useModuleList(
     rows,
     (row) => row.id,
-    (id, row) => RowModule.implement({ initial: { id, name: row.name } }),
+    (id, row) => Logix.Program.make(RowDef, { initial: { id, name: row.name } }),
   )
 
   return (
@@ -30,11 +31,13 @@ function RowList({ rows }: { rows: Array<{ id: string; name: string }> }) {
 }
 ```
 
-## Notes
+## 说明
 
-- 内部 cache 不会在 items 移除时主动清理。多数情况下 module def/impl 足够轻量；真正“重”的部分是 Runtime，由 `useModule/useLocalModule` 管理。
+- identity 跟随 item key，而不是 render 顺序
+- runtime ownership 仍然留在 `useModule(...)` 或 `useLocalModule(...)`
+- 这是高级 helper，不属于 canonical host law
 
-## 延伸阅读
+## 相关页面
 
-- [API: useLocalModule](./use-local-module)
-- [API: useModule](./use-module)
+- [useModule](./use-module)
+- [useLocalModule](./use-local-module)

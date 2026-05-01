@@ -27,21 +27,25 @@ const Host = Logix.Module.make('useImportedModuleHostHier', {
   actions: { noop: Schema.Void },
 })
 
-const ChildImpl = Child.implement({
+const ChildProgram = Logix.Program.make(Child, {
   initial: { ok: true },
-  imports: [
-    GrandChild.implement({
-      initial: { count: 0 },
-    }).impl,
-  ],
+  capabilities: {
+    imports: [
+    Logix.Program.make(GrandChild, {
+    initial: { count: 0 },
+    }),
+    ],
+  },
 })
 
-const HostImpl = Host.implement({
+const HostProgram = Logix.Program.make(Host, {
   initial: { ok: true },
-  imports: [ChildImpl.impl],
+  capabilities: {
+    imports: [ChildProgram],
+  },
 })
 
-const runtime = Logix.Runtime.make(HostImpl)
+const runtime = Logix.Runtime.make(HostProgram)
 
 describe('useImportedModule (hierarchical)', () => {
   it('resolves grandchild through child.imports.get (local host)', async () => {
@@ -53,7 +57,7 @@ describe('useImportedModule (hierarchical)', () => {
 
     const { result } = renderHook(
       () => {
-        const host = useModule(HostImpl, { key: 'host-local' })
+        const host = useModule(HostProgram, { key: 'host-local' })
         const child = host.imports.get(Child.tag)
         const grand = child.imports.get(GrandChild.tag)
         const count = useSelector(grand, (s: any) => s.count)

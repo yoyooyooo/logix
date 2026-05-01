@@ -5,7 +5,7 @@ description: 在采用 `.specify/` + `specs/` 的 Spec-Driven Development（Spec
 
 # speckit（统一阶段路由）
 
-目标：用一个 skill 贯穿 Spec-Driven 流程，把规格产物当作“可执行的单一事实源”（spec → plan → tasks → implement），并在每次对话出现关键裁决时，及时回写到对应产物，避免“代码与规格漂移”。
+目标：用一个 skill 贯穿 Spec-Driven 流程，把规格产物当作“可执行的单一事实源”（spec → discussion → plan → tasks → implement → acceptance），并在每次对话出现关键裁决时，及时回写到对应产物，避免“代码与规格漂移”。
 
 ## 什么时候触发 / 什么时候保持沉默
 
@@ -87,11 +87,20 @@ feature 选择（可选，但强烈建议明确指定以避免误选“最新 sp
 
 - 触发形态：用户主动触发一律用 `$speckit <stage>`；若宿主侧提供 slash command，只视为等价别名（本仓文档不再使用该写法）。
 - 推荐主流程：`constitution` → `specify` → `clarify` → `plan` → `tasks` → `implement`（可在任意阶段插入 `notes` 做手动 flush；实现前可插入 `checklist` / `analyze` 做自检与收敛）。
+- `discussion.md` 是按需 companion artifact：
+  - `specify` 阶段不得默认创建空文件
+  - 只有存在未冻结候选、开放问题、deferred item 或 reopen evidence 时才创建
+  - 若没有开放性问题或候选分歧，不生成 `discussion.md`
+  - `plan / tasks / implement / acceptance` 阶段仅在文件存在时读取
+  - 它只承接候选形状、开放问题、reopen evidence，不承接 authority
+  - 开放问题必须分为 `Must Close Before Implementation` 与 `Deferred / Non-Blocking`
+  - `Must Close Before Implementation` 里的条目在进入实施前必须回写到 `spec.md` / `plan.md` / `tasks.md` 并从 `discussion.md` 移除
 - 推荐闭环：在 `implement` 之后，执行一次 `acceptance` 做“上帝视角”验收（以最新源码为准，覆盖 `spec.md` 内每个带编码的点）。
 - 产物边界（避免层级混淆）：
   - `constitution`：项目原则与治理（全局约束）
   - `specify`：需求与成功标准（WHAT/WHY，不写 HOW）
   - `clarify`：消除歧义与补齐缺口（把 `[NEEDS CLARIFICATION]` 关掉）
+  - `discussion`：working artifact，承接未冻结候选、open questions、reopen evidence
   - `plan`：技术与架构选择（HOW 的全局方案，细节下沉到 `implementation-details/`）
   - `tasks`：可执行任务拆分（顺序/依赖/并行标记/验收检查点）
   - `implement`：按 `tasks.md` 执行并持续勾选进度，必要时回写规格
@@ -163,12 +172,12 @@ feature 选择（可选，但强烈建议明确指定以避免误选“最新 sp
 
 ## 脚本能力（无需读源码）
 
-- `scripts/bash/create-new-feature.sh`：创建 `specs/<NNN-*>/spec.md`（从模板拷贝/或创建空文件），输出包含 `BRANCH_NAME`/`SPEC_FILE` 的 JSON；不做任何 VCS 操作。
+- `scripts/bash/create-new-feature.sh`：创建 `specs/<NNN-*>/spec.md`；默认不创建 `discussion.md`。显式传 `--with-discussion` 时才创建 discussion 文件。JSON 输出包含 `BRANCH_NAME`/`SPEC_FILE`/`DISCUSSION_FILE`/`DISCUSSION_CREATED`；不做任何 VCS 操作。
 - `scripts/bash/setup-north-stars.sh`：初始化/同步 `.specify/memory/north-stars.md`（默认不覆盖；仅在显式 `--sync/--force` 时写入），输出 JSON；不改动任何 specs 产物。
 - `scripts/bash/setup-plan.sh`：确保 `specs/<feature>/plan.md` 存在（默认不覆盖，`--force` 才覆盖），输出包含 `FEATURE_SPEC`/`IMPL_PLAN` 的 JSON；不改动其它规格产物。
 - `scripts/bash/update-spec-status.sh`：更新 `specs/<feature>/spec.md` 顶部的 `**Status**:` 行；支持 `--ensure` 保持单调前进（Draft→Planned→Active→Done），避免回退。
 - `scripts/bash/setup-notes.sh`：确保 `specs/<feature>/notes/` 骨架存在（默认不覆盖；`--force` 才覆盖），输出包含 `NOTES_DIR`/`NOTES_README`/`SESSIONS_DIR` 的 JSON；支持 `--dry-run` 预览。
-- `scripts/bash/check-prerequisites.sh`：检查当前 feature 的必要文件是否存在并输出 JSON（可选要求 `tasks.md`）；不写入规格文件。
+- `scripts/bash/check-prerequisites.sh`：检查当前 feature 的必要文件是否存在并输出 JSON（可选要求 `tasks.md`）；若存在 `discussion.md` 也会进入 `AVAILABLE_DOCS`；不写入规格文件。
 - `scripts/bash/extract-user-stories.sh`：从 `spec.md` 提取 `User Story N` 清单（含 Priority 与 file+line 证据），支持 `--json`；只读。
 - `scripts/bash/extract-coded-points.sh`：从一个或多个 `spec.md` 提取 `FR/NFR/SC` 编码点清单（带 file+line 证据，支持 `--json`），用于 `acceptance` 阶段避免盲搜；只读。
 - `scripts/bash/extract-tasks.sh`：从一个或多个 `tasks.md` 提取任务清单与完成状态（带 file+line 证据，支持 `--json`），用于 `acceptance` 阶段避免盲解析；只读。

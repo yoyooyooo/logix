@@ -1,8 +1,10 @@
 import { describe, it, expect } from '@effect/vitest'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
-import * as ModuleRuntimeImpl from '../../src/internal/runtime/ModuleRuntime.js'
-import * as BoundApiRuntime from '../../src/internal/runtime/BoundApiRuntime.js'
+import * as Resource from '../../src/Resource.js'
+import * as ModuleRuntimeImpl from '../../src/internal/runtime/core/ModuleRuntime.js'
+import * as BoundApiRuntime from '../../src/internal/runtime/core/BoundApiRuntime.js'
 import * as ReplayLog from '../../src/internal/runtime/core/ReplayLog.js'
 import { replayModeLayer } from '../../src/internal/runtime/core/env.js'
 import type { ResourceRegistry } from '../../src/Resource.js'
@@ -34,18 +36,18 @@ describe('ReplayMode · Resource', () => {
   type Key = Schema.Schema.Type<typeof KeySchema>
 
   const makeProgram = () => {
-    const traits = Logix.StateTrait.from(StateSchema)({
-      profileResource: Logix.StateTrait.source({
+    const fieldSpec = FieldContracts.fieldFrom(StateSchema)({
+      profileResource: FieldContracts.fieldSource({
         deps: ['profile.id'],
         resource: 'user/profile',
         key: (profileId) => ({ userId: profileId }),
       }),
-      'profile.name': Logix.StateTrait.link({
+      'profile.name': FieldContracts.fieldLink({
         from: 'profileResource.data.name',
       }),
     })
 
-    return Logix.StateTrait.build(StateSchema, traits)
+    return FieldContracts.buildFieldProgram(StateSchema, fieldSpec)
   }
 
   it('does not call ResourceSpec.load in replay mode', async () => {
@@ -54,7 +56,7 @@ describe('ReplayMode · Resource', () => {
     const recordCalls: Array<Key> = []
     const replayCalls: Array<Key> = []
 
-    const recordSpec = Logix.Resource.make<Key, { readonly name: string }, never, never>({
+    const recordSpec = Resource.make<Key, { readonly name: string }, never, never>({
       id: 'user/profile',
       keySchema: KeySchema,
       load: (key) =>
@@ -63,7 +65,7 @@ describe('ReplayMode · Resource', () => {
         ),
     })
 
-    const replaySpec = Logix.Resource.make<Key, { readonly name: string }, never, never>({
+    const replaySpec = Resource.make<Key, { readonly name: string }, never, never>({
       id: 'user/profile',
       keySchema: KeySchema,
       load: (key) =>
@@ -79,7 +81,7 @@ describe('ReplayMode · Resource', () => {
 
         const initial: State = {
           profile: { id: 'u1', name: 'Alice' },
-          profileResource: Logix.Resource.Snapshot.idle(),
+          profileResource: Resource.Snapshot.idle(),
         }
 
         const runtime = yield* ModuleRuntimeImpl.make<State, Action>(initial, {
@@ -99,9 +101,9 @@ describe('ReplayMode · Resource', () => {
           },
         )
 
-        yield* Logix.StateTrait.install(bound as any, program)
+        yield* FieldContracts.installFieldProgram(bound as any, program)
 
-        yield* bound.traits.source.refresh('profileResource')
+        yield* bound.fields.source.refresh('profileResource')
         yield* Effect.sleep('30 millis')
 
         const finalState = (yield* runtime.getState) as State
@@ -112,7 +114,7 @@ describe('ReplayMode · Resource', () => {
         return yield* ReplayLog.snapshot
       }).pipe(
         Effect.provide(ReplayLog.layer()),
-        Effect.provide(Logix.Resource.layer([recordSpec]) as Layer.Layer<never, never, ResourceRegistry>),
+        Effect.provide(Resource.layer([recordSpec]) as Layer.Layer<never, never, ResourceRegistry>),
       ),
     ) as Effect.Effect<ReadonlyArray<ReplayLog.ReplayLogEvent>, never, never>
 
@@ -126,7 +128,7 @@ describe('ReplayMode · Resource', () => {
 
         const initial: State = {
           profile: { id: 'u1', name: 'Alice' },
-          profileResource: Logix.Resource.Snapshot.idle(),
+          profileResource: Resource.Snapshot.idle(),
         }
 
         const runtime = yield* ModuleRuntimeImpl.make<State, Action>(initial, {
@@ -146,9 +148,9 @@ describe('ReplayMode · Resource', () => {
           },
         )
 
-        yield* Logix.StateTrait.install(bound as any, program)
+        yield* FieldContracts.installFieldProgram(bound as any, program)
 
-        yield* bound.traits.source.refresh('profileResource')
+        yield* bound.fields.source.refresh('profileResource')
         yield* Effect.sleep('30 millis')
 
         const finalState = (yield* runtime.getState) as State
@@ -158,7 +160,7 @@ describe('ReplayMode · Resource', () => {
       }).pipe(
         Effect.provide(replayModeLayer('replay')),
         Effect.provide(ReplayLog.layer(recordedEvents)),
-        Effect.provide(Logix.Resource.layer([replaySpec]) as Layer.Layer<never, never, ResourceRegistry>),
+        Effect.provide(Resource.layer([replaySpec]) as Layer.Layer<never, never, ResourceRegistry>),
       ),
     ) as Effect.Effect<void, never, never>
 

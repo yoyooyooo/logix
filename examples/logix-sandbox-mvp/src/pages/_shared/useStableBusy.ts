@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import * as Logix from '@logixjs/core'
-import { useDispatch, useLocalModule, useSelector } from '@logixjs/react'
+import { useDispatch, useModule, useSelector } from '@logixjs/react'
 import { Schema } from 'effect'
 
 const StableBusyStateSchema = Schema.Struct({
@@ -24,17 +24,16 @@ export const useStableBusy = (
   const delayMs = Math.max(0, Math.floor(options?.delayMs ?? 120))
   const minDurationMs = Math.max(0, Math.floor(options?.minDurationMs ?? 200))
 
-  const stableBusy = useLocalModule(
-    StableBusyDef,
-    useMemo(
-      () => ({
-        key: 'examples.logix-sandbox-mvp:StableBusy',
+  const stableBusyProgram = useMemo(
+    () =>
+      Logix.Program.make(StableBusyDef, {
         initial: { shown: false },
-        deps: [delayMs, minDurationMs],
       }),
-      [delayMs, minDurationMs],
-    ),
+    [],
   )
+  const stableBusy = useModule(stableBusyProgram, {
+    key: 'examples.logix-sandbox-mvp:StableBusy',
+  })
 
   const shown = useSelector(stableBusy, (s) => s.shown)
   const dispatch = useDispatch(stableBusy)

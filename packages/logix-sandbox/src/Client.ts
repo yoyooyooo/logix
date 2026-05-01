@@ -1,3 +1,4 @@
+import * as CoreKernel from '@logixjs/core/repo-internal/kernel-api'
 import type {
   SandboxCommand,
   SandboxEvent,
@@ -227,6 +228,22 @@ export class SandboxClient {
     this.scheduleNotify()
   }
 
+  private toSandboxError(info: SandboxErrorInfo): Error {
+    const error = new Error(info.message)
+    if (info.stack) {
+      error.stack = info.stack
+    }
+    return Object.assign(error, { sandboxError: info })
+  }
+
+  private rejectActiveRuns(error: Error): void {
+    for (const [runId, resolver] of this.runResolvers) {
+      resolver.reject(error)
+      this.runResolvers.delete(runId)
+      this.runKernelSelections.delete(runId)
+    }
+  }
+
   getState(): SandboxClientState {
     return this.state
   }
@@ -347,7 +364,13 @@ export class SandboxClient {
         logs: [...this.state.logs, { level: 'info', args: [e.payload], timestamp: Date.now(), source: 'logix' }],
       })
     } else if (isErrorEvent(e)) {
+      const error = this.toSandboxError(e.payload)
       this.setState({ status: 'error', error: e.payload })
+      if (this.compileResolver) {
+        this.compileResolver.reject(error)
+        this.compileResolver = null
+      }
+      this.rejectActiveRuns(error)
     } else if (isCompileResultEvent(e)) {
       if (this.compileResolver) {
         this.compileResolver.resolve(e.payload)
@@ -358,18 +381,18 @@ export class SandboxClient {
       const runId = payload.runId
 
       const finalize = () => {
-        this.setState({ status: 'completed' })
-
         const resolver = this.runResolvers.get(runId)
         if (!resolver) {
           return
         }
 
+        this.setState({ status: 'completed' })
+
         const selection = this.runKernelSelections.get(runId)
         const kernelImplementationRef = extractKernelImplementationRef(payload.stateSnapshot)
         const effectiveKernelId = selection?.effectiveKernelId
         const derivedKernelImplementationRef =
-          effectiveKernelId === 'core' || effectiveKernelId === 'core-ng'
+          effectiveKernelId === 'core'
             ? { kernelId: effectiveKernelId, packageName: '@logixjs/core' }
             : undefined
         this.runKernelSelections.delete(runId)
@@ -404,6 +427,7 @@ export class SandboxClient {
     this.activeKernelUrl = null
     this.compiledKernelUrl = null
     this.compiledKernelSelection = null
+    this.runKernelSelections.clear()
 
     if (this.compileResolver) {
       this.compileResolver.reject(error ?? new Error('WORKER_TERMINATED'))
@@ -565,18 +589,23 @@ export class SandboxClient {
       this.runResolvers.set(runId, { resolve, reject })
       const timeout = setTimeout(() => {
         if (this.runResolvers.has(runId)) {
-          this.runResolvers.delete(runId)
-          reject(new Error('运行超时'))
+          const error = new Error('运行超时')
+          this.setState({ status: 'error', error: { code: 'TIMEOUT', message: error.message } })
+          this.disposeWorker(error)
         }
       }, this.timeout)
 
       const originalResolve = resolve
+      const originalReject = reject
       this.runResolvers.set(runId, {
         resolve: (result) => {
           clearTimeout(timeout)
           originalResolve(result)
         },
-        reject,
+        reject: (error) => {
+          clearTimeout(timeout)
+          originalReject(error)
+        },
       })
 
       const runCommand: RunCommand = { type: 'RUN', payload }
@@ -584,7 +613,7 @@ export class SandboxClient {
     })
   }
 
-  async trialRunModule(options: {
+  async trial(options: {
     readonly moduleCode: string
     readonly moduleExport?: string
     readonly runId?: string
@@ -613,7 +642,7 @@ export class SandboxClient {
 
     const trialRunOptions = {
       runId,
-      source: { host: 'browser', label: 'sandbox:trialRunModule' },
+      source: { host: 'browser', label: 'sandbox:trial' },
       buildEnv: {
         hostKind: 'browser',
         config: options.buildEnvConfig,
@@ -633,24 +662,24 @@ export class SandboxClient {
       ``,
       `const __programModule = ${moduleExport}`,
       `const __kernelId = ${JSON.stringify(effectiveKernelId)}`,
-      `const __kernelLayer = (__kernelId === "core" || __kernelId === "core-ng") ? Logix.Kernel.kernelLayer({ kernelId: __kernelId, packageName: "@logixjs/core" }) : undefined`,
+      `const __kernelLayer = (__kernelId === "core") ? CoreKernel.kernelLayer({ kernelId: __kernelId, packageName: "@logixjs/core" }) : undefined`,
       ``,
       `export default Effect.gen(function* () {`,
       `  const options = ${JSON.stringify(trialRunOptions, null, 2)}`,
-      `  const report = yield* Logix.Observability.trialRunModule(__programModule as any, __kernelLayer ? { ...options, layer: __kernelLayer } : options)`,
+      `  const report = yield* Logix.Runtime.trial(__programModule as any, __kernelLayer ? { ...options, layer: __kernelLayer } : options)`,
       `  return report`,
       `})`,
       ``,
     ].join('\n')
 
-    const compiled = await this.compile(wrapper, options.filename ?? 'trialRunModule.ts', options.mockManifest, {
+    const compiled = await this.compile(wrapper, options.filename ?? 'trial.ts', options.mockManifest, {
       kernelId: options.kernelId,
       strict: options.strict,
       allowFallback: options.allowFallback,
     })
     if (!compiled.success) {
       const errors = compiled.errors?.length ? `\\n${compiled.errors.join('\\n')}` : ''
-      throw new Error(`编译失败: trialRunModule wrapper${errors}`)
+      throw new Error(`编译失败: trial wrapper${errors}`)
     }
 
     return this.run({

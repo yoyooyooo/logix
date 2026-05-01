@@ -1,8 +1,8 @@
 # Feature Specification: 014 浏览器压测基线与性能边界地图
 
-**Feature Branch**: `[014-browser-perf-boundaries]`  
-**Created**: 2025-12-16  
-**Status**: Active  
+**Feature Branch**: `[014-browser-perf-boundaries]`
+**Created**: 2025-12-16
+**Status**: Active
 **Input**: User description: "基于现状，直接用浏览器模式的测试运行器做压力测试用例，试探当前各个维度的性能边界；把边界定清楚，后续每次改造后能知道各边界变好或变差，进入持续压榨性能阶段。"
 
 ## Context & Positioning
@@ -13,10 +13,10 @@
 
 014 不仅是一组浏览器压测用例，也同时定义仓库级的“性能证据协议与工具链”。后续任何性能优化相关需求（包括但不限于事务/收敛/校验/渲染/诊断开销）应优先复用 014，而不是再新造一套 report/diff/阈值语义。
 
-- **统一最小 IR**：以 `matrix.json + PerfReport + PerfDiff` 作为“性能证据”的统一最小 IR（可机器解析、可回归、可交接）。  
+- **统一最小 IR**：以 `matrix.json + PerfReport + PerfDiff` 作为“性能证据”的统一最小 IR（可机器解析、可回归、可交接）。
 - **Runner 可扩展**：014 的“证据协议”不强绑定浏览器；浏览器跑道是默认/权威的端到端口径，但其它跑道（Node/runtime 侧 micro）也应产出同一 `PerfReport` 结构，以便复用同一 diff 语义与门槛表达。
 - **结果归档位置**：014 提供口径与工具；具体 feature 的 Before/After/Diff 证据应优先固化到该 feature 自己的 `specs/<id>/perf/*`，避免把 014 的 `perf/` 目录变成“所有特性的杂货铺”。
-- **扩展方式**：需要新增场景/维度时，只做两件事：在 `@logixjs/perf-evidence/assets/matrix.json`（物理：`.codex/skills/logix-perf-evidence/assets/matrix.json`）增加 suite/轴/预算，并提供一个能输出 `LOGIX_PERF_REPORT` 的可执行用例（必须确定性、seed 固化、诊断证据 Slim + 可序列化）。
+- **扩展方式**：需要新增场景/维度时，只做两件事：在 `@logixjs/perf-evidence/assets/matrix.json`（物理：`packages/logix-perf-evidence/assets/matrix.json`）增加 suite/轴/预算，并提供一个能输出 `LOGIX_PERF_REPORT` 的可执行用例（必须确定性、seed 固化、诊断证据 Slim + 可序列化）。
 
 ## Clarifications
 
@@ -152,14 +152,14 @@
 ### Execution Workflow（Browser → Collect → PerfDiff）
 
 - **Browser 集成测试（主跑道）**：`packages/logix-react/test/browser/**/*` 中的 suite 在 Vitest browser project 下运行，使用统一的 harness（`runMatrixSuite`）按 `matrix.json` 采样，并在每次 run 结束后通过 `LOGIX_PERF_REPORT:<json>` 单行输出结构化结果（`PerfReport`）。
-- **采集与合并（Collect）**：Node 侧脚本 `.codex/skills/logix-perf-evidence/scripts/collect.ts`（通过 `pnpm perf collect` 调用）以子进程方式运行 browser project，抓取所有 `LOGIX_PERF_REPORT` 行并合并为一份 `PerfReport`：
+- **采集与合并（Collect）**：Node 侧脚本 `packages/logix-perf-evidence/scripts/collect.ts`（通过 `pnpm perf collect` 调用）以子进程方式运行 browser project，抓取所有 `LOGIX_PERF_REPORT` 行并合并为一份 `PerfReport`：
   - 默认命令（根目录）：`pnpm perf collect`（或 `pnpm perf collect:quick`）；
   - 默认输出：`specs/014-browser-perf-boundaries/perf/after.worktree.json`（可通过 `--out <file>` 覆盖）；
   - 支持通过 `--files` 只采集部分 suite（例如只跑 converge/diagnostics 子集），但仍必须遵守同一份 `matrix.json` 与 schema 契约。
 - **基线固化（Before）**：选定一台基准机器与 profile（如 `quick`），用 Collect 脚本生成一份带 envId 的基线报告：
   - 命名约定：`specs/014-browser-perf-boundaries/perf/before.<gitSha>.<envId>.json`；
   - envId 作为“环境锚点”（OS/arch/CPU/browser/headless），后续对照必须复用同一 envId。
-- **Diff 对比（PerfDiff）**：给定一份 Before 与一份 After 报告，使用 `.codex/skills/logix-perf-evidence/scripts/diff.ts`（通过 `pnpm perf diff` 调用）生成 `PerfDiff`：
+- **Diff 对比（PerfDiff）**：给定一份 Before 与一份 After 报告，使用 `packages/logix-perf-evidence/scripts/diff.ts`（通过 `pnpm perf diff` 调用）生成 `PerfDiff`：
   - 根命令：`pnpm perf diff -- --before <before.json> --after <after.json> [--out <diff.json>]`；
   - 对照 `PerfMatrix`（`matrix.json`）重算阈值，输出 `thresholdDeltas`（预算下最大可承受档位的变化）；
   - 同时输出 `evidenceDeltas`：对 `requiredEvidence` 与 `budget.cutOffCount` 等证据字段进行聚合对比，显式区分 `missing` / `unavailable(reason)` / 有值（含 0），避免把“测不到”误读为“没有发生”。

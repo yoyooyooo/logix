@@ -1,53 +1,78 @@
 ---
-title: Performance and optimization
-description: Key practices to keep large forms/lists responsive.
+title: Performance
+description: Keep form reads narrow and validation scoped.
 ---
 
-## 1) UI subscriptions: prefer `useFormState(form, selector)`
+## Prefer core selectors
 
-Avoid subscribing to the whole values/errors tree in React: small changes can amplify into wide re-renders.
+Use `useSelector(form, selector)` to subscribe to the smallest slice you actually render.
 
-Prefer subscribing only to the “view-state slice” you actually need:
+```tsx
+const canSubmit = useSelector(
+  form,
+  (s) => s.$form.errorCount === 0 && !s.$form.isSubmitting,
+)
 
-```ts
-const canSubmit = useFormState(form, (v) => v.canSubmit)
-const submitCount = useFormState(form, (v) => v.submitCount)
+const submitCount = useSelector(form, (s) => s.$form.submitCount)
+const lineItem = useSelector(form, (s) => s.items[index])
 ```
 
-## 2) Validation triggers: keep “every keystroke” incremental
+Avoid reading the whole form state if the component only needs one flag or one row.
+When a page renders multiple local instances, do not use a shared instance just to reduce instance creation. Instance isolation takes priority.
 
-A common strategy for complex forms:
+## Prefer scoped validation
 
-- Before first submit: `validateOn=["onSubmit"]` (cheaper)
-- After first submit: `reValidateOn=["onChange"]` (more immediate)
+```ts
+yield* form.validatePaths(["shipping.address"])
+```
 
-When you only want to validate a small path, prefer `controller.validatePaths(...)` for precise triggering.
+Use `validatePaths(...)` when only one field or one subtree changed and you do not need a full-form pass.
 
-> Tip: express “cross-field linkage triggers” via explicit `deps`, and express “when to auto-validate” via `validateOn/reValidateOn` (form-level) or per-rule `validateOn` (rule-level; only `onChange/onBlur`).
+## Treat arrays as structural hot paths
 
-## 3) Field arrays: provide stable identity (trackBy)
+Use `form.fieldArray(path)` for list edits:
 
-For long lists, explicitly declaring list identity (prefer `trackBy`) usually pays off by:
+- `insert`
+- `update`
+- `replace`
+- `remove`
+- `swap`
+- `move`
+- `byRowId(...)`
 
-- Stable React `key`, fewer re-renders on reorder/insert
-- More stable row errors and UI state, less drift
+This keeps structural edits aligned with row ownership and cleanup semantics.
 
-## 4) Move heavy logic out of sync validation
+For identity configuration:
 
-Sync validation and sync derivation are best for lightweight work (pure, fast, predictable). When you need IO or heavy computation, prefer `source` or move heavy work into service calls so you don’t stretch the transaction window for every input.
+- prefer `trackBy` when rows already have a stable business id
+- use `store` when rows are client-created but still need stable structural editing
+- avoid `index` for reorder-heavy flows
 
-> Practice: for cross-row rules, prefer list scope (one scan + write back `errors.<list>.$list/rows[]`) instead of repeating O(n) scans in item scope.
+## Control restore cost
 
-## 5) Write-back style: prefer field-level writes (`mutate`/controller) over full replacement
+A keyed instance with `gcTime` can restore existing state after route changes.
+Restoring should not force whole-form subscriptions; the cost mainly comes from which slices remounted components read.
 
-`useFormState(form, selector)` reduces React re-renders, but it can’t offset the cost of “full writes” that force broad derivation/validation.
+```tsx
+const form = useModule(CheckoutForm, {
+  key: `checkout:${cartId}`,
+  gcTime: 60_000,
+})
+```
 
-In Logix, “full replacement” styles like `update/setState` often don’t provide precise change-path evidence, so runtime tends to degrade derivation/validation into full processing. The larger the form and the higher the input frequency, the more visible the difference becomes.
+For complex forms:
 
-For high-frequency input and linkage, prefer:
+- use `useModule(Form.tag)` for route-level shared state
+- use `useModule(Form, { key, gcTime })` for restorable page editor sessions
+- use `useModule(Form)` or different keys for multiple independent copies on the same screen
 
-- `field.onChange/onBlur`, `controller.setValue/setError/clearErrors/...` (keep field-level impact boundaries inside the form)
-- `$.state.mutate(...)` in custom Logic (runtime can automatically collect change paths)
-- `Logix.Module.Reducer.mutate(...)` / `Logix.Module.Reducer.mutateMap({...})` in `Module.make({ reducers })` (batch define draft-style reducers)
+## Keep error rendering data-first
 
-For small forms with low update frequency, `update` + selector often works fine. But when you care about performance ceilings, move high-frequency writes to `mutate`/controller first.
+Render from canonical error leaves plus the current i18n snapshot.
+Do not convert validation output into ad-hoc display strings deep inside the validation layer.
+
+## See also
+
+- [Instances](/docs/form/instances)
+- [Field arrays](/docs/form/field-arrays)
+- [Selectors and support facts](/docs/form/selectors)

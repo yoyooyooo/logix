@@ -34,11 +34,11 @@ type ExternalStore<T> = {
   - 把模块的 selector 结果当作 ExternalStore 来源（Module-as-Source）
   - 必须可被 IR 识别（moduleId/selectorId/readsDigest 等），由 TickScheduler 参与同 tick 稳定化（FR-012 / SC-005），禁止退化为 runtime 黑盒订阅
 
-## 2) ExternalStoreTrait（StateTrait.externalStore）
+## 2) ExternalStoreTrait（FieldKernel.externalStore）
 
-ExternalStoreTrait 是 `StateTrait` 的一种 entry：声明某个 state 字段由外部输入驱动写回。
+ExternalStoreTrait 是 `FieldKernel` 的一种 entry：声明某个 state 字段由外部输入驱动写回。
 
-### 2.1 Trait Spec（概念）
+### 2.1 Field Spec（概念）
 
 ```ts
 type ReadsDigest = { readonly count: number; readonly hash: number }
@@ -79,7 +79,7 @@ type ExternalStoreTraitSpec<S, P extends StateFieldPath<S>, T, V = T> = {
 - `getSnapshot()` 只能在事务窗口外调用（采样阶段），不得在事务窗口内执行 IO。
 - 初始化必须保证 “getSnapshot 与 subscribe 建立之间不漏事件” 的原子语义。
 - ownership：`fieldPath` 视为 **external-owned**。除 ExternalStoreTrait 写回外，任何其它写入路径（action/update/mutate/source writeback 等）触达同一路径都必须 fail-fast（推荐替代：写入独立 override 字段，再用 computed 合并）。
-- coalesce：当 `coalesceWindowMs` 启用时，trait 维护 `pending(raw)` 与 `committed` 两级值；只有 **committed** 会写回 state 并进入 RuntimeStore snapshot。pending 的 raw 变化不得以“可观测值变化但未 notify”的方式泄露到 React（避免 tearing）。
+- coalesce：当 `coalesceWindowMs` 启用时，field 维护 `pending(raw)` 与 `committed` 两级值；只有 **committed** 会写回 state 并进入 RuntimeStore snapshot。pending 的 raw 变化不得以“可观测值变化但未 notify”的方式泄露到 React（避免 tearing）。
 - coalesceWindowMs 聚合位置：Pre-Write（写回前聚合）。外部源 subscribe 回调不延迟；仅延迟 committed 写回与 tick flush。
 - 高频外部 emit 去重：外部源 listener 必须是 **Signal Dirty（Pull-based）**，同一 microtask 内最多调度一次 tick；不得把每次 emit 变成 payload task 入队（避免 thundering herd 在队列层积压）。
 
@@ -136,7 +136,7 @@ topicKey 约定：
 
 ## 4) DeclarativeLinkIR（跨模块依赖 IR）
 
-DeclarativeLinkIR 用于让 TickScheduler 识别跨模块依赖并参与稳定化；黑盒 `Process.link` 不在此 IR 范围内。
+DeclarativeLinkIR 用于让 TickScheduler 识别跨模块依赖并参与稳定化；黑盒 `orchestration process link surface` 不在此 IR 范围内。
 
 ### 4.1 最小形态（概念）
 

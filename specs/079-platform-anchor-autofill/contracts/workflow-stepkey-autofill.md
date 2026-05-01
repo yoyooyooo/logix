@@ -4,7 +4,7 @@
 
 把 Workflow（`Π`）的核心稳定锚点 `stepKey` 从“可缺省/靠人工约定”提升为 **可门禁化/可回写** 的工程事实：
 
-- 缺失 `stepKey` 视为契约违规（对齐 075 与 Root IR 的 `workflowSurface`）。
+- 缺失 `stepKey` 视为契约违规（对齐 075 与 Root IR 的 `controlProgramSurface`）。
 - 在 Platform-Grade 子集内，允许以 **确定性、最小 diff、幂等** 的方式补齐缺失的 `stepKey`，并回写源码保持单一真相源。
 - 任何不确定性必须显式跳过并解释（reason codes），禁止“猜测式补全”。
 

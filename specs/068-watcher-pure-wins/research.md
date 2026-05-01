@@ -1,7 +1,7 @@
 # Research: 068 Watcher 纯赚性能优化（全量交付）
 
-**Date**: 2025-12-31  
-**Spec**: `specs/068-watcher-pure-wins/spec.md`  
+**Date**: 2025-12-31
+**Spec**: `specs/068-watcher-pure-wins/spec.md`
 **Plan**: `specs/068-watcher-pure-wins/plan.md`
 
 本 research 聚焦把关键取舍“拍死”为可执行设计决策：每条决策都必须能回到 `spec.md` 的 FR/NFR/SC 做验收，并能被 perf evidence/回归用例覆盖。

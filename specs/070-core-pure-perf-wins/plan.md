@@ -1,6 +1,6 @@
 # Implementation Plan: 070 core 纯赚/近纯赚性能优化（默认零成本诊断与单内核）
 
-**Branch**: `070-core-pure-perf-wins` | **Date**: 2025-12-31 | **Spec**: `specs/070-core-pure-perf-wins/spec.md`  
+**Branch**: `070-core-pure-perf-wins` | **Date**: 2025-12-31 | **Spec**: `specs/070-core-pure-perf-wins/spec.md`
 **Input**: Feature specification from `specs/070-core-pure-perf-wins/spec.md`
 
 ## Summary
@@ -9,7 +9,7 @@
 
 - 默认档：
   - DebugSink 在 `errorOnly` 单 sink 场景对高频事件走 fast-path（不读取 diagnosticsLevel/runtimeLabel/linkId，不调用 sink.record）
-  - Trait converge 在默认档（diagnostics=off + errorOnly-only）下不生成 decision/dirtySummary/topK/hotspots 等观测 payload；当 sinks 非 errorOnly-only 时仅生成 slim decision，重字段由 diagnosticsLevel 门控
+  - Field converge 在默认档（diagnostics=off + errorOnly-only）下不生成 decision/dirtySummary/topK/hotspots 等观测 payload；当 sinks 非 errorOnly-only 时仅生成 slim decision，重字段由 diagnosticsLevel 门控
 - 显式观测档：
   - diagnostics=light/sampled/full 时仍可导出 Slim、可序列化事件，并解释裁剪/降级原因
 - kernelId：
@@ -20,24 +20,24 @@
 ## Deepening Notes
 
 - Decision: “会被消费”判定保守：仅 errorOnly-only 可视为“不会被消费”，未知/自定义 sinks 一律视为可能消费 (source: spec clarify AUTO 2026-01-01)
-- Decision: `diagnosticsLevel=off` 仍允许在 sinks 非 errorOnly-only 时生成 slim decision（用于 `state:update.traitSummary`），但 heavy/exportable 细节必须 `diagnosticsLevel!=off` (source: spec clarify AUTO 2026-01-01)
+- Decision: `diagnosticsLevel=off` 仍允许在 sinks 非 errorOnly-only 时生成 slim decision（用于 `state:update.fieldSummary`），但 heavy/exportable 细节必须 `diagnosticsLevel!=off` (source: spec clarify AUTO 2026-01-01)
 - Decision: Gate/perf evidence 的默认档 baseline 固定为 `kernelId=core + diagnosticsLevel=off + Debug.layer(mode=prod)` (source: spec clarify AUTO 2026-01-01)
-- Decision: perf evidence 以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为唯一 SSoT，交付结论必须 `profile=default|soak` 且 diff 满足 `meta.comparability.comparable=true && summary.regressions==0` (source: spec clarify AUTO 2026-01-01)
+- Decision: perf evidence 以 `packages/logix-perf-evidence/assets/matrix.json` 为唯一 SSoT，交付结论必须 `profile=default|soak` 且 diff 满足 `meta.comparability.comparable=true && summary.regressions==0` (source: spec clarify AUTO 2026-01-01)
 - Decision: 硬结论 before/after 必须隔离采集；混杂改动结果仅作线索不得宣称 Gate PASS (source: spec clarify AUTO 2026-01-01)
 - Decision: SC-001 以“无回归且可比”为硬门；若主张“纯赚收益”，按 SC-004 补充可证据化收益并回写 quickstart (source: spec clarify AUTO 2026-01-01)
 - Decision: `LOGIX_CORE_NG_EXEC_VM_MODE` 不作为默认纯赚开关，继续保持显式 opt-in (source: spec clarify AUTO 2026-01-01)
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.8.x（ESM；以仓库 `package.json` 为准）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（browser evidence）`@logixjs/react`  
-**Storage**: N/A（证据落盘到 `specs/070-core-pure-perf-wins/perf/*`）  
-**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）  
-**Target Platform**: Node.js 20+ + modern browsers（至少 1 组 headless browser evidence）  
-**Project Type**: pnpm workspace（`packages/*` + `examples/*`）  
-**Performance Goals**: 默认档（diagnostics=off + errorOnly-only）下关键 suite diff 无回归（见 SC-001）；若要主张“纯赚收益”，按 SC-004 补充可证据化收益。  
-**Constraints**: 默认零成本/接近零成本；统一最小 IR + 稳定锚点（instanceId/txnSeq/opSeq）；事务窗口禁 IO；consumer 不直接依赖 `@logixjs/core-ng`  
-**Scale/Scope**: 只改 Debug/trait converge 的门控与 fast-path，不改业务语义与对外 API
+**Language/Version**: TypeScript 5.8.x（ESM；以仓库 `package.json` 为准）
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（browser evidence）`@logixjs/react`
+**Storage**: N/A（证据落盘到 `specs/070-core-pure-perf-wins/perf/*`）
+**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）
+**Target Platform**: Node.js 20+ + modern browsers（至少 1 组 headless browser evidence）
+**Project Type**: pnpm workspace（`packages/*` + `examples/*`）
+**Performance Goals**: 默认档（diagnostics=off + errorOnly-only）下关键 suite diff 无回归（见 SC-001）；若要主张“纯赚收益”，按 SC-004 补充可证据化收益。
+**Constraints**: 默认零成本/接近零成本；统一最小 IR + 稳定锚点（instanceId/txnSeq/opSeq）；事务窗口禁 IO；consumer 不直接依赖 `@logixjs/core-ng`
+**Scale/Scope**: 只改 Debug/field converge 的门控与 fast-path，不改业务语义与对外 API
 
 ## Kernel support matrix
 
@@ -55,7 +55,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - **IR & anchors**：不改变统一最小 IR 与稳定锚点；只改变“何时生成可导出事件/decision”以确保 off 近零成本。
 - **Deterministic identity**：不引入随机/时间锚点；既有 instanceId/txnSeq/opSeq 语义保持。
 - **Transaction boundary**：不引入事务窗口 IO/await；改动仅为门控与 fast-path。
-- **Internal contracts & trial runs**：不新增隐式 magic 协议；门控逻辑收敛在 `DebugSink`/trait converge 内部，保持可测试/可基准化。
+- **Internal contracts & trial runs**：不新增隐式 magic 协议；门控逻辑收敛在 `DebugSink`/field converge 内部，保持可测试/可基准化。
 - **Dual kernels (core + core-ng)**：变更落在 `@logixjs/core`，不要求 consumer 依赖 core-ng；证据以 core 默认档为主。
 - **Performance budget**：强制 `$logix-perf-evidence`（Node + Browser）作为硬门；必要时补充单测/基准防线以拦截回归。
 - **Diagnosability & explainability**：off 档必须近零成本；light/full 下仍可导出 Slim 且可序列化的解释字段。
@@ -69,7 +69,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 ## Perf Evidence Plan（MUST）
 
 - Baseline 语义：代码前后（before=改动前，after=改动后）
-- Matrix SSoT：`.codex/skills/logix-perf-evidence/assets/matrix.json`
+- Matrix SSoT：`packages/logix-perf-evidence/assets/matrix.json`
 - Hard conclusion：交付结论必须 `profile=default`（`quick` 仅线索；需要更稳可用 `soak` 复核）
 - 采集隔离：硬结论的 before/after/diff 必须同环境同参数，且必须使用独立目录或 `git worktree` 隔离采集（混杂工作区结果只作线索不得宣称 Gate PASS）
 - PASS 判据：`pnpm perf diff` 输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`（并确保 before/after 的 `meta.matrixId/matrixHash` 一致）
@@ -108,7 +108,7 @@ specs/070-core-pure-perf-wins/
 ```text
 packages/logix-core/
 ├── src/internal/runtime/core/DebugSink.ts
-├── src/internal/state-trait/converge-in-transaction.ts
+├── src/internal/state-field/converge-in-transaction.ts
 ├── src/internal/runtime/core/ModuleRuntime.transaction.ts
 └── test/**   # 新增至少 1 条回归防线（见 SC-002）
 
@@ -125,7 +125,7 @@ packages/logix-react/
   - `lifecycle:error` 与 `diagnostic(warn/error)` 保持现有兜底（打印/记录）
   - `diagnostic(info)` 仍保持丢弃（不因为 fast-path 意外变成 info 噪音）
 
-### 2) Trait converge 的 decision/dirtySummary 门控：默认档零税，重字段需显式诊断
+### 2) Field converge 的 decision/dirtySummary 门控：默认档零税，重字段需显式诊断
 
 - 将 `convergeInTransaction` 的 `shouldCollectDecision` 从 “sinks.length>0” 收紧为：
   - sinks 非 errorOnly-only（存在明确 consumer）

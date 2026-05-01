@@ -5,6 +5,7 @@ set -e
 JSON_MODE=false
 SHORT_NAME=""
 BRANCH_NUMBER=""
+CREATE_DISCUSSION=false
 ARGS=()
 i=1
 while [ $i -le $# ]; do
@@ -12,6 +13,9 @@ while [ $i -le $# ]; do
     case "$arg" in
         --json) 
             JSON_MODE=true 
+            ;;
+        --with-discussion)
+            CREATE_DISCUSSION=true
             ;;
         --short-name)
             if [ $((i + 1)) -gt $# ]; then
@@ -41,10 +45,11 @@ while [ $i -le $# ]; do
             BRANCH_NUMBER="$next_arg"
             ;;
         --help|-h) 
-            echo "Usage: $0 [--json] [--short-name <name>] [--number N] <feature_description>"
+            echo "Usage: $0 [--json] [--with-discussion] [--short-name <name>] [--number N] <feature_description>"
             echo ""
             echo "Options:"
             echo "  --json              Output in JSON format"
+            echo "  --with-discussion   Create discussion.md immediately; default is to omit it unless needed"
             echo "  --short-name <name> Provide a custom short name (2-4 words) for the branch"
             echo "  --number N          Specify branch number manually (overrides auto-detection)"
             echo "  --help, -h          Show this help message"
@@ -63,7 +68,7 @@ done
 
 FEATURE_DESCRIPTION="${ARGS[*]}"
 if [ -z "$FEATURE_DESCRIPTION" ]; then
-    echo "Usage: $0 [--json] [--short-name <name>] [--number N] <feature_description>" >&2
+    echo "Usage: $0 [--json] [--with-discussion] [--short-name <name>] [--number N] <feature_description>" >&2
     exit 1
 fi
 
@@ -218,14 +223,24 @@ TEMPLATE="$REPO_ROOT/.specify/templates/spec-template.md"
 SPEC_FILE="$FEATURE_DIR/spec.md"
 if [ -f "$TEMPLATE" ]; then cp "$TEMPLATE" "$SPEC_FILE"; else touch "$SPEC_FILE"; fi
 
+DISCUSSION_TEMPLATE="$REPO_ROOT/.specify/templates/discussion-template.md"
+DISCUSSION_FILE="$FEATURE_DIR/discussion.md"
+DISCUSSION_CREATED=false
+if $CREATE_DISCUSSION; then
+    if [ -f "$DISCUSSION_TEMPLATE" ]; then cp "$DISCUSSION_TEMPLATE" "$DISCUSSION_FILE"; else touch "$DISCUSSION_FILE"; fi
+    DISCUSSION_CREATED=true
+fi
+
 # Set the SPECIFY_FEATURE environment variable for the current session
 export SPECIFY_FEATURE="$BRANCH_NAME"
 
 if $JSON_MODE; then
-    printf '{"BRANCH_NAME":"%s","SPEC_FILE":"%s","FEATURE_NUM":"%s"}\n' "$BRANCH_NAME" "$SPEC_FILE" "$FEATURE_NUM"
+    printf '{"BRANCH_NAME":"%s","SPEC_FILE":"%s","DISCUSSION_FILE":"%s","DISCUSSION_CREATED":%s,"FEATURE_NUM":"%s"}\n' "$BRANCH_NAME" "$SPEC_FILE" "$DISCUSSION_FILE" "$DISCUSSION_CREATED" "$FEATURE_NUM"
 else
     echo "BRANCH_NAME: $BRANCH_NAME"
     echo "SPEC_FILE: $SPEC_FILE"
+    echo "DISCUSSION_FILE: $DISCUSSION_FILE"
+    echo "DISCUSSION_CREATED: $DISCUSSION_CREATED"
     echo "FEATURE_NUM: $FEATURE_NUM"
     echo "SPECIFY_FEATURE environment variable set to: $BRANCH_NAME"
 fi

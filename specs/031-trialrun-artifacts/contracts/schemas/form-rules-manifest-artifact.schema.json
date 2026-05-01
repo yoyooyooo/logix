@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://intent-flow.local/specs/031-trialrun-artifacts/schemas/form-rules-manifest-artifact.schema.json",
+  "$id": "https://logix.local/specs/031-trialrun-artifacts/schemas/form-rules-manifest-artifact.schema.json",
   "title": "FormRulesManifestArtifactPayload",
   "type": "object",
   "additionalProperties": false,

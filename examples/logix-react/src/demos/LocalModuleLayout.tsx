@@ -1,11 +1,12 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import React from 'react'
 import { Effect, Layer, ManagedRuntime, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
-import { RuntimeProvider, useModule } from '@logixjs/react'
+import { RuntimeProvider, fieldValue, useModule, useSelector } from '@logixjs/react'
 
-// 局部 ModuleImpl 示例：模块不注册到应用级 Runtime 的全局 modules 中，状态随组件生命周期销毁
+// 局部 Program 示例：模块不注册到应用级 Runtime 的全局 modules 中，状态随组件生命周期销毁
 
-const LocalCounterDef = Logix.Module.make('LocalCounter', {
+const LocalCounter = Logix.Module.make('LocalCounter', {
   state: Schema.Struct({ count: Schema.Number }),
   actions: {
     increment: Schema.Void,
@@ -13,7 +14,7 @@ const LocalCounterDef = Logix.Module.make('LocalCounter', {
   },
 })
 
-const LocalCounterLogic = LocalCounterDef.logic(($) =>
+const LocalCounterLogic = LocalCounter.logic('local-counter-logic', ($) =>
   Effect.gen(function* () {
     yield* $.onAction('increment').runFork(
       $.state.mutate((s) => {
@@ -28,28 +29,26 @@ const LocalCounterLogic = LocalCounterDef.logic(($) =>
   }),
 )
 
-const LocalCounterModule = LocalCounterDef.implement({
+const LocalCounterProgram = Logix.Program.make(LocalCounter, {
   initial: { count: 0 },
   logics: [LocalCounterLogic],
 })
 
-const LocalCounterImpl = LocalCounterModule.impl
-
-// 用一个简单的 Runtime 承载 Effect 环境；模块实例本身由 useModule(LocalCounterImpl) 局部创建
+// 用一个简单的 Runtime 承载 Effect 环境；模块实例本身由 useModule(LocalCounterProgram) 局部创建
 const localRuntime = ManagedRuntime.make(
-  Layer.mergeAll(Logix.Debug.runtimeLabel('LocalModuleDemo'), Logix.Debug.devtoolsHubLayer(), Layer.empty),
+  Layer.mergeAll(CoreDebug.runtimeLabel('LocalModuleDemo'), CoreDebug.devtoolsHubLayer()),
 )
 const LocalCounterView: React.FC = () => {
   // 每个组件调用都会创建一棵独立的 ModuleRuntime 实例，随组件卸载销毁
-  const runtime = useModule(LocalCounterImpl)
-  const count = useModule(runtime, (s) => s.count)
+  const runtime = useModule(LocalCounterProgram)
+  const count = useSelector(runtime, fieldValue('count'))
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 max-w-sm">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">局部 Counter</h3>
         <div className="px-3 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full text-xs font-medium">
-          ModuleImpl · Local
+          Program · Local
         </div>
       </div>
 
@@ -86,11 +85,11 @@ export const LocalModuleLayout: React.FC = () => {
       <React.Suspense fallback={null}>
         <div className="space-y-6">
           <div className="border-b border-gray-200 dark:border-gray-800 pb-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">局部 ModuleImpl 示例</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">局部 Program 示例</h2>
             <p className="text-gray-600 dark:text-gray-400 max-w-2xl leading-relaxed">
               本示例展示了如何直接使用{' '}
               <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm font-mono text-pink-600 dark:text-pink-400">
-                ModuleImpl
+                Program
               </code>{' '}
               作为局部 Store：每个组件拥有自己的{' '}
               <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm font-mono text-pink-600 dark:text-pink-400">

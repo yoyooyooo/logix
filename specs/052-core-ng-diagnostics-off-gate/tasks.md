@@ -1,6 +1,6 @@
 # Tasks: 052 diagnostics=off 近零成本 Gate（回归防线）
 
-**Input**: `specs/052-core-ng-diagnostics-off-gate/*`（`spec.md`/`plan.md`/`research.md`/`data-model.md`/`contracts/*`/`quickstart.md`）  
+**Input**: `specs/052-core-ng-diagnostics-off-gate/*`（`spec.md`/`plan.md`/`research.md`/`data-model.md`/`contracts/*`/`quickstart.md`）
 **Prerequisites**: `specs/052-core-ng-diagnostics-off-gate/plan.md`（required） + `specs/052-core-ng-diagnostics-off-gate/spec.md`（required）
 
 ## Phase 1: Setup（Shared Infrastructure）
@@ -16,14 +16,14 @@
 
 > 说明：converge 的 off 闸门与 diagnostics overhead suite 在 039 已有基线实现；本 spec 负责把它扩展为全局 gate（覆盖 049/050/051），并补齐缺口。
 
-- [x] T005 对齐 039 的 off 禁止项清单与实现落点（作为 052 的基线）`specs/039-trait-converge-int-exec-evidence/tasks.md`、`packages/logix-core/src/internal/state-trait/converge.ts`
+- [x] T005 对齐 039 的 off 禁止项清单与实现落点（作为 052 的基线）`specs/039-field-converge-int-exec-evidence/tasks.md`、`packages/logix-core/src/internal/state-field/converge.ts`
 
 ---
 
 ## Phase 3: User Story 1（P1）- off 档位近零成本（覆盖面扩展）
 
 - [x] T010 [US1] 为 Exec VM evidence/Integer Bridge mapping 补齐 off early-return（off 不输出/不 materialize）`packages/logix-core-ng/src/ExecVmEvidence.ts`、`packages/logix-core/src/internal/runtime/core/DebugSink.ts`
-- [x] T011 [US1] 补齐/统一 off gate 的“禁止项”回归测试（至少覆盖：steps 数组/label 拼接/mapping materialize）`packages/logix-core/test/observability/ExecVmEvidence.off.test.ts`、`packages/logix-core/test/observability/DebugSink.record.off.test.ts`、`packages/logix-core/test/internal/StateTrait/StateTrait.ConvergeAuto.TraceEvent.test.ts`、`packages/logix-core/test/internal/StateTrait/StateTrait.TraitCheckEvent.DiagnosticsLevels.test.ts`
+- [x] T011 [US1] 补齐/统一 off gate 的“禁止项”回归测试（至少覆盖：steps 数组/label 拼接/mapping materialize）`packages/logix-core/test/observability/ExecVmEvidence.off.test.ts`、`packages/logix-core/test/observability/DebugSink.record.off.test.ts`、`packages/logix-core/test/internal/FieldKernel/FieldKernel.ConvergeAuto.TraceEvent.test.ts`、`packages/logix-core/test/internal/FieldKernel/FieldKernel.TraitCheckEvent.DiagnosticsLevels.test.ts`
 
 ---
 

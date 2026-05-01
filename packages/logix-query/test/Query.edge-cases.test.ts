@@ -4,6 +4,7 @@ import { Duration, Effect, Layer, Schema } from 'effect'
 import { QueryClient } from '@tanstack/query-core'
 import * as Logix from '@logixjs/core'
 import * as Query from '../src/index.js'
+import { engine as tanstackEngine } from '../src/internal/engine/tanstack.js'
 
 describe('Query edge cases', () => {
   it('should reject triggers=["manual", ...] (manual must be exclusive)', () => {
@@ -29,7 +30,7 @@ describe('Query edge cases', () => {
   itFx.effect('should skip refresh when key(deps) is undefined', () =>
     Effect.gen(function* () {
       let calls = 0
-      const Spec = Logix.Resource.make({
+      const Spec = Query.Engine.Resource.make({
         id: 'demo/edge-cases/key-undefined',
         keySchema: Schema.Struct({ q: Schema.String }),
         load: (key: { readonly q: string }) =>
@@ -55,10 +56,10 @@ describe('Query edge cases', () => {
         }),
       })
 
-      const runtime = Logix.Runtime.make(module.impl, {
+      const runtime = Logix.Runtime.make(module, {
         layer: Layer.mergeAll(
-          Logix.Resource.layer([Spec]),
-          Query.Engine.layer(Query.TanStack.engine(new QueryClient())),
+          Query.Engine.Resource.layer([Spec]),
+          Query.Engine.layer(tanstackEngine(new QueryClient())),
         ),
         middleware: [Query.Engine.middleware()],
       })
@@ -78,16 +79,16 @@ describe('Query edge cases', () => {
 
       const program = Effect.gen(function* () {
           const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
-        const controller = module.controller.make(rt)
+        const commands = module.commands.make(rt)
 
         // onMount: key undefined -> should not fetch
-        const s0 = yield* waitUntil(controller.getState as any, (s: any) => s.queries.search.status === 'idle')
+        const s0 = yield* waitUntil(commands.getState as any, (s: any) => s.queries.search.status === 'idle')
         expect(s0.queries.search.status).toBe('idle')
         expect(calls).toBe(0)
 
         // change to a valid key -> should fetch once
-        yield* controller.controller.setParams({ q: 'a' })
-        const s1 = yield* waitUntil(controller.getState as any, (s: any) => s.queries.search.status === 'success')
+        yield* commands.setParams({ q: 'a' })
+        const s1 = yield* waitUntil(commands.getState as any, (s: any) => s.queries.search.status === 'success')
         expect(s1.queries.search.data).toEqual({ q: 'a' })
         expect(calls).toBe(1)
       })
@@ -102,7 +103,7 @@ describe('Query edge cases', () => {
       type Key = Schema.Schema.Type<typeof KeySchema>
 
       let calls = 0
-      const Spec = Logix.Resource.make<Key, { readonly q: string }, never, never>({
+      const Spec = Query.Engine.Resource.make<Key, { readonly q: string }, never, never>({
         id: 'demo/edge-cases/exhaust-trailing',
         keySchema: KeySchema,
         load: (key) =>
@@ -128,30 +129,30 @@ describe('Query edge cases', () => {
         }),
       })
 
-      const runtime = Logix.Runtime.make(module.impl, {
+      const runtime = Logix.Runtime.make(module, {
         layer: Layer.mergeAll(
-          Logix.Resource.layer([Spec]),
-          Query.Engine.layer(Query.TanStack.engine(new QueryClient())),
+          Query.Engine.Resource.layer([Spec]),
+          Query.Engine.layer(tanstackEngine(new QueryClient())),
         ),
         middleware: [Query.Engine.middleware()],
       })
 
       const program = Effect.gen(function* () {
           const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
-        const controller = module.controller.make(rt)
+        const commands = module.commands.make(rt)
 
         yield* Effect.forEach(
           Array.from({ length: 10 }, (_, i) => `q${i}`),
-          (q) => controller.controller.setParams({ q }),
+          (q) => commands.setParams({ q }),
         )
 
         // Avoid timer jitter flakiness in parallel test runs: wait until the trailing fetch completes.
-        let state = yield* controller.getState
+        let state = yield* commands.getState
         for (let i = 0; i < 60; i++) {
           const snap: any = (state as any).queries?.search
           if (snap?.status === 'success' && snap?.data?.q === 'q9') break
           yield* Effect.sleep(Duration.millis(10))
-          state = yield* controller.getState
+          state = yield* commands.getState
         }
         expect(state.queries.search.status).toBe('success')
         expect(state.queries.search.data).toEqual({ q: 'q9' })

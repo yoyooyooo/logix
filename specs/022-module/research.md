@@ -1,13 +1,13 @@
 # Research: Module（定义对象）+ ModuleTag（身份锚点）
 
-**Date**: 2025-12-21  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/022-module/spec.md`
+**Date**: 2025-12-21
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/022-module/spec.md`
 
 ## Decisions
 
 ### 1) Module 选择“定义对象（wrap）”，旧 Module 更名为 ModuleTag（方案 A）
 
-**Decision**: Module 是一个领域模块“定义对象”（wrap），内部复用既有 `ModuleTag`（Tag identity）与 `ModuleImpl`（可装配蓝图），并额外携带领域扩展（例如 controller）与 fluent 组合能力；`actions` 语义复用模块 action tags（`ModuleHandle.actions`），不引入第二套同名 actions。
+**Decision**: Module 是一个领域模块“定义对象”（wrap），内部复用既有 `ModuleTag`（Tag identity）与 `Program`（可装配蓝图），并额外携带领域扩展（例如 controller）与 fluent 组合能力；`actions` 语义复用模块 action tags（`ModuleHandle.actions`），不引入第二套同名 actions。
 
 **Rationale**:
 
@@ -71,17 +71,17 @@
 
 ### 5) “装配/运行侧入口”支持直接消费 Module
 
-**Decision**: 支持把 Module 直接交给常用入口（例如 React hooks / Runtime 装配工具），由这些入口统一 `unwrap` 到 `module.impl`。
+**Decision**: 支持把 Program 直接交给常用入口（例如 React hooks / Runtime 装配工具），由内部 helper 解析 runtime blueprint。
 
 **Rationale**:
 
-- 这是减少样板的第二条主路径：不仅 Logic 侧不需要 `.tag`（旧蓝图是 `.module`），装配侧也不需要 `.impl`。
+- 这是减少样板的第二条主路径：Logic 侧按 `ModuleTag` / `$.self` 解析既有实例，装配侧只使用 `Program`。
 - 统一的 unwrap 规则可避免各处自行判断/拆壳造成漂移。
-- 说明（React 语义）：`useModule(module)` 默认走 `module.impl` 的“局部/会话级”路径；若要取 `RuntimeProvider` 中的全局实例，应显式传 `module.tag`（ModuleTag）。
+- 说明（React 语义）：`useModule(program)` 默认走“局部/会话级”路径；若要取 `RuntimeProvider` 中的全局实例，应显式传 `module.tag`（ModuleTag）。
 
 **Alternatives considered**:
 
-- 只在 React 侧做特化：会导致 Node/脚本/平台工具侧仍然需要 `.impl`，心智模型不统一。
+- 只在 React 侧做特化：会导致 Node/脚本/平台工具侧仍然需要内部 blueprint，心智模型不统一。
 
 ### 5.1) 库作者衍化器：模块工厂命名空间（CRUDModule）
 

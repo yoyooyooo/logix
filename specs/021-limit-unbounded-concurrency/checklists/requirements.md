@@ -1,7 +1,7 @@
 # Specification Quality Checklist: 并发护栏与预警（限制无上限并发）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-21  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-21
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality

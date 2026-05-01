@@ -1,14 +1,15 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { describe, it, expect } from 'vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 
 describe('Module.logicUnitId override diagnostics', () => {
   it('should be last-write-wins and emit module_logic::override warning (dev + diagnostics on)', async () => {
-    const ring = Logix.Debug.makeRingBufferSink(64)
+    const ring = CoreDebug.makeRingBufferSink(64)
 
     const layer = Layer.mergeAll(
-      Logix.Debug.replace([ring.sink]),
-      Logix.Debug.diagnosticsLevel('light'),
+      CoreDebug.replace([ring.sink]),
+      CoreDebug.diagnosticsLevel('light'),
     ) as Layer.Layer<any, never, never>
 
     const M = Logix.Module.make('ModuleLogicOverride', {
@@ -16,25 +17,19 @@ describe('Module.logicUnitId override diagnostics', () => {
       actions: {},
     })
 
-    const first = M.logic(
-      ($) =>
+    const first = M.logic('dup', ($) =>
         Effect.gen(function* () {
           yield* $.state.update(() => ({ value: 1 }) as any)
           yield* Effect.sleep('50 millis')
           yield* $.state.update(() => ({ value: 3 }) as any)
-        }),
-      { id: 'dup', name: 'first' },
-    )
+        }), { name: 'first' })
 
-    const second = M.logic(
-      ($) =>
+    const second = M.logic('dup', ($) =>
         Effect.gen(function* () {
           yield* $.state.update(() => ({ value: 2 }) as any)
-        }),
-      { id: 'dup', name: 'second' },
-    )
+        }), { name: 'second' })
 
-    const Mod = M.implement({
+    const Mod = Logix.Program.make(M, {
       initial: { value: 0 },
       logics: [first, second],
     })

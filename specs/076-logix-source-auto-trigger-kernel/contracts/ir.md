@@ -1,10 +1,10 @@
-# Contracts: IR（SourceAutoTriggerPolicy in StateTraitStaticIr）
+# Contracts: IR（SourceAutoTriggerPolicy in FieldStaticIr）
 
 目标：让 Devtools/审查/diff 能看到 auto-trigger 的静态结构，而不是只看到运行期 watcher。
 
 ## 1) Static IR（V1）
 
-复用 `StateTraitStaticIr` 的 `policy` 字段（见 `packages/logix-core/src/internal/state-trait/ir.ts`）：
+复用 `FieldStaticIr` 的 `policy` 字段（见 `packages/logix-core/src/internal/state-field/ir.ts`）：
 
 ```json
 {

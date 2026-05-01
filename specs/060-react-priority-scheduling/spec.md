@@ -1,8 +1,8 @@
 # Feature Specification: Txn Lanes（事务后续工作优先级调度 / 可解释调度；统一 Lanes 证据）
 
-**Feature Branch**: `060-react-priority-scheduling`  
-**Created**: 2025-12-29  
-**Status**: Draft  
+**Feature Branch**: `060-react-priority-scheduling`
+**Created**: 2025-12-29
+**Status**: Draft
 **Input**: User discussion: "把事务更新的优先级调度抽成独立 spec（类比 React 并发更新）；默认不启用；先把可验收边界与证据门禁写清；并把 Read Lanes / Txn Lanes 的车道证据与 Devtools 展示收敛到同一链路（吸收 057 的 US2），避免并行真相源。"
 
 ## Terminology
@@ -37,8 +37,8 @@
 
 - `specs/046-core-ng-roadmap/`（本特性需登记进 registry，作为“语义改变/调度模型”独立条目）
 - `specs/045-dual-kernel-contract/`（跨内核一致性与证据跑道）
-- `specs/043-trait-converge-time-slicing/`（既有的“派生收敛 time-slicing”最小闭环；Txn Lanes 不能与之冲突）
-- `specs/044-trait-converge-diagnostics-sampling/`（采样诊断口径，与本特性需要的“可解释 backlog”强相关）
+- `specs/043-field-converge-time-slicing/`（既有的“派生收敛 time-slicing”最小闭环；Txn Lanes 不能与之冲突）
+- `specs/044-field-converge-diagnostics-sampling/`（采样诊断口径，与本特性需要的“可解释 backlog”强相关）
 - `specs/057-core-ng-static-deps-without-proxy/`（Read Lanes：车道证据/展示需要与 Txn Lanes 统一，避免两套 lane 口径）
 - `docs/specs/drafts/topics/react-adapter/03-concurrent-rendering.md`（并发渲染语境与“低优先级更新”的用户心智）
 - `docs/specs/drafts/topics/runtime-v3-core/00-invariants-and-gates.md`（事务边界/证据门禁/稳定锚点不变量）
@@ -125,7 +125,7 @@
 - **FR-003**: 系统 MUST 为非紧急更新提供“最长延迟上限”与饥饿保护策略，保证非紧急更新最终会跟上，且不会无限期积压。
 - **FR-004**: 系统 MUST 将调度行为证据化：在诊断开启时，必须导出 Slim、可序列化的 lane/backlog 摘要，并能与稳定锚点对齐（`moduleId/instanceId/txnSeq/opSeq`）。
 - **FR-005**: 系统 MUST 支持运行期临时覆盖（用于排查/回退/对照）：至少允许“强制全同步（忽略非紧急延后）”与“强制关闭本策略”，且覆盖本身必须可被证据解释。
-- **FR-006**: 系统 MUST 与既有语义改变 spec 协同：不得破坏 `specs/043-trait-converge-time-slicing/` 的最小闭环；若需要扩展 043 的“立即/延后”模型，必须保持对外心智模型一致并提供迁移说明。
+- **FR-006**: 系统 MUST 与既有语义改变 spec 协同：不得破坏 `specs/043-field-converge-time-slicing/` 的最小闭环；若需要扩展 043 的“立即/延后”模型，必须保持对外心智模型一致并提供迁移说明。
 - **FR-007**: 系统 MUST 作为跨内核契约：core 与 core-ng 必须能在同一对照验证跑道下证明“同输入→同可观察结果（允许非紧急延后，但须满足延迟上界）”，并能通过结构化证据解释差异。
 - **FR-008**: 系统 MUST 提供用户文档：以业务开发者视角解释“什么时候用、怎么选、怎么验证生效、如何回退”，并保持术语与证据字段一致（避免出现“只有实现懂的词”）。
 - **FR-009**: 系统 MUST 提供 lane-aware queue：当非紧急 backlog 已排队等待/执行时，紧急更新必须可以优先执行（不被 backlog 堵塞），以获得可证据化的 p95 改善。

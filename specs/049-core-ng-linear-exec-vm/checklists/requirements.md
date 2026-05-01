@@ -1,7 +1,7 @@
 # Specification Quality Checklist: core-ng 线性执行 VM（Exec VM）
 
-**Purpose**: 在进入规划（plan/tasks）之前，校验规格是否可验收、无明显歧义  
-**Created**: 2025-12-27  
+**Purpose**: 在进入规划（plan/tasks）之前，校验规格是否可验收、无明显歧义
+**Created**: 2025-12-27
 **Feature**: `specs/049-core-ng-linear-exec-vm/spec.md`
 
 ## Content Quality

@@ -1,7 +1,7 @@
 # Data Model: Runtime Internals Contracts（实体与作用域）
 
-**Feature**: `specs/020-runtime-internals-contracts/spec.md`  
-**Contracts**: `specs/020-runtime-internals-contracts/contracts/*`  
+**Feature**: `specs/020-runtime-internals-contracts/spec.md`
+**Contracts**: `specs/020-runtime-internals-contracts/contracts/*`
 **Created**: 2025-12-21
 
 > 目标：为“RuntimeKernel + Runtime Services/RuntimeInternals + 按实例覆写 + 可解释证据链路”提供统一数据模型（不绑定具体实现细节）。
@@ -41,12 +41,12 @@ RuntimeKernel 是该实例的“单一装配点”：承载共享依赖与子系
 
 **Examples**
 - `TxnScheduler`：入口排队/优先级/批处理策略（只表达调度意图与边界）。
-- `TxnEngine`：事务窗口 begin→body→traits→commit 的执行语义。
+- `TxnEngine`：事务窗口 begin→body→fields→commit 的执行语义。
 - `DispatchEngine`：action 入口语义与 reducer/patch 证据接入。
 - `OperationRunner`：EffectOp/middleware 的统一入口与链路标识传播。
 - `InternalHooksBridge`：对 legacy internal hooks 的桥接层（内部兼容面，非 public API）。
 
-**Minimal Contract Sketches (Draft)**  
+**Minimal Contract Sketches (Draft)**
 （用于降低实现阶段歧义；以“能力面”表达，不锁死具体 TS 类型命名）
 
 - `TxnScheduler`
@@ -70,8 +70,8 @@ RuntimeKernel 是该实例的“单一装配点”：承载共享依赖与子系
 表示“内部协作协议”的显式契约集合，用于替代散落的 `runtime.__*` / `bound.__*` 字段访问。
 
 **Responsibilities**
-- 暴露 lifecycle/transaction/traits/imports/devtools 等内部能力的最小接口；
-- 作为仓库内统一访问入口（例如 internal accessor），供 `@logixjs/react`、trait-lifecycle、state-trait 等内部消费方使用；
+- 暴露 lifecycle/transaction/fields/imports/devtools 等内部能力的最小接口；
+- 作为仓库内统一访问入口（例如 internal accessor），供 `@logixjs/react`、field-lifecycle、state-field 等内部消费方使用；
 - 在迁移期可由 shim 实现桥接 legacy 字段，但新增能力必须只依赖该 Runtime Service。
 
 **Invariants**

@@ -1,6 +1,6 @@
 # Implementation Plan: 063 logix-galaxy-api 登录与用户模块（BetterAuth-first）
 
-**Branch**: `063-galaxy-user-auth` | **Date**: 2025-12-30 | **Spec**: `specs/063-galaxy-user-auth/spec.md`  
+**Branch**: `063-galaxy-user-auth` | **Date**: 2025-12-30 | **Spec**: `specs/063-galaxy-user-auth/spec.md`
 **Input**: Feature specification from `specs/063-galaxy-user-auth/spec.md`
 
 ## Summary
@@ -37,11 +37,11 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@effect/platform`、`@effect/platform-node`、`better-auth`、`pg`  
-**Storage**: PostgreSQL（`DATABASE_URL` 注入；BetterAuth 建议落在 schema `auth`）  
-**Testing**: Vitest（`vitest run`；以 handler 级测试为主）  
-**Target Platform**: Node.js 20+（与现有 app 运行方式一致）  
+**Language/Version**: TypeScript（ESM）
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@effect/platform`、`@effect/platform-node`、`better-auth`、`pg`
+**Storage**: PostgreSQL（`DATABASE_URL` 注入；BetterAuth 建议落在 schema `auth`）
+**Testing**: Vitest（`vitest run`；以 handler 级测试为主）
+**Target Platform**: Node.js 20+（与现有 app 运行方式一致）
 **Constraints**:
 
 - 安全：响应/日志不得泄露 password/hash/token/连接字符串等敏感信息。

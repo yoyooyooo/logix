@@ -37,7 +37,7 @@
 
 Runtime-only 仍然可以拿到大量“编译型收益”，典型路径是：
 
-1) **构造期一次性预编译（JIT-style）**：在 `ManagedRuntime` / `ModuleRuntime` 创建期把重活做完（Static IR → Exec IR），热路径只执行“预编译好的 plan/访问器/bitset/typedarray”。  
+1) **构造期一次性预编译（JIT-style）**：在 `ManagedRuntime` / `ModuleRuntime` 创建期把重活做完（Static IR → Exec IR），热路径只执行“预编译好的 plan/访问器/bitset/typedarray”。
    - 这正是 039 的方向：消灭字符串 split/往返、TypedArray/Bitset/Accessor 预编译、诊断 off 零分配闸门。
 2) **数据结构与内存布局优化**：把热循环从对象/Map/Set 推到 TypedArray/位运算/SoA，减少 GC 与 deopt 风险；必要时进一步把“计划/图结构”驻留并复用。
 3) **证据门禁驱动的“保守可解释”**：任何可能引入负优化的中间态（比如“ID 化到一半又还原回 string”）在证据门禁下不允许存在；这比“有没有 AOT”更影响极致性能的可持续性。

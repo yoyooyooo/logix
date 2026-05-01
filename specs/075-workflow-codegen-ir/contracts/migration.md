@@ -17,9 +17,9 @@ Workflow v1 已明确为 AI/平台专属的出码层（IR DSL；权威输入为 
 
 ## 推荐迁移路径（v1）
 
-1) 先把手写 watcher 归类到 Recipe 族（submit/typeahead/refresh 等），用 Recipe 生成 Canonical AST  
-2) 导出 Static IR 并接入 Devtools diff（确认锚点稳定、分支显式）  
-3) 再替换运行期执行：用 WorkflowRuntime 编译+mount，观察 diagnostics=off 的成本与 light/sampled/full 的解释链  
+1) 先把手写 watcher 归类到 Recipe 族（submit/typeahead/refresh 等），用 Recipe 生成 Canonical AST
+2) 导出 Static IR 并接入 Devtools diff（确认锚点稳定、分支显式）
+3) 再替换运行期执行：用 WorkflowRuntime 编译+mount，观察 diagnostics=off 的成本与 light/sampled/full 的解释链
 
 > 若 workflow 依赖 service 返回值计算后续 payload/分支：v1 必须下沉到 service（service 自己 dispatch/写 state），或拆成多个 Program 通过 action 串联（这是硬裁决，不提供兼容层）。
 

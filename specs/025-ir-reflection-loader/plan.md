@@ -1,7 +1,7 @@
 # Implementation Plan: IR Reflection Loader（IR 反射与试运行提取）
 
-**Branch**: `025-ir-reflection-loader` | **Date**: 2025-12-24 | **Spec**: [spec.md](./spec.md)  
-**Input**: Feature specification from `/Users/yoyo/Documents/code/personal/intent-flow/specs/025-ir-reflection-loader/spec.md`
+**Branch**: `025-ir-reflection-loader` | **Date**: 2025-12-24 | **Spec**: [spec.md](./spec.md)
+**Input**: Feature specification from `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/025-ir-reflection-loader/spec.md`
 
 ## Summary
 
@@ -22,12 +22,12 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.8.2 + Node.js 22.21.1  
-**Primary Dependencies**: effect v3 (`effect@^3.19.8`) + `@logixjs/core`（含 Observability/TrialRun/Evidence）  
-**Storage**: N/A（不引入持久化存储）  
-**Testing**: Vitest (`vitest run`) + `@effect/vitest`（Effect-heavy 场景）  
-**Target Platform**: Node.js（CI/脚本/Studio Loader），并保持可在浏览器侧（Sandbox/Devtools）复用证据协议  
-**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）  
+**Language/Version**: TypeScript 5.8.2 + Node.js 22.21.1
+**Primary Dependencies**: effect v3 (`effect@^3.19.8`) + `@logixjs/core`（含 Observability/TrialRun/Evidence）
+**Storage**: N/A（不引入持久化存储）
+**Testing**: Vitest (`vitest run`) + `@effect/vitest`（Effect-heavy 场景）
+**Target Platform**: Node.js（CI/脚本/Studio Loader），并保持可在浏览器侧（Sandbox/Devtools）复用证据协议
+**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）
 **Performance Goals**:
 
 - **默认近零开销**：未启用 trial run / 诊断导出时，运行时热路径不应新增额外分配或 O(n) 扫描；若需触及 `$.use` 等高频入口，必须沿用“diagnostics=off 的零额外开销”门槛（参考 022/BoundApi 的现有做法）。
@@ -89,7 +89,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - `Intent → Flow/Logix → Code → Runtime`：本特性位于 “Code → Runtime（可试跑导出证据）” 与 “Code → Platform（Manifest）” 的交界：通过动态 import + 反射/试跑，把运行时代码的“最终对象形状”投影成平台可消费 IR。
 - Docs-first & SSoT：平台侧思路参考 `docs/specs/sdd-platform/workbench/15-module-runtime-reflection-loader.md`；本特性的对外契约与证据协议必须与 `specs/020-runtime-internals-contracts/*` 对齐（schema/口径复用），必要时先更新 SSoT 再落代码。
-- Effect/Logix contracts：优先复用 `@logixjs/core/Observability.trialRun` + EvidencePackage；若新增 `ModuleManifest` 导出或“依赖收集器”协议，必须同步更新 `docs/ssot/runtime/logix-core/*`（runtime 侧 SSoT）与 `apps/docs`（用户文档，避免平台内部术语泄漏）。
+- Effect/Logix contracts：优先复用 `@logixjs/core/repo-internal/evidence-api.trialRun` + EvidencePackage；若新增 `ModuleManifest` 导出或“依赖收集器”协议，必须同步更新 `docs/ssot/runtime/logix-core/*`（runtime 侧 SSoT）与 `apps/docs`（用户文档，避免平台内部术语泄漏）。
 - IR & anchors：Manifest IR 是对 `ModuleDescriptor`/Module 反射字段的 **静态投影**（不引入新的并行真相源）；TrialRun IR 复用 EvidencePackage 的 `summary.runtime.services`（`RuntimeServicesEvidence`）与 `summary.converge`（如存在），保持最小 IR 口径一致。
 - Deterministic identity：CI/平台场景必须显式提供 `runId`（Trial Run / RunSession 会话），不得依赖 RunSession 默认 `Date.now()`/进程序号作为对比锚点；`runId` 与 runtime `instanceId` 分离，导出对齐键至少携带 `runId + moduleId + instanceId`。实例/txn/op 等稳定标识仍由既有 Runtime Identity Model 提供（本 feature 不引入新的随机 id）。
 - Transaction boundary：trial run/manifest 提取不在事务窗口内执行 IO；任何“构建态副作用/违规访问”属于违规并应可解释失败（本期以缺失服务为主信号；通用 IO 禁止策略作为后续扩展，不作为 025 验收项）。
@@ -148,7 +148,7 @@ docs/specs/sdd-platform/workbench/
 └── 15-module-runtime-reflection-loader.md     # 平台侧草案（025 吸收其 Loader 思路并落到 runtime 可导出协议）
 
 examples/logix/src/scenarios/
-└── trialRunEvidence.ts                         # 已存在：trialRun 导出 + schema 校验示例（可作为回归基线）
+└── trial-run-evidence.ts                      # 已存在：trialRun 导出 + schema 校验示例（可作为回归基线）
 
 examples/logix-react/src/demos/
 └── TrialRunEvidenceDemo.tsx                     # 已存在：浏览器侧 trialRun evidence 演示（作为契约对齐参照）
@@ -164,7 +164,7 @@ examples/logix-sandbox-mvp/
 
 ## POC: IR 平台可视化（ROI 优先级）
 
-> 目标：用一个最小“可视化载体”验证 IR 的可解释性与可复用性，并让同一套视图同时服务 Studio/CI/Agent。  
+> 目标：用一个最小“可视化载体”验证 IR 的可解释性与可复用性，并让同一套视图同时服务 Studio/CI/Agent。
 > POC 选择：优先落在 `examples/logix-sandbox-mvp/`（路由/Tab），作为“运行时对齐实验室”里 IR 视角的补全。
 >
 > 详细拆解（展现形式/交互/复用契约）：见 `specs/025-ir-reflection-loader/poc-visualization.md`。
@@ -181,7 +181,7 @@ examples/logix-sandbox-mvp/
 - 结构面板：模块身份、schemaKeys、actions、slots/logics 摘要、meta/source（若存在）。
 - diff/Breaking：直接复用/对齐 CI 的 Contract Guard（同一套 diff 规则产出机器可消费结果 + 人类可读解释）。
 
-### P1：StaticIR（StateTrait）依赖图可视化
+### P1：StaticIR（FieldKernel）依赖图可视化
 
 - 展示 computed/link/source/check 的 DAG（或等价表示），并标注 reads/writes、digest、冲突（cycle/multi-writer）。
 - 视图应支持从 manifest/staticIrDigest 快速跳转定位。

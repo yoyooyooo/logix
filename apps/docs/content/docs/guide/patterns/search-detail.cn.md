@@ -8,7 +8,7 @@ description: 使用 Logix 实现列表搜索与详情面板的联动模式。
 ## 核心思路
 
 1. **两个 Module**：`SearchModule`（列表）+ `DetailModule`（详情）
-2. **联动方式**：通过 `$.use` 或 `Link.make` 实现跨模块通信
+2. **联动方式**：通过 `Program.capabilities.imports` 与 `$.imports.get(...)` 实现跨模块通信
 3. **竞态处理**：使用 `runLatest` 确保详情始终对应最新选中项
 
 ## 状态设计
@@ -82,7 +82,7 @@ const SearchLogic = SearchDef.logic(($) =>
 ```ts
 const SearchLogic = SearchDef.logic(($) =>
   Effect.gen(function* () {
-    const Detail = yield* $.use(DetailModule)
+    const Detail = yield* $.imports.get(DetailDef.tag)
 
     // 选中项变化时，驱动详情加载
     yield* $.onState((s) => s.selectedId)
@@ -92,20 +92,20 @@ const SearchLogic = SearchDef.logic(($) =>
 )
 ```
 
-### 方式二：使用 Link.make
+Host Program 必须 import detail Program：
 
 ```ts
-const SyncSelectedToDetail = Logix.Link.make({ modules: [SearchDef, DetailDef] as const }, ($) =>
-  $.Search.changes((s) => s.selectedId).pipe(
-    Stream.filter((id): id is string => id !== null),
-    Stream.runForEach((id) => $.Detail.actions.load(id)),
-  ),
-)
-
-// 在 Root 中挂载
-const RootModule = RootDef.implement({
-  imports: [SearchImpl, DetailImpl],
-  processes: [SyncSelectedToDetail],
+const SearchProgram = Logix.Program.make(SearchDef, {
+  initial: {
+    keyword: "",
+    results: [],
+    selectedId: null,
+    isSearching: false,
+  },
+  capabilities: {
+    imports: [DetailProgram],
+  },
+  logics: [SearchLogic],
 })
 ```
 
@@ -122,7 +122,7 @@ function MasterDetail() {
 }
 
 function SearchPanel() {
-  const search = useModule(SearchModule)
+  const search = useModule(SearchDef.tag)
   const { keyword, results, selectedId } = useSelector(search, (s) => s)
   const dispatch = useDispatch(search)
 
@@ -150,10 +150,7 @@ function SearchPanel() {
 - [分页加载](./pagination)
 - [跨模块通信](../learn/cross-module-communication)
 
-## 可运行示例
+## 示例代码
 
-- 索引：[可运行示例索引](../recipes/runnable-examples)
-- 代码：
-  - `examples/logix/src/scenarios/search-with-debounce-latest.ts`
-  - `examples/logix/src/scenarios/cross-module-link.ts`
-  - `examples/logix-react/src/modules/querySearchDemo.ts`
+- `examples/logix/src/scenarios/search-with-debounce-latest.ts`
+- `examples/logix-react/src/modules/querySearchDemo.ts`

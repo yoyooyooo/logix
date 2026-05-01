@@ -66,7 +66,7 @@ const scanFile = async (absPath: string): Promise<ReadonlyArray<Hit>> => {
     }
   }
 
-  // 2) $.use(X.module) 但同文件 imports 未出现 X.impl / X.implement（best-effort）
+  // 2) $.use(X.module) 但同文件 capabilities.imports 未出现 XProgram（best-effort）
   {
     const importsBlocks = extractImportsBlocks(source)
     if (importsBlocks.length > 0) {
@@ -77,8 +77,8 @@ const scanFile = async (absPath: string): Promise<ReadonlyArray<Hit>> => {
         const base = token.slice(0, -".module".length)
 
         const hasInImports = importsBlocks.some((block) => {
-          if (block.includes(`${base}.impl`)) return true
-          if (block.includes(`${base}.implement`)) return true
+          if (block.includes(`${base}Program`)) return true
+          if (block.includes(`${base}.program`)) return true
           return false
         })
 
@@ -89,7 +89,7 @@ const scanFile = async (absPath: string): Promise<ReadonlyArray<Hit>> => {
             pos: toPos(source, m.index),
             detail:
               `Found $.use(${token}) but could not find ` +
-              `${base}.impl / ${base}.implement inside the same-file imports: [...] (best-effort scan).`,
+              `${base}Program inside the same-file capabilities.imports: [...] (best-effort scan).`,
           })
         }
       }
@@ -156,4 +156,3 @@ const main = async () => {
 }
 
 void main()
-

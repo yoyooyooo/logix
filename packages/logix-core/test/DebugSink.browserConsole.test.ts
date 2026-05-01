@@ -3,7 +3,7 @@
 import { describe, it, expect } from '@effect/vitest'
 import { vi } from 'vitest'
 import { Effect } from 'effect'
-import * as Debug from '../src/Debug.js'
+import * as Debug from '@logixjs/core/repo-internal/debug-api'
 
 describe('Debug.layer({ mode: dev }) browser console severity', () => {
   it.effect('should map diagnostic severity to console method', () =>

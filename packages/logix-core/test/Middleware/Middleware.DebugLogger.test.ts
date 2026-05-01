@@ -1,7 +1,7 @@
 import { describe, it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
-import * as EffectOp from '../../src/EffectOp.js'
-import * as Middleware from '../../src/Middleware.js'
+import * as EffectOp from '../../src/internal/effect-op.js'
+import * as Middleware from '../../src/internal/middleware.js'
 
 describe('Middleware.DebugLogger', () => {
   it('applyDebug should append a debug middleware and log EffectOp', async () => {

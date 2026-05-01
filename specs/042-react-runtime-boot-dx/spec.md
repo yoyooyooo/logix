@@ -1,8 +1,8 @@
 # Feature Specification: React 集成冷启动策略与 DX 优化
 
-**Feature Branch**: `042-react-runtime-boot-dx`  
-**Created**: 2025-12-27  
-**Status**: Draft  
+**Feature Branch**: `042-react-runtime-boot-dx`
+**Created**: 2025-12-27
+**Status**: Draft
 **Input**: 用户描述：“以提升 DX 为目的：把 Logix React 集成中的同步冷启动/同步模块解析等可能阻塞渲染的环节收敛为可配置策略（支持同步/延后/可挂起/异步等），并建立可复现的性能基线与验收标准，避免 demo/真实项目在路由切换或首次渲染时出现明显卡顿。”
 
 ## User Scenarios & Testing _(mandatory)_

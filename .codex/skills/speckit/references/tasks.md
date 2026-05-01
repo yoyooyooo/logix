@@ -42,6 +42,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 2. **Load design documents**: Read from FEATURE_DIR:
    - **Required**: plan.md (tech stack, libraries, structure), spec.md (user stories with priorities)
+   - **Optional**: discussion.md (working artifact only; must-close blockers / non-blocking deferred items / candidate shapes / reopen evidence)
    - **Optional**: data-model.md (entities), contracts/ (API endpoints), research.md (decisions), quickstart.md (test scenarios)
    - **Optional**: notes/ (Non-SSoT; entry points / invariants / exploration summary)
    - Note: Not all projects have all documents. Generate tasks based on what's available.
@@ -52,6 +53,9 @@ You **MUST** consider the user input before proceeding (if not empty).
    - If data-model.md exists: Extract entities and map to user stories
    - If contracts/ exists: Map endpoints to user stories
    - If research.md exists: Extract decisions for setup tasks
+   - If discussion.md exists: use it only to identify items that must stay out of tasks until promoted into spec.md / plan.md
+   - If discussion.md contains `Must Close Before Implementation` items, do not generate implementation tasks as ready-to-run. Generate explicit pre-implementation closure tasks that move each accepted decision into `spec.md` / `plan.md` / `tasks.md` and remove the stale discussion entry.
+   - If discussion.md contains only `Deferred / Non-Blocking` items, keep them out of implementation tasks unless `spec.md` / `plan.md` promotes them.
    - Generate tasks organized by user story (see Task Generation Rules below)
    - Generate dependency graph showing user story completion order
    - Create parallel execution examples per user story
@@ -64,6 +68,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Phase 3+: One phase per user story (in priority order from spec.md)
    - Each phase includes: story goal, independent test criteria, tests (if requested), implementation tasks
    - Final Phase: Polish & cross-cutting concerns
+   - Final Phase + result writeback: authority writeback, status sync, conditional discussion cleanup
    - All tasks must follow the strict checklist format (see Task Generation Rules below)
    - Clear file paths for each task
    - Dependencies section showing story completion order

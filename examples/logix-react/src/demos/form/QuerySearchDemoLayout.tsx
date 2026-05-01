@@ -1,10 +1,16 @@
+// Example role: Query contrast for Form source
+// Covers: SC-B
+// Capability refs: CAP-05, CAP-06, CAP-07, CAP-09
+// Proof refs: PF-02
+// SSoT: docs/ssot/form/06-capability-scenario-api-support-map.md
+
 import React from 'react'
-import { RuntimeProvider, useDispatch, useModule, useSelector } from '@logixjs/react'
+import { RuntimeProvider, fieldValue, useDispatch, useModule, useSelector } from '@logixjs/react'
 import {
   SearchQuery,
   SearchSpec,
   DetailSpec,
-  QuerySearchDemoHostModule,
+  QuerySearchDemoHostProgram,
   queryRuntime,
   type Params,
   type Ui,
@@ -28,16 +34,16 @@ const StatusBadge: React.FC<{ readonly status: string }> = ({ status }) => {
 }
 
 const Panel: React.FC = () => {
-  // Query 也是 Module：推荐通过 ModuleRef 的 imports.get(...) 在父实例 scope 下解析子模块（避免串实例）。
-  const host = useModule(QuerySearchDemoHostModule.impl)
+  // Query 也是 Program：推荐通过 host.imports.get(...) 在父实例 scope 下解析子模块（避免串实例）。
+  const host = useModule(QuerySearchDemoHostProgram)
 
   const query = host.imports.get(SearchQuery.tag)
   const dispatch = useDispatch(query)
 
-  const params = useSelector(query, (s) => s.params)
-  const ui = useSelector(query, (s) => s.ui)
-  const search = useSelector(query, (s) => s.queries.search)
-  const detail = useSelector(query, (s) => s.queries.detail)
+  const params = useSelector(query, fieldValue('params'))
+  const ui = useSelector(query, fieldValue('ui'))
+  const search = useSelector(query, fieldValue('queries.search'))
+  const detail = useSelector(query, fieldValue('queries.detail'))
 
   const searchData = search.status === 'success' ? search.data : undefined
   const detailData = detail.status === 'success' ? detail.data : undefined
@@ -67,13 +73,17 @@ const Panel: React.FC = () => {
           <div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Query · 搜索 + 详情联动</h2>
             <p className="text-gray-600 dark:text-gray-400 max-w-3xl leading-relaxed mt-2">
-              该 Demo 用{' '}
+              这页承担 Query source 对照路线。它用{' '}
               <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono">Query.make</code>
-              定义 “params → ResourceSnapshot” 的同源链路；触发语义由领域默认 logics 承担，UI 不再手写
+              定义 “params → ResourceSnapshot” 的同源链路；package root 默认只讲
+              <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono mx-1">
+                make / Engine / TanStack
+              </code>
+              这组 program-first 与 integration-layer 入口；触发语义由领域默认 logics 承担，UI 不再手写
               <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono mx-1">
                 useEffect
               </code>
-              监听。
+              监听；Form exact route 的 source coverage 看 `Form · Field Source`。
             </p>
           </div>
           <div className="flex gap-2">
@@ -199,7 +209,7 @@ const Panel: React.FC = () => {
                   <div className="text-sm text-gray-500 dark:text-gray-400">无结果</div>
                 ) : (
                   <div className="divide-y divide-gray-200 dark:divide-gray-800 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-                    {items.map((item: any) => (
+                    {items.map((item) => (
                       <button
                         key={item.id}
                         type="button"

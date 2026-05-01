@@ -1,7 +1,7 @@
 import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
-import * as Debug from '../../src/Debug.js'
+import * as Debug from '../../src/internal/debug-api.js'
 
 describe('Debug semantics: diagnostics=off should not change runtime behavior (US1)', () => {
   it.effect('off vs full: final state identical; off does not export debug:event evidence', () =>
@@ -19,7 +19,7 @@ describe('Debug semantics: diagnostics=off should not change runtime behavior (U
         },
       })
 
-      const impl = M.implement({
+      const counterProgram = Logix.Program.make(M, {
         initial: { value: 0 },
         logics: [],
       })
@@ -33,7 +33,7 @@ describe('Debug semantics: diagnostics=off should not change runtime behavior (U
             diagnosticsLevel,
           }) as Layer.Layer<any, never, never>
 
-          const runtime = Logix.Runtime.make(impl, { layer })
+          const runtime = Logix.Runtime.make(counterProgram, { layer })
 
           const state = yield* Effect.promise(() =>
             runtime.runPromise(

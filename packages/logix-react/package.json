@@ -17,7 +17,12 @@
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
-    "./*": "./src/*.ts",
+    "./RuntimeProvider": "./src/RuntimeProvider.ts",
+    "./Hooks": "./src/Hooks.ts",
+    "./FormProjection": "./src/FormProjection.ts",
+    "./dev/lifecycle": "./src/dev/lifecycle.ts",
+    "./dev/vite": "./src/dev/vite.ts",
+    "./dev/vitest": "./src/dev/vitest.ts",
     "./internal/*": null
   },
   "publishConfig": {
@@ -29,10 +34,35 @@
         "import": "./dist/index.js",
         "require": "./dist/index.cjs"
       },
-      "./*": {
-        "types": "./dist/*.d.ts",
-        "import": "./dist/*.js",
-        "require": "./dist/*.cjs"
+      "./RuntimeProvider": {
+        "types": "./dist/RuntimeProvider.d.ts",
+        "import": "./dist/RuntimeProvider.js",
+        "require": "./dist/RuntimeProvider.cjs"
+      },
+      "./Hooks": {
+        "types": "./dist/Hooks.d.ts",
+        "import": "./dist/Hooks.js",
+        "require": "./dist/Hooks.cjs"
+      },
+      "./FormProjection": {
+        "types": "./dist/FormProjection.d.ts",
+        "import": "./dist/FormProjection.js",
+        "require": "./dist/FormProjection.cjs"
+      },
+      "./dev/lifecycle": {
+        "types": "./dist/dev/lifecycle.d.ts",
+        "import": "./dist/dev/lifecycle.js",
+        "require": "./dist/dev/lifecycle.cjs"
+      },
+      "./dev/vite": {
+        "types": "./dist/dev/vite.d.ts",
+        "import": "./dist/dev/vite.js",
+        "require": "./dist/dev/vite.cjs"
+      },
+      "./dev/vitest": {
+        "types": "./dist/dev/vitest.d.ts",
+        "import": "./dist/dev/vitest.js",
+        "require": "./dist/dev/vitest.cjs"
       },
       "./internal/*": null
     },
@@ -53,6 +83,7 @@
   },
   "dependencies": {
     "@logixjs/core": "workspace:*",
+    "@logixjs/form": "workspace:*",
     "effect": "4.0.0-beta.28",
     "use-sync-external-store": "^1.2.0"
   },

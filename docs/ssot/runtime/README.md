@@ -1,84 +1,92 @@
-# Logix Engine Specs · 导航与分层（LLM 入口）
+---
+title: Runtime SSoT Root
+status: living
+version: 18
+---
 
-本目录汇总 **Logix Engine** 相关的规格与实现备忘录。为节约 token，多数长文已改为“薄入口 + 分节文件”；默认只读最短链路，按需下钻。
+# Runtime SSoT Root
 
-## 双 SSoT（统一字面标题）
+本目录用于重新生长新的运行时事实源。
 
-- **Authoring SSoT（可编辑）**：面向人/LLM/Studio 的权威输入工件（纯 JSON、版本化、可校验）。
-- **Platform SSoT（只读消费）**：面向平台/Devtools/CI gate/diff 的只读工件（Root Static IR + slices/index），必须从 Authoring SSoT 确定性编译得到。
+## 当前状态
 
-## 最短链路（按任务）
+- 历史 runtime SSoT 基线在 `docs/archive/ssot/runtime/`
+- 新 runtime SSoT 从当前目录重新建立
+- 当前覆盖矩阵里的 runtime spine、React host law 与 verification control-plane 片段已汇总到 [../capability/03-frozen-api-shape.md](../capability/03-frozen-api-shape.md)
 
-- 运行时原则与约束：`00-principles.md`
-- 写业务 Module-first：`logix-core/api/02-module-and-logic-api.md` → `logix-core/api/03-logic-and-flow.md` → `logix-core/examples/`
-- 拼装 Root/Runtime：`logix-core/api/02-module-and-logic-api.md`（runtime container 分节）→ `logix-core/runtime/05-runtime-implementation.md`
-- React 集成：`logix-react/01-react-integration.md`
-- 调试/诊断：`logix-core/observability/09-debugging.md`
+## 当前角色
 
-## 上游平台 SSoT（只在需要对齐术语/协议时读）
+- 本页负责 runtime 子树导航与 owner 路由
+- Form 的独立领域树已迁到 `../form/README.md`
+- 叶子页负责唯一语义，本页不重复定义正文
 
-- `docs/ssot/platform/foundation/02-glossary.md`
+## 当前入口
 
-## 一条黄金链路（ModuleDef → Logic → Fluent → IntentRule）
+| 页面 | 主题 | Owner Spec |
+| --- | --- | --- |
+| [01-public-api-spine.md](./01-public-api-spine.md) | 公开主链与 surviving surface | `122 + 170` |
+| [02-hot-path-direction.md](./02-hot-path-direction.md) | kernel hot path 与 perf direction | `123` |
+| [03-canonical-authoring.md](./03-canonical-authoring.md) | `Module / Logic / Program` canonical authoring | `122 + 170` |
+| [04-capabilities-and-runtime-control-plane.md](./04-capabilities-and-runtime-control-plane.md) | capabilities 与 runtime control plane | `124` |
+| [05-logic-composition-and-override.md](./05-logic-composition-and-override.md) | logic composition 与 override 边界 | `122 + 170` |
+| [06-form-field-kernel-boundary.md](./06-form-field-kernel-boundary.md) | form 与 field-kernel 的 boundary page | `125` |
+| [07-standardized-scenario-patterns.md](./07-standardized-scenario-patterns.md) | host scenario patterns 与 examples 映射 | `126` |
+| [08-domain-packages.md](./08-domain-packages.md) | domain package 分类与准入边界 | `127` |
+| [09-verification-control-plane.md](./09-verification-control-plane.md) | verification stages、input contract、machine report、startup readiness evidence | `124 + 170` |
+| [10-react-host-projection-boundary.md](./10-react-host-projection-boundary.md) | `RuntimeProvider / Program / ModuleRuntime / ModuleTag` 的 React 宿主边界与 observation-only error sink | `134 + 170` |
+| [11-toolkit-layer.md](./11-toolkit-layer.md) | 官方 toolkit 二层的定位、边界、准入门禁与 Agent First 约束 | `147` |
+| [12-toolkit-candidate-intake.md](./12-toolkit-candidate-intake.md) | toolkit 候选提炼的长期 intake 协议与分类法 | `147` |
+| [13-selector-type-safety-ceiling-matrix.md](./13-selector-type-safety-ceiling-matrix.md) | canonical selector shapes 的理论类型安全上限、blocker 与 reopen trigger | `134 + capability/02` |
+| [14-dvtools-internal-workbench.md](./14-dvtools-internal-workbench.md) | DVTools 作为内部证据解释工作台的北极星、边界、职责与删除方向 | `159` |
+| [15-cli-agent-first-control-plane.md](./15-cli-agent-first-control-plane.md) | CLI 作为 Agent First runtime control-plane route 的北极星、命令面、输入输出协议与删除方向 | `160` |
+| [16-agent-self-verification-scenario-matrix.md](./16-agent-self-verification-scenario-matrix.md) | Agent 自验证闭环终局压力矩阵，特别承接装配漏加、依赖漏注入、CLI 缺口与内核反压清单 | `SSoT` |
+| [17-playground-product-workbench.md](./17-playground-product-workbench.md) | Playground 作为用户可见运行时工作台的能力、权威分层与界面展示方式 | `164 + 165` |
 
-从 Runtime 视角看，当前主线围绕一条标准链路设计：
+## 当前优先入口
 
-> **ModuleDef → ModuleDef.logic(($) => ...) → $.use(ModuleDef) → Fluent DSL (`$.onState`/`$.onAction` / `$.on`+`.update/.mutate/.run\*`) → IntentRule**
+- 公开主链：`01-public-api-spine.md`
+- hot path 方向：`02-hot-path-direction.md`
+- control plane：`04-capabilities-and-runtime-control-plane.md`
+- form 边界：`06-form-field-kernel-boundary.md`
+- 验证控制面：`09-verification-control-plane.md`
+- React 宿主边界：`10-react-host-projection-boundary.md`
+- selector 类型安全上限：`13-selector-type-safety-ceiling-matrix.md`
+- DVTools 内部工作台：`14-dvtools-internal-workbench.md`
+- CLI Agent First 控制面：`15-cli-agent-first-control-plane.md`
+- Agent 自验证终局压力矩阵：`16-agent-self-verification-scenario-matrix.md`
+- Playground 产品工作台：`17-playground-product-workbench.md`
+- toolkit 二层：`11-toolkit-layer.md`
+- toolkit intake：`12-toolkit-candidate-intake.md`
+- 当前冻结 API 形状：`../capability/03-frozen-api-shape.md`
 
-简要说明：
+当前 canonical verification facade：
 
-- 在定义层，用 `Logix.Module.make('Id', { state, actions })` 定义领域模块（返回 `ModuleDef`，带 `moduleDef.tag`）；
-- 在逻辑层，通过 `ModuleDef.logic(($)=>Effect.gen(...))` 编写 Logic，`$` 绑定当前 ModuleRuntime + 业务 Env；
-- 在协作层，通过 `$.use(OtherDef)`（等价 `OtherDef.tag`）获取跨模块句柄，用 Fluent DSL 表达联动；
-- 在平台层，这些 Fluent 链被解析为 `IntentRule` IR，用于 Universe/Galaxy 视图与图码双向同步。
+- `Runtime.check(Program, options?)`
+- `Runtime.trial(Program, options)`
 
-详细规范可在以下文档中查阅：
+当前 result face：
 
-- `logix-core/api/02-module-and-logic-api.md`：ModuleDef / Module / ModuleImpl / Live / `$`；
-- `logix-core/api/03-logic-and-flow.md`：Bound API `$`、Logic / Flow / 结构化控制流、Parser 约束与链路示例；
-- `logix-core/platform/06-platform-integration.md`：IntentRule IR 与平台集成；
-  - `docs/ssot/platform/assets/10-module-assets.md`：Module 资产与代码层 Module 定义的映射。
+- `Runtime.run(Program, main, options)`
 
-## 目录结构概览
+## 相关裁决
 
-- `logix-core/`
-  - `@logixjs/core`（Logix Runtime 内核）的设计与实现：宣言、架构、API 契约、平台集成、实现架构、使用规范、场景与示例等。
-  - 官方入口文档：`logix-core/README.md`（聚合各子文档的推荐阅读路径与分组）。
+- [2026-04-04 Logix API Next Charter](../../adr/2026-04-04-logix-api-next-charter.md)
+- [2026-04-05 AI Native Runtime First Charter](../../adr/2026-04-05-ai-native-runtime-first-charter.md)
+- [2026-04-12 Field Kernel Declaration Cutover](../../adr/2026-04-12-field-kernel-declaration-cutover.md)
 
-- `apps/docs/`
-  - 面向「使用 Logix 写业务」的一线工程师与平台集成方的用户文档站点（Guide/API/Recipes）。
-  - 内容位于 `apps/docs/content/docs`，用于承载对外叙事与可复制示例。
+## 相关规范
 
-- `logix-react/`
-  - `@logixjs/react` 适配层的规范：生命周期管理、订阅模型、Context 注入、并发渲染与 Suspense 等。
-  - 官方入口文档：`logix-react/README.md`。
+- [Docs Governance](../../standards/docs-governance.md)
+- [Logix API Next Guardrails](../../standards/logix-api-next-guardrails.md)
+- [Effect V4 Baseline](../../standards/effect-v4-baseline.md)
 
-- `logix-form/`
-  - `@logixjs/form` 作为领域层客户端的规格：表单状态模型、事件协议与基于 React 的领域 Hooks。
-  - 详细设计见 `logix-form/README.md` 及其子文档；示例包见 `examples/logix-form-poc`（历史目录名保留）。
+## 导航说明
 
-- `logix-form/impl/`
-  - Form 实现备忘录：rules/derived 的编译产物（最小 IR）、TraitSpec 降解、validate/writeback 与 RulesManifest 等。
-  - 面向 form 维护者使用，不作为对外 API 契约；关键裁决稳定后需同步回写到用户文档与 form 规格文档。
+- 写 runtime 事实前，先选唯一 owner page
+- Form 领域语义优先写到 `../form/**`；只有跨层 boundary 继续落在 `06`
+- 子页新增、删除或重排时，先回写本页和 `docs/ssot/README.md`
+- 若未来出现活跃收尾专题，再回看 [../../next/README.md](../../next/README.md)
 
-- `logix-test/`
-  - `@logixjs/test` 测试工具包：提供 `TestRuntime`、`TestProgram` 与 `runTest` 等基础测试 API。当前实现已覆盖 Logic 场景编排与状态断言，高级能力（如基于 Trace 的断言 DSL、ExecutionDump 等）仍在演进中，设计见 `logix-test/01-test-kit-design.md`。
-  - 官方入口文档：`logix-test/README.md`。
+## 当前一句话结论
 
-- `logix-core/impl/`
-  - 运行时实现备忘录与技术草图：围绕应用级 AppRuntime（内部基于 `AppRuntime.makeApp`）、`Logix.Module` / ModuleDef、Logic Middleware、Store 生命周期等复杂能力的具体实现思路与风险评估。
-  - 面向 runtime 实现者使用，不作为对外 API 契约；关键决策一旦稳定，会同步回写到 `logix-core/` 规格文档。
-
-- `builder-sdk/`
-  - 面向平台/出码链路的 Builder 设计；入口见 `builder-sdk/README.md`。
-
-> 讨论 Logix 能力与方案时，请优先参考 `logix-core/` 下的文档；React/Form 相关内容分别沉淀在 `logix-react/` / `logix-form/` 中；对外使用指南与示例以 `apps/docs` 为准，避免与引擎设计混淆。
-
-## 实现视角补充（非 SSoT）
-
-- `docs/ssot/handbook/cheatsheets/long-chain/long-chain-index.md`：维护者/LLM 的长链路正交分解索引（A–K）与“分贝”指针。
-
-## 检索与源码导航（可选）
-
-- `docs/ssot/handbook/cheatsheets/auggie-playbook.md`：auggie 检索链路压缩包（smoke test + 黄金链路分步查询）。
-- `docs/ssot/handbook/cheatsheets/codebase-playbook.md`：源码导航压缩包（入口 → 内核 → 回归）。
+本页负责 runtime 子树导航与 owner 路由；当前覆盖矩阵的冻结 API 形状看 [../capability/03-frozen-api-shape.md](../capability/03-frozen-api-shape.md)，具体规则进入对应 leaf page。

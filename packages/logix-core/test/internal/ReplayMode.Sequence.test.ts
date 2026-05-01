@@ -1,8 +1,10 @@
 import { describe, it, expect } from '@effect/vitest'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
-import * as ModuleRuntimeImpl from '../../src/internal/runtime/ModuleRuntime.js'
-import * as BoundApiRuntime from '../../src/internal/runtime/BoundApiRuntime.js'
+import * as Resource from '../../src/Resource.js'
+import * as ModuleRuntimeImpl from '../../src/internal/runtime/core/ModuleRuntime.js'
+import * as BoundApiRuntime from '../../src/internal/runtime/core/BoundApiRuntime.js'
 import * as ReplayLog from '../../src/internal/runtime/core/ReplayLog.js'
 import { replayModeLayer } from '../../src/internal/runtime/core/env.js'
 import type { ResourceRegistry } from '../../src/Resource.js'
@@ -34,21 +36,21 @@ describe('ReplayMode · Sequence', () => {
   type Key = Schema.Schema.Type<typeof KeySchema>
 
   const makeProgram = () => {
-    const traits = Logix.StateTrait.from(StateSchema)({
-      profileResource: Logix.StateTrait.source({
+    const fieldSpec = FieldContracts.fieldFrom(StateSchema)({
+      profileResource: FieldContracts.fieldSource({
         deps: ['profile.id'],
         resource: 'user/profile',
         key: (profileId) => ({ userId: profileId }),
       }),
     })
 
-    return Logix.StateTrait.build(StateSchema, traits)
+    return FieldContracts.buildFieldProgram(StateSchema, fieldSpec)
   }
 
   it('re-emits the same snapshot sequence and payload', async () => {
     const program = makeProgram()
 
-    const spec = Logix.Resource.make<Key, { readonly name: string }, never, never>({
+    const spec = Resource.make<Key, { readonly name: string }, never, never>({
       id: 'user/profile',
       keySchema: KeySchema,
       load: (key) => Effect.sleep('10 millis').pipe(Effect.flatMap(() => Effect.succeed({ name: `payload:${key.userId}` }))),
@@ -61,7 +63,7 @@ describe('ReplayMode · Sequence', () => {
 
         const initial: State = {
           profile: { id: 'u1', name: 'Alice' },
-          profileResource: Logix.Resource.Snapshot.idle(),
+          profileResource: Resource.Snapshot.idle(),
         }
 
         const runtime = yield* ModuleRuntimeImpl.make<State, Action>(initial, {
@@ -81,9 +83,9 @@ describe('ReplayMode · Sequence', () => {
           },
         )
 
-        yield* Logix.StateTrait.install(bound as any, program)
+        yield* FieldContracts.installFieldProgram(bound as any, program)
 
-        yield* bound.traits.source.refresh('profileResource')
+        yield* bound.fields.source.refresh('profileResource')
         const afterLoading = (yield* runtime.getState) as State
         expect(afterLoading.profileResource.status).toBe('loading')
 
@@ -107,7 +109,7 @@ describe('ReplayMode · Sequence', () => {
         }
       }).pipe(
         Effect.provide(ReplayLog.layer()),
-        Effect.provide(Logix.Resource.layer([spec]) as Layer.Layer<never, never, ResourceRegistry>),
+        Effect.provide(Resource.layer([spec]) as Layer.Layer<never, never, ResourceRegistry>),
       ),
     ) as Effect.Effect<
       {
@@ -128,7 +130,7 @@ describe('ReplayMode · Sequence', () => {
 
         const initial: State = {
           profile: { id: 'u1', name: 'Alice' },
-          profileResource: Logix.Resource.Snapshot.idle(),
+          profileResource: Resource.Snapshot.idle(),
         }
 
         const runtime = yield* ModuleRuntimeImpl.make<State, Action>(initial, {
@@ -148,9 +150,9 @@ describe('ReplayMode · Sequence', () => {
           },
         )
 
-        yield* Logix.StateTrait.install(bound as any, program)
+        yield* FieldContracts.installFieldProgram(bound as any, program)
 
-        yield* bound.traits.source.refresh('profileResource')
+        yield* bound.fields.source.refresh('profileResource')
         const afterLoading = (yield* runtime.getState) as State
         expect(afterLoading.profileResource).toEqual(recorded.loadingSnapshot)
 
@@ -160,7 +162,7 @@ describe('ReplayMode · Sequence', () => {
       }).pipe(
         Effect.provide(replayModeLayer('replay')),
         Effect.provide(ReplayLog.layer(recorded.events)),
-        Effect.provide(Logix.Resource.layer([spec]) as Layer.Layer<never, never, ResourceRegistry>),
+        Effect.provide(Resource.layer([spec]) as Layer.Layer<never, never, ResourceRegistry>),
       ),
     ) as Effect.Effect<void, never, never>
 

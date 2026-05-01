@@ -1,6 +1,6 @@
 # Data Model: 014 浏览器压测基线与性能边界地图
 
-**Branch**: `[014-browser-perf-boundaries]`  
+**Branch**: `[014-browser-perf-boundaries]`
 **Date**: 2025-12-17
 
 本特性的数据模型以“机器可解析、可长期对比、可版本化”为核心；字段的最终裁决以 JSON schema 为准。
@@ -9,7 +9,7 @@
 
 ### 1) PerfMatrix（SSoT）
 
-**File**: `@logixjs/perf-evidence/assets/matrix.json`（物理：`.codex/skills/logix-perf-evidence/assets/matrix.json`）
+**File**: `@logixjs/perf-evidence/assets/matrix.json`（物理：`packages/logix-perf-evidence/assets/matrix.json`）
 
 - `schemaVersion:number`：矩阵格式版本
 - `id:string`：矩阵标识（report `meta.matrixId` 需引用）
@@ -32,7 +32,7 @@ SuiteSpec（核心字段）：
 
 ### 2) PerfReport（边界地图报告）
 
-**Schema**: `@logixjs/perf-evidence/assets/schemas/perf-report.schema.json`（物理：`.codex/skills/logix-perf-evidence/assets/schemas/perf-report.schema.json`）
+**Schema**: `@logixjs/perf-evidence/assets/schemas/perf-report.schema.json`（物理：`packages/logix-perf-evidence/assets/schemas/perf-report.schema.json`）
 
 - `schemaVersion:number`
 - `meta:Meta`
@@ -89,7 +89,7 @@ ComparisonResult（跨点对比派生结果）：
 
 ### 3) PerfDiff（Before/After 差异摘要）
 
-**Schema**: `@logixjs/perf-evidence/assets/schemas/perf-diff.schema.json`（物理：`.codex/skills/logix-perf-evidence/assets/schemas/perf-diff.schema.json`）
+**Schema**: `@logixjs/perf-evidence/assets/schemas/perf-diff.schema.json`（物理：`packages/logix-perf-evidence/assets/schemas/perf-diff.schema.json`）
 
 - `schemaVersion:number`
 - `meta:{ createdAt, from:ReportRef, to:ReportRef }`

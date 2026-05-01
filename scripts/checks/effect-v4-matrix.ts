@@ -17,8 +17,7 @@ const ALLOWED_STABLE_EFFECT_PACKAGES = new Set(['@effect/eslint-plugin', '@effec
 const collectPackageJsonFiles = (): ReadonlyArray<string> => {
   const files = new Set<string>([
     'package.json',
-    '.codex/skills/logix-perf-evidence/package.json',
-    'docs/specs/runtime-logix/form/poc/package.json',
+    'packages/logix-perf-evidence/package.json',
   ])
 
   for (const root of WORKSPACE_DIRS) {
@@ -36,7 +35,7 @@ const collectPackageJsonFiles = (): ReadonlyArray<string> => {
   return [...files].filter((file) => fs.existsSync(file)).sort()
 }
 
-const isLegacyEffectVersion = (dependency: string, version: string): boolean => {
+const isOutdatedEffectVersion = (dependency: string, version: string): boolean => {
   if (dependency === 'effect') {
     return /^\^?3\./.test(version)
   }
@@ -63,7 +62,7 @@ const collectFromRecord = (
   const violations: EffectV4MatrixViolation[] = []
   for (const [dependency, value] of Object.entries(record as Record<string, unknown>)) {
     if (typeof value !== 'string') continue
-    if (!isLegacyEffectVersion(dependency, value)) continue
+    if (!isOutdatedEffectVersion(dependency, value)) continue
     violations.push({
       file,
       section,
@@ -102,7 +101,7 @@ const main = (): void => {
   const violations = collectEffectV4MatrixViolations()
   if (violations.length === 0) return
 
-  console.error('[effect-v4-matrix] Found legacy Effect dependency pins in workspace manifests:')
+  console.error('[effect-v4-matrix] Found outdated Effect dependency pins in workspace manifests:')
   for (const violation of violations) {
     console.error(`- ${violation.file} :: ${violation.section} :: ${violation.dependency} = ${violation.version}`)
   }

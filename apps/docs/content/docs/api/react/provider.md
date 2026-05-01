@@ -1,48 +1,74 @@
 ---
-title: LogixProvider
-description: API Reference for LogixProvider
+title: RuntimeProvider
+description: Provide a Logix runtime to a React subtree.
 ---
 
-`LogixProvider` (also known as `RuntimeProvider`) is the root component for a Logix app. It provides the Runtime context to the component subtree.
+`RuntimeProvider` makes a Logix runtime available to a React subtree.
+
+It is required by the canonical React host APIs:
+
+- `useModule(...)`
+- `useImportedModule(...)`
+- `useSelector(...)`
+- `useDispatch(...)`
 
 ## Usage
 
 ```tsx
-import { RuntimeProvider } from '@logixjs/react'
-import * as Logix from '@logixjs/core'
-import { Layer } from 'effect'
-import { RootImpl } from './root-module'
+import { RuntimeProvider } from "@logixjs/react"
+import * as Logix from "@logixjs/core"
+import { Layer } from "effect"
+import { RootProgram } from "./root-program"
 
-// Recommended: build an app-level Runtime via Root ModuleImpl + Logix.Runtime.make
-const appRuntime = Logix.Runtime.make(RootImpl, {
-  layer: Layer.empty, // You can also merge HttpClient/Config layers here
+const runtime = Logix.Runtime.make(RootProgram, {
+  layer: Layer.empty,
 })
 
-function Root() {
+export function Root() {
   return (
-    <RuntimeProvider runtime={appRuntime}>
+    <RuntimeProvider runtime={runtime}>
       <App />
     </RuntimeProvider>
   )
 }
 ```
 
-## API
+## Props
 
-### `<RuntimeProvider runtime>`
+### `runtime`
 
-- `runtime`: any `ManagedRuntime` instance (from `effect`). In typical app/page scenarios, this is usually the return value of `Logix.Runtime.make(root, { layer })` (`root` can be a program module or its `.impl`).
-  - Recommended: define an app-level runtime with Root ModuleImpl + `Logix.Runtime.make`, then pass it into `RuntimeProvider`.
-  - Exception: if your project already creates a generic `ManagedRuntime` elsewhere (e.g. as a pure Effect host and you don’t care about module trees), you can pass it directly.
+Required.
 
-> For how to choose between `Logix.Runtime.make` and plain `ManagedRuntime.make`, see the “Runtime and ManagedRuntime” doc.
+Any `ManagedRuntime` may be provided here.
+In the common app or page route, it is typically the result of `Logix.Runtime.make(...)`.
 
-## Context
+### `layer`
 
-`RuntimeProvider` provides the following via React Context:
+Optional.
 
- - **Runtime**: the global Effect runtime.
- - **Scope**: the root Scope.
- - **Store**: the global state store.
+Adds an additional closed `Layer` to the React subtree.
 
-All descendant components (via `useModule`, etc.) automatically connect to this Runtime.
+### `fallback`
+
+Optional.
+
+Used while the provider is gating async startup paths.
+
+### `policy`
+
+Optional.
+
+Controls provider startup behavior such as `sync`, `suspend`, or `defer + preload`.
+
+## Notes
+
+- `RuntimeProvider` defines the visible runtime scope for the subtree.
+- It does not select programs.
+- It does not create a second control plane.
+- All React hooks from `@logixjs/react` must run inside a `RuntimeProvider` subtree.
+
+## See also
+
+- [useModule](./use-module)
+- [useSelector](./use-selector)
+- [useDispatch](./use-dispatch)

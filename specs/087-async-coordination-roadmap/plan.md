@@ -1,6 +1,6 @@
 # Implementation Plan: 087 Async Coordination Roadmap（总控：拆分与调度）
 
-**Branch**: `087-async-coordination-roadmap` | **Date**: 2026-01-10 | **Spec**: `specs/087-async-coordination-roadmap/spec.md`  
+**Branch**: `087-async-coordination-roadmap` | **Date**: 2026-01-10 | **Spec**: `specs/087-async-coordination-roadmap/spec.md`
 **Input**: Feature specification from `specs/087-async-coordination-roadmap/spec.md`
 
 ## Summary
@@ -20,14 +20,14 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、`@logixjs/react`、`@logixjs/devtools-react`、`@logixjs/query`  
-**Storage**: N/A（本 group 仅文档；成员 spec 的证据落盘到各自 `specs/<id>/perf/*`）  
-**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`；React/Browser 用 Vitest browser）  
-**Target Platform**: Node.js 20+ + modern browsers（headless）  
-**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）  
-**Performance Goals**: N/A（总控 spec 不触及核心路径；门槛由各 member spec 的 `plan.md#Perf Evidence Plan` 定义）  
-**Constraints**: 单一事实源（registry json）、forward-only、成员 spec 必须对齐性能与可诊断性宪法门禁  
+**Language/Version**: TypeScript 5.9.x（ESM）
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、`@logixjs/react`、`@logixjs/devtools-react`、`@logixjs/query`
+**Storage**: N/A（本 group 仅文档；成员 spec 的证据落盘到各自 `specs/<id>/perf/*`）
+**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`；React/Browser 用 Vitest browser）
+**Target Platform**: Node.js 20+ + modern browsers（headless）
+**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）
+**Performance Goals**: N/A（总控 spec 不触及核心路径；门槛由各 member spec 的 `plan.md#Perf Evidence Plan` 定义）
+**Constraints**: 单一事实源（registry json）、forward-only、成员 spec 必须对齐性能与可诊断性宪法门禁
 **Scale/Scope**: 5 个 member specs（088–092），按依赖分 3 个里程碑推进（见 `spec-registry.md`）
 
 ## Constitution Check

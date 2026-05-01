@@ -4,7 +4,7 @@ description: "Task list for 031-trialrun-artifacts (TrialRunReport.artifacts + R
 
 # Tasks: TrialRun Artifacts（031：artifacts 槽位 + RulesManifest 首用例）
 
-**Input**: `specs/031-trialrun-artifacts/spec.md`  
+**Input**: `specs/031-trialrun-artifacts/spec.md`
 **Prerequisites**: `specs/031-trialrun-artifacts/plan.md`（required）, `specs/031-trialrun-artifacts/research.md`, `specs/031-trialrun-artifacts/data-model.md`, `specs/031-trialrun-artifacts/contracts/`, `specs/031-trialrun-artifacts/quickstart.md`
 
 **Tests**: 本特性触及 `@logixjs/core` 反射/试跑按需路径与跨宿主 JSON 工件输出；需要至少补齐 contracts/schema 预检 + 导出/失败/冲突/预算的单测，避免 Workbench/CI 口径漂移。
@@ -41,7 +41,7 @@ description: "Task list for 031-trialrun-artifacts (TrialRunReport.artifacts + R
 
 ## Phase 3: User Story 1 - 平台侧能看到 RulesManifest（Priority: P1）🎯 MVP
 
-**Goal**: `/ir` 一次检查即可看到 `@logixjs/form.rulesManifest@v1`（含 warnings），且不使用表单 rules 时不报错。  
+**Goal**: `/ir` 一次检查即可看到 `@logixjs/form.rulesManifest@v1`（含 warnings），且不使用表单 rules 时不报错。
 **Independent Test**: `examples/logix-sandbox-mvp` 的 `/ir` 页面展示 artifacts，并能下载 JSON；同输入重复导出一致。
 
 - [x] T011 [US1] 在 form kit 实现 RulesManifest artifact 导出（复用 028 schema）到 `packages/logix-form/src/internal/form/artifacts.ts`
@@ -55,7 +55,7 @@ description: "Task list for 031-trialrun-artifacts (TrialRunReport.artifacts + R
 
 ## Phase 4: User Story 2 - Feature Kit 可扩展导出补充 IR（Priority: P2）
 
-**Goal**: kit 侧无需改动 core 业务逻辑即可挂接 artifact 导出（OCP）。  
+**Goal**: kit 侧无需改动 core 业务逻辑即可挂接 artifact 导出（OCP）。
 **Independent Test**: 增加一个 dummy exporter，只改 kit 自己的文件即可出现在 TrialRunReport.artifacts。
 
 - [x] T017 [US2] 提供 kit 注册入口（显式扩展点，禁止全局单例偷挂）到 `packages/logix-core/src/internal/observability/artifacts/registry.ts`
@@ -67,7 +67,7 @@ description: "Task list for 031-trialrun-artifacts (TrialRunReport.artifacts + R
 
 ## Phase 5: User Story 3 - Artifact 可预算、可截断、可 diff（Priority: P3）
 
-**Goal**: 输出确定性、预算可控、diff 噪音低。  
+**Goal**: 输出确定性、预算可控、diff 噪音低。
 **Independent Test**: 同一模块重复导出一致；超预算可预测截断；JSON diff 主要反映语义差异。
 
 - [x] T021 [US3] 统一体积估算与稳定 digest（仅基于 JsonValue 稳定派生）到 `packages/logix-core/src/internal/observability/artifacts/digest.ts`

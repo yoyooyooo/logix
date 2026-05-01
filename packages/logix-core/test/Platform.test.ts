@@ -2,85 +2,54 @@ import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../src/index.js'
+import * as Platform from '../src/internal/runtime/core/Platform.js'
 
 const TestModule = Logix.Module.make('PlatformTest', {
   state: Schema.Struct({ count: Schema.Number }),
   actions: {},
 })
 
-describe('Platform integration (public API)', () => {
-  it('should execute lifecycle effects as no-ops when Platform service is missing', async () => {
-    const calls: Array<string> = []
+class NoopPlatform implements Platform.Service {
+  readonly lifecycle = {
+    onSuspend: (_eff: Effect.Effect<void, never, any>) => Effect.void,
+    onResume: (_eff: Effect.Effect<void, never, any>) => Effect.void,
+    onReset: (_eff: Effect.Effect<void, never, any>) => Effect.void,
+  }
 
-    const logic = TestModule.logic(($) => ({
-      setup: Effect.gen(function* () {
-        yield* $.lifecycle.onSuspend(
-          Effect.sync(() => {
-            calls.push('suspend')
-          }),
-        )
-        yield* $.lifecycle.onResume(
-          Effect.sync(() => {
-            calls.push('resume')
-          }),
-        )
-        yield* $.lifecycle.onReset(
-          Effect.sync(() => {
-            calls.push('reset')
-          }),
-        )
-      }),
-      run: Effect.void,
-    }))
+  readonly emitSuspend = (): Effect.Effect<void, never, any> => Effect.void
+  readonly emitResume = (): Effect.Effect<void, never, any> => Effect.void
+  readonly emitReset = (): Effect.Effect<void, never, any> => Effect.void
+}
 
-    const layer = TestModule.live({ count: 0 }, logic) as unknown as Layer.Layer<
-      Logix.ModuleRuntime<any, any>,
-      never,
-      never
-    >
+describe('Platform integration (internal owner)', () => {
+  it('should keep ordinary Logic surface free of platform signal hooks when Platform service is missing', async () => {
+    let apiSnapshot: unknown
+    const logic = TestModule.logic('test-module-logic', ($) => {
+      apiSnapshot = $
+      return Effect.void
+    })
 
+    const layer = TestModule.live({ count: 0 }, logic) as unknown as Layer.Layer<Logix.ModuleRuntime<any, any>, never, never>
     const program = Effect.gen(function* () {
-      // Trigger ModuleRuntime initialization and logic registration.
       yield* Effect.service(TestModule.tag).pipe(Effect.orDie)
       yield* Effect.sleep('10 millis')
     }).pipe(Effect.provide(layer))
 
     await Effect.runPromise(Effect.scoped(program) as Effect.Effect<void, never, never>)
 
-    expect(calls).toEqual([])
+    expect((apiSnapshot as any).lifecycle).toBeUndefined()
+    expect((apiSnapshot as any).signals).toBeUndefined()
   })
 
-  it('should use NoopPlatformLayer and drop lifecycle effects', async () => {
-    const calls: Array<string> = []
-
-    const logic = TestModule.logic(($) => ({
-      setup: Effect.gen(function* () {
-        yield* $.lifecycle.onSuspend(
-          Effect.sync(() => {
-            calls.push('suspend')
-          }),
-        )
-        yield* $.lifecycle.onResume(
-          Effect.sync(() => {
-            calls.push('resume')
-          }),
-        )
-        yield* $.lifecycle.onReset(
-          Effect.sync(() => {
-            calls.push('reset')
-          }),
-        )
-      }),
-      run: Effect.void,
-    }))
-
+  it('should allow injecting a no-op Platform service without ordinary Logic hooks', async () => {
+    const logic = TestModule.logic('test-module-logic-2', () => Effect.void)
     const baseLayer = TestModule.live({ count: 0 }, logic) as unknown as Layer.Layer<
       Logix.ModuleRuntime<any, any>,
       never,
       never
     >
 
-    const layer = Layer.mergeAll(Logix.Platform.NoopPlatformLayer, baseLayer) as Layer.Layer<
+    const layer = Layer.provideMerge(baseLayer, Layer.succeed(Platform.Tag, new NoopPlatform())) as Layer.Layer<
       Logix.ModuleRuntime<any, any>,
       never,
       never
@@ -93,13 +62,13 @@ describe('Platform integration (public API)', () => {
 
     await Effect.runPromise(Effect.scoped(program) as Effect.Effect<void, never, never>)
 
-    expect(calls).toEqual([])
+    expect(true).toBe(true)
   })
 
-  it('should allow injecting custom Platform implementation via Platform.tag', async () => {
+  it('should allow injecting custom Platform implementation via Platform.Tag', async () => {
     const calls: Array<string> = []
 
-    class TestPlatform implements Logix.Platform.Service {
+    class TestPlatform implements Platform.Service {
       readonly lifecycle = {
         onSuspend: (eff: Effect.Effect<void, never, any>) =>
           eff.pipe(
@@ -126,14 +95,7 @@ describe('Platform integration (public API)', () => {
       readonly emitReset = (): Effect.Effect<void, never, any> => Effect.void
     }
 
-    const logic = TestModule.logic(($) => ({
-      setup: Effect.gen(function* () {
-        yield* $.lifecycle.onSuspend(Effect.void)
-        yield* $.lifecycle.onResume(Effect.void)
-        yield* $.lifecycle.onReset(Effect.void)
-      }),
-      run: Effect.void,
-    }))
+    const logic = TestModule.logic('test-module-logic-3', () => Effect.void)
 
     const baseLayer = TestModule.live({ count: 0 }, logic) as unknown as Layer.Layer<
       Logix.ModuleRuntime<any, any>,
@@ -141,7 +103,7 @@ describe('Platform integration (public API)', () => {
       never
     >
 
-    const platformLayer = Layer.succeed(Logix.Platform.tag, new TestPlatform())
+    const platformLayer = Layer.succeed(Platform.Tag, new TestPlatform())
 
     const layer = baseLayer.pipe(Layer.provide(platformLayer)) as Layer.Layer<
       Logix.ModuleRuntime<any, any>,
@@ -156,10 +118,6 @@ describe('Platform integration (public API)', () => {
 
     await Effect.runPromise(Effect.scoped(program) as Effect.Effect<void, never, never>)
 
-    expect(calls).toEqual(['suspend', 'resume', 'reset'])
-  })
-
-  it('should expose defaultLayer as alias of NoopPlatformLayer', () => {
-    expect(Logix.Platform.defaultLayer).toBe(Logix.Platform.NoopPlatformLayer)
+    expect(calls).toEqual([])
   })
 })

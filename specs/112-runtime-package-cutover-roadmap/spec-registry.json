@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "group": "112-runtime-package-cutover-roadmap",
+  "statusEnum": ["idea", "planned", "draft", "implementing", "done", "frozen"],
+  "entries": [
+    {
+      "id": "113",
+      "dir": "specs/113-docs-runtime-cutover",
+      "status": "done",
+      "dependsOn": [],
+      "scope": "docs root route, governance, runtime/platform facts cutover"
+    },
+    {
+      "id": "114",
+      "dir": "specs/114-package-reset-policy",
+      "status": "done",
+      "dependsOn": [],
+      "scope": "package inventory, disposition matrix, family templates, archive protocol"
+    },
+    {
+      "id": "115",
+      "dir": "specs/115-core-kernel-extraction",
+      "status": "done",
+      "dependsOn": ["113", "114"],
+      "scope": "kernel extraction, public surface split, core-ng migration"
+    },
+    {
+      "id": "116",
+      "dir": "specs/116-host-runtime-rebootstrap",
+      "status": "done",
+      "dependsOn": ["114", "115"],
+      "scope": "react, sandbox, test, devtools host family rebootstrap"
+    },
+    {
+      "id": "117",
+      "dir": "specs/117-domain-package-rebootstrap",
+      "status": "done",
+      "dependsOn": ["114", "115"],
+      "scope": "query, form, i18n, domain package rebootstrap"
+    },
+    {
+      "id": "118",
+      "dir": "specs/118-cli-rebootstrap",
+      "status": "done",
+      "dependsOn": ["113", "114", "115"],
+      "scope": "control plane CLI rebootstrap"
+    },
+    {
+      "id": "119",
+      "dir": "specs/119-examples-verification-alignment",
+      "status": "done",
+      "dependsOn": ["113", "115", "116", "117", "118"],
+      "scope": "examples, fixtures, verification anchor alignment"
+    }
+  ]
+}

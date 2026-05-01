@@ -1,5 +1,6 @@
 import { Config, Data, Duration, Effect, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
+import { programLayer } from '../runtime/programLayer.js'
 
 // ---------------------------------------------------------------------------
 // Schema → Shape：审批场景的 State / Action
@@ -20,9 +21,9 @@ const ApprovalActionMap = {
   reset: Schema.Void,
 }
 
-export type ApprovalShape = Logix.Shape<typeof ApprovalStateSchema, typeof ApprovalActionMap>
-export type ApprovalState = Logix.StateOf<ApprovalShape>
-export type ApprovalAction = Logix.ActionOf<ApprovalShape>
+export type ApprovalShape = Logix.Module.Shape<typeof ApprovalStateSchema, typeof ApprovalActionMap>
+export type ApprovalState = Logix.Module.StateOf<ApprovalShape>
+export type ApprovalAction = Logix.Module.ActionOf<ApprovalShape>
 
 // ---------------------------------------------------------------------------
 // 错误建模：Tagged Error（领域错误）
@@ -118,7 +119,7 @@ export const runApprovalFlowEffect = (input: ApprovalEffectInput) =>
 // Module：定义审批模块
 // ---------------------------------------------------------------------------
 
-export const ApprovalDef = Logix.Module.make('ApprovalModule', {
+export const Approval = Logix.Module.make('ApprovalModule', {
   state: ApprovalStateSchema,
   actions: ApprovalActionMap,
 })
@@ -127,7 +128,7 @@ export const ApprovalDef = Logix.Module.make('ApprovalModule', {
 // Logic：响应提交 / 重置 Action，触发长逻辑 Effect（通过 Module.logic 注入 $）
 // ---------------------------------------------------------------------------
 
-export const ApprovalLogic = ApprovalDef.logic<ApprovalService>(($: Logix.BoundApi<ApprovalShape, ApprovalService>) =>
+export const ApprovalLogic = Approval.logic<ApprovalService>('approval-logic', ($: Logix.Module.BoundApi<ApprovalShape, ApprovalService>) =>
   Effect.gen(function* () {
     // 启动审批流：如果已有任务在提交中，runExhaust 会丢弃后续触发，防止重复提交
     const startApproval = Effect.gen(function* () {
@@ -171,10 +172,10 @@ export const ApprovalLogic = ApprovalDef.logic<ApprovalService>(($: Logix.BoundA
 )
 
 // ---------------------------------------------------------------------------
-// Impl / Live：组合 State / Action / Logic 成为一棵可注入的领域模块
+// Program / Layer：组合 State / Action / Logic 成为一棵可注入的领域程序
 // ---------------------------------------------------------------------------
 
-export const ApprovalModule = ApprovalDef.implement<ApprovalService>({
+export const ApprovalProgram = Logix.Program.make(Approval, {
   initial: {
     taskId: '',
     comment: '',
@@ -184,5 +185,4 @@ export const ApprovalModule = ApprovalDef.implement<ApprovalService>({
   logics: [ApprovalLogic],
 })
 
-export const ApprovalImpl = ApprovalModule.impl
-export const ApprovalLive = ApprovalImpl.layer
+export const ApprovalLayer = programLayer(ApprovalProgram)

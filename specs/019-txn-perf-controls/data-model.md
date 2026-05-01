@@ -1,7 +1,7 @@
 # Data Model: 事务性能控制（实体与状态）
 
-**Feature**: `specs/019-txn-perf-controls/spec.md`  
-**Contracts**: `specs/019-txn-perf-controls/contracts/*`  
+**Feature**: `specs/019-txn-perf-controls/spec.md`
+**Contracts**: `specs/019-txn-perf-controls/contracts/*`
 **Created**: 2025-12-20
 
 > 目标：为“增量派生/校验、同步合并提交、显式 batch/低优先级、以及诊断解释链路”提供统一的数据模型（不含实现细节）。

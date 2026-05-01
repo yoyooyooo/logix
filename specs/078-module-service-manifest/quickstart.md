@@ -11,20 +11,20 @@
 
 ## 2) 平台侧怎么导出 Manifest（含 servicePorts）？
 
-使用 `Logix.Reflection.extractManifest(module)` 导出 Manifest IR，并读取 `servicePorts`：
+使用 `CoreReflection.extractManifest(module)` 导出 Manifest IR，并读取 `servicePorts`：
 
 - `moduleId`：模块标识
 - `servicePorts`：端口名 + ServiceId（稳定排序，可 JSON 序列化/可 diff）
 
 ## 3) 怎么做 diff（门禁）？
 
-使用 `Logix.Reflection.diffManifest(before, after)`：
+使用 `CoreReflection.diffManifest(before, after)`：
 
 - 若 `servicePorts` 发生新增/删除/变更，diff 必须稳定捕获（见 `contracts/module-manifest-service-ports.md`）。
 
 ## 4) 怎么做试运行对齐（缺失/冲突诊断）？
 
-使用 `Logix.Observability.trialRunModule(rootImpl, { layer, diagnosticsLevel, ... })`：
+使用 `Logix.Runtime.trial(rootImpl, { layer, diagnosticsLevel, ... })`：
 
 - 试运行报告应包含 `servicePorts` 的对齐结果（至少 missing 端口清单）。
 - 缺失项必须能定位到 `moduleId + port + serviceId`（见 `contracts/trial-run-service-ports-alignment.md`）。

@@ -1,4 +1,5 @@
 import * as Logix from '@logixjs/core'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 
 export type RuntimeProviderPolicyMode = 'sync' | 'suspend' | 'defer'
 
@@ -16,8 +17,8 @@ export interface YieldPolicy {
 }
 
 export type ModuleHandle =
-  | Logix.ModuleImpl<string, Logix.AnyModuleShape, unknown>
-  | Logix.ModuleTagType<string, Logix.AnyModuleShape>
+  | RuntimeContracts.AnyProgram
+  | Logix.Module.ModuleTag<string, Logix.AnyModuleShape>
 
 export interface ModulePreloadPolicy {
   readonly handles: ReadonlyArray<ModuleHandle>
@@ -43,7 +44,7 @@ export type ResolvedModuleResolveMode = 'sync' | 'suspend'
 
 export interface ResolvedRuntimeProviderPolicy {
   readonly mode: RuntimeProviderPolicyMode
-  readonly moduleImplMode: ResolvedModuleResolveMode
+  readonly programMode: ResolvedModuleResolveMode
   readonly moduleTagMode: ResolvedModuleResolveMode
   readonly syncBudgetMs: number
   readonly yield: Required<Pick<YieldPolicy, 'strategy'>> & Pick<YieldPolicy, 'onlyWhenOverBudgetMs'>
@@ -59,11 +60,12 @@ export interface ResolvedRuntimeProviderPolicy {
 export const DEFAULT_PRELOAD_CONCURRENCY = 5
 export const DEFAULT_SYNC_BUDGET_MS = 5
 export const DEFAULT_YIELD_STRATEGY: YieldStrategy = 'microtask'
+export const isProgramHandle = (
+  handle: unknown,
+): handle is RuntimeContracts.AnyProgram =>
+  RuntimeContracts.hasProgramRuntimeBlueprint(handle)
 
-const isModuleImpl = (handle: unknown): handle is Logix.ModuleImpl<string, Logix.AnyModuleShape, unknown> =>
-  Boolean(handle) && typeof handle === 'object' && (handle as { readonly _tag?: unknown })._tag === 'ModuleImpl'
-
-const isModuleTag = (handle: unknown): handle is Logix.ModuleTagType<string, Logix.AnyModuleShape> => {
+const isModuleTag = (handle: unknown): handle is Logix.Module.ModuleTag<string, Logix.AnyModuleShape> => {
   if (!handle || (typeof handle !== 'object' && typeof handle !== 'function')) {
     return false
   }
@@ -71,8 +73,11 @@ const isModuleTag = (handle: unknown): handle is Logix.ModuleTagType<string, Log
   return candidate._kind === 'ModuleTag'
 }
 
-export const getPreloadKeyForModuleId = (moduleId: string): string => `preload:impl:${moduleId}`
+export const getPreloadKeyForModuleId = (moduleId: string): string => `preload:program:${moduleId}`
 export const getPreloadKeyForTagId = (tagId: string): string => `preload:tag:${tagId}`
+
+export const getProgramOwnerId = (handle: RuntimeContracts.AnyProgram): string =>
+  RuntimeContracts.getProgramBlueprintId(handle) ?? handle.id
 
 const normalizeYieldPolicy = (policy: YieldPolicy | undefined): ResolvedRuntimeProviderPolicy['yield'] => ({
   strategy: policy?.strategy ?? DEFAULT_YIELD_STRATEGY,
@@ -94,7 +99,7 @@ const normalizePreload = (
 
   const handles: ModuleHandle[] = []
   for (const handle of policy.handles ?? []) {
-    if (isModuleImpl(handle) || isModuleTag(handle)) {
+    if (isProgramHandle(handle) || isModuleTag(handle)) {
       handles.push(handle)
     }
   }
@@ -123,9 +128,9 @@ export const resolveRuntimeProviderPolicy = (args: {
 
   if (preload) {
     for (const handle of preload.handles) {
-      if (isModuleImpl(handle)) {
-        const moduleId = handle.module.id ?? 'ModuleImpl'
-        keysByModuleId.set(moduleId, getPreloadKeyForModuleId(moduleId))
+      if (isProgramHandle(handle)) {
+        const ownerId = getProgramOwnerId(handle)
+        keysByModuleId.set(ownerId, getPreloadKeyForModuleId(ownerId))
       } else if (isModuleTag(handle)) {
         const tagId = handle.id ?? 'ModuleTag'
         keysByTagId.set(tagId, getPreloadKeyForTagId(tagId))
@@ -135,7 +140,7 @@ export const resolveRuntimeProviderPolicy = (args: {
 
   return {
     mode,
-    moduleImplMode: moduleResolveMode,
+    programMode: moduleResolveMode,
     moduleTagMode: moduleResolveMode,
     syncBudgetMs: Math.max(0, args.policy?.syncBudgetMs ?? args.parentPolicy?.syncBudgetMs ?? DEFAULT_SYNC_BUDGET_MS),
     yield: normalizeYieldPolicy(args.policy?.yield ?? args.parentPolicy?.yield),

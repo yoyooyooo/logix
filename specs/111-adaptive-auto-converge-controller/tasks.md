@@ -12,13 +12,13 @@
 - [x] T003 新建 `specs/111-adaptive-auto-converge-controller/tasks.md`
 - [x] T004 盘点现有 static heuristic、现有 `TraitConvergeDecisionSummary` 字段、已知漂移证据，在 `specs/111-adaptive-auto-converge-controller/spec.md` 与 `plan.md` 中回写 baseline
 - [x] T005 在 `specs/111-adaptive-auto-converge-controller/spec.md` 与 `plan.md` 中回写 `110` 进入门、`013` 契约 baseline、shadow-only first 约束
-- [x] T006 为 `packages/logix-core/src/internal/state-trait/converge-in-transaction.impl.ts` 产出 Decomposition Brief，并先明确无损拆分与语义改造的边界
+- [x] T006 为 `packages/logix-core/src/internal/state-field/converge-in-transaction.impl.ts` 产出 Decomposition Brief，并先明确无损拆分与语义改造的边界
 
 ## Phase 2: User Story 2 - Explainable Telemetry Contract
 
 目标：先定义 single-source telemetry contract，再谈 adaptive strategy。
 
-- [x] T101 定义 controller 最小 telemetry baseline，明确复用 `TraitConvergeDecisionSummary` / `trace:trait:converge` 的哪些字段，落到 `specs/111-adaptive-auto-converge-controller/spec.md`
+- [x] T101 定义 controller 最小 telemetry baseline，明确复用 `TraitConvergeDecisionSummary` / `trace:field:converge` 的哪些字段，落到 `specs/111-adaptive-auto-converge-controller/spec.md`
 - [x] T102 定义 additive adaptive 字段、always-on 与 sampled / shadow 的边界，落到 `specs/111-adaptive-auto-converge-controller/spec.md` 与 `plan.md`
 - [x] T103 定义 `envBucket`、`bandKey`、`moduleId`、per-band state 的作用域和寿命，落到 `specs/111-adaptive-auto-converge-controller/plan.md`
 - [x] T104 定义 telemetry 如何进入 diagnostics / dated reading / PerfDiff，且不生成第二套 truth source，落到 `specs/111-adaptive-auto-converge-controller/plan.md`

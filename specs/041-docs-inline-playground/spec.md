@@ -1,8 +1,8 @@
 # Feature Specification: 文档内联教学 Playground
 
-**Feature Branch**: `[041-docs-inline-playground]`  
-**Created**: 2025-12-26  
-**Status**: Draft  
+**Feature Branch**: `[041-docs-inline-playground]`
+**Created**: 2025-12-26
+**Status**: Draft
 **Input**: User description: "为用户文档增加在线运行 Playground（教学演示优先），读者可编辑代码后重新运行；高级/Debug 文档才展示 Timeline/Trace 等深度观测。"
 
 ## User Scenarios & Testing *(mandatory)*
@@ -11,7 +11,7 @@
 
 作为文档读者，我希望在阅读教程/指南时，能对作者标记的示例“一键运行”，并立即看到与讲解对应的关键结果（而不是只看静态代码），从而更快建立正确心智模型。
 
-**Why this priority**: 这是教学演示的最小闭环；没有可运行与可观察结果，很多流程类/交互类文档只能停留在“看代码猜行为”。  
+**Why this priority**: 这是教学演示的最小闭环；没有可运行与可观察结果，很多流程类/交互类文档只能停留在“看代码猜行为”。
 
 **Independent Test**: 在任意包含可运行示例的文档页中，读者无需离开页面即可完成一次运行，并能看到与该段落讲解对应的输出/状态摘要。
 

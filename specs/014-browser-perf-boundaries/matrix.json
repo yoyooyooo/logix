@@ -192,7 +192,7 @@
         "budget.cutOffCount",
         "diagnostics.level"
       ],
-      "notes": "代表性业务场景：动态列表（rows）+ 跨行唯一性规则（list-scope check）。请求模式以 requestedMode 表达（full vs auto），并要求在 auto 下输出 trait:converge 的解释链路（requested/executed/reasons/budget 等）；涉及缓存证据字段不可得时必须显式标注 unavailable + reason。"
+      "notes": "代表性业务场景：动态列表（rows）+ 跨行唯一性规则（list-scope check）。请求模式以 requestedMode 表达（full vs auto），并要求在 auto 下输出 field:converge 的解释链路（requested/executed/reasons/budget 等）；涉及缓存证据字段不可得时必须显式标注 unavailable + reason。"
     },
     {
       "id": "diagnostics.overhead.e2e",
@@ -339,12 +339,12 @@
         "yieldStrategy": ["none", "microtask"],
         "keyMode": ["auto", "explicit"]
       },
-      "metrics": ["e2e.bootToModuleImplReadyMs", "e2e.bootToModuleTagReadyMs"],
+      "metrics": ["e2e.bootToProgramReadyMs", "e2e.bootToModuleTagReadyMs"],
       "budgets": [
         {
-          "id": "suspend.microtask<=suspend.none*1.2:impl",
+          "id": "suspend.microtask<=suspend.none*1.2:program",
           "type": "relative",
-          "metric": "e2e.bootToModuleImplReadyMs",
+          "metric": "e2e.bootToProgramReadyMs",
           "maxRatio": 1.2,
           "numeratorRef": "policyMode=suspend&yieldStrategy=microtask",
           "denominatorRef": "policyMode=suspend&yieldStrategy=none"
@@ -358,9 +358,9 @@
           "denominatorRef": "policyMode=suspend&yieldStrategy=none"
         },
         {
-          "id": "suspend.auto<=suspend.explicit*1.5:impl",
+          "id": "suspend.auto<=suspend.explicit*1.5:program",
           "type": "relative",
-          "metric": "e2e.bootToModuleImplReadyMs",
+          "metric": "e2e.bootToProgramReadyMs",
           "maxRatio": 1.5,
           "numeratorRef": "policyMode=suspend&keyMode=auto",
           "denominatorRef": "policyMode=suspend&keyMode=explicit"
@@ -380,7 +380,7 @@
         "react.module.keyMode",
         "budget.cutOffCount"
       ],
-      "notes": "建立 React 冷启动/解析策略的 browser perf-boundary 基线：Provider boot → ModuleImpl init → ModuleTag resolve；预算以相对基线对比为主，证据字段输出 policy/yield/key 便于 diff 解释。"
+      "notes": "建立 React 冷启动/解析策略的 browser perf-boundary 基线：Provider boot → ProgramRuntimeBlueprint init → ModuleTag resolve；预算以相对基线对比为主，证据字段输出 policy/yield/key 便于 diff 解释。"
     },
     {
       "id": "react.deferPreload",

@@ -16,24 +16,14 @@
   "types": "src/index.tsx",
   "exports": {
     "./package.json": "./package.json",
-    ".": "./src/index.tsx",
-    "./*": "./src/*.tsx",
+    ".": null,
     "./internal/*": null
   },
   "publishConfig": {
     "access": "public",
     "exports": {
       "./package.json": "./package.json",
-      ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js",
-        "require": "./dist/index.cjs"
-      },
-      "./*": {
-        "types": "./dist/*.d.ts",
-        "import": "./dist/*.js",
-        "require": "./dist/*.cjs"
-      },
+      ".": null,
       "./internal/*": null
     },
     "main": "dist/index.cjs",

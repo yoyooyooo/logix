@@ -1,6 +1,6 @@
 # Tasks: PR94 triggerStreams dedupe 性能证据回填
 
-**Input**: `specs/101-pr94-triggerstreams-dedupe-perf-evidence/spec.md`, `plan.md`  
+**Input**: `specs/101-pr94-triggerstreams-dedupe-perf-evidence/spec.md`, `plan.md`
 **PR Reference**: [#94](https://github.com/yoyooyooo/logix/pull/94)
 
 ## Phase 1: Spec Backfill

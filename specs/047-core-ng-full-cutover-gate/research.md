@@ -30,7 +30,7 @@
 **Chosen**：Full Cutover Gate 的证据门槛统一使用 `$logix-perf-evidence`：
 
 - 必须包含 Node + ≥1 条 headless browser；
-- suites/budgets 的 SSoT：`.codex/skills/logix-perf-evidence/assets/matrix.json`（至少覆盖 `priority=P1`；before/after 必须 `matrixId+matrixHash` 一致）；
+- suites/budgets 的 SSoT：`packages/logix-perf-evidence/assets/matrix.json`（至少覆盖 `priority=P1`；before/after 必须 `matrixId+matrixHash` 一致）；
 - 预算裁决：以 `pnpm perf diff` 的 `comparability.comparable=true` 且 `summary.regressions==0` 为硬门槛；
 - 任何“中间态可能更慢”的改动必须在落地前/后各采集一次并 diff，阻断负优化。
 

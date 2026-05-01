@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Schema, Layer } from 'effect'
@@ -16,7 +17,7 @@ const Mod = Logix.Module.make('RuntimeDevtoolsRoot', {
   },
 })
 
-const Impl = Mod.implement({
+const RootProgram = Logix.Program.make(Mod, {
   initial: { n: 0 },
 })
 
@@ -28,11 +29,11 @@ describe('Runtime.make · devtools option', () => {
 
       try {
         // Clear the ring buffer to avoid interference from other tests.
-        Logix.Debug.clearDevtoolsEvents()
+        CoreDebug.clearDevtoolsEvents()
 
         const runtimeLabel = 'ProdDevtoolsRuntime'
 
-        const runtime = Logix.Runtime.make(Impl, {
+        const runtime = Logix.Runtime.make(RootProgram, {
           label: runtimeLabel,
           devtools: true,
         })
@@ -45,7 +46,7 @@ describe('Runtime.make · devtools option', () => {
 
         yield* Effect.promise(() => runtime.runPromise(program as Effect.Effect<void, never, any>))
 
-        const snapshot = Logix.Debug.getDevtoolsSnapshot()
+        const snapshot = CoreDebug.getDevtoolsSnapshot()
 
         const byLabel = snapshot.events.filter((e) => (e as any).runtimeLabel === runtimeLabel)
 
@@ -65,17 +66,17 @@ describe('Runtime.make · devtools option', () => {
 
   it.effect('devtools option should not override existing Debug sinks', () =>
     Effect.gen(function* () {
-      const received: Logix.Debug.Event[] = []
-      const userSink: Logix.Debug.Sink = {
+      const received: CoreDebug.Event[] = []
+      const userSink: CoreDebug.Sink = {
         record: (event) =>
           Effect.sync(() => {
             received.push(event)
           }),
       }
 
-      const userLayer = Logix.Debug.replace([userSink]) as Layer.Layer<any, never, never>
+      const userLayer = CoreDebug.replace([userSink]) as Layer.Layer<any, never, never>
 
-      const runtime = Logix.Runtime.make(Impl, {
+      const runtime = Logix.Runtime.make(RootProgram, {
         layer: userLayer,
         devtools: true,
       })
@@ -91,7 +92,7 @@ describe('Runtime.make · devtools option', () => {
       // User sinks should still receive events (append semantics).
       expect(received.length).toBeGreaterThan(0)
       // The hub should still record the event window globally.
-      expect(Logix.Debug.getDevtoolsSnapshot().events.length).toBeGreaterThan(0)
+      expect(CoreDebug.getDevtoolsSnapshot().events.length).toBeGreaterThan(0)
     }),
   )
 })

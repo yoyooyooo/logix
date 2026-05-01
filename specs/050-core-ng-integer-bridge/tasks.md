@@ -1,6 +1,6 @@
 # Tasks: 050 core-ng 整型桥（Integer Bridge）
 
-**Input**: `specs/050-core-ng-integer-bridge/*`（`spec.md`/`plan.md`/`research.md`/`data-model.md`/`contracts/*`/`quickstart.md`）  
+**Input**: `specs/050-core-ng-integer-bridge/*`（`spec.md`/`plan.md`/`research.md`/`data-model.md`/`contracts/*`/`quickstart.md`）
 **Prerequisites**: `specs/050-core-ng-integer-bridge/plan.md`（required） + `specs/050-core-ng-integer-bridge/spec.md`（required）
 
 ## Format: `[TaskID] [P?] [Story] Description with file path`
@@ -23,7 +23,7 @@
 
 **Purpose**: 在进入任何 User Story 前，先把“无往返/可解释/可门禁”的最小地基打牢
 
-- [x] T005 [P] 复用 039 的 guardrails 落点（converge/Exec IR/argument-based recording/diagnostics gate 已达标）`specs/039-trait-converge-int-exec-evidence/tasks.md`
+- [x] T005 [P] 复用 039 的 guardrails 落点（converge/Exec IR/argument-based recording/diagnostics gate 已达标）`specs/039-field-converge-int-exec-evidence/tasks.md`
 - [x] T006 定义 txn 内 DirtySet 的“无往返”表示（禁止在 commit 里 join/split；仅边界 materialize）`packages/logix-core/src/internal/field-path.ts`
 - [x] T007 将 `StateTransaction.commit` 输出切到“无往返” DirtySet 表示（并保证 `diagnostics=off` 近零成本）`packages/logix-core/src/internal/runtime/core/StateTransaction.ts`
 - [x] T008 [P] 补齐/收敛 InternalContracts 的记录与导出入口（确保 consumer 不直接依赖 core-ng）`packages/logix-core/src/internal/InternalContracts.ts`
@@ -41,8 +41,8 @@
 
 **Independent Test**: `pnpm perf diff`（Node+Browser）满足 `comparable=true && regressions==0`，且守护测试能在热路径阻断 split/join 复燃。
 
-- [x] T011 [US1] converge 执行 loop 已由 039 打穿为 `FieldPathId/StepId` + TypedArray 驱动（无 `split/join` 往返）`packages/logix-core/src/internal/state-trait/converge.ts`
-- [x] T012 [P] [US1] 静态 FieldPathId/StepId 表与可导出 Static IR 已存在（generation 内稳定）`packages/logix-core/src/internal/state-trait/converge-ir.ts`
+- [x] T011 [US1] converge 执行 loop 已由 039 打穿为 `FieldPathId/StepId` + TypedArray 驱动（无 `split/join` 往返）`packages/logix-core/src/internal/state-field/converge.ts`
+- [x] T012 [P] [US1] 静态 FieldPathId/StepId 表与可导出 Static IR 已存在（generation 内稳定）`packages/logix-core/src/internal/state-field/converge-ir.ts`
 - [x] T013 [P] [US1] core-ng 执行形态（Exec VM/Exec IR）归 049（避免在 050 重复实现跑道）`specs/049-core-ng-linear-exec-vm/tasks.md`
 - [x] T014 [P] [US1] “split/join 往返”守护与 off gate 归 052（全局闸门）`specs/052-core-ng-diagnostics-off-gate/tasks.md`
 
@@ -54,9 +54,9 @@
 
 **Independent Test**: 045 对照验证/差异锚点可对齐；`diagnostics=light/sampled/full` 下可导出最小可序列化 mapping 摘要，off 下不 materialize。
 
-- [x] T015 [P] [US2] 固化 FieldPathId/StepId 的稳定性策略（不得依赖随机/时间；同 Static IR 可重复对齐）`packages/logix-core/src/internal/state-trait/converge-ir.ts`
+- [x] T015 [P] [US2] 固化 FieldPathId/StepId 的稳定性策略（不得依赖随机/时间；同 Static IR 可重复对齐）`packages/logix-core/src/internal/state-field/converge-ir.ts`
 - [x] T016 [P] [US2] 增补可序列化的 id→readable 摘要导出（仅 light/sampled/full；off 近零成本）`packages/logix-core/src/internal/runtime/core/DebugSink.ts`
-- [x] T017 [P] [US2] 已存在稳定性回归测试（同输入可重复对齐）`packages/logix-core/test/StateTrait/StateTrait.ConvergeAuto.DeterministicIds.test.ts`
+- [x] T017 [P] [US2] 已存在稳定性回归测试（同输入可重复对齐）`packages/logix-core/test/FieldKernel/FieldKernel.ConvergeAuto.DeterministicIds.test.ts`
 - [x] T018 [P] [US2] 扩展 045 kernel contract verification：覆盖 integer bridge 的 anchors/mapping 摘要对齐（core vs core-ng）`packages/logix-core/test/Contracts/Contracts.045.KernelContractVerification.test.ts`
 
 ---

@@ -1,3 +1,5 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { test } from 'vitest'
 import { Effect, Layer } from 'effect'
 import * as Logix from '@logixjs/core'
@@ -69,7 +71,7 @@ type ListScopeRuntime = {
   readonly clearLastConvergeDecision: () => void
   readonly getLastTraitValidateTrace: () => unknown | undefined
   readonly getLastTraitCheckTrace: () => unknown | undefined
-  readonly getLastTraitConvergeTrace: () => unknown | undefined
+  readonly getLastFieldConvergeTrace: () => unknown | undefined
   readonly clearLastTraitTraces: () => void
 }
 
@@ -81,7 +83,7 @@ const makeListScopeRuntime = (
   const perfKernelLayer = makePerfKernelLayer()
   const PerfModule = makePerfListScopeCheckModule(`PerfFormListScopeCheckRows${rows}`)
 
-  const impl = PerfModule.implement({
+  const program = Logix.Program.make(PerfModule, {
     initial: makePerfListScopeInitialState(rows) as any,
     logics: [],
   })
@@ -102,23 +104,23 @@ const makeListScopeRuntime = (
 
   let lastTraitValidateTrace: unknown | undefined
   let lastTraitCheckTrace: unknown | undefined
-  let lastTraitConvergeTrace: unknown | undefined
+  let lastFieldConvergeTrace: unknown | undefined
 
   const clearLastTraitTraces = (): void => {
     lastTraitValidateTrace = undefined
     lastTraitCheckTrace = undefined
-    lastTraitConvergeTrace = undefined
+    lastFieldConvergeTrace = undefined
   }
 
   const getLastTraitValidateTrace = (): unknown | undefined => lastTraitValidateTrace
   const getLastTraitCheckTrace = (): unknown | undefined => lastTraitCheckTrace
-  const getLastTraitConvergeTrace = (): unknown | undefined => lastTraitConvergeTrace
+  const getLastFieldConvergeTrace = (): unknown | undefined => lastFieldConvergeTrace
 
-  const captureSink: Logix.Debug.Sink = {
-    record: (event: Logix.Debug.Event) =>
+  const captureSink: CoreDebug.Sink = {
+    record: (event: CoreDebug.Event) =>
       Effect.sync(() => {
         if (event.type === 'state:update') {
-          const decision = (event as any)?.traitSummary?.converge
+          const decision = (event as any)?.fieldSummary?.converge
           if (decision != null) {
             lastDecision = decision
           }
@@ -127,27 +129,27 @@ const makeListScopeRuntime = (
         if (!OUTLIER_CAPTURE_ENABLED) return
 
         // Minimal trace capture for outlier forensics (off by default to avoid perturbing perf).
-        if (event.type === 'trace:trait:validate') {
+        if (event.type === 'trace:field:validate') {
           lastTraitValidateTrace = (event as any)?.data
-        } else if (event.type === 'trace:trait:check') {
+        } else if (event.type === 'trace:field:check') {
           lastTraitCheckTrace = (event as any)?.data
-        } else if (event.type === 'trace:trait:converge') {
-          lastTraitConvergeTrace = (event as any)?.data
+        } else if (event.type === 'trace:field:converge') {
+          lastFieldConvergeTrace = (event as any)?.data
         }
       }),
   }
 
-  const baseDebugLayer = Logix.Debug.replace([captureSink]) as Layer.Layer<any, never, never>
+  const baseDebugLayer = CoreDebug.replace([captureSink]) as Layer.Layer<any, never, never>
 
-  const debugLayer = Logix.Debug.devtoolsHubLayer(baseDebugLayer, {
+  const debugLayer = CoreDebug.devtoolsHubLayer(baseDebugLayer, {
     diagnosticsLevel,
   }) as Layer.Layer<any, never, never>
 
-  const runtime = Logix.Runtime.make(impl, {
+  const runtime = Logix.Runtime.make(program, {
     stateTransaction: {
-      traitConvergeMode: requestedMode,
-      traitConvergeBudgetMs: controlPlane.traitConvergeBudgetMs,
-      traitConvergeDecisionBudgetMs: controlPlane.traitConvergeDecisionBudgetMs,
+      fieldConvergeMode: requestedMode,
+      fieldConvergeBudgetMs: controlPlane.fieldConvergeBudgetMs,
+      fieldConvergeDecisionBudgetMs: controlPlane.fieldConvergeDecisionBudgetMs,
     },
     layer: Layer.mergeAll(debugLayer, perfKernelLayer) as Layer.Layer<any, never, never>,
     label: [
@@ -166,7 +168,7 @@ const makeListScopeRuntime = (
     clearLastConvergeDecision,
     getLastTraitValidateTrace,
     getLastTraitCheckTrace,
-    getLastTraitConvergeTrace,
+    getLastFieldConvergeTrace,
     clearLastTraitTraces,
   }
 }
@@ -224,7 +226,7 @@ test(
               const duplicateIndices = pickDuplicateIndices(rows)
               const duplicateValue = 'WH-DUP'
 
-              yield* Logix.InternalContracts.runWithStateTransaction(
+              yield* FieldContracts.runWithStateTransaction(
                 moduleScope,
                 { kind: 'perf', name: 'form:listScopeCheck' },
                 () =>
@@ -244,7 +246,7 @@ test(
 
                     // Record per-row dirty evidence so list-scope checks can use incremental hints.
                     for (const idx of duplicateIndices) {
-                      Logix.InternalContracts.recordStatePatch(moduleScope, `items.${idx}.warehouseId`, 'perf')
+                      FieldContracts.recordStatePatch(moduleScope, `items.${idx}.warehouseId`, 'perf')
                     }
 
                     yield* moduleScope.setState({
@@ -254,9 +256,9 @@ test(
 
                     // Validate only the touched rows (realistic onChange path) instead of list-level validate.
                     for (const idx of duplicateIndices) {
-                      yield* Logix.TraitLifecycle.scopedValidate(moduleScope as any, {
+                      yield* FieldContracts.fieldScopedValidate(moduleScope as any, {
                         mode: 'valueChange',
-                        target: Logix.TraitLifecycle.Ref.item('items', idx, { field: 'warehouseId' }),
+                        target: FieldContracts.fieldRef.item('items', idx, { field: 'warehouseId' }),
                       })
                     }
                   }),
@@ -273,7 +275,7 @@ test(
             if (OUTLIER_CAPTURE_ENABLED && runIndex >= warmupDiscard && txnCommitMs > state.maxTxnCommitMs) {
               state.maxTxnCommitMs = txnCommitMs
 
-              const converge = cached.getLastTraitConvergeTrace() as any
+              const converge = cached.getLastFieldConvergeTrace() as any
               const validate = cached.getLastTraitValidateTrace() as any
               const check = cached.getLastTraitCheckTrace() as any
 
@@ -383,8 +385,8 @@ test(
                 'converge.decisionBudgetMs':
                   typeof decision?.decisionBudgetMs === 'number'
                     ? decision.decisionBudgetMs
-                    : typeof controlPlane.traitConvergeDecisionBudgetMs === 'number'
-                      ? controlPlane.traitConvergeDecisionBudgetMs
+                    : typeof controlPlane.fieldConvergeDecisionBudgetMs === 'number'
+                      ? controlPlane.fieldConvergeDecisionBudgetMs
                       : { unavailableReason: 'decisionMissing' },
                 'converge.decisionDurationMs':
                   typeof decision?.decisionDurationMs === 'number'

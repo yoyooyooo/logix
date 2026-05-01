@@ -2,8 +2,9 @@ import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../src/index.js'
+import { trialRunModule } from '../../src/internal/observability/trialRunModule.js'
 
-describe('Observability.trialRunModule (scope dispose)', () => {
+describe('Runtime.trial (scope dispose)', () => {
   it.effect('should close scope and run finalizers', () =>
     Effect.gen(function* () {
       let disposed = false
@@ -13,7 +14,7 @@ describe('Observability.trialRunModule (scope dispose)', () => {
         actions: {},
       })
 
-      const program = Root.implement({ initial: undefined, logics: [] })
+      const program = Logix.Program.make(Root, { initial: undefined, logics: [] })
 
       const DummyTag = ServiceMap.Service<{}>('@test/TrialRunModule.ScopeDispose/Dummy')
       const layer = Layer.effect(
@@ -27,7 +28,7 @@ describe('Observability.trialRunModule (scope dispose)', () => {
         ),
       ) as unknown as Layer.Layer<any, never, never>
 
-      const report = yield* Logix.Observability.trialRunModule(program, {
+      const report = yield* trialRunModule(program as any, {
         runId: 'run:test:dispose',
         layer,
         buildEnv: { hostKind: 'node', config: {} },

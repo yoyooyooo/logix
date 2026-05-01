@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { describe, it, expect } from 'vitest'
 // @vitest-environment happy-dom
 import React from 'react'
@@ -19,15 +20,15 @@ describe('useModule(module) (unwrap + handle-extend)', () => {
       extra: `moduleId=${String(runtime.moduleId)}`,
     })
 
-    const CounterModule = Counter.implement({ initial: { count: 0 }, logics: [] })
+    const CounterProgram = Logix.Program.make(Counter, { initial: { count: 0 }, logics: [] })
 
     // Prevent Debug.record from falling back to console in tests (avoids noisy output).
-    const noopSink: Logix.Debug.Sink = { record: () => Effect.void }
+    const noopSink: CoreDebug.Sink = { record: () => Effect.void }
 
-    const runtime = Logix.Runtime.make(CounterModule, {
+    const runtime = Logix.Runtime.make(CounterProgram, {
       layer: Layer.mergeAll(
         Layer.empty as Layer.Layer<any, never, never>,
-        Logix.Debug.replace([noopSink]),
+        CoreDebug.replace([noopSink]),
       ) as Layer.Layer<any, never, never>,
     })
 
@@ -39,7 +40,7 @@ describe('useModule(module) (unwrap + handle-extend)', () => {
 
     const { result } = renderHook(
       () => {
-        const local = useModule(CounterModule)
+        const local = useModule(CounterProgram)
         const singleton = useModule(Counter.tag)
         return {
           local,

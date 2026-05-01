@@ -1,6 +1,6 @@
 # Implementation Plan: 029 国际化接入与 `$.root.resolve(Tag)` 语法糖
 
-**Branch**: `029-i18n-root-resolve` | **Date**: 2025-12-24 | **Spec**: `specs/029-i18n-root-resolve/spec.md`  
+**Branch**: `029-i18n-root-resolve` | **Date**: 2025-12-24 | **Spec**: `specs/029-i18n-root-resolve/spec.md`
 **Input**: `specs/029-i18n-root-resolve/spec.md`
 
 ## Summary
@@ -21,12 +21,12 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.x（ESM），Node.js 20+  
-**Primary Dependencies**: `effect` v3、`@logixjs/core`、`@logixjs/react`、`@logixjs/i18n`（外部 i18n 以 i18next 风格实例为典型注入值；`@logixjs/i18n` 不依赖具体引擎；不新增 `@logixjs/i18n-react`）  
-**Storage**: N/A（以 Effect Env/Context/Layer + runtime state 为主）  
-**Testing**: Vitest + `@effect/vitest`（一次性运行；不使用 watch）  
-**Target Platform**: Browser（React 适配）+ Node.js（测试/运行时）  
-**Project Type**: pnpm workspace monorepo  
+**Language/Version**: TypeScript 5.x（ESM），Node.js 20+
+**Primary Dependencies**: `effect` v3、`@logixjs/core`、`@logixjs/react`、`@logixjs/i18n`（外部 i18n 以 i18next 风格实例为典型注入值；`@logixjs/i18n` 不依赖具体引擎；不新增 `@logixjs/i18n-react`）
+**Storage**: N/A（以 Effect Env/Context/Layer + runtime state 为主）
+**Testing**: Vitest + `@effect/vitest`（一次性运行；不使用 watch）
+**Target Platform**: Browser（React 适配）+ Node.js（测试/运行时）
+**Project Type**: pnpm workspace monorepo
 **Performance Goals**:
 
 - `$.root.resolve` 的调用开销应与 `Root.resolve` 等价（O(1)，避免额外扫描/大对象分配）；热路径回归预算：diagnostics 关闭时 ≤1%。

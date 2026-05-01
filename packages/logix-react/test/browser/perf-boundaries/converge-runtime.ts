@@ -1,12 +1,14 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import { makePerfKernelLayer, silentDebugLayer } from './harness.js'
 
-export type DiagnosticsLevel = Logix.Debug.DiagnosticsLevel
+export type DiagnosticsLevel = CoreDebug.DiagnosticsLevel
 
 export type ConvergeControlPlane = {
-  readonly traitConvergeBudgetMs?: number
-  readonly traitConvergeDecisionBudgetMs?: number
+  readonly fieldConvergeBudgetMs?: number
+  readonly fieldConvergeDecisionBudgetMs?: number
   readonly tuningId?: string
 }
 
@@ -24,8 +26,8 @@ const parsePositiveNumber = (value: unknown): number | undefined => {
 }
 
 export const readConvergeControlPlaneFromEnv = (): ConvergeControlPlane => ({
-  traitConvergeBudgetMs: parsePositiveNumber(import.meta.env.VITE_LOGIX_TRAIT_CONVERGE_BUDGET_MS),
-  traitConvergeDecisionBudgetMs: parsePositiveNumber(import.meta.env.VITE_LOGIX_TRAIT_CONVERGE_DECISION_BUDGET_MS),
+  fieldConvergeBudgetMs: parsePositiveNumber(import.meta.env.VITE_LOGIX_TRAIT_CONVERGE_BUDGET_MS),
+  fieldConvergeDecisionBudgetMs: parsePositiveNumber(import.meta.env.VITE_LOGIX_TRAIT_CONVERGE_DECISION_BUDGET_MS),
   tuningId:
     typeof import.meta.env.VITE_LOGIX_PERF_TUNING_ID === 'string' &&
     import.meta.env.VITE_LOGIX_PERF_TUNING_ID.trim().length > 0
@@ -66,20 +68,19 @@ export const makeConvergeRuntime = (
     }
   })
 
-  const traits: Record<string, unknown> = {}
+  const fieldDeclarations: Record<string, unknown> = {}
   for (let i = 0; i < steps; i++) {
-    traits[`d${i}`] = Logix.StateTrait.computed<any, any, any>({
+    fieldDeclarations[`d${i}`] = FieldContracts.fieldComputed<any, any, any>({
       deps: [`b${i}`] as any,
       get: (value: any) => (value as number) + 1,
     }) as any
   }
 
-  const M = Logix.Module.make(`PerfConvergeSteps${steps}`, {
-    state: State as any,
-    actions: Actions,
-    reducers: { bump: bumpReducer } as any,
-    traits: Logix.StateTrait.from(State as any)(traits as any) as any,
-  })
+  const M = FieldContracts.withModuleFieldDeclarations(Logix.Module.make(`PerfConvergeSteps${steps}`, {
+  state: State as any,
+  actions: Actions,
+  reducers: { bump: bumpReducer } as any
+}), FieldContracts.fieldFrom(State as any)(fieldDeclarations as any) as any)
 
   const initial: Record<string, number> = {}
   for (let i = 0; i < steps; i++) {
@@ -87,7 +88,7 @@ export const makeConvergeRuntime = (
     initial[`d${i}`] = 1
   }
 
-  const impl = M.implement({
+  const program = Logix.Program.make(M, {
     initial: initial as any,
     logics: [],
   })
@@ -108,10 +109,10 @@ export const makeConvergeRuntime = (
   }
   const getLastConvergeDecision = (): unknown | undefined => lastDecision
 
-  const captureSink: Logix.Debug.Sink = {
-    record: (event: Logix.Debug.Event) => {
+  const captureSink: CoreDebug.Sink = {
+    record: (event: CoreDebug.Event) => {
       if (event.type !== 'state:update') return Effect.void
-      const decision = (event as any)?.traitSummary?.converge
+      const decision = (event as any)?.fieldSummary?.converge
       if (decision != null) {
         lastDecision = decision
       }
@@ -120,18 +121,18 @@ export const makeConvergeRuntime = (
   }
 
   const debugLayer = options?.captureDecision
-    ? (Logix.Debug.replace([captureSink]) as Layer.Layer<any, never, never>)
+    ? (CoreDebug.replace([captureSink]) as Layer.Layer<any, never, never>)
     : (silentDebugLayer as Layer.Layer<any, never, never>)
 
   const perfKernelLayer = makePerfKernelLayer()
   const controlPlane = readConvergeControlPlaneFromEnv()
 
-  const runtime = Logix.Runtime.make(impl, {
+  const runtime = Logix.Runtime.make(program, {
     stateTransaction: {
       instrumentation: 'light',
-      traitConvergeMode: convergeMode,
-      traitConvergeBudgetMs: controlPlane.traitConvergeBudgetMs,
-      traitConvergeDecisionBudgetMs: controlPlane.traitConvergeDecisionBudgetMs,
+      fieldConvergeMode: convergeMode,
+      fieldConvergeBudgetMs: controlPlane.fieldConvergeBudgetMs,
+      fieldConvergeDecisionBudgetMs: controlPlane.fieldConvergeDecisionBudgetMs,
     },
     layer: Layer.mergeAll(debugLayer, perfKernelLayer) as Layer.Layer<any, never, never>,
     label: [
@@ -164,5 +165,5 @@ export const runConvergeTxnCommitWithDiagnosticsLevel = (
   diagnosticsLevel: DiagnosticsLevel,
 ): Effect.Effect<void, never, any> =>
   runConvergeTxnCommit(rt, dirtyRoots).pipe(
-    (effect) => Effect.provideService(effect, Logix.Debug.internal.currentDiagnosticsLevel, diagnosticsLevel),
+    (effect) => Effect.provideService(effect, CoreDebug.internal.currentDiagnosticsLevel, diagnosticsLevel),
   )

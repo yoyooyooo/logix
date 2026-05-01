@@ -1,6 +1,6 @@
 # Tasks: 051 core-ng 事务零分配（txn zero-alloc）
 
-**Input**: `specs/051-core-ng-txn-zero-alloc/*`（`spec.md`/`plan.md`/`research.md`/`data-model.md`/`contracts/*`/`quickstart.md`）  
+**Input**: `specs/051-core-ng-txn-zero-alloc/*`（`spec.md`/`plan.md`/`research.md`/`data-model.md`/`contracts/*`/`quickstart.md`）
 **Prerequisites**: `specs/051-core-ng-txn-zero-alloc/plan.md`（required） + `specs/051-core-ng-txn-zero-alloc/spec.md`（required）
 
 ## Phase 1: Setup（Shared Infrastructure）
@@ -20,7 +20,7 @@
 > - PerfReport/PerfDiff 证据门禁跑道（Node `converge.txnCommit` + Browser `converge.txnCommit`；`pnpm perf bench:traitConverge:node` / `pnpm perf collect`）
 
 - [x] T005 对齐 050 的 id-first txn 输出契约（避免 051 自行定义 DirtySet 形态导致并行真相源）`specs/050-core-ng-integer-bridge/contracts/fieldpath-contract.md`
-- [x] T006 [P] 固化 Node `converge.txnCommit` perf harness baseline：强制 `stateTransaction.instrumentation=light`（保持 `diagnostics=off` 为 baseline；并默认 `kernelId=core`）`.codex/skills/logix-perf-evidence/scripts/bench.traitConverge.node.ts`
+- [x] T006 [P] 固化 Node `converge.txnCommit` perf harness baseline：强制 `stateTransaction.instrumentation=light`（保持 `diagnostics=off` 为 baseline；并默认 `kernelId=core`）`packages/logix-perf-evidence/scripts/bench.traitConverge.node.ts`
 - [x] T007 [P] 固化 Browser `converge.txnCommit` perf harness baseline：Runtime 显式设置 `stateTransaction.instrumentation=light`（保持 `diagnostics=off` 为 baseline；并默认 `kernelId=core`）`packages/logix-react/test/browser/perf-boundaries/converge-runtime.ts`
 
 ---

@@ -19,11 +19,11 @@
 
 - **复用协议/工具**：沿用 `LOGIX_PERF_REPORT` 协议与 `PerfReport/PerfDiff` schema；对比语义优先复用 `pnpm perf diff`（必要时用 `--matrix` 指向你的矩阵文件）。
 - **复用采集落盘**：用 `pnpm perf collect -- --out specs/<id>/perf/after.worktree.json` 将报告写入你的目录（只跑子集时配合 `--files`）。
-- **只新增“场景”，不新增“体系”**：需要新维度/新场景时，优先在 `@logixjs/perf-evidence/assets/matrix.json`（物理：`.codex/skills/logix-perf-evidence/assets/matrix.json`）增加 suite，并提供对应可执行用例；不要另起一套 report/diff/阈值语义，避免证据口径漂移。
+- **只新增“场景”，不新增“体系”**：需要新维度/新场景时，优先在 `@logixjs/perf-evidence/assets/matrix.json`（物理：`packages/logix-perf-evidence/assets/matrix.json`）增加 suite，并提供对应可执行用例；不要另起一套 report/diff/阈值语义，避免证据口径漂移。
 
 ### 已接入特性（证据落点）
 
-- `specs/039-trait-converge-int-exec-evidence/perf.md`（Trait converge 热路径专项：Node+Browser 基线与 Diff）
+- `specs/039-field-converge-int-exec-evidence/perf.md`（Field converge 热路径专项：Node+Browser 基线与 Diff）
 
 ## 最短闭环：做一次 Before/After
 
@@ -195,4 +195,4 @@ PerfDiff 的关键结构：
 
 对应的用户侧解释与配置入口见：
 - `apps/docs/content/docs/guide/advanced/performance-and-optimization.md`
-- `apps/docs/content/docs/guide/advanced/converge-control-plane.md`
+- `apps/docs/content/docs/guide/advanced/field-convergence-policy.md`

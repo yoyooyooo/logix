@@ -4,7 +4,7 @@ import process from 'node:process'
 
 import { Effect } from 'effect'
 
-import { formatCommandResult, main } from '../Commands.js'
+import { formatCommandResult, main } from '../internal/entry.js'
 import { asSerializableErrorSummary } from '../internal/errors.js'
 import { makeErrorCommandResult } from '../internal/result.js'
 

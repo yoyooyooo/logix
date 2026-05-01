@@ -13,7 +13,7 @@
 命名关系（避免误解）：
 
 - `Workflow`：对外 authoring/装配入口（定义/组合/validate/export/install）。
-- `WorkflowStaticIr`（又称 Workflow Static IR / Π slice）：`Workflow.exportStaticIr(moduleId)` 的导出工件（`programId=moduleId.localId`）；平台/Devtools 通过 `ControlSurfaceManifest.workflowSurface` 消费它。
+- `WorkflowStaticIr`（又称 Workflow Static IR / Π slice）：`Workflow.exportStaticIr(moduleId)` 的导出工件（`programId=moduleId.localId`）；平台/Devtools 通过 `ControlSurfaceManifest.controlProgramSurface` 消费它。
 - `RuntimePlan`：内部热路径执行计划（索引/路由/预解析）；不对外交换，不进入 Root IR，不得以 IR 扫描替代。
 
 ## 0.1 双 SSoT：Authoring vs Platform（必须区分）
@@ -21,7 +21,7 @@
 为避免“同一概念两套权威口径”，本特性明确存在两类 SSoT，分别服务不同消费者：
 
 - **Authoring SSoT（可编辑）**：`WorkflowDef`（纯 JSON、版本化、可校验）。人/LLM/Studio 只能写它；所有语法糖必须确定性 materialize 到它。
-- **Platform SSoT（只读消费）**：`ControlSurfaceManifest`（Root IR）+ `workflowSurface`（Π slice，包含 `WorkflowStaticIr`）。它们必须从 Authoring SSoT 确定性编译得到，用于平台/Devtools/CI gate/diff；禁止手改、禁止成为第二语义源。
+- **Platform SSoT（只读消费）**：`ControlSurfaceManifest`（Root IR）+ `controlProgramSurface`（Π slice，包含 `WorkflowStaticIr`）。它们必须从 Authoring SSoT 确定性编译得到，用于平台/Devtools/CI gate/diff；禁止手改、禁止成为第二语义源。
 
 ## 1.0 DX 裁决：SSoT 分化 + Effect-native 一体化
 
@@ -40,8 +40,9 @@
 
 - `Workflow.make(def)`：构造一个 Program 值对象（输入为 `WorkflowDef` 或等价的 def-like 形态；**禁止闭包**）
 - `program.install(moduleTag)`：把 Program 绑定到 module 并编译+mount（产出 ModuleLogic）
-  - 推荐 DX sugar：`Module.withWorkflow(program)`（内部等价于 `Module.withLogic(program.install(Module.tag))`）
-- **推荐（平台/AI 出码 + 性能门槛）**：`Module.withWorkflows(programs)`（批量安装多个 programs，并保证每个 module instance 只产生 1 条 actions$ watcher Fiber；内部做 `actionTag -> programs[]` 路由）
+- **推荐装配入口**：`Program.make(Module, { workflows: [program] })`
+- **批量推荐**：`Program.make(Module, { workflows: programs })`（保证 workflow 仍经同一 Program 装配入口进入 runtime）
+- `Module.withWorkflow(s)` 已退出公开 surface；当前只保留历史实现背景说明
 - `program.exportStaticIr(moduleId)`：导出 JSON 可序列化 Static IR（供 Devtools/Alignment Lab 可视化与 diff；`programId=moduleId.localId`）
 - `program.validate()`：导出/安装前的强校验入口（fail-fast；错误可机器修复；运行时不承担校验成本）
 - `program.toJSON()`：导出 `WorkflowDef`（单一事实源，纯 JSON）
@@ -86,14 +87,14 @@ v1 采用 **对象式 step 构造**（更像“定义工件”，避免链式执
     - Static IR 只记录 `serviceId` 而不记录 methodName；多操作应拆分为多个 Tag（每个 Tag 对应一个 port/操作）
 - `delay({ key, ms })`：必须进入 tick 参考系（禁止影子 `setTimeout`）
 
-> 关于“看起来像 Traits 的能力”（例如 `source.refresh`）：不进入 core steps。推荐通过 `callById('logix/kernel/<port>')`（TS sugar：`call(KernelPorts.<Port>)`）表达；如确需语法糖，一律进入 `Workflow.Ext.*` 并走版本化/预算/诊断门控（见 2) 约束）。
+> 关于“看起来像 Fields 的能力”（例如 `source.refresh`）：不进入 core steps。推荐通过 `callById('logix/kernel/<port>')`（TS sugar：`call(KernelPorts.<Port>)`）表达；如确需语法糖，一律进入 `Workflow.Ext.*` 并走版本化/预算/诊断门控（见 2) 约束）。
 
 ### 1.3.1 输入映射 DSL（v1，最小）
 
 Workflow v1 允许在不引入 user closure 的前提下，表达最小“结构映射”，用于 `call.input` 与 `dispatch(payload)`：
 
 - **允许**：`payload`、`payload.path`（JSON Pointer）、`const`、`object`、`merge`
-- **禁止**：读取 state/traits、条件/循环/算术、引用 `call` 返回值
+- **禁止**：读取 state/fields、条件/循环/算术、引用 `call` 返回值
 
 > 该 DSL 的目标是服务“平台/AI 出码”，并保证编译与校验可完全前置；复杂映射继续下沉到 service/pattern。
 

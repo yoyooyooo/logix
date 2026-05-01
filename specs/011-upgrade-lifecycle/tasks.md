@@ -88,11 +88,11 @@ description: "Task list for 011-upgrade-lifecycle implementation"
 
 ### Implementation for User Story 1
 
-- [X] T025 [US1] 扩展 Bound API：新增 `$.lifecycle.onInitRequired` / `$.lifecycle.onStart`（或等价命名）并对齐 contracts/data-model 在 `packages/logix-core/src/internal/runtime/core/module.ts`
+- [X] T025 [US1] 历史实现：曾扩展 Bound API 新增 public lifecycle authoring；该 public spelling 已由 `../170-runtime-lifecycle-authoring-surface/spec.md` 移除，当前 readiness 使用 `$.readyAfter(...)`
 - [X] T026 [US1] 在 LifecycleManager 中实现 initRequired 队列（串行执行、失败即失败）与 start 队列（non-blocking，失败上报）在 `packages/logix-core/src/internal/runtime/core/Lifecycle.ts`
 - [X] T027 [US1] 在 ModuleRuntime 中实现可等待获取：初始化完成前不对外暴露可用实例（或暴露 status 但禁止业务读写）在 `packages/logix-core/src/internal/runtime/ModuleRuntime.ts`
 - [X] T028 [US1] 统一销毁执行：destroy tasks LIFO + best-effort（失败只记录不阻塞）在 `packages/logix-core/src/internal/runtime/core/Lifecycle.ts`
-- [X] T029 [US1] 初始化失败路径：触发 `$.lifecycle.onError` + lifecycle:error 事件，并使“该次初始化”对消费方呈现为失败在 `packages/logix-core/src/internal/runtime/ModuleRuntime.ts`
+- [X] T029 [US1] 初始化失败路径：触发 runtime-owned lifecycle:error / diagnostics 事件，并使“该次初始化”对消费方呈现为失败；public per-logic error hook 已由 170 移除
 
 **Checkpoint**: 仅实现 US1 即可独立验收（门禁/顺序/失败/销毁均符合 spec）
 

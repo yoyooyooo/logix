@@ -1,7 +1,7 @@
 # Tasks: Workflow Codegen IR（出码层：Canonical AST + Static IR）
 
-**Input**: `specs/075-workflow-codegen-ir/*`  
-**Prerequisites**: `spec.md`, `plan.md`, `data-model.md`, `contracts/*`, `quickstart.md`  
+**Input**: `specs/075-workflow-codegen-ir/*`
+**Prerequisites**: `spec.md`, `plan.md`, `data-model.md`, `contracts/*`, `quickstart.md`
 **Tests**: REQUIRED（语义测试 + perf evidence，见 `plan.md`）
 
 ## Phase 0: Perf-First Scaffolding（先把性能门槛落成可执行证据）
@@ -36,17 +36,17 @@
 - [x] T103 [US3] Static IR 编译：`programId/nodeId/digest/nodes/edges/source` 全部在 export/install 期计算并缓存（禁止运行时 hash/JSON.stringify）(Refs: US3, FR-005, NFR-002, NFR-003)
 - [x] T104 [US1] Service 解析：`serviceId` 必须可解析为可调用入口（缺失 fail-fast）；IR/Trace/Tape 中只写 `serviceId`（禁止双真相源）(Refs: US1, FR-003, FR-007)
 - [x] T105 [US1] SSoT 分化 + DX 一体化：定义 `WorkflowDef`（纯 JSON）并实现 `Workflow.toJSON()/fromJSON(...)`（或等价静态方法），确保落盘形态无 Tag/闭包 (Refs: FR-001, FR-006)
-- [x] T106 [US3] Root IR 对齐点：导出 `workflowSurface` slice（其 digest 由 Root IR 通过 `ControlSurfaceManifest.modules[*].workflowSurface.digest` 引用）与最小 `effectsIndex` 结构，供 `ControlSurfaceManifest` 收口引用 `packages/logix-core/src/internal/observability/workflowSurface.ts` + `packages/logix-core/src/internal/observability/controlSurfaceManifest.ts` (Refs: FR-001, FR-007)
+- [x] T106 [US3] Root IR 对齐点：导出 `controlProgramSurface` slice（其 digest 由 Root IR 通过 `ControlSurfaceManifest.modules[*].controlProgramSurface.digest` 引用）与最小 `effectsIndex` 结构，供 `ControlSurfaceManifest` 收口引用 `packages/logix-core/src/internal/observability/controlProgramSurface.ts` + `packages/logix-core/src/internal/observability/controlSurfaceManifest.ts` (Refs: FR-001, FR-007)
 
 ### 2.2 Mount / Routing（热路径：单订阅 + O(1+k)）
 
-- [x] T110 收敛入口：在 `packages/logix-core/src/Module.ts` 新增 `Module.withWorkflow(program)`（糖衣入口）
-- [x] T111 新增公共子模块 `packages/logix-core/src/Workflow.ts`（DSL + 类型导出）
+- [x] T110 收敛入口：在 `packages/logix-core/src/Module.ts` 新增 `Module.withWorkflow(program)`（历史阶段糖衣入口，已在 `122` 中退出公开 surface）
+- [x] T111 新增公共子模块 `packages/logix-core/src/internal/runtime/core/WorkflowRuntime.ts`（DSL + 类型导出）
 - [x] T112 新增 internal `packages/logix-core/src/internal/runtime/core/WorkflowRuntime.ts`（compile + mount + router）
 - [x] T113 关键性能门槛：实现 `mountAll(programs[])`（每个 module instance 只起 1 条 actions$ watcher Fiber，内部做 actionTag→programs 索引）
 - [x] T114 Action 路由：仅提取一次 actionTag，并以 `Map.get(actionTag)` 命中 programs（禁止扫描全量 programs）
 - [x] T115 Lifecycle 触发：`onStart/onInit` 通过生命周期管理器触发一次性 run（不得引入额外常驻订阅）
-- [x] T116 提供批量入口：新增 `Module.withWorkflows(workflows)`（平台/AI 出码推荐；保证单订阅与 O(1+k) 路由；内部委托 `WorkflowRuntime.mountAll`）
+- [x] T116 提供批量入口：新增 `Module.withWorkflows(workflows)`（历史阶段批量入口，当前推荐已收敛到 `Program.make(..., { workflows })`）
 
 ### 2.3 Execution Semantics（最小节点集 v1）
 
@@ -84,8 +84,8 @@
 - [x] T302 跑 workspace gates：`pnpm typecheck`、`pnpm lint`、`pnpm test:turbo`
 - [x] T303 文档统一：把已完成 specs 中的旧“二档位写法（light/full）”统一为 `diagnostics=light/sampled/full`（并明确 sampled 的语义/是否产出）；覆盖：
   - `specs/012-program-api/`
-  - `specs/023-logic-traits-setup/`
-  - `specs/039-trait-converge-int-exec-evidence/`
+  - `specs/023-logic-fields-setup/`
+  - `specs/039-field-converge-int-exec-evidence/`
   - `specs/045-dual-kernel-contract/`
   - `specs/046-core-ng-roadmap/`
   - `specs/049-core-ng-linear-exec-vm/`
@@ -101,14 +101,14 @@
 
 > 规则：本 phase 只做“措辞/口径同步”（SSoT/已有文档），不引入新裁决；如需新增裁决必须回到 `spec.md/plan.md` 更新。
 
-- [x] T310 同步平台 SSoT：将 075 的终态口径（WorkflowDef 权威输入、`call`、KernelPorts、`workflowSurface` slice 与 `ControlSurfaceManifest.modules[*].workflowSurface.digest` 引用口径）回链到 `docs/ssot/platform/contracts/*` 与术语表（仅措辞对齐）
+- [x] T310 同步平台 SSoT：将 075 的终态口径（WorkflowDef 权威输入、`call`、KernelPorts、`controlProgramSurface` slice 与 `ControlSurfaceManifest.modules[*].controlProgramSurface.digest` 引用口径）回链到 `docs/ssot/platform/contracts/*` 与术语表（仅措辞对齐）
 - [x] T311 同步平台 workbench：把“Π=Workflow（def+slice）/Workflow=DX 值对象”的表述统一到 `docs/specs/sdd-platform/workbench/*`（仅措辞对齐）
 - [x] T312 同步 runtime SSoT：补齐 Workflow 分层术语与“可合并性 rationale”（落点：`docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.11-workflow-and-control-surface.md`；仅措辞对齐）
 - [x] T313 更新 runtime glossary 索引：`docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.md` 增补 075 的分层术语入口
 
 ## Phase 6: Naming Unification（历史命名 → Workflow，含证据链命名）
 
-- [x] T400 统一公共 API：值对象子模块统一为 `Workflow`；`Module.withFlow(s)` → `Module.withWorkflow(s)`；同步 `packages/logix-core/package.json` exports（forward-only，无 shim）
+- [x] T400 统一公共 API：值对象子模块统一为 `Workflow`；历史阶段 `Module.withFlow(s)` → `Module.withWorkflow(s)`；后续已收敛到 `Program.make(..., { workflows })`
 - [x] T401 统一 internal 命名与落点：相关目录/类型/错误码/`_tag` 口径统一到 `Workflow*` 与 `WORKFLOW_*`
 - [x] T402 统一诊断/事件/trace 命名：统一到 `workflow.*` 前缀（含 timer 事件、dispatch/cancel/drop、originKind 等），并同步更新对应测试断言
 - [x] T403 统一 perf suite 与维度命名：统一到 `workflow.*` suites 与 `workflow.mode`（含 Vite env），并同步更新矩阵与已生成 evidence 文件名/内容
@@ -120,7 +120,7 @@
 ## Phase 7: Determinism & Anchors（验收加固：消除 locale 漂移 + 锚点 fail-fast）
 
 - [x] T408 确定性：移除 digest/可序列化 IR 相关路径中的 `localeCompare`，统一为 locale-independent 排序（含 `stableStringify`、Workflow IR/Root IR 导出、TypeIR/PortSpec 等）
-- [x] T409 Root IR：`exportControlSurface` moduleId 不可解析时 fail-fast（禁止 `'unknown'` 回退），错误信息需可操作（提示传入配置后的 Module/ModuleImpl）
+- [x] T409 Root IR：`exportControlSurface` moduleId 不可解析时 fail-fast（禁止 `'unknown'` 回退），错误信息需可操作（提示传入配置后的 Module/ProgramRuntimeBlueprint）
 - [x] T410 计划落盘：补齐 `specs/075-workflow-codegen-ir/plan.md` 的 `Constitution Check`（逐条给出答案 + 交叉引用）
 
 ## Phase 8: Type Safety Handbrake（Workflow 绑定 Module.actions）

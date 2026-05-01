@@ -4,7 +4,7 @@ info:
   version: "010"
   description: >
     Contracts for Form validation: list-scope rules (cross-row), scoped validate requests,
-    `$list/rows[]` errors shape, and minimal serializable diagnostics (`trait:check`).
+    `$list/rows[]` errors shape, and minimal serializable diagnostics (`field:check`).
     This is schema-first documentation for runtime/form/devtools/sandbox alignment; it does
     not imply a specific transport or server implementation.
 paths:
@@ -26,9 +26,9 @@ paths:
             application/json:
               schema:
                 $ref: ./schemas/list-scope-errors.schema.json
-  /events/trait-check:
+  /events/field-check:
     get:
-      summary: Fetch trait check diagnostic events
+      summary: Fetch field check diagnostic events
       responses:
         "200":
           description: Events
@@ -37,4 +37,4 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: ./schemas/trait-check-event.schema.json
+                  $ref: ./schemas/field-check-event.schema.json

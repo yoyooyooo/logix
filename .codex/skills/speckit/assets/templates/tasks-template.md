@@ -15,9 +15,13 @@ why a missing test is acceptable. If a change touches runtime hot paths, include
 diagnosability regression defenses (benchmark/profile baselines + diagnostic event validation) unless
 the spec explicitly justifies why this is not needed. If a change introduces breaking changes, include
 a migration note task (plan.md / PR) and do NOT add compatibility layers or a deprecation period
-(forward-only evolution).
+(forward-only evolution). For cutover/convergence work, tasks MUST follow a single-track
+implementation path: no dual-write, no shadow path, no coexistence-by-default tasks.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
+For closure / cutover / convergence specs in this repo, tasks MUST preserve the sequence:
+plan gate satisfied → implementation → result writeback. If `plan.md` does not already define
+verification and writeback targets, stop and fix the plan before generating implementation tasks.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -182,6 +186,18 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
 - [ ] TXXX Security hardening
 - [ ] TXXX Run quickstart.md validation
+
+---
+
+## Phase N+1: Result Writeback
+
+**Purpose**: Make stable outcomes authoritative after implementation
+
+- [ ] TXXX Update authority docs referenced in plan.md
+- [ ] TXXX Sync `spec.md` status and any related group registry / routing artifacts
+- [ ] TXXX If `discussion.md` exists, move adopted conclusions back into `spec.md` / `plan.md` and trim stale discussion residue
+- [ ] TXXX Update tests / examples / witness docs so they reflect the final truth
+- [ ] TXXX Run final verification listed in plan.md and record pass/fail result
 
 ---
 

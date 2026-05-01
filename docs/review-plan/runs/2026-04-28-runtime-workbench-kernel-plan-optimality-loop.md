@@ -1,0 +1,336 @@
+# Runtime Workbench Kernel Plan Optimality Loop
+
+## Meta
+
+- target: `specs/165-runtime-workbench-kernel/spec.md`
+- targets:
+  - `specs/165-runtime-workbench-kernel/spec.md`
+  - `docs/ssot/runtime/14-dvtools-internal-workbench.md`
+- source_kind: `file-ssot-contract`
+- reviewers:
+  - A1 Ramanujan: structure purity
+  - A2 Kolmogorov: compression
+  - A3 Godel: consistency and anti-second-system
+  - A4 target-function challenge
+- round_count: 2
+- challenge_scope: `open`
+- consensus_status: `closed`
+
+## Bootstrap
+
+- target_complete: `true`
+- alignment_gate:
+  - policy: `auto`
+  - status: `inferred`
+  - resolved_points:
+    - User asked to write the proposal and run `$plan-optimality-loop`.
+    - User explicitly wanted terminal-state pressure and removal of incoherent parts.
+    - Work is planning/spec only; no implementation code starts in this loop.
+  - open_questions: []
+  - confirmation_basis: current user request plus existing 163/164/14/09 authority docs.
+- review_contract:
+  - artifact_kind: `ssot-contract`
+  - review_goal: `design-closure`
+  - target_claim: Runtime Workbench Kernel is the shared interpretation layer for Playground, DVTools and CLI repair; runtime/control-plane keeps run/check/trial/compare/report/evidence truth; any second report, evidence, trigger, source or repair scheduling truth must be cut.
+  - target_refs:
+    - `docs/ssot/runtime/09-verification-control-plane.md`
+    - `docs/ssot/runtime/04-capabilities-and-runtime-control-plane.md`
+    - `docs/ssot/runtime/14-dvtools-internal-workbench.md`
+    - `specs/163-runtime-playground-terminal-runner/spec.md`
+    - `specs/164-logix-playground/spec.md`
+  - non_default_overrides:
+    - alignment_policy: `auto`
+    - scope_fence: planning/spec/SSoT only
+    - stop_condition: `bounded-rounds with consensus attempt`
+    - write_policy: update spec, bound docs and review ledger only
+- review_object_manifest:
+  - source_inputs:
+    - user request
+    - existing runtime control-plane and DVTools SSoT
+    - existing 163/164 specs
+  - materialized_targets:
+    - `specs/165-runtime-workbench-kernel/spec.md`
+  - authority_target: `specs/165-runtime-workbench-kernel/spec.md`
+  - bound_docs:
+    - `docs/ssot/runtime/14-dvtools-internal-workbench.md`
+  - derived_scope:
+    - runtime workbench projection contract
+    - Playground/DVTools/CLI host consumption rules
+    - authority and provenance law
+  - allowed_classes:
+    - owner/import law
+    - input partition
+    - projection law
+    - host consumption rules
+    - must-cut and proof matrix
+  - blocker_classes:
+    - public runtime workbench/devtools/playground facade
+    - second report or evidence truth
+    - second source coordinate truth
+    - second repair scheduling truth
+    - private session/finding/artifact derivation truth
+  - ledger_target: `docs/review-plan/runs/2026-04-28-runtime-workbench-kernel-plan-optimality-loop.md`
+- challenge_scope: `open`
+- reviewer_set:
+  - A1
+  - A2
+  - A3
+  - A4
+- kernel_council:
+  - Ramanujan
+  - Kolmogorov
+  - Godel
+- dominance_axes:
+  - concept-count
+  - public-surface
+  - compat-budget
+  - migration-cost
+  - proof-strength
+  - future-headroom
+- stop_rule:
+  - all reviewers return no unresolved findings
+  - adopted freeze record is written
+  - target spec and bound docs are saved
+  - no surviving stronger counter proposal
+- reopen_bar:
+  - new candidate must strictly improve at least one dominance axis without weakening authority preservation, shape separation or no-second-system constraints
+- ledger_path: `docs/review-plan/runs/2026-04-28-runtime-workbench-kernel-plan-optimality-loop.md`
+- writable: `true`
+
+## Assumptions
+
+- id: A-001
+  - summary: Shared Workbench Kernel should be a projection primitive, not a UI model.
+  - status: `kept`
+  - resolution_basis: adopted candidate changed baseline from shared workbench model to AuthorityBundle -> ProjectionOnly Kernel.
+- id: A-002
+  - summary: Runtime/control-plane/evidence remain the only truth owners.
+  - status: `kept`
+  - resolution_basis: spec now requires authorityRef or derivedFrom on every projection node.
+- id: A-003
+  - summary: Selection manifest is hint-only.
+  - status: `kept`
+  - resolution_basis: inputs are split into truthInputs, contextRefs and selectionHints.
+- id: A-004
+  - summary: Finding must be authority-backed and cannot invent diagnostic or repair authority.
+  - status: `kept`
+  - resolution_basis: spec now contains Finding Authority Lattice and Read-Only Repair Mirror.
+- id: A-005
+  - summary: Owner can be deferred to implementation plan.
+  - status: `overturned`
+  - resolution_basis: owner is now fixed to `packages/logix-core/src/internal/workbench/**`.
+- id: A-006
+  - summary: DVTools can continue owning session/finding/artifact derivation semantics.
+  - status: `overturned`
+  - resolution_basis: `14-dvtools-internal-workbench.md` now delegates cross-host projection semantics to 165.
+
+## Rounds
+
+### Round 1
+
+- round: 1
+- phase: `challenge`
+- input_residual: initial 165 draft
+- findings:
+  - id: F-001
+    - severity: blocker
+    - class: `invalidity`
+    - summary: `RuntimeWorkbenchFinding` risked becoming second diagnostic truth.
+    - evidence: initial draft gave finding independent severity, suggested action and confidence.
+    - status: `closed`
+  - id: F-002
+    - severity: blocker
+    - class: `invalidity`
+    - summary: Selection manifest was mixed with truth inputs.
+    - evidence: initial input union placed SelectionManifest next to report/evidence/debug inputs.
+    - status: `closed`
+  - id: F-003
+    - severity: blocker
+    - class: `invalidity`
+    - summary: Workbench output risked becoming a second machine report protocol.
+    - evidence: initial `RuntimeWorkbenchModel` exposed top-level findings/artifacts/sourceRefs/evidenceGaps and CLI repair projection.
+    - status: `closed`
+  - id: F-004
+    - severity: high
+    - class: `ambiguity`
+    - summary: Source coordinate boundary was too broad.
+    - evidence: initial source ref covered multiple coordinate families without owner table.
+    - status: `closed`
+  - id: F-005
+    - severity: high
+    - class: `controversy`
+    - summary: Owner was not frozen.
+    - evidence: initial draft left core internal subtree vs repo-internal package to implementation planning.
+    - status: `closed`
+  - id: F-006
+    - severity: high
+    - class: `controversy`
+    - summary: 165 duplicated 09/14/164 authority.
+    - evidence: initial draft redefined trigger, preview, session/finding/artifact semantics too broadly.
+    - status: `closed`
+- counter_proposals:
+  - id: CP-001
+    - summary: AuthorityBundle -> ProjectionOnly Kernel
+    - why_better: collapses shared model into pure projection law and prevents second report/evidence/finding truth.
+    - overturns_assumptions:
+      - A-001
+      - A-003
+      - A-004
+      - A-005
+      - A-006
+    - resolves_findings:
+      - F-001
+      - F-002
+      - F-003
+      - F-004
+      - F-005
+      - F-006
+    - supersedes_proposals: []
+    - dominance: `dominates`
+    - axis_scores:
+      - concept-count: `improves`
+      - public-surface: `improves`
+      - compat-budget: `neutral`
+      - migration-cost: `neutral`
+      - proof-strength: `improves`
+      - future-headroom: `improves`
+    - status: `adopted`
+  - id: CP-002
+    - summary: Evidence-first live/imported equivalence gate
+    - why_better: prevents live DVTools from owning stronger private truth than imported evidence mode.
+    - overturns_assumptions:
+      - A-006
+    - resolves_findings:
+      - F-001
+      - F-003
+    - supersedes_proposals: []
+    - dominance: `partial`
+    - axis_scores:
+      - concept-count: `neutral`
+      - public-surface: `improves`
+      - compat-budget: `neutral`
+      - migration-cost: `slightly-worse`
+      - proof-strength: `improves`
+      - future-headroom: `improves`
+    - status: `merged`
+  - id: CP-003
+    - summary: Proof matrix replaces long FR/user story repetition.
+    - why_better: lowers duplicate maintenance and makes design closure evidence clearer.
+    - overturns_assumptions:
+      - A-001
+    - resolves_findings:
+      - F-006
+    - supersedes_proposals: []
+    - dominance: `partial`
+    - axis_scores:
+      - concept-count: `improves`
+      - public-surface: `neutral`
+      - compat-budget: `neutral`
+      - migration-cost: `improves`
+      - proof-strength: `neutral`
+      - future-headroom: `improves`
+    - status: `merged`
+- resolution_delta:
+  - rewrote `specs/165-runtime-workbench-kernel/spec.md` around AuthorityBundle -> ProjectionOnly Kernel
+  - froze owner/import law
+  - split inputs into truthInputs/contextRefs/selectionHints
+  - replaced WorkbenchModel with internal session-rooted ProjectionIndex
+  - added finding authority lattice
+  - added coordinate ownership table
+  - added read-only repair mirror
+  - replaced long FR/user-story closure with proof matrix
+  - updated `docs/ssot/runtime/14-dvtools-internal-workbench.md` to delegate cross-host projection semantics to 165
+
+### Round 2
+
+- round: 2
+- phase: `converge`
+- input_residual:
+  - adopted freeze record
+  - revised 165
+  - revised 14
+- findings:
+  - id: F-007
+    - severity: low
+    - class: `ambiguity`
+    - summary: 14 still left session boundary and gap code set under 159.
+    - evidence: A2 converge noted one remaining old owner sentence in `docs/ssot/runtime/14-dvtools-internal-workbench.md`.
+    - status: `closed`
+- counter_proposals: []
+- resolution_delta:
+  - updated 14 data derivation section to delegate session boundary and gap projection law to 165
+  - kept 159 owner limited to DVTools component disposition, cutover proof pack and implementation acceptance
+  - all reviewers returned no unresolved findings after the update
+
+## Adoption
+
+- adopted_candidate: AuthorityBundle -> ProjectionOnly Kernel
+- lineage:
+  - initial Runtime Workbench Kernel proposal
+  - A1 AuthorityRef-first Workbench
+  - A2 Authority-tagged Projection and Proof Matrix
+  - A3 AuthorityBundle -> ProjectionOnly Kernel
+  - A4 Runtime interpretation primitive
+- rejected_alternatives:
+  - shared `RuntimeWorkbenchModel` as primary contract
+  - UI selection state in Kernel output
+  - CLI machine repair protocol owned by Kernel
+  - private DVTools session/finding/artifact derivation
+  - owner deferred to implementation plan
+- rejection_reason:
+  - each rejected alternative either increased concept count, created second truth, expanded public surface risk, or weakened proof strength.
+- dominance_verdict:
+  - adopted candidate dominates baseline on concept-count, public-surface, proof-strength and future-headroom, with no compatibility cost under forward-only assumptions.
+- freeze_record:
+  - adopted_summary: Runtime Workbench Kernel is a private, projection-only core internal derivation law from authority bundle to session-rooted projection index.
+  - kernel_verdict:
+    - Ramanujan: smaller primitive wins over shared product model.
+    - Kolmogorov: authority matrix and proof matrix replace duplicated FR/story surface.
+    - Godel: no second report, evidence, source, repair scheduling or host derivation truth remains.
+  - frozen_decisions:
+    - owner is `packages/logix-core/src/internal/workbench/**`
+    - zero public root/subpath/sandbox/playground/devtools protocol export
+    - inputs are split into truthInputs, contextRefs, selectionHints
+    - `selectionHints` never affect projection truth
+    - output is internal session-rooted `RuntimeWorkbenchProjectionIndex`
+    - every node carries `authorityRef` or `derivedFrom`
+    - findings are authority-backed projection nodes
+    - Kernel only mirrors repair hints and nextRecommendedStage
+    - coordinate ownership table controls source/focus/artifact/runtime/scenario coordinates
+    - CLI repair projection remains CLI/control-plane transport
+    - 14 delegates cross-host projection semantics to 165
+  - non_goals:
+    - public Runtime workbench/devtools/playground facade
+    - UI workbench product contract
+    - CLI report schema
+    - second evidence/report/source/repair truth
+    - trigger/scenario/preview engine DSL
+  - allowed_reopen_surface:
+    - internal owner if private package strictly dominates core internal subtree
+    - projection law only with dominance proof
+    - report/evidence field gaps only through 09/control-plane authority
+  - proof_obligations:
+    - authority preservation
+    - shape separation
+    - live/imported parity
+    - CLI transport boundary
+    - coordinate gap completeness
+    - negative sweep
+  - delta_from_previous_round:
+    - no unresolved findings remain
+    - `14` residual owner wording closed
+
+## Consensus
+
+- status: `closed`
+- reviewers_with_no_unresolved_findings:
+  - A1
+  - A2
+  - A3
+  - A4
+- residual_risk:
+  - gap/degradation severity table must not evolve into a second diagnostic priority system.
+  - implementation adapters must prove `selectionHints` and `contextRefs` do not feed projection truth.
+  - export guards and text sweep must prove internal adapter did not become public surface or second CLI/DVTools protocol.
+- next_step:
+  - write implementation plan under `specs/165-runtime-workbench-kernel/plan.md` only after user asks to implement.

@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Playground 编辑器智能提示（Logix 全量补全）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-29  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-29
 **Feature**: `specs/061-playground-editor-intellisense/spec.md`
 
 ## Content Quality

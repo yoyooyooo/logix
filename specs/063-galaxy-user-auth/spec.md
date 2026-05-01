@@ -1,8 +1,8 @@
 # Feature Specification: logix-galaxy-api 登录与用户模块
 
-**Feature Branch**: `[063-galaxy-user-auth]`  
-**Created**: 2025-12-30  
-**Status**: Draft  
+**Feature Branch**: `[063-galaxy-user-auth]`
+**Created**: 2025-12-30
+**Status**: Draft
 **Input**: User description: "给 apps/logix-galaxy-api 加个登录和用户模块，用 $postgresql-table-design 设计表结构"
 
 ## User Scenarios & Testing _(mandatory)_

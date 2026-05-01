@@ -8,7 +8,7 @@ info:
     schema-first documentation for runtime/devtools/sandbox alignment and does not imply a
     specific transport or server implementation.
 paths:
-  /events/trait-converge:
+  /events/field-converge:
     get:
       summary: Fetch converge decision events (DynamicTrace extension)
       responses:
@@ -19,7 +19,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: ./schemas/trait-converge-event.schema.json
+                  $ref: ./schemas/field-converge-event.schema.json
   /evidence-package/summary/converge:
     get:
       summary: Converge summary attachment (EvidencePackage.summary.converge)

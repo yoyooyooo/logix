@@ -1,7 +1,7 @@
 # Specification Quality Checklist: 018 定期自校准（库侧默认值审计 + 用户侧运行时自校准）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-20  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-20
 **Feature**: `specs/018-periodic-self-calibration/spec.md`
 
 ## Content Quality

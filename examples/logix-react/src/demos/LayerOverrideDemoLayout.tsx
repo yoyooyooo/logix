@@ -1,8 +1,9 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import React from 'react'
-import { Effect, Layer, ManagedRuntime, ServiceMap } from 'effect'
-import { RuntimeProvider, useModule, useRuntime } from '@logixjs/react'
+import { Effect, Layer, ServiceMap } from 'effect'
+import { RuntimeProvider, fieldValue, useModule, useRuntime, useSelector } from '@logixjs/react'
 import * as Logix from '@logixjs/core'
-import { StepCounterDef, StepCounterModule } from '../modules/stepCounter'
+import { StepCounter, StepCounterProgram } from '../modules/stepCounter'
 
 interface StepConfig {
   readonly step: number
@@ -13,23 +14,21 @@ const StepConfigTag = ServiceMap.Service<StepConfig>('@examples/StepConfig')
 const BaseStepLayer = Layer.succeed(StepConfigTag, { step: 1 })
 const BigStepLayer = Layer.succeed(StepConfigTag, { step: 5 })
 
-const appRuntime = ManagedRuntime.make(
-  Layer.mergeAll(
-    Logix.Debug.runtimeLabel('LayerOverrideDemo'),
-    Logix.Debug.devtoolsHubLayer(),
-    StepCounterModule.impl.layer,
-  ),
-)
+const appRuntime = Logix.Runtime.make(StepCounterProgram, {
+  label: 'LayerOverrideDemo',
+  devtools: true,
+  layer: Layer.mergeAll(CoreDebug.runtimeLabel('LayerOverrideDemo')),
+})
 
 const StepCounterPanel: React.FC<{ label: string }> = ({ label }) => {
   const runtime = useRuntime()
-  const value = useModule(StepCounterDef, (s) => s.value)
+  const value = useSelector(StepCounter.tag, fieldValue('value'))
 
   const handleStepIncrement = React.useCallback(() => {
     void runtime.runPromise(
       Effect.gen(function* () {
         const cfg = yield* Effect.service(StepConfigTag).pipe(Effect.orDie)
-        const counter = yield* Effect.service(StepCounterDef.tag).pipe(Effect.orDie)
+        const counter = yield* Effect.service(StepCounter.tag).pipe(Effect.orDie)
         for (let i = 0; i < cfg.step; i++) {
           yield* counter.dispatch({ _tag: 'inc', payload: undefined })
         }
@@ -45,11 +44,11 @@ const StepCounterPanel: React.FC<{ label: string }> = ({ label }) => {
             {label}
           </span>
           <span className="text-xs text-gray-500 dark:text-gray-400">
-            Step 配置来自当前 <code className="font-mono">RuntimeProvider.layer</code>
+            Step 配置来自当前 subtree layer
           </span>
         </div>
         <span className="px-2 py-0.5 text-[10px] rounded-full bg-sky-50 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300 font-medium">
-          StepCounterModule
+          StepCounterProgram
         </span>
       </div>
 
@@ -75,16 +74,12 @@ export const LayerOverrideDemoLayout: React.FC = () => {
       <div className="space-y-8">
         <div className="border-b border-gray-200 dark:border-gray-800 pb-6">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            RuntimeProvider.layer · Env 差异化示例
+            Host Projection · Env Override
           </h2>
           <p className="text-gray-600 dark:text-gray-400 max-w-3xl leading-relaxed">
-            该示例展示了使用{' '}
+            该示例展示 React 宿主如何用 subtree layer 为不同子树提供差异化 Env。两个区域共享同一个{' '}
             <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono text-pink-600 dark:text-pink-400">
-              RuntimeProvider.layer
-            </code>{' '}
-            为不同子树提供差异化的 Env。两个区域共享同一个{' '}
-            <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono text-pink-600 dark:text-pink-400">
-              StepCounterModule
+              StepCounterProgram
             </code>{' '}
             实例，但读取到的{' '}
             <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono text-pink-600 dark:text-pink-400">
@@ -95,10 +90,10 @@ export const LayerOverrideDemoLayout: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <StepCounterPanel label="根 Provider · Step = 1" />
+          <StepCounterPanel label="根 Provider 子树 · Step = 1" />
 
           <RuntimeProvider layer={BigStepLayer}>
-            <StepCounterPanel label="嵌套 Provider · Step = 5" />
+            <StepCounterPanel label="嵌套 Provider 子树 · Step = 5" />
           </RuntimeProvider>
         </div>
       </div>

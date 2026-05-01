@@ -1,6 +1,6 @@
 # Implementation Plan: 046 After 045 路线图（core-ng 长期演进与切换门槛）
 
-**Branch**: `046-core-ng-roadmap` | **Date**: 2025-12-27 | **Spec**: `specs/046-core-ng-roadmap/spec.md`  
+**Branch**: `046-core-ng-roadmap` | **Date**: 2025-12-27 | **Spec**: `specs/046-core-ng-roadmap/spec.md`
 **Input**: Feature specification from `specs/046-core-ng-roadmap/spec.md`
 
 ## Summary
@@ -8,7 +8,7 @@
 目标：把 “After 045” 从 drafts 提升为 specs 级正式规划：在不引入并行真相源的前提下，给出**可扫描的里程碑与硬门槛**，明确：
 
 - 做完 `specs/045-dual-kernel-contract/` 后应该怎么走（优先级/里程碑/退出条件）
-- `specs/039-trait-converge-int-exec-evidence/` 的后续处置与复用策略
+- `specs/039-field-converge-int-exec-evidence/` 的后续处置与复用策略
 - core-ng 的进阶**不以** Vite/AOT 等工具链为前置条件；工具链作为可选加速器，按触发条件另立 spec 推进
 - 046 作为 NG 路线“总控 spec”：用 spec registry 统一调度后续 NG specs（避免草案碎片与并行真相源）
 
@@ -25,14 +25,14 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.8.x（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/*`（含 `@logixjs/core` / `@logixjs/react`）  
-**Storage**: N/A（本特性产物为 specs 文档；不引入持久化）  
-**Testing**: N/A（046 本身主要交付文档；验收采用人工 review：`specs/046-core-ng-roadmap/checklists/*`）。但 `Policy Update / 单内核默认（2025-12-31）` 触及 runtime 装配默认策略与 consumer 默认值：必须通过 `pnpm typecheck` / `pnpm lint` / `pnpm test`，并补齐 `$logix-perf-evidence`（默认路径 Node + Browser before/after/diff）  
-**Target Platform**: Node.js 20+ + modern browsers（证据门禁包含 ≥1 条 headless browser 跑道）  
-**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）  
-**Performance Goals**: 对后续“切换默认内核/核心路径重写”的预算门槛：suites/budgets 统一以 matrix.json 为裁决（至少覆盖 `priority=P1`；硬结论至少 `profile=default`；以 perf diff 的 `comparability.comparable=true` 且 `summary.regressions==0` 作为默认判据）  
-**Constraints**: 统一最小 IR（Static IR + Dynamic Trace）、稳定锚点（`instanceId/txnSeq/opSeq`）、事务窗口禁 IO/async、`diagnostics=off` 近零成本、禁止使用 “v3” 残留叫法  
+**Language/Version**: TypeScript 5.8.x（ESM）
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/*`（含 `@logixjs/core` / `@logixjs/react`）
+**Storage**: N/A（本特性产物为 specs 文档；不引入持久化）
+**Testing**: N/A（046 本身主要交付文档；验收采用人工 review：`specs/046-core-ng-roadmap/checklists/*`）。但 `Policy Update / 单内核默认（2025-12-31）` 触及 runtime 装配默认策略与 consumer 默认值：必须通过 `pnpm typecheck` / `pnpm lint` / `pnpm test`，并补齐 `$logix-perf-evidence`（默认路径 Node + Browser before/after/diff）
+**Target Platform**: Node.js 20+ + modern browsers（证据门禁包含 ≥1 条 headless browser 跑道）
+**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）
+**Performance Goals**: 对后续“切换默认内核/核心路径重写”的预算门槛：suites/budgets 统一以 matrix.json 为裁决（至少覆盖 `priority=P1`；硬结论至少 `profile=default`；以 perf diff 的 `comparability.comparable=true` 且 `summary.regressions==0` 作为默认判据）
+**Constraints**: 统一最小 IR（Static IR + Dynamic Trace）、稳定锚点（`instanceId/txnSeq/opSeq`）、事务窗口禁 IO/async、`diagnostics=off` 近零成本、禁止使用 “v3” 残留叫法
 **Scale/Scope**: 本特性只交付“路线图与门槛”；不直接实现内核重写/优化本体
 
 ## Constitution Check
@@ -42,7 +42,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 ### Answers (Pre-Design)
 
 - **Intent → Flow/Logix → Code → Runtime**：本特性属于“Runtime 演进治理层”，目标是明确“Runtime 的内核替换/优化如何被证据化与契约化”，不改变业务侧 Intent/Flow 表达。
-- **Docs-first & SSoT**：本路线图以 `specs/045-dual-kernel-contract/`（契约分支点）与 `specs/039-trait-converge-int-exec-evidence/`（热路径证据达标）为裁决锚点；NG 架构探索仍留在 `docs/specs/drafts/topics/logix-ng-architecture/`，不作为裁决。
+- **Docs-first & SSoT**：本路线图以 `specs/045-dual-kernel-contract/`（契约分支点）与 `specs/039-field-converge-int-exec-evidence/`（热路径证据达标）为裁决锚点；NG 架构探索仍留在 `docs/specs/drafts/topics/logix-ng-architecture/`，不作为裁决。
 - **Contracts**：不新增对外 API；只规定后续特性必须复用 Kernel Contract（045）与统一最小 IR/证据协议（005/016/020）。
 - **IR & anchors**：不改变统一最小 IR；路线图把“跨内核对照验证”硬绑定到稳定锚点与可序列化证据。
 - **Deterministic identity**：要求后续演进保持稳定 id 去随机化；任何漂移必须被对照验证 harness 捕获。
@@ -66,7 +66,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 结论（路线图将固化）：
 
-1. **短期（045 之后的首要）**：继续推进 `specs/039-trait-converge-int-exec-evidence/`，把当前内核的“整型执行链路 + 证据达标”做到可交付状态，作为你放心做平台的性能地基。
+1. **短期（045 之后的首要）**：继续推进 `specs/039-field-converge-int-exec-evidence/`，把当前内核的“整型执行链路 + 证据达标”做到可交付状态，作为你放心做平台的性能地基。
 2. **中期（core-ng 逐步覆盖）**：039 的“证据跑道与 guardrails”复用为 core-ng 的负优化拦截门槛；core-ng 的实现可以选择复用/重写，但必须通过同口径对照验证与 perf diff。
 3. **长期（core-ng 成为默认后）**：当不再需要继续投资当前内核的 converge 热路径时，039 可视为“达标冻结”并停止扩展；但 spec 与 perf 证据保留，作为历史裁决与回归对照基线（不删除）。
 
@@ -135,9 +135,9 @@ examples/logix-sandbox-mvp/
 
 # 规划与引用既有 specs / drafts
 specs/045-dual-kernel-contract/
-specs/039-trait-converge-int-exec-evidence/
-specs/043-trait-converge-time-slicing/
-specs/044-trait-converge-diagnostics-sampling/
+specs/039-field-converge-int-exec-evidence/
+specs/043-field-converge-time-slicing/
+specs/044-field-converge-diagnostics-sampling/
 docs/specs/drafts/topics/logix-ng-architecture/
 ```
 

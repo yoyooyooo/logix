@@ -1,10 +1,10 @@
 import React from 'react'
 import { Effect, Layer, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
-import { RuntimeProvider, useModule, useRuntime } from '@logixjs/react'
-import { CounterDef, CounterModule } from '../modules/counter'
+import { RuntimeProvider, fieldValue, useModule, useRuntime, useSelector } from '@logixjs/react'
+import { Counter, CounterProgram } from '../modules/counter'
 
-// 演示“分形 Runtime Tree”：全局 Runtime + 局部 RuntimeProvider layer 注入。
+// 演示 host projection：同一 Runtime 上叠加不同 subtree layer。
 
 // 简单的 Theme 服务，用于观察 Layer 注入前后的差异。
 interface ThemeService {
@@ -16,14 +16,14 @@ const ThemeTag = ServiceMap.Service<ThemeService>('@examples/ThemeService')
 const GlobalThemeLayer = Layer.succeed(ThemeTag, { name: 'GlobalTheme' })
 const FeatureThemeLayer = Layer.succeed(ThemeTag, { name: 'FeatureTheme' })
 
-// 应用级 Runtime：承载 Debug / Devtools 与业务模块，Theme 通过 RuntimeProvider.layer 注入，
-// 便于在不同 Provider 子树中组合不同的 Env（例如 ThemeService）而共用同一 Runtime。
-const appRuntime = Logix.Runtime.make(CounterModule, {
+// 应用级 Runtime：承载 Debug / Devtools 与业务模块，Theme 通过 subtree layer 注入，
+// 便于在不同 Provider 子树中组合不同 Env（例如 ThemeService）而共用同一 Runtime。
+const appRuntime = Logix.Runtime.make(CounterProgram, {
   label: 'FractalRuntimeDemo',
   devtools: true,
 })
 
-const ThemeProbe: React.FC<{ label: string }> = ({ label }) => {
+const ThemeScopePanel: React.FC<{ label: string }> = ({ label }) => {
   const runtime = useRuntime()
   const [themeName, setThemeName] = React.useState<string>('(unknown)')
 
@@ -36,8 +36,8 @@ const ThemeProbe: React.FC<{ label: string }> = ({ label }) => {
     )
   }, [runtime])
 
-  const counter = useModule(CounterDef)
-  const value = useModule(CounterDef, (s) => s.value)
+  const counter = useModule(Counter.tag)
+  const value = useSelector(Counter.tag, fieldValue('value'))
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 flex flex-col gap-3">
@@ -51,7 +51,7 @@ const ThemeProbe: React.FC<{ label: string }> = ({ label }) => {
           </span>
         </div>
         <span className="px-2 py-0.5 text-[10px] rounded-full bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-medium">
-          CounterModule
+          CounterProgram
         </span>
       </div>
 
@@ -85,14 +85,13 @@ export const FractalRuntimeLayout: React.FC = () => {
     <RuntimeProvider runtime={appRuntime} layer={GlobalThemeLayer}>
       <div className="space-y-8">
         <div className="border-b border-gray-200 dark:border-gray-800 pb-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">分形 Runtime Tree 示例</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Host Projection · Nested Providers</h2>
           <p className="text-gray-600 dark:text-gray-400 max-w-3xl leading-relaxed">
-            本示例展示了如何在应用级 Runtime 上注入全局主题 Layer， 并在某个子树下通过嵌套 RuntimeProvider + 额外 Layer
-            覆盖主题。 两个区域共享同一个{' '}
+            本示例展示 React 宿主如何在同一 Runtime 上叠加 subtree layer。两个区域共享同一个{' '}
             <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono text-pink-600 dark:text-pink-400">
-              CounterModule
+              CounterProgram
             </code>
-            ， 但读取到的{' '}
+            ，但读取到的{' '}
             <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono text-pink-600 dark:text-pink-400">
               ThemeService
             </code>{' '}
@@ -101,10 +100,10 @@ export const FractalRuntimeLayout: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <ThemeProbe label="全局 Runtime（根 Provider）" />
+          <ThemeScopePanel label="根 Provider 子树" />
 
           <RuntimeProvider layer={FeatureThemeLayer}>
-            <ThemeProbe label="特性子树 Runtime（嵌套 Provider + Layer）" />
+            <ThemeScopePanel label="嵌套 Provider 子树" />
           </RuntimeProvider>
         </div>
       </div>

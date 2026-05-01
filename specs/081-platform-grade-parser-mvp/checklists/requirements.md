@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Platform-Grade Parser MVP（受限子集解析器：锚点索引）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2026-01-09  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2026-01-09
 **Feature**: `specs/081-platform-grade-parser-mvp/spec.md`
 
 ## Content Quality

@@ -1,8 +1,8 @@
 # Feature Specification: Source Auto-Trigger Kernel（基于 dirtyPaths+deps 的受限控制律）
 
-**Feature Branch**: `076-logix-source-auto-trigger-kernel`  
-**Created**: 2026-01-05  
-**Status**: Draft  
+**Feature Branch**: `076-logix-source-auto-trigger-kernel`
+**Created**: 2026-01-05
+**Status**: Draft
 **Input**: 073 完成后的新视角（tick=观测参考系）+ 当前 Query/Form 的 source 触发胶水痛点（反射式解释 triggers）。
 
 **Model (SSoT)**: `docs/ssot/platform/foundation/01-the-one.md`（把 source auto-trigger 视为受限 `Π_source`）。
@@ -11,9 +11,9 @@
 
 当前仓库里，“source 自动刷新”的语义处于一个尴尬的夹层：
 
-- `StateTrait.source` 的声明是 **静态绑定事实**（resource + deps + key + concurrency），但 Query/Form 仍需要在 Logic 层写大量 wiring：
-  - `packages/logix-query/src/internal/logics/auto-trigger.ts`：监听 Action（`setParams/setUi`）→ 计算 keyHash → debounce → 决定是否触发 refresh（当前写法是 `$.traits.source.refresh(...)`；目标口径是 `callById('logix/kernel/sourceRefresh')` 进入可解释链路；`call(KernelPorts.sourceRefresh)` 仅作为 TS sugar）。
-  - `packages/logix-core/src/internal/trait-lifecycle/index.ts#makeSourceWiring`：运行时反查 traits entries（`meta.triggers/meta.deps`）→ onStart + refreshOnKeyChange（线性扫描）。
+- `FieldKernel.source` 的声明是 **静态绑定事实**（resource + deps + key + concurrency），但 Query/Form 仍需要在 Logic 层写大量 wiring：
+  - `packages/logix-query/src/internal/logics/auto-trigger.ts`：监听 Action（`setParams/setUi`）→ 计算 keyHash → debounce → 决定是否触发 refresh（当前写法是 `$.fields.source.refresh(...)`；目标口径是 `callById('logix/kernel/sourceRefresh')` 进入可解释链路；`call(KernelPorts.sourceRefresh)` 仅作为 TS sugar）。
+  - `packages/logix-core/src/internal/field-lifecycle/index.ts#makeSourceWiring`：运行时反查 fields entries（`meta.triggers/meta.deps`）→ onStart + refreshOnKeyChange（线性扫描）。
 - 结果是 “把动态流程写死在静态 meta 里，然后再反射式地解释它”：
   - 动态能力被困在 `onMount/onKeyChange/debounceMs` 这种不完整的集合里；
   - 一旦需要更真实的时序（例如 onMount 后 delay 3s，再 refresh），就只能退回 `$.logic` 手写 watcher；
@@ -30,14 +30,14 @@
 ```
 
 - 它只做一件事：在“deps 可能影响 key”的情况下触发 `source refresh`（通过 `callById('logix/kernel/sourceRefresh')` 进入可 IR 化/可回放链路；`call(KernelPorts.sourceRefresh)` 仅作为 TS sugar）；
-- 它的可表达性必须受限（避免把通用 Flow 重新塞回 trait meta）；
+- 它的可表达性必须受限（避免把通用 Flow 重新塞回 field meta）；
 - 但它必须被内核化：可 IR 化、可诊断、可预算、可回放，并对齐 tick 参考系。
 
 ## Goals / Scope
 
 ### In Scope
 
-- 为 `StateTrait.source` 提供 **内核级自动触发**（Source Auto-Trigger Kernel）：
+- 为 `FieldKernel.source` 提供 **内核级自动触发**（Source Auto-Trigger Kernel）：
   - onMount：模块启动后触发一次（可配置关闭）；
   - onDepsChange：deps 变化后触发（可配置关闭）；
   - debounce：作为受限时间算子，仅用于 onDepsChange 的抖动控制（不是通用时间 DSL）。
@@ -50,7 +50,7 @@
   - diagnostics=light/sampled/full 允许输出 Slim 事件：触发原因、受影响 source 数、debounce 合并统计等。
 - 迁移目标：
   - `@logixjs/query` 不再需要 `auto-trigger` 逻辑；
-  - `TraitLifecycle.makeSourceWiring` 从“公共依赖点”退回为内部实现或被替换（避免下游反射 traits）。
+  - `FieldLifecycle.makeSourceWiring` 从“公共依赖点”退回为内部实现或被替换（避免下游反射 fields）。
 
 ### Out of Scope
 
@@ -88,7 +88,7 @@
 
 ## Acceptance Criteria
 
-- Feature 包不再需要在 Logic 层“监听 action → 反查 trait → 决定 refresh”（该行为被内核化且可解释）。
+- Feature 包不再需要在 Logic 层“监听 action → 反查 field → 决定 refresh”（该行为被内核化且可解释）。
 - auto-trigger 的触发原因与结果可被诊断系统解释（最小证据链：reason + tickSeq + sourceCount）。
 - 事务窗口禁 IO 不被破坏：auto-trigger 只能 enqueue/dispatch，IO 在窗口外由既有 source refresh 运行时执行。
 - 存在明确升级路径：受限策略在本特性内核化；自由工作流由 075 提供。

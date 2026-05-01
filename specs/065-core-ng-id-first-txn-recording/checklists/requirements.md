@@ -1,7 +1,7 @@
 # Requirements Checklist: core-ng 整型化 Phase 2（事务/录制 id-first）
 
-**Purpose**: 作为 `spec.md` 的规格质量门，确保需求可验收、可测试、无明显歧义，并对性能/可诊断性给出可证据化口径。  
-**Created**: 2025-12-31  
+**Purpose**: 作为 `spec.md` 的规格质量门，确保需求可验收、可测试、无明显歧义，并对性能/可诊断性给出可证据化口径。
+**Created**: 2025-12-31
 **Feature**: `specs/065-core-ng-id-first-txn-recording/spec.md`
 
 ## Completeness

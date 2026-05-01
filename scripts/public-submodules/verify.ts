@@ -57,6 +57,18 @@ const isPublicSubmoduleFileName = (fileName: string): boolean => {
   return isPascalModuleName(base);
 };
 
+const isGeneratedJsSidecar = (srcDir: string, fileName: string): boolean => {
+  const jsExtensions = [".js", ".jsx"];
+  const extension = jsExtensions.find((ext) => fileName.endsWith(ext));
+  if (!extension) return false;
+
+  const base = fileName.slice(0, -extension.length);
+  return (
+    fs.existsSync(path.resolve(srcDir, `${base}.ts`)) ||
+    fs.existsSync(path.resolve(srcDir, `${base}.tsx`))
+  );
+};
+
 const extractExportTargets = (value: unknown): ReadonlyArray<string> => {
   if (typeof value === "string") return [value];
   if (value === null) return [];
@@ -191,6 +203,7 @@ const checkSrcRootGovernance = (
     if (entry.isFile()) {
       if (name === "index.ts" || name === "index.tsx" || name === "global.d.ts")
         continue;
+      if (isGeneratedJsSidecar(srcDir, name)) continue;
       if (isPublicSubmoduleFileName(name)) continue;
 
       violations.push({

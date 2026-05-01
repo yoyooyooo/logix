@@ -4,7 +4,7 @@ import {
   type DowngradeReason as JsonDowngradeReason,
   type JsonValue,
   type JsonValueProjectionStats,
-} from '../../observability/jsonValue.js'
+} from '../../protocol/jsonValue.js'
 import type * as ReplayLog from './ReplayLog.js'
 import {
   toSerializableErrorSummary,
@@ -13,6 +13,12 @@ import {
 } from './errorSummary.js'
 import * as EffectOpCore from './EffectOpCore.js'
 import type * as ProcessProtocol from './process/protocol.js'
+import { getCurrentRuntimeHotLifecycleOwner } from './hotLifecycle/context.js'
+import {
+  HOT_LIFECYCLE_EVIDENCE_TYPE,
+  type HotLifecycleEvidence,
+  type RuntimeHotLifecycleOwner,
+} from './hotLifecycle/types.js'
 
 export interface TriggerRef {
   readonly kind: string
@@ -23,7 +29,7 @@ export interface TriggerRef {
 type TraceEventType = `trace:${string}`
 type GenericTraceEventType = Exclude<
   TraceEventType,
-  'trace:trait:converge' | 'trace:trait:check' | 'trace:trait:validate'
+  'trace:field:converge' | 'trace:field:check' | 'trace:field:validate'
 >
 
 /**
@@ -133,11 +139,11 @@ export type Event =
        */
       readonly originName?: string
       /**
-       * Reserved: Trait converge summary (for Devtools window-level stats / TopN costs / degrade reasons, etc.).
+       * Reserved: Field converge summary (for Devtools window-level stats / TopN costs / degrade reasons, etc.).
        * - Phase 2: field slot only; structure is not fixed.
-       * - Later phases will align with the Trait/Replay event model into an explainable structure.
+       * - Later phases will align with the field/replay event model into an explainable structure.
        */
-      readonly traitSummary?: unknown
+      readonly fieldSummary?: unknown
       /**
        * Reserved: replay event associated with this transaction (re-emit source of truth from ReplayLog).
        * - Phase 2: field slot only.
@@ -183,6 +189,7 @@ export type Event =
       readonly phase?: 'init' | 'run' | 'destroy' | 'platform'
       readonly hook?: 'initRequired' | 'start' | 'destroy' | 'suspend' | 'resume' | 'reset' | 'unknown'
       readonly taskId?: string
+      readonly readinessId?: string
       readonly opSeq?: number
       readonly origin?: string
       readonly txnSeq?: number
@@ -231,7 +238,7 @@ export type Event =
    * - Only the type prefix and moduleId are standardized; payload shape is defined by higher layers (e.g. spanId/attributes in data).
    */
   | {
-      readonly type: 'trace:trait:converge'
+      readonly type: 'trace:field:converge'
       readonly moduleId?: string
       readonly instanceId?: string
       readonly data: JsonValue
@@ -241,7 +248,7 @@ export type Event =
       readonly timestamp?: number
     }
   | {
-      readonly type: 'trace:trait:check'
+      readonly type: 'trace:field:check'
       readonly moduleId?: string
       readonly instanceId?: string
       readonly data: JsonValue
@@ -251,7 +258,7 @@ export type Event =
       readonly timestamp?: number
     }
   | {
-      readonly type: 'trace:trait:validate'
+      readonly type: 'trace:field:validate'
       readonly moduleId?: string
       readonly instanceId?: string
       readonly data: JsonValue
@@ -270,24 +277,30 @@ export type Event =
       readonly runtimeLabel?: string
       readonly timestamp?: number
     }
+  | {
+      readonly type: typeof HOT_LIFECYCLE_EVIDENCE_TYPE
+      readonly event: HotLifecycleEvidence
+      readonly runtimeLabel?: string
+      readonly timestamp?: number
+    }
 
 export interface Sink {
   readonly record: (event: Event) => Effect.Effect<void>
 }
-export const currentDebugSinks = ServiceMap.Reference<ReadonlyArray<Sink>>('@logixjs/core/Debug.currentDebugSinks', {
+export const currentDebugSinks = ServiceMap.Reference<ReadonlyArray<Sink>>('@logixjs/core/repo-internal/debug-api.currentDebugSinks', {
   defaultValue: () => [],
 })
-export const currentRuntimeLabel = ServiceMap.Reference<string | undefined>('@logixjs/core/Debug.currentRuntimeLabel', {
+export const currentRuntimeLabel = ServiceMap.Reference<string | undefined>('@logixjs/core/repo-internal/debug-api.currentRuntimeLabel', {
   defaultValue: () => undefined,
 })
-export const currentTxnId = ServiceMap.Reference<string | undefined>('@logixjs/core/Debug.currentTxnId', {
+export const currentTxnId = ServiceMap.Reference<string | undefined>('@logixjs/core/repo-internal/debug-api.currentTxnId', {
   defaultValue: () => undefined,
 })
-export const currentOpSeq = ServiceMap.Reference<number | undefined>('@logixjs/core/Debug.currentOpSeq', {
+export const currentOpSeq = ServiceMap.Reference<number | undefined>('@logixjs/core/repo-internal/debug-api.currentOpSeq', {
   defaultValue: () => undefined,
 })
 export type DiagnosticsLevel = 'off' | 'light' | 'sampled' | 'full'
-export const currentDiagnosticsLevel = ServiceMap.Reference<DiagnosticsLevel>('@logixjs/core/Debug.currentDiagnosticsLevel', {
+export const currentDiagnosticsLevel = ServiceMap.Reference<DiagnosticsLevel>('@logixjs/core/repo-internal/debug-api.currentDiagnosticsLevel', {
   defaultValue: () => 'off',
 })
 
@@ -296,7 +309,7 @@ export const diagnosticsLevel = (level: DiagnosticsLevel): Layer.Layer<any, neve
 
 export type DiagnosticsMaterialization = 'eager' | 'lazy'
 export const currentDiagnosticsMaterialization = ServiceMap.Reference<DiagnosticsMaterialization>(
-  '@logixjs/core/Debug.currentDiagnosticsMaterialization',
+  '@logixjs/core/repo-internal/debug-api.currentDiagnosticsMaterialization',
   {
     defaultValue: () => 'eager',
   },
@@ -306,14 +319,14 @@ export const diagnosticsMaterialization = (mode: DiagnosticsMaterialization): La
   Layer.succeed(currentDiagnosticsMaterialization, mode) as Layer.Layer<any, never, never>
 
 export type TraceMode = 'off' | 'on'
-export const currentTraceMode = ServiceMap.Reference<TraceMode>('@logixjs/core/Debug.currentTraceMode', {
+export const currentTraceMode = ServiceMap.Reference<TraceMode>('@logixjs/core/repo-internal/debug-api.currentTraceMode', {
   defaultValue: () => 'on',
 })
 
 export const traceMode = (mode: TraceMode): Layer.Layer<any, never, never> =>
   Layer.succeed(currentTraceMode, mode) as Layer.Layer<any, never, never>
 
-export interface TraitConvergeDiagnosticsSamplingConfig {
+export interface FieldConvergeDiagnosticsSamplingConfig {
   /**
    * Sample once every N txns (deterministic, based on stable txnSeq).
    * - 1: sample every txn (timing granularity similar to full, while keeping payload slim)
@@ -325,8 +338,8 @@ export interface TraitConvergeDiagnosticsSamplingConfig {
   readonly topK: number
 }
 
-export const currentTraitConvergeDiagnosticsSampling = ServiceMap.Reference<TraitConvergeDiagnosticsSamplingConfig>(
-  '@logixjs/core/Debug.currentTraitConvergeDiagnosticsSampling',
+export const currentFieldConvergeDiagnosticsSampling = ServiceMap.Reference<FieldConvergeDiagnosticsSamplingConfig>(
+  '@logixjs/core/repo-internal/debug-api.currentFieldConvergeDiagnosticsSampling',
   {
     defaultValue: () => ({
       sampleEveryN: 32,
@@ -335,10 +348,10 @@ export const currentTraitConvergeDiagnosticsSampling = ServiceMap.Reference<Trai
   },
 )
 
-export const traitConvergeDiagnosticsSampling = (
-  config: TraitConvergeDiagnosticsSamplingConfig,
+export const fieldConvergeDiagnosticsSampling = (
+  config: FieldConvergeDiagnosticsSamplingConfig,
 ): Layer.Layer<any, never, never> =>
-  Layer.succeed(currentTraitConvergeDiagnosticsSampling, config) as Layer.Layer<any, never, never>
+  Layer.succeed(currentFieldConvergeDiagnosticsSampling, config) as Layer.Layer<any, never, never>
 
 export const appendSinks = (sinks: ReadonlyArray<Sink>): Layer.Layer<any, never, never> =>
   Layer.effect(
@@ -354,9 +367,9 @@ export type RuntimeDebugEventKind =
   | 'state'
   | 'service'
   | 'process'
-  | 'trait-computed'
-  | 'trait-link'
-  | 'trait-source'
+  | 'field-computed'
+  | 'field-link'
+  | 'field-source'
   | 'lifecycle'
   | 'react-render'
   | 'devtools'
@@ -442,6 +455,7 @@ export type TxnLaneEvidence = {
 }
 
 let nextGlobalEventSeq = 0
+const registeredDebugSinkResourceIds = new Set<string>()
 
 export const clearRuntimeDebugEventSeq = (): void => {
   nextGlobalEventSeq = 0
@@ -455,6 +469,26 @@ const nextEventSeq = (): number => {
 const makeEventId = (instanceId: string, eventSeq: number): string => `${instanceId}::e${eventSeq}`
 
 type DowngradeReason = JsonDowngradeReason | ErrorDowngradeReason | 'budget_exceeded'
+
+const registerDebugSinkResource = (owner: RuntimeHotLifecycleOwner, event: Event): void => {
+  const status = owner.getStatus()
+  if (status.disposed) return
+  const resourceId = `${owner.ownerId}::debug-sink:${status.runtimeInstanceId}`
+  if (registeredDebugSinkResourceIds.has(resourceId)) return
+
+  registeredDebugSinkResourceIds.add(resourceId)
+  owner.registry.register({
+    ownerId: owner.ownerId,
+    resourceId,
+    category: 'debug-sink',
+    moduleId: (event as any).moduleId,
+    moduleInstanceId: (event as any).instanceId,
+    cleanup: () =>
+      Effect.sync(() => {
+        registeredDebugSinkResourceIds.delete(resourceId)
+      }),
+  })
+}
 
 const mergeDowngrade = (
   current: DowngradeReason | undefined,
@@ -474,7 +508,7 @@ const stripDirtyRootPaths = (value: unknown): unknown => {
   return rest
 }
 
-const stripTraitConvergeLegacyFields = (value: JsonValue): JsonValue => {
+const stripFieldConvergeLegacyFields = (value: JsonValue): JsonValue => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return value
 
   const anyValue = value as any
@@ -490,7 +524,7 @@ const stripTraitConvergeLegacyFields = (value: JsonValue): JsonValue => {
   } as JsonValue
 }
 
-const stripTraitConvergeLight = (value: JsonValue): JsonValue => {
+const stripFieldConvergeLight = (value: JsonValue): JsonValue => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return value
 
   const anyValue = value as any
@@ -511,7 +545,7 @@ const stripTraitConvergeLight = (value: JsonValue): JsonValue => {
   return (dirtySlim ? { ...rest, dirty: dirtySlim } : rest) as JsonValue
 }
 
-const stripTraitConvergeSampled = (value: JsonValue): JsonValue => {
+const stripFieldConvergeSampled = (value: JsonValue): JsonValue => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return value
 
   const anyValue = value as any
@@ -897,6 +931,12 @@ export const defaultLayer = errorOnlyLayer
 export const record = (event: Event) =>
   Effect.gen(function* () {
     const sinks = yield* Effect.service(currentDebugSinks)
+    if (sinks.length > 0) {
+      const owner = yield* getCurrentRuntimeHotLifecycleOwner()
+      if (owner) {
+        registerDebugSinkResource(owner, event)
+      }
+    }
 
     // Fast path: production default installs errorOnlyLayer (sinks=1).
     // Avoid paying diagnostics FiberRef + enrichment costs for high-frequency events that are always dropped by errorOnly.
@@ -1085,6 +1125,23 @@ export const toRuntimeDebugEventRef = (
     return { ...ref, downgrade: { reason: downgrade } }
   }
 
+  if (event.type === HOT_LIFECYCLE_EVIDENCE_TYPE) {
+    const e = event as Extract<Event, { readonly type: typeof HOT_LIFECYCLE_EVIDENCE_TYPE }>
+    const metaProjection = projectJsonValue(e.event)
+    options?.onMetaProjection?.({
+      stats: metaProjection.stats,
+      downgrade: metaProjection.downgrade,
+    })
+    downgrade = mergeDowngrade(downgrade, metaProjection.downgrade)
+    return withDowngrade({
+      ...base,
+      eventId: e.event.eventId,
+      kind: 'lifecycle',
+      label: HOT_LIFECYCLE_EVIDENCE_TYPE,
+      meta: metaProjection.value,
+    })
+  }
+
   switch (event.type) {
     case 'module:init':
       return withDowngrade({
@@ -1162,7 +1219,7 @@ export const toRuntimeDebugEventRef = (
           : { state: e.state, ...slimMetaInput }
         : isLazyMaterialization
           ? slimMetaInput
-          : { state: e.state, ...slimMetaInput, traitSummary: e.traitSummary, replayEvent: e.replayEvent }
+          : { state: e.state, ...slimMetaInput, fieldSummary: e.fieldSummary, replayEvent: e.replayEvent }
 
       const metaProjection = isLazyMaterialization
         ? {
@@ -1264,6 +1321,7 @@ export const toRuntimeDebugEventRef = (
             name: e.hook,
             hook: e.hook,
             taskId: e.taskId,
+            readinessId: e.readinessId,
             origin: e.origin,
             txnSeq: e.txnSeq,
             opSeq: e.opSeq,
@@ -1478,7 +1536,7 @@ export const toRuntimeDebugEventRef = (
               dispatchActionCount: data?.dispatchActionCount,
               bodyShellMs: data?.bodyShellMs,
               asyncEscapeGuardMs: data?.asyncEscapeGuardMs,
-              traitConvergeMs: data?.traitConvergeMs,
+              fieldConvergeMs: data?.fieldConvergeMs,
               scopedValidateMs: data?.scopedValidateMs,
               sourceSyncMs: data?.sourceSyncMs,
               commit: data?.commit
@@ -1635,15 +1693,15 @@ export const toRuntimeDebugEventRef = (
         })
       }
 
-      // trace:trait:converge: converge evidence must be exportable (JsonValue hard gate) and trims heavy fields in light tier.
-      if (event.type === 'trace:trait:converge') {
-        const data = (event as Extract<Event, { readonly type: 'trace:trait:converge' }>).data
+      // trace:field:converge: converge evidence must be exportable (JsonValue hard gate) and trims heavy fields in light tier.
+      if (event.type === 'trace:field:converge') {
+        const data = (event as Extract<Event, { readonly type: 'trace:field:converge' }>).data
         const metaInput =
           diagnosticsLevel === 'light'
-            ? stripTraitConvergeLight(data)
+            ? stripFieldConvergeLight(data)
             : diagnosticsLevel === 'sampled'
-              ? stripTraitConvergeSampled(data)
-              : stripTraitConvergeLegacyFields(data)
+              ? stripFieldConvergeSampled(data)
+              : stripFieldConvergeLegacyFields(data)
         const metaProjection = projectJsonValue(metaInput)
         options?.onMetaProjection?.({
           stats: metaProjection.stats,
@@ -1653,15 +1711,15 @@ export const toRuntimeDebugEventRef = (
 
         return withDowngrade({
           ...base,
-          kind: 'trait:converge',
-          label: 'trait:converge',
+          kind: 'field:converge',
+          label: 'field:converge',
           meta: metaProjection.value,
         })
       }
 
-      // trace:trait:check: validation diagnostics must be exportable and stay slim in light tier (keep key fields).
-      if (event.type === 'trace:trait:check') {
-        const data = (event as Extract<Event, { readonly type: 'trace:trait:check' }>).data
+      // trace:field:check: validation diagnostics must be exportable and stay slim in light tier (keep key fields).
+      if (event.type === 'trace:field:check') {
+        const data = (event as Extract<Event, { readonly type: 'trace:field:check' }>).data
         const metaInput = isLightLike ? stripTraitCheckLight(data) : data
         const metaProjection = projectJsonValue(metaInput)
         options?.onMetaProjection?.({
@@ -1672,15 +1730,15 @@ export const toRuntimeDebugEventRef = (
 
         return withDowngrade({
           ...base,
-          kind: 'trait:check',
-          label: 'trait:check',
+          kind: 'field:check',
+          label: 'field:check',
           meta: metaProjection.value,
         })
       }
 
-      // trace:trait:validate: validation decision summary must be exportable and slim in light tier (no heavy fields by default).
-      if (event.type === 'trace:trait:validate') {
-        const data = (event as Extract<Event, { readonly type: 'trace:trait:validate' }>).data
+      // trace:field:validate: validation decision summary must be exportable and slim in light tier (no heavy fields by default).
+      if (event.type === 'trace:field:validate') {
+        const data = (event as Extract<Event, { readonly type: 'trace:field:validate' }>).data
         const metaProjection = projectJsonValue(data)
         options?.onMetaProjection?.({
           stats: metaProjection.stats,
@@ -1690,14 +1748,14 @@ export const toRuntimeDebugEventRef = (
 
         return withDowngrade({
           ...base,
-          kind: 'trait:validate',
-          label: 'trait:validate',
+          kind: 'field:validate',
+          label: 'field:validate',
           meta: metaProjection.value,
         })
       }
 
-      // trace:module:traits: final traits snapshot must be exportable and slim in light tier (digest/count).
-      if (event.type === 'trace:module:traits') {
+      // trace:module:fields: final field snapshot must be exportable and slim in light tier (digest/count).
+      if (event.type === 'trace:module:fields') {
         const data: any = (event as any).data
         const metaInput = isLightLike
           ? {
@@ -1707,7 +1765,7 @@ export const toRuntimeDebugEventRef = (
           : {
               digest: data?.digest,
               count: data?.count,
-              traits: data?.traits,
+              fields: data?.fields,
               provenanceIndex: data?.provenanceIndex,
             }
 
@@ -1726,13 +1784,13 @@ export const toRuntimeDebugEventRef = (
         })
       }
 
-      // trace:module:traits:conflict: conflict details must be exportable; avoid relying on truncated lifecycle:error messages.
-      if (event.type === 'trace:module:traits:conflict') {
+      // trace:module:fields:conflict: conflict details must be exportable; avoid relying on truncated lifecycle:error messages.
+      if (event.type === 'trace:module:fields:conflict') {
         const data: any = (event as any).data
         const metaInput = isLightLike
           ? {
               conflictCount: data?.conflictCount,
-              traitIds: data?.traitIds,
+              fieldIds: data?.fieldIds,
             }
           : {
               conflictCount: data?.conflictCount,
@@ -1760,7 +1818,7 @@ export const toRuntimeDebugEventRef = (
         const metaInput = isLightLike
           ? {
               id: data?.id,
-              traits: data?.traits,
+              fields: data?.fields,
               source: data?.source,
             }
           : { data }

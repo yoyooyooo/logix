@@ -1,134 +1,45 @@
-# 05 · 做一次“基线 → 对比 → diff”（不需要手改源码 / 不需要懂 IR 字段）
+# 05 · CLI 公共面收口后的 playground 入口
 
-目标：把 CLI 当作一种“可稳定对比”的工具：你改动前后到底变了什么？
+当前 `@logixjs/cli` 的公共命令面只保留：
 
-这一关我们用三份入口文件做对比（避免你手动改源码）：
+- `logix check`
+- `logix trial`
+- `logix compare`
 
-- `src/entry.basic.ts`：`count: 0`
-- `src/entry.basic.count1.ts`：只改初始值（`count: 1`）
-- `src/entry.basic.v2.ts`：改“控制面”（moduleId 变更为 `CliPlayground.BasicV2`，用于演示 diff 必然出现）
+这个 playground 现在只保留最小 public route 演示，不再维护额外的维护级脚本集合。
 
-## 1) 导出一份“基线”（entry.basic.ts）
+## 1) 先构建 CLI
 
 ```bash
 pnpm -C examples/logix-cli-playground cli:build
-pnpm -C examples/logix-cli-playground exec logix ir export --runId baseline-1 --entry src/entry.basic.ts#AppRoot --outRoot .logix/out
 ```
 
-也可以用脚本（等价）：
+## 2) 跑一次最小 `trial`
 
 ```bash
-pnpm -C examples/logix-cli-playground cli:ir:export:baseline
+pnpm -C examples/logix-cli-playground cli:trial
 ```
 
-基线目录：
-
-- `examples/logix-cli-playground/.logix/out/ir.export/baseline-1/`
-
-## 2) 导出一份“当前”（entry.basic.count1.ts）
+等价命令：
 
 ```bash
-pnpm -C examples/logix-cli-playground exec logix ir export --runId current-1 --entry src/entry.basic.count1.ts#AppRoot --outRoot .logix/out
+pnpm -C examples/logix-cli-playground exec logix trial --runId demo-trial --entry src/entry.basic.ts#AppRoot
 ```
 
-也可以用脚本（等价）：
+这条命令当前会返回结构化的 `trialReport`，用于证明 `runtime.trial(mode="startup")` 的公共 CLI 路径仍然稳定。
+
+## 3) `check` 与 `compare` 的输入约定
+
+`check` 消费 `Program` entry。`compare` 消费两份 `VerificationControlPlaneReport` 文件：
+
+- `logix check --runId demo-check --entry src/entry.basic.ts#AppRoot`
+- `logix trial --runId demo-trial --entry src/entry.basic.ts#AppRoot --mode startup`
+- `logix compare --runId demo-compare --beforeReport ./before.report.json --afterReport ./after.report.json`
+
+报告文件应由 `runtime.check`、`runtime.trial`、DVTools evidence export 或仓内验证流程生成后再交给 CLI。这个 playground 当前不额外包装报告准备动作。
+
+## 4) 查看公共帮助
 
 ```bash
-pnpm -C examples/logix-cli-playground cli:ir:export:current1
+pnpm -C examples/logix-cli-playground cli:help
 ```
-
-当前目录：
-
-- `examples/logix-cli-playground/.logix/out/ir.export/current-1/`
-
-## 3) 做一次 diff（你会发现：可能“看起来没变”）
-
-```bash
-pnpm -C examples/logix-cli-playground exec logix ir diff --runId diff-1 --before .logix/out/ir.export/baseline-1 --after .logix/out/ir.export/current-1 --outRoot .logix/out
-```
-
-也可以用脚本（等价）：
-
-```bash
-pnpm -C examples/logix-cli-playground cli:ir:diff:pass
-```
-
-如果你想“一键跑完基线+当前+diff(pass)”，用这个脚本：
-
-```bash
-pnpm -C examples/logix-cli-playground cli:ir:demo:pass
-```
-
-看输出（report）：
-
-- `examples/logix-cli-playground/.logix/out/ir.diff/diff-1/`
-
-先看这个文件：
-
-- `ir.diff.report.json`：结构化的变更摘要（你不需要理解 IR 字段）
-
-如果你看到 `summary.unchanged: 1`、`changedFiles: []`，这是正常的：  
-**只改初始值/运行时行为**，不一定会影响“对外接口工件”，所以 diff 可能是空的。
-
-## 4) 再来一次：改“控制面”，你会看到 diff 变化
-
-导出一个“接口有变化”的版本：
-
-```bash
-pnpm -C examples/logix-cli-playground exec logix ir export --runId current-2 --entry src/entry.basic.v2.ts#AppRoot --outRoot .logix/out
-```
-
-也可以用脚本（等价）：
-
-```bash
-pnpm -C examples/logix-cli-playground cli:ir:export:current2
-```
-
-再 diff 一次：
-
-```bash
-pnpm -C examples/logix-cli-playground exec logix ir diff --runId diff-2 --before .logix/out/ir.export/baseline-1 --after .logix/out/ir.export/current-2 --outRoot .logix/out
-```
-
-也可以用脚本（等价；预期 exit code 2）：
-
-```bash
-pnpm -C examples/logix-cli-playground cli:ir:diff:violation
-```
-
-如果你想“一键跑完基线+当前+diff(violation)”，用这个脚本（预期 exit code 2）：
-
-```bash
-pnpm -C examples/logix-cli-playground cli:ir:demo:violation
-```
-
-这一次你大概率会看到 exit code 2（表示“发现差异”，这就是 diff 的意义）。
-
-看输出：
-
-- `examples/logix-cli-playground/.logix/out/ir.diff/diff-2/ir.diff.report.json`
-
-> 你只需要把 diff report 当成“结构化的变更摘要/可行动原因”：它更像在对比“对外接口/门禁关心的东西”，而不是对比所有运行时细节。
-
-## 5) 额外 smoke：校验 `ir export` 与 `trialrun` 的 manifest digest 一致性
-
-这一步用于快速发现“并行真相源漂移”（导出工件和试跑报告是否在同一个语义面）。
-
-```bash
-pnpm -C examples/logix-cli-playground cli:ir:consistency:smoke
-```
-
-输出报告：
-
-- `examples/logix-cli-playground/.logix/out/smoke/ir.consistency.report.json`
-
-判定规则（最小版）：
-
-- `manifest.match === true`（同域 digest 要求相等；跨域 digest 允许“有值即通过”）
-- `moduleIdentity.match === true`
-- `workflowSurface.mismatches.length === 0`
-
-## 常见问题
-
-- 为什么 diff-1 没变化：因为你只改了初始值；这类改动更像“运行时细节”，不一定会反映在 `ir export/diff` 关注的工件里。
-- 为什么 diff-2 变成 exit code 2：因为它真的发现了差异；去看 `ir.diff.report.json` 的 `changedPathsSample` 能快速知道“变在哪里”。

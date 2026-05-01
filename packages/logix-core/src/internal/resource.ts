@@ -1,4 +1,5 @@
 import { Layer, ServiceMap } from 'effect'
+import { FieldSourceRegistryTag, type FieldSourceRegistry } from './field-source-registry.js'
 import { isDevEnv } from './runtime/core/env.js'
 
 export interface ResourceSpec<Key, Out, Err, Env> {
@@ -21,53 +22,133 @@ export interface ResourceSnapshot<Data = unknown, Err = unknown> {
   readonly keyHash?: string
   readonly data?: Data
   readonly error?: Err
+  readonly submitImpact?: 'block' | 'observe'
+}
+
+export type CanonicalResourceKeyResult =
+  | {
+      readonly _tag: 'accepted'
+      readonly keyHash: string
+    }
+  | {
+      readonly _tag: 'idle'
+    }
+  | {
+      readonly _tag: 'rejected'
+      readonly reason: string
+      readonly path: string
+    }
+
+const rejectKey = (reason: string, path: string): CanonicalResourceKeyResult => ({
+  _tag: 'rejected',
+  reason,
+  path,
+})
+
+const isPlainObject = (value: object): boolean => {
+  const proto = Object.getPrototypeOf(value)
+  return proto === Object.prototype || proto === null
+}
+
+const encodeCanonicalKey = (
+  value: unknown,
+  path: string,
+  seen: WeakSet<object>,
+): { readonly ok: true; readonly value: unknown } | { readonly ok: false; readonly reason: string; readonly path: string } => {
+  if (value === null) return { ok: true, value: null }
+
+  if (typeof value === 'boolean' || typeof value === 'string') {
+    return { ok: true, value }
+  }
+
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) {
+      return { ok: false, reason: 'non-finite-number', path }
+    }
+    return { ok: true, value: Object.is(value, -0) ? 0 : value }
+  }
+
+  if (typeof value === 'undefined') {
+    return { ok: false, reason: 'nested-undefined', path }
+  }
+
+  if (typeof value === 'bigint') return { ok: false, reason: 'bigint', path }
+  if (typeof value === 'symbol') return { ok: false, reason: 'symbol', path }
+  if (typeof value === 'function') return { ok: false, reason: 'function', path }
+
+  if (!value || typeof value !== 'object') {
+    return { ok: false, reason: 'unsupported-primitive', path }
+  }
+
+  const objectValue = value as object
+  if (seen.has(objectValue)) {
+    return { ok: false, reason: 'cycle-or-shared-reference', path }
+  }
+
+  if (Array.isArray(value)) {
+    seen.add(objectValue)
+    const out: Array<unknown> = []
+    for (let index = 0; index < value.length; index++) {
+      if (!(index in value)) {
+        return { ok: false, reason: 'sparse-array', path: `${path}[${index}]` }
+      }
+      const encoded = encodeCanonicalKey(value[index], `${path}[${index}]`, seen)
+      if (!encoded.ok) return encoded
+      out.push(encoded.value)
+    }
+    return { ok: true, value: out }
+  }
+
+  if (
+    value instanceof Date ||
+    value instanceof Map ||
+    value instanceof Set ||
+    value instanceof RegExp ||
+    value instanceof Promise ||
+    ArrayBuffer.isView(value) ||
+    value instanceof ArrayBuffer
+  ) {
+    return { ok: false, reason: 'unsupported-object', path }
+  }
+
+  if (!isPlainObject(objectValue)) {
+    return { ok: false, reason: 'class-instance', path }
+  }
+
+  const symbols = Object.getOwnPropertySymbols(objectValue)
+  if (symbols.length > 0) {
+    return { ok: false, reason: 'symbol-key', path }
+  }
+
+  seen.add(objectValue)
+  const record = value as Record<string, unknown>
+  const out: Record<string, unknown> = {}
+  for (const key of Object.keys(record).sort()) {
+    const childPath = path === '$' ? `$.${key}` : `${path}.${key}`
+    const encoded = encodeCanonicalKey(record[key], childPath, seen)
+    if (!encoded.ok) return encoded
+    out[key] = encoded.value
+  }
+  return { ok: true, value: out }
 }
 
 const stableStringify = (value: unknown): string => {
-  const seen = new WeakSet<object>()
-  const encode = (input: unknown): unknown => {
-    if (input === null) return null
-    if (typeof input === 'string' || typeof input === 'number' || typeof input === 'boolean') {
-      return input
-    }
-    if (typeof input === 'bigint') return input.toString()
-    if (typeof input === 'undefined') return '__undefined__'
-    if (typeof input === 'symbol') return `__symbol__:${String(input)}`
-    if (typeof input === 'function') return '__function__'
-
-    if (Array.isArray(input)) {
-      return input.map((v) => encode(v))
-    }
-    if (input instanceof Date) {
-      return `__date__:${input.toISOString()}`
-    }
-    if (input instanceof Error) {
-      return {
-        _tag: 'Error',
-        name: input.name,
-        message: input.message,
-      }
-    }
-    if (input && typeof input === 'object') {
-      const obj = input as object
-      if (seen.has(obj)) return '__cycle__'
-      seen.add(obj)
-
-      const record = input as Record<string, unknown>
-      const keys = Object.keys(record).sort()
-      const out: Record<string, unknown> = {}
-      for (const k of keys) {
-        out[k] = encode(record[k])
-      }
-      return out
-    }
-    return String(input)
+  const encoded = encodeCanonicalKey(value, '$', new WeakSet<object>())
+  if (!encoded.ok) {
+    throw new Error(`[Resource.keyHash] rejected non-canonical source key at ${encoded.path}: ${encoded.reason}`)
   }
+  return JSON.stringify(encoded.value)
+}
 
-  try {
-    return JSON.stringify(encode(value))
-  } catch {
-    return String(value)
+export const canonicalizeKey = (key: unknown): CanonicalResourceKeyResult => {
+  if (key === undefined) return { _tag: 'idle' }
+  const encoded = encodeCanonicalKey(key, '$', new WeakSet<object>())
+  if (!encoded.ok) {
+    return rejectKey(encoded.reason, encoded.path)
+  }
+  return {
+    _tag: 'accepted',
+    keyHash: JSON.stringify(encoded.value),
   }
 }
 
@@ -80,9 +161,13 @@ export const Snapshot = {
     data: undefined,
     error: undefined,
   }),
-  loading: <Data = never, Err = never>(params: { readonly keyHash: string }): ResourceSnapshot<Data, Err> => ({
+  loading: <Data = never, Err = never>(params: {
+    readonly keyHash: string
+    readonly submitImpact?: 'block' | 'observe'
+  }): ResourceSnapshot<Data, Err> => ({
     status: 'loading',
     keyHash: params.keyHash,
+    ...(params.submitImpact ? { submitImpact: params.submitImpact } : null),
     data: undefined,
     error: undefined,
   }),
@@ -119,9 +204,8 @@ export const make = <Key, Out, Err, Env>(spec: ResourceSpec<Key, Out, Err, Env>)
   spec
 
 export const layer = (specs: ReadonlyArray<AnyResourceSpec>): Layer.Layer<ResourceRegistryTag, never, never> =>
-  Layer.succeed(
-    ResourceRegistryTag,
-    (() => {
+  (() => {
+    const registry = (() => {
       const map = new Map<string, AnyResourceSpec>()
       for (const spec of specs) {
         if (isDevEnv() && map.has(spec.id) && map.get(spec.id) !== spec) {
@@ -129,6 +213,11 @@ export const layer = (specs: ReadonlyArray<AnyResourceSpec>): Layer.Layer<Resour
         }
         map.set(spec.id, spec)
       }
-      return { specs: map }
-    })(),
-  )
+      return { specs: map } satisfies ResourceRegistry
+    })()
+
+    return Layer.mergeAll(
+      Layer.succeed(ResourceRegistryTag, registry),
+      Layer.succeed(FieldSourceRegistryTag, registry as FieldSourceRegistry),
+    )
+  })()

@@ -14,12 +14,12 @@
 
 > 目标：把 “Full Cutover Gate” 变成可执行的契约验证与失败策略，并把判定结果纳入统一最小 IR/证据链路。
 
-- [x] T004 实现 coverage matrix 的可读取单一事实源（建议：`packages/logix-core/src/Kernel.ts` 导出 `CutoverCoverageMatrix`，并在测试中引用；禁止散落常量）`packages/logix-core/src/Kernel.ts`
-- [x] T005 实现 Full Cutover Gate 判定函数（输入：requested kernelId + runtimeServicesEvidence；输出：结构化 PASS/FAIL + `missingServiceIds` + 最小锚点 `moduleId/instanceId/txnSeq`；fullCutover 下禁止 fallback；装配期失败允许 `txnSeq=0` 代表 assembly）`packages/logix-core/src/Kernel.ts`
-- [x] T006 将 Gate 结果纳入可序列化证据（`diagnostics=off` 下可运行且输出最小摘要；light/full 仅补充细节；命中 allowlist 时仍可 PASS 但必须输出 `allowedDiffs` 最小摘要（按 `metaKey`））`packages/logix-core/src/internal/observability/*` 或 `packages/logix-core/src/Kernel.ts`
-- [x] T007 实现 `Reflection.verifyFullCutoverGate`：串联 047 Gate + 045 `verifyKernelContract`，并支持（可选）contract diff allowlist（SSoT=代码；仅允许 op meta 的部分 key，按 `metaKey`）供 CI/TrialRun/Agent 统一调用 `packages/logix-core/src/Reflection.ts`
-- [x] T007a [P] 提供 allowlist 的代码 SSoT：在 `@logixjs/core` 导出 `KernelContractMetaAllowlist`（`ReadonlyArray<{ metaKey; reason? }>`）供 045/047 验证器读取（禁止 spec/CI 各自维护常量）`packages/logix-core/src/Kernel.ts`
-- [x] T007b [P] allowlist 默认禁用：`KernelContractMetaAllowlist` 默认返回空数组，且仅在显式开关启用时才生效（避免无意放行）`packages/logix-core/src/Kernel.ts`
+- [x] T004 实现 coverage matrix 的可读取单一事实源（建议：`packages/logix-core/src/internal/kernel-api.ts` 导出 `CutoverCoverageMatrix`，并在测试中引用；禁止散落常量）`packages/logix-core/src/internal/kernel-api.ts`
+- [x] T005 实现 Full Cutover Gate 判定函数（输入：requested kernelId + runtimeServicesEvidence；输出：结构化 PASS/FAIL + `missingServiceIds` + 最小锚点 `moduleId/instanceId/txnSeq`；fullCutover 下禁止 fallback；装配期失败允许 `txnSeq=0` 代表 assembly）`packages/logix-core/src/internal/kernel-api.ts`
+- [x] T006 将 Gate 结果纳入可序列化证据（`diagnostics=off` 下可运行且输出最小摘要；light/full 仅补充细节；命中 allowlist 时仍可 PASS 但必须输出 `allowedDiffs` 最小摘要（按 `metaKey`））`packages/logix-core/src/internal/observability/*` 或 `packages/logix-core/src/internal/kernel-api.ts`
+- [x] T007 实现 `CoreReflection.verifyFullCutoverGate`：串联 047 Gate + 045 `verifyKernelContract`，并支持（可选）contract diff allowlist（SSoT=代码；仅允许 op meta 的部分 key，按 `metaKey`）供 CI/TrialRun/Agent 统一调用 `packages/logix-core/src/internal/reflection-api.ts`
+- [x] T007a [P] 提供 allowlist 的代码 SSoT：在 `@logixjs/core` 导出 `KernelContractMetaAllowlist`（`ReadonlyArray<{ metaKey; reason? }>`）供 045/047 验证器读取（禁止 spec/CI 各自维护常量）`packages/logix-core/src/internal/kernel-api.ts`
+- [x] T007b [P] allowlist 默认禁用：`KernelContractMetaAllowlist` 默认返回空数组，且仅在显式开关启用时才生效（避免无意放行）`packages/logix-core/src/internal/kernel-api.ts`
 
 **Tests（Foundational）**
 
@@ -33,7 +33,7 @@
 
 **Goal**: 一键得到 PASS/FAIL，并可定位缺口（禁止半成品态误判）。
 
-**Independent Test**: 运行 `Reflection.verifyFullCutoverGate`（或等价入口）得到结构化结果。
+**Independent Test**: 运行 `CoreReflection.verifyFullCutoverGate`（或等价入口）得到结构化结果。
 
 - [x] T011 [US1] 为 `@logixjs/core-ng` 增补覆盖 coverage matrix 的所有必选 service 实现（缺 1 个即 Gate FAIL）`packages/logix-core-ng/src/*`
 - [x] T012 [US1] 用对照验证 harness 跑 core vs core-ng（full cutover），保证 diff 为空或在允许差异白名单内 `packages/logix-core-ng/test/*`、`packages/logix-core/test/Contracts/*`
@@ -62,7 +62,7 @@
 
 **Goal**: Kernel Contract 扩面时，不会漏掉 cutover 判定与证据门禁。
 
-- [x] T030 [US3] （条件未触发，暂不更新；触发条件见 coverage matrix contract）当 045/RuntimeKernel 新增可替换 serviceId 时，同步更新 coverage matrix 单一事实源与测试 `packages/logix-core/src/Kernel.ts`、`specs/047-core-ng-full-cutover-gate/contracts/coverage-matrix.md`
+- [x] T030 [US3] （条件未触发，暂不更新；触发条件见 coverage matrix contract）当 045/RuntimeKernel 新增可替换 serviceId 时，同步更新 coverage matrix 单一事实源与测试 `packages/logix-core/src/internal/kernel-api.ts`、`specs/047-core-ng-full-cutover-gate/contracts/coverage-matrix.md`
 
 ---
 

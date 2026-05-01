@@ -5,7 +5,7 @@ import { Effect } from 'effect'
 import { makeCliError } from './errors.js'
 
 export type DiagnosticsLevel = 'off' | 'light' | 'full'
-export type CliMode = 'report' | 'write'
+export type TrialMode = 'startup' | 'scenario'
 export type CliHost = 'node' | 'browser-mock'
 
 export type EntryRef = {
@@ -13,106 +13,49 @@ export type EntryRef = {
   readonly exportName: string
 }
 
-export type IrValidateInput =
-  | { readonly kind: 'dir'; readonly dir: string }
-  | { readonly kind: 'file'; readonly file: string }
+export type EvidenceInputRef = { readonly ref: string }
+export type SelectionManifestRef = { readonly ref: string }
+export type ScenarioInputRef = { readonly ref: string }
+export type CliArgvSnapshot = {
+  readonly tokens: ReadonlyArray<string>
+  readonly digest: string
+}
 
-export type CliCommand =
-  | 'describe'
-  | 'ir.export'
-  | 'ir.validate'
-  | 'ir.diff'
-  | 'trialrun'
-  | 'contract-suite.run'
-  | 'anchor.index'
-  | 'anchor.autofill'
-  | 'transform.module'
-  | 'spy.evidence'
+export type CliCommand = 'check' | 'compare' | 'trial'
 
 export type CliInvocation =
   | {
       readonly kind: 'command'
-      readonly command: 'describe'
-      readonly global: CliInvocation.Global
-      readonly format: 'json'
-    }
-  | {
-      readonly kind: 'command'
-      readonly command: 'ir.export'
+      readonly command: 'check'
       readonly global: CliInvocation.Global
       readonly entry: EntryRef
+      readonly evidence?: EvidenceInputRef
+      readonly selection?: SelectionManifestRef
     }
   | {
       readonly kind: 'command'
-      readonly command: 'ir.validate'
+      readonly command: 'compare'
       readonly global: CliInvocation.Global
-      readonly input: IrValidateInput
+      readonly beforeReport: string
+      readonly afterReport: string
+      readonly beforeEvidence?: EvidenceInputRef
+      readonly afterEvidence?: EvidenceInputRef
+      readonly entry?: EntryRef
     }
   | {
       readonly kind: 'command'
-      readonly command: 'ir.diff'
+      readonly command: 'trial'
       readonly global: CliInvocation.Global
-      readonly before: string
-      readonly after: string
-    }
-  | {
-      readonly kind: 'command'
-      readonly command: 'trialrun'
-      readonly global: CliInvocation.Global
+      readonly trialMode: TrialMode
       readonly entry: EntryRef
+      readonly scenario?: ScenarioInputRef
+      readonly evidence?: EvidenceInputRef
+      readonly selection?: SelectionManifestRef
       readonly diagnosticsLevel: DiagnosticsLevel
       readonly maxEvents?: number
       readonly timeoutMs?: number
       readonly includeTrace: boolean
       readonly config: Record<string, string | number | boolean>
-    }
-  | {
-      readonly kind: 'command'
-      readonly command: 'contract-suite.run'
-      readonly global: CliInvocation.Global
-      readonly entry: EntryRef
-      readonly diagnosticsLevel: DiagnosticsLevel
-      readonly maxEvents?: number
-      readonly timeoutMs?: number
-      readonly includeTrace: boolean
-      readonly config: Record<string, string | number | boolean>
-      readonly allowWarn: boolean
-      readonly baselineDir?: string
-      readonly includeContextPack: boolean
-      readonly packMaxBytes?: number
-      readonly requireRulesManifest: boolean
-      readonly inputsFile?: string
-      readonly includeUiKitRegistry: boolean
-      readonly includeAnchorAutofill: boolean
-      readonly repoRoot: string
-    }
-  | {
-      readonly kind: 'command'
-      readonly command: 'spy.evidence'
-      readonly global: CliInvocation.Global
-      readonly entry: EntryRef
-      readonly maxUsedServices?: number
-      readonly maxRawMode?: number
-      readonly timeoutMs?: number
-    }
-  | {
-      readonly kind: 'command'
-      readonly command: 'anchor.index'
-      readonly global: CliInvocation.Global
-      readonly repoRoot: string
-    }
-  | {
-      readonly kind: 'command'
-      readonly command: 'anchor.autofill'
-      readonly global: CliInvocation.Global
-      readonly repoRoot: string
-    }
-  | {
-      readonly kind: 'command'
-      readonly command: 'transform.module'
-      readonly global: CliInvocation.Global
-      readonly repoRoot: string
-      readonly opsPath: string
     }
 
 export declare namespace CliInvocation {
@@ -120,15 +63,14 @@ export declare namespace CliInvocation {
     readonly runId: string
     readonly outDir?: string
     readonly budgetBytes?: number
-    readonly mode?: CliMode
     readonly tsconfig?: string
     readonly host: CliHost
+    readonly argvSnapshot?: CliArgvSnapshot
   }
 }
 
 export type CliHelpResult = { readonly kind: 'help'; readonly text: string }
 
-const capitalize = (s: string): string => (s.length === 0 ? s : `${s[0]!.toUpperCase()}${s.slice(1)}`)
 const decapitalize = (s: string): string => (s.length === 0 ? s : `${s[0]!.toLowerCase()}${s.slice(1)}`)
 
 const parseConfigValue = (value: string): string | number | boolean => {
@@ -164,46 +106,26 @@ const parseEntryRefFromOptions = (opts: {
   )
 }
 
-const parseIrValidateInputFromOptions = (opts: {
-  readonly inDir?: string
-  readonly artifact?: string
-}): Effect.Effect<IrValidateInput, ReturnType<typeof makeCliError>> => {
-  const dir = typeof opts.inDir === 'string' ? opts.inDir.trim() : undefined
-  const file = typeof opts.artifact === 'string' ? opts.artifact.trim() : undefined
-
-  if (dir && file) {
-    return Effect.fail(
-      makeCliError({
-        code: 'CLI_INVALID_ARGUMENT',
-        message: '参数互斥：请仅提供 --in 或 --artifact。',
-      }),
-    )
-  }
-  if (dir) return Effect.succeed({ kind: 'dir', dir })
-  if (file) return Effect.succeed({ kind: 'file', file })
-  return Effect.fail(
-    makeCliError({
-      code: 'CLI_INVALID_ARGUMENT',
-      message: '缺少输入：请提供 --in <dir> 或 --artifact <file>',
-    }),
-  )
+const parseOptionalRef = (value: string | undefined): { readonly ref: string } | undefined => {
+  const ref = typeof value === 'string' ? value.trim() : undefined
+  return ref ? { ref } : undefined
 }
 
-const parseIrDiffInputFromOptions = (opts: {
-  readonly before?: string
-  readonly after?: string
-}): Effect.Effect<{ readonly before: string; readonly after: string }, ReturnType<typeof makeCliError>> => {
-  const before = typeof opts.before === 'string' ? opts.before.trim() : undefined
-  const after = typeof opts.after === 'string' ? opts.after.trim() : undefined
-  if (!before || !after) {
+const parseCompareInputFromOptions = (opts: {
+  readonly beforeReport?: string
+  readonly afterReport?: string
+}): Effect.Effect<{ readonly beforeReport: string; readonly afterReport: string }, ReturnType<typeof makeCliError>> => {
+  const beforeReport = typeof opts.beforeReport === 'string' ? opts.beforeReport.trim() : undefined
+  const afterReport = typeof opts.afterReport === 'string' ? opts.afterReport.trim() : undefined
+  if (!beforeReport || !afterReport) {
     return Effect.fail(
       makeCliError({
         code: 'CLI_INVALID_ARGUMENT',
-        message: '缺少输入：请提供 --before <dir|file> 与 --after <dir|file>',
+        message: '缺少输入：请提供 --beforeReport <file> 与 --afterReport <file>',
       }),
     )
   }
-  return Effect.succeed({ before, after })
+  return Effect.succeed({ beforeReport, afterReport })
 }
 
 export type ParsedOptions = {
@@ -211,124 +133,87 @@ export type ParsedOptions = {
   readonly out?: string
   readonly outRoot?: string
   readonly budgetBytes?: number
-  readonly mode?: CliMode
   readonly tsconfig?: string
   readonly host: CliHost
   readonly cliConfig?: string
   readonly profile?: string
   readonly repoRoot: string
   readonly entry?: string
-  readonly inDir?: string
-  readonly artifact?: string
-  readonly before?: string
-  readonly after?: string
-  readonly opsPath?: string
+  readonly evidence?: string
+  readonly selection?: string
+  readonly scenario?: string
+  readonly beforeReport?: string
+  readonly afterReport?: string
+  readonly beforeEvidence?: string
+  readonly afterEvidence?: string
   readonly diagnosticsLevel: DiagnosticsLevel
+  readonly trialMode: TrialMode
   readonly maxEvents?: number
   readonly timeoutMs?: number
   readonly includeTrace: boolean
   readonly config: Record<string, string | number | boolean>
-  readonly allowWarn: boolean
-  readonly baselineDir?: string
-  readonly includeContextPack: boolean
-  readonly packMaxBytes?: number
-  readonly requireRulesManifest: boolean
-  readonly inputsFile?: string
-  readonly includeUiKitRegistry: boolean
-  readonly includeAnchorAutofill: boolean
-  readonly maxUsedServices?: number
-  readonly maxRawMode?: number
-  readonly describeJson: boolean
 }
 
 type LeafParsed =
   | {
-      readonly command: 'describe'
-      readonly options: ParsedOptions
-      readonly format: 'json'
-    }
-  | { readonly command: 'ir.export'; readonly options: ParsedOptions; readonly entry: EntryRef }
-  | { readonly command: 'ir.validate'; readonly options: ParsedOptions; readonly input: IrValidateInput }
-  | { readonly command: 'ir.diff'; readonly options: ParsedOptions; readonly before: string; readonly after: string }
-  | {
-      readonly command: 'trialrun'
+      readonly command: 'check'
       readonly options: ParsedOptions
       readonly entry: EntryRef
+      readonly evidence?: EvidenceInputRef
+      readonly selection?: SelectionManifestRef
+    }
+  | {
+      readonly command: 'compare'
+      readonly options: ParsedOptions
+      readonly beforeReport: string
+      readonly afterReport: string
+      readonly beforeEvidence?: EvidenceInputRef
+      readonly afterEvidence?: EvidenceInputRef
+      readonly entry?: EntryRef
+    }
+  | {
+      readonly command: 'trial'
+      readonly options: ParsedOptions
+      readonly trialMode: TrialMode
+      readonly entry: EntryRef
+      readonly scenario?: ScenarioInputRef
+      readonly evidence?: EvidenceInputRef
+      readonly selection?: SelectionManifestRef
       readonly diagnosticsLevel: DiagnosticsLevel
       readonly maxEvents?: number
       readonly timeoutMs?: number
       readonly includeTrace: boolean
       readonly config: Record<string, string | number | boolean>
     }
-  | {
-      readonly command: 'contract-suite.run'
-      readonly options: ParsedOptions
-      readonly entry: EntryRef
-      readonly diagnosticsLevel: DiagnosticsLevel
-      readonly maxEvents?: number
-      readonly timeoutMs?: number
-      readonly includeTrace: boolean
-      readonly config: Record<string, string | number | boolean>
-      readonly allowWarn: boolean
-      readonly baselineDir?: string
-      readonly includeContextPack: boolean
-      readonly packMaxBytes?: number
-      readonly requireRulesManifest: boolean
-      readonly inputsFile?: string
-      readonly includeUiKitRegistry: boolean
-      readonly includeAnchorAutofill: boolean
-      readonly repoRoot: string
-    }
-  | {
-      readonly command: 'spy.evidence'
-      readonly options: ParsedOptions
-      readonly entry: EntryRef
-      readonly maxUsedServices?: number
-      readonly maxRawMode?: number
-      readonly timeoutMs?: number
-    }
-  | { readonly command: 'anchor.index'; readonly options: ParsedOptions; readonly repoRoot: string }
-  | { readonly command: 'anchor.autofill'; readonly options: ParsedOptions; readonly repoRoot: string }
-  | { readonly command: 'transform.module'; readonly options: ParsedOptions; readonly repoRoot: string; readonly opsPath: string }
 
-
-const booleanOptionNames = new Set([
-  'allowWarn',
-  'includeAnchorAutofill',
-  'includeContextPack',
-  'includeTrace',
-  'includeUiKitRegistry',
-  'json',
-  'requireRulesManifest',
-])
+const booleanOptionNames = new Set(['includeTrace'])
 
 const flagsWithValue = new Set([
-  '--after',
-  '--artifact',
-  '--baseline',
-  '--before',
+  '--afterEvidence',
+  '--afterReport',
+  '--beforeEvidence',
+  '--beforeReport',
   '--budgetBytes',
   '--cliConfig',
   '--config',
   '--diagnosticsLevel',
   '--entry',
+  '--evidence',
   '--host',
-  '--in',
-  '--inputs',
   '--maxEvents',
-  '--maxRawMode',
-  '--maxUsedServices',
   '--mode',
-  '--ops',
   '--out',
   '--outRoot',
-  '--packMaxBytes',
   '--profile',
   '--repoRoot',
   '--runId',
+  '--scenario',
+  '--selection',
   '--timeout',
   '--tsconfig',
 ])
+
+const commandTokenShapes: ReadonlyArray<ReadonlyArray<string>> = [['check'], ['compare'], ['trial']]
 
 const isKnownBooleanFlag = (flag: string): boolean => {
   if (!flag.startsWith('--')) return false
@@ -405,27 +290,17 @@ type ExtractedCommandTokens = {
   readonly indices: ReadonlyArray<number>
 }
 
-const commandTokenShapes: ReadonlyArray<ReadonlyArray<string>> = [
-  ['describe'],
-  ['trialrun'],
-  ['ir', 'export'],
-  ['ir', 'validate'],
-  ['ir', 'diff'],
-  ['contract-suite', 'run'],
-  ['spy', 'evidence'],
-  ['anchor', 'index'],
-  ['anchor', 'autofill'],
-  ['transform', 'module'],
-]
-
-const findCommandTokens = (argv: ReadonlyArray<string>): ExtractedCommandTokens | undefined => {
+const findTokenShape = (
+  argv: ReadonlyArray<string>,
+  shapes: ReadonlyArray<ReadonlyArray<string>>,
+): ExtractedCommandTokens | undefined => {
   for (let i = 0; i < argv.length; i++) {
     const token = argv[i]!
     if (token.startsWith('-')) {
       if (flagsWithValue.has(token)) i += 1
       continue
     }
-    for (const shape of commandTokenShapes) {
+    for (const shape of shapes) {
       if (shape[0] !== token) continue
       let ok = true
       for (let j = 1; j < shape.length; j++) {
@@ -441,7 +316,30 @@ const findCommandTokens = (argv: ReadonlyArray<string>): ExtractedCommandTokens 
   return undefined
 }
 
-const normalizeArgvForEffectCli = (argv: ReadonlyArray<string>): ReadonlyArray<string> => {
+const findCommandTokens = (argv: ReadonlyArray<string>): ExtractedCommandTokens | undefined =>
+  findTokenShape(argv, commandTokenShapes)
+
+const findUnknownCommandTokens = (argv: ReadonlyArray<string>): ExtractedCommandTokens | undefined => {
+  for (let i = 0; i < argv.length; i++) {
+    const token = argv[i]!
+    if (token.startsWith('-')) {
+      if (flagsWithValue.has(token)) i += 1
+      continue
+    }
+    const tokens: string[] = [token]
+    const indices: number[] = [i]
+    for (let j = i + 1; j < argv.length; j++) {
+      const next = argv[j]!
+      if (next.startsWith('-')) break
+      tokens.push(next)
+      indices.push(j)
+    }
+    return { tokens, indices }
+  }
+  return undefined
+}
+
+const normalizeArgvForParser = (argv: ReadonlyArray<string>): ReadonlyArray<string> => {
   const extracted = findCommandTokens(argv)
   if (!extracted) return dedupeOptionTokensLastWins(argv)
 
@@ -463,14 +361,9 @@ const defaultParsedOptions = (): ParsedOptions => ({
   host: 'node',
   repoRoot: '.',
   diagnosticsLevel: 'light',
+  trialMode: 'startup',
   includeTrace: false,
   config: {},
-  allowWarn: false,
-  includeContextPack: false,
-  requireRulesManifest: false,
-  includeUiKitRegistry: false,
-  includeAnchorAutofill: false,
-  describeJson: false,
 })
 
 type MutableParsedOptions = {
@@ -490,6 +383,29 @@ const missingFlagError = (message: string, helpText: string) =>
     message,
     hint: helpText,
   })
+
+const parsePositiveNumber = (flag: string, raw: string, helpText: string): number => {
+  const value = Number(raw)
+  if (!Number.isFinite(value) || value < 0) {
+    throw invalidArgument(`${flag} 必须是非负数字`, helpText)
+  }
+  return value
+}
+
+const parseTrialMode = (raw: string, helpText: string): TrialMode => {
+  if (raw === 'startup' || raw === 'scenario') return raw
+  throw invalidArgument('--mode 仅支持 startup 或 scenario', helpText)
+}
+
+const parseDiagnosticsLevel = (raw: string, helpText: string): DiagnosticsLevel => {
+  if (raw === 'off' || raw === 'light' || raw === 'full') return raw
+  throw invalidArgument('--diagnosticsLevel 仅支持 off、light 或 full', helpText)
+}
+
+const parseHost = (raw: string, helpText: string): CliHost => {
+  if (raw === 'node' || raw === 'browser-mock') return raw
+  throw invalidArgument('--host 仅支持 node 或 browser-mock', helpText)
+}
 
 const parseManualOptions = (
   tokens: ReadonlyArray<string>,
@@ -529,16 +445,13 @@ const parseManualOptions = (
             options.outRoot = value
             break
           case 'budgetBytes':
-            options.budgetBytes = Number(value)
-            break
-          case 'mode':
-            options.mode = value as CliMode
+            options.budgetBytes = parsePositiveNumber('--budgetBytes', value, helpText)
             break
           case 'tsconfig':
             options.tsconfig = value
             break
           case 'host':
-            options.host = value as CliHost
+            options.host = parseHost(value, helpText)
             break
           case 'cliConfig':
             options.cliConfig = value
@@ -552,29 +465,38 @@ const parseManualOptions = (
           case 'entry':
             options.entry = value
             break
-          case 'in':
-            options.inDir = value
+          case 'evidence':
+            options.evidence = value
             break
-          case 'artifact':
-            options.artifact = value
+          case 'selection':
+            options.selection = value
             break
-          case 'before':
-            options.before = value
+          case 'scenario':
+            options.scenario = value
             break
-          case 'after':
-            options.after = value
+          case 'beforeReport':
+            options.beforeReport = value
             break
-          case 'ops':
-            options.opsPath = value
+          case 'afterReport':
+            options.afterReport = value
+            break
+          case 'beforeEvidence':
+            options.beforeEvidence = value
+            break
+          case 'afterEvidence':
+            options.afterEvidence = value
             break
           case 'diagnosticsLevel':
-            options.diagnosticsLevel = value as DiagnosticsLevel
+            options.diagnosticsLevel = parseDiagnosticsLevel(value, helpText)
+            break
+          case 'mode':
+            options.trialMode = parseTrialMode(value, helpText)
             break
           case 'maxEvents':
-            options.maxEvents = Number(value)
+            options.maxEvents = parsePositiveNumber('--maxEvents', value, helpText)
             break
           case 'timeout':
-            options.timeoutMs = Number(value)
+            options.timeoutMs = parsePositiveNumber('--timeout', value, helpText)
             break
           case 'config': {
             const eq = value.indexOf('=')
@@ -586,21 +508,6 @@ const parseManualOptions = (
             options.config = { ...options.config, [k]: parseConfigValue(v) }
             break
           }
-          case 'baseline':
-            options.baselineDir = value
-            break
-          case 'packMaxBytes':
-            options.packMaxBytes = Number(value)
-            break
-          case 'inputs':
-            options.inputsFile = value
-            break
-          case 'maxUsedServices':
-            options.maxUsedServices = Number(value)
-            break
-          case 'maxRawMode':
-            options.maxRawMode = Number(value)
-            break
           default:
             throw invalidArgument(`未知参数：${token}`, helpText)
         }
@@ -611,24 +518,6 @@ const parseManualOptions = (
         case 'includeTrace':
           options.includeTrace = !token.startsWith('--no')
           break
-        case 'allowWarn':
-          options.allowWarn = !token.startsWith('--no')
-          break
-        case 'includeContextPack':
-          options.includeContextPack = !token.startsWith('--no')
-          break
-        case 'requireRulesManifest':
-          options.requireRulesManifest = !token.startsWith('--no')
-          break
-        case 'includeUiKitRegistry':
-          options.includeUiKitRegistry = !token.startsWith('--no')
-          break
-        case 'includeAnchorAutofill':
-          options.includeAnchorAutofill = !token.startsWith('--no')
-          break
-        case 'json':
-          options.describeJson = !token.startsWith('--no')
-          break
         default:
           throw invalidArgument(`未知参数：${token}`, helpText)
       }
@@ -637,18 +526,27 @@ const parseManualOptions = (
     return options
   })
 
+const invalidCommand = (tokens: ReadonlyArray<string>, helpText: string) =>
+  makeCliError({
+    code: 'CLI_INVALID_COMMAND',
+    message: `未知命令：${tokens.join('.')}`,
+    hint: helpText,
+  })
+
 const parseManualLeaf = (
   argv: ReadonlyArray<string>,
   helpText: string,
 ): Effect.Effect<LeafParsed, unknown> =>
   Effect.gen(function* () {
-    const normalized = normalizeArgvForEffectCli(argv)
+    const normalized = normalizeArgvForParser(argv)
     const extracted = findCommandTokens(normalized)
     if (!extracted) {
+      const unknown = findUnknownCommandTokens(normalized)
+      if (unknown) return yield* Effect.fail(invalidCommand(unknown.tokens, helpText))
       return yield* Effect.fail(
         makeCliError({
           code: 'CLI_INVALID_COMMAND',
-          message: '缺少命令：请提供 <group> <subcommand>（或 trialrun）',
+          message: '缺少命令：请提供 check、trial 或 compare',
           hint: helpText,
         }),
       )
@@ -660,78 +558,44 @@ const parseManualLeaf = (
     const commandKey = extracted.tokens.join('.')
 
     switch (commandKey) {
-      case 'describe':
-        if (!options.describeJson) {
-          return yield* Effect.fail(invalidArgument('describe 仅支持机器可读输出，请显式提供 --json', helpText))
+      case 'check':
+        return {
+          command: 'check',
+          options,
+          entry: yield* parseEntryRefFromOptions(options),
+          ...(parseOptionalRef(options.evidence) ? { evidence: parseOptionalRef(options.evidence) } : null),
+          ...(parseOptionalRef(options.selection) ? { selection: parseOptionalRef(options.selection) } : null),
         }
-        return { command: 'describe', options, format: 'json' as const }
-      case 'ir.export':
-        return { command: 'ir.export', options, entry: yield* parseEntryRefFromOptions(options) }
-      case 'ir.validate':
-        return { command: 'ir.validate', options, input: yield* parseIrValidateInputFromOptions(options) }
-      case 'ir.diff': {
-        const diff = yield* parseIrDiffInputFromOptions(options)
-        return { command: 'ir.diff', options, before: diff.before, after: diff.after }
+      case 'compare': {
+        const diff = yield* parseCompareInputFromOptions(options)
+        return {
+          command: 'compare',
+          options,
+          beforeReport: diff.beforeReport,
+          afterReport: diff.afterReport,
+          ...(parseOptionalRef(options.beforeEvidence) ? { beforeEvidence: parseOptionalRef(options.beforeEvidence) } : null),
+          ...(parseOptionalRef(options.afterEvidence) ? { afterEvidence: parseOptionalRef(options.afterEvidence) } : null),
+          ...(options.entry ? { entry: yield* parseEntryRefFromOptions(options) } : null),
+        }
       }
-      case 'trialrun':
+      case 'trial': {
         return {
-          command: 'trialrun',
+          command: 'trial',
           options,
+          trialMode: options.trialMode,
           entry: yield* parseEntryRefFromOptions(options),
+          ...(parseOptionalRef(options.scenario) ? { scenario: parseOptionalRef(options.scenario) } : null),
+          ...(parseOptionalRef(options.evidence) ? { evidence: parseOptionalRef(options.evidence) } : null),
+          ...(parseOptionalRef(options.selection) ? { selection: parseOptionalRef(options.selection) } : null),
           diagnosticsLevel: options.diagnosticsLevel,
           ...(typeof options.maxEvents === 'number' ? { maxEvents: options.maxEvents } : null),
           ...(typeof options.timeoutMs === 'number' ? { timeoutMs: options.timeoutMs } : null),
           includeTrace: options.includeTrace,
           config: options.config,
         }
-      case 'contract-suite.run':
-        return {
-          command: 'contract-suite.run',
-          options,
-          entry: yield* parseEntryRefFromOptions(options),
-          diagnosticsLevel: options.diagnosticsLevel,
-          ...(typeof options.maxEvents === 'number' ? { maxEvents: options.maxEvents } : null),
-          ...(typeof options.timeoutMs === 'number' ? { timeoutMs: options.timeoutMs } : null),
-          includeTrace: options.includeTrace,
-          config: options.config,
-          allowWarn: options.allowWarn,
-          ...(options.baselineDir ? { baselineDir: options.baselineDir } : null),
-          includeContextPack: options.includeContextPack,
-          ...(typeof options.packMaxBytes === 'number' ? { packMaxBytes: options.packMaxBytes } : null),
-          requireRulesManifest: options.requireRulesManifest,
-          ...(options.inputsFile ? { inputsFile: options.inputsFile } : null),
-          includeUiKitRegistry: options.includeUiKitRegistry,
-          includeAnchorAutofill: options.includeAnchorAutofill,
-          repoRoot: options.repoRoot,
-        }
-      case 'spy.evidence':
-        return {
-          command: 'spy.evidence',
-          options,
-          entry: yield* parseEntryRefFromOptions(options),
-          ...(typeof options.maxUsedServices === 'number' ? { maxUsedServices: options.maxUsedServices } : null),
-          ...(typeof options.maxRawMode === 'number' ? { maxRawMode: options.maxRawMode } : null),
-          ...(typeof options.timeoutMs === 'number' ? { timeoutMs: options.timeoutMs } : null),
-        }
-      case 'anchor.index':
-        return { command: 'anchor.index', options, repoRoot: options.repoRoot }
-      case 'anchor.autofill':
-        return { command: 'anchor.autofill', options, repoRoot: options.repoRoot }
-      case 'transform.module': {
-        const opsPath = typeof options.opsPath === 'string' && options.opsPath.length > 0 ? options.opsPath : undefined
-        if (!opsPath) {
-          return yield* Effect.fail(invalidArgument('缺少输入：请提供 --ops <delta.json|->', helpText))
-        }
-        return { command: 'transform.module', options, repoRoot: options.repoRoot, opsPath }
       }
       default:
-        return yield* Effect.fail(
-          makeCliError({
-            code: 'CLI_INVALID_COMMAND',
-            message: `未知命令：${commandKey}`,
-            hint: helpText,
-          }),
-        )
+        return yield* Effect.fail(invalidCommand(extracted.tokens, helpText))
     }
   })
 
@@ -754,89 +618,67 @@ export const parseCliInvocation = (
       const outRoot = typeof leaf.options.outRoot === 'string' ? leaf.options.outRoot.trim() : undefined
       const outDir = outDirExplicit ?? (outRoot ? path.join(outRoot, leaf.command, runId) : undefined)
       const budgetBytes = typeof leaf.options.budgetBytes === 'number' ? leaf.options.budgetBytes : undefined
-      const mode = leaf.options.mode
       const tsconfig = typeof leaf.options.tsconfig === 'string' ? leaf.options.tsconfig.trim() : undefined
 
       const global: CliInvocation.Global = {
         runId,
         ...(outDir ? { outDir } : null),
         ...(budgetBytes ? { budgetBytes } : null),
-        ...(mode ? { mode } : null),
         ...(tsconfig ? { tsconfig } : null),
         host: leaf.options.host,
       }
 
       switch (leaf.command) {
-        case 'describe':
-          return Effect.succeed(({ kind: 'command', command: 'describe', global, format: leaf.format } as const))
-        case 'ir.export':
-          return Effect.succeed(({ kind: 'command', command: 'ir.export', global, entry: leaf.entry } as const))
-        case 'ir.validate':
-          return Effect.succeed(({ kind: 'command', command: 'ir.validate', global, input: leaf.input } as const))
-        case 'ir.diff':
-          return Effect.succeed(({ kind: 'command', command: 'ir.diff', global, before: leaf.before, after: leaf.after } as const))
-        case 'trialrun':
+        case 'check':
           return Effect.succeed({
             kind: 'command',
-            command: 'trialrun',
+            command: 'check',
             global,
             entry: leaf.entry,
+            ...(leaf.evidence ? { evidence: leaf.evidence } : null),
+            ...(leaf.selection ? { selection: leaf.selection } : null),
+          } as const)
+        case 'compare':
+          return Effect.succeed({
+            kind: 'command',
+            command: 'compare',
+            global,
+            beforeReport: leaf.beforeReport,
+            afterReport: leaf.afterReport,
+            ...(leaf.beforeEvidence ? { beforeEvidence: leaf.beforeEvidence } : null),
+            ...(leaf.afterEvidence ? { afterEvidence: leaf.afterEvidence } : null),
+            ...(leaf.entry ? { entry: leaf.entry } : null),
+          } as const)
+        case 'trial':
+          return Effect.succeed({
+            kind: 'command',
+            command: 'trial',
+            global,
+            trialMode: leaf.trialMode,
+            entry: leaf.entry,
+            ...(leaf.scenario ? { scenario: leaf.scenario } : null),
+            ...(leaf.evidence ? { evidence: leaf.evidence } : null),
+            ...(leaf.selection ? { selection: leaf.selection } : null),
             diagnosticsLevel: leaf.diagnosticsLevel,
             ...(typeof leaf.maxEvents === 'number' ? { maxEvents: leaf.maxEvents } : null),
             ...(typeof leaf.timeoutMs === 'number' ? { timeoutMs: leaf.timeoutMs } : null),
             includeTrace: leaf.includeTrace,
             config: leaf.config,
           } as const)
-        case 'contract-suite.run':
-          return Effect.succeed({
-            kind: 'command',
-            command: 'contract-suite.run',
-            global,
-            entry: leaf.entry,
-            diagnosticsLevel: leaf.diagnosticsLevel,
-            ...(typeof leaf.maxEvents === 'number' ? { maxEvents: leaf.maxEvents } : null),
-            ...(typeof leaf.timeoutMs === 'number' ? { timeoutMs: leaf.timeoutMs } : null),
-            includeTrace: leaf.includeTrace,
-            config: leaf.config,
-            allowWarn: leaf.allowWarn,
-            ...(leaf.baselineDir ? { baselineDir: leaf.baselineDir } : null),
-            includeContextPack: leaf.includeContextPack,
-            ...(typeof leaf.packMaxBytes === 'number' ? { packMaxBytes: leaf.packMaxBytes } : null),
-            requireRulesManifest: leaf.requireRulesManifest,
-            ...(leaf.inputsFile ? { inputsFile: leaf.inputsFile } : null),
-            includeUiKitRegistry: leaf.includeUiKitRegistry,
-            includeAnchorAutofill: leaf.includeAnchorAutofill,
-            repoRoot: leaf.repoRoot,
-          } as const)
-        case 'spy.evidence':
-          return Effect.succeed({
-            kind: 'command',
-            command: 'spy.evidence',
-            global,
-            entry: leaf.entry,
-            ...(typeof leaf.maxUsedServices === 'number' ? { maxUsedServices: leaf.maxUsedServices } : null),
-            ...(typeof leaf.maxRawMode === 'number' ? { maxRawMode: leaf.maxRawMode } : null),
-            ...(typeof leaf.timeoutMs === 'number' ? { timeoutMs: leaf.timeoutMs } : null),
-          } as const)
-        case 'anchor.index':
-          return Effect.succeed(({ kind: 'command', command: 'anchor.index', global, repoRoot: leaf.repoRoot } as const))
-        case 'anchor.autofill':
-          return Effect.succeed(({ kind: 'command', command: 'anchor.autofill', global, repoRoot: leaf.repoRoot } as const))
-        case 'transform.module':
-          return Effect.succeed(
-            ({ kind: 'command', command: 'transform.module', global, repoRoot: leaf.repoRoot, opsPath: leaf.opsPath } as const),
-          )
       }
     }),
-    Effect.catch((cause) =>
-      Effect.fail(
+    Effect.catch((cause) => {
+      if (cause && typeof cause === 'object' && (cause as { code?: unknown }).code === 'CLI_INVALID_COMMAND') {
+        return Effect.fail(cause)
+      }
+      return Effect.fail(
         makeCliError({
           code: 'CLI_INVALID_ARGUMENT',
           message: renderValidationError(cause),
           hint: options.helpText,
           cause,
         }),
-      ),
-    ),
+      )
+    }),
   )
 }

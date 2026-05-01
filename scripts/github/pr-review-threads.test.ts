@@ -46,7 +46,7 @@ const sampleReport: ReviewThreadReport = {
       id: 'thread-resolved',
       isResolved: true,
       isOutdated: false,
-      path: 'packages/logix-core/src/Flow.ts',
+      path: 'packages/logix-core/src/internal/runtime/core/FlowRuntime.ts',
       line: 19,
       startLine: 19,
       originalLine: null,
@@ -82,7 +82,7 @@ describe('parseArgs', () => {
         '--owner',
         'logixjs',
         '--repo',
-        'intent-flow',
+        'logix',
         '--format',
         'json',
         '--include-resolved',
@@ -91,7 +91,7 @@ describe('parseArgs', () => {
     ).toEqual({
       pr: 123,
       owner: 'logixjs',
-      repo: 'intent-flow',
+      repo: 'logix',
       format: 'json',
       includeResolved: true,
       failOnUnresolved: true,
@@ -134,7 +134,7 @@ describe('renderReport', () => {
     expect(text).toContain('# PR #42 review threads')
     expect(text).toContain('Unresolved: 1 / Total: 2')
     expect(text).toContain('packages/logix-core/src/Runtime.ts')
-    expect(text).not.toContain('packages/logix-core/src/Flow.ts')
+    expect(text).not.toContain('packages/logix-core/src/internal/runtime/core/FlowRuntime.ts')
   })
 
   it('renders json with resolved threads when requested', () => {

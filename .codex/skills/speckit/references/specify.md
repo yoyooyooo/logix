@@ -55,7 +55,8 @@ Given that feature description, do this:
    **IMPORTANT**:
    - You must only ever run this script once per feature
    - The JSON is provided in the terminal as output - always refer to it to get the actual content you're looking for
-   - The JSON output will contain BRANCH_NAME and SPEC_FILE paths
+   - The JSON output will contain BRANCH_NAME, SPEC_FILE, DISCUSSION_FILE, and DISCUSSION_CREATED fields
+   - The script does not create discussion.md by default
    - For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot")
 
 3. Load `SKILL_DIR/assets/templates/spec-template.md` to understand required sections.
@@ -96,7 +97,20 @@ Given that feature description, do this:
 
 5. Write the specification to SPEC_FILE using the template structure, replacing placeholders with concrete details derived from the feature description (arguments) while preserving section order and headings.
 
-6. **Specification Quality Validation**: After writing the initial spec, validate it against quality criteria:
+6. Decide whether `discussion.md` is needed:
+   - Do not create `discussion.md` when the feature has no unresolved candidate shapes, open questions, deferred items, or reopen evidence
+   - Create `DISCUSSION_FILE` only when there is real discussion material worth carrying
+   - If created, replace placeholder links so it points to `spec.md`
+   - If created, add a `Decision Backlinks` entry to `spec.md`
+   - If created, split open items into:
+     - `Must Close Before Implementation`
+     - `Deferred / Non-Blocking`
+   - Items in `Must Close Before Implementation` must be closed before implementation starts by moving the accepted decision into `spec.md` / `plan.md` / `tasks.md`
+   - Items in `Deferred / Non-Blocking` may remain only if they are explicitly outside the implementation gate or serve as reopen evidence
+   - Do NOT move owner / boundary / closure-gate truth into `discussion.md`
+   - Do NOT keep placeholder open questions such as `Q001 [待补充]`
+
+7. **Specification Quality Validation**: After writing the initial spec, validate it against quality criteria:
 
    a. **Create Spec Quality Checklist**: Generate a checklist file at `FEATURE_DIR/checklists/requirements.md` using the checklist template structure with these validation items:
 
@@ -187,9 +201,9 @@ Given that feature description, do this:
 
    d. **Update Checklist**: After each validation iteration, update the checklist file with current pass/fail status
 
-7. Report completion with branch name, spec file path, checklist results, and readiness for the next phase (`$speckit clarify` or `$speckit plan`).
+8. Report completion with branch name, spec file path, whether discussion.md was created, checklist results, and readiness for the next phase (`$speckit clarify` or `$speckit plan`).
 
-**NOTE:** The script creates and checks out the new branch and initializes the spec file before writing.
+**NOTE:** The script only creates the specs directory structure and initializes `spec.md`; it does not create, checkout, stage, or commit any VCS branch.
 
 ## General Guidelines
 

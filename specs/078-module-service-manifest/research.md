@@ -5,7 +5,7 @@
 ### 1) Module 已经能“声明 services”，但 Manifest 没有把它导出为 IR
 
 - `Logix.Module.make` 的定义参数已包含 `services?: Record<string, Context.Tag<any, any>>`（反射字段，和 `meta/schemas/dev` 同类）。
-- 但 `Reflection.extractManifest`（`packages/logix-core/src/internal/reflection/manifest.ts`）当前只导出：
+- 但 `CoreReflection.extractManifest`（`packages/logix-core/src/internal/reflection/manifest.ts`）当前只导出：
   - `actions/effects/schemaKeys/logicUnits/meta/staticIr/...`
   - **没有**导出 services 相关信息，因此平台侧无法枚举 Module↔Service 关系。
 
@@ -91,7 +91,7 @@
 
 - **Tag 标识不稳定**：要求业务侧创建 Tag 时使用稳定字符串 key；在 dev 下对不合格 Tag 给出明确诊断。
 - **Manifest 体积膨胀**：沿用 Manifest budgets（`maxBytes`）并制定裁剪顺序，确保 servicePorts 不被裁剪到不可用。
-- **Devtools 注册表无界增长**：dev-only + 版本上限（类似 `ModuleTraitsRegistry` 的策略）。
+- **Devtools 注册表无界增长**：dev-only + 版本上限（类似 `ModuleFieldsRegistry` 的策略）。
 
 ## 本阶段结论
 

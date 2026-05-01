@@ -10,12 +10,26 @@
 
 [Extract from feature spec: primary requirement + technical approach from research]
 
+## Stage Role
+
+<!--
+  Repo workflow gate:
+  - plan.md 只承接执行约束
+  - spec.md 先给出最小必要 SSoT，再进入 plan.md
+  - implementation 开始前，plan.md 必须写清 verification / writeback / non-goals
+-->
+
+- This file records execution constraints only.
+- This file MUST NOT invent a second owner truth beside `spec.md`.
+- This file MUST name where stable results will be written back after implementation.
+
 ## North Stars & Kill Features _(optional)_
 
 <!--
   OPTIONAL: If this feature is explicitly motivated by a North Star (NS-*) or a
   Kill Feature (KF-*), record the IDs here so plan/tasks/acceptance can keep
   traceability consistent.
+  NS/KF 只是当前对齐载体；若它们阻碍更优设计，先更新事实源，再在这里记录新的 IDs。
   Source of truth: docs/ssot/platform/foundation/04-north-stars.md
 -->
 
@@ -46,6 +60,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - Answer the following BEFORE starting research, and re-check after Phase 1:
   - North Stars / Kill Features: if this spec claims alignment (NS/KF), are the IDs recorded in spec.md (user stories / FR/NFR/SC) and reflected here?
+  - If current NS/KF, charter, guardrails, or prior specs block a clearly better design, has the plan updated the fact source first and avoided preserving a compromised design?
   - How does this feature map to the
     `Intent → Flow/Logix → Code → Runtime` chain?
   - Which `docs/specs/*` specs does it depend on or modify, and are they
@@ -82,6 +97,9 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
     and “optimization ladder” documented and aligned across docs/benchmarks/diagnostics?
   - Breaking changes (forward-only evolution): does this change any public API/behavior/event protocol;
     where is the migration note documented (no compatibility layer / no deprecation period)?
+  - Single-track implementation: does the plan avoid dual-track rollout, dual-write, shadow path,
+    compatibility mode, or “coexist first, delete later” execution strategies; if not, where is the
+    exception explicitly justified?
   - Public submodules: if this touches any `packages/*`, does it preserve the
     `src/index.ts` barrel + PascalCase public submodules (top-level `src/*.ts`,
     except `index.ts`/`global.d.ts`), move non-submodule code into
@@ -95,10 +113,30 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
   - What quality gates (typecheck / lint / test) will be run before merge,
     and what counts as “pass” for this feature?
 
+## Entry Gates
+
+### Gate A: Planning Admission
+
+Planning starts only when `spec.md` already answers:
+
+- who owns this feature
+- where the boundary is
+- what counts as closure
+
+### Gate B: Implementation Admission
+
+Implementation starts only when this plan already defines:
+
+- likely landing files
+- required witness set
+- verification matrix
+- result writeback targets
+- non-goals
+
 ## Perf Evidence Plan（MUST）
 
 > 若本特性触及 Logix Runtime 核心路径 / 渲染关键路径 / 对外性能边界：此节必须填写；否则标注 `N/A`。
-> 详细口径见：`.codex/skills/logix-perf-evidence/references/perf-evidence.md`
+> 详细口径见：`packages/logix-perf-evidence/references/perf-evidence.md`
 
 - Baseline 语义：代码前后 / 策略 A/B（填其一）
 - envId：<os-arch.cpu.browser-version.headless>
@@ -121,6 +159,13 @@ specs/[###-feature]/
 ├── contracts/           # Phase 1 output ($speckit plan)
 ├── notes/               # Optional: handoff notes / entry points ($speckit notes)
 └── tasks.md             # Phase 2 output ($speckit tasks - NOT created by $speckit plan)
+```
+
+Optional when real unresolved material exists:
+
+```text
+specs/[###-feature]/
+└── discussion.md        # Must-close items / deferred items / candidate shapes / reopen evidence
 ```
 
 ### Source Code (repository root)
@@ -170,6 +215,35 @@ ios/ or android/
 
 **Structure Decision**: [Document the selected structure and reference the real
 directories captured above]
+
+## Required Witness Set
+
+<!--
+  ACTION REQUIRED:
+  - 列出这次实施最小必须补齐的 witness / proof
+  - 它们应当直接支持 spec.md 里的 closure gate
+-->
+
+- [Witness 1]
+- [Witness 2]
+
+## Result Writeback
+
+<!--
+  ACTION REQUIRED:
+  - 明确实现完成后要回写哪些 authority 页
+  - 明确是否要同步 spec status / registry / conditional discussion cleanup / examples/tests witness
+-->
+
+- Authority pages: [e.g., docs/ssot/...]
+- Spec state sync: [e.g., spec.md status, registry status]
+- Discussion cleanup: [if discussion.md exists, what must be removed, merged back, or kept as non-blocking reopen evidence]
+- Witness surfaces: [tests / examples / docs]
+
+## Non-Goals
+
+- [What this plan explicitly refuses to do]
+- [What remains deferred]
 
 ## Complexity Tracking
 

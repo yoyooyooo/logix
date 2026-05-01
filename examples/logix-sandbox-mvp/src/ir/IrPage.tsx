@@ -1,3 +1,4 @@
+import * as CoreKernel from '@logixjs/core/repo-internal/kernel-api'
 import React, { useEffect, useMemo } from 'react'
 import { shallow, useDispatch, useModule, useSelector } from '@logixjs/react'
 import { Link } from 'react-router-dom'
@@ -48,36 +49,40 @@ const IR_PRESETS_LEGACY = [
   dev: { source: { file: "IrPage.tsx", line: 1, column: 1 } },
 })
 
-const AppRoot = Counter.implement({
+const AppRoot = Logix.Program.make(Counter, {
   initial: { count: 0 },
   logics: [],
 })`,
   },
   {
     id: 'p1',
-    label: 'P1 StaticIR DAG (Traits)',
+    label: 'P1 StaticIR DAG (Fields)',
     moduleExport: 'AppRoot',
-    moduleCode: `const TraitState = Schema.Struct({ a: Schema.Number, derivedA: Schema.Number })
+    moduleCode: `const FieldState = Schema.Struct({ a: Schema.Number, derivedA: Schema.Number })
 
-const traits = Logix.StateTrait.from(TraitState)({
-  derivedA: Logix.StateTrait.node({
-    computed: Logix.StateTrait.computed({
+const fieldDeclarations = CoreContracts.fieldFrom(FieldState)({
+  derivedA: CoreContracts.fieldNode({
+    computed: CoreContracts.fieldComputed({
       deps: ["a"],
       get: (a) => a + 1,
     }),
   }),
 })
 
-const WithTraits = Logix.Module.make("IrPreset.WithTraits", {
-  state: TraitState,
+const WithFields = Logix.Module.make("IrPreset.WithFields", {
+  state: FieldState,
   actions: { noop: Schema.Void },
   reducers: { noop: (s) => s },
-  traits,
 })
 
-const AppRoot = WithTraits.implement({
+const fieldsLogic = WithFields.logic("with-fields", ($) => {
+  $.fields(fieldDeclarations)
+  return Effect.void
+})
+
+const AppRoot = Logix.Program.make(WithFields, {
   initial: { a: 1, derivedA: 2 },
-  logics: [],
+  logics: [fieldsLogic],
 })`,
   },
   {
@@ -95,7 +100,7 @@ const Demo = Logix.Module.make("IrPreset.MissingDep", {
   reducers: { noop: (s) => s },
 })
 
-const useMissing = Demo.logic(($) =>
+const useMissing = Demo.logic('use-missing', ($) =>
   Effect.gen(function* () {
     const svc = yield* $.use(BusinessService)
     const msg = yield* svc.ping()
@@ -104,7 +109,7 @@ const useMissing = Demo.logic(($) =>
   { id: "logic:missing", kind: "user", name: "missing-dep" },
 )
 
-const AppRoot = Demo.implement({
+const AppRoot = Logix.Program.make(Demo, {
   initial: { ok: true },
   logics: [useMissing],
 })`,
@@ -120,7 +125,7 @@ const AppRoot = Demo.implement({
   meta: { owner: "demo" },
 })
 
-const AppRoot = ControlPlane.implement({
+const AppRoot = Logix.Program.make(ControlPlane, {
   initial: { ok: true },
   logics: [],
 })`,
@@ -139,8 +144,7 @@ const AppRoot = ControlPlane.implement({
   },
 })
 
-const emit = Timeline.logic(
-  ($) =>
+const emit = Timeline.logic('emit', ($) =>
     Effect.gen(function* () {
       yield* Effect.log("[timeline] start")
       yield* $.dispatchers.inc()
@@ -150,7 +154,7 @@ const emit = Timeline.logic(
   { id: "logic:emit", kind: "user", name: "emit" },
 )
 
-const AppRoot = Timeline.implement({
+const AppRoot = Logix.Program.make(Timeline, {
   initial: { n: 0 },
   logics: [emit],
 })`,
@@ -165,7 +169,7 @@ const AppRoot = Timeline.implement({
   reducers: { noop: (s) => s },
 })
 
-const AppRoot = App.implement({
+const AppRoot = Logix.Program.make(App, {
   initial: { ok: true },
   logics: [],
 })`,
@@ -177,12 +181,13 @@ const AppRoot = App.implement({
     moduleCode: `import * as Form from "@logixjs/form"
 
 const Values = Schema.Struct({ name: Schema.String })
-const R = Form.rules(Values)
 
 const AppRoot = Form.make("IrPreset.FormRules", {
   values: Values,
   initialValues: { name: "" },
-  rules: R(R.field("name", { required: true })),
+}, (form) => {
+  const z = form.dsl as any
+  form.rules(z(z.field("name", { required: true })))
 })`,
   },
 ]
@@ -217,15 +222,15 @@ const buildSandboxIrWrapper = (options: {
     ``,
     `const __programModule = ${options.moduleExport}`,
     `const __kernelId = ${JSON.stringify(options.kernelId)}`,
-    `const __kernelLayer = (__kernelId === "core" || __kernelId === "core-ng") ? Logix.Kernel.kernelLayer({ kernelId: __kernelId, packageName: "@logixjs/core" }) : undefined`,
+    `const __kernelLayer = (__kernelId === "core") ? CoreKernel.kernelLayer({ kernelId: __kernelId, packageName: "@logixjs/core" }) : undefined`,
     ``,
     `export default Effect.gen(function* () {`,
-    `  const trialRunModule = (Logix as any)?.Observability?.trialRunModule`,
-    `  if (typeof trialRunModule !== "function") {`,
-    `    throw new Error("[Logix][Sandbox] 缺少 Observability.trialRunModule：请重新 bundle @logixjs/sandbox kernel（pnpm --filter @logixjs/sandbox bundle:kernel）")`,
+    `  const runtimeTrial = (Logix as any)?.Runtime?.trial`,
+    `  if (typeof runtimeTrial !== "function") {`,
+    `    throw new Error("[Logix][Sandbox] 缺少 Runtime.trial：请重新 bundle @logixjs/sandbox kernel（pnpm --filter @logixjs/sandbox bundle:kernel）")`,
     `  }`,
     `  const options = ${JSON.stringify(trialRunOptions, null, 2)}`,
-    `  const report = yield* trialRunModule(__programModule as any, __kernelLayer ? { ...options, layer: __kernelLayer } : options)`,
+    `  const report = yield* runtimeTrial(__programModule as any, __kernelLayer ? { ...options, layer: __kernelLayer } : options)`,
     `  return { manifest: (report as any)?.manifest, staticIr: (report as any)?.staticIr, trialRunReport: report, evidence: (report as any)?.evidence }`,
     `})`,
     ``,
@@ -238,7 +243,7 @@ const ellipsis = (text: string, maxChars: number): string => {
 }
 
 export function IrPage() {
-  const runtime = useModule(IrDef)
+  const runtime = useModule(IrDef.tag)
   const dispatch = useDispatch(runtime)
 
   const view = useSelector(

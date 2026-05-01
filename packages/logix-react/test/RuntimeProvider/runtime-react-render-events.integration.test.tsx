@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 // @vitest-environment happy-dom
 
 import React from 'react'
@@ -5,7 +6,7 @@ import { describe, it, expect } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
-import { RuntimeProvider, useModule } from '../../src/index.js'
+import { RuntimeProvider, useModule, useSelector } from '../../src/index.js'
 
 const Counter = Logix.Module.make('ReactRenderCounter', {
   state: Schema.Struct({ count: Schema.Number }),
@@ -17,24 +18,24 @@ const Counter = Logix.Module.make('ReactRenderCounter', {
   },
 })
 
-const Impl = Counter.implement({
+const CounterProgram = Logix.Program.make(Counter, {
   initial: { count: 0 },
 })
 
 describe('@logixjs/react · react-render Debug events', () => {
   it('emits component-level react-render events and selector-level react-selector metadata', async () => {
-    const events: Logix.Debug.Event[] = []
+    const events: CoreDebug.Event[] = []
 
-    const debugLayer = Logix.Debug.replace([
+    const debugLayer = CoreDebug.replace([
       {
-        record: (event: Logix.Debug.Event) =>
+        record: (event: CoreDebug.Event) =>
           Effect.sync(() => {
             events.push(event)
           }),
       },
     ]) as Layer.Layer<any, never, never>
 
-    const runtime = Logix.Runtime.make(Impl, {
+    const runtime = Logix.Runtime.make(CounterProgram, {
       layer: debugLayer,
     })
 
@@ -54,7 +55,7 @@ describe('@logixjs/react · react-render Debug events', () => {
     const { result } = renderHook(
       () => {
         const counter = useModule(Counter.tag)
-        const value = useModule(counter, selectCount)
+        const value = useSelector(counter, selectCount)
         return { value, inc: counter.actions.inc }
       },
       { wrapper },
@@ -73,8 +74,8 @@ describe('@logixjs/react · react-render Debug events', () => {
 
     // Normalize collected Debug.Events into RuntimeDebugEventRef and verify there is a component-level react-render event.
     const renderRefs = events
-      .map((event) => Logix.Debug.internal.toRuntimeDebugEventRef(event))
-      .filter((ref): ref is Logix.Debug.RuntimeDebugEventRef => ref != null && ref.kind === 'react-render')
+      .map((event) => CoreDebug.internal.toRuntimeDebugEventRef(event))
+      .filter((ref): ref is CoreDebug.RuntimeDebugEventRef => ref != null && ref.kind === 'react-render')
 
     expect(renderRefs.length).toBeGreaterThan(0)
     const renderEvent = renderRefs[renderRefs.length - 1]
@@ -83,9 +84,9 @@ describe('@logixjs/react · react-render Debug events', () => {
     expect(renderMeta.componentLabel).toBe('useModule')
 
     const stateRefs = events
-      .map((event) => Logix.Debug.internal.toRuntimeDebugEventRef(event))
+      .map((event) => CoreDebug.internal.toRuntimeDebugEventRef(event))
       .filter(
-        (ref): ref is Logix.Debug.RuntimeDebugEventRef =>
+        (ref): ref is CoreDebug.RuntimeDebugEventRef =>
           ref != null && ref.kind === 'state' && ref.label === 'state:update',
       )
 
@@ -98,8 +99,8 @@ describe('@logixjs/react · react-render Debug events', () => {
 
     // Also verify selector-level diagnostics events carry debugKey/fieldPaths metadata.
     const selectorRefs = events
-      .map((event) => Logix.Debug.internal.toRuntimeDebugEventRef(event))
-      .filter((ref): ref is Logix.Debug.RuntimeDebugEventRef => ref != null && ref.kind === 'react-selector')
+      .map((event) => CoreDebug.internal.toRuntimeDebugEventRef(event))
+      .filter((ref): ref is CoreDebug.RuntimeDebugEventRef => ref != null && ref.kind === 'react-selector')
 
     expect(selectorRefs.length).toBeGreaterThan(0)
     const selectorEvent = selectorRefs[selectorRefs.length - 1]
@@ -125,10 +126,10 @@ describe('@logixjs/react · react-render Debug events', () => {
     process.env.NODE_ENV = 'production'
 
     try {
-      Logix.Debug.clearDevtoolsEvents()
+      CoreDebug.clearDevtoolsEvents()
 
       const runtimeLabel = 'ProdReactRenderRuntime'
-      const runtime = Logix.Runtime.make(Impl, {
+      const runtime = Logix.Runtime.make(CounterProgram, {
         label: runtimeLabel,
         devtools: true,
       })
@@ -142,7 +143,7 @@ describe('@logixjs/react · react-render Debug events', () => {
       const { result } = renderHook(
         () => {
           const counter = useModule(Counter.tag)
-          const value = useModule(counter, (s) => (s as any).count)
+          const value = useSelector(counter, (s) => (s as any).count)
           return { value, inc: counter.actions.inc }
         },
         { wrapper },
@@ -158,7 +159,7 @@ describe('@logixjs/react · react-render Debug events', () => {
       })
 
       await waitFor(() => {
-        const refs = Logix.Debug.getDevtoolsSnapshot().events.filter(
+        const refs = CoreDebug.getDevtoolsSnapshot().events.filter(
           (ref) => ref.kind === 'react-render' && ref.runtimeLabel === runtimeLabel,
         )
 

@@ -1,7 +1,8 @@
+import * as CoreReflection from '@logixjs/core/repo-internal/reflection-api'
 import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../../src/index.js'
-import * as Debug from '../../../src/Debug.js'
+import * as Debug from '../../../src/internal/debug-api.js'
 
 describe('Runtime action unknown fallback (US1)', () => {
   it.effect('should mark undeclared actions as unknown/opaque', () =>
@@ -13,12 +14,12 @@ describe('Runtime action unknown fallback (US1)', () => {
         actions: { inc: Schema.Void } as const,
       })
 
-      const impl = M.implement({ initial: { count: 0 }, logics: [] })
-      const manifest = Logix.Reflection.extractManifest(impl)
+      const programModule = Logix.Program.make(M, { initial: { count: 0 }, logics: [] })
+      const manifest = CoreReflection.extractManifest(programModule)
       expect(manifest.actions.map((a) => a.actionTag)).toEqual(['inc'])
 
       const ring = Debug.makeRingBufferSink(64)
-      const runtime = Logix.Runtime.make(impl, {
+      const runtime = Logix.Runtime.make(programModule, {
         layer: Layer.mergeAll(
           Debug.replace([ring.sink]) as Layer.Layer<any, never, never>,
           Debug.diagnosticsLevel('light'),
@@ -55,4 +56,3 @@ describe('Runtime action unknown fallback (US1)', () => {
     }),
   )
 })
-

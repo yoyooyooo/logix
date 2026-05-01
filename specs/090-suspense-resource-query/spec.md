@@ -1,8 +1,8 @@
 # Feature Specification: Suspense Resource/Query（默认异步：缓存/去重/预取/取消）
 
-**Feature Branch**: `090-suspense-resource-query`  
-**Created**: 2026-01-10  
-**Status**: Draft  
+**Feature Branch**: `090-suspense-resource-query`
+**Created**: 2026-01-10
+**Status**: Draft
 **Input**: 补齐 Suspense 友好的资源/查询层：提供数据请求的缓存、去重、失效、预取、重试与取消语义，并将加载状态以统一方式暴露给 React（可挂起/可降级）；目标是让路由与入口默认异步，快网尽量无 loading、慢网呈现稳定且不闪烁的协调 fallback。
 
 ## Context

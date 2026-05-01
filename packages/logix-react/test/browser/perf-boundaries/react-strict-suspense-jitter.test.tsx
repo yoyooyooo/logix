@@ -5,7 +5,8 @@ import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import matrix from '@logixjs/perf-evidence/assets/matrix.json'
 import { RuntimeProvider } from '../../../src/RuntimeProvider.js'
-import { useModule } from '../../../src/Hooks.js'
+import { fieldValues } from '../../../src/FormProjection.js'
+import { useModule, useSelector } from '../../../src/Hooks.js'
 import { emitPerfReport, type PerfReport } from './protocol.js'
 import {
   getProfileConfig,
@@ -40,7 +41,7 @@ const SuspenseModule = Logix.Module.make('PerfStrictSuspenseJitter', {
 })
 
 const makeLogic = (suspenseCycles: number) =>
-  SuspenseModule.logic(($) =>
+  SuspenseModule.logic('suspense-module-logic', ($) =>
     Effect.gen(function* () {
       yield* $.onAction('tick').runLatest(() =>
         Effect.gen(function* () {
@@ -103,7 +104,8 @@ const waitForReady = (module: any): Promise<void> => {
 }
 
 const SuspenseChild: React.FC<{ readonly module: any }> = ({ module }) => {
-  const state = useModule(module, (s: unknown) => s as SuspenseState)
+  const [ready, value] = useSelector(module, fieldValues(['ready', 'value'] as const)) as readonly [boolean, number]
+  const state: SuspenseState = { ready, value }
   if (!state.ready) {
     throw waitForReady(module)
   }
@@ -149,12 +151,12 @@ test('browser react strict/suspense jitter: interaction→stable', { timeout: TE
         const mountCycles = params.mountCycles as number
         const suspenseCycles = params.suspenseCycles as number
 
-        const impl = SuspenseModule.implement({
+        const program = Logix.Program.make(SuspenseModule, {
           initial: { ready: true, value: 0 },
           logics: [makeLogic(suspenseCycles)],
         })
 
-        const runtime = Logix.Runtime.make(impl, {
+        const runtime = Logix.Runtime.make(program, {
           layer: Layer.mergeAll(silentDebugLayer, perfKernelLayer) as Layer.Layer<any, never, never>,
           label: `perf:reactStrictSuspense:${mountCycles}:${suspenseCycles}`,
         })

@@ -1,7 +1,7 @@
 # Specification Quality Checklist: 事务 IR + Patch/Dirty-set 一等公民
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-15  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-15
 **Feature**: `../spec.md`
 
 ## Content Quality

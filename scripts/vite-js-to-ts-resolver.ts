@@ -9,7 +9,7 @@ const stripQuery = (id: string): string => id.split("?", 1)[0]!
  * 本仓库的 TS 源码采用 Node ESM 友好写法（相对导入写 `.js`），所以需要一个 resolver 兜底。
  */
 export const jsToTsResolver = (): Plugin => ({
-  name: "intent-flow:js-to-ts-resolver",
+  name: "logix:js-to-ts-resolver",
   enforce: "pre",
   resolveId(source, importer) {
     if (!importer) {
@@ -42,4 +42,3 @@ export const jsToTsResolver = (): Plugin => ({
     return null
   },
 })
-

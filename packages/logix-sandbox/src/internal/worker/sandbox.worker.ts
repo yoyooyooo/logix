@@ -130,6 +130,25 @@ const postError = (
     payload: { code, message, stack },
   } satisfies ErrorEvent)
 
+const readCauseMessage = (cause: unknown): string | undefined => {
+  if (cause instanceof Error) return cause.message || cause.name
+  if (typeof cause === 'string') return cause
+  if (cause && typeof cause === 'object') {
+    const message = (cause as { readonly message?: unknown }).message
+    if (typeof message === 'string' && message.length > 0) return message
+  }
+  return undefined
+}
+
+const runtimeErrorMessage = (error: unknown): string => {
+  const message = error instanceof Error ? error.message : String(error)
+  const causeMessage = error && typeof error === 'object'
+    ? readCauseMessage((error as { readonly cause?: unknown }).cause)
+    : undefined
+  if (!causeMessage || message.includes(causeMessage)) return message
+  return `${message}: ${causeMessage}`
+}
+
 const postComplete = (runId: string, duration: number, stateSnapshot?: unknown): void =>
   postEvent({
     type: 'COMPLETE',
@@ -185,11 +204,18 @@ const setupConsoleProxy = (): void => {
 // Effect Logger -> LOG event
 // ============================================================================ //
 
-const logLevelToString = (LogLevel: any, level: any): LogEntry['level'] => {
-  if (LogLevel.greaterThanEqual(level, LogLevel.Error)) return 'error'
-  if (LogLevel.greaterThanEqual(level, LogLevel.Warning)) return 'warn'
-  if (LogLevel.greaterThanEqual(level, LogLevel.Info)) return 'info'
-  return 'debug'
+const logLevelToString = (level: unknown): LogEntry['level'] => {
+  switch (level) {
+    case 'Fatal':
+    case 'Error':
+      return 'error'
+    case 'Warn':
+      return 'warn'
+    case 'Info':
+      return 'info'
+    default:
+      return 'debug'
+  }
 }
 
 // ============================================================================ //
@@ -296,44 +322,32 @@ const recordUiIntentTrace = (packet: UiIntentPacket): void => {
   })
 }
 
-let logixDebugSinkInstalled = false
-let logixDebugSink: { readonly record: (event: unknown) => any } | undefined
-
 const resolveLogixDebugSink = async (
   EffectRuntime: (typeof import('effect'))['Effect'],
+  LayerRuntime: (typeof import('effect'))['Layer'],
 ): Promise<{ applyDebug: <A, E, R>(effect: any) => any } | null> => {
   try {
     const logix = await import(/* @vite-ignore */ currentKernelUrl)
-    if (!logix?.Debug?.internal?.currentDebugSinks) {
+    if (!logix?.Debug?.replace || !logix?.Debug?.diagnosticsLevel || !logix?.Debug?.traceMode) {
       return null
     }
-
-    // NOTE: Logix Runtime inside Sandbox may create a new root fiber via Effect.runPromise;
-    // FiberRef.locally does not affect those fibers, so we need to patch FiberRef.initial here.
-    if (!logixDebugSink) {
-      logixDebugSink = {
-        record: (event: unknown) => EffectRuntime.sync(() => recordDebugTrace(event)),
-      }
-    }
-
-    if (!logixDebugSinkInstalled) {
-      const sinksRef = logix.Debug.internal.currentDebugSinks as any
-      const initialSinks: unknown = sinksRef.initial
-      const base = Array.isArray(initialSinks) ? (initialSinks as ReadonlyArray<unknown>) : []
-      if (!base.includes(logixDebugSink)) {
-        sinksRef.initial = [...base, logixDebugSink]
-      }
-
-      const diagnosticsRef = logix.Debug.internal.currentDiagnosticsLevel as any
-      if (diagnosticsRef.initial === 'off') {
-        diagnosticsRef.initial = 'light'
-      }
-
-      logixDebugSinkInstalled = true
-    }
+    // eslint-disable-next-line no-console
+    console.log('[sandbox-debug-ref]', Object.keys((logix.Debug as any).internal?.currentDebugSinks ?? {}))
 
     return {
-      applyDebug: <A, E, R>(effect: any) => effect,
+      applyDebug: <A, E, R>(effect: any) =>
+        EffectRuntime.provide(
+          effect,
+          LayerRuntime.mergeAll(
+            logix.Debug.replace([
+              {
+                record: (event: unknown) => EffectRuntime.sync(() => recordDebugTrace(event)),
+              },
+            ]) as any,
+            logix.Debug.diagnosticsLevel('light') as any,
+            logix.Debug.traceMode('on') as any,
+          ),
+        ),
     }
   } catch {
     return null
@@ -524,14 +538,15 @@ async function handleRun(runId: string, useCompiledCode?: boolean): Promise<void
     const program = module.default
     const {
       Effect: EffectRuntime,
+      Layer: LayerRuntime,
       Logger,
       LogLevel,
     } = (await import(/* @vite-ignore */ currentEffectUrl)) as unknown as typeof import('effect')
     const SandboxLogger = Logger.make<unknown, void>(({ logLevel, message }: any) => {
-      const level = logLevelToString(LogLevel, logLevel)
+      const level = logLevelToString(logLevel)
       postLog({ level, args: [message], timestamp: Date.now(), source: 'effect' })
     })
-    const debugIntegration = await resolveLogixDebugSink(EffectRuntime)
+    const debugIntegration = await resolveLogixDebugSink(EffectRuntime, LayerRuntime)
 
     let effectToRun = EffectRuntime.gen(function* () {
       const res = yield* program
@@ -555,7 +570,7 @@ async function handleRun(runId: string, useCompiledCode?: boolean): Promise<void
     endSpan(rootSpanId, 'error')
     postError(
       'RUNTIME_ERROR',
-      error instanceof Error ? error.message : String(error),
+      runtimeErrorMessage(error),
       error instanceof Error ? error.stack : undefined,
     )
     postComplete(runId, duration)

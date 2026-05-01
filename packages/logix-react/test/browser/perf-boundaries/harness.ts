@@ -1,6 +1,7 @@
+import * as CoreKernel from '@logixjs/core/repo-internal/kernel-api'
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { Effect, Layer } from 'effect'
 import * as Logix from '@logixjs/core'
-import * as CoreNg from '@logixjs/core-ng'
 
 export type Primitive = string | number | boolean
 export type Params = Record<string, Primitive>
@@ -154,8 +155,8 @@ const defaultEvidenceFromParams = (params: Params): Record<string, EvidenceSampl
 
   const out: Record<string, EvidenceSample> = {}
 
-  const perfKernelRaw = import.meta.env.VITE_LOGIX_PERF_KERNEL_ID
-  out['runtime.kernelId'] = perfKernelRaw === 'core' ? 'core' : perfKernelRaw === 'core-ng' ? 'core-ng' : 'core'
+  const perfKernelRaw = import.meta.env.VITE_LOGIX_PERF_KERNEL_MODE
+  out['runtime.kernelId'] = perfKernelRaw === 'full-cutover' ? 'core' : 'core'
 
   if (policyMode !== undefined) {
     out['react.policy.mode'] = String(policyMode)
@@ -172,24 +173,23 @@ const defaultEvidenceFromParams = (params: Params): Record<string, EvidenceSampl
   return out
 }
 
-export const silentDebugLayer = Logix.Debug.replace([
+export const silentDebugLayer = CoreDebug.replace([
   {
     record: () => Effect.void,
   },
 ])
 
-const readPerfKernelId = (): Logix.Kernel.KernelId | undefined => {
-  const raw = import.meta.env.VITE_LOGIX_PERF_KERNEL_ID
+const readPerfKernelId = (): CoreKernel.KernelId | undefined => {
+  const raw = import.meta.env.VITE_LOGIX_PERF_KERNEL_MODE
   if (raw === 'core') return 'core'
-  if (raw === 'core-ng') return 'core-ng'
   return 'core'
 }
 
 export const makePerfKernelLayer = (): Layer.Layer<any, never, never> => {
-  const kernelId = readPerfKernelId()
-  if (kernelId === 'core') return Layer.empty as Layer.Layer<any, never, never>
+  const mode = import.meta.env.VITE_LOGIX_PERF_KERNEL_MODE
+  if (mode !== 'full-cutover') return Layer.empty as Layer.Layer<any, never, never>
 
-  return CoreNg.coreNgFullCutoverLayer({
+  return CoreKernel.fullCutoverLayer({
     capabilities: ['perf:fullCutover'],
   }) as Layer.Layer<any, never, never>
 }
@@ -814,15 +814,15 @@ export const runMatrixSuite = async (
 export const withNodeEnv = async <A>(nodeEnv: string, run: () => Promise<A>): Promise<A> => {
   const proc = (globalThis as any).process as { env?: Record<string, string | undefined> } | undefined
   const prevNodeEnv = proc?.env?.NODE_ENV
-  const prevExecVmMode = proc?.env?.LOGIX_CORE_NG_EXEC_VM_MODE
+  const prevExecVmMode = proc?.env?.LOGIX_CORE_EXEC_VM_MODE
 
   ;(globalThis as any).process = proc ?? { env: {} }
   ;(globalThis as any).process.env = (globalThis as any).process.env ?? {}
   ;(globalThis as any).process.env.NODE_ENV = nodeEnv
 
-  const viteExecVmMode = import.meta.env.VITE_LOGIX_CORE_NG_EXEC_VM_MODE
+  const viteExecVmMode = import.meta.env.VITE_LOGIX_CORE_EXEC_VM_MODE
   if (typeof viteExecVmMode === 'string' && viteExecVmMode.trim().length > 0) {
-    ;(globalThis as any).process.env.LOGIX_CORE_NG_EXEC_VM_MODE = viteExecVmMode.trim()
+    ;(globalThis as any).process.env.LOGIX_CORE_EXEC_VM_MODE = viteExecVmMode.trim()
   }
 
   try {
@@ -838,9 +838,9 @@ export const withNodeEnv = async <A>(nodeEnv: string, run: () => Promise<A>): Pr
 
       if (viteExecVmMode !== undefined) {
         if (prevExecVmMode === undefined) {
-          delete env.LOGIX_CORE_NG_EXEC_VM_MODE
+          delete env.LOGIX_CORE_EXEC_VM_MODE
         } else {
-          env.LOGIX_CORE_NG_EXEC_VM_MODE = prevExecVmMode
+          env.LOGIX_CORE_EXEC_VM_MODE = prevExecVmMode
         }
       }
     }

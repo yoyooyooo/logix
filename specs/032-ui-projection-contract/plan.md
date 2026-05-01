@@ -1,6 +1,6 @@
 # Implementation Plan: UI Projection Contract（032：语义编排与 UI 投影解耦）
 
-**Branch**: `032-ui-projection-contract` | **Date**: 2025-12-26 | **Spec**: `specs/032-ui-projection-contract/spec.md`  
+**Branch**: `032-ui-projection-contract` | **Date**: 2025-12-26 | **Spec**: `specs/032-ui-projection-contract/spec.md`
 **Input**: `specs/032-ui-projection-contract/spec.md`
 
 ## Summary
@@ -22,12 +22,12 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.x（ESM）  
-**Primary Dependencies**: `effect` v3、`@logixjs/core`、`@logixjs/react`、`@logixjs/sandbox`、React  
-**Storage**: N/A（以可序列化 JSON 资产为主；编辑器/平台可选择其存储形态）  
-**Testing**: Vitest（UI/交互测试可用普通 vitest；Effect-heavy 用 `@effect/vitest`）  
-**Target Platform**: 现代浏览器（Workbench/Studio）+ Node.js（CI/出码/合同守卫）  
-**Project Type**: pnpm workspace（`packages/*` + `examples/*`）  
+**Language/Version**: TypeScript 5.x（ESM）
+**Primary Dependencies**: `effect` v3、`@logixjs/core`、`@logixjs/react`、`@logixjs/sandbox`、React
+**Storage**: N/A（以可序列化 JSON 资产为主；编辑器/平台可选择其存储形态）
+**Testing**: Vitest（UI/交互测试可用普通 vitest；Effect-heavy 用 `@effect/vitest`）
+**Target Platform**: 现代浏览器（Workbench/Studio）+ Node.js（CI/出码/合同守卫）
+**Project Type**: pnpm workspace（`packages/*` + `examples/*`）
 **Performance Goals**:
 - 不引入 runtime 热路径成本：032 仅影响平台/编辑期/出码期的协议与校验（NFR-001）
 **Constraints**:

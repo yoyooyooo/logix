@@ -21,11 +21,11 @@ title: Logix Test 手册（Effect-first）
 - 全量对照：`<pkg-manager> run test`
 - 包内一次性：`<pkg-manager> -C <pkg> exec vitest run`
 
-> 若目标项目某个测试脚本默认是 watch，请改用一次性执行命令用于自动化闭环。
+> 若某个测试脚本默认是 watch，请改用一次性执行命令用于自动化闭环。
 
 ## 3) 最小测试矩阵
 
-1. 语义层：setup/run 相位、reducer/mutate/update 行为。
+1. 语义层：declaration/run semantics、reducer/mutate/update 行为。
 2. 并发层：latest/exhaust/parallel + 取消/中断分支。
 3. 事务层：IO 禁令、enqueue guard、async escape。
 4. 诊断层：关键 code 是否可解释。
@@ -47,4 +47,3 @@ title: Logix Test 手册（Effect-first）
 
 - `references/llms/07-testing-basics.md`
 - `references/llms/04-runtime-transaction-rules.md`
-- `references/llms/99-project-anchor-template.md`（可选）

@@ -1,7 +1,7 @@
 # Specification Quality Checklist: 092 E2E Latency Trace
 
-**Purpose**: Validate specification completeness and quality before proceeding to execution  
-**Created**: 2026-01-10  
+**Purpose**: Validate specification completeness and quality before proceeding to execution
+**Created**: 2026-01-10
 **Feature**: `specs/092-e2e-latency-trace/spec.md`
 
 ## Content Quality

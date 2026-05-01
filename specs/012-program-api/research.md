@@ -1,7 +1,7 @@
 # Phase 0 Research: Process（长效逻辑与跨模块协同收敛）
 
-**Feature**: [spec.md](./spec.md) (`/Users/yoyo/Documents/code/personal/intent-flow/specs/012-program-api/spec.md`)  
-**Plan**: [plan.md](./plan.md) (`/Users/yoyo/Documents/code/personal/intent-flow/specs/012-program-api/plan.md`)  
+**Feature**: [spec.md](./spec.md) (`/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/012-program-api/spec.md`)
+**Plan**: [plan.md](./plan.md) (`/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/012-program-api/plan.md`)
 **Created**: 2025-12-16
 
 本文件用于在实现前固化关键决策与取舍，避免“语义先跑偏、实现后补文档”的事实源漂移。
@@ -14,7 +14,7 @@
 
 - 现实落点一致：当前系统已经以 `processes`（含 Link 产物）承载跨模块长期任务，继续演进能避免重复建设与分叉语义。
 - 术语去冲突：仓库中 `Program/ProgramRunner` 已被用于 “根模块运行入口”（`Runtime.runProgram/openProgram`）；继续沿用 Program 作为“长效协同”会造成概念冲突。
-- 与现有 “Program” 术语区分：例如 StateTrait 的 `Program`（traits 归一化产物）已经存在；本特性不应再引入第三种 Program。
+- 与现有 “Program” 术语区分：例如 FieldKernel 的 `Program`（fields 归一化产物）已经存在；本特性不应再引入第三种 Program。
 
 **Alternatives considered**:
 
@@ -259,6 +259,6 @@
 
 **Decision**:
 
-- 对外只保留最小入口：`Process.make(processId, effect)` / `Process.make({ processId, ... }, effect)` 与特化入口 `Process.link(...)`；
+- 对外只保留最小入口：`orchestration process make surface(processId, effect)` / `orchestration process make surface({ processId, ... }, effect)` 与特化入口 `orchestration process link surface(...)`；
 - 不提供 `Process.of(effect)`：因为无法在不引入随机/时间的前提下为其生成稳定 `processId`，会直接破坏可导出 Static IR 与可回放诊断链路；
-- 运行时仍允许“裸 `Effect`”被塞进 `processes`（历史能力），但它不属于 Process 体系：缺少 definition/identity，诊断与导出能力受限；建议在 dev/test 给出一次性提示，引导迁移到 `Process.make/link`。
+- 运行时仍允许“裸 `Effect`”被塞进 `processes`（历史能力），但它不属于 Process 体系：缺少 definition/identity，诊断与导出能力受限；建议在 dev/test 给出一次性提示，引导迁移到 `orchestration process make surface/link`。

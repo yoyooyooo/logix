@@ -1,5 +1,7 @@
 # 079 · Platform Anchor Autofill Contracts
 
+> Freeze note: 本目录保留历史合同草案。当前公开 CLI 与 runtime verification control plane 不接入这些 autofill contracts。
+
 本目录固化 079 的 contracts（长期可存储、可 diff 的协议面），用于平台/CI/Devtools 统一消费：
 
 - `AutofillReport@v1`：保守补全的结构化报告（report-only / write-back 共用的解释输出）

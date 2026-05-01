@@ -16,9 +16,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const sandboxRoot = join(__dirname, '..')
 const requireFromSandbox = createRequire(join(sandboxRoot, 'package.json'))
 
-// The version is only used for the banner (the actual version is determined by pnpm overrides/lockfile).
-const EFFECT_VERSION = '3.19.13'
-
 const effectCdnPlugin = {
   name: 'effect-cdn',
   setup(build) {
@@ -66,7 +63,7 @@ const canonicalizePascalSegment = (segment) => {
       .join('')
   }
 
-  // env -> Env, observability -> Observability, Module -> Module, stateTrait -> StateTrait
+  // env -> Env, observability -> Observability, module -> Module, fieldKernel -> FieldKernel
   return segment[0]?.toUpperCase() + segment.slice(1)
 }
 
@@ -75,21 +72,60 @@ const canonicalizeLogixCoreSubpath = (subpath) =>
 
 const resolvePackageJson = (specifier) => requireFromSandbox.resolve(`${specifier}/package.json`)
 
+const collectTopLevelDistJsSpecifiers = (dir) => {
+  const out = []
+  const entries = readdirSync(dir, { withFileTypes: true })
+  for (const entry of entries) {
+    if (entry.isFile() && entry.name.endsWith('.js') && entry.name !== 'index.js') {
+      out.push(entry.name.slice(0, -'.js'.length))
+      continue
+    }
+
+    if (!entry.isDirectory()) {
+      continue
+    }
+
+    if (entry.name === 'internal' || entry.name === 'testing') {
+      continue
+    }
+
+    const indexFile = join(dir, entry.name, 'index.js')
+    try {
+      readFileSync(indexFile)
+      out.push(entry.name)
+    } catch {
+      // ignore non-exported folders
+    }
+  }
+  return out
+}
+
 async function bundle() {
+  const effectPkg = JSON.parse(readFileSync(resolvePackageJson('effect'), 'utf8'))
+  const effectVersion = effectPkg.version ?? 'unknown'
+  const effectDistDir = join(dirname(resolvePackageJson('effect')), 'dist')
+
   console.log('📦 开始为 Sandbox 打包内置运行环境...')
-  console.log(`   effect 版本(预期): ${EFFECT_VERSION}`)
+  console.log(`   effect 版本: ${effectVersion}`)
 
   const outDir = join(sandboxRoot, 'public/sandbox')
   mkdirSync(outDir, { recursive: true })
   const publicRoot = join(sandboxRoot, 'public')
   mkdirSync(publicRoot, { recursive: true })
+  rmSync(join(outDir, 'chunks'), { recursive: true, force: true })
+  rmSync(join(outDir, 'logix-core'), { recursive: true, force: true })
 
   // 1) Bundle effect (browser ESM, single-file entry).
-  const effectPkg = JSON.parse(readFileSync(resolvePackageJson('effect'), 'utf8'))
-  const effectSubpaths = Object.keys(effectPkg.exports ?? {})
-    .filter((key) => key.startsWith('./') && !key.includes('*'))
-    .map((key) => key.slice(2))
-    .filter((key) => key.length > 0 && key !== 'package.json' && key !== '.index' && key !== 'testing')
+  const effectSubpaths = [
+    ...new Set(
+      [
+        ...Object.keys(effectPkg.exports ?? {})
+          .filter((key) => key.startsWith('./') && !key.includes('*'))
+          .map((key) => key.slice(2)),
+        ...collectTopLevelDistJsSpecifiers(effectDistDir),
+      ].filter((key) => key.length > 0 && key !== 'package.json' && key !== '.index' && key !== 'testing'),
+    ),
+  ].sort((a, b) => a.localeCompare(b))
 
   const effectEntryPoints = Object.fromEntries([
     ['effect', 'effect'],
@@ -110,7 +146,7 @@ async function bundle() {
     entryNames: '[dir]/[name]',
     chunkNames: 'chunks/[name]-[hash]',
     banner: {
-      js: `// effect runtime bundle for @logixjs/sandbox (v${EFFECT_VERSION})\n`,
+      js: `// effect runtime bundle for @logixjs/sandbox (v${effectVersion})\n`,
     },
   })
   console.log(`✅ 打包完成: public/sandbox/effect.js (+ effect:${effectSubpaths.length} subpaths)`)
@@ -131,20 +167,21 @@ async function bundle() {
     plugins: [effectCdnPlugin],
     banner: {
       js: `// @logixjs/core kernel bundle for @logixjs/sandbox
-// effect is loaded from the co-located ./effect.js (v${EFFECT_VERSION})
+// effect is loaded from the co-located ./effect.js (v${effectVersion})
 `,
     },
   })
 
   console.log('✅ 打包完成: public/sandbox/logix-core.js')
 
-  // 2.5) Bundle @logixjs/core subpath modules (supports import "@logixjs/core/Runtime" / "@logixjs/core/Flow", etc.)
+  // 2.5) Bundle @logixjs/core subpath modules (supports import "@logixjs/core/Runtime" / "@logixjs/core/ControlPlane", etc.)
   // Naming alignment with effect: subpath modules use PascalCase; non-canonical forms are rejected by the sandbox compiler.
   // To avoid mutable relative paths, all subpath outputs go to public/sandbox/logix-core/*.js (flatten multi-level paths with ".").
   // Example:
   // - @logixjs/core/Runtime          -> /sandbox/logix-core/Runtime.js
-  // - @logixjs/core/StateTrait       -> /sandbox/logix-core/StateTrait.js
+  // - @logixjs/core/ControlPlane     -> /sandbox/logix-core/ControlPlane.js
   const logixCoreSrcDir = join(sandboxRoot, '../logix-core/src')
+  const logixCorePkg = JSON.parse(readFileSync(resolvePackageJson('@logixjs/core'), 'utf8'))
   const walkTsFiles = (dir, relBase = '') => {
     const out = []
     const entries = readdirSync(dir, { withFileTypes: true })
@@ -180,6 +217,22 @@ async function bundle() {
 
     const canonical = canonicalizeLogixCoreSubpath(specifierSubpath)
     logixCoreEntryPoints[`logix-core/${canonical}`] = join(logixCoreSrcDir, rel)
+  }
+
+  for (const [exportPath, sourcePath] of Object.entries(logixCorePkg.exports ?? {})) {
+    if (!exportPath.startsWith('./repo-internal/') || typeof sourcePath !== 'string') {
+      continue
+    }
+    if (!sourcePath.startsWith('./src/internal/') || !sourcePath.endsWith('.ts')) {
+      continue
+    }
+
+    const specifierSubpath = exportPath.slice('./'.length)
+    logixCoreEntryPoints[`logix-core/${specifierSubpath.replaceAll('/', '.')}`] = join(
+      sandboxRoot,
+      '../logix-core',
+      sourcePath.slice('./'.length),
+    )
   }
 
   const logixCoreSpecifiers = Object.keys(logixCoreEntryPoints)

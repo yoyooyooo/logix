@@ -2,9 +2,9 @@ import { describe, it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
 import { makeFieldPathIdRegistry } from '../../../../src/internal/field-path.js'
 import type { TxnDirtyEvidenceSnapshot } from '../../../../src/internal/runtime/core/StateTransaction.js'
-import * as RowId from '../../../../src/internal/state-trait/rowid.js'
+import * as RowId from '../../../../src/internal/field-kernel/rowid.js'
 
-type BenchMode = 'legacy' | 'guarded'
+type BenchMode = 'baseline' | 'guarded'
 
 type BenchState = {
   readonly meta: {
@@ -103,7 +103,7 @@ const runBench = (args: {
       const listConfigs = getListConfigs()
       if (listConfigs.length === 0) continue
 
-      if (mode === 'legacy') {
+      if (mode === 'baseline') {
         rowIdStore.updateAll(state as any, listConfigs)
         updateAllCalls += 1
         continue
@@ -173,8 +173,8 @@ describe('ModuleRuntime.transaction listConfigs guard · perf baseline (Diagnost
       const noOverlapDirty = makeDirty([0])
       const overlapDirty = makeDirty([1])
 
-      const noOverlapLegacy = runBench({
-        mode: 'legacy',
+      const noOverlapBaseline = runBench({
+        mode: 'baseline',
         iterations,
         warmup,
         txnsPerIteration,
@@ -195,8 +195,8 @@ describe('ModuleRuntime.transaction listConfigs guard · perf baseline (Diagnost
         fieldPathIdRegistry,
       })
 
-      const overlapLegacy = runBench({
-        mode: 'legacy',
+      const overlapBaseline = runBench({
+        mode: 'baseline',
         iterations,
         warmup,
         txnsPerIteration,
@@ -218,27 +218,27 @@ describe('ModuleRuntime.transaction listConfigs guard · perf baseline (Diagnost
       })
 
       const expectedUpdateAllCalls = iterations * txnsPerIteration
-      expect(noOverlapLegacy.updateAllCalls).toBe(expectedUpdateAllCalls)
+      expect(noOverlapBaseline.updateAllCalls).toBe(expectedUpdateAllCalls)
       expect(noOverlapGuarded.updateAllCalls).toBe(0)
-      expect(overlapLegacy.updateAllCalls).toBe(expectedUpdateAllCalls)
+      expect(overlapBaseline.updateAllCalls).toBe(expectedUpdateAllCalls)
       expect(overlapGuarded.updateAllCalls).toBe(expectedUpdateAllCalls)
       expect(overlapGuarded.shouldSyncTrueCount).toBe(expectedUpdateAllCalls)
 
-      const noOverlapSpeedup = noOverlapLegacy.p50 / Math.max(noOverlapGuarded.p50, Number.EPSILON)
-      const overlapOverheadRatio = overlapGuarded.p50 / Math.max(overlapLegacy.p50, Number.EPSILON)
+      const noOverlapSpeedup = noOverlapBaseline.p50 / Math.max(noOverlapGuarded.p50, Number.EPSILON)
+      const overlapOverheadRatio = overlapGuarded.p50 / Math.max(overlapBaseline.p50, Number.EPSILON)
 
       console.log(
         `[perf] ModuleRuntime.transaction.listConfigsGuard no-overlap iters=${iterations} txns=${txnsPerIteration} ` +
-          `legacy.p50=${noOverlapLegacy.p50.toFixed(3)}ms legacy.p95=${noOverlapLegacy.p95.toFixed(3)}ms ` +
+          `baseline.p50=${noOverlapBaseline.p50.toFixed(3)}ms baseline.p95=${noOverlapBaseline.p95.toFixed(3)}ms ` +
           `guarded.p50=${noOverlapGuarded.p50.toFixed(3)}ms guarded.p95=${noOverlapGuarded.p95.toFixed(3)}ms ` +
-          `speedup=${noOverlapSpeedup.toFixed(2)}x updateAll(legacy=${noOverlapLegacy.updateAllCalls},guarded=${noOverlapGuarded.updateAllCalls})`,
+          `speedup=${noOverlapSpeedup.toFixed(2)}x updateAll(baseline=${noOverlapBaseline.updateAllCalls},guarded=${noOverlapGuarded.updateAllCalls})`,
       )
 
       console.log(
         `[perf] ModuleRuntime.transaction.listConfigsGuard overlap iters=${iterations} txns=${txnsPerIteration} ` +
-          `legacy.p50=${overlapLegacy.p50.toFixed(3)}ms legacy.p95=${overlapLegacy.p95.toFixed(3)}ms ` +
+          `baseline.p50=${overlapBaseline.p50.toFixed(3)}ms baseline.p95=${overlapBaseline.p95.toFixed(3)}ms ` +
           `guarded.p50=${overlapGuarded.p50.toFixed(3)}ms guarded.p95=${overlapGuarded.p95.toFixed(3)}ms ` +
-          `guardedOverhead=${overlapOverheadRatio.toFixed(2)}x updateAll(legacy=${overlapLegacy.updateAllCalls},guarded=${overlapGuarded.updateAllCalls})`,
+          `guardedOverhead=${overlapOverheadRatio.toFixed(2)}x updateAll(baseline=${overlapBaseline.updateAllCalls},guarded=${overlapGuarded.updateAllCalls})`,
       )
       }),
   )

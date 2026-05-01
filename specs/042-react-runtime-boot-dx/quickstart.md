@@ -1,7 +1,7 @@
 # Quickstart: 避免 React 冷启动同步卡顿（策略与基线）
 
-**Feature**: `042-react-runtime-boot-dx`  
-**Created**: 2025-12-27  
+**Feature**: `042-react-runtime-boot-dx`
+**Created**: 2025-12-27
 
 本 quickstart 描述“目标用法与心智模型”；实现完成后应同步更新为最终 API 与示例落点。
 
@@ -15,7 +15,7 @@
 
 ## 2. 默认优化阶梯（从轻到重）
 
-1. **观测**：先启用诊断或基线用例，确认同步阻塞入口点（Provider / ModuleImpl / ModuleTag）。
+1. **观测**：先启用诊断或基线用例，确认同步阻塞入口点（Provider / ProgramRuntimeBlueprint / ModuleTag）。
 2. **启用策略**：选择合适的启动/解析策略（sync vs suspend vs defer），并明确 fallback 行为。
 3. **稳定 key / 分区**：对 suspend 模式提供稳定 `key`，并用 label/key 做分区，避免资源错绑。
 4. **引入 yield**：当初始化存在同步重活时，使用 cooperative yield 让异步路径尽早 pending。

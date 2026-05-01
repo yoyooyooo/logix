@@ -1,7 +1,9 @@
+import * as CoreEvidence from '@logixjs/core/repo-internal/evidence-api'
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
+import { trialRunModule } from '../../src/internal/observability/trialRunModule.js'
 
 const utf8Bytes = (value: unknown): number => {
   const json = JSON.stringify(value) ?? 'null'
@@ -11,7 +13,7 @@ const utf8Bytes = (value: unknown): number => {
   return json.length
 }
 
-describe('Observability.trialRunModule (re-export budget)', () => {
+describe('Runtime.trial (re-export budget)', () => {
   it.effect('should recover by slimming heavy re-export fields within maxBytes', () =>
     Effect.gen(function* () {
       const Root = Logix.Module.make('TrialRunModule.ReExportBudget.Recovered', {
@@ -20,7 +22,7 @@ describe('Observability.trialRunModule (re-export budget)', () => {
         reducers: { noop: (s) => s },
       })
 
-      Logix.Observability.registerTrialRunArtifactExporter(Root.tag as any, {
+      CoreEvidence.registerTrialRunArtifactExporter(Root.tag as any, {
         exporterId: 'trial-run-budget-heavy@v1',
         artifactKey: '@logixjs/test.trial-run-budget-heavy@v1',
         export: () => ({
@@ -28,9 +30,9 @@ describe('Observability.trialRunModule (re-export budget)', () => {
         }),
       })
 
-      const program = Root.implement({ initial: { ok: true }, logics: [] })
+      const program = Logix.Program.make(Root, { initial: { ok: true }, logics: [] })
 
-      const report = yield* Logix.Observability.trialRunModule(program, {
+      const report = yield* trialRunModule(program as any, {
         runId: 'run:test:re-export-budget:recovered',
         diagnosticsLevel: 'off',
         maxEvents: 20,
@@ -58,9 +60,9 @@ describe('Observability.trialRunModule (re-export budget)', () => {
         actions: {},
       })
 
-      const program = Root.implement({ initial: undefined, logics: [] })
+      const program = Logix.Program.make(Root, { initial: undefined, logics: [] })
 
-      const report = yield* Logix.Observability.trialRunModule(program, {
+      const report = yield* trialRunModule(program as any, {
         runId: 'run:test:re-export-budget:oversized',
         diagnosticsLevel: 'off',
         maxEvents: 1,

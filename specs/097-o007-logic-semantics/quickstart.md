@@ -35,7 +35,7 @@ const logic = Module.logic(($) =>
 ## 禁止写法
 
 - 在 setup 中调用 run-only API（如 `$.use`、`$.onAction`）
-- 在 run 中调用 setup-only API（如 `$.lifecycle.onInit`、`$.traits.declare`）
+- 在 run 中调用 setup-only API（如 `$.lifecycle.onInit`、`$.fields`）
 
 触发后统一得到：`logic::invalid_phase` 诊断。
 

@@ -3,10 +3,10 @@ import { it, expect } from '@effect/vitest'
 import { Chunk, Effect, Fiber, Schema, Stream } from 'effect'
 import * as Logix from '../../../src/index.js'
 import * as EffectOp from '../../../src/EffectOp.js'
-import * as ModuleRuntimeImpl from '../../../src/internal/runtime/ModuleRuntime.js'
+import * as ModuleRuntimeImpl from '../../../src/internal/runtime/core/ModuleRuntime.js'
 import * as EffectOpCore from '../../../src/internal/runtime/core/EffectOpCore.js'
-import * as FlowRuntimeImpl from '../../../src/internal/runtime/FlowRuntime.js'
-import { makeRunSession, RunSessionTag } from '../../../src/internal/observability/runSession.js'
+import * as FlowRuntimeImpl from '../../../src/internal/runtime/core/FlowRuntime.js'
+import { makeRunSession, RunSessionTag } from '../../../src/internal/verification/runSession.js'
 
 const CounterState = Schema.Struct({ count: Schema.Number })
 const CounterActions = {

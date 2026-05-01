@@ -1,8 +1,8 @@
 # Research: 014 浏览器压测基线与性能边界地图
 
-**Branch**: `[014-browser-perf-boundaries]`  
-**Date**: 2025-12-17  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/014-browser-perf-boundaries/spec.md`
+**Branch**: `[014-browser-perf-boundaries]`
+**Date**: 2025-12-17
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/014-browser-perf-boundaries/spec.md`
 
 本特性不存在未决的 “NEEDS CLARIFICATION”。以下内容用于把关键决策与备选方案固化为可交接证据。
 
@@ -63,6 +63,6 @@
 
 ## References
 
-- 矩阵 SSoT：`@logixjs/perf-evidence/assets/matrix.json`（物理：`.codex/skills/logix-perf-evidence/assets/matrix.json`）
-- 报告 schema：`@logixjs/perf-evidence/assets/schemas/perf-report.schema.json`（物理：`.codex/skills/logix-perf-evidence/assets/schemas/perf-report.schema.json`）
-- diff schema：`@logixjs/perf-evidence/assets/schemas/perf-diff.schema.json`（物理：`.codex/skills/logix-perf-evidence/assets/schemas/perf-diff.schema.json`）
+- 矩阵 SSoT：`@logixjs/perf-evidence/assets/matrix.json`（物理：`packages/logix-perf-evidence/assets/matrix.json`）
+- 报告 schema：`@logixjs/perf-evidence/assets/schemas/perf-report.schema.json`（物理：`packages/logix-perf-evidence/assets/schemas/perf-report.schema.json`）
+- diff schema：`@logixjs/perf-evidence/assets/schemas/perf-diff.schema.json`（物理：`packages/logix-perf-evidence/assets/schemas/perf-diff.schema.json`）

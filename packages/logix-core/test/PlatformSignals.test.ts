@@ -1,9 +1,10 @@
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Effect, Layer, Schema } from 'effect'
-import * as Logix from '../src/index.js'
+import { Effect, Layer } from 'effect'
+import * as Lifecycle from '../src/internal/runtime/core/Lifecycle.js'
+import * as Platform from '../src/internal/runtime/core/Platform.js'
 
-class TestPlatform implements Logix.Platform.Service {
+class TestPlatform implements Platform.Service {
   private readonly suspendHandlers: Array<Effect.Effect<void, never, any>> = []
   private readonly resumeHandlers: Array<Effect.Effect<void, never, any>> = []
   private readonly resetHandlers: Array<Effect.Effect<void, never, any>> = []
@@ -35,63 +36,30 @@ class TestPlatform implements Logix.Platform.Service {
 
 describe('Platform signals', () => {
   it.effect(
-    'should trigger registered handlers via emit*',
+    'should trigger internal runtime-owned handlers via emit*',
     () =>
       Effect.gen(function* () {
         const calls: Array<string> = []
-
-        const TestModule = Logix.Module.make('PlatformSignals', {
-          state: Schema.Struct({ count: Schema.Number }),
-          actions: {},
+        const lifecycle = yield* Lifecycle.makeLifecycleManager({
+          moduleId: 'PlatformSignals',
+          instanceId: 'platform-signals',
         })
 
-        const logic = TestModule.logic(($) => ({
-          setup: Effect.gen(function* () {
-            yield* $.lifecycle.onSuspend(
-              Effect.sync(() => {
-                calls.push('suspend')
-              }),
-            )
-            yield* $.lifecycle.onResume(
-              Effect.sync(() => {
-                calls.push('resume')
-              }),
-            )
-            yield* $.lifecycle.onReset(
-              Effect.sync(() => {
-                calls.push('reset')
-              }),
-            )
-          }),
-          run: Effect.void,
-        }))
-
-        const baseLayer = TestModule.live({ count: 0 }, logic) as unknown as Layer.Layer<
-          Logix.ModuleRuntime<any, any>,
-          never,
-          never
-        >
-
         const platform = new TestPlatform()
-        const platformLayer = Layer.succeed(Logix.Platform.tag, platform)
-        const layer = Layer.provideMerge(baseLayer, platformLayer) as unknown as Layer.Layer<
-          Logix.ModuleRuntime<any, any>,
-          never,
-          never
-        >
+        const platformLayer = Layer.succeed(Platform.Tag, platform)
 
         yield* Effect.gen(function* () {
-          const runtime = yield* Effect.service(TestModule.tag).pipe(Effect.orDie)
-          expect((yield* runtime.lifecycleStatus!).status).toBe('ready')
-
+          yield* platform.lifecycle.onSuspend(Effect.sync(() => calls.push('suspend')))
+          yield* platform.lifecycle.onResume(Effect.sync(() => calls.push('resume')))
+          yield* platform.lifecycle.onReset(Effect.sync(() => calls.push('reset')))
           yield* platform.emitSuspend()
           yield* platform.emitResume()
           yield* platform.emitReset()
-
-          expect((yield* runtime.lifecycleStatus!).status).toBe('ready')
-        }).pipe(Effect.provide(layer))
+          yield* lifecycle.setStatus('ready')
+        }).pipe(Effect.provide(platformLayer))
 
         expect(calls).toEqual(['suspend', 'resume', 'reset'])
+        expect((yield* lifecycle.getStatus).status).toBe('ready')
       }) as any,
   )
 })

@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest'
 import { Deferred, Effect, Exit, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 import * as Form from '../../../logix-form/src/index.js'
-import * as Crud from '../../../domain/src/index.js'
+import * as Crud from '../../../domain/src/Crud.js'
 
 describe('Module common entrypoints', () => {
-  it('should consume Form + CRUD via $.use(module) and Runtime.make(module)', async () => {
+  it('should consume Form + CRUD via $.imports.get(tag) and Runtime.make(program)', async () => {
     const ValuesSchema = Schema.Struct({
       name: Schema.String,
     })
@@ -24,7 +24,7 @@ describe('Module common entrypoints', () => {
 
     type Entity = Schema.Schema.Type<typeof EntitySchema>
 
-    const crudBase = Crud.CRUDModule.make('ModuleCommon.Crud', {
+    const crudBase = Crud.make('ModuleCommon.Crud', {
       entity: EntitySchema,
       initial: [],
     })
@@ -44,19 +44,23 @@ describe('Module common entrypoints', () => {
 
     const done = await Effect.runPromise(Deferred.make<Exit.Exit<void, unknown>>())
 
-      const hostLogic = Host.logic(($) =>
-        Effect.gen(function* () {
-          const f = yield* $.use(form)
-          const c = yield* $.use(crud)
+    const hostLogic = Host.logic('host-logic', ($) =>
+      Effect.gen(function* () {
+        const f = yield* $.imports.get(form.tag)
+        const c = yield* $.imports.get(crud.tag)
 
-          yield* Effect.promise(
-            () =>
-              new Promise<void>((resolve) => {
-                setTimeout(resolve, 10)
-              }),
-          )
-          yield* f.controller.setError('name', 'oops')
-          yield* c.controller.save({ id: 'e1', name: 'Alice' } satisfies Entity)
+        yield* Effect.promise(
+          () =>
+            new Promise<void>((resolve) => {
+              setTimeout(resolve, 10)
+            }),
+        )
+        yield* f.setError('name', {
+          origin: 'manual',
+          severity: 'error',
+          message: 'oops',
+        })
+        yield* c.commands.save({ id: 'e1', name: 'Alice' } satisfies Entity)
 
         for (let i = 0; i < 20; i++) {
           const state = (yield* c.read((s: any) => s)) as any
@@ -69,10 +73,12 @@ describe('Module common entrypoints', () => {
       ),
     )
 
-    const host = Host.implement({
+    const host = Logix.Program.make(Host, {
       initial: { ok: true },
       logics: [hostLogic],
-      imports: [form.impl, crud.impl],
+      capabilities: {
+        imports: [form, crud],
+      },
     })
 
     const runtime = Logix.Runtime.make(host, {
@@ -90,7 +96,11 @@ describe('Module common entrypoints', () => {
           const crudRuntime = yield* Effect.service(crud.tag).pipe(Effect.orDie)
 
           const formState: any = yield* formRuntime.getState
-          expect(formState.errors?.$manual?.name).toBe('oops')
+          expect(formState.errors?.$manual?.name).toEqual({
+            origin: 'manual',
+            severity: 'error',
+            message: 'oops',
+          })
 
           const crudState: any = yield* crudRuntime.getState
           expect(Array.isArray(crudState.items)).toBe(true)

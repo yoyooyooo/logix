@@ -1,57 +1,48 @@
 ---
-title: Handle (consumption side)
-description: A unified way to consume dependencies inside `.logic()` - ModuleHandle vs ServiceHandle, plus practical trade-offs.
+title: Handle
+description: Consume modules and services through stable handles inside logic.
 ---
 
-A **Handle** is the “usable view” you get when consuming a dependency inside `.logic()`.
+Inside logic, dependency consumption resolves to a handle.
 
-The goal is not to force everything into one interface, but to provide a stable vocabulary so you can consistently choose one of two shapes and keep consumption patterns aligned.
+Two handle shapes matter:
 
-In `@logixjs/core`, this concept lives in the `Logix.Handle` submodule (also available via `@logixjs/core/Handle`).
+- imported child handle, when consuming a child Program from the parent imports scope
+- service handle, when consuming a runtime service tag
 
-## 1) Two kinds of handles (two packaging directions)
+## Imported child handle
 
-### 1.1 ModuleHandle (a handle for a custom Module)
+Use an imported child handle when the consumed dependency is a child Program owned by the current parent scope.
 
-When you model something as a custom Module (the primary shape of packages like `@logixjs/query` / `@logixjs/form`):
+```ts
+const child = yield* $.imports.get(Child.tag)
+const value = yield* child.read((s) => s.value)
+```
 
-- In business logic, you call `yield* $.use(OtherModule)` and get a `ModuleHandle`.
-- The base capabilities are stable: `read/changes/dispatch/actions`.
-- Domain modules typically expose a more ergonomic command surface via handle extensions (e.g. `.controller.*`).
+Typical capabilities:
 
-Use it when:
+- read state
+- observe changes
+- dispatch actions
 
-- You want state to live in Logix’s state plane (subscribable, debuggable, replayable, import/link driven).
-- You want tight integration with transaction metadata (`txnSeq`, etc.) and the selector/ReadQuery ecosystem.
-- You want “external data sources” to become first-class state inside Logix (query snapshots, form snapshots, etc.).
+The child Program must be provided through `Program.make(..., { capabilities: { imports: [ChildProgram] } })`.
 
-### 1.2 ServiceHandle (a handle for an injectable Service)
+## Service handle
 
-When you model something as an injectable service (Tag + Layer):
+Use a service handle when the consumed dependency is an injected runtime service.
 
-- In business logic, you call `yield* $.use(ServiceTag)` and get a service instance (treated as a `ServiceHandle` here).
-- The source of truth usually lives in an external system/library. Logix primarily **reads/subscribes/dispatches intents** instead of mirroring that state into module state.
-- Prefer exposing a `.controller` command surface so consumption aligns with the “controller mental model” of `ModuleHandle`.
+```ts
+const api = yield* $.use(UserService)
+```
 
-Use it when:
+This is appropriate when the external system remains the source of truth and Logix should consume it without mirroring it as module state.
 
-- The external system is already the source of truth (router, websocket, native bridge, etc.), and mirroring introduces tearing, permanent subscription cost, or dual truth sources.
-- You want “near-zero cost when not consumed” (only start listeners when subscribed).
-- You want to inject a third-party instance via Layer for isolation and easy mocking.
+## Notes
 
-## 2) `.controller`: a recommended command surface
+- use imported child Programs when the dependency should become a Logix state asset inside the parent scope
+- use services when the external system should remain the source of truth
 
-Whether it’s a ModuleHandle or a ServiceHandle, a good convention is:
+## See also
 
-- Put **read/subscribe** APIs on the top level (e.g. `read/getSnapshot/changes`).
-- Funnel **write/commands/intents** into `handle.controller.*` (e.g. `refresh()`, `submit()`, `push('/next')`).
-
-This keeps usage mental models stable across domains and makes “intent semantics” easier to diagnose and replay.
-
-## 3) How to choose: Module or Service?
-
-A simple decision tree:
-
-- You want it to become a Logix “state asset” (replayable, import-driven, devtools-explainable) → **make it a Module**.
-- You want to treat an external system as the source of truth and keep consumption low-cost and swappable → **make it a Service (Tag + Layer)**.
-- You need both → **Module + injectable engine** (Module for the state plane, Engine for external takeover points; see Query’s `Engine.layer(...)` pattern).
+- [Bound API ($)](./bound-api)
+- [Cross-module communication](../../guide/learn/cross-module-communication)

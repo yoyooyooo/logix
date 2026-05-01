@@ -1,9 +1,21 @@
 # Feature Specification: Lifecycle 全面升级
 
-**Feature Branch**: `[011-upgrade-lifecycle]`  
-**Created**: 2025-12-16  
-**Status**: Draft  
+**Feature Branch**: `[011-upgrade-lifecycle]`
+**Created**: 2025-12-16
+**Status**: Draft
 **Input**: User description: "对生命周期做个全面升级"
+
+## Supersession Notice
+
+170 已接管 public lifecycle authoring surface。本文保留 runtime instance 生命周期 substrate、初始化门禁、销毁顺序、错误诊断、Provider 观察桥与平台信号来源等历史语义证据；本文中关于 public `$.lifecycle.*` authoring family 的口径已被 [../170-runtime-lifecycle-authoring-surface/spec.md](../170-runtime-lifecycle-authoring-surface/spec.md) 覆盖。
+
+当前 public authoring 以 170 为准：
+
+- readiness contribution 只走 `$.readyAfter(effect, { id?: string })`
+- returned run effect 承接启动后长任务
+- Effect Scope 承接动态资源释放
+- Runtime / Provider / diagnostics 承接未处理失败观察
+- Platform / host carrier 承接 suspend / resume / reset / hot lifecycle
 
 ## User Scenarios & Testing *(mandatory)*
 

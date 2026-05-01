@@ -1,6 +1,6 @@
 # Implementation Plan: 049 core-ng 线性执行 VM（Exec VM）
 
-**Branch**: `049-core-ng-linear-exec-vm` | **Date**: 2025-12-27 | **Spec**: `specs/049-core-ng-linear-exec-vm/spec.md`  
+**Branch**: `049-core-ng-linear-exec-vm` | **Date**: 2025-12-27 | **Spec**: `specs/049-core-ng-linear-exec-vm/spec.md`
 **Input**: Feature specification from `specs/049-core-ng-linear-exec-vm/spec.md`
 
 ## Summary
@@ -16,7 +16,7 @@
 
 ## Deepening Notes
 
-- Decision: perf evidence 以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为 SSoT，交付结论以 `profile=default`（或 `soak`）且 `comparable=true && regressions==0` 为硬门（source: spec clarify AUTO）
+- Decision: perf evidence 以 `packages/logix-perf-evidence/assets/matrix.json` 为 SSoT，交付结论以 `profile=default`（或 `soak`）且 `comparable=true && regressions==0` 为硬门（source: spec clarify AUTO）
 - Decision: perf evidence 允许在 dev 工作区（git dirty）采集，但必须确保 `matrix/config/env` 一致，并保留 `git.dirty.*` warnings；结论存疑时必须复测（source: spec clarify AUTO）
 - Decision: Gate baseline 以 `diagnostics=off` 为准；light/full 仅用于开销曲线与解释链路验证（source: spec clarify AUTO）
 - Decision: Exec VM 未命中/缺能力允许显式降级但必须证据化（`reasonCode` 稳定枚举码），且在 047/Full Cutover Gate 覆盖场景中视为 FAIL（source: spec clarify AUTO）
@@ -27,14 +27,14 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（实现阶段）`@logixjs/core-ng`  
-**Storage**: N/A（证据落盘到 `specs/049-core-ng-linear-exec-vm/perf/*`）  
-**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）  
-**Target Platform**: Node.js 20+ + modern browsers（必须含 ≥1 headless browser evidence）  
-**Project Type**: pnpm workspace  
-**Performance Goals**: 以 perf matrix 的 P1 suites 为硬门（`profile=default`/`soak` + `comparable=true && regressions==0`），并争取在关键点位获得可证据化收益（推荐 `p95` 下降 ≥20% 或 heap/alloc delta 改善）  
-**Constraints**: 统一最小 IR + 稳定锚点；事务窗口禁 IO；diagnostics=off 近零成本；禁止半成品态默认化；consumer 不直接依赖 core-ng  
+**Language/Version**: TypeScript 5.9.x（ESM）
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（实现阶段）`@logixjs/core-ng`
+**Storage**: N/A（证据落盘到 `specs/049-core-ng-linear-exec-vm/perf/*`）
+**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）
+**Target Platform**: Node.js 20+ + modern browsers（必须含 ≥1 headless browser evidence）
+**Project Type**: pnpm workspace
+**Performance Goals**: 以 perf matrix 的 P1 suites 为硬门（`profile=default`/`soak` + `comparable=true && regressions==0`），并争取在关键点位获得可证据化收益（推荐 `p95` 下降 ≥20% 或 heap/alloc delta 改善）
+**Constraints**: 统一最小 IR + 稳定锚点；事务窗口禁 IO；diagnostics=off 近零成本；禁止半成品态默认化；consumer 不直接依赖 core-ng
 **Scale/Scope**: 以 converge/txn 热路径为优先验证点；其它链路扩面由后续 specs 管理
 
 ## Constitution Check
@@ -66,7 +66,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 ## Perf Evidence Plan（MUST）
 
 - Baseline 语义：策略 A/B（同一份代码下 before=core-ng/execVm=off，after=core-ng/execVm=on；必要时补充代码前后对比）
-- Matrix SSoT：`.codex/skills/logix-perf-evidence/assets/matrix.json`（before/after 的 `meta.matrixId/matrixHash` 必须一致）
+- Matrix SSoT：`packages/logix-perf-evidence/assets/matrix.json`（before/after 的 `meta.matrixId/matrixHash` 必须一致）
 - Hard conclusion：交付结论必须 `profile=default`（`quick` 仅线索；需要更稳可用 `soak` 复核）
 - 采集环境：允许在 dev 工作区采集（可为 git dirty），但 before/after 必须 `meta.matrixId/matrixHash` 一致且 env/config 不漂移；如出现 `stabilityWarning` 或结果存疑，必须复测（必要时 `profile=soak`）
 - PASS 判据：Node 与 Browser 的 `pnpm perf diff` 都必须输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`

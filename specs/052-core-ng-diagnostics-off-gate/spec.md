@@ -1,8 +1,8 @@
 # Feature Specification: diagnostics=off 近零成本 Gate（回归防线）
 
-**Feature Branch**: `052-core-ng-diagnostics-off-gate`  
-**Created**: 2025-12-29  
-**Status**: Done  
+**Feature Branch**: `052-core-ng-diagnostics-off-gate`
+**Created**: 2025-12-29
+**Status**: Done
 **Input**: User description: "把 diagnostics=off 的‘近零成本’要求从约定变成可验收 Gate：覆盖 core/core-ng 的关键热路径（converge/txn/Exec VM evidence），用测试 + perf evidence 拦截任何 off 档位的隐式分配/字符串 materialize/计时采样回归。"
 
 ## Terminology
@@ -14,8 +14,8 @@
 ## Related (read-only references)
 
 - `specs/046-core-ng-roadmap/`（NG 路线总控：052 的职责边界）
-- `specs/039-trait-converge-int-exec-evidence/`（已达标基线：converge 的 diagnostics=off 闸门与证据套件）
-- `specs/044-trait-converge-diagnostics-sampling/`（采样诊断：避免 per-step `now()`）
+- `specs/039-field-converge-int-exec-evidence/`（已达标基线：converge 的 diagnostics=off 闸门与证据套件）
+- `specs/044-field-converge-diagnostics-sampling/`（采样诊断：避免 per-step `now()`）
 - `specs/049-core-ng-linear-exec-vm/`（Exec VM evidence：off 必须不输出）
 - `specs/050-core-ng-integer-bridge/`（id→readable mapping：off 必须不 materialize）
 - `specs/051-core-ng-txn-zero-alloc/`（txn 零分配：off 闸门覆盖其实现）
@@ -28,7 +28,7 @@
 - Q: 052 是否改变对外语义？ → A: 不改变；只收口 off 档位行为与回归防线。
 - Q: 052 的“off”范围是 Debug 还是 instrumentation？ → A: 以 `Debug.DiagnosticsLevel=off` 为准；同时要求相关实现不要把 full/light 的税泄漏到 off（instrumentation 的细节由 051 管理）。
 
-- AUTO: Q: perf evidence 预算口径是什么？ → A: 以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为唯一 SSoT；交付结论必须 `profile=default`（或 `soak`）并满足 `pnpm perf diff` 输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`；before/after 必须 `meta.matrixId/matrixHash` 一致。
+- AUTO: Q: perf evidence 预算口径是什么？ → A: 以 `packages/logix-perf-evidence/assets/matrix.json` 为唯一 SSoT；交付结论必须 `profile=default`（或 `soak`）并满足 `pnpm perf diff` 输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`；before/after 必须 `meta.matrixId/matrixHash` 一致。
 - AUTO: Q: Node/Browser 都要 Gate PASS 吗？ → A: 是；任一平台出现回归都视为 FAIL。
 - AUTO: Q: 是否允许在混杂改动 worktree 上采集 before/after？ → A: 不允许；必须在隔离 worktree/目录分别采集，混杂结果仅作线索不得宣称 Gate PASS。
 - AUTO: Q: “diagnostics=off 近零成本”的允许/禁止边界是什么？ → A: 允许 begin/commit 的常数级分配（例如一次性最小锚点对象/固定字段写入），但禁止热循环按 step/patch 增长的分配（steps/hotspots 数组、per-step 字符串、per-step `now()` 计时）。
@@ -78,7 +78,7 @@
 
 ### Non-Functional Requirements (Performance & Diagnosability)
 
-- **NFR-001**: off 档位额外开销必须接近零；在 Node+Browser 的 diff 中不得引入回归：以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为唯一 SSoT；交付结论以 `profile=default`（或 `soak`）且 `pnpm perf diff` 输出必须满足 `meta.comparability.comparable=true` 且 `summary.regressions==0`；before/after 必须满足 `meta.matrixId/matrixHash` 一致。
+- **NFR-001**: off 档位额外开销必须接近零；在 Node+Browser 的 diff 中不得引入回归：以 `packages/logix-perf-evidence/assets/matrix.json` 为唯一 SSoT；交付结论以 `profile=default`（或 `soak`）且 `pnpm perf diff` 输出必须满足 `meta.comparability.comparable=true` 且 `summary.regressions==0`；before/after 必须满足 `meta.matrixId/matrixHash` 一致。
 - **NFR-002**: off 档位不得出现可观测常驻分配或 O(n) 扫描；任何例外必须先被证据触发并另立 spec 裁决。
 - **NFR-003**: before/after/diff 必须在隔离 worktree/目录分别采集；混杂改动结果仅作线索不得宣称 Gate PASS。
 

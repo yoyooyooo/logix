@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { Effect, Layer, ManagedRuntime, Schema } from 'effect'
 import * as Logix from '../../../src/index.js'
-import * as BoundApiRuntime from '../../../src/internal/runtime/BoundApiRuntime.js'
+import * as BoundApiRuntime from '../../../src/internal/runtime/core/BoundApiRuntime.js'
 
-describe('BoundApi $.use missing import', () => {
+describe('BoundApi $.imports.get missing import', () => {
   it('throws a readable dev error when sub-module is not provided', async () => {
     const Child = Logix.Module.make('BoundApiMissingImportChild', {
       state: Schema.Struct({ ok: Schema.Boolean }),
@@ -23,7 +23,7 @@ describe('BoundApi $.use missing import', () => {
       getPhase: () => 'run',
     }) as any
 
-    const exit = await Effect.runPromiseExit($.use(Child))
+    const exit = await Effect.runPromiseExit($.imports.get(Child.tag))
 
     expect(exit._tag).toBe('Failure')
     if (exit._tag !== 'Failure') return
@@ -32,10 +32,10 @@ describe('BoundApi $.use missing import', () => {
     const pretty = String((exit.cause as any)?.pretty ?? exit.cause)
     expect(pretty).toContain('MissingModuleRuntimeError')
     expect(pretty).toContain('tokenId: BoundApiMissingImportChild')
-    expect(pretty).toContain('entrypoint: logic.$.use')
+    expect(pretty).toContain('entrypoint: logic.$.imports.get')
     expect(pretty).toContain('mode: strict')
     expect(pretty).toContain('from: BoundApiMissingImportParent')
     expect(pretty).toContain('fix:')
-    expect(pretty).toContain('imports: [BoundApiMissingImportChild.impl]')
+    expect(pretty).toContain('imports: [BoundApiMissingImportChild]')
   })
 })

@@ -1,6 +1,6 @@
 # Tasks: 065 core-ng 整型化 Phase 2（事务/录制 id-first）
 
-**Input**: `specs/065-core-ng-id-first-txn-recording/*`（`spec.md`/`plan.md`/`research.md`/`data-model.md`/`contracts/*`/`quickstart.md`）  
+**Input**: `specs/065-core-ng-id-first-txn-recording/*`（`spec.md`/`plan.md`/`research.md`/`data-model.md`/`contracts/*`/`quickstart.md`）
 **Prerequisites**: `specs/065-core-ng-id-first-txn-recording/plan.md`（required） + `specs/065-core-ng-id-first-txn-recording/spec.md`（required）
 
 ## Format: `[TaskID] [P?] [Story] Description with file path`
@@ -23,7 +23,7 @@
 **Purpose**: 在进入任何 User Story 前，把“稳定枚举 + id-first 映射 + 统一入口”地基打牢
 
 - [x] T010 定义并收敛 `DirtyAllReason`/`PatchReason`（稳定枚举 + normalize 兜底）`packages/logix-core/src/internal/field-path.ts`
-- [x] T011 [P] 确保 txn 可获得 instance-isolated 的 `FieldPathIdRegistry`（禁止进程级单例）`packages/logix-core/src/internal/state-trait/install.ts`、`packages/logix-core/src/internal/runtime/core/RuntimeInternals.ts`
+- [x] T011 [P] 确保 txn 可获得 instance-isolated 的 `FieldPathIdRegistry`（禁止进程级单例）`packages/logix-core/src/internal/state-field/install.ts`、`packages/logix-core/src/internal/runtime/core/RuntimeInternals.ts`
 - [x] T012 [P] 收敛 `InternalContracts.recordStatePatch`：reason 从自由字符串收紧为 `PatchReason`（必要时保留 full-only 的裁剪 detail）`packages/logix-core/src/internal/InternalContracts.ts`
 - [x] T013 建立统一的 txn patch recording 入口：`RuntimeInternalsTxn.recordStatePatch`（id-first + bounded/full 裁剪策略）`packages/logix-core/src/internal/runtime/core/RuntimeInternals.ts`
 - [x] T014 [P] 迁移 txn commit 的 debug event 类型：为 `state:update` 增补 `dirtySet`/`patchCount`/`patchesTruncated*`/`staticIrDigest` 等字段（保持 JsonValue 硬门）`packages/logix-core/src/internal/runtime/core/DebugSink.ts`
@@ -64,8 +64,8 @@
 
 **Tests（US2）**
 
-- [x] T033 [P] [US2] 补齐测试：同一输入两次运行的 `staticIrDigest` 稳定（并可对齐 FieldPathId/StepId 语义）`packages/logix-core/test/StateTrait/StateTrait.ConvergeAuto.DeterministicIds.test.ts`
-- [x] T034 [P] [US2] 补齐测试：diagnostics=off/light/sampled/full 的 payload 成本约束（off 不输出重字段；light/sampled/full bounded）`packages/logix-core/test/StateTrait/StateTrait.ConvergeAuto.DiagnosticsLevels.test.ts`
+- [x] T033 [P] [US2] 补齐测试：同一输入两次运行的 `staticIrDigest` 稳定（并可对齐 FieldPathId/StepId 语义）`packages/logix-core/test/FieldKernel/FieldKernel.ConvergeAuto.DeterministicIds.test.ts`
+- [x] T034 [P] [US2] 补齐测试：diagnostics=off/light/sampled/full 的 payload 成本约束（off 不输出重字段；light/sampled/full bounded）`packages/logix-core/test/FieldKernel/FieldKernel.ConvergeAuto.DiagnosticsLevels.test.ts`
 
 ---
 
@@ -81,7 +81,7 @@
 - [x] T043 [P] [US3] 产出 Browser diff（硬门）`specs/065-core-ng-id-first-txn-recording/perf/diff.browser.before.b0a1166c__after.b0a1166c-dirty.json`
 - [x] T044 [P] [US3] 采集 Node `bench:027:devtools-txn`（after，含 gate 输出）`specs/065-core-ng-id-first-txn-recording/perf/node.after.b0a1166c-dirty.bench027.r1.json`
 - [x] T045 [P] [US3] 采集 Node `bench:009:txn-dirtyset` before/after（convergeMode=dirty）`specs/065-core-ng-id-first-txn-recording/perf/node.before.b0a1166c.bench009.convergeMode=dirty.json`、`specs/065-core-ng-id-first-txn-recording/perf/node.after.b0a1166c-dirty.bench009.convergeMode=dirty.json`
-- [x] T046 [P] [US3] 若 perf harness/脚本需要适配新字段或新增门禁，更新脚本并保持可比口径 `scripts/perf.ts`、`.codex/skills/logix-perf-evidence/scripts/009-txn-patch-dirtyset.txn-dirtyset-baseline.ts`、`.codex/skills/logix-perf-evidence/scripts/027-runtime-observability-hardening.devtools-and-txn-baseline.ts`
+- [x] T046 [P] [US3] 若 perf harness/脚本需要适配新字段或新增门禁，更新脚本并保持可比口径 `scripts/perf.ts`、`packages/logix-perf-evidence/scripts/009-txn-patch-dirtyset.txn-dirtyset-baseline.ts`、`packages/logix-perf-evidence/scripts/027-runtime-observability-hardening.devtools-and-txn-baseline.ts`
 - [x] T047 [US3] 回写 perf 证据结论摘要（含失败原因/复测策略）`specs/065-core-ng-id-first-txn-recording/quickstart.md`
 
 ---

@@ -2,8 +2,8 @@ import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Deferred, Effect, Schema } from 'effect'
 import * as Logix from '../../../src/index.js'
-import * as ModuleRuntime from '../../../src/internal/runtime/ModuleRuntime.js'
-import * as Debug from '../../../src/Debug.js'
+import * as ModuleRuntime from '../../../src/internal/runtime/core/ModuleRuntime.js'
+import * as Debug from '../../../src/internal/debug-api.js'
 
 const waitForStartup = Effect.promise(
   () =>
@@ -57,7 +57,7 @@ describe('TaskRunner (run*Task)', () => {
           }),
       }
 
-      const logic = TaskModule.logic(($) =>
+      const logic = TaskModule.logic('task-module-logic', ($) =>
         Effect.gen(function* () {
           yield* $.onAction('start').runTask({
             pending: () =>
@@ -139,7 +139,7 @@ describe('TaskRunner (run*Task)', () => {
       }
 
       // payload=1 waits io1, payload=2 waits io2
-      const logic = TaskModule.logic(($) =>
+      const logic = TaskModule.logic('task-module-logic-2', ($) =>
         Effect.gen(function* () {
           yield* $.onAction('start').runLatestTask({
             pending: (a: any) =>
@@ -224,7 +224,7 @@ describe('TaskRunner (run*Task)', () => {
           }),
       }
 
-      const logic = TaskModule.logic(($) =>
+      const logic = TaskModule.logic('task-module-logic-3', ($) =>
         Effect.gen(function* () {
           yield* $.onAction('start').runExhaustTask({
             pending: (a: any) =>
@@ -299,7 +299,7 @@ describe('TaskRunner (run*Task)', () => {
           }),
       }
 
-      const logic = TaskModule.logic(($) =>
+      const logic = TaskModule.logic('task-module-logic-4', ($) =>
         Effect.gen(function* () {
           yield* $.onAction('start').runParallelTask({
             pending: (a: any) =>

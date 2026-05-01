@@ -1,6 +1,6 @@
 # Contract: [DEFERRED] React ModuleCache 显式回收（eviction / clear）
 
-**Branch**: `037-route-scope-eviction`  
+**Branch**: `037-route-scope-eviction`
 **Source Spec**: `specs/037-route-scope-eviction/spec.md`
 
 > **[DEFERRED]** 本契约对应的显式回收 API 当前不在 037 的交付范围内。

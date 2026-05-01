@@ -1,12 +1,13 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { Effect, ManagedRuntime } from 'effect'
 import * as Logix from '@logixjs/core'
 import { isDevEnv } from './env.js'
 
 export const readRuntimeDiagnosticsLevel = (
   runtime: ManagedRuntime.ManagedRuntime<any, any>,
-): Logix.Debug.DiagnosticsLevel => {
+): CoreDebug.DiagnosticsLevel => {
   try {
-    return runtime.runSync(Effect.service(Logix.Debug.internal.currentDiagnosticsLevel).pipe(Effect.orDie))
+    return runtime.runSync(Effect.service(CoreDebug.internal.currentDiagnosticsLevel).pipe(Effect.orDie))
   } catch {
     return isDevEnv() ? 'light' : 'off'
   }

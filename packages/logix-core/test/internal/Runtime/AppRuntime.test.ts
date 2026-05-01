@@ -1,6 +1,7 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
-import { Deferred, Effect, Layer, Schema, Logger, ServiceMap } from 'effect'
+import { Effect, Layer, Schema, Logger, ServiceMap } from 'effect'
 import * as Logix from '../../../src/index.js'
 import * as AppRuntimeImpl from '../../../src/internal/runtime/AppRuntime.js'
 
@@ -59,54 +60,6 @@ describe('AppRuntime.makeApp (via internal runtime config)', () => {
     }
   })
 
-  it('builds runtime from Root ModuleImpl and runs processes via Runtime.make', async () => {
-    const CounterState = Schema.Struct({ count: Schema.Number })
-    const CounterActions = {
-      inc: Schema.Void,
-    }
-
-    const CounterModule = Logix.Module.make('AppCounter', {
-      state: CounterState,
-      actions: CounterActions,
-    })
-
-    const CounterImpl = CounterModule.implement({
-      initial: { count: 0 },
-    })
-
-    const RootModule = Logix.Module.make('AppRoot', {
-      state: Schema.Void,
-      actions: {},
-    })
-
-    let processRan = false
-    const processStarted = await Effect.runPromise(Deferred.make<void>())
-
-    const RootImpl = RootModule.implement({
-      initial: undefined,
-      imports: [CounterImpl.impl],
-      processes: [
-        Effect.sync(() => {
-          processRan = true
-        }).pipe(Effect.andThen(Deferred.succeed(processStarted, undefined))),
-      ],
-    })
-
-    const runtime = Logix.Runtime.make(RootImpl, {
-      layer: Layer.empty as Layer.Layer<any, never, never>,
-    })
-
-    const program: Effect.Effect<void, never, any> = Effect.gen(function* () {
-      const counterRuntime = yield* Effect.service(CounterModule.tag).pipe(Effect.orDie)
-      const state = yield* counterRuntime.getState
-      expect(state).toEqual({ count: 0 })
-      yield* Deferred.await(processStarted)
-    })
-
-    await runtime.runPromise(program)
-    expect(processRan).toBe(true)
-  })
-
   it('regression: should preserve FiberRefs (e.g. Logger) when constructing Runtime', async () => {
     // 1) Define a test Logger that collects all log messages.
     const logs: Array<string> = []
@@ -116,7 +69,7 @@ describe('AppRuntime.makeApp (via internal runtime config)', () => {
 
     const loggerLayer = Layer.mergeAll(
       Logger.layer([testLogger]),
-      Logix.Debug.noopLayer,
+      CoreDebug.noopLayer,
     ) as Layer.Layer<any, never, never>
 
     // 3) Build a minimal Root module.
@@ -124,11 +77,11 @@ describe('AppRuntime.makeApp (via internal runtime config)', () => {
       state: Schema.Void,
       actions: {},
     })
-    const RootImpl = RootModule.implement({ initial: undefined })
+    const rootProgram = Logix.Program.make(RootModule, { initial: undefined })
 
     // 4) Construct the runtime via Logix.Runtime.make.
     //    Runtime.make also merges Debug.defaultLayer internally.
-    const runtime = Logix.Runtime.make(RootImpl, {
+    const runtime = Logix.Runtime.make(rootProgram, {
       layer: loggerLayer,
     })
 

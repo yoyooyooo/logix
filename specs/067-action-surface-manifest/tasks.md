@@ -1,6 +1,6 @@
 # Tasks: Action Surface（actions/dispatchers/reducers/effects）与 Manifest
 
-**Input**: Design documents from `specs/067-action-surface-manifest/`  
+**Input**: Design documents from `specs/067-action-surface-manifest/`
 **Prerequisites**: `specs/067-action-surface-manifest/plan.md`、`specs/067-action-surface-manifest/spec.md`（其余为可选补充）
 
 **Tests**: 涉及 `packages/logix-core` 运行时与反射链路，单测/类型回归/性能证据视为必需（NFR-001/SC-004/SC-006）。
@@ -28,11 +28,11 @@
 
 **Goal**: 每次 action 派发都能通过 `ActionRef(moduleId + actionTag)` 稳定映射回模块 manifest 中的 action 定义摘要（无定义时降级 unknown/opaque）。
 
-**Independent Test**: 构造一个包含多个 actions/primary reducer 的模块，派发多次 action，验证事件里的 `{moduleId, actionTag}` 能 join `Reflection.extractManifest(...).actions[]`；未声明 action 标记为 unknown/opaque。
+**Independent Test**: 构造一个包含多个 actions/primary reducer 的模块，派发多次 action，验证事件里的 `{moduleId, actionTag}` 能 join `CoreReflection.extractManifest(...).actions[]`；未声明 action 标记为 unknown/opaque。
 
 - [x] T008 [US1] 在 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.dispatch.ts` 统一 actionTag 语义（`_tag` 为权威，必要时仅容错读取 `type`），并确保 action debug event 的 `label === actionTag`
 - [x] T009 [US1] 在 `packages/logix-core/src/internal/runtime/core/DebugSink.ts`（或等价投影点）确认/补齐 `RuntimeDebugEventRef.kind="action"` 的 ActionRef 映射规则，并为 unknown action 提供可解释降级字段
-- [x] T010 [P] [US1] 在 `packages/logix-core/src/internal/reflection/manifest.ts` / `packages/logix-core/src/Reflection.ts` 输出 `ModuleManifest.actions[]`（至少含 `actionTag` + payload kind + primaryReducer 摘要 + best-effort source），并稳定排序
+- [x] T010 [P] [US1] 在 `packages/logix-core/src/internal/reflection/manifest.ts` / `packages/logix-core/src/internal/reflection-api.ts` 输出 `ModuleManifest.actions[]`（至少含 `actionTag` + payload kind + primaryReducer 摘要 + best-effort source），并稳定排序
 - [x] T011 [P] [US1] 新增单测 `packages/logix-core/test/internal/Reflection/Manifest.Actions.test.ts`：验证 actions[] 的稳定排序与 payload kind 推断；并验证事件 ActionRef 可 join 到 manifest entry
 - [x] T012 [US1] 新增单测 `packages/logix-core/test/internal/Runtime/Action.UnknownFallback.test.ts`：派发未声明 action 时事件被标记为 unknown/opaque，且不污染已声明 actions 的统计/对齐
 
@@ -40,7 +40,7 @@
 
 ## Phase 4: User Story 2 - 平台可提取可序列化的 Module Manifest（免 AST） (Priority: P2)
 
-**Goal**: `Reflection.extractManifest` 输出 deterministic JSON（可 diff），并具备体积预算与确定性截断策略（SC-006）。
+**Goal**: `CoreReflection.extractManifest` 输出 deterministic JSON（可 diff），并具备体积预算与确定性截断策略（SC-006）。
 
 **Independent Test**: 对同一模块重复提取 manifest，字节级一致；当 actions 过多导致超 64KB 时，截断点与 digest 一致且可解释。
 

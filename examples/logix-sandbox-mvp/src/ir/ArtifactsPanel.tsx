@@ -45,7 +45,7 @@ const copyJson = async (value: unknown): Promise<void> => {
 }
 
 export function ArtifactsPanel({ artifacts }: { artifacts: unknown }) {
-  const runtime = useModule(IrDef)
+  const runtime = useModule(IrDef.tag)
   const dispatch = useDispatch(runtime)
 
   const filter = useSelector(runtime, (s) => s.artifactsFilter)

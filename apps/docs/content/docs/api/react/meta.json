@@ -7,8 +7,6 @@
     "use-dispatch",
     "use-local-module",
     "use-imported-module",
-    "use-processes",
-    "use-module-list",
     "module-scope"
   ]
 }

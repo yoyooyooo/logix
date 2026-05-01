@@ -1,32 +1,42 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import React from 'react'
 import { createPortal } from 'react-dom'
-import * as Logix from '@logixjs/core'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { useDevtoolsState, useDevtoolsDispatch } from '../hooks/DevtoolsHooks.js'
 import { Sidebar } from '../sidebar/Sidebar.js'
-import { EffectOpTimelineView } from '../timeline/EffectOpTimelineView.js'
-import { Inspector } from '../inspector/Inspector.js'
-import { OverviewStrip } from '../overview/OverviewStrip.js'
-import { OperationSummaryBar } from '../summary/OperationSummaryBar.js'
 import { SettingsPanel } from '../settings/SettingsPanel.js'
+import { SessionWorkbench } from '../workbench/SessionWorkbench.js'
+import type { WorkbenchDrilldownKind } from '../../state/workbench/index.js'
 
 export interface DevtoolsShellProps {
   position?: 'bottom-left' | 'bottom-right'
 }
 
 export interface GetProgramForModule {
-  (moduleId: string): Logix.StateTrait.StateTraitProgram<any> | undefined
+  (moduleId: string): FieldContracts.FieldProgram<any> | undefined
 }
 
 const defaultGetProgramForModule: GetProgramForModule = (moduleId) => {
-  const traits = Logix.Debug.getModuleTraitsById(moduleId)
-  return traits?.program
+  const fieldProgram = CoreDebug.getModuleFieldProgramById(moduleId)
+  return fieldProgram?.program
 }
 
 export const DevtoolsShell: React.FC<DevtoolsShellProps & { getProgramForModule?: GetProgramForModule }> = ({
   position = 'bottom-left',
   getProgramForModule,
 }) => {
-  const { open, layout, theme, settings, operationSummary } = useDevtoolsState()
+  const state = useDevtoolsState()
+  const {
+    open,
+    layout,
+    theme,
+    settings,
+    workbench,
+    selectedSessionId,
+    selectedFindingId,
+    selectedArtifactKey,
+    selectedDrilldown,
+  } = state
   const dispatch = useDevtoolsDispatch()
   const dragStateRef = React.useRef<{
     startMouseX: number
@@ -60,13 +70,6 @@ export const DevtoolsShell: React.FC<DevtoolsShellProps & { getProgramForModule?
   const handleThemeChange = React.useCallback(
     (nextTheme: 'system' | 'light' | 'dark') => {
       dispatch({ _tag: 'setTheme', payload: nextTheme })
-    },
-    [dispatch],
-  )
-
-  const handleModeChange = React.useCallback(
-    (nextMode: 'basic' | 'deep') => {
-      dispatch({ _tag: 'setMode', payload: nextMode })
     },
     [dispatch],
   )
@@ -115,20 +118,7 @@ export const DevtoolsShell: React.FC<DevtoolsShellProps & { getProgramForModule?
 
   const [_, setSystemPref] = React.useState('dark') // dummy state to trigger re-render on system change
 
-  const [hiddenSummaryStartedAt, setHiddenSummaryStartedAt] = React.useState<number | undefined>(undefined)
-
   const [settingsOpen, setSettingsOpen] = React.useState(false)
-
-  // When a new operation summary arrives, automatically clear the "manually hidden" state.
-  React.useEffect(() => {
-    if (!operationSummary) return
-    if (hiddenSummaryStartedAt != null && operationSummary.startedAt !== hiddenSummaryStartedAt) {
-      setHiddenSummaryStartedAt(undefined)
-    }
-  }, [operationSummary?.startedAt, hiddenSummaryStartedAt])
-
-  const visibleSummary =
-    operationSummary && operationSummary.startedAt !== hiddenSummaryStartedAt ? operationSummary : undefined
 
   const panelStyle: React.CSSProperties = {
     position: 'absolute',
@@ -335,32 +325,24 @@ export const DevtoolsShell: React.FC<DevtoolsShellProps & { getProgramForModule?
         </div>
 
         <div className="flex items-center gap-3">
-          <div
-            className="flex items-center p-0.5 rounded-lg border"
-            style={{
-              backgroundColor: 'var(--dt-bg-surface)',
-              borderColor: 'var(--dt-border)',
-            }}
-          >
-            {(['basic', 'deep'] as const).map((mode) => {
-              const isActive = settings.mode === mode
-              return (
-                <button
-                  key={mode}
-                  onClick={() => handleModeChange(mode)}
-                  className={`px-2 h-6 flex items-center justify-center rounded text-[10px] font-medium transition-all ${
-                    isActive ? 'shadow-sm' : 'hover:bg-white/5'
-                  }`}
-                  style={{
-                    backgroundColor: isActive ? 'var(--dt-bg-active)' : 'transparent',
-                    color: isActive ? 'var(--dt-text-primary)' : 'var(--dt-text-muted)',
-                  }}
-                >
-                  {mode === 'basic' ? 'Basic' : 'Deep'}
-                </button>
-              )
-            })}
-          </div>
+          <label className="flex items-center gap-2 text-[10px]" style={{ color: 'var(--dt-text-muted)' }}>
+            <input
+              type="checkbox"
+              checked={settings.showFieldEvents}
+              onChange={(event) => dispatch({ _tag: 'updateSettings', payload: { showFieldEvents: event.target.checked } } as any)}
+            />
+            Field
+          </label>
+          <label className="flex items-center gap-2 text-[10px]" style={{ color: 'var(--dt-text-muted)' }}>
+            <input
+              type="checkbox"
+              checked={settings.showReactRenderEvents}
+              onChange={(event) =>
+                dispatch({ _tag: 'updateSettings', payload: { showReactRenderEvents: event.target.checked } } as any)
+              }
+            />
+            Render
+          </label>
 
           <div
             className="flex items-center p-0.5 rounded-lg border"
@@ -475,19 +457,21 @@ export const DevtoolsShell: React.FC<DevtoolsShellProps & { getProgramForModule?
         />
       )}
 
-      <OverviewStrip />
-      <OperationSummaryBar
-        summary={visibleSummary as any}
-        onClose={() => {
-          if (!operationSummary) return
-          setHiddenSummaryStartedAt(operationSummary.startedAt)
-        }}
-      />
-
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 min-h-0 flex overflow-hidden">
         <Sidebar />
-        <EffectOpTimelineView />
-        <Inspector getProgramForModule={getProgramForModule ?? defaultGetProgramForModule} />
+        <SessionWorkbench
+          workbench={workbench}
+          selectedSessionId={selectedSessionId}
+          selectedFindingId={selectedFindingId}
+          selectedArtifactKey={selectedArtifactKey}
+          selectedDrilldownKind={selectedDrilldown?.kind}
+          onSelectFinding={(findingId) => dispatch({ _tag: 'selectFinding', payload: findingId })}
+          onSelectArtifact={(artifactKey) => dispatch({ _tag: 'selectArtifact', payload: artifactKey })}
+          onSelectDrilldown={(kind: WorkbenchDrilldownKind) =>
+            dispatch({ _tag: 'selectDrilldown', payload: { kind, sessionId: selectedSessionId, findingId: selectedFindingId, artifactKey: selectedArtifactKey } } as any)
+          }
+          getProgramForModule={getProgramForModule ?? defaultGetProgramForModule}
+        />
       </div>
     </div>
   ) : null

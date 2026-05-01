@@ -1,7 +1,10 @@
 import { describe } from '@effect/vitest'
 import { it, expect, vi } from '@effect/vitest'
-import { Cause, Effect, Layer, ManagedRuntime, Schema } from 'effect'
+import { Cause, Effect, Layer, Schema } from 'effect'
+import * as Debug from '../../../src/internal/debug-api.js'
 import * as Logix from '../../../src/index.js'
+import type { ActionOf } from '../../../src/Module.js'
+import * as LifecycleCore from '../../../src/internal/runtime/core/Lifecycle.js'
 
 const TestModule = Logix.Module.make('LifecycleTest', {
   state: Schema.Struct({ count: Schema.Number }),
@@ -11,27 +14,24 @@ const TestModule = Logix.Module.make('LifecycleTest', {
   },
 })
 
-describe('Lifecycle hooks (Bound.lifecycle)', () => {
+describe('Lifecycle runtime substrate', () => {
   it('should capture onInit error with context', async () => {
     const errorSpy = vi.fn()
 
-    const logic = TestModule.logic(($) => ({
-      setup: Effect.gen(function* () {
-        yield* $.lifecycle.onError((cause, context) =>
-          Effect.sync(() => {
-            errorSpy(Cause.pretty(cause), context)
-          }),
-        )
-
-        yield* $.lifecycle.onInitRequired(Effect.die(new Error('Init Failed')))
+    const manager = await Effect.runPromise(
+      LifecycleCore.makeLifecycleManager({
+        moduleId: 'LifecycleTest',
+        instanceId: 'lifecycle-test-init',
       }),
-      run: Effect.void,
-    }))
+    )
 
-    const layer = TestModule.live({ count: 0 }, logic) as Layer.Layer<Logix.ModuleRuntime<any, any>, never, never>
-
-    const runtime = ManagedRuntime.make(layer)
-    await runtime.runPromise(Effect.void).catch(() => undefined)
+    manager.registerOnError((cause, context) =>
+      Effect.sync(() => {
+        errorSpy(Cause.pretty(cause), context)
+      }),
+    )
+    manager.registerInitRequired(Effect.die(new Error('Init Failed')), { name: 'init-failed' })
+    await Effect.runPromise(Effect.exit(manager.runInitRequired) as Effect.Effect<unknown, never, never>)
 
     expect(errorSpy).toHaveBeenCalled()
     const [causeStr, context] = errorSpy.mock.calls[0]
@@ -46,24 +46,30 @@ describe('Lifecycle hooks (Bound.lifecycle)', () => {
   })
 
   it('should capture Flow error with context', async () => {
-    const errorSpy = vi.fn()
-
-    const logic = TestModule.logic(($) => ({
-      setup: $.lifecycle.onError((cause, context) =>
+    const events: Debug.Event[] = []
+    const sink: Debug.Sink = {
+      record: (event) =>
         Effect.sync(() => {
-          errorSpy(Cause.pretty(cause), context)
+          events.push(event)
         }),
-      ),
-      run: Effect.gen(function* () {
-        yield* $.onAction((a): a is Logix.ActionOf<typeof TestModule.shape> => a._tag === 'triggerFlowError').run(() =>
+    }
+
+    const logic = TestModule.logic('test-module-logic-2', ($) =>
+      Effect.gen(function* () {
+        yield* $.onAction((a): a is ActionOf<typeof TestModule.shape> => a._tag === 'triggerFlowError').run(() =>
           Effect.die(new Error('Flow Failed')),
         )
       }),
-    }))
+    )
 
-    const layer = TestModule.live({ count: 0 }, logic) as Layer.Layer<Logix.ModuleRuntime<any, any>, never, never>
+    const program = Logix.Program.make(TestModule, {
+      initial: { count: 0 },
+      logics: [logic],
+    })
 
-    const runtime = ManagedRuntime.make(layer)
+    const runtime = Logix.Runtime.make(program, {
+      layer: Debug.replace([sink]) as Layer.Layer<any, never, never>,
+    })
 
     await runtime.runPromise(
       Effect.gen(function* () {
@@ -76,11 +82,14 @@ describe('Lifecycle hooks (Bound.lifecycle)', () => {
         yield* Effect.sleep('50 millis')
       }),
     )
+    await runtime.dispose()
 
-    expect(errorSpy).toHaveBeenCalled()
-    const [causeStr, context] = errorSpy.mock.calls[0]
-    expect(String(causeStr)).toContain('Flow Failed')
-    expect(context).toMatchObject({
+    const lifecycleError = events.find((event) => event.type === 'lifecycle:error') as
+      | Extract<Debug.Event, { type: 'lifecycle:error' }>
+      | undefined
+    expect(lifecycleError).toBeDefined()
+    expect(Cause.pretty(lifecycleError?.cause as Cause.Cause<unknown>)).toContain('Flow Failed')
+    expect(lifecycleError).toMatchObject({
       phase: 'run',
       hook: 'unknown',
       moduleId: 'LifecycleTest',

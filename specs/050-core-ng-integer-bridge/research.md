@@ -18,7 +18,7 @@
 
 **Chosen**：
 
-- 口径：以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为唯一 SSoT；交付结论必须 `profile=default`（或 `soak`）。
+- 口径：以 `packages/logix-perf-evidence/assets/matrix.json` 为唯一 SSoT；交付结论必须 `profile=default`（或 `soak`）。
 - 可比性：before/after 必须 `meta.matrixId/matrixHash` 一致；`pnpm perf diff` 的 `meta.comparability.comparable=true` 才允许下硬结论。
 - 判据：`pnpm perf diff` 输出 `summary.regressions==0` 视为 Gate PASS；否则 Gate FAIL。
 - 采集隔离：代码前后对比必须在独立 worktree/目录采集 before/after；混杂改动结果仅作线索。

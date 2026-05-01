@@ -1,8 +1,8 @@
 # Feature Specification: O-014 文档-实现双向收敛机制固化
 
-**Feature Branch**: `pr/o014-doc-impl-bidirectional-convergence`  
-**Created**: 2026-02-26  
-**Status**: Draft  
+**Feature Branch**: `pr/o014-doc-impl-bidirectional-convergence`
+**Created**: 2026-02-26
+**Status**: Draft
 **Input**: 固化 backlog item 最小模板与“机会池 -> spec -> 实现 -> 证据 -> 回写”机制，补齐链接与状态回写规范。
 
 ## 1. 背景

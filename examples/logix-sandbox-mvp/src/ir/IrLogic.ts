@@ -1,6 +1,8 @@
+import * as CoreKernel from '@logixjs/core/repo-internal/kernel-api'
 import { Effect } from 'effect'
-import { SandboxClientTag, type MockManifest } from '@logixjs/sandbox'
+import { SandboxClientTag } from '@logixjs/sandbox'
 import { IrDef } from './IrModule'
+import type { MockManifest } from '../sandbox-contract'
 
 type ArtifactBundle = {
   readonly manifest?: any
@@ -118,24 +120,23 @@ const buildSandboxIrWrapper = (options: {
     ``,
     `const __programModule = ${options.moduleExport}`,
     `const __kernelId = ${JSON.stringify(options.kernelId)}`,
-    `const __kernelLayer = (__kernelId === "core" || __kernelId === "core-ng") ? Logix.Kernel.kernelLayer({ kernelId: __kernelId, packageName: "@logixjs/core" }) : undefined`,
+    `const __kernelLayer = (__kernelId === "core") ? CoreKernel.kernelLayer({ kernelId: __kernelId, packageName: "@logixjs/core" }) : undefined`,
     ``,
     `export default Effect.gen(function* () {`,
-    `  const trialRunModule = (Logix as any)?.Observability?.trialRunModule`,
-    `  if (typeof trialRunModule !== "function") {`,
-    `    throw new Error("[Logix][Sandbox] 缺少 Observability.trialRunModule：请重新 bundle @logixjs/sandbox kernel（pnpm --filter @logixjs/sandbox bundle:kernel）")`,
+    `  const runtimeTrial = (Logix as any)?.Runtime?.trial`,
+    `  if (typeof runtimeTrial !== "function") {`,
+    `    throw new Error("[Logix][Sandbox] 缺少 Runtime.trial：请重新 bundle @logixjs/sandbox kernel（pnpm --filter @logixjs/sandbox bundle:kernel）")`,
     `  }`,
     `  const options = ${JSON.stringify(trialRunOptions, null, 2)}`,
-    `  const report = yield* trialRunModule(__programModule as any, __kernelLayer ? { ...options, layer: __kernelLayer } : options)`,
+    `  const report = yield* runtimeTrial(__programModule as any, __kernelLayer ? { ...options, layer: __kernelLayer } : options)`,
     `  return { manifest: (report as any)?.manifest, staticIr: (report as any)?.staticIr, trialRunReport: report, evidence: (report as any)?.evidence }`,
     `})`,
     ``,
   ].join('\n')
 }
 
-export const IrLogic = IrDef.logic<SandboxClientTag>(($) => ({
-  setup: Effect.void,
-  run: Effect.gen(function* () {
+export const IrLogic = IrDef.logic<SandboxClientTag>('ir-logic', ($) =>
+  Effect.gen(function* () {
     const client = yield* $.use(SandboxClientTag)
 
     yield* Effect.all(
@@ -241,4 +242,4 @@ export const IrLogic = IrDef.logic<SandboxClientTag>(($) => ({
       { concurrency: 'unbounded' },
     )
   }),
-}))
+)

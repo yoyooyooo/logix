@@ -1,8 +1,8 @@
 # Feature Specification: core 纯赚/近纯赚性能优化（默认零成本诊断与单内核）
 
-**Feature Branch**: `070-core-pure-perf-wins`  
-**Created**: 2025-12-31  
-**Status**: Draft  
+**Feature Branch**: `070-core-pure-perf-wins`
+**Created**: 2025-12-31
+**Status**: Draft
 **Input**: User description: "在 @logixjs/core 中梳理并固化一批‘纯赚/近纯赚’性能优化：默认单内核模式零额外成本；生产模式默认诊断链路零开销（不构造/不记录/不分配）；对比/实验场景仍可启用多内核与详细诊断，并提供可复现的 perf evidence 与成功指标。"
 
 ## Terminology
@@ -36,7 +36,7 @@
 - `specs/052-core-ng-diagnostics-off-gate/`（diagnostics=off 的近零成本 Gate 与回归防线）
 - `packages/logix-core/src/internal/runtime/core/DebugSink.ts`（Debug sinks / diagnosticsLevel / record 的核心落点）
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`（`state:update` 事件与事务 commit 链路）
-- `packages/logix-core/src/internal/state-trait/converge-in-transaction.ts`（trait converge 的 decision/dirtySummary 生成点）
+- `packages/logix-core/src/internal/state-field/converge-in-transaction.ts`（field converge 的 decision/dirtySummary 生成点）
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.ts`（Runtime 装配期 Gate：FullCutoverGate.evaluateFullCutoverGate）
 
 ## Clarifications
@@ -44,9 +44,9 @@
 ### Session 2026-01-01
 
 - AUTO: Q: “会被消费”的判定是否需要精确推断任意自定义 sink？ → A: 不需要；仅在可证明不会被消费时跳过（当前至少覆盖 errorOnly-only），其余一律保守视为“可能消费”。
-- AUTO: Q: `diagnosticsLevel=off` 是否禁止生成任何 decision/summary？ → A: 不禁止；当存在非 errorOnly-only sink 会消费 `state:update` 时允许生成 slim decision（用于 `state:update.traitSummary`），但 trace payload/topK/hotspots/静态 IR 导出等 heavy 必须 `diagnosticsLevel!=off` 才允许生成与导出。
+- AUTO: Q: `diagnosticsLevel=off` 是否禁止生成任何 decision/summary？ → A: 不禁止；当存在非 errorOnly-only sink 会消费 `state:update` 时允许生成 slim decision（用于 `state:update.fieldSummary`），但 trace payload/topK/hotspots/静态 IR 导出等 heavy 必须 `diagnosticsLevel!=off` 才允许生成与导出。
 - AUTO: Q: “默认档（Default）”的 Gate/perf evidence baseline 是什么？ → A: 固定为 `kernelId=core + diagnosticsLevel=off + Debug.layer(mode=prod)`（errorOnly-only sinks），以验证“不会被消费就不付费”的默认税清零。
-- AUTO: Q: perf evidence 的硬门口径是什么？ → A: 以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为唯一 SSoT；交付结论必须 `profile=default`（或 `soak`）且 `pnpm perf diff` 满足 `meta.comparability.comparable=true && summary.regressions==0`，before/after 必须 `meta.matrixId/matrixHash` 一致。
+- AUTO: Q: perf evidence 的硬门口径是什么？ → A: 以 `packages/logix-perf-evidence/assets/matrix.json` 为唯一 SSoT；交付结论必须 `profile=default`（或 `soak`）且 `pnpm perf diff` 满足 `meta.comparability.comparable=true && summary.regressions==0`，before/after 必须 `meta.matrixId/matrixHash` 一致。
 - AUTO: Q: before/after 是否允许在混杂改动的 worktree 上采集并下硬结论？ → A: 不允许；硬结论必须在隔离 worktree/目录分别采集，混杂结果仅作线索不得宣称 Gate PASS。
 - AUTO: Q: SC-001 是否必须强制出现“提升”才算完成？ → A: 不强制；硬门为“无回归且可比”，若要主张“纯赚收益”则必须补充至少 1 条可证据化收益并回写 `quickstart.md`。
 - AUTO: Q: 是否将 `LOGIX_CORE_NG_EXEC_VM_MODE` 作为 core 的默认纯赚开关？ → A: 不；继续保持显式 opt-in（默认档不启用），避免把潜在回退/负优化变成默认风险。
@@ -63,7 +63,7 @@
 
 **Acceptance Scenarios**:
 
-1. **Given** Runtime 处于默认档（`kernelId=core`、`diagnosticsLevel=off`、Debug mode 为 `prod` 且 errorOnly-only sinks），**When** 系统经历大量事务提交与 trait converge，**Then** 不会为 `state:update`/`trace:trait:*` 等“不会被消费”的事件构造 payload 或做额外分配。
+1. **Given** Runtime 处于默认档（`kernelId=core`、`diagnosticsLevel=off`、Debug mode 为 `prod` 且 errorOnly-only sinks），**When** 系统经历大量事务提交与 field converge，**Then** 不会为 `state:update`/`trace:field:*` 等“不会被消费”的事件构造 payload 或做额外分配。
 2. **Given** 默认档下存在高频 `state:update` 事件源，**When** sinks 被判定为 errorOnly-only，**Then** 事件记录链路的热路径应为常数时间且不读取额外诊断上下文。
 
 ---
@@ -109,10 +109,10 @@
 
 ### Functional Requirements
 
-- **FR-001**: 系统 MUST 在热路径入口做“可证明不会被消费”的门控：当 sinks 集合可判定为不会消费该类事件（当前至少覆盖 errorOnly-only）时，热路径 MUST 不构造该事件的 payload（包括但不限于 `state:update` 的 `state/dirtySet/traitSummary/replayEvent`，以及 trait converge 的 `dirtySummary/rootIds/topK/hotspots` 等）；未知/自定义 sinks 必须保守视为“可能消费”，不得误丢事件。
+- **FR-001**: 系统 MUST 在热路径入口做“可证明不会被消费”的门控：当 sinks 集合可判定为不会消费该类事件（当前至少覆盖 errorOnly-only）时，热路径 MUST 不构造该事件的 payload（包括但不限于 `state:update` 的 `state/dirtySet/fieldSummary/replayEvent`，以及 field converge 的 `dirtySummary/rootIds/topK/hotspots` 等）；未知/自定义 sinks 必须保守视为“可能消费”，不得误丢事件。
 - **FR-002**: 在默认档（仅 errorOnly 行为）下，系统 MUST 为高频事件提供常数时间 fast-path：对非 `lifecycle:error`、非 `diagnostic(severity!=info)` 的事件，MUST 不读取额外诊断上下文且等价于直接丢弃。
 - **FR-003**: `state:update` 的 Debug 事件 MUST 仅在存在至少一个会消费 `state:update` 的 sink 时才会进入记录链路；否则该事件 MUST 完全跳过（对外等价于未发生记录调用）。
-- **FR-004**: trait converge/validate/check 等热路径上的诊断 payload 分层门控：slim decision（用于 `state:update.traitSummary`）MUST 仅在 sinks 非 errorOnly-only 时生成；heavy/exportable 细节（trace payload、topK/hotspots、静态 IR 导出等）MUST 进一步要求 `diagnosticsLevel!=off`；在默认档下 MUST 不出现与这些 payload 相关的额外数组分配或字符串 materialize。
+- **FR-004**: field converge/validate/check 等热路径上的诊断 payload 分层门控：slim decision（用于 `state:update.fieldSummary`）MUST 仅在 sinks 非 errorOnly-only 时生成；heavy/exportable 细节（trace payload、topK/hotspots、静态 IR 导出等）MUST 进一步要求 `diagnosticsLevel!=off`；在默认档下 MUST 不出现与这些 payload 相关的额外数组分配或字符串 materialize。
 - **FR-005**: kernelId/多内核能力 MUST 只影响装配期证据与 Gate 判定（例如 Full Cutover Gate）；运行期 per-op/per-txn 热路径 MUST 不基于 kernelId 做分支，单内核默认不得因为“支持未来多内核”而承担额外运行期开销。
 - **FR-006**: 当显式启用观测（devtools/trace/diagnostics）时，系统 MUST 输出 Slim 且可序列化的事件与证据；并且 MUST 能解释任意裁剪/降级发生的原因（以稳定错误码/原因码表达，避免自由文本作为语义开关）。
 
@@ -128,6 +128,6 @@
 ### Measurable Outcomes
 
 - **SC-001**: 默认档（单内核 + diagnostics=off + errorOnly-only）下的 Node + Browser perf evidence diff 无回归（`meta.comparability.comparable=true && summary.regressions==0`），且结论可交接（落盘路径与 envId/profile 明确）。
-- **SC-002**: 在默认档下，针对 `state:update` 与 trait converge 的“不会被消费即不付费”至少有 1 条自动化回归防线（测试或基准）能在出现隐式 payload 构造/分配时失败。
+- **SC-002**: 在默认档下，针对 `state:update` 与 field converge 的“不会被消费即不付费”至少有 1 条自动化回归防线（测试或基准）能在出现隐式 payload 构造/分配时失败。
 - **SC-003**: 对照/实验档下（显式开启 devtools/diagnostics），可导出事件仍可序列化并可解释裁剪/降级原因；关闭后恢复为默认档的零成本口径。
 - **SC-004**: 若要主张“纯赚收益”，至少 1 条可证据化收益被明确记录（例如 `summary.improvements>0` 或 `evidenceDeltas` 中至少 1 条方向性改善），并回写到 `quickstart.md`。

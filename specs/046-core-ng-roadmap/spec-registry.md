@@ -21,7 +21,7 @@
 ## 统一口径（强制）
 
 - **证据门禁**：任何触及核心路径的改动，必须使用 `$logix-perf-evidence` 产出 Node + ≥1 条 headless browser 的 before/after/diff。
-- **perf matrix SSoT**：suites/budgets 统一以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为 SSoT（至少覆盖 `priority=P1`）；硬结论至少 `profile=default`；before/after 必须 `matrixId+matrixHash` 一致（保证可比性）。
+- **perf matrix SSoT**：suites/budgets 统一以 `packages/logix-perf-evidence/assets/matrix.json` 为 SSoT（至少覆盖 `priority=P1`）；硬结论至少 `profile=default`；before/after 必须 `matrixId+matrixHash` 一致（保证可比性）。
 - **AOT-ready, not AOT-required**：允许为未来编译期做准备，但默认运行路径不能被工具链绑死。
 - **不出现半成品态**：严禁“ID 化到一半又还原回 string/再 split/join”的中间态成为默认路径；需要阶段性合入必须保持旧路径默认并用显式开关隔离（详见 039 Guardrails）。
 - **ReadQuery ≠ Domain Query**：本路线图里的 “ReadQuery/SelectorSpec” 只描述“读状态依赖与投影”；不要与领域层 `@logixjs/query`（服务/缓存/请求）混用。
@@ -65,9 +65,9 @@
 | Spec | 主题 | 类型 | 证据门禁 | 备注 | Status |
 | ---- | ---- | ---- | -------- | ---- | ------ |
 | `specs/045-dual-kernel-contract/` | Kernel Contract + 对照验证跑道 | Foundation | `$logix-perf-evidence`（默认路径无回归） | 046 的分支点前置；上层只依赖 `@logixjs/core`；M0 已达标（证据见下） | done |
-| `specs/039-trait-converge-int-exec-evidence/` | 当前内核收敛热路径整型化 + 证据达标 | Pure-opt (no semantic change) | `$logix-perf-evidence`（Node + Browser） | 关键 guardrails 都在 039；证据汇总：`specs/039-trait-converge-int-exec-evidence/perf.md`；未来 core-ng 可复用口径拦截负优化 | done |
-| `specs/043-trait-converge-time-slicing/` | time-slicing/跨帧收敛 | Semantic change (opt-in) | `$logix-perf-evidence`（必须 Browser） | 明确不混入 039；若要推进需单独管理迁移口径 | done |
-| `specs/044-trait-converge-diagnostics-sampling/` | 诊断采样/新观测口径 | Observability semantics | `$logix-perf-evidence`（必须 Browser） | 明确不改变 039 的 off、light、full 基础语义；新增 sampled 档位（见 044） | done |
+| `specs/039-field-converge-int-exec-evidence/` | 当前内核收敛热路径整型化 + 证据达标 | Pure-opt (no semantic change) | `$logix-perf-evidence`（Node + Browser） | 关键 guardrails 都在 039；证据汇总：`specs/039-field-converge-int-exec-evidence/perf.md`；未来 core-ng 可复用口径拦截负优化 | done |
+| `specs/043-field-converge-time-slicing/` | time-slicing/跨帧收敛 | Semantic change (opt-in) | `$logix-perf-evidence`（必须 Browser） | 明确不混入 039；若要推进需单独管理迁移口径 | done |
+| `specs/044-field-converge-diagnostics-sampling/` | 诊断采样/新观测口径 | Observability semantics | `$logix-perf-evidence`（必须 Browser） | 明确不改变 039 的 off、light、full 基础语义；新增 sampled 档位（见 044） | done |
 | `specs/065-core-ng-id-first-txn-recording/` | txn/recording id-first（dirty-set + patch recording） | Observability semantics | `$logix-perf-evidence`（Node + Browser；hard gates） | 证据：`specs/065-core-ng-id-first-txn-recording/quickstart.md` + `specs/065-core-ng-id-first-txn-recording/perf/*` | implementing |
 
 ---
@@ -75,13 +75,13 @@
 ## 当前进度（手工回写）
 
 - `M0 / 045`（已达标）：`specs/045-dual-kernel-contract/quickstart.md`
-  - Harness：`packages/logix-core/src/internal/reflection/kernelContract.ts`（导出：`packages/logix-core/src/Reflection.ts`）
+  - Harness：`packages/logix-core/src/internal/reflection/kernelContract.ts`（导出：`packages/logix-core/src/internal/reflection-api.ts`）
   - Perf（diff）：`specs/045-dual-kernel-contract/perf/diff.node.worktree.default.json`、`specs/045-dual-kernel-contract/perf/diff.browser.worktree.default.json`
-- `M1 / 039`（已达标）：`specs/039-trait-converge-int-exec-evidence/quickstart.md`
-  - Perf（summary）：`specs/039-trait-converge-int-exec-evidence/perf.md`
-  - Perf（diff）：`specs/039-trait-converge-int-exec-evidence/perf/diff.node.worktree.json`、`specs/039-trait-converge-int-exec-evidence/perf/diff.browser.worktree.json`、`specs/039-trait-converge-int-exec-evidence/perf/diff.browser.diagnostics-overhead.worktree.json`
-- `M1.1 / 044`（已达标）：`specs/044-trait-converge-diagnostics-sampling/spec.md`
-  - Perf（summary）：`specs/044-trait-converge-diagnostics-sampling/perf.md`
+- `M1 / 039`（已达标）：`specs/039-field-converge-int-exec-evidence/quickstart.md`
+  - Perf（summary）：`specs/039-field-converge-int-exec-evidence/perf.md`
+  - Perf（diff）：`specs/039-field-converge-int-exec-evidence/perf/diff.node.worktree.json`、`specs/039-field-converge-int-exec-evidence/perf/diff.browser.worktree.json`、`specs/039-field-converge-int-exec-evidence/perf/diff.browser.diagnostics-overhead.worktree.json`
+- `M1.1 / 044`（已达标）：`specs/044-field-converge-diagnostics-sampling/spec.md`
+  - Perf（summary）：`specs/044-field-converge-diagnostics-sampling/perf.md`
 - `M3 / 047`（已达标）：`specs/047-core-ng-full-cutover-gate/quickstart.md`
   - Perf（diff）：`specs/047-core-ng-full-cutover-gate/perf/diff.node.default.worktree.json`、`specs/047-core-ng-full-cutover-gate/perf/diff.browser.default.worktree.json`
 - `M4 / 048`（历史迁移 spec；当前 Policy Update 已回退默认 `core`）：`specs/048-core-ng-default-switch-migration/spec.md`

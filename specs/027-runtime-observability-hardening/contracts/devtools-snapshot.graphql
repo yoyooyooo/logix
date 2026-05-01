@@ -35,7 +35,7 @@ type DevtoolsSnapshot {
   instances: [InstanceCount!]!
   events: [RuntimeDebugEventRef!]!
   latestStates: [KeyedJsonValue!]!
-  latestTraitSummaries: [KeyedJsonValue!]!
+  latestFieldSummaries: [KeyedJsonValue!]!
   exportBudget: ExportBudget!
 }
 

@@ -1,5 +1,6 @@
 import { Effect, Schema } from 'effect'
 import * as Module from '@logixjs/core/Module'
+import * as Program from '@logixjs/core/Program'
 
 // ============================================================================
 // Schema 定义
@@ -101,9 +102,8 @@ export const RegionSelectorDef = Module.make('RegionSelector', {
 // Logic 定义
 // ============================================================================
 
-export const RegionSelectorLogic = RegionSelectorDef.logic(($) => ({
-  setup: Effect.void,
-  run: Effect.gen(function* () {
+export const RegionSelectorLogic = RegionSelectorDef.logic('region-selector-logic', ($) =>
+  Effect.gen(function* () {
     // 监听省份选择 → 加载城市
     yield* $.onAction('selectProvince').runParallelFork((action) =>
       Effect.gen(function* () {
@@ -136,13 +136,13 @@ export const RegionSelectorLogic = RegionSelectorDef.logic(($) => ({
       payload: { options: provinces },
     })
   }),
-}))
+)
 
 // ============================================================================
-// Module / ModuleImpl
+// Program assembly
 // ============================================================================
 
-export const RegionSelectorModule = RegionSelectorDef.implement({
+export const RegionSelectorProgram = Program.make(RegionSelectorDef, {
   initial: {
     province: null,
     city: null,
@@ -158,8 +158,6 @@ export const RegionSelectorModule = RegionSelectorDef.implement({
   },
   logics: [RegionSelectorLogic],
 })
-
-export const RegionSelectorImpl = RegionSelectorModule.impl
 
 // ============================================================================
 // Mock API (临时实现，后续由 Layer 注入)

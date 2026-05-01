@@ -1,6 +1,6 @@
 # Tasks: 061 Playground 编辑器智能提示（Logix 全量补全）
 
-**Input**: `specs/061-playground-editor-intellisense/spec.md` + `specs/061-playground-editor-intellisense/plan.md`  
+**Input**: `specs/061-playground-editor-intellisense/spec.md` + `specs/061-playground-editor-intellisense/plan.md`
 **Optional**: `specs/061-playground-editor-intellisense/research.md` / `specs/061-playground-editor-intellisense/contracts/README.md` / `specs/061-playground-editor-intellisense/quickstart.md`
 
 **Tests**: 本特性以手工验收为主（见 `specs/061-playground-editor-intellisense/quickstart.md`），不强制新增单测。

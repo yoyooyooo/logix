@@ -1,9 +1,11 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { describe, it, expect } from '@effect/vitest'
 import { Effect, Fiber, Option, PubSub, Queue } from 'effect'
 import * as Logix from '../../../src/index.js'
 import { makeFieldPathIdRegistry } from '../../../src/internal/field-path.js'
 import type { TxnDirtyEvidenceSnapshot } from '../../../src/internal/runtime/core/StateTransaction.js'
 import * as SelectorGraph from '../../../src/internal/runtime/core/SelectorGraph.js'
+import * as RuntimeContracts from '../../../src/internal/runtime-contracts.js'
 
 const makeDirty = (args: {
   readonly registry: ReturnType<typeof makeFieldPathIdRegistry>
@@ -59,7 +61,7 @@ describe('SelectorGraph', () => {
           { fieldPaths: ['count'] },
         )
 
-        const readQuery = Logix.ReadQuery.compile(selectCount as any)
+        const readQuery = RuntimeContracts.Selector.compile(selectCount as any)
         const registry = makeFieldPathIdRegistry([['count'], ['other']])
         const graph = SelectorGraph.make<{ readonly count: number; readonly other: number }>({
           moduleId: 'TestModule',
@@ -103,7 +105,7 @@ describe('SelectorGraph', () => {
           { fieldPaths: ['count'] },
         )
 
-        const readQuery = Logix.ReadQuery.compile(selectCount as any)
+        const readQuery = RuntimeContracts.Selector.compile(selectCount as any)
         const registry = makeFieldPathIdRegistry([['count'], ['other']])
         const graph = SelectorGraph.make<{ readonly count: number; readonly other: number }>({
           moduleId: 'TestModule',
@@ -154,8 +156,8 @@ describe('SelectorGraph', () => {
           { fieldPaths: ['other'] },
         )
 
-        const countQuery = Logix.ReadQuery.compile(selectCount as any)
-        const otherQuery = Logix.ReadQuery.compile(selectOther as any)
+        const countQuery = RuntimeContracts.Selector.compile(selectCount as any)
+        const otherQuery = RuntimeContracts.Selector.compile(selectOther as any)
         const registry = makeFieldPathIdRegistry([['count'], ['other']])
 
         const graph = SelectorGraph.make<{ readonly count: number; readonly other: number }>({
@@ -215,8 +217,8 @@ describe('SelectorGraph', () => {
           { fieldPaths: ['settings.locale'] },
         )
 
-        const themeQuery = Logix.ReadQuery.compile(selectTheme as any)
-        const localeQuery = Logix.ReadQuery.compile(selectLocale as any)
+        const themeQuery = RuntimeContracts.Selector.compile(selectTheme as any)
+        const localeQuery = RuntimeContracts.Selector.compile(selectLocale as any)
         const registry = makeFieldPathIdRegistry([['settings', 'theme'], ['settings', 'locale']])
 
         const graph = SelectorGraph.make<{ readonly settings: { readonly theme: string; readonly locale: string } }>({
@@ -276,8 +278,8 @@ describe('SelectorGraph', () => {
           { fieldPaths: ['settings.locale'] },
         )
 
-        const themeQuery = Logix.ReadQuery.compile(selectTheme as any)
-        const localeQuery = Logix.ReadQuery.compile(selectLocale as any)
+        const themeQuery = RuntimeContracts.Selector.compile(selectTheme as any)
+        const localeQuery = RuntimeContracts.Selector.compile(selectLocale as any)
         const registry = makeFieldPathIdRegistry([['settings'], ['settings', 'theme'], ['settings', 'locale']])
 
         const graph = SelectorGraph.make<{ readonly settings: { readonly theme: string; readonly locale: string } }>({
@@ -334,8 +336,8 @@ describe('SelectorGraph', () => {
           { fieldPaths: ['settings.locale'] },
         )
 
-        const themeQuery = Logix.ReadQuery.compile(selectTheme as any)
-        const localeQuery = Logix.ReadQuery.compile(selectLocale as any)
+        const themeQuery = RuntimeContracts.Selector.compile(selectTheme as any)
+        const localeQuery = RuntimeContracts.Selector.compile(selectLocale as any)
         const registry = makeFieldPathIdRegistry([['settings'], ['settings', 'theme'], ['settings', 'locale']])
 
         const graph = SelectorGraph.make<{ readonly settings: { readonly theme: string; readonly locale: string } }>({
@@ -355,10 +357,13 @@ describe('SelectorGraph', () => {
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
           makeDirty({ registry, paths: ['settings.locale', 'settings'] }),
           'off',
-          (selectorId) => changedSelectors.push(selectorId),
+          (selectorFingerprint) => changedSelectors.push(selectorFingerprint),
         )
 
-        expect(changedSelectors).toEqual([themeQuery.selectorId, localeQuery.selectorId])
+        expect(changedSelectors).toEqual([
+          RuntimeContracts.Selector.route(themeQuery).selectorFingerprint.value,
+          RuntimeContracts.Selector.route(localeQuery).selectorFingerprint.value,
+        ])
         expect(themeCalls).toBe(1)
         expect(localeCalls).toBe(1)
       }),
@@ -387,8 +392,8 @@ describe('SelectorGraph', () => {
           { fieldPaths: ['settings.locale'] },
         )
 
-        const themeQuery = Logix.ReadQuery.compile(selectTheme as any)
-        const localeQuery = Logix.ReadQuery.compile(selectLocale as any)
+        const themeQuery = RuntimeContracts.Selector.compile(selectTheme as any)
+        const localeQuery = RuntimeContracts.Selector.compile(selectLocale as any)
         const registry = makeFieldPathIdRegistry([['settings'], ['settings', 'theme'], ['settings', 'locale']])
 
         const graph = SelectorGraph.make<{ readonly settings: { readonly theme: string; readonly locale: string } }>({
@@ -408,10 +413,13 @@ describe('SelectorGraph', () => {
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
           makeDirty({ registry, paths: ['settings', 'settings.locale'] }),
           'off',
-          (selectorId) => changedSelectors.push(selectorId),
+          (selectorFingerprint) => changedSelectors.push(selectorFingerprint),
         )
 
-        expect(changedSelectors).toEqual([themeQuery.selectorId, localeQuery.selectorId])
+        expect(changedSelectors).toEqual([
+          RuntimeContracts.Selector.route(themeQuery).selectorFingerprint.value,
+          RuntimeContracts.Selector.route(localeQuery).selectorFingerprint.value,
+        ])
         expect(themeCalls).toBe(1)
         expect(localeCalls).toBe(1)
       }),
@@ -437,8 +445,8 @@ describe('SelectorGraph', () => {
           { fieldPaths: ['other'] },
         )
 
-        const dynamicQuery = Logix.ReadQuery.compile(dynamicSelect as any)
-        const staticQuery = Logix.ReadQuery.compile(staticSelect as any)
+        const dynamicQuery = RuntimeContracts.Selector.compile(dynamicSelect as any)
+        const staticQuery = RuntimeContracts.Selector.compile(staticSelect as any)
         const registry = makeFieldPathIdRegistry([['count'], ['other']])
 
         const graph = SelectorGraph.make<{ readonly count: number; readonly other: number }>({
@@ -493,7 +501,7 @@ describe('SelectorGraph', () => {
           { fieldPaths: ['user.name', 'settings.theme'] },
         )
 
-        const readQuery = Logix.ReadQuery.compile(selectUserAndTheme as any)
+        const readQuery = RuntimeContracts.Selector.compile(selectUserAndTheme as any)
         const registry = makeFieldPathIdRegistry([['user', 'name'], ['settings', 'theme'], ['settings', 'locale']])
 
         const graph = SelectorGraph.make<{
@@ -544,7 +552,7 @@ describe('SelectorGraph', () => {
           { fieldPaths: ['user.name', 'settings.theme'] },
         )
 
-        const readQuery = Logix.ReadQuery.compile(selectSummary as any)
+        const readQuery = RuntimeContracts.Selector.compile(selectSummary as any)
         const registry = makeFieldPathIdRegistry([['user', 'name'], ['settings', 'theme']])
         const graph = SelectorGraph.make<{
           readonly user: { readonly name: string }
@@ -609,13 +617,13 @@ describe('SelectorGraph', () => {
           { fieldPaths: ['other'] },
         )
 
-        const baseMixedQuery = Logix.ReadQuery.compile(selectMixed as any)
+        const baseMixedQuery = RuntimeContracts.Selector.compile(selectMixed as any)
         const mixedQuery = {
           ...baseMixedQuery,
           selectorId: `${baseMixedQuery.selectorId}:mixed`,
           reads: ['count', 1, '*', 'settings.theme', 'settings[]', '[]'],
         } as any
-        const otherQuery = Logix.ReadQuery.compile(selectOther as any)
+        const otherQuery = RuntimeContracts.Selector.compile(selectOther as any)
         const registry = makeFieldPathIdRegistry([['count'], ['settings', 'theme'], ['settings', 'locale'], ['other']])
 
         const graph = SelectorGraph.make<{
@@ -666,7 +674,7 @@ describe('SelectorGraph', () => {
   it.effect('emits a slim trace:selector:eval cost summary in diagnostics=light', () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const ring = Logix.Debug.makeRingBufferSink(16)
+        const ring = CoreDebug.makeRingBufferSink(16)
 
         let calls = 0
         const selectCount = Object.assign(
@@ -677,7 +685,7 @@ describe('SelectorGraph', () => {
           { fieldPaths: ['count'] },
         )
 
-        const readQuery = Logix.ReadQuery.compile(selectCount as any)
+        const readQuery = RuntimeContracts.Selector.compile(selectCount as any)
         const registry = makeFieldPathIdRegistry([['count'], ['other']])
         const graph = SelectorGraph.make<{ readonly count: number; readonly other: number }>({
           moduleId: 'TestModule',
@@ -693,7 +701,7 @@ describe('SelectorGraph', () => {
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
           makeDirty({ registry, paths: ['count'] }),
           'light',
-        ), Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any])
+        ), CoreDebug.internal.currentDebugSinks as any, [ring.sink as any])
 
         expect(calls).toBe(1)
 
@@ -713,7 +721,7 @@ describe('SelectorGraph', () => {
   it.effect('emits trace:selector:eval in diagnostics=sampled only when changed or slow', () =>
     Effect.scoped(
       Effect.gen(function* () {
-        const ring = Logix.Debug.makeRingBufferSink(32)
+        const ring = CoreDebug.makeRingBufferSink(32)
 
         let calls = 0
         let shouldDelayOnce = false
@@ -739,7 +747,7 @@ describe('SelectorGraph', () => {
           { fieldPaths: ['count'] },
         )
 
-        const readQuery = Logix.ReadQuery.compile(selectCount as any)
+        const readQuery = RuntimeContracts.Selector.compile(selectCount as any)
         const registry = makeFieldPathIdRegistry([['count'], ['other']])
         const graph = SelectorGraph.make<{ readonly count: number; readonly other: number }>({
           moduleId: 'TestModule',
@@ -755,7 +763,7 @@ describe('SelectorGraph', () => {
           { txnSeq: 1, txnId: 'i-test::t1', commitMode: 'normal', priority: 'normal' },
           makeDirty({ registry, paths: ['count'] }),
           'sampled',
-        ), Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any])
+        ), CoreDebug.internal.currentDebugSinks as any, [ring.sink as any])
 
         let evalEvents = ring.getSnapshot().filter((e) => (e as any).type === 'trace:selector:eval') as Array<any>
         expect(evalEvents).toHaveLength(1)
@@ -766,7 +774,7 @@ describe('SelectorGraph', () => {
           { txnSeq: 2, txnId: 'i-test::t2', commitMode: 'normal', priority: 'normal' },
           makeDirty({ registry, paths: ['count'] }),
           'sampled',
-        ), Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any])
+        ), CoreDebug.internal.currentDebugSinks as any, [ring.sink as any])
 
         evalEvents = ring.getSnapshot().filter((e) => (e as any).type === 'trace:selector:eval') as Array<any>
         expect(evalEvents).toHaveLength(1)
@@ -778,7 +786,7 @@ describe('SelectorGraph', () => {
           { txnSeq: 3, txnId: 'i-test::t3', commitMode: 'normal', priority: 'normal' },
           makeDirty({ registry, paths: ['count'] }),
           'sampled',
-        ), Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any])
+        ), CoreDebug.internal.currentDebugSinks as any, [ring.sink as any])
 
         expect(calls).toBe(3)
         evalEvents = ring.getSnapshot().filter((e) => (e as any).type === 'trace:selector:eval') as Array<any>

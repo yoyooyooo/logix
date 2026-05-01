@@ -8,7 +8,7 @@
     "nodeId": { "type": "string", "minLength": 1 },
     "kind": {
       "type": "string",
-      "enum": ["session", "txn", "effectop", "trait", "react", "diagnostic", "custom"]
+      "enum": ["session", "txn", "effectop", "field", "react", "diagnostic", "custom"]
     },
     "label": { "type": "string", "minLength": 1 },
     "primaryParentId": { "type": "string", "minLength": 1 },

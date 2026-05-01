@@ -1,6 +1,6 @@
 # Logix Examples
 
-This package contains standalone examples and scenarios for Logix v3.
+This package contains standalone scenarios and runtime-aligned examples for the current Logix API.
 
 ## Setup
 
@@ -26,20 +26,11 @@ npx tsx src/scenarios/and-update-on-changes.ts
 # Confirm Pattern Demo
 npx tsx src/scenarios/confirm-simple-run.ts
 
-# EffectOp Middleware · 基础用法
-npx tsx src/scenarios/middleware-effectop-basic.ts
+# Program-first · Minimal End-to-End Demo
+npx tsx src/scenarios/customer-search-minimal.ts
 
-# EffectOp Middleware · Runtime 集成
-npx tsx src/scenarios/middleware-runtime-effectop.ts
-
-# EffectOp Middleware · Resource + Query 集成
-npx tsx src/scenarios/middleware-resource-query.ts
-
-# Feature-first · Minimal End-to-End Demo
-npx tsx src/scenarios/feature-first-customer-search.ts
-
-# TrialRun · 导出 EvidencePackage（含 runtime services 证据 + 静态 IR 摘要）
-npx tsx src/scenarios/trialRunEvidence.ts
+# Runtime Trial · 导出 EvidencePackage（含 runtime services 证据 + 静态 IR 摘要）
+npx tsx src/scenarios/trial-run-evidence.ts
 
 # Reflection · Build Env 下导出 Static IR（含稳定 digest）
 npx tsx src/scenarios/ir/reflectStaticIr.ts
@@ -47,8 +38,8 @@ npx tsx src/scenarios/ir/reflectStaticIr.ts
 
 ## Structure
 
-- `src/scenarios`: Business logic scenarios and demos.
-- `src/scenarios/ir`: IR / Parser mapping demos (not business-recommended).
-- `src/features`: Feature-first examples (modules/processes/patterns by feature).
-- `src/runtime`: Composition Root for demos (root impl + layer).
-- `src/patterns`: Reusable logic patterns (e.g. Confirm, Long Task, Bulk Operations).
+- `src/scenarios`: Runtime-aligned scenarios and demos.
+- `src/scenarios/ir`: IR / parser mapping demos and expert experiments.
+- `src/features`: Scenario-owned programs, logic kits, and verification-adjacent examples.
+- `src/runtime`: Demo composition roots and runtime wiring.
+- `src/patterns`: Reusable logic and orchestration patterns.

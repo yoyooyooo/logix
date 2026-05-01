@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://intent-flow.local/specs/005-unify-observability-protocol/schemas/runtime-debug-event-ref.schema.json",
+  "$id": "https://logix.local/specs/005-unify-observability-protocol/schemas/runtime-debug-event-ref.schema.json",
   "title": "RuntimeDebugEventRef",
   "type": "object",
   "additionalProperties": false,

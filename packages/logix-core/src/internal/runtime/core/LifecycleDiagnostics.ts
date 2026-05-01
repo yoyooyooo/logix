@@ -25,8 +25,8 @@ export const classifyUnhandledCause = (cause: Cause.Cause<unknown>): UnhandledEr
 }
 
 /**
- * When a Module hits a lifecycle error during Logic execution and no onError handler is registered,
- * emit a warning diagnostic suggesting adding $.lifecycle.onError at the beginning of the module logic.
+ * When a Module hits a runtime lifecycle error and no internal error observer is registered,
+ * emit a warning diagnostic that routes observation to Runtime / Provider / diagnostics.
  */
 export const emitMissingOnErrorDiagnosticIfNeeded = (
   lifecycle: LifecycleManager,
@@ -41,8 +41,9 @@ export const emitMissingOnErrorDiagnosticIfNeeded = (
             moduleId,
             code: 'lifecycle::missing_on_error',
             severity: 'warning',
-            message: `Module "${moduleId}" received a lifecycle error but has no $.lifecycle.onError handler registered.`,
-            hint: "Add $.lifecycle.onError((cause, context) => ...) at the beginning of this Module's logic to handle logic errors consistently.",
+            message: `Module "${moduleId}" emitted an unhandled runtime lifecycle error.`,
+            hint:
+              'Observe runtime failures through Runtime.onError, RuntimeProvider.onError, or diagnostics sinks. Logic authoring should keep failure handling local to the returned run effect or the readiness effect.',
           }),
     ),
   )

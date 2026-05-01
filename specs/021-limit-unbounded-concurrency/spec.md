@@ -1,8 +1,8 @@
 # Feature Specification: 并发护栏与预警（限制无上限并发）
 
-**Feature Branch**: `021-limit-unbounded-concurrency`  
-**Created**: 2025-12-21  
-**Status**: Draft  
+**Feature Branch**: `021-limit-unbounded-concurrency`
+**Created**: 2025-12-21
+**Status**: Draft
 **Input**: 用户希望允许在 Logic/watcher 中并发执行，但担心“无上限并发”导致不可控/不可检测/不可预警/崩溃；本需求按“默认安全 + 显式放开 + 可观测/可预警 + 最佳实践”落地。
 
 ## User Scenarios & Testing _(mandatory)_

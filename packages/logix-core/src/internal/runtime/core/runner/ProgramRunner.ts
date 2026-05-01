@@ -1,6 +1,6 @@
 import { Cause, Effect, Exit, Option, Scope } from 'effect'
 import type { ManagedRuntime } from 'effect'
-import type { AnyModuleShape, ModuleImpl } from '../module.js'
+import type { AnyModuleShape, ProgramRuntimeBlueprint } from '../module.js'
 import { make as makeBoundApi } from '../BoundApiRuntime.js'
 import * as TaskRunner from '../TaskRunner.js'
 import { closeProgramScope } from './ProgramRunner.closeScope.js'
@@ -12,23 +12,23 @@ import { makeProgramRunnerKernel } from './ProgramRunner.kernel.js'
 import { resolveProgramRunnerOptions } from './ProgramRunner.options.js'
 
 export type RuntimeFactory = (
-  rootImpl: ModuleImpl<any, AnyModuleShape, any>,
+  rootBlueprint: ProgramRuntimeBlueprint<any, AnyModuleShape, any>,
   options?: unknown,
 ) => ManagedRuntime.ManagedRuntime<any, never>
 
 export const openProgram = <Sh extends AnyModuleShape>(
   makeRuntime: RuntimeFactory,
-  rootImpl: ModuleImpl<any, Sh, any>,
+  rootBlueprint: ProgramRuntimeBlueprint<any, Sh, any>,
   options?: unknown,
 ): Effect.Effect<ProgramRunContext<Sh>, unknown, Scope.Scope> =>
   Effect.gen(function* () {
     const inTxn = yield* Effect.service(TaskRunner.inSyncTransactionFiber).pipe(Effect.orDie)
     if (inTxn) {
-      return yield* Effect.die(new Error('[Logix] Runtime.openProgram/runProgram is not allowed inside a synchronous StateTransaction body'))
+      return yield* Effect.die(new Error('[Logix] Runtime.openProgram/run is not allowed inside a synchronous StateTransaction body'))
     }
 
     const runnerOptions = resolveProgramRunnerOptions(options)
-    const kernel = yield* makeProgramRunnerKernel(makeRuntime, rootImpl, options)
+    const kernel = yield* makeProgramRunnerKernel(makeRuntime, rootBlueprint, options)
 
     // Bind ctx.scope disposal to the outer scope (openProgram is scope-bound).
     yield* Effect.addFinalizer(() =>
@@ -43,7 +43,7 @@ export const openProgram = <Sh extends AnyModuleShape>(
 
     // boot: touch the program module tag to ensure instantiation and logics/processes start.
     const moduleRuntime = yield* Effect.tryPromise({
-      try: () => kernel.runtime.runPromise(Effect.service(rootImpl.module as any).pipe(Effect.orDie)),
+      try: () => kernel.runtime.runPromise(Effect.service(rootBlueprint.module as any).pipe(Effect.orDie)),
       catch: (error) => new BootError(kernel.identity, error),
     })
 
@@ -51,24 +51,24 @@ export const openProgram = <Sh extends AnyModuleShape>(
     return kernel.toContext(moduleRuntime)
   })
 
-export const runProgram = async <Sh extends AnyModuleShape, Args, A, E, R>(
+export const run = async <Sh extends AnyModuleShape, Args, A, E, R>(
   makeRuntime: RuntimeFactory,
-  rootImpl: ModuleImpl<any, Sh, any>,
+  rootBlueprint: ProgramRuntimeBlueprint<any, Sh, any>,
   main: (ctx: ProgramRunContext<Sh>, args: Args) => Effect.Effect<A, E, R>,
   options?: unknown,
 ): Promise<A> => {
   if (TaskRunner.isInSyncTransactionShadow()) {
-    throw new Error('[Logix] Runtime.openProgram/runProgram is not allowed inside a synchronous StateTransaction body')
+    throw new Error('[Logix] Runtime.openProgram/run is not allowed inside a synchronous StateTransaction body')
   }
 
   const runnerOptions = resolveProgramRunnerOptions<Args>(options)
   const identity: ProgramIdentity = {
-    moduleId: String(rootImpl.module.id),
+    moduleId: String(rootBlueprint.module.id),
     instanceId: 'unknown',
   }
 
   const scope = Effect.runSync(Scope.make())
-  const runtime = makeRuntime(rootImpl as unknown as ModuleImpl<any, AnyModuleShape, any>, options)
+  const runtime = makeRuntime(rootBlueprint as unknown as ProgramRuntimeBlueprint<any, AnyModuleShape, any>, options)
 
   let ctx:
     | (ProgramRunContext<Sh> & {
@@ -122,7 +122,7 @@ export const runProgram = async <Sh extends AnyModuleShape, Args, A, E, R>(
     // boot: touch the program module tag to ensure instantiation and logics/processes start.
     let moduleRuntime: any
     try {
-      moduleRuntime = await runtime.runPromise(Effect.service(rootImpl.module as any).pipe(Effect.orDie))
+      moduleRuntime = await runtime.runPromise(Effect.service(rootBlueprint.module as any).pipe(Effect.orDie))
     } catch (error) {
       setFailureExitCodeIfEnabled(runnerOptions.exitCode)
       reportErrorIfEnabled(runnerOptions.exitCode && runnerOptions.reportError, error)
@@ -139,7 +139,7 @@ export const runProgram = async <Sh extends AnyModuleShape, Args, A, E, R>(
         scope,
         runtime,
         module: moduleRuntime,
-        $: makeBoundApi(rootImpl.module.shape as any, moduleRuntime as any) as any,
+        $: makeBoundApi(rootBlueprint.module.shape as any, moduleRuntime as any) as any,
       } satisfies ProgramRunContext<Sh> as any
     }
 
@@ -208,7 +208,7 @@ export const runProgram = async <Sh extends AnyModuleShape, Args, A, E, R>(
 
   if (!result) {
     setFailureExitCodeIfEnabled(runnerOptions.exitCode)
-    throw new Error('[Logix] ProgramRunner.runProgram: missing result')
+    throw new Error('[Logix] ProgramRunner.run: missing result')
   }
 
   if (result._tag === 'failure') {

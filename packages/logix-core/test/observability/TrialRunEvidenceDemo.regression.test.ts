@@ -1,7 +1,10 @@
 import { describe } from '@effect/vitest'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { it, expect } from '@effect/vitest'
-import {Effect, Exit, Layer, Schema, ServiceMap } from 'effect'
+import { Effect, Exit, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../src/index.js'
+import * as RuntimeContracts from '../../src/internal/runtime-contracts.js'
+import { trialRun } from '../../src/internal/verification/trialRun.js'
 
 describe('TrialRun evidence demo (regression)', () => {
   it.effect('should complete and export runtime.services + converge Static IR summary', () =>
@@ -15,25 +18,24 @@ describe('TrialRun evidence demo (regression)', () => {
         noop: Schema.Void,
       }
 
-      const Def = Logix.Module.make('T073.TrialRunEvidenceDemo', {
-        state: State,
-        actions: Actions,
-        reducers: { noop: (s: any) => s },
-        traits: Logix.StateTrait.from(State)({
-          derivedA: Logix.StateTrait.computed({
+      const Def = FieldContracts.withModuleFieldDeclarations(Logix.Module.make('T073.TrialRunEvidenceDemo', {
+  state: State,
+  actions: Actions,
+  reducers: { noop: (s: any) => s }
+}), FieldContracts.fieldFrom(State)({
+          derivedA: FieldContracts.fieldComputed({
             deps: ['a'],
             get: (a) => a + 1,
           }),
-        }),
-      })
+        }))
 
-      const Mod = Def.implement({
+      const programModule = Logix.Program.make(Def, {
         initial: { a: 0, derivedA: 1 },
         logics: [],
       })
 
       const program = Effect.gen(function* () {
-        const ctx = yield* Mod.impl.layer.pipe(Layer.build)
+        const ctx = yield* RuntimeContracts.getProgramRuntimeBlueprint(programModule).layer.pipe(Layer.build)
         const runtime = ServiceMap.get(ctx, Def.tag)
 
         yield* runtime.dispatch({ _tag: 'noop', payload: undefined })
@@ -42,7 +44,7 @@ describe('TrialRun evidence demo (regression)', () => {
         return runtime.instanceId as string
       })
 
-      const result = yield* Logix.Observability.trialRun(program, {
+      const result = yield* trialRun(program, {
         runId: 'run:test:trial-run-evidence-demo',
         source: { host: 'node', label: 'TrialRunEvidenceDemo.regression.test' },
         diagnosticsLevel: 'full',

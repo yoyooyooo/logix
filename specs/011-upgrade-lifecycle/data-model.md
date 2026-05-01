@@ -1,8 +1,8 @@
 # Phase 1 Data Model: Lifecycle 全面升级
 
-**Feature**: [spec.md](./spec.md)  
-**Research**: [research.md](./research.md)  
-**Created**: 2025-12-16  
+**Feature**: [spec.md](./spec.md)
+**Research**: [research.md](./research.md)
+**Created**: 2025-12-16
 
 本数据模型用于固化“生命周期/诊断/标识”的最小可序列化事实源，为 Runtime / Devtools / Sandbox 对齐提供共同语言。
 

@@ -1,6 +1,6 @@
 # Implementation Plan: 092 E2E Latency Trace（端到端链路可解释）
 
-**Branch**: `092-e2e-latency-trace` | **Date**: 2026-01-10 | **Spec**: `specs/092-e2e-latency-trace/spec.md`  
+**Branch**: `092-e2e-latency-trace` | **Date**: 2026-01-10 | **Spec**: `specs/092-e2e-latency-trace/spec.md`
 **Input**: Feature specification from `specs/092-e2e-latency-trace/spec.md`
 
 ## Summary
@@ -24,14 +24,14 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: `@logixjs/core`、`@logixjs/react`、`@logixjs/devtools-react`、`effect` v3  
-**Storage**: N/A（事件存储在有界 ring buffer；证据落盘到 `specs/092-e2e-latency-trace/perf/*`）  
-**Testing**: Vitest + `@effect/vitest`；React 行为/Browser 用 Vitest browser  
-**Target Platform**: Node.js + modern browsers（headless）  
-**Project Type**: pnpm workspace  
-**Performance Goals**: diagnostics off 近零成本；采样开启的开销可度量且在预算内；事件体积可控  
-**Constraints**: Slim/JsonValue；稳定标识去随机化；ring buffer 有界；不破坏 React 无 tearing；forward-only  
+**Language/Version**: TypeScript 5.9.x（ESM）
+**Primary Dependencies**: `@logixjs/core`、`@logixjs/react`、`@logixjs/devtools-react`、`effect` v3
+**Storage**: N/A（事件存储在有界 ring buffer；证据落盘到 `specs/092-e2e-latency-trace/perf/*`）
+**Testing**: Vitest + `@effect/vitest`；React 行为/Browser 用 Vitest browser
+**Target Platform**: Node.js + modern browsers（headless）
+**Project Type**: pnpm workspace
+**Performance Goals**: diagnostics off 近零成本；采样开启的开销可度量且在预算内；事件体积可控
+**Constraints**: Slim/JsonValue；稳定标识去随机化；ring buffer 有界；不破坏 React 无 tearing；forward-only
 **Scale/Scope**: 最小交付：action run timeline + notify/commit 关联；paint 采样为可选增强
 **Defaults（需在实现中保持一致）**:
 - `DevtoolsRuntimeOptions.bufferSize = 500`（默认值；ring buffer 容量）
@@ -57,10 +57,10 @@ _GATE: trace 本身必须可解释且可控成本；否则违宪。_
 ## Perf Evidence Plan（MUST）
 
 > 若本特性触及 Logix Runtime 核心路径 / 渲染关键路径 / 对外性能边界：此节必须填写；否则标注 `N/A`。
-> 详细口径见：`.codex/skills/logix-perf-evidence/references/perf-evidence.md`
+> 详细口径见：`packages/logix-perf-evidence/references/perf-evidence.md`
 
 - Baseline 语义：代码前后（before/after）+ A/B（同一代码下 sampling off/on）
-- Matrix SSoT：`.codex/skills/logix-perf-evidence/assets/matrix.json`（before/after 的 `matrixId/matrixHash` 必须一致）
+- Matrix SSoT：`packages/logix-perf-evidence/assets/matrix.json`（before/after 的 `matrixId/matrixHash` 必须一致）
 - PASS 判据（对应 `spec.md#SC-002`）：`pnpm perf diff` 输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`
 - envId：darwin-arm64.node20.chrome-headless（以实际采集机为准；before/after 必须一致）
 - profile：default（交付）

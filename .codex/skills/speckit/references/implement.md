@@ -83,6 +83,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 3. Load and analyze the implementation context:
    - **REQUIRED**: Read tasks.md for the complete task list and execution plan
    - **REQUIRED**: Read plan.md for tech stack, architecture, and file structure
+   - **IF EXISTS**: Read discussion.md, but treat it only as residual context and reopen evidence
    - **IF EXISTS**: Read data-model.md for entities and relationships
    - **IF EXISTS**: Read contracts/ for API specifications and test requirements
    - **IF EXISTS**: Read research.md for technical decisions and constraints
@@ -118,12 +119,16 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Provide clear error messages with context for debugging
    - Suggest next steps if implementation cannot proceed
    - **IMPORTANT** For completed tasks, make sure to mark the task off as [X] in the tasks file.
+   - Before implementation starts, confirm `discussion.md` has no remaining `Must Close Before Implementation` items. If any remain, stop and close them by writing the accepted decision into `spec.md` / `plan.md` / `tasks.md`.
+   - If implementation makes a discussion item stable, write it back into `spec.md` / `plan.md` first, then trim the stale item from `discussion.md`
 
 8. Completion validation:
    - Verify all required tasks are completed
    - Check that implemented features match the original specification
    - Validate that tests pass and coverage meets requirements
    - Confirm the implementation follows the technical plan
+   - Confirm result writeback tasks are complete and `discussion.md` no longer carries adopted decisions as authority
+   - If discussion.md is empty after cleanup, delete it.
    - Report final status with summary of completed work
 
 Note: This command assumes a complete task breakdown exists in tasks.md. If tasks are incomplete or missing, suggest running `$speckit tasks` first to regenerate the task list.

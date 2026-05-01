@@ -3,7 +3,7 @@
 **Feature Branch**: `[010-form-api-perf-boundaries]`
 **Created**: 2025-12-15
 **Status**: Draft
-**Input**: User description: "消化相关文档 docs/specs/drafts/topics/trait-system/22-dynamic-list-cascading-exclusion.md 提炼个新需求"
+**Input**: User description: "消化相关文档 docs/specs/drafts/topics/field-system/22-dynamic-list-cascading-exclusion.md 提炼个新需求"
 
 ## Clarifications
 
@@ -35,20 +35,20 @@
 
 ### Session 2025-12-18
 
-- Q: 联动/派生是否必须通过 Form 领域包装声明（而非业务直接写 StateTrait） → A: 是（业务侧只写 `@logixjs/form`；Form 领域包装可完全降解到 StateTraitSpec/IR）
-- Q: `Form.Trait` 与 `StateTrait` 的 API 形状是否保持一致 → A: 一致（Form 侧薄包装对齐形状；允许在 form 层附加能力但不引入第二套 IR）
+- Q: 联动/派生是否必须通过 Form 领域包装声明（而非业务直接写 FieldKernel） → A: 是（业务侧只写 `@logixjs/form`；Form 领域包装可完全降解到 FieldKernelSpec/IR）
+- Q: `Form.Field` 与 `FieldKernel` 的 API 形状是否保持一致 → A: 一致（Form 侧薄包装对齐形状；允许在 form 层附加能力但不引入第二套 IR）
 - Q: 组件外/Logic 内如何触发 Form 校验（对标 RHF `trigger`） → A: 默认动作语义必须在 `$.use(Form.module)` 返回的 handle 上暴露为 `controller.validate/validatePaths`（React/Logic 一致的唯一入口）；内部可降解为 Module actions（如 `actions.validate/validatePaths`），actions 视为实现细节
 - Q: 校验触发策略是否对齐 RHF（`validateOn/reValidateOn`） → A: 对齐；`validateOn` 默认 `["onSubmit"]`（首提前不自动校验），`reValidateOn` 默认 `["onChange"]`（首提后按 change 触发 scoped validate；可选 onBlur）
 
 ### Session 2025-12-20
 
 - Q: ErrorValue 体积上界 → A: JSON 序列化后 ≤256B
-- Q: `trait:check` 诊断事件产出档位 → A: `Diagnostics Level=off` 不产出；`light|full` 产出
-- Q: `trait:check.data.rowIdMode` 是否区分 runtime `rowIdStore` → A: 是（`rowIdMode=trackBy|store|index`；`store` 表示 runtime `rowIdStore`）
+- Q: `field:check` 诊断事件产出档位 → A: `Diagnostics Level=off` 不产出；`light|full` 产出
+- Q: `field:check.data.rowIdMode` 是否区分 runtime `rowIdStore` → A: 是（`rowIdMode=trackBy|store|index`；`store` 表示 runtime `rowIdStore`）
 - Q: rowIdStore 的 `$rowId` 是否要求去随机化 → A: 是（禁止 `Date.now/Math.random`；使用 per-instance 单调序号；口径对齐 `instanceId/txnSeq/opSeq/eventSeq` 的稳定标识生成）
 - Q: 是否提供 `Form.Rule.field/fields` 作为规则挂载语法糖 → A: 是（规则包保持“无挂载点”以便复用；通过 `field(valuePath, ruleGroup)` 绑定展示锚点，再用 `fields(...decls | decl[])` 扁平化合成 `rules`；重复 valuePath 稳定失败；不在 ruleGroup 内重复声明 path/fieldName 以避免双真相源）
-- Q: Trait 的 `computed.get` 是否升级为 deps-as-args（不再暴露 `(state)=>`） → A: 是（业务侧 `get(...depsValues)` 仅接收按 deps 注入的参数，禁止读取未声明依赖；Form.Trait 与 StateTrait 形状一致；内部允许降解为 `derive(state)` 但 derive 的读集必须等于 deps，避免隐式依赖与不可诊断漂移）
-- Q: Form 消费 Query/外部快照的合规路径 → A: 010 先只固化“模块内快照 + local deps”（推荐：`source`/Query traits 将 ResourceSnapshot 写回到本模块 `ui.*`/显式槽位）；跨模块显式投影与跨模块缓存/in-flight 去重后置到 `StateTrait.source`/`@logixjs/query` 跑道；禁止在 trait/rule 内直接访问全局 store/隐式 Context
+- Q: Field 的 `computed.get` 是否升级为 deps-as-args（不再暴露 `(state)=>`） → A: 是（业务侧 `get(...depsValues)` 仅接收按 deps 注入的参数，禁止读取未声明依赖；Form.Field 与 FieldKernel 形状一致；内部允许降解为 `derive(state)` 但 derive 的读集必须等于 deps，避免隐式依赖与不可诊断漂移）
+- Q: Form 消费 Query/外部快照的合规路径 → A: 010 先只固化“模块内快照 + local deps”（推荐：`source`/Query fields 将 ResourceSnapshot 写回到本模块 `ui.*`/显式槽位）；跨模块显式投影与跨模块缓存/in-flight 去重后置到 `FieldKernel.source`/`@logixjs/query` 跑道；禁止在 field/rule 内直接访问全局 store/隐式 Context
 - Q: 同路径 value 变更时是否自动清理 Schema 错误 → A: 是（自动清理对应 Schema 错误，不重跑 Schema）
 - Q: SC-002 的验收诊断档位 → A: 仅在 `Diagnostics Level=off` 下验收；`light|full` 只验收可量化/可解释的 overhead（对齐 NFR-002/NFR-005）
 
@@ -135,11 +135,11 @@
 - **FR-003d**: 数组字段的错误树必须以 `$list/rows[]` 作为唯一事实源（禁止 index 同构口径与双写兼容层）。
 - **FR-003e**: 缺失 `trackBy` 时，runtime 必须通过内部 `rowIdStore` 保持常见数组操作（append/insert/remove/move/swap）下的 rowId 稳定；若发生“整体替换列表根”且无 `trackBy`，允许 rowId 重建但必须输出 degraded 诊断，并确保 errors/ui 仍可被一致清理且不残留。
 - **FR-004**: 系统必须支持以“单次扫描”的方式完成跨行规则计算，避免业务侧出现按行重复扫描导致的平方级开销。
-- **FR-005**: 当 `Diagnostics Level=light|full` 时，系统必须为每次列表级校验提供可序列化的诊断摘要（`trait:check`），至少包含：稳定的规则标识、校验阶段（mode：submit/blur/valueChange/manual）、触发原因（事件类型 + 字段 path + 变更类型）、rowId 归属策略（`rowIdMode=trackBy|store|index`，若涉及动态列表）、受影响行范围（或数量）、以及错误变化摘要；`Diagnostics Level=off` 允许不产出 `trait:check`。
+- **FR-005**: 当 `Diagnostics Level=light|full` 时，系统必须为每次列表级校验提供可序列化的诊断摘要（`field:check`），至少包含：稳定的规则标识、校验阶段（mode：submit/blur/valueChange/manual）、触发原因（事件类型 + 字段 path + 变更类型）、rowId 归属策略（`rowIdMode=trackBy|store|index`，若涉及动态列表）、受影响行范围（或数量）、以及错误变化摘要；`Diagnostics Level=off` 允许不产出 `field:check`。
   - 术语澄清：此处 `mode` 表示“校验阶段/触发类型”（`submit|blur|valueChange|manual`），不是历史 `Form.make.mode`（已收敛到 `validateOn/reValidateOn`）。
 - **FR-005a**: 当同一事务内对相关路径发生多次写入时，诊断中的 Trigger 必须稳定归因到“事务起点的外部事件”；事务内派生写入（computed/link/writeback）不得覆盖 Trigger。
 - **FR-006**: 系统必须保证列表级校验是纯同步且无外部 IO 的；任何异步数据加载不属于校验本身，且不得在同一事务窗口内混入 IO。
-- **FR-007**: 系统必须提供 Form 领域的规则组织 API（Rules），使业务能够用“命名规则 + 显式 deps”表达 item-scope/list-scope check，并可**完全降解**为统一的最小 IR（deps 作为唯一依赖事实源），避免业务直接操作底层 StateTrait 细节造成写法分裂。
+- **FR-007**: 系统必须提供 Form 领域的规则组织 API（Rules），使业务能够用“命名规则 + 显式 deps”表达 item-scope/list-scope check，并可**完全降解**为统一的最小 IR（deps 作为唯一依赖事实源），避免业务直接操作底层 FieldKernel 细节造成写法分裂。
 - **FR-007a**: Rules 必须支持组合（合并）且对重复 ruleName 稳定失败；ruleName 必须可用于诊断展示与确定性执行顺序。
 - **FR-007b**: Form 必须提供两阶段的自动校验触发策略：`validateOn`（默认 `["onSubmit"]`）与 `reValidateOn`（默认 `["onChange"]`），对标 RHF 的 `mode/reValidateMode`：
   - `validateOn`：首提前（`submitCount===0`）的自动校验触发点；
@@ -153,13 +153,13 @@
   - `validateOn/reValidateOn` 与 `deps` 正交：`deps` 决定依赖图/最小执行集，`validateOn` 决定当前自动阶段是否执行该 rule。
 - **FR-007d**: Rule 的返回值必须与其 scope 对齐（row-scope 返回行内 patch；list-scope 返回 `$list/rows[]` 结构化 patch），不得在 rule 中返回任意 valuePath→error 的 path-map；如需命令式按 valuePath 写入错误，必须通过 controller API（例如 `setError/clearErrors`）完成。
 - **FR-007e**: 系统必须提供低成本的表单级衍生状态订阅能力（例如 `useFormState(form, selector)` 或等价形态），以便 UI 以 selector 订阅 `canSubmit/isSubmitting/isValid/isDirty/isPristine/submitCount` 等最小视图；selector 的入参必须是引用稳定的只读 `FormView`（可缓存/结构共享），禁止业务在 UI 层扫描 values/errors 大树计算这些衍生状态（避免渲染 churn 与不可诊断的性能退化）。
-- **FR-007f**: 系统必须提供 Form 领域的 Trait 包装（`Form.Trait.*`），且其 API 形状必须与 `@logixjs/core` 的 `StateTrait.*` 保持一致（computed/link/source/check 等同形状）；业务侧的联动/派生必须通过 Form 领域入口声明（例如 `derived` 槽位），并可完全降解为 StateTraitSpec/IR；Form 领域包装允许附加能力，但不得引入第二套 IR 或绕开 deps/事务/诊断约束。
+- **FR-007f**: 系统必须提供 Form 领域的 Field 包装（`Form.Field.*`），且其 API 形状必须与 `@logixjs/core` 的 `FieldKernel.*` 保持一致（computed/link/source/check 等同形状）；业务侧的联动/派生必须通过 Form 领域入口声明（例如 `derived` 槽位），并可完全降解为 FieldKernelSpec/IR；Form 领域包装允许附加能力，但不得引入第二套 IR 或绕开 deps/事务/诊断约束。
 - **FR-007g**: 系统必须提供一组对标 RHF `rules` 的内置校验器（例如 required/minLength/maxLength/min/max/pattern），以减少业务样板并统一错误语义；它们必须是纯函数、无 IO，且返回 `ErrorValue | undefined`（可序列化、Slim、有体积上界：JSON 序列化后 ≤256B），并可直接用于规则函数/自定义 `validate` 中（或被简写展开）。
-- **FR-007h**: Rules 声明必须支持“直写形态”：在 `Form.traits(valuesSchema)({ ... })` 的 `check`（含 list 的 `item.check/list.check`）中可直接用对象声明规则，而不要求先 `Form.Rule.make(...)`；并支持 RHF 风格的内置规则简写（例如 `required:true` / `required:{ message?, trim? }` / `minLength: 2` / `pattern: /.../` 等作为顶层字段），在 build 阶段统一展开/归一化为等价的内置纯函数（不改变 deps/执行范围推导与 scope 写回约束）。当需要条件逻辑/跨字段分支时仍使用函数式 `validate` 表达。
+- **FR-007h**: Rules 声明必须支持“直写形态”：在 `Form.fields(valuesSchema)({ ... })` 的 `check`（含 list 的 `item.check/list.check`）中可直接用对象声明规则，而不要求先 `Form.Rule.make(...)`；并支持 RHF 风格的内置规则简写（例如 `required:true` / `required:{ message?, trim? }` / `minLength: 2` / `pattern: /.../` 等作为顶层字段），在 build 阶段统一展开/归一化为等价的内置纯函数（不改变 deps/执行范围推导与 scope 写回约束）。当需要条件逻辑/跨字段分支时仍使用函数式 `validate` 表达。
   - 可选提供“规则挂载语法糖”：`Form.Rule.field(valuePath, ruleGroup)` / `Form.Rule.fields(...decls | decl[])`，用于更可组合地构造 `rules`（避免对象 spread 的静默覆盖；重复 valuePath 稳定失败；支持扁平化输入以便组合“已有规则集 + 新规则”而不手写 spread）。该语法糖仅改变输入形态，不改变 deps/执行范围推导/写回点；ruleGroup 内不得再重复声明 path/fieldName（避免双真相源）。
-- **FR-007i**: Trait 的 `computed.get` 必须采用 deps-as-args 形态：`deps` 的每一项按顺序注入为 `get` 的入参；业务侧不得接收 `state` 入参（避免隐式依赖），从而保证“deps 即读集”的可证明性；Form.Trait 与 StateTrait 的 `computed` 形状必须一致，并可完全降解为统一 IR（不引入第二套依赖表达）。
+- **FR-007i**: Field 的 `computed.get` 必须采用 deps-as-args 形态：`deps` 的每一项按顺序注入为 `get` 的入参；业务侧不得接收 `state` 入参（避免隐式依赖），从而保证“deps 即读集”的可证明性；Form.Field 与 FieldKernel 的 `computed` 形状必须一致，并可完全降解为统一 IR（不引入第二套依赖表达）。
 - **FR-008**: 所有出现在“触发原因/诊断事件/IR”中的 `path` 必须与 Spec 009 的 canonical FieldPath 对齐（段数组、无索引/无 `[]`；以 `specs/009-txn-patch-dirtyset/contracts/schemas/field-path.schema.json` 为准）；行级范围信息必须通过 `rowId`（及可选的 index 兜底）表达，而不是把 index 编进 `path`。
-- **FR-009**: 当模块启用 `traitConvergeMode=auto`（Spec 013，默认值）时，本特性涉及的“校验调度/范围收敛”必须复用 013 的控制面契约：`requestedMode=full|dirty|auto`，但执行层只允许 `executedMode=full|dirty`（`auto` 仅作为请求模式出现）。在本特性代表性场景下，`requestedMode=auto` 必须满足“full 下界”（默认噪声预算 5%）：当证据不足或 `traitConvergeDecisionBudgetMs` 止损触发时，必须以 `executedMode=full` 回退，并在 `Diagnostics Level=light|full` 时于 `trait:converge` evidence 中给出可序列化原因（例如 `budget_cutoff/unknown_write/dirty_all/cold_start`；`Diagnostics Level=off` 允许不产出 converge evidence，口径以 Spec 013 为准）。
+- **FR-009**: 当模块启用 `traitConvergeMode=auto`（Spec 013，默认值）时，本特性涉及的“校验调度/范围收敛”必须复用 013 的控制面契约：`requestedMode=full|dirty|auto`，但执行层只允许 `executedMode=full|dirty`（`auto` 仅作为请求模式出现）。在本特性代表性场景下，`requestedMode=auto` 必须满足“full 下界”（默认噪声预算 5%）：当证据不足或 `traitConvergeDecisionBudgetMs` 止损触发时，必须以 `executedMode=full` 回退，并在 `Diagnostics Level=light|full` 时于 `field:converge` evidence 中给出可序列化原因（例如 `budget_cutoff/unknown_write/dirty_all/cold_start`；`Diagnostics Level=off` 允许不产出 converge evidence，口径以 Spec 013 为准）。
 - **FR-010**: 系统必须收敛 Form 的 Path 工具（ValuePath/ErrorsPath/FieldPath），避免散落的 path/索引/列表映射逻辑，并确保数组索引心智（如 `userList.0.x`）可稳定映射到 `$list/rows[]`（以 `rowId` 归属为锚点）。
 - **FR-010a**: 对数组字段 `listPath`，errorsPath 必须采用“插入 rows 段”的规范映射：`valuePath="<listPath>.<i>.<rest>"` → `errorsPath="errors.<listPath>.rows.<i>.<rest>"`；列表级错误为 `errors.<listPath>.$list`，行级锚点为 `errors.<listPath>.rows.<i>.$rowId`。
 - **FR-010b**: 系统必须提供 TypeScript 层的路径类型化与值类型推导（例如 `Form.FieldPath<TValues>` / `Form.FieldValue<TValues, P>`），并让 `useField/useFieldArray` 的 `valuePath` 在编译期可约束；默认不再出现 `unknown` 的 value/error 类型。
@@ -188,16 +188,16 @@
 - **NFR-002**: 诊断信息在关闭时必须接近零开销；在开启时必须可裁剪且可序列化（避免引入不可回收的大对象引用）。
 - **NFR-003**: 诊断与回放中使用的标识必须确定性生成（不以随机数/时间戳作为默认唯一来源）。
 - **NFR-004**: 系统必须强制同步事务边界：事务窗口内不允许 IO/异步工作，也不允许绕过事务的写入逃逸通道。
-- **NFR-005**: 本特性必须作为 Spec 013（并复用 014 跑道）的性能矩阵中的“动态列表/跨行校验”代表性场景之一；在相同脚本与统计口径下，必须提供 `requestedMode=full` vs `requestedMode=auto`（可选补充 `dirty`）的对比证据，并能在 `Diagnostics Level=light|full` 下通过 013 的 `trait:converge` evidence 解释 auto 的决策路径（至少包含 `requestedMode/executedMode/reasons`，并覆盖 `cache_hit/cache_miss` 与 `budget_cutoff` 的回退解释）。
+- **NFR-005**: 本特性必须作为 Spec 013（并复用 014 跑道）的性能矩阵中的“动态列表/跨行校验”代表性场景之一；在相同脚本与统计口径下，必须提供 `requestedMode=full` vs `requestedMode=auto`（可选补充 `dirty`）的对比证据，并能在 `Diagnostics Level=light|full` 下通过 013 的 `field:converge` evidence 解释 auto 的决策路径（至少包含 `requestedMode/executedMode/reasons`，并覆盖 `cache_hit/cache_miss` 与 `budget_cutoff` 的回退解释）。
 
 ### Assumptions & Dependencies
 
 - **A-001（前提）**：动态列表项具有稳定 identity（例如业务 id / 行标识）；当缺失时，系统允许降级为“按索引归属”，但必须可解释且不造成错误残留。
 - **A-002（依赖）**：表单存在“实时校验/提交校验”等模式；本特性要求跨行规则在实时模式下也能得到一致结论。
 - **A-003（依赖）**：事务 IR + Patch/Dirty-set（Spec 009）已落地；本特性的诊断事件与 path 口径必须复用 009 的协议（以 009 的 FieldPath 段数组与 DynamicTrace 事件信封为准，不再发明另一套 string path / 双锚点字段）。
-- **A-004（依赖）**：auto converge planner（Spec 013）会先行实施并在 `Diagnostics Level=light|full` 下提供事务级最小可序列化摘要（`requestedMode/executedMode/reasons/decisionBudgetMs`、cache 证据与回退原因等）与 `trait:converge` 事件；本特性需复用 013 的证据口径解释“为何命中这次列表级校验与其范围”，不得自定义第二套 auto 证据字段。
+- **A-004（依赖）**：auto converge planner（Spec 013）会先行实施并在 `Diagnostics Level=light|full` 下提供事务级最小可序列化摘要（`requestedMode/executedMode/reasons/decisionBudgetMs`、cache 证据与回退原因等）与 `field:converge` 事件；本特性需复用 013 的证据口径解释“为何命中这次列表级校验与其范围”，不得自定义第二套 auto 证据字段。
 - **A-005（依赖）**：010 的代表性性能矩阵点复用 Spec 014 的跑道与统计口径；010 只补充必要的“动态列表/跨行校验”场景输入与断言，不新增第二套跑道。
-- **A-006（依赖）**：运行时 trait 基础设施会提供统一的 valuePath 解析/归一化能力（见 FR-010c），供 form/react/logic 共用；010 的实现必须以“补齐基础设施”为优先，而不是在 `@logixjs/form` 侧加专家开关或复制逻辑。
+- **A-006（依赖）**：运行时 field 基础设施会提供统一的 valuePath 解析/归一化能力（见 FR-010c），供 form/react/logic 共用；010 的实现必须以“补齐基础设施”为优先，而不是在 `@logixjs/form` 侧加专家开关或复制逻辑。
 
 ### Scope
 
@@ -205,9 +205,9 @@
 
 - 列表级规则的声明、触发与结果写回（含列表级与行级错误）。
 - Form API（`@logixjs/form`）作为默认入口的规则组织与错误/路径映射收口（Rules/Errors/Path）。
-- Form 领域层的联动/派生声明（`derived` + `Form.Trait.*`），并可完全降解为 trait 的 `computed/link/source`（业务侧不直接写 StateTrait）；默认写回点只允许 `values/ui`，不允许写 `errors`（错误仍由 `rules/schema/$manual` 管）。
-- Form 消费外部数据快照（如 Query 的 ResourceSnapshot）：010 只保证“本模块 source 写回快照 → local deps 消费”的闭环（例如写回 `ui.$query.*`）；禁止在 rule/trait 内直接访问全局 store/隐式 Context。
-- `Form.traits(valuesSchema)`：允许在数组字段路径上声明 list 结构（`{ identityHint, item, list }`）作为“动态列表语义”入口（rowId/结构触发/校验 scope）；不再需要额外的 `fieldArrays/Form.fieldArray` 表面。
+- Form 领域层的联动/派生声明（`derived` + `Form.Field.*`），并可完全降解为 field 的 `computed/link/source`（业务侧不直接写 FieldKernel）；默认写回点只允许 `values/ui`，不允许写 `errors`（错误仍由 `rules/schema/$manual` 管）。
+- Form 消费外部数据快照（如 Query 的 ResourceSnapshot）：010 只保证“本模块 source 写回快照 → local deps 消费”的闭环（例如写回 `ui.$query.*`）；禁止在 rule/field 内直接访问全局 store/隐式 Context。
+- `Form.fields(valuesSchema)`：允许在数组字段路径上声明 list 结构（`{ identityHint, item, list }`）作为“动态列表语义”入口（rowId/结构触发/校验 scope）；不再需要额外的 `fieldArrays/Form.fieldArray` 表面。
 - Form Path 工具收敛与类型化（ValuePath/ErrorsPath/FieldPath），以及 React hooks/controller 的默认消费口径。
 - Schema/Resolver 与 Rules 的提交校验链路收敛（不引入第二套错误真相源）。
 - 跨行规则的典型场景：互斥/唯一性/聚合类校验。
@@ -219,7 +219,7 @@
 - 异步数据加载与 options 获取（它们不属于“校验规则”的职责）。
 - UI 交互细节（例如具体组件如何禁用选项），但错误结果必须足以支撑 UI 做确定性渲染。
 - Focus management（自动聚焦/滚动到首个错误字段）等 DOM/渲染树耦合能力：010 不提供内置实现与对外 API；如需该能力，放到 UI/React 层按宿主环境实现（不影响本 spec 的统一错误树/Path/稳定归属）。
-- 跨模块 Form 消费 Query 的示例/脚手架，以及按 `resourceId+keyHash` 的跨模块缓存/in-flight 去重：后续在 `StateTrait.source`/`@logixjs/query` 跑道单独加强并补齐示例（010 仅固化模块内闭环）。
+- 跨模块 Form 消费 Query 的示例/脚手架，以及按 `resourceId+keyHash` 的跨模块缓存/in-flight 去重：后续在 `FieldKernel.source`/`@logixjs/query` 跑道单独加强并补齐示例（010 仅固化模块内闭环）。
 
 ### RHF / TanStack Form 对齐（吸收 / 转化 / 不采纳）
 

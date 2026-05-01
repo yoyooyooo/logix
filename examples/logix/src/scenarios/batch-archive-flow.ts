@@ -13,6 +13,7 @@
 
 import { Data, Effect, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
+import { programLayer } from '../runtime/programLayer.js'
 import { ConfirmServiceTag, type ConfirmService, runConfirmAndThenPattern } from '../patterns/confirm.js'
 import { NotificationServiceTag, type NotificationService, runNotifyOnResultPattern } from '../patterns/notification.js'
 
@@ -44,15 +45,15 @@ const BatchArchiveActionMap = {
   'list/refresh': Schema.Void,
 }
 
-export type BatchArchiveShape = Logix.Shape<typeof BatchArchiveStateSchema, typeof BatchArchiveActionMap>
-export type BatchArchiveState = Logix.StateOf<BatchArchiveShape>
-export type BatchArchiveAction = Logix.ActionOf<BatchArchiveShape>
+export type BatchArchiveShape = Logix.Module.Shape<typeof BatchArchiveStateSchema, typeof BatchArchiveActionMap>
+export type BatchArchiveState = Logix.Module.StateOf<BatchArchiveShape>
+export type BatchArchiveAction = Logix.Module.ActionOf<BatchArchiveShape>
 
 // ---------------------------------------------------------------------------
 // Module：定义批量归档模块
 // ---------------------------------------------------------------------------
 
-export const BatchArchiveDef = Logix.Module.make('BatchArchiveModule', {
+export const BatchArchive = Logix.Module.make('BatchArchiveModule', {
   state: BatchArchiveStateSchema,
   actions: BatchArchiveActionMap,
 })
@@ -61,15 +62,9 @@ export const BatchArchiveDef = Logix.Module.make('BatchArchiveModule', {
 // Logic：监听 batch/archive，组合 Guard + Confirm + Service + Notify（通过 Module.logic 注入 $）
 // ---------------------------------------------------------------------------
 
-export const BatchArchiveLogic = BatchArchiveDef.logic<ConfirmServiceTag | ArchiveServiceTag | NotificationServiceTag>(
-  ($: Logix.BoundApi<BatchArchiveShape, ConfirmServiceTag | ArchiveServiceTag | NotificationServiceTag>) =>
+export const BatchArchiveLogic = BatchArchive.logic<ConfirmServiceTag | ArchiveServiceTag | NotificationServiceTag>('batch-archive-logic', ($: Logix.Module.BoundApi<BatchArchiveShape, ConfirmServiceTag | ArchiveServiceTag | NotificationServiceTag>) =>
     Effect.gen(function* () {
-      const handleArchive: Logix.Logic.Of<
-        BatchArchiveShape,
-        ConfirmServiceTag | ArchiveServiceTag | NotificationServiceTag,
-        void,
-        unknown
-      > = Effect.gen(function* () {
+      const handleArchive = Effect.gen(function* () {
         const s = yield* $.state.read
         const ids = s.selectedIds
         const archiveSvc = yield* $.use(ArchiveServiceTag)
@@ -121,12 +116,10 @@ export const BatchArchiveLogic = BatchArchiveDef.logic<ConfirmServiceTag | Archi
 )
 
 // ---------------------------------------------------------------------------
-// Impl / Live：组合 State / Action / Logic，并提供一个 PoC 级运行入口
+// Program / Layer：组合 State / Action / Logic，并提供一个可运行入口
 // ---------------------------------------------------------------------------
 
-export const BatchArchiveModule = BatchArchiveDef.implement<
-  ConfirmServiceTag | ArchiveServiceTag | NotificationServiceTag
->({
+export const BatchArchiveProgram = Logix.Program.make(BatchArchive, {
   initial: {
     selectedIds: ['id-1', 'id-2'],
     isArchiving: false,
@@ -134,5 +127,4 @@ export const BatchArchiveModule = BatchArchiveDef.implement<
   logics: [BatchArchiveLogic],
 })
 
-export const BatchArchiveImpl = BatchArchiveModule.impl
-export const BatchArchiveLive = BatchArchiveImpl.layer
+export const BatchArchiveLayer = programLayer(BatchArchiveProgram)

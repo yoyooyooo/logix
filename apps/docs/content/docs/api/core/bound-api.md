@@ -1,201 +1,88 @@
 ---
 title: Bound API ($)
-description: The core context object for writing Logix logic.
+description: Use the Bound API inside logic to read state, dispatch actions, resolve dependencies, and register lifecycle hooks.
 ---
 
-`BoundApi` (usually abbreviated as `$`) is the core context object for writing Logix logic. It provides pre-bound access for a specific Module Shape and Environment.
+`$` is the Bound API available inside `Module.logic(...)`.
 
-> If you only write application logic, you can focus on the **“Quick Reference (Daily Use)”** section and ignore the full interface definition and type details.  
-> The full signature mainly serves library authors, pattern authors, and engine implementers.
+It provides access to:
 
-## Overview
-
-```typescript
-interface BoundApi<Sh, R> {
-  // State access & updates
-  readonly state: {
-    readonly read: Effect<State>
-    readonly update: (f: (prev: State) => State) => Effect<void>
-    readonly mutate: (f: (draft: Draft<State>) => void) => Effect<void>
-    readonly ref: () => ReadonlySubscriptionRef<State>
-  }
-
-  // Action dispatching & listening
-  readonly actions: {
-    readonly dispatch: (action: Action) => Effect<void>
-    readonly actions$: Stream<Action>
-    // ...and shortcuts generated from actionMap
-  }
-
-  // Flow building
-  readonly flow: FlowApi<Sh, R>
-  readonly onAction: ...
-  readonly onState: ...
-  readonly on: ...
-
-  // Primary reducer definition (optional)
-  readonly reducer: (tag: string, reducer: (state: State, action: Action) => State) => Effect<void>
-
-  // Dependency injection
-  readonly use: (tagOrModule) => Effect<Service>
-
-  // Structured matching
-  readonly match: (value) => FluentMatch
-  readonly matchTag: (value) => FluentMatchTag
-
-  // Lifecycle
-  readonly lifecycle: {
-    // setup-only: register ≠ execute (scheduled by Runtime at the right time)
-    // required init: determines instance availability (blocks the init gate)
-    readonly onInitRequired: (eff) => void
-    // start tasks: does not block availability (starts after ready)
-    readonly onStart: (eff) => void
-    // legacy alias: same semantics as onInitRequired
-    readonly onInit: (eff) => void
-    readonly onDestroy: (eff) => void
-    readonly onError: (handler) => void
-    readonly onSuspend: (eff) => void
-    readonly onResume: (eff) => void
-    readonly onReset: (eff) => void
-  }
-
-  // Traits (setup-only: declare/contribute capability rules)
-  readonly traits: {
-    /**
-     * Declare/contribute traits during setup. Runtime aggregates them during module initialization
-     * and produces the “final trait set”.
-     *
-     * - Setup-only: calling in the run phase fails after setup is frozen (prevents runtime drift).
-     * - Input must be a pure data declaration: final traits must not depend on randomness/time/external IO.
-     */
-    readonly declare: (traits: Record<string, unknown>) => void
-  }
-}
-```
-
-## Quick Reference (Daily Use)
-
-For most application code, you only need to remember these groups of capabilities on `$`:
-
-- State:
-  - `$.state.read`: read the current state snapshot;
-  - `$.state.update(prev => next)` / `$.state.mutate(draft => { ... })`: update the state;
-- Events & Flow:
-  - `$.onAction("tag").run(handler)` / `.runLatest(handler)` / `.runExhaust(handler)`;
-  - `$.onState(selector).debounce(300).run(handler)`;
-  - `$.reducer("tag", (state, action) => nextState)`: register a primary reducer for an Action tag (pure synchronous function);
-- Dependency injection:
-  - `const api = yield* $.use(ApiService)`;
-  - `const $Other = yield* $.use(OtherModule)`;
-- Lifecycle (setup-only registration):
-  - `$.lifecycle.onInitRequired(effect)` / `.onStart(effect)` / `.onDestroy(effect)` / `.onError(handler)`.
-
-Other properties (`flow`, `match`, `traits`, etc.) have dedicated examples in Learn / Advanced / Recipes. Use those pages based on your scenario.
-
-> Writing tip: `Module.logic(($) => { ...; return Effect.gen(...) })` is split into two phases by default: **setup** (before `return`) and **run** (the returned Effect).  
-> Setup only does **registration** (e.g. `$.lifecycle.*`, `$.reducer`), while the run phase is where you can `yield* $.use/$.onAction/$.onState` and other runtime capabilities.  
-> `$.lifecycle.*` must be registered in setup; calling it in run triggers the `logic::invalid_phase` diagnostic.
+- state reads and writes
+- action dispatch and watchers
+- runtime service lookup
+- imported child resolution
+- lifecycle registration
+- field behavior declaration
 
 ## State
 
-- **`read`**: read the current state snapshot.
-- **`update`**: update state with a pure function.
-- **`mutate`**: update state with a `mutative`-style Draft mutation (recommended).
-- **`ref`**: access a read-only ref (`get + changes`) for advanced subscriptions; writes must use `$.state.update / $.state.mutate`.
+```ts
+const state = yield* $.state.read
 
-```typescript
-// Read
-const { count } = yield* $.state.read
-
-// Update
 yield* $.state.mutate((draft) => {
-  draft.count++
+  draft.count += 1
 })
 ```
 
 ## Actions
 
-- **`dispatch`**: dispatch an Action.
-- **`actions$`**: the raw Action stream.
-- **Shortcuts**: if your Module defines an `actionMap`, you can call `$.actions.increment()` directly.
-
-## Flow
-
-See [Flow API](./flow).
-
-- `$.onAction(...)`
-- `$.onState(...)`
-- `$.flow.run(...)`
-
-## Dependency Injection
-
-- **`use`**: the unified DI entry point. It can return a Handle for another Module, or a Service instance.
-
-```typescript
-const userApi = yield* $.use(UserApi)
-const otherModule = yield* $.use(OtherModule)
+```ts
+yield* $.dispatch({ _tag: "increment", payload: undefined })
+yield* $.dispatchers.increment()
 ```
 
-## Pattern Matching
+## Runtime service lookup
 
-Provides a lightweight Fluent-style pattern matching helper (implemented internally in `@logixjs/core`). Handlers are expected to return `Effect`.
-
-- **`match(value)`**: match on a value.
-- **`matchTag(value)`**: match on a tagged union with a `_tag` field.
-
-```typescript
-yield* $.matchTag(action)
-  .with('increment', () => ...)
-  .with('decrement', () => ...)
-  .exhaustive()
+```ts
+const service = yield* $.use(UserService)
 ```
+
+`$.use(Tag)` reads services from the current runtime scope.
+
+## Imported children
+
+```ts
+const child = yield* $.imports.get(Child.tag)
+const value = yield* child.read((s) => s.value)
+```
+
+Imported children must be provided as Programs through `Program.make(..., { capabilities: { imports } })`.
 
 ## Lifecycle
 
-Defines lifecycle hooks for a Module instance.
-
-- **`onInit`**: runs when the module instance is initialized.
-- **`onDestroy`**: runs when the module instance is destroyed.
-- **`onError`**: catches unhandled errors (defects) from Logic.
-- **`onSuspend` / `onResume`**: reacts to platform suspend/resume signals (e.g. app goes background/foreground).
-
-```typescript
+```ts
 Module.logic(($) => {
-  $.lifecycle.onInit(Effect.log('Module initialized'))
-  return Effect.gen(function* () {
-    // run phase: watcher/flow/env access
-  })
+  $.lifecycle.onInitRequired(Effect.log("init"))
+  $.lifecycle.onDestroy(Effect.log("destroy"))
+
+  return Effect.void
 })
 ```
 
-## Traits (Setup-only)
+Lifecycle registration belongs to the declaration phase.
 
-`$.traits.declare(...)` is used to declare traits during **setup**, so a reusable Logic can carry its capability rules along when it’s reused/composed.
-
-> [!TIP]
-> For a quick mental model (how traits relate to transaction windows, convergence, and packages like Form/Query), start here:
-> - [Traits (capability rules and convergence)](../../guide/essentials/traits)
-
-### Key semantics
-
-- **Setup-only**: only allowed in setup; after setup ends, traits are frozen to prevent runtime drift.
-- **Synchronous declaration**: `declare` is synchronous (`void`). If you write it inside `LogicPlan.setup`, prefer wrapping it with `Effect.sync(() => $.traits.declare(...))`.
-- **Provenance**: by default, the current logic unit’s `logicUnitId` is used as the provenance anchor. For stable cross-composition/replay, prefer explicitly providing `logicUnitId` (see the tip below).
-- **Pure data**: trait declarations should be serializable and comparable; they must not depend on randomness/time/external IO to determine the final result.
-
-### Example: make a reusable Logic carry traits
+## Field behavior
 
 ```ts
-Module.logic(($) => ({
-  setup: Effect.sync(() => {
-    // The exact shape depends on the trait DSL of the corresponding package (e.g. state trait / form trait)
-    const traits = Logix.StateTrait.from(StateSchema)({
-      /* ... */
-    })
-    $.traits.declare(traits)
-  }),
-  run: Effect.void,
-}))
+Module.logic(($) => {
+  $.fields({
+    normalized: $.fields.computed({
+      deps: ["query"],
+      get: (query) => String(query ?? "").trim().toLowerCase(),
+    }),
+  })
+
+  return Effect.void
+})
 ```
 
-> Tip: for stable provenance, explicitly provide `logicUnitId` via `module.logic(build, { id })` or `withLogic/withLogics(..., { id })`.
+## Notes
+
+- declaration and run phases are distinct
+- lifecycle and field declarations belong to the declaration phase
+- `$.onAction(...)`, `$.onState(...)`, `$.use(...)`, and `$.imports.get(...)` belong to the run phase
+
+## See also
+
+- [Handle](./handle)
+- [Cross-module communication](../../guide/learn/cross-module-communication)

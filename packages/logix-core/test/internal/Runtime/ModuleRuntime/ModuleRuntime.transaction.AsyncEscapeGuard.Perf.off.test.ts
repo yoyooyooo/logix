@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@effect/vitest'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { Cause, Effect, Layer, Schema } from 'effect'
-import * as Debug from '../../../../src/Debug.js'
+import * as Debug from '../../../../src/internal/debug-api.js'
 import * as Logix from '../../../../src/index.js'
 
 const now = (): number => {
@@ -45,7 +46,7 @@ describe('ModuleRuntime.transaction async-escape guard · perf baseline (Diagnos
           },
         })
 
-        const impl = M.implement({
+        const programModule = Logix.Program.make(M, {
           initial: { count: 0 },
           logics: [],
         })
@@ -54,7 +55,7 @@ describe('ModuleRuntime.transaction async-escape guard · perf baseline (Diagnos
           record: () => Effect.void,
         }
 
-        const runtime = Logix.Runtime.make(impl, {
+        const runtime = Logix.Runtime.make(programModule, {
           layer: Layer.mergeAll(
             Debug.diagnosticsLevel('off'),
             Debug.replace([silentSink]) as Layer.Layer<any, never, never>,
@@ -71,10 +72,10 @@ describe('ModuleRuntime.transaction async-escape guard · perf baseline (Diagnos
               let failFastCount = 0
 
               const runSyncTxn = () =>
-                Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'perf', name: 'sync' }, () => Effect.void)
+                FieldContracts.runWithStateTransaction(rt, { kind: 'perf', name: 'sync' }, () => Effect.void)
 
               const runAsyncEscapeTxn = () =>
-                Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'perf', name: 'async_escape' }, () =>
+                FieldContracts.runWithStateTransaction(rt, { kind: 'perf', name: 'async_escape' }, () =>
                   Effect.sleep('1 millis'),
                 )
 

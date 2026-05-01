@@ -1,6 +1,6 @@
 # Implementation Plan: 051 core-ng 事务零分配（txn zero-alloc）
 
-**Branch**: `051-core-ng-txn-zero-alloc` | **Date**: 2025-12-29 | **Spec**: `specs/051-core-ng-txn-zero-alloc/spec.md`  
+**Branch**: `051-core-ng-txn-zero-alloc` | **Date**: 2025-12-29 | **Spec**: `specs/051-core-ng-txn-zero-alloc/spec.md`
 **Input**: Feature specification from `specs/051-core-ng-txn-zero-alloc/spec.md`
 
 ## Summary
@@ -15,7 +15,7 @@
 
 ## Deepening Notes
 
-- Decision: perf evidence 以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为 SSoT，交付结论以 `profile=default`（或 `soak`）且 `meta.comparability.comparable=true && summary.regressions==0` 为硬门（source: spec clarify AUTO）
+- Decision: perf evidence 以 `packages/logix-perf-evidence/assets/matrix.json` 为 SSoT，交付结论以 `profile=default`（或 `soak`）且 `meta.comparability.comparable=true && summary.regressions==0` 为硬门（source: spec clarify AUTO）
 - Decision: perf evidence 允许在 dev 工作区（git dirty）采集，但必须确保 `matrix/config/env` 一致，并保留 `git.dirty.*` warnings；结论存疑时必须复测（source: spec clarify AUTO）
 - Decision: 本 spec 只负责“零分配/分支形态”收口；id 语义/映射协议由 050 裁决（source: 046 P1 边界）
 - Decision: Gate baseline 固定为 `diagnostics=off + stateTransaction.instrumentation=light`（source: spec clarify AUTO）
@@ -25,14 +25,14 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（实现阶段）`@logixjs/core-ng`  
-**Storage**: N/A（证据落盘到 `specs/051-core-ng-txn-zero-alloc/perf/*`）  
-**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）  
-**Target Platform**: Node.js 20+ + modern browsers（必须含 ≥1 headless browser evidence）  
-**Project Type**: pnpm workspace  
-**Performance Goals**: Node `converge.txnCommit` + Browser `converge.txnCommit`（converge-only）diff 无回归，并争取在关键场景拿到可证据化收益（alloc/heap delta 优先）  
-**Constraints**: 事务窗口禁 IO；consumer 不直接依赖 core-ng；禁止半成品态默认化；Gate baseline 固定为 `diagnostics=off + stateTransaction.instrumentation=light`  
+**Language/Version**: TypeScript 5.9.x（ESM）
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（实现阶段）`@logixjs/core-ng`
+**Storage**: N/A（证据落盘到 `specs/051-core-ng-txn-zero-alloc/perf/*`）
+**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）
+**Target Platform**: Node.js 20+ + modern browsers（必须含 ≥1 headless browser evidence）
+**Project Type**: pnpm workspace
+**Performance Goals**: Node `converge.txnCommit` + Browser `converge.txnCommit`（converge-only）diff 无回归，并争取在关键场景拿到可证据化收益（alloc/heap delta 优先）
+**Constraints**: 事务窗口禁 IO；consumer 不直接依赖 core-ng；禁止半成品态默认化；Gate baseline 固定为 `diagnostics=off + stateTransaction.instrumentation=light`
 **Scale/Scope**: txn/dirtyset/patch recording；不扩展语义/不引入新对外概念
 
 ## Constitution Check
@@ -53,7 +53,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 ## Perf Evidence Plan（MUST）
 
-- Matrix SSoT：`.codex/skills/logix-perf-evidence/assets/matrix.json`
+- Matrix SSoT：`packages/logix-perf-evidence/assets/matrix.json`
 - Hard conclusion：`profile=default`（`quick` 仅线索；必要时用 `soak` 复核）
 - Baseline config：固定 `diagnostics=off + stateTransaction.instrumentation=light`（若现有 bench/suites 未固定，先补齐 harness 再采集）
 - 采集环境：允许在 dev 工作区采集（可为 git dirty），但 before/after 必须 `meta.matrixId/matrixHash` 一致且 env/config 不漂移；如出现 `stabilityWarning` 或结果存疑，必须复测（必要时 `profile=soak`）

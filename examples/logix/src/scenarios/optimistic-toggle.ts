@@ -10,6 +10,7 @@
 
 import { Effect, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
+import { programLayer } from '../runtime/programLayer.js'
 import {
   ToggleStateSchema,
   ToggleActionMap,
@@ -28,7 +29,7 @@ import {
 // Module：使用 Logix.Module 定义 FeatureToggleModule 模块
 // ---------------------------------------------------------------------------
 
-export const FeatureToggleDef = Logix.Module.make('FeatureToggleModule', {
+export const FeatureToggle = Logix.Module.make('FeatureToggleModule', {
   state: ToggleStateSchema,
   actions: ToggleActionMap,
 })
@@ -37,7 +38,7 @@ export const FeatureToggleDef = Logix.Module.make('FeatureToggleModule', {
 // Logic：监听 Action，触发乐观更新与服务调用（未抽离 Pattern 版），通过 Module.logic 注入 $
 // ---------------------------------------------------------------------------
 
-export const FeatureToggleLogic = FeatureToggleDef.logic<ToggleService>(($) =>
+export const FeatureToggleLogic = FeatureToggle.logic<ToggleService>('feature-toggle-logic', ($) =>
   Effect.gen(function* () {
     const handleClick = Effect.gen(function* () {
       const current = yield* $.state.read
@@ -88,10 +89,10 @@ export const FeatureToggleLogic = FeatureToggleDef.logic<ToggleService>(($) =>
 )
 
 // ---------------------------------------------------------------------------
-// Impl / Live：组合 State / Action / Logic
+// Program / Layer：组合 State / Action / Logic
 // ---------------------------------------------------------------------------
 
-export const FeatureToggleModule = FeatureToggleDef.implement<ToggleService>({
+export const FeatureToggleProgram = Logix.Program.make(FeatureToggle, {
   initial: {
     id: 'toggle-1',
     enabled: false,
@@ -102,5 +103,4 @@ export const FeatureToggleModule = FeatureToggleDef.implement<ToggleService>({
   logics: [FeatureToggleLogic],
 })
 
-export const FeatureToggleImpl = FeatureToggleModule.impl
-export const ToggleLive = FeatureToggleImpl.layer
+export const FeatureToggleLayer = programLayer(FeatureToggleProgram)

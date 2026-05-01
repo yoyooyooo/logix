@@ -15,7 +15,7 @@
 
 - [x] T010 选定试点模块与范围（收益最大且风险最小），并明确“非试点”范围（避免扩面失控）
   - 试点：`patch/dirties/dirtyRoots` 数据面（从 “JS 对象/数组集合” → “flat arena（SoA + integer handles）”）
-  - 入口候选：`packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts` → `packages/logix-core/src/internal/state-trait/converge.ts`（txn commit 热路径）
+  - 入口候选：`packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts` → `packages/logix-core/src/internal/state-field/converge.ts`（txn commit 热路径）
   - 非试点（强约束）：不改状态对象模型/Reducer 语义；不改 public API；不扩到 planner/exec-vm 主循环；默认路径不受影响（trial-only）
 - [x] T011 定义 handle 约束与稳定性策略（对齐 050），以及与现有对象模型的边界
   - handles：只允许稳定整型 id（例如 `FieldPathId`/`ReasonCode`/`StepId`）；禁止把对象引用当 handle

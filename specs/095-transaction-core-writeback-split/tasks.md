@@ -1,7 +1,7 @@
 # Tasks: Transaction Core Writeback Split（O-002）
 
-**Input**: `specs/095-transaction-core-writeback-split/spec.md`, `specs/095-transaction-core-writeback-split/plan.md`  
-**Prerequisites**: `spec.md`、`plan.md`  
+**Input**: `specs/095-transaction-core-writeback-split/spec.md`, `specs/095-transaction-core-writeback-split/plan.md`
+**Prerequisites**: `spec.md`、`plan.md`
 **Tests**: REQUIRED（transaction/post-commit 顺序与标识稳定性）
 
 ## Format: `[ID] [P?] [Story] Description with file path`

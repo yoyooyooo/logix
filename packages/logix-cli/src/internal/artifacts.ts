@@ -1,4 +1,6 @@
 import { Effect } from 'effect'
+import path from 'node:path'
+import { isVerificationControlPlaneReport } from '@logixjs/core/ControlPlane'
 
 import { writeJsonFile } from './output.js'
 import type { ArtifactOutput, JsonValue } from './result.js'
@@ -6,6 +8,19 @@ import { makeOversizedInlineValue } from './result.js'
 import { sha256DigestOfJson, stableStringifyJson } from './stableJson.js'
 
 const toBytes = (text: string): number => new TextEncoder().encode(text).length
+
+export const resolvePrimaryReportOutDir = (args: {
+  readonly outDir?: string
+  readonly budgetBytes?: number
+  readonly command: string
+  readonly runId: string
+}): string | undefined => {
+  if (args.outDir) return args.outDir
+  if (typeof args.budgetBytes === 'number' && Number.isFinite(args.budgetBytes) && args.budgetBytes > 0) {
+    return path.join(process.cwd(), '.logix', 'out', args.command, args.runId)
+  }
+  return undefined
+}
 
 export const makeArtifactOutput = (args: {
   readonly outDir?: string
@@ -19,6 +34,11 @@ export const makeArtifactOutput = (args: {
   readonly digest?: string
 }): Effect.Effect<ArtifactOutput, unknown> =>
   Effect.gen(function* () {
+    const json = stableStringifyJson(args.value)
+    const bytes = toBytes(json)
+    const budget = args.budgetBytes
+    const oversized =
+      typeof budget === 'number' && Number.isFinite(budget) && budget > 0 && bytes > budget
     const schemaVersion = (() => {
       if (typeof args.schemaVersion === 'number' && Number.isFinite(args.schemaVersion) && args.schemaVersion >= 0) {
         return Math.floor(args.schemaVersion)
@@ -61,25 +81,31 @@ export const makeArtifactOutput = (args: {
     const outDir = args.outDir
     if (outDir) {
       const file = yield* writeJsonFile(outDir, args.fileName, args.value)
+      const truncated = oversized ? makeOversizedInlineValue({ stableJson: json, bytes, budgetBytes: budget }) : undefined
       return {
         outputKey: args.outputKey,
-        kind: args.kind,
+        kind: isVerificationControlPlaneReport(args.value) ? 'VerificationControlPlaneReport' : args.kind,
         ok: true,
         file,
+        ...(truncated
+          ? {
+              inline: truncated.inline,
+              truncated: truncated.truncated,
+              budgetBytes: truncated.budgetBytes,
+              actualBytes: truncated.actualBytes,
+            }
+          : null),
         ...(typeof schemaVersion === 'number' ? { schemaVersion } : null),
         ...(reasonCodes ? { reasonCodes } : null),
         digest,
       }
     }
 
-    const json = stableStringifyJson(args.value)
-    const bytes = toBytes(json)
-    const budget = args.budgetBytes
-    if (typeof budget === 'number' && Number.isFinite(budget) && budget > 0 && bytes > budget) {
+    if (oversized) {
       const truncated = makeOversizedInlineValue({ stableJson: json, bytes, budgetBytes: budget })
       return {
         outputKey: args.outputKey,
-        kind: args.kind,
+        kind: isVerificationControlPlaneReport(args.value) ? 'VerificationControlPlaneReport' : args.kind,
         ok: true,
         inline: truncated.inline,
         truncated: truncated.truncated,
@@ -93,7 +119,7 @@ export const makeArtifactOutput = (args: {
 
     return {
       outputKey: args.outputKey,
-      kind: args.kind,
+      kind: isVerificationControlPlaneReport(args.value) ? 'VerificationControlPlaneReport' : args.kind,
       ok: true,
       inline: JSON.parse(json) as JsonValue,
       ...(typeof schemaVersion === 'number' ? { schemaVersion } : null),

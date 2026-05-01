@@ -1,8 +1,8 @@
 import { describe, it, expect } from '@effect/vitest'
 import { readFileSync } from 'node:fs'
-import { isJsonValue } from '../../../src/internal/observability/jsonValue.js'
-import { makeRunSession } from '../../../src/internal/observability/runSession.js'
-import { makeEvidenceCollector } from '../../../src/internal/observability/evidenceCollector.js'
+import { isJsonValue } from '../../../src/internal/protocol/jsonValue.js'
+import { makeRunSession } from '../../../src/internal/verification/runSession.js'
+import { makeEvidenceCollector } from '../../../src/internal/verification/evidenceCollector.js'
 
 const readJson = (url: URL): any => JSON.parse(readFileSync(url, 'utf8'))
 

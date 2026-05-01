@@ -1,18 +1,10 @@
-import { Suspense, lazy } from 'react'
-import { useDispatch, useModule } from '@logixjs/react'
+import { useDispatch, useSelector } from '@logixjs/react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { AuthDef } from './galaxy/auth.module'
 
-const Devtools = import.meta.env.DEV
-  ? lazy(async () => {
-      const mod = await import('@logixjs/devtools-react')
-      return { default: mod.LogixDevtools }
-    })
-  : null
-
 export default function App() {
-  const authPhase = useModule(AuthDef, (s) => s.phase)
-  const authUser = useModule(AuthDef, (s) => s.user)
+  const authPhase = useSelector(AuthDef.tag, (s) => s.phase)
+  const authUser = useSelector(AuthDef.tag, (s) => s.user)
 
   const dispatchAuth = useDispatch(AuthDef.tag)
 
@@ -67,12 +59,6 @@ export default function App() {
       <main className="mx-auto max-w-5xl px-6 py-6">
         <Outlet />
       </main>
-
-      {Devtools ? (
-        <Suspense fallback={null}>
-          <Devtools position="bottom-right" />
-        </Suspense>
-      ) : null}
     </div>
   )
 }

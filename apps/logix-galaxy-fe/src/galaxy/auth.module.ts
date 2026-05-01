@@ -48,7 +48,7 @@ export const AuthDef = Logix.Module.make('GalaxyAuth', {
   },
 })
 
-export const AuthLogic = AuthDef.logic(($) => {
+export const AuthLogic = AuthDef.logic('auth', ($) => {
   const clearSession = (message?: string) =>
     Effect.gen(function* () {
       tokenStorage.clear()
@@ -129,7 +129,7 @@ export const AuthLogic = AuthDef.logic(($) => {
   }
 })
 
-export const AuthModule = AuthDef.implement({
+export const AuthProgram = Logix.Program.make(AuthDef, {
   initial: {
     phase: 'booting',
     token: null,
@@ -139,5 +139,3 @@ export const AuthModule = AuthDef.implement({
   } satisfies AuthState,
   logics: [AuthLogic],
 })
-
-export const AuthImpl = AuthModule.impl

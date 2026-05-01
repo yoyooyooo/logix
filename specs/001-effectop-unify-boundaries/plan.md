@@ -1,7 +1,7 @@
 # Implementation Plan: 001-effectop-unify-boundaries（EffectOp 总线彻底收口，移除局部加固入口）
 
-**Branch**: `001-effectop-unify-boundaries` | **Date**: 2025-12-12 | **Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/001-effectop-unify-boundaries/spec.md`  
-**Input**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/001-effectop-unify-boundaries/spec.md`
+**Branch**: `001-effectop-unify-boundaries` | **Date**: 2025-12-12 | **Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/001-effectop-unify-boundaries/spec.md`
+**Input**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/001-effectop-unify-boundaries/spec.md`
 
 ## Summary
 
@@ -13,13 +13,13 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.x（ESM）+ Node.js 20+  
-**Primary Dependencies**: `effect` v3、`@logixjs/core`（Runtime/Flow/Bound/EffectOp）、`@logixjs/react`/`@logixjs/devtools-react`（用于端到端验收）  
-**Storage**: N/A（内存运行时，不引入持久化）  
-**Testing**: Vitest（含 `@effect/vitest` 风格用例），并以 `pnpm typecheck`、`pnpm lint`、`pnpm test --filter logix-core` 作为质量门  
-**Target Platform**: Node.js 20+（开发/测试），现代浏览器（用于示例与 Devtools 观测验收）  
-**Project Type**: pnpm monorepo；改动主落点在 `packages/logix-core`，并联动 `apps/docs` 与 `docs/ssot/runtime`  
-**Performance Goals**: 中间件总线对高频边界不引入显著额外开销；默认路径应为“零配置接近零成本”（空 stack 走直通）  
+**Language/Version**: TypeScript 5.x（ESM）+ Node.js 20+
+**Primary Dependencies**: `effect` v3、`@logixjs/core`（Runtime/Flow/Bound/EffectOp）、`@logixjs/react`/`@logixjs/devtools-react`（用于端到端验收）
+**Storage**: N/A（内存运行时，不引入持久化）
+**Testing**: Vitest（含 `@effect/vitest` 风格用例），并以 `pnpm typecheck`、`pnpm lint`、`pnpm test --filter logix-core` 作为质量门
+**Target Platform**: Node.js 20+（开发/测试），现代浏览器（用于示例与 Devtools 观测验收）
+**Project Type**: pnpm monorepo；改动主落点在 `packages/logix-core`，并联动 `apps/docs` 与 `docs/ssot/runtime`
+**Performance Goals**: 中间件总线对高频边界不引入显著额外开销；默认路径应为“零配置接近零成本”（空 stack 走直通）
 **Constraints**:
 
 - docs-first：任何对 Runtime 契约的改变需同步更新 `docs/ssot/runtime` 与 `apps/docs`；
@@ -39,7 +39,7 @@
 - 依赖 / 修改的上游 specs（文档先行）：
   - `docs/ssot/runtime/logix-core/api/04-logic-middleware.md`（将“统一总线”作为唯一主线叙事）；
   - `docs/ssot/runtime/logix-core/runtime/05-runtime-implementation.md` 与相关 impl 备忘（记录接线与防呆约束）；
-  - `specs/001a-module-traits-runtime/*`（回查 EffectOp/Middleware 总线的承诺与当前实现一致性）。
+  - `specs/000-module-fields-runtime/*`（回查 EffectOp/Middleware 总线的承诺与当前实现一致性）。
 - Effect/Logix 契约变更落点：
   - 统一的 Operation/Meta（包含操作链路 id）、全局/局部策略优先级、守卫拒绝语义；
   - 变更先落到 docs/specs（规范）与 `specs/001-effectop-unify-boundaries/contracts`（对外契约），再改代码。
@@ -54,7 +54,7 @@
 ### Documentation（本特性）
 
 ```text
-/Users/yoyo/Documents/code/personal/intent-flow/specs/001-effectop-unify-boundaries/
+/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/001-effectop-unify-boundaries/
 ├── plan.md
 ├── spec.md
 ├── research.md
@@ -69,7 +69,7 @@
 ### Source Code（repository root）
 
 ```text
-/Users/yoyo/Documents/code/personal/intent-flow/
+/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/
 ├── packages/
 │   ├── logix-core           # 本特性主落点：EffectOp/Runtime/Flow/Bound 统一接线与防呆
 │   ├── logix-react          # 端到端验收：业务侧写法稳定性 + 运行时观测
@@ -127,7 +127,7 @@
 
 ### Phase 0（Research）：把关键决策写死并对齐现状
 
-1. 盘点当前代码中所有边界执行点：Flow/Action/State/Lifecycle/Service/Trait/Devtools 等。
+1. 盘点当前代码中所有边界执行点：Flow/Action/State/Lifecycle/Service/Field/Devtools 等。
 2. 盘点当前已进入总线的路径与未进入总线的路径，形成“覆盖矩阵”（用于测试与验收）。
 3. 明确对外契约变更清单：
    - Operation Meta 必须包含 linkId；
@@ -169,7 +169,7 @@
 - State：update/mutate/reducer 等；
 - Lifecycle：init/destroy/suspend/resume/reset 等；
 - Service：资源/请求等；
-- Trait/Devtools/内部边界：全部进入总线（按 spec Q1）。
+- Field/Devtools/内部边界：全部进入总线（按 spec Q1）。
 
 3. 遗留清理：移除旧入口与旧叙事
 
@@ -187,7 +187,7 @@
 
 5. 001a 回查与对齐（FR-007/SC-004）
 
-- 对照 `specs/001a-module-traits-runtime/*` 与 `docs/ssot/runtime/*`：
+- 对照 `specs/000-module-fields-runtime/*` 与 `docs/ssot/runtime/*`：
   - 标注哪些承诺已由本次实现覆盖；
   - 哪些需要修订文字/迁移示例；
   - 哪些属于后续主题（明确延期理由与锚点）。
@@ -195,10 +195,10 @@
 ## Constitution Re-check（post Phase 1）
 
 - docs-first & SSoT：本特性对外契约已在以下文件中固化（作为实现前置条件）：
-  - `/Users/yoyo/Documents/code/personal/intent-flow/specs/001-effectop-unify-boundaries/spec.md`（需求与验收）
-  - `/Users/yoyo/Documents/code/personal/intent-flow/specs/001-effectop-unify-boundaries/contracts/README.md`（对外 API 契约）
-  - `/Users/yoyo/Documents/code/personal/intent-flow/specs/001-effectop-unify-boundaries/data-model.md`（数据模型与不变量）
-  - `/Users/yoyo/Documents/code/personal/intent-flow/specs/001-effectop-unify-boundaries/quickstart.md`（端到端 DoD）
+  - `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/001-effectop-unify-boundaries/spec.md`（需求与验收）
+  - `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/001-effectop-unify-boundaries/contracts/README.md`（对外 API 契约）
+  - `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/001-effectop-unify-boundaries/data-model.md`（数据模型与不变量）
+  - `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/001-effectop-unify-boundaries/quickstart.md`（端到端 DoD）
 - Intent → Flow/Logix → Code → Runtime 链路：已明确“边界起点创建 linkId、嵌套复用；所有边界统一进入总线”作为硬约束，并将其转化为测试验收点。
 - Effect/Logix 契约变更：已将全局/局部策略优先级与拒绝语义写死为可测试约束，后续实现必须以此为准并同步更新 `docs/ssot/runtime/*` 与 `apps/docs/*`。
 - 质量门：计划在实现阶段以类型检查、lint 与核心测试作为强制门槛，并新增“不可绕过总线”的关键用例，作为防呆兜底。

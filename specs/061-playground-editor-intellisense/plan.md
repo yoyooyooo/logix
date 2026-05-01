@@ -1,6 +1,6 @@
 # Implementation Plan: 061 Playground 编辑器智能提示（Logix 全量补全）
 
-**Branch**: `061-playground-editor-intellisense` | **Date**: 2025-12-29 | **Spec**: `specs/061-playground-editor-intellisense/spec.md`  
+**Branch**: `061-playground-editor-intellisense` | **Date**: 2025-12-29 | **Spec**: `specs/061-playground-editor-intellisense/spec.md`
 **Input**: Feature specification from `specs/061-playground-editor-intellisense/spec.md`
 
 ## Summary
@@ -47,12 +47,12 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.9.x（ESM；示例项目 `typescript@~5.9.3`）  
-**Primary Dependencies**: pnpm workspace、`effect` v3（override 3.19.13）、`@logixjs/core`、`@logixjs/react`、`@logixjs/sandbox`、Vite、React 19、Monaco Editor  
-**Storage**: N/A（类型 bundle 作为前端构建产物；不引入持久化）  
-**Testing**: Vitest（示例项目已有 `@effect/vitest` 用例；本特性以手工验收为主，必要时补最小 smoke 用例）  
-**Target Platform**: modern browsers（Vite dev/preview） + Node.js 20+（生成 type bundle 的脚本）  
-**Project Type**: pnpm workspace（`examples/logix-sandbox-mvp` 为 Vite + React 示例应用）  
+**Language/Version**: TypeScript 5.9.x（ESM；示例项目 `typescript@~5.9.3`）
+**Primary Dependencies**: pnpm workspace、`effect` v3（override 3.19.13）、`@logixjs/core`、`@logixjs/react`、`@logixjs/sandbox`、Vite、React 19、Monaco Editor
+**Storage**: N/A（类型 bundle 作为前端构建产物；不引入持久化）
+**Testing**: Vitest（示例项目已有 `@effect/vitest` 用例；本特性以手工验收为主，必要时补最小 smoke 用例）
+**Target Platform**: modern browsers（Vite dev/preview） + Node.js 20+（生成 type bundle 的脚本）
+**Project Type**: pnpm workspace（`examples/logix-sandbox-mvp` 为 Vite + React 示例应用）
 **Performance Goals**:
 
 - 页面切换到编辑页后：≤ 500ms 进入“可输入”（编辑器可聚焦并输入）。

@@ -1,7 +1,7 @@
 # Specification Quality Checklist: core-ng 全套切换达标门槛（无 fallback）
 
-**Purpose**: 在进入规划（plan/tasks）之前，校验规格是否可验收、无明显歧义  
-**Created**: 2025-12-27  
+**Purpose**: 在进入规划（plan/tasks）之前，校验规格是否可验收、无明显歧义
+**Created**: 2025-12-27
 **Feature**: `specs/047-core-ng-full-cutover-gate/spec.md`
 
 ## Content Quality

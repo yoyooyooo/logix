@@ -1,17 +1,23 @@
-type CounterConfig = {
-  readonly initial: {
-    readonly count: number
-  }
-  readonly logics: ReadonlyArray<unknown>
-}
+import { Effect, Schema } from 'effect'
+import * as Logix from '@logixjs/core'
 
-export const Counter = {
-  implement(config: CounterConfig): CounterConfig {
-    return config
+const State = Schema.Struct({
+  count: Schema.Number,
+})
+
+export const Counter = Logix.Module.make('CliPlaygroundCounter', {
+  state: State,
+  actions: {
+    noop: Schema.Void,
   },
-}
+  reducers: {
+    noop: (s: { readonly count: number }) => s,
+  },
+})
 
-export const AppRoot = Counter.implement({
+export const CounterLogic = Counter.logic('noop', () => Effect.void)
+
+export const AppRoot = Logix.Program.make(Counter, {
   initial: { count: 0 },
-  logics: [],
+  logics: [CounterLogic],
 })

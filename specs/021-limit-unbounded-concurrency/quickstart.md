@@ -1,7 +1,7 @@
 # Quickstart: 并发护栏与预警（限制无上限并发）
 
-**Date**: 2025-12-21  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/021-limit-unbounded-concurrency/spec.md`
+**Date**: 2025-12-21
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/021-limit-unbounded-concurrency/spec.md`
 
 ## 1) 你将获得什么
 
@@ -25,7 +25,7 @@
 ```ts
 import * as Logix from "@logixjs/core"
 
-const runtime = Logix.Runtime.make(RootImpl, {
+const runtime = Logix.Runtime.make(RootProgram, {
   concurrencyPolicy: {
     concurrencyLimit: 16,
     losslessBackpressureCapacity: 4096,
@@ -44,7 +44,7 @@ const runtime = Logix.Runtime.make(RootImpl, {
 import * as Logix from "@logixjs/core"
 
 // 方案 1：在 runtime_default 里写 overridesByModuleId
-const runtime = Logix.Runtime.make(RootImpl, {
+const runtime = Logix.Runtime.make(RootProgram, {
   concurrencyPolicy: {
     concurrencyLimit: 16,
     overridesByModuleId: {
@@ -136,4 +136,4 @@ export function App({ runtime }: { runtime: any }) {
 
 ## 5) 用户文档入口
 
-- `apps/docs/content/docs/guide/advanced/concurrency-control-plane.md`
+- `apps/docs/content/docs/guide/advanced/concurrency-policy.md`

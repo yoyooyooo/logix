@@ -1,6 +1,6 @@
 # Research: 061 Playground 编辑器智能提示（Logix 全量补全）
 
-**Feature**: `specs/061-playground-editor-intellisense/spec.md`  
+**Feature**: `specs/061-playground-editor-intellisense/spec.md`
 **Date**: 2025-12-29
 
 ## Decision 1：选择 Monaco 作为编辑器内核

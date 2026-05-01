@@ -15,9 +15,8 @@ describe('Lifecycle dynamic resources', () => {
         actions: {},
       })
 
-      const logic = TestModule.logic(() => ({
-        setup: Effect.void,
-        run: Effect.gen(function* () {
+      const logic = TestModule.logic('test-module-logic', () =>
+        Effect.gen(function* () {
           yield* Effect.acquireRelease(Effect.void, () =>
             Effect.sync(() => {
               released = true
@@ -25,7 +24,7 @@ describe('Lifecycle dynamic resources', () => {
           )
           yield* Effect.never
         }),
-      }))
+      )
 
       const layer = TestModule.live({ value: 0 }, logic) as unknown as Layer.Layer<
         Logix.ModuleRuntime<any, any>,

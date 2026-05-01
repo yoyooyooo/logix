@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 // @vitest-environment happy-dom
 
 import React from 'react'
@@ -5,14 +6,14 @@ import { describe, it, expect } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
-import { RuntimeProvider, useModule } from '../../src/index.js'
+import { RuntimeProvider, useModule, useSelector } from '../../src/index.js'
 
 const Counter = Logix.Module.make('ReactTxnCounter', {
   state: Schema.Struct({ count: Schema.Number }),
   actions: { inc: Schema.Void },
 })
 
-const logic = Counter.logic(($) =>
+const logic = Counter.logic('counter-logic', ($) =>
   Effect.gen(function* () {
     yield* $.onAction('inc').mutate((draft) => {
       draft.count += 1
@@ -20,25 +21,25 @@ const logic = Counter.logic(($) =>
   }),
 )
 
-const Impl = Counter.implement({
+const CounterProgram = Logix.Program.make(Counter, {
   initial: { count: 0 },
   logics: [logic],
 })
 
 describe('React Runtime transaction integration', () => {
   it('should produce a single state:update for a single user dispatch', async () => {
-    const events: Logix.Debug.Event[] = []
+    const events: CoreDebug.Event[] = []
 
-    const debugLayer = Logix.Debug.replace([
+    const debugLayer = CoreDebug.replace([
       {
-        record: (event: Logix.Debug.Event) =>
+        record: (event: CoreDebug.Event) =>
           Effect.sync(() => {
             events.push(event)
           }),
       },
     ]) as Layer.Layer<any, never, never>
 
-    const appRuntime = Logix.Runtime.make(Impl, {
+    const appRuntime = Logix.Runtime.make(CounterProgram, {
       layer: debugLayer,
     })
 
@@ -49,7 +50,7 @@ describe('React Runtime transaction integration', () => {
     const { result } = renderHook(
       () => {
         const counter = useModule(Counter.tag)
-        const count = useModule(counter, (s: any) => s.count) as number
+        const count = useSelector(counter, (s: any) => s.count) as number
         return { inc: counter.actions.inc, count }
       },
       { wrapper },
@@ -62,9 +63,9 @@ describe('React Runtime transaction integration', () => {
 
     const countTxnStateUpdates = () =>
       events
-        .map((event) => Logix.Debug.internal.toRuntimeDebugEventRef(event))
+        .map((event) => CoreDebug.internal.toRuntimeDebugEventRef(event))
         .filter(
-          (ref): ref is Logix.Debug.RuntimeDebugEventRef =>
+          (ref): ref is CoreDebug.RuntimeDebugEventRef =>
             ref != null && ref.moduleId === 'ReactTxnCounter' && ref.kind === 'state' && ref.txnId != null,
         ).length
 
@@ -94,18 +95,18 @@ describe('React Runtime transaction integration', () => {
   })
 
   it('should keep separate user dispatches as separate state:update events', async () => {
-    const events: Logix.Debug.Event[] = []
+    const events: CoreDebug.Event[] = []
 
-    const debugLayer = Logix.Debug.replace([
+    const debugLayer = CoreDebug.replace([
       {
-        record: (event: Logix.Debug.Event) =>
+        record: (event: CoreDebug.Event) =>
           Effect.sync(() => {
             events.push(event)
           }),
       },
     ]) as Layer.Layer<any, never, never>
 
-    const appRuntime = Logix.Runtime.make(Impl, {
+    const appRuntime = Logix.Runtime.make(CounterProgram, {
       layer: debugLayer,
     })
 
@@ -116,7 +117,7 @@ describe('React Runtime transaction integration', () => {
     const { result } = renderHook(
       () => {
         const counter = useModule(Counter.tag)
-        const count = useModule(counter, (s: any) => s.count) as number
+        const count = useSelector(counter, (s: any) => s.count) as number
         return { inc: counter.actions.inc, count }
       },
       { wrapper },
@@ -128,9 +129,9 @@ describe('React Runtime transaction integration', () => {
 
     const countTxnStateUpdates = () =>
       events
-        .map((event) => Logix.Debug.internal.toRuntimeDebugEventRef(event))
+        .map((event) => CoreDebug.internal.toRuntimeDebugEventRef(event))
         .filter(
-          (ref): ref is Logix.Debug.RuntimeDebugEventRef =>
+          (ref): ref is CoreDebug.RuntimeDebugEventRef =>
             ref != null && ref.moduleId === 'ReactTxnCounter' && ref.kind === 'state' && ref.txnId != null,
         ).length
 

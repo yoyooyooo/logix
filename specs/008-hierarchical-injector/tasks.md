@@ -37,8 +37,8 @@
 
 - [x] T006 [P] [US1] 新增回归测试：strict 缺失提供者时不回退到进程级 registry `packages/logix-core/test/hierarchicalInjector.strict-isolation.test.ts`
 - [x] T007 [P] [US1] 新增回归测试：多层 imports.get 解析正确且稳定（覆盖 root host 与 local host）`packages/logix-react/test/hooks/useImportedModule.hierarchical.test.tsx`
-- [x] T008 [P] [US1] 新增回归测试：当 root 已提供同模块时，`useModule(Impl)` 仍必须创建局部实例（不得复用 root 单例）`packages/logix-react/test/hooks/useModule.impl-vs-tag.test.tsx`
-- [x] T009 [P] [US1] 新增回归测试：`useModule(Impl,{ key })` 同 key 复用、异 key 隔离（并验证缺失 key 仍为组件级局部实例）`packages/logix-react/test/hooks/useModule.impl-keyed.test.tsx`
+- [x] T008 [P] [US1] 新增回归测试：当 root 已提供同模块时，`useModule(Program)` 仍必须创建局部实例（不得复用 root 单例）`packages/logix-react/test/hooks/useModule.program-vs-tag.test.tsx`
+- [x] T009 [P] [US1] 新增回归测试：`useModule(Program,{ key })` 同 key 复用、异 key 隔离（并验证缺失 key 仍为组件级局部实例）`packages/logix-react/test/hooks/useModule.program-keyed.test.tsx`
 - [x] T010 [P] [US1] 新增回归测试：imports-scope injector（`ImportsScope`）不持有完整 Context 且在 Scope.close 后可释放 `packages/logix-core/test/hierarchicalInjector.importsScope.cleanup.test.ts`
 
 ### Implementation for User Story 1
@@ -73,7 +73,7 @@
 - [x] T022 [US2] 在 AppRuntime 构建时注入 RootContextTag `packages/logix-core/src/internal/runtime/AppRuntime.ts`
 - [x] T023 [US2] 提供显式 root/global 解析入口：新增 `Logix.Root.resolve(Tag)` 并基于 RootContextTag 解析 ServiceTag/ModuleTag（ModuleTag 只返回 root 单例）`packages/logix-core/src/Root.ts`
 - [x] T024 [US2] React 侧移除 `useImportedModule/host.imports.get` 的 global mode 语义与分支，保持 strict-only（root/global 单例通过 `Root.resolve` 获取）`packages/logix-react/src/internal/resolveImportedModuleRef.ts`
-- [x] T025 [US2] 修正文档演练与注释：`$.use`=strict、跨模块协作使用 `Link.make`、root/global 使用 `Root.resolve`（含 Root Mock 策略、`Root.resolve(ModuleTag)` 语义边界；补充 “Angular `providedIn:\"root\"` ↔ root layer + `Root.resolve`/`useModule(ModuleTag)`” 心智模型）`docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md`
+- [x] T025 [US2] 修正文档演练与注释：`$.use`=strict、跨模块协作使用 `orchestration link alias`、root/global 使用 `Root.resolve`（含 Root Mock 策略、`Root.resolve(ModuleTag)` 语义边界；补充 “Angular `providedIn:\"root\"` ↔ root layer + `Root.resolve`/`useModule(ModuleTag)`” 心智模型）`docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md`
 - [x] T026 [P] [US2] 新增测试：`Root.resolve` 不受 `RuntimeProvider.layer` 覆盖影响（同时覆盖“如何 mock root provider”的测试形态）`packages/logix-core/test/hierarchicalInjector.root-resolve.override.test.ts`
 
 **Checkpoint**: US2 用例通过：显式 global/root 不受 override 影响；strict 不静默降级。
@@ -97,7 +97,7 @@
 - [x] T030 [US3] 统一 react 错误信息与字段（补 entrypoint/mode/startScope 等可读信息）`packages/logix-react/src/internal/resolveImportedModuleRef.ts`
 - [x] T031 [US3] 将错误口径沉淀为 Debugging SSoT（不引入新协议则注明“仅错误文本”）`docs/ssot/runtime/logix-core/observability/09-debugging.md`
 
-**Checkpoint**: 三个入口（`$.use` / `Link.make` / `useImportedModule`）的错误可读且可修复；断言用例通过。
+**Checkpoint**: 三个入口（`$.use` / `orchestration link alias` / `useImportedModule`）的错误可读且可修复；断言用例通过。
 
 ---
 
@@ -105,8 +105,8 @@
 
 **Purpose**: 文档、示例与迁移说明收口，确保对外体验一致。
 
-- [x] T032 删除 `$.useRemote` 作为公共 API（同步更新类型导出与内部用例；迁移推荐为 `$.use` 或 `Link.make`）`packages/logix-core/src/internal/runtime/BoundApiRuntime.ts`
-- [x] T033 [P] 同步用户文档：跨模块协作从 `$.useRemote` 迁移到 `Link.make`（含最小示例与语义对比表）`apps/docs/content/docs/guide/learn/cross-module-communication.md`
+- [x] T032 删除 `$.useRemote` 作为公共 API（同步更新类型导出与内部用例；迁移推荐为 `$.use` 或 `orchestration link alias`）`packages/logix-core/src/internal/runtime/BoundApiRuntime.ts`
+- [x] T033 [P] 同步用户文档：跨模块协作从 `$.useRemote` 迁移到 `orchestration link alias`（含最小示例与语义对比表）`apps/docs/content/docs/guide/learn/cross-module-communication.md`
 - [x] T034 [P] 同步评审文档：移除/更新 `$.useRemote` 的公共 API 表述（保持与 008 一致）`docs/ssot/handbook/reading-room/reviews/02-mental-model-and-public-api.md`
 - [x] T035 [P] 新增迁移辅助脚本（best-effort）：扫描 `$.useRemote` 与“`$.use(Module)` 但未声明 imports”的常见误用并输出提示 `scripts/migrate/008-hierarchical-injector.scan.ts`
 - [x] T036 [P] 更新 runtime SSoT：作用域边界与最佳实践（UI 默认只绑定 Host，一跳 imports 直连；深层模块通过投影/边界 resolve 一次并透传 ModuleRef；必要时把常用模块提升为 Host 的直接 imports）`docs/ssot/runtime/logix-react/01-react-integration.md`

@@ -178,7 +178,9 @@ export const makeDefaultHostScheduler = (): HostScheduler => {
 let globalHostScheduler: HostScheduler | undefined
 
 export const getGlobalHostScheduler = (): HostScheduler => {
-  globalHostScheduler ??= makeDefaultHostScheduler()
+  if (!globalHostScheduler) {
+    globalHostScheduler = makeDefaultHostScheduler()
+  }
   return globalHostScheduler
 }
 

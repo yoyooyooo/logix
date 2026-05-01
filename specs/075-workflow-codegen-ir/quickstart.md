@@ -76,7 +76,7 @@ const SubmitCanonicalAst = {
 1) 为什么有 `install(Module.tag)` 这种“看起来重复”的 API？
 
 - `Workflow` 被设计成“可复用的 Program 定义”，不强绑定某个 Module：因此需要 `install(moduleTag)` 这一步来完成“绑定模块形状 + 编译挂载”。
-- 大多数业务推荐只用 `Module.withWorkflow(program)`；平台/AI 出码（大量 programs）推荐用 `Module.withWorkflows(programs)` 避免 watcher 订阅膨胀；`install(tag)` 主要留给“在模块外部装配/复用 Program”的高级场景。
+- 当前推荐装配入口统一为 `Program.make(Module, { workflows: [...] })`；`install(tag)` 主要留给“在模块外部装配/复用 Program”的高级场景。
 
 2) `trigger: onAction('submit')` 是不是“定义了一个 action”？
 
@@ -198,15 +198,15 @@ const ImportCanonicalAst = {
 典型链路：“Router 外部输入变化 → 下游 query/source 刷新 → UI 读一致快照”：
 
 ```ts
-const Traits = Logix.StateTrait.from(StateSchema)({
+const Fields = Logix.FieldKernel.from(StateSchema)({
   // 073：externalStore 进入 tick 参考系（signal-dirty + pull snapshot），并写回事务窗口
-  'inputs.router': Logix.StateTrait.externalStore({
+  'inputs.router': Logix.FieldKernel.externalStore({
     store: RouterExternalStore,
     select: (snap) => ({ pathname: snap.pathname, params: snap.params }),
   }),
 
   // 076：deps 变更自动触发 refresh（Π_source），不需要监听 action 写 watcher
-  profile: Logix.StateTrait.source({
+  profile: Logix.FieldKernel.source({
     deps: ['inputs.router.params.id'],
     resource: 'user/profile',
     key: (id) => (id ? { id } : undefined),
@@ -215,7 +215,7 @@ const Traits = Logix.StateTrait.from(StateSchema)({
 })
 ```
 
-你会得到：UI 不写“同步 useEffect”；Logic 不写“监听 router/反查 trait”；只声明绑定事实与收敛规则。
+你会得到：UI 不写“同步 useEffect”；Logic 不写“监听 router/反查 field”；只声明绑定事实与收敛规则。
 
 ## 覆盖范围（v1 心智）
 

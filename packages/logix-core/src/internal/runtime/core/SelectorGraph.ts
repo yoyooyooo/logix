@@ -4,11 +4,13 @@ import type { ReadQueryCompiled } from './ReadQuery.js'
 import type { TxnDirtyEvidenceSnapshot } from './StateTransaction.js'
 import type { StateChangeWithMeta, StateCommitMeta } from './module.js'
 import * as Debug from './DebugSink.js'
+import { routeReadQuery } from './selectorRoute.precision.js'
+import { classifyDirtyPrecision, type DirtyPrecisionRecord } from './selectorRoute.dirty.js'
 
 type ReadRootKey = string
 
 type IndexedRootCandidate<S> = {
-  readonly selectorId: string
+  readonly selectorFingerprint: string
   readonly entry: SelectorEntry<S, any>
   readonly readsForRoot: ReadonlyArray<FieldPath>
 }
@@ -17,6 +19,7 @@ type SelectorEvalEventPolicy = 'always' | 'sampled'
 
 type SelectorEntry<S, V> = {
   readonly selectorId: string
+  readonly selectorFingerprint: string
   readonly readQuery: ReadQueryCompiled<S, V>
   readonly reads: ReadonlyArray<FieldPath>
   readonly readsByRootKey: ReadonlyMap<ReadRootKey, ReadonlyArray<FieldPath>>
@@ -33,7 +36,7 @@ export interface SelectorGraph<S> {
   readonly ensureEntry: <V>(
     readQuery: ReadQueryCompiled<S, V>,
   ) => Effect.Effect<SelectorEntry<S, V>, never, Scope.Scope>
-  readonly releaseEntry: (selectorId: string) => void
+  readonly releaseEntry: (selectorFingerprint: string) => void
   /**
    * O(1) check: whether any selector entries exist.
    *
@@ -46,7 +49,7 @@ export interface SelectorGraph<S> {
     meta: StateCommitMeta,
     dirty: TxnDirtyEvidenceSnapshot,
     diagnosticsLevel: Debug.DiagnosticsLevel,
-    onSelectorChanged?: (selectorId: string) => void,
+    onSelectorChanged?: (selectorFingerprint: string) => void,
   ) => Effect.Effect<void, never, never>
 }
 
@@ -120,6 +123,34 @@ const nowMs = (): number => {
 
 const SAMPLED_SELECTOR_EVAL_SLOW_THRESHOLD_MS = 4
 
+const recordDirtyFallbackDiagnostic = (args: {
+  readonly moduleId: string
+  readonly instanceId: string
+  readonly meta: StateCommitMeta
+  readonly record: DirtyPrecisionRecord
+}): Effect.Effect<void, never, never> =>
+  Debug.record({
+    type: 'diagnostic',
+    moduleId: args.moduleId,
+    instanceId: args.instanceId,
+    txnSeq: args.meta.txnSeq,
+    txnId: args.meta.txnId,
+    code: 'selector_route::dirty_fallback',
+    severity: 'error',
+    message: 'Selector dirty/read overlap fell back to a broad evaluation route.',
+    hint: args.record.repairHint ?? 'Record exact dirty paths for writes that affect host selector projection.',
+    kind: 'selector_dirty_fallback',
+    trigger: {
+      kind: 'selector_route',
+      name: 'dirty_fallback',
+      details: {
+        dirtyQuality: args.record.quality,
+        fallbackKind: args.record.fallbackKind,
+        reason: args.record.reason,
+      },
+    },
+  })
+
 const shouldEvaluateEntryForDirtyRoots = <S>(args: {
   readonly entry: SelectorEntry<S, any>
   readonly dirty: TxnDirtyEvidenceSnapshot
@@ -153,13 +184,14 @@ const shouldEvaluateEntryForDirtyRoots = <S>(args: {
 const evaluateEntry = <S>(args: {
   readonly entry: SelectorEntry<S, any>
   readonly selectorId: string
+  readonly selectorFingerprint: string
   readonly state: S
   readonly meta: StateCommitMeta
   readonly emitEvalEvent: boolean
   readonly evalEventPolicy: SelectorEvalEventPolicy
   readonly moduleId: string
   readonly instanceId: string
-  readonly onSelectorChanged?: (selectorId: string) => void
+  readonly onSelectorChanged?: (selectorFingerprint: string) => void
 }): Effect.Effect<void, never, never> =>
   Effect.gen(function* () {
     let next: any
@@ -196,7 +228,7 @@ const evaluateEntry = <S>(args: {
       args.entry.cachedValue = next
       args.entry.hasValue = true
       args.entry.cachedAtTxnSeq = args.meta.txnSeq
-      args.onSelectorChanged?.(args.selectorId)
+      args.onSelectorChanged?.(args.selectorFingerprint)
 
       yield* PubSub.publish(args.entry.hub as any, {
         value: args.entry.cachedValue,
@@ -220,6 +252,7 @@ const evaluateEntry = <S>(args: {
       txnId: args.meta.txnId,
       data: {
         selectorId: args.selectorId,
+        selectorFingerprint: args.selectorFingerprint,
         lane: args.entry.readQuery.lane,
         producer: args.entry.readQuery.producer,
         fallbackReason: args.entry.readQuery.fallbackReason,
@@ -245,7 +278,9 @@ export const make = <S>(args: {
   const hasAnyEntries: SelectorGraph<S>['hasAnyEntries'] = () => selectorsById.size > 0
 
   const ensureEntry: SelectorGraph<S>['ensureEntry'] = (readQuery) => {
-    const existing = selectorsById.get(readQuery.selectorId)
+    const route = routeReadQuery(readQuery)
+    const selectorFingerprint = route.selectorFingerprint.value
+    const existing = selectorsById.get(selectorFingerprint)
     if (existing) {
       return Effect.succeed(existing as any)
     }
@@ -272,20 +307,21 @@ export const make = <S>(args: {
         }
       }
       if (readRootKeys.length === 0) {
-        selectorsWithoutReads.add(readQuery.selectorId)
+        selectorsWithoutReads.add(selectorFingerprint)
       } else {
         for (const rootKey of readRootKeys) {
           const set = indexByReadRoot.get(rootKey)
           if (set) {
-            set.add(readQuery.selectorId)
+            set.add(selectorFingerprint)
           } else {
-            indexByReadRoot.set(rootKey, new Set([readQuery.selectorId]))
+            indexByReadRoot.set(rootKey, new Set([selectorFingerprint]))
           }
         }
       }
 
       const entry: SelectorEntry<S, any> = {
         selectorId: readQuery.selectorId,
+        selectorFingerprint,
         readQuery: readQuery as any,
         reads,
         readsByRootKey,
@@ -297,23 +333,23 @@ export const make = <S>(args: {
         hasValue: false,
         cachedValue: undefined,
       }
-      selectorsById.set(readQuery.selectorId, entry)
+      selectorsById.set(selectorFingerprint, entry)
       return entry as any
     })
   }
 
-  const releaseEntry: SelectorGraph<S>['releaseEntry'] = (selectorId) => {
-    const entry = selectorsById.get(selectorId)
+  const releaseEntry: SelectorGraph<S>['releaseEntry'] = (selectorFingerprint) => {
+    const entry = selectorsById.get(selectorFingerprint)
     if (!entry) return
     entry.subscriberCount = Math.max(0, entry.subscriberCount - 1)
     if (entry.subscriberCount > 0) return
 
-    selectorsById.delete(selectorId)
-    selectorsWithoutReads.delete(selectorId)
+    selectorsById.delete(selectorFingerprint)
+    selectorsWithoutReads.delete(selectorFingerprint)
     for (const rootKey of entry.readRootKeys) {
       const set = indexByReadRoot.get(rootKey)
       if (!set) continue
-      set.delete(selectorId)
+      set.delete(selectorFingerprint)
       if (set.size === 0) {
         indexByReadRoot.delete(rootKey)
       }
@@ -340,7 +376,7 @@ export const make = <S>(args: {
         return path && Array.isArray(path) ? path : undefined
       }
 
-      const evaluateSubscribedEntry = (entry: SelectorEntry<S, any>, selectorId: string): Effect.Effect<void> => {
+      const evaluateSubscribedEntry = (entry: SelectorEntry<S, any>): Effect.Effect<void> => {
         if (entry.subscriberCount === 0) return Effect.void
         if (entry.lastScheduledTxnSeq === meta.txnSeq) return Effect.void
 
@@ -348,7 +384,8 @@ export const make = <S>(args: {
         entry.lastScheduledTxnSeq = meta.txnSeq
         return evaluateEntry({
           entry,
-          selectorId,
+          selectorId: entry.selectorId,
+          selectorFingerprint: entry.selectorFingerprint,
           state,
           meta,
           emitEvalEvent,
@@ -361,8 +398,8 @@ export const make = <S>(args: {
 
       const evaluateAllSubscribedSelectors = (): Effect.Effect<void, never, never> =>
         Effect.gen(function* () {
-          for (const [selectorId, entry] of selectorsById.entries()) {
-            yield* evaluateSubscribedEntry(entry, selectorId)
+          for (const entry of selectorsById.values()) {
+            yield* evaluateSubscribedEntry(entry)
           }
         })
 
@@ -373,20 +410,20 @@ export const make = <S>(args: {
           return cached
         }
 
-        const selectorIds = indexByReadRoot.get(rootKey)
-        if (!selectorIds || selectorIds.size === 0) {
+        const selectorFingerprints = indexByReadRoot.get(rootKey)
+        if (!selectorFingerprints || selectorFingerprints.size === 0) {
           indexedCandidatesByRoot.set(rootKey, [])
           return []
         }
 
         const indexed: Array<IndexedRootCandidate<S>> = []
-        for (const selectorId of selectorIds) {
-          const entry = selectorsById.get(selectorId)
+        for (const selectorFingerprint of selectorFingerprints) {
+          const entry = selectorsById.get(selectorFingerprint)
           if (!entry) continue
           const readsForRoot = entry.readsByRootKey.get(rootKey)
           if (!readsForRoot || readsForRoot.length === 0) continue
           indexed.push({
-            selectorId,
+            selectorFingerprint,
             entry,
             readsForRoot,
           })
@@ -400,6 +437,45 @@ export const make = <S>(args: {
         const entry = selectorsById.values().next().value
         if (!entry) return
 
+        if (emitEvalEvent && dirty.dirtyAll) {
+          yield* recordDirtyFallbackDiagnostic({
+            moduleId,
+            instanceId,
+            meta,
+            record: classifyDirtyPrecision({
+              dirtyAll: true,
+              dirtyAllReason: dirty.dirtyAllReason,
+              hasPathAuthority: false,
+            }),
+          })
+        } else if (emitEvalEvent && !registry && dirty.dirtyPathIds.length > 0) {
+          yield* recordDirtyFallbackDiagnostic({
+            moduleId,
+            instanceId,
+            meta,
+            record: classifyDirtyPrecision({
+              dirtyAll: false,
+              hasPathAuthority: false,
+            }),
+          })
+        } else if (emitEvalEvent && registry) {
+          for (const dirtyPathId of dirty.dirtyPathIds) {
+            if (!getDirtyPath(dirtyPathId)) {
+              yield* recordDirtyFallbackDiagnostic({
+                moduleId,
+                instanceId,
+                meta,
+                record: classifyDirtyPrecision({
+                  dirtyAll: false,
+                  hasPathAuthority: true,
+                  missingDirtyPath: true,
+                }),
+              })
+              break
+            }
+          }
+        }
+
         if (
           !shouldEvaluateEntryForDirtyRoots({
             entry,
@@ -411,30 +487,65 @@ export const make = <S>(args: {
           return
         }
 
-        yield* evaluateSubscribedEntry(entry, entry.selectorId)
+        yield* evaluateSubscribedEntry(entry)
         return
       }
 
       if (dirty.dirtyAll) {
+        if (emitEvalEvent) {
+          yield* recordDirtyFallbackDiagnostic({
+            moduleId,
+            instanceId,
+            meta,
+            record: classifyDirtyPrecision({
+              dirtyAll: true,
+              dirtyAllReason: dirty.dirtyAllReason,
+              hasPathAuthority: false,
+            }),
+          })
+        }
         yield* evaluateAllSubscribedSelectors()
         return
       }
 
       if (!registry) {
+        if (emitEvalEvent) {
+          yield* recordDirtyFallbackDiagnostic({
+            moduleId,
+            instanceId,
+            meta,
+            record: classifyDirtyPrecision({
+              dirtyAll: false,
+              hasPathAuthority: false,
+            }),
+          })
+        }
         yield* evaluateAllSubscribedSelectors()
         return
       }
 
-      for (const selectorId of selectorsWithoutReads) {
-        const entry = selectorsById.get(selectorId)
+      for (const selectorFingerprint of selectorsWithoutReads) {
+        const entry = selectorsById.get(selectorFingerprint)
         if (!entry) continue
-        yield* evaluateSubscribedEntry(entry, selectorId)
+        yield* evaluateSubscribedEntry(entry)
       }
 
       const dirtyRootsToProcessByRoot = new Map<ReadRootKey, Array<FieldPath>>()
       for (const dirtyPathId of dirty.dirtyPathIds) {
         const dirtyPath = getDirtyPath(dirtyPathId)
         if (!dirtyPath) {
+          if (emitEvalEvent) {
+            yield* recordDirtyFallbackDiagnostic({
+              moduleId,
+              instanceId,
+              meta,
+              record: classifyDirtyPrecision({
+                dirtyAll: false,
+                hasPathAuthority: true,
+                missingDirtyPath: true,
+              }),
+            })
+          }
           yield* evaluateAllSubscribedSelectors()
           return
         }
@@ -458,11 +569,11 @@ export const make = <S>(args: {
         const hasRootLevelDirty = dirtyRootsForRoot.some((path) => path.length <= 1)
 
         for (const candidate of candidates) {
-          const { entry, selectorId, readsForRoot } = candidate
+          const { entry, readsForRoot } = candidate
           if (entry.subscriberCount === 0 || entry.lastScheduledTxnSeq === meta.txnSeq) continue
 
           if (hasRootLevelDirty) {
-            yield* evaluateSubscribedEntry(entry, selectorId)
+            yield* evaluateSubscribedEntry(entry)
             continue
           }
 
@@ -480,7 +591,7 @@ export const make = <S>(args: {
           }
           if (!overlapsAnyDirtyRoot) continue
 
-          yield* evaluateSubscribedEntry(entry, selectorId)
+          yield* evaluateSubscribedEntry(entry)
         }
       }
     })

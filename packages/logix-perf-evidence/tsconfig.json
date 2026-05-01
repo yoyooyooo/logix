@@ -1,0 +1,23 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "resolveJsonModule": true,
+    "types": ["node", "vitest"]
+  },
+  "include": [
+    "scripts/capacity.collect.ts",
+    "scripts/ci.check-steps-grid.ts",
+    "scripts/ci.interpret-artifact.ts",
+    "scripts/ci.preflight.ts",
+    "scripts/ci.replay-capacity-collect.ts",
+    "scripts/ci.replay-summary.ts",
+    "scripts/collect.ts",
+    "scripts/diff.ts",
+    "scripts/tuning.recommend.ts",
+    "scripts/validate.ts",
+    "scripts/lib/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

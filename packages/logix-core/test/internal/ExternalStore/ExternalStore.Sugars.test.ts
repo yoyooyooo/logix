@@ -1,8 +1,9 @@
 import { describe } from '@effect/vitest'
+import * as RuntimeContracts from '../../../src/internal/runtime-contracts.js'
 import { it, expect } from '@effect/vitest'
 import { Effect, ServiceMap, Stream, SubscriptionRef } from 'effect'
 import * as Logix from '../../../src/index.js'
-import * as ModuleRuntime from '../../../src/internal/runtime/ModuleRuntime.js'
+import * as ModuleRuntime from '../../../src/internal/runtime/core/ModuleRuntime.js'
 import { getExternalStoreDescriptor } from '../../../src/internal/external-store-descriptor.js'
 import { __unsafeSetGlobalHostSchedulerForTests, getGlobalHostScheduler } from '../../../src/internal/runtime/core/HostScheduler.js'
 import { flushAllHostScheduler, makeTestHostScheduler } from '../testkit/hostSchedulerTestKit.js'
@@ -11,7 +12,7 @@ describe('ExternalStore sugars', () => {
   it('fromService: accepts Tag.key fallback and builds stable descriptor', () => {
     const KeyOnlyTag = { key: 'ExternalStoreSugars.KeyOnlyTag' } as any as ServiceMap.Key<any, any>
 
-    const s1 = Logix.ExternalStore.fromService(KeyOnlyTag, () => ({
+    const s1 = RuntimeContracts.ExternalInput.fromService(KeyOnlyTag, () => ({
       getSnapshot: () => 1,
       subscribe: () => () => {},
     }))
@@ -21,7 +22,7 @@ describe('ExternalStore sugars', () => {
     expect(d1.tagId).toBe('ExternalStoreSugars.KeyOnlyTag')
     expect(typeof d1.storeId).toBe('string')
 
-    const s2 = Logix.ExternalStore.fromService(KeyOnlyTag, () => ({
+    const s2 = RuntimeContracts.ExternalInput.fromService(KeyOnlyTag, () => ({
       getSnapshot: () => 1,
       subscribe: () => () => {},
     }))
@@ -42,7 +43,7 @@ describe('ExternalStore sugars', () => {
   it('fromService: prefers Tag.id when present', () => {
     const IdAndKeyTag = { id: 'ExternalStoreSugars.TagId', key: 'ExternalStoreSugars.TagKey' } as any as ServiceMap.Key<any, any>
 
-    const store = Logix.ExternalStore.fromService(IdAndKeyTag, () => ({
+    const store = RuntimeContracts.ExternalInput.fromService(IdAndKeyTag, () => ({
       getSnapshot: () => 1,
       subscribe: () => () => {},
     }))
@@ -60,8 +61,8 @@ describe('ExternalStore sugars', () => {
       __unsafeSetGlobalHostSchedulerForTests(hostScheduler)
       try {
       const ref = yield* SubscriptionRef.make(0)
-      const store1 = Logix.ExternalStore.fromSubscriptionRef(ref)
-      const store2 = Logix.ExternalStore.fromSubscriptionRef(ref)
+      const store1 = RuntimeContracts.ExternalInput.fromSubscriptionRef(ref)
+      const store2 = RuntimeContracts.ExternalInput.fromSubscriptionRef(ref)
 
       const d1 = getExternalStoreDescriptor(store1)
       const d2 = getExternalStoreDescriptor(store2)
@@ -103,8 +104,8 @@ describe('ExternalStore sugars', () => {
 
       const ref1 = runtime.ref()
       const ref2 = runtime.ref()
-      const store1 = Logix.ExternalStore.fromSubscriptionRef(ref1)
-      const store2 = Logix.ExternalStore.fromSubscriptionRef(ref2)
+      const store1 = RuntimeContracts.ExternalInput.fromSubscriptionRef(ref1)
+      const store2 = RuntimeContracts.ExternalInput.fromSubscriptionRef(ref2)
 
       const d1 = getExternalStoreDescriptor(store1)
       const d2 = getExternalStoreDescriptor(store2)
@@ -123,7 +124,7 @@ describe('ExternalStore sugars', () => {
       __unsafeSetGlobalHostSchedulerForTests(hostScheduler)
       try {
       const ref = yield* SubscriptionRef.make(0)
-      const store = Logix.ExternalStore.fromSubscriptionRef(ref)
+      const store = RuntimeContracts.ExternalInput.fromSubscriptionRef(ref)
 
       // Prime the snapshot cache so subscribe() can run refreshSnapshotIfStale().
       expect(store.getSnapshot()).toBe(0)
@@ -158,8 +159,8 @@ describe('ExternalStore sugars', () => {
       try {
       const stream = Stream.fromIterable([1, 2])
 
-      const s1 = Logix.ExternalStore.fromStream(stream, { initial: 0 })
-      const s2 = Logix.ExternalStore.fromStream(stream, { current: 0 })
+      const s1 = RuntimeContracts.ExternalInput.fromStream(stream, { initial: 0 })
+      const s2 = RuntimeContracts.ExternalInput.fromStream(stream, { current: 0 })
 
       const d1 = getExternalStoreDescriptor(s1)
       const d2 = getExternalStoreDescriptor(s2)

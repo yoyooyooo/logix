@@ -4,7 +4,7 @@ import { render } from 'vitest-browser-react'
 import { Layer, ManagedRuntime } from 'effect'
 import matrix from '@logixjs/perf-evidence/assets/matrix.json'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
-import { useModule } from '../../src/Hooks.js'
+import { useModule, useSelector } from '../../src/Hooks.js'
 import { makePerfCounterIncWatchersLogic, makePerfCounterModule } from '../../src/internal/store/perfWorkloads.js'
 import { emitPerfReport, type PerfReport } from './perf-boundaries/protocol.js'
 import { getProfileConfig, makePerfKernelLayer, runMatrixSuite, withNodeEnv } from './perf-boundaries/harness.js'
@@ -20,7 +20,7 @@ type PerfAppProps = {
 
 const PerfApp: React.FC<PerfAppProps> = ({ onIncrementNativeCapture, onIncrementHandlerStart }) => {
   const perf = useModule(PerfModule.tag)
-  const value = useModule(perf, (s) => (s as { value: number }).value)
+  const value = useSelector(perf, (s) => (s as { value: number }).value)
   const buttonRef = React.useRef<HTMLButtonElement | null>(null)
 
   React.useLayoutEffect(() => {

@@ -4,8 +4,8 @@ info:
   version: "022"
   description: >
     Contracts for Module (definition object) + ModuleTag (identity anchor): a unified
-    module shape that can be consumed by Logic (`$.use`) and runtime adapters
-    without explicit `.tag/.impl` unwraps.
+    module shape that can be consumed by Logic (`$.use`) and assembled into
+    Program objects without exposing runtime blueprint unwraps.
     This is schema-first documentation for runtime/devtools/sandbox alignment; it does
     not imply a specific transport or server implementation.
 paths:

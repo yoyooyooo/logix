@@ -152,7 +152,7 @@ yield*
 
 ```tsx
 function Wizard() {
-  const wizard = useModule(WizardModule)
+  const wizard = useModule(WizardDef.tag)
   const { currentStep, steps, isSubmitting } = useSelector(wizard, (s) => s)
   const dispatch = useDispatch(wizard)
 
@@ -198,8 +198,10 @@ const Step1Form = Form.make({
 })
 
 // 在 Wizard 中组合
-const WizardModule = WizardDef.implement({
-  imports: [Step1Form, Step2Form, Step3Form],
+const WizardProgram = Logix.Program.make(WizardDef, {
+  capabilities: {
+    imports: [Step1Form, Step2Form, Step3Form],
+  },
   // ...
 })
 ```
@@ -209,9 +211,7 @@ const WizardModule = WizardDef.implement({
 - [校验与错误](../../form/validation)
 - [分页加载](./pagination)
 
-## 可运行示例
+## 示例代码
 
-- 索引：[可运行示例索引](../recipes/runnable-examples)
-- 最接近的 form-heavy demos：
-  - `examples/logix-react/src/modules/trait-form.ts`
-  - `examples/logix-react/src/modules/complex-trait-form.ts`
+- `examples/logix-react/src/modules/field-form.ts`
+- `examples/logix-react/src/modules/complex-field-form.ts`

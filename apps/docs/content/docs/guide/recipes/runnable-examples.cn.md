@@ -1,29 +1,45 @@
 ---
 title: 可运行示例索引
-description: 把 Patterns/Recipes 与 examples/logix、examples/logix-react 的可运行代码对齐起来。
+description: 把 guide 中的 pattern 和 recipe 映射到仓库里的可运行示例。
 ---
 
-本页把“Cookbook 风格”的文档（Patterns/Recipes）与 `examples/*` 下的可运行代码做映射，方便直接跑起来对照理解。
+这个索引把 guide 页面映射到 `examples/*` 下的可运行示例。
 
-## 示例目录在哪里
+## 示例位置
 
-- `examples/logix`：脚本化场景（无 UI）。运行单文件：`pnpm -C examples/logix exec tsx <path>`
-- `examples/logix-react`：可运行 React 应用 + DevTools。启动：`pnpm -C examples/logix-react dev`
+- `examples/logix`：无 UI 的场景脚本
+- `examples/logix-react`：带 DevTools 的可运行 React 应用
 
-## 映射表
+## Docs runner 约定
 
-### Patterns
+无 UI 的可运行 Program 示例使用应用侧 adapter：
+
+```ts
+export const Program = Logix.Program.make(RootModule, {
+  initial: { count: 0 },
+  logics: [],
+})
+
+export const main = (ctx, args) =>
+  Effect.gen(function* () {
+    const state = yield* ctx.module.getState
+    return { count: state.count, args }
+  })
+```
+
+docs runner 使用 `Runtime.run(Program, main, options)` 生成结果面板。Check 和 Trial 是按需诊断，返回 `VerificationControlPlaneReport`。
+
+## Patterns
 
 | Guide 页面 | 可运行代码 |
 | --- | --- |
-| [分页加载](../patterns/pagination) | `apps/docs/content/docs/guide/get-started/tutorial-complex-list.md`（教程）· `examples/logix-react/src/modules/querySearchDemo.ts` |
-| [乐观更新](../patterns/optimistic-update) | `examples/logix/src/scenarios/optimistic-toggle.ts` · `examples/logix/src/scenarios/optimistic-toggle-from-pattern.ts` · `examples/logix/src/patterns/optimistic-toggle.ts` |
-| [搜索 + 详情联动](../patterns/search-detail) | `examples/logix/src/scenarios/search-with-debounce-latest.ts` · `examples/logix/src/scenarios/cross-module-link.ts` · `examples/logix-react/src/modules/querySearchDemo.ts` |
-| [国际化（i18n）](../patterns/i18n) | `examples/logix/src/i18n-message-token.ts` · `examples/logix/src/i18n-async-ready.ts` · `examples/logix-react/src/modules/i18n-demo.ts` |
-| [多步表单（Wizard）](../patterns/form-wizard) | 暂无专门 wizard 示例；最接近的 form-heavy demos：`examples/logix-react/src/modules/trait-form.ts` · `examples/logix-react/src/modules/complex-trait-form.ts` |
+| pagination | `examples/logix-react/src/modules/querySearchDemo.ts` |
+| optimistic update | `examples/logix/src/scenarios/optimistic-toggle.ts` |
+| search and detail linkage | `examples/logix/src/scenarios/search-with-debounce-latest.ts` |
+| i18n | `examples/logix/src/i18n-message-token.ts`、`examples/logix-react/src/modules/i18n-demo.ts` |
 
-### Recipes
+## 说明
 
-| Guide 页面 | 可运行代码 |
-| --- | --- |
-| [ExternalStore](./external-store) | `examples/logix/src/scenarios/external-store-tick.ts` |
+- 可运行示例只提供证据，不提供 authority
+- 公开 contract 继续由 API 文档和 SSoT 定义
+- raw Effect smoke 示例可以作为 smoke run，但不展示 Check 或 Trial

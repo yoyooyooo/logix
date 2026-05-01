@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
@@ -20,7 +21,7 @@ describe('Debug.RuntimeDebugEventRef serialization', () => {
         cause,
       } as any
 
-      const ref = Logix.Debug.internal.toRuntimeDebugEventRef(event) as any
+      const ref = CoreDebug.internal.toRuntimeDebugEventRef(event) as any
 
       expect(ref).toBeDefined()
       expect(ref.instanceId).toBe('i-1')
@@ -30,10 +31,10 @@ describe('Debug.RuntimeDebugEventRef serialization', () => {
     }),
   )
 
-  it.effect('trace:trait:check should be exportable as RuntimeDebugEventRef (light/full)', () =>
+  it.effect('trace:field:check should be exportable as RuntimeDebugEventRef (light/full)', () =>
     Effect.sync(() => {
       const event = {
-        type: 'trace:trait:check',
+        type: 'trace:field:check',
         moduleId: 'M',
         instanceId: 'i-1',
         txnSeq: 1,
@@ -48,20 +49,20 @@ describe('Debug.RuntimeDebugEventRef serialization', () => {
         },
       } as any
 
-      const refFull = Logix.Debug.internal.toRuntimeDebugEventRef(event, {
+      const refFull = CoreDebug.internal.toRuntimeDebugEventRef(event, {
         diagnosticsLevel: 'full',
       }) as any
       expect(refFull).toBeDefined()
-      expect(refFull.kind).toBe('trait:check')
-      expect(refFull.label).toBe('trait:check')
+      expect(refFull.kind).toBe('field:check')
+      expect(refFull.label).toBe('field:check')
       expect(refFull.meta?.ruleId).toBe('items#uniqueWarehouse')
       expect(() => JSON.stringify(refFull)).not.toThrow()
 
-      const refLight = Logix.Debug.internal.toRuntimeDebugEventRef(event, {
+      const refLight = CoreDebug.internal.toRuntimeDebugEventRef(event, {
         diagnosticsLevel: 'light',
       }) as any
       expect(refLight).toBeDefined()
-      expect(refLight.kind).toBe('trait:check')
+      expect(refLight.kind).toBe('field:check')
       expect(refLight.meta?.ruleId).toBe('items#uniqueWarehouse')
       expect(() => JSON.stringify(refLight)).not.toThrow()
     }),
@@ -94,7 +95,7 @@ describe('Debug.RuntimeDebugEventRef serialization', () => {
           },
           bodyShellMs: 1.2,
           asyncEscapeGuardMs: 0.2,
-          traitConvergeMs: 0.3,
+          fieldConvergeMs: 0.3,
           scopedValidateMs: 0.4,
           sourceSyncMs: 0.1,
           commit: {
@@ -108,7 +109,7 @@ describe('Debug.RuntimeDebugEventRef serialization', () => {
         },
       } as any
 
-      const refFull = Logix.Debug.internal.toRuntimeDebugEventRef(event, {
+      const refFull = CoreDebug.internal.toRuntimeDebugEventRef(event, {
         diagnosticsLevel: 'full',
       }) as any
       expect(refFull).toBeDefined()
@@ -120,7 +121,7 @@ describe('Debug.RuntimeDebugEventRef serialization', () => {
       expect(refFull.meta?.commit?.totalMs).toBe(2.2)
       expect(() => JSON.stringify(refFull)).not.toThrow()
 
-      const refLight = Logix.Debug.internal.toRuntimeDebugEventRef(event, {
+      const refLight = CoreDebug.internal.toRuntimeDebugEventRef(event, {
         diagnosticsLevel: 'light',
       }) as any
       expect(refLight).toBeDefined()

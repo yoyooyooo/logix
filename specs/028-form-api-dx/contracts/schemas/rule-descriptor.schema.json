@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://intent-flow.local/specs/028-form-api-dx/schemas/rule-descriptor.schema.json",
+  "$id": "https://logix.local/specs/028-form-api-dx/schemas/rule-descriptor.schema.json",
   "title": "RuleDescriptor",
   "type": "object",
   "additionalProperties": false,

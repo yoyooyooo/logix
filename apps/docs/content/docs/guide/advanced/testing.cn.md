@@ -3,23 +3,7 @@ title: 测试
 description: 如何使用 @effect/vitest 测试 Logix 模块。
 ---
 
-Logix 的设计天然支持测试。由于 Logic 是纯粹的 Effect，我们可以利用 Effect 官方的 `@effect/vitest` 进行单元测试和集成测试。
-
-### 适合谁
-
-- 希望为 Module / Logic 写单元测试和集成测试的工程师；
-- 有 Vitest 经验，但不熟悉如何在测试环境构建 Runtime / 提供 Layer。
-
-### 前置知识
-
-- 了解 ModuleImpl (`Module.make`) 与 Runtime 的基本概念；
-- 对 Effect 有基本直觉（知道如何用 `Effect.gen` 写流程）。
-
-### 读完你将获得
-
-- 能够使用 `@effect/vitest` 的 `it.effect` / `it.scoped` 测试 Logic；
-- 知道如何用 Layer 注入/替换 Service，实现可控的测试双（Mock/Stub/Fake）；
-- 了解如何使用 `TestClock` 控制时间相关的测试。
+Logix 模块本质上是 Effect 程序。默认测试栈是 `@effect/vitest` 覆盖 runtime 与 logic 行为，在断言范围包含 React 绑定时，再配合 `@testing-library/react`。
 
 ## 1. 安装 @effect/vitest
 
@@ -120,44 +104,6 @@ it.scoped('should fetch user with mock', () =>
 )
 ```
 
-## 5. 收集 Debug 事件
-
-测试 Logic 行为时，可以注入自定义 DebugSink 收集事件：
-
-```ts
-import * as Logix from '@logixjs/core'
-
-it.scoped('should emit debug events', () =>
-  Effect.gen(function* () {
-    const events: Logix.Debug.Event[] = []
-
-    const debugLayer = Logix.Debug.replace([
-      {
-        record: (event: Logix.Debug.Event) =>
-          Effect.sync(() => {
-            events.push(event)
-          }),
-      },
-    ])
-
-    // 合并 debugLayer 到测试 Layer
-    const layer = Layer.mergeAll(
-      Counter.live({ count: 0 }, CounterLogic),
-      debugLayer,
-    )
-
-    const runtime = yield* Effect.provide(Counter, layer)
-    yield* runtime.dispatch({ _tag: 'inc', payload: undefined })
-
-    // 推进时钟让 Logic 运行
-    yield* TestClock.adjust('10 millis')
-
-    // 验证事件被记录
-    const actionEvents = events.filter((e) => e.type === 'action:dispatch')
-    expect(actionEvents.length).toBeGreaterThan(0)
-  }),
-)
-```
 
 ## 6. 集成测试 (React)
 
@@ -176,9 +122,7 @@ it('renders counter', () => {
 })
 ```
 
-## 下一步
-
-恭喜你完成了 Advanced 专题的学习！接下来可以：
+## 延伸阅读
 
 - 查看 React 集成的完整指南：[React 集成](../recipes/react-integration)
 - 了解更多常用模式与最佳实践：[常用模式](../recipes/common-patterns)

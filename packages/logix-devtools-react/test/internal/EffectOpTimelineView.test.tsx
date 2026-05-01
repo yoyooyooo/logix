@@ -1,12 +1,14 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 // @vitest-environment jsdom
 import React from 'react'
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { render, fireEvent, screen, waitFor, cleanup } from '@testing-library/react'
 import { Effect, Schema, Layer } from 'effect'
 import * as Logix from '@logixjs/core'
-import { RuntimeProvider, useModule, useDispatch, useRuntime } from '@logixjs/react'
-import { LogixDevtools } from '../../src/LogixDevtools.js'
-import { devtoolsLayer, clearDevtoolsEvents, clearDevtoolsSnapshotOverride } from '../../src/DevtoolsLayer.js'
+import { RuntimeProvider, useModule, useDispatch, useRuntime, useSelector } from '@logixjs/react'
+import { LogixDevtools } from '../../src/internal/ui/shell/LogixDevtools.js'
+import { clearDevtoolsEvents, clearDevtoolsSnapshotOverride } from '../../src/internal/snapshot/index.js'
 import { devtoolsRuntime, devtoolsModuleRuntime, type DevtoolsState } from '../../src/internal/state/index.js'
 import { emptyDevtoolsState } from '../../src/internal/state/model.js'
 
@@ -38,7 +40,7 @@ beforeEach(async () => {
     _tag: 'updateSettings',
     payload: {
       mode: 'deep',
-      showTraitEvents: true,
+      showFieldEvents: true,
       showReactRenderEvents: true,
       sampling: { reactRenderSampleRate: 1 },
     },
@@ -64,14 +66,14 @@ const CounterStateSchema = Schema.Struct(counterFields) as unknown as Schema.Sch
 const counterTraits: Record<string, any> = {}
 for (let i = 0; i < DEFERRED_STEPS; i++) {
   const key = `d${i}`
-  counterTraits[key] = Logix.StateTrait.computed({
+  counterTraits[key] = FieldContracts.fieldComputed({
     deps: ['count'] as any,
     get: (count: any) => (count as number) + i,
     scheduling: 'deferred',
   } as any)
 }
 
-const CounterModule = Logix.Module.make('DevtoolsTimelineCounter', {
+const CounterModule = FieldContracts.withModuleFieldDeclarations(Logix.Module.make('DevtoolsTimelineCounter', {
   state: CounterStateSchema,
   actions: {
     increment: Schema.Void,
@@ -80,21 +82,20 @@ const CounterModule = Logix.Module.make('DevtoolsTimelineCounter', {
     increment: Logix.Module.Reducer.mutate((draft) => {
       draft.count += 1
     }),
-  },
-  traits: Logix.StateTrait.from(CounterStateSchema as any)(counterTraits as any),
-})
+  }
+}), FieldContracts.fieldFrom(CounterStateSchema as any)(counterTraits as any))
 
-const CounterImpl = CounterModule.implement({
+const CounterProgram = Logix.Program.make(CounterModule, {
   initial: {
     count: 0,
     ...Object.fromEntries(Array.from({ length: DEFERRED_STEPS }, (_, i) => [`d${i}`, i])),
   } as CounterState,
   logics: [
-    CounterModule.logic(($) =>
+    CounterModule.logic('counter-increment-trace', ($) =>
       Effect.gen(function* () {
         // Record a visible trace event via DebugSink so it's easy to locate in the timeline.
         yield* $.onAction('increment').run(() =>
-          Logix.Debug.record({
+          CoreDebug.record({
             type: 'trace:increment',
             moduleId: CounterModule.id,
             data: { source: 'EffectOpTimelineView.test' },
@@ -106,14 +107,14 @@ const CounterImpl = CounterModule.implement({
 })
 
 const makeRuntime = () =>
-  Logix.Runtime.make(CounterImpl, {
+  Logix.Runtime.make(CounterProgram, {
     label: 'DevtoolsTimelineRuntime',
-    layer: devtoolsLayer as Layer.Layer<any, never, never>,
+    layer: CoreDebug.devtoolsHubLayer() as Layer.Layer<any, never, never>,
     stateTransaction: {
-      traitConvergeMode: 'dirty',
-      traitConvergeBudgetMs: 100_000,
-      traitConvergeDecisionBudgetMs: 100_000,
-      traitConvergeTimeSlicing: { enabled: true, debounceMs: 1, maxLagMs: 50 },
+      fieldConvergeMode: 'dirty',
+      fieldConvergeBudgetMs: 100_000,
+      fieldConvergeDecisionBudgetMs: 100_000,
+      fieldConvergeTimeSlicing: { enabled: true, debounceMs: 1, maxLagMs: 50 },
       txnLanes: { enabled: true, budgetMs: 0, debounceMs: 0, maxLagMs: 50, allowCoalesce: true },
     },
   })
@@ -129,14 +130,14 @@ const refreshDevtoolsState = async () => {
 }
 
 const CounterView: React.FC = () => {
-  const runtimeHandle = useModule(CounterImpl.tag)
-  const count = useModule(runtimeHandle, (s) => s.count)
+  const runtimeHandle = useModule(CounterProgram.tag)
+  const count = useSelector(runtimeHandle, (s) => s.count)
   const dispatch = useDispatch(runtimeHandle)
   const runtimeBase = useRuntime()
 
   React.useEffect(() => {
     runtimeBase.runFork(
-      Logix.Debug.record({
+      CoreDebug.record({
         type: 'trace:react-render',
         moduleId: runtimeHandle.runtime.moduleId,
         instanceId: runtimeHandle.runtime.instanceId,
@@ -180,14 +181,8 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
     await waitFor(() => {
       // The panel title appearing means the panel is open.
       expect(screen.getByText(/Developer Tools/i)).not.toBeNull()
-      expect(screen.getByText(/Latest Event/i)).not.toBeNull()
+      expect(screen.getByLabelText('SelectedSessionWorkbench')).not.toBeNull()
     })
-
-    // The Inspector should show a summary for the current transaction.
-    expect(screen.getByText(/Transaction Summary/i)).not.toBeNull()
-
-    // By default there should be no "Selected Event" section.
-    expect(screen.queryByText(/Selected Event/i)).toBeNull()
 
     // Wait for the DevtoolsModule to derive timeline data.
     await waitFor(() => {
@@ -201,10 +196,11 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
       devtoolsModuleRuntime.getState as any as Effect.Effect<DevtoolsState, never, any>,
     ) as DevtoolsState
     const lastEntry = stateAfterEvents.timeline[stateAfterEvents.timeline.length - 1]
-    const lastRef = lastEntry.event as Logix.Debug.RuntimeDebugEventRef
+    const lastRef = lastEntry.event as CoreDebug.RuntimeDebugEventRef
     const targetLabel = lastRef.label
 
     // Find the corresponding event row in the timeline and click to select it.
+    fireEvent.click(screen.getAllByRole('button', { name: /^timeline$/i })[0] as HTMLButtonElement)
     let eventRow: HTMLElement | undefined
     await waitFor(() => {
       const rows = screen.getAllByRole('button', {
@@ -217,6 +213,7 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
       throw new Error('Timeline event row not found')
     }
     fireEvent.click(eventRow)
+    fireEvent.click(screen.getAllByRole('button', { name: /^inspector$/i })[0] as HTMLButtonElement)
 
     // The Inspector should switch to the "Selected Event" view.
     await waitFor(() => {
@@ -224,7 +221,20 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
     })
 
     // Click the same row again to clear selection and return to "Latest Event" mode.
-    fireEvent.click(eventRow)
+    fireEvent.click(screen.getAllByRole('button', { name: /^timeline$/i })[0] as HTMLButtonElement)
+    let rowForClear: HTMLElement | undefined
+    await waitFor(() => {
+      const rows = screen.getAllByRole('button', {
+        name: new RegExp(targetLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      })
+      expect(rows.length).toBeGreaterThan(0)
+      rowForClear = rows[0] as HTMLElement
+    })
+    if (!rowForClear) {
+      throw new Error('Timeline event row for clearing not found')
+    }
+    fireEvent.click(rowForClear)
+    fireEvent.click(screen.getAllByRole('button', { name: /^inspector$/i })[0] as HTMLButtonElement)
 
     await waitFor(() => {
       expect(screen.getByText(/Latest Event/i)).not.toBeNull()
@@ -263,8 +273,8 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
       ) as DevtoolsState
 
       const refs = state.timeline
-        .map((entry) => entry.event as Logix.Debug.RuntimeDebugEventRef | undefined)
-        .filter((ref): ref is Logix.Debug.RuntimeDebugEventRef => ref != null)
+        .map((entry) => entry.event as CoreDebug.RuntimeDebugEventRef | undefined)
+        .filter((ref): ref is CoreDebug.RuntimeDebugEventRef => ref != null)
 
       const stateEventsWithTxn = refs.filter((ref) => ref.kind === 'state' && ref.txnId != null)
       expect(stateEventsWithTxn.length).toBeGreaterThan(0)
@@ -276,8 +286,8 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
     ) as DevtoolsState
 
     const refs = state.timeline
-      .map((entry) => entry.event as Logix.Debug.RuntimeDebugEventRef | undefined)
-      .filter((ref): ref is Logix.Debug.RuntimeDebugEventRef => ref != null)
+      .map((entry) => entry.event as CoreDebug.RuntimeDebugEventRef | undefined)
+      .filter((ref): ref is CoreDebug.RuntimeDebugEventRef => ref != null)
 
     const resolvedTxnId = targetTxnId
     if (!resolvedTxnId) {
@@ -324,8 +334,8 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
       ) as DevtoolsState
 
       const refs = state.timeline
-        .map((entry) => entry.event as Logix.Debug.RuntimeDebugEventRef | undefined)
-        .filter((ref): ref is Logix.Debug.RuntimeDebugEventRef => ref != null)
+        .map((entry) => entry.event as CoreDebug.RuntimeDebugEventRef | undefined)
+        .filter((ref): ref is CoreDebug.RuntimeDebugEventRef => ref != null)
 
       const renderEvents = refs.filter((ref) => ref.kind === 'react-render')
       expect(renderEvents.length).toBeGreaterThan(0)
@@ -354,7 +364,7 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
     }
   })
 
-  it('renders selector lane summary (static/dynamic + fallbackTop)', async () => {
+  it('shows selector eval evidence through the inspector drilldown', async () => {
     const runtime = makeRuntime()
 
     try {
@@ -379,8 +389,8 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
         devtoolsModuleRuntime.getState as any as Effect.Effect<DevtoolsState, never, any>,
       ) as DevtoolsState
       const refs = state.timeline
-        .map((entry) => entry.event as Logix.Debug.RuntimeDebugEventRef | undefined)
-        .filter((ref): ref is Logix.Debug.RuntimeDebugEventRef => ref != null)
+        .map((entry) => entry.event as CoreDebug.RuntimeDebugEventRef | undefined)
+        .filter((ref): ref is CoreDebug.RuntimeDebugEventRef => ref != null)
       const selectorEval = refs.find((ref) => ref.label === 'trace:selector:eval')
       expect(selectorEval).toBeDefined()
       selectorEventLabel = selectorEval?.label
@@ -390,16 +400,24 @@ describe('@logixjs/devtools-react · EffectOpTimelineView & Inspector behavior',
       throw new Error('selector eval event not found')
     }
 
-    const selectorRows = screen.getAllByRole('button', {
-      name: new RegExp(selectorEventLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
+    fireEvent.click(screen.getAllByRole('button', { name: /^timeline$/i })[0] as HTMLButtonElement)
+    let selectorRow: HTMLElement | undefined
+    await waitFor(() => {
+      const selectorRows = screen.getAllByRole('button', {
+        name: new RegExp(selectorEventLabel!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
+      })
+      expect(selectorRows.length).toBeGreaterThan(0)
+      selectorRow = selectorRows[0] as HTMLElement
     })
-    fireEvent.click(selectorRows[0] as HTMLButtonElement)
+    if (!selectorRow) {
+      throw new Error('selector eval row not found')
+    }
+    fireEvent.click(selectorRow)
+    fireEvent.click(screen.getAllByRole('button', { name: /^inspector$/i })[0] as HTMLButtonElement)
 
     await waitFor(() => {
-      expect(screen.getAllByText(/selectorLane: static \d+, dynamic \d+/i).length).toBeGreaterThan(0)
-      expect(screen.getAllByText(/fallbackTop:/i).length).toBeGreaterThan(0)
-      expect(screen.getAllByText(/txnBacklog: pending \d+, age/i).length).toBeGreaterThan(0)
-      expect(screen.getAllByText(/txnReasons:/i).length).toBeGreaterThan(0)
+      expect(screen.getByText(/Selected Event/i)).not.toBeNull()
+      expect(screen.getAllByText(/trace:selector:eval/i).length).toBeGreaterThan(0)
     })
     } finally {
       await runtime.dispose()

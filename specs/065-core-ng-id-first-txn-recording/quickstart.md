@@ -2,8 +2,8 @@
 
 本 Quickstart 用来快速对齐：
 
-1) id-first 在 txn 侧到底“省掉了什么”；  
-2) 如何解释一次提交（dirtyAll/原因码/哪些 roots）；  
+1) id-first 在 txn 侧到底“省掉了什么”；
+2) 如何解释一次提交（dirtyAll/原因码/哪些 roots）；
 3) 如何跑 perf evidence 并让 hard gates 可判定。
 
 ## 1) 你将获得什么（可见结果）
@@ -52,9 +52,9 @@
 
 失败/复测策略（若 diff FAIL 或 comparable=false）：
 
-- 先确认 before/after 的 `matrixId/profile/env` 完全一致（否则直接视为不可比）。  
-- 先缩小 `--files` 到 `test/browser/perf-boundaries`（避免引入非核心 suites 的不稳定性）。  
-- 必要时使用更慢但更稳的 profile（例如 `--profile soak`）复测；`diff:triage` 只能用于定位，不能替代 hard gate。  
+- 先确认 before/after 的 `matrixId/profile/env` 完全一致（否则直接视为不可比）。
+- 先缩小 `--files` 到 `test/browser/perf-boundaries`（避免引入非核心 suites 的不稳定性）。
+- 必要时使用更慢但更稳的 profile（例如 `--profile soak`）复测；`diff:triage` 只能用于定位，不能替代 hard gate。
 
 ### 4.2 Node（devtools/txn 基线）
 
@@ -79,8 +79,8 @@
 
 失败/复测策略（若波动不可判定或超阈值）：
 
-- 优先固定 `NODE_ENV=production`（避免 dev 诊断/日志扰动）并保持同一机器/同一电源模式/无后台负载。  
-- 提升 `RUNS/WARMUP_DISCARD` 后重复 3 次，取最差值记录（不允许挑最好的一次）。  
+- 优先固定 `NODE_ENV=production`（避免 dev 诊断/日志扰动）并保持同一机器/同一电源模式/无后台负载。
+- 提升 `RUNS/WARMUP_DISCARD` 后重复 3 次，取最差值记录（不允许挑最好的一次）。
 
 ## 5) 迁移提醒（只前进）
 

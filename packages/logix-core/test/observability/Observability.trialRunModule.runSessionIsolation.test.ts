@@ -2,8 +2,9 @@ import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
+import { trialRunModule } from '../../src/internal/observability/trialRunModule.js'
 
-describe('Observability.trialRunModule (run session isolation)', () => {
+describe('Runtime.trial (run session isolation)', () => {
   it.effect('should isolate runId and BuildEnv config between parallel runs', () =>
     Effect.gen(function* () {
       const Root = Logix.Module.make('TrialRunModule.RunSessionIsolation', {
@@ -11,17 +12,17 @@ describe('Observability.trialRunModule (run session isolation)', () => {
         actions: {},
       })
 
-      const program = Root.implement({ initial: undefined, logics: [] })
+      const program = Logix.Program.make(Root, { initial: undefined, logics: [] })
 
       const [a, b] = yield* Effect.all(
         [
-          Logix.Observability.trialRunModule(program, {
+          trialRunModule(program as any, {
             runId: 'run:test:isolation:a',
             buildEnv: { hostKind: 'node', config: { A: true } },
             diagnosticsLevel: 'off',
             maxEvents: 1,
           }),
-          Logix.Observability.trialRunModule(program, {
+          trialRunModule(program as any, {
             runId: 'run:test:isolation:b',
             buildEnv: { hostKind: 'node', config: { B: true } },
             diagnosticsLevel: 'off',

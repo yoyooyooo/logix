@@ -1,7 +1,9 @@
 import { describe, it, expect } from '@effect/vitest'
+import { token } from '@logixjs/i18n'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
+import { materializeExtendedHandle } from '../support/form-harness.js'
 
 const waitForAsync = Effect.promise(
   () =>
@@ -13,6 +15,7 @@ const waitForAsync = Effect.promise(
 describe('Form refactor regressions (US3)', () => {
   it.effect('setValue clears manual+schema errors and keeps errorCount consistent', () =>
     Effect.gen(function* () {
+      const manualToken = token('form.manual')
       const ValuesSchema = Schema.Struct({
         name: Schema.String,
       })
@@ -25,32 +28,40 @@ describe('Form refactor regressions (US3)', () => {
         initialValues: { name: '' } satisfies Values,
       })
 
-      const runtime = Logix.Runtime.make(module, {
-        layer: Layer.empty as Layer.Layer<any, never, never>,
-      })
+        const runtime = Logix.Runtime.make(module, {
+          layer: Layer.empty as Layer.Layer<any, never, never>,
+        })
 
       const program = Effect.gen(function* () {
         const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
-        const controller = module.controller.make(rt)
+        const handle = materializeExtendedHandle(module.tag, rt) as any
 
         // Manually write a schema error (avoid relying on Schema decoding details) + a manual error (setError).
-        yield* controller.dispatch({
+        yield* handle.dispatch({
           _tag: 'setValue',
           payload: { path: 'errors.$schema.name', value: 'schema' },
         } as any)
-        yield* controller.controller.setError('name', 'manual')
+        yield* handle.setError('name', {
+          origin: 'manual',
+          severity: 'error',
+          message: manualToken,
+        })
         yield* Effect.sleep('10 millis')
 
-        const s1: any = yield* controller.getState
+        const s1: any = yield* handle.getState
         expect(s1.errors?.$schema?.name).toBe('schema')
-        expect(s1.errors?.$manual?.name).toBe('manual')
-        expect(s1.$form?.errorCount).toBeGreaterThan(0)
+        expect(s1.errors?.$manual?.name).toEqual({
+          origin: 'manual',
+          severity: 'error',
+          message: manualToken,
+        })
+        expect(s1.$form?.errorCount).toBe(1)
 
         // setValue should clear $manual/$schema subtrees for the same field and reset errorCount to zero.
-        yield* controller.field('name').set('Alice')
+        yield* handle.field('name').set('Alice')
         yield* Effect.sleep('10 millis')
 
-        const s2: any = yield* controller.getState
+        const s2: any = yield* handle.getState
         expect(s2.errors?.$manual?.name).toBeUndefined()
         expect(s2.errors?.$schema?.name).toBeUndefined()
         expect(s2.$form?.errorCount).toBe(0)
@@ -59,61 +70,6 @@ describe('Form refactor regressions (US3)', () => {
       yield* Effect.promise(() => runtime.runPromise(program as any))
     }),
   )
-
-  it('derived guardrails error stays stable', () => {
-    const ValuesSchema = Schema.Struct({
-      name: Schema.String,
-    })
-
-    type Values = Schema.Schema.Type<typeof ValuesSchema>
-
-    expect(() =>
-      Form.make('Form.Refactor.Regression.Derived', {
-        values: ValuesSchema,
-        initialValues: { name: '' } satisfies Values,
-        derived: {
-          'errors.name': Form.Trait.computed<any, any, any>({
-            deps: ['name'],
-            get: () => 'NO',
-          }),
-        } as any,
-      }),
-    ).toThrow(/only values\/ui are allowed/)
-  })
-
-  it('rules + traits conflict fails with stable message', () => {
-    const ValuesSchema = Schema.Struct({
-      name: Schema.String,
-    })
-
-    type Values = Schema.Schema.Type<typeof ValuesSchema>
-
-    const $ = Form.from(ValuesSchema)
-
-    const rules = $.rules(
-      Form.Rule.field('name', {
-        required: 'required',
-      }),
-    )
-
-    expect(() =>
-      Form.make('Form.Refactor.Regression.Conflict', {
-        values: ValuesSchema,
-        initialValues: { name: '' } satisfies Values,
-        rules,
-        traits: Logix.StateTrait.from(ValuesSchema)({
-          name: Logix.StateTrait.node({
-            check: {
-              required: {
-                deps: ['name'],
-                validate: (value: string) => (String(value ?? '').trim() ? undefined : 'required'),
-              },
-            },
-          }),
-        }),
-      }),
-    ).toThrow(/Duplicate trait path "name".*traits\/derived.*rules/)
-  })
 
   it.effect('rowId error ownership remains stable across swap/move/remove', () =>
     Effect.gen(function* () {
@@ -128,51 +84,50 @@ describe('Form refactor regressions (US3)', () => {
 
       type Values = Schema.Schema.Type<typeof ValuesSchema>
       type Row = Schema.Schema.Type<typeof RowSchema>
+      const module = Form.make(
+        'Form.Refactor.Regression.RowId',
+        {
+          values: ValuesSchema,
+          validateOn: ['onChange'],
+          reValidateOn: ['onChange'],
+          initialValues: {
+            items: [
+              { id: 'row-0', warehouseId: 'WH-000' },
+              { id: 'row-1', warehouseId: 'WH-001' },
+              { id: 'row-2', warehouseId: 'WH-002' },
+            ],
+          } satisfies Values,
+        },
+        (form) => {
+          form.list('items', {
+            identity: { mode: 'trackBy', trackBy: 'id' },
+            list: {
+              deps: ['warehouseId'],
+              validate: (rows: ReadonlyArray<Row>) => {
+                const indicesByValue = new Map<string, Array<number>>()
 
-      const module = Form.make('Form.Refactor.Regression.RowId', {
-        values: ValuesSchema,
-        validateOn: ['onChange'],
-        reValidateOn: ['onChange'],
-        initialValues: {
-          items: [
-            { id: 'row-0', warehouseId: 'WH-000' },
-            { id: 'row-1', warehouseId: 'WH-001' },
-            { id: 'row-2', warehouseId: 'WH-002' },
-          ],
-        } satisfies Values,
-        traits: Logix.StateTrait.from(ValuesSchema)({
-          items: Logix.StateTrait.list<Row>({
-            list: Logix.StateTrait.node<ReadonlyArray<Row>>({
-              check: {
-                uniqueWarehouse: {
-                  deps: ['warehouseId'],
-                  validate: (rows: ReadonlyArray<Row>) => {
-                    const indicesByValue = new Map<string, Array<number>>()
+                for (let i = 0; i < rows.length; i++) {
+                  const v = String(rows[i]?.warehouseId ?? '').trim()
+                  if (!v) continue
+                  const bucket = indicesByValue.get(v) ?? []
+                  bucket.push(i)
+                  indicesByValue.set(v, bucket)
+                }
 
-                    for (let i = 0; i < rows.length; i++) {
-                      const v = String(rows[i]?.warehouseId ?? '').trim()
-                      if (!v) continue
-                      const bucket = indicesByValue.get(v) ?? []
-                      bucket.push(i)
-                      indicesByValue.set(v, bucket)
-                    }
+                const rowErrors: Array<Record<string, unknown> | undefined> = rows.map(() => undefined)
+                for (const dupIndices of indicesByValue.values()) {
+                  if (dupIndices.length <= 1) continue
+                  for (const i of dupIndices) {
+                    rowErrors[i] = { warehouseId: 'dup' }
+                  }
+                }
 
-                    const rowErrors: Array<Record<string, unknown> | undefined> = rows.map(() => undefined)
-                    for (const dupIndices of indicesByValue.values()) {
-                      if (dupIndices.length <= 1) continue
-                      for (const i of dupIndices) {
-                        rowErrors[i] = { warehouseId: 'dup' }
-                      }
-                    }
-
-                    return rowErrors.some(Boolean) ? { rows: rowErrors } : undefined
-                  },
-                },
+                return rowErrors.some(Boolean) ? { rows: rowErrors } : undefined
               },
-            }),
-          }),
-        }),
-      })
+            },
+          })
+        },
+      )
 
       const runtime = Logix.Runtime.make(module, {
         layer: Layer.empty as Layer.Layer<any, never, never>,
@@ -184,14 +139,14 @@ describe('Form refactor regressions (US3)', () => {
 
       const program = Effect.gen(function* () {
         const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
-        const controller = module.controller.make(rt)
+        const handle = materializeExtendedHandle(module.tag, rt) as any
         yield* waitForAsync
 
-        yield* controller.field('items.0.warehouseId').set('WH-DUP')
-        yield* controller.field('items.1.warehouseId').set('WH-DUP')
+        yield* handle.field('items.0.warehouseId').set('WH-DUP')
+        yield* handle.field('items.1.warehouseId').set('WH-DUP')
         yield* waitForAsync
 
-        const s1: any = yield* controller.getState
+        const s1: any = yield* handle.getState
         const rows1 = getRows(s1)
         expect(rows1[0]?.warehouseId).toBe('dup')
         expect(rows1[1]?.warehouseId).toBe('dup')
@@ -203,10 +158,10 @@ describe('Form refactor regressions (US3)', () => {
           [String(s1.items?.[1]?.id), String(rows1[1].$rowId)],
         ])
 
-        yield* controller.fieldArray('items').swap(0, 2)
+        yield* handle.fieldArray('items').swap(0, 2)
         yield* waitForAsync
 
-        const s2: any = yield* controller.getState
+        const s2: any = yield* handle.getState
         const idx2 = indexById(s2.items ?? [])
         const rows2 = getRows(s2)
         for (const [bizId, rowId] of rowIdByBizId.entries()) {
@@ -217,10 +172,10 @@ describe('Form refactor regressions (US3)', () => {
         }
 
         const from = idx2.get('row-0') ?? 0
-        yield* controller.fieldArray('items').move(from, 0)
+        yield* handle.fieldArray('items').move(from, 0)
         yield* waitForAsync
 
-        const s3: any = yield* controller.getState
+        const s3: any = yield* handle.getState
         const idx3 = indexById(s3.items ?? [])
         const rows3 = getRows(s3)
         for (const [bizId, rowId] of rowIdByBizId.entries()) {
@@ -231,10 +186,10 @@ describe('Form refactor regressions (US3)', () => {
         }
 
         const removeIndex = idx3.get('row-1') ?? 0
-        yield* controller.fieldArray('items').remove(removeIndex)
+        yield* handle.fieldArray('items').remove(removeIndex)
         yield* waitForAsync
 
-        const s4: any = yield* controller.getState
+        const s4: any = yield* handle.getState
         const rows4 = getRows(s4)
         expect(rows4.some((r) => r && (r as any).warehouseId)).toBe(false)
       })

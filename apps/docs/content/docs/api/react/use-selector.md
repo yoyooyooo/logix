@@ -1,41 +1,57 @@
 ---
 title: useSelector
-description: Subscribe to module state slices with optional equality and ReadQuery-based optimization.
+description: Subscribe to full module state or a selected slice.
 ---
 
-`useSelector` is the primary Hook for **reading module state** in React.
+`useSelector` is the canonical read API for Logix state in React.
 
-It subscribes your component to a module’s state (or a selected slice), and re-renders only when the selected value changes.
-
-## Basic usage
+## Full state
 
 ```tsx
-import { useModule, useSelector } from '@logixjs/react'
-import { CounterDef } from './modules/counter'
-
-function Counter() {
-  const counter = useModule(CounterDef)
-  const count = useSelector(counter, (s) => s.count)
-
-  return <div>{count}</div>
-}
+const state = useSelector(handle)
 ```
 
-## API
+## Slice subscription
 
-### 1) `useSelector(handle)` (read full state)
+```tsx
+const count = useSelector(handle, (s) => s.count)
+```
 
-Returns the full state of the module.
+An optional equality function may be provided:
 
-### 2) `useSelector(handle, selector, equalityFn?)` (read a slice)
+```tsx
+const slice = useSelector(handle, selector, equalityFn)
+```
 
-- `selector`: `(state) => slice`
-- `equalityFn`: optional equality function; controls when the component should re-render
+## Notes
 
-When eligible, Logix may compile the selector into a `ReadQuery` to enable a more optimized subscription path.
+- `useSelector(handle)` reads full state
+- `useSelector(handle, selector, equalityFn?)` subscribes to a slice
+- eligible selectors may use a more optimized subscription path internally
+
+## Form selector descriptors
+
+Form-specific support reads still use this hook.
+
+```tsx
+const value = useSelector(form, fieldValue("items.0.warehouseId"))
+const explain = useSelector(form, Form.Error.field("items.0.warehouseId"))
+const support = useSelector(form, Form.Companion.field("items.warehouseId"))
+const rowSupport = useSelector(
+  form,
+  Form.Companion.byRowId("items", rowId, "warehouseId"),
+)
+```
+
+`Form.Companion.*` descriptors are consumed through `useSelector`.
+They do not create `useCompanion`, a Form-owned hook family, a carrier-bound selector route, or a second host read route.
+
+`Form.Error.field(path)` is a field explanation selector.
+Its result may represent `error`, `pending`, `stale`, `cleanup`, or no current explanation.
+It is not just the canonical `FormErrorLeaf`, and it does not become a second validation truth.
 
 ## See also
 
-- [API: useModule](./use-module)
-- [API: useDispatch](./use-dispatch)
-- [API: ReadQuery](../core/read-query)
+- [useModule](./use-module)
+- [useDispatch](./use-dispatch)
+- [Form selectors and support facts](/docs/form/selectors)

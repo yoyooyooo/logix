@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 import {Effect, Exit, Layer, Scope, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../../src/index.js'
 
@@ -14,13 +15,15 @@ describe('HierarchicalInjector ImportsScope lifecycle', () => {
       actions: { noop: Schema.Void },
     })
 
-    const ChildImpl = Child.implement({
+    const ChildProgram = Logix.Program.make(Child, {
       initial: { count: 0 },
     })
 
-    const ParentImpl = Parent.implement({
+    const ParentProgram = Logix.Program.make(Parent, {
       initial: { ok: true },
-      imports: [ChildImpl.impl],
+      capabilities: {
+        imports: [ChildProgram],
+      },
     })
 
     await Effect.runPromise(
@@ -29,12 +32,12 @@ describe('HierarchicalInjector ImportsScope lifecycle', () => {
         let parentRuntime: any
         let importsScope: any
         try {
-          const context = yield* Layer.buildWithScope(ParentImpl.impl.layer, scope)
+          const context = yield* Layer.buildWithScope(RuntimeContracts.getProgramRuntimeBlueprint(ParentProgram).layer, scope)
 
           parentRuntime = ServiceMap.get(context as ServiceMap.ServiceMap<any>, Parent.tag) as any
           const childRuntime = ServiceMap.get(context as ServiceMap.ServiceMap<any>, Child.tag) as any
 
-          importsScope = Logix.InternalContracts.getImportsScope(parentRuntime)
+          importsScope = RuntimeContracts.getImportsScope(parentRuntime)
           expect(importsScope).toBeTruthy()
           expect(typeof importsScope?.get).toBe('function')
           expect(importsScope.get(Child.tag)).toBe(childRuntime)

@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Action Surface（actions/dispatchers/reducers/effects）与 Manifest
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2026-01-01  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2026-01-01
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality

@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { createSandboxClient } from '@logixjs/sandbox'
+import { createSandboxClient } from '../../src/Client.js'
 import { startKernelMock } from './msw/kernel-mock.js'
 
 const hasWorker = typeof Worker !== 'undefined'
@@ -67,21 +67,20 @@ testFn(
 	        },
 	      });
 
-      const CounterLogic = CounterModule.logic(($) => ({
-        setup: Effect.void,
-        run: Effect.gen(function* () {
+      const CounterLogic = CounterModule.logic('counter', ($) =>
+        Effect.gen(function* () {
           yield* $.dispatch({ _tag: "inc", payload: undefined });
           yield* $.dispatchers.inc()
         }),
-      }));
+      );
 
-      const CounterImpl = CounterModule.implement({
+      const CounterProgram = Logix.Program.make(CounterModule, {
         initial: { count: 0 },
         logics: [CounterLogic],
       });
 
       const program = Effect.gen(function* () {
-        const runtime = Logix.Runtime.make(CounterImpl);
+        const runtime = Logix.Runtime.make(CounterProgram);
         const state = yield* Effect.promise(() =>
           runtime.runPromise(
 	            Effect.gen(function* () {
@@ -176,14 +175,15 @@ testFn(
     expect((platformRunResult.stateSnapshot as any).ok).toBe(true)
     expect((platformRunResult.stateSnapshot as any).dirname).toBe('/a/b')
 
-    // Scenario 4: @logixjs/core subpath imports (Module/Runtime/StateTrait)
+    // Scenario 4: @logixjs/core subpath imports (Module/Program/Runtime/FieldKernel)
     const logixSubpathCode = `
 	      import { Effect, Schema } from "effect";
 	      import * as Module from "@logixjs/core/Module";
+	      import * as Program from "@logixjs/core/Program";
 	      import * as Runtime from "@logixjs/core/Runtime";
-	      import * as StateTrait from "@logixjs/core/StateTrait";
+	      import * as FieldKernel from "@logixjs/core/FieldKernel";
 
-	      const CounterState = Schema.Struct({ count: Schema.Number });
+	      const CounterState = Schema.Struct({ count: Schema.Number, doubled: Schema.Number });
 	      const CounterActions = { inc: Schema.Void };
 
 	      const CounterModule = Module.make("CounterSubpath", {
@@ -196,23 +196,29 @@ testFn(
 	        },
 	      });
 
-	      const CounterLogic = CounterModule.logic(($) => ({
-	        setup: Effect.void,
-	        run: Effect.gen(function* () {
-	          yield* Effect.log("Runtime.make type: " + String(typeof Runtime.make));
-	          yield* Effect.log("StateTrait.source type: " + String(typeof StateTrait.source));
-	          yield* $.dispatchers.inc();
-	          yield* $.dispatchers.inc();
-	        }),
-	      }));
+	      const CounterLogic = CounterModule.logic("counter-subpath", ($) => {
+	        $.fields({
+	          doubled: FieldKernel.computed({
+	            deps: ["count"],
+	            get: (count) => count * 2,
+	          }),
+	        });
 
-	      const CounterImpl = CounterModule.implement({
-	        initial: { count: 0 },
+	        return Effect.gen(function* () {
+	          yield* Effect.log("Runtime.make type: " + String(typeof Runtime.make));
+	          yield* Effect.log("FieldKernel.source type: " + String(typeof FieldKernel.source));
+	          yield* $.dispatchers.inc();
+	          yield* $.dispatchers.inc();
+	        });
+	      });
+
+	      const CounterProgram = Program.make(CounterModule, {
+	        initial: { count: 0, doubled: 0 },
 	        logics: [CounterLogic],
 	      });
 
 	      const program = Effect.gen(function* () {
-	        const runtime = Runtime.make(CounterImpl);
+	        const runtime = Runtime.make(CounterProgram);
 	        const state = yield* Effect.promise(() =>
 	          runtime.runPromise(
 	            Effect.gen(function* () {

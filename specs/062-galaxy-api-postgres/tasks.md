@@ -1,6 +1,6 @@
 # Tasks: 062 logix-galaxy-api（PostgreSQL 开发环境样例）
 
-**Input**: `specs/062-galaxy-api-postgres/spec.md` + `specs/062-galaxy-api-postgres/plan.md`  
+**Input**: `specs/062-galaxy-api-postgres/spec.md` + `specs/062-galaxy-api-postgres/plan.md`
 **Optional**: `specs/062-galaxy-api-postgres/research.md` / `specs/062-galaxy-api-postgres/data-model.md` / `specs/062-galaxy-api-postgres/contracts/openapi.yaml` / `specs/062-galaxy-api-postgres/quickstart.md`
 
 **Tests**: 本特性要求自动化测试；默认测试必须可在未配置 `DATABASE_URL` 的环境中运行通过（不依赖本机 PostgreSQL）。可选 smoke 用于验证真实数据库连通。

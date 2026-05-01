@@ -4,7 +4,7 @@ description: "Task list for 035-module-reference-space (reference space: PortSpe
 
 # Tasks: Module Reference Space（035：模块引用空间事实源）
 
-**Input**: `specs/035-module-reference-space/spec.md`  
+**Input**: `specs/035-module-reference-space/spec.md`
 **Prerequisites**: `specs/035-module-reference-space/plan.md`（required）, `specs/035-module-reference-space/research.md`, `specs/035-module-reference-space/data-model.md`, `specs/035-module-reference-space/contracts/`, `specs/035-module-reference-space/quickstart.md`
 
 **Tests**: 本特性会成为 032/033/034/036 的引用空间事实源；至少需要 contracts/schema 预检 + 导出确定性/截断/降级策略的单测，避免平台侧出现并行推断。
@@ -40,7 +40,7 @@ description: "Task list for 035-module-reference-space (reference space: PortSpe
 
 ## Phase 3: User Story 1 - 平台基于 PortSpec/TypeIR 做 autocomplete 与引用安全（Priority: P1）🎯 MVP
 
-**Goal**: 平台/Workbench 不读源码推断；只依赖 `@logixjs/module.portSpec@v1` + `@logixjs/module.typeIr@v1` 做补全与校验。  
+**Goal**: 平台/Workbench 不读源码推断；只依赖 `@logixjs/module.portSpec@v1` + `@logixjs/module.typeIr@v1` 做补全与校验。
 **Independent Test**: 给定导出的 PortSpec/TypeIR，BindingSchema/CodeAsset 的引用越界会被静态拒绝并提示可行动修复。
 
 - [ ] T010 [US1] 在 Workbench 增加 PortSpec/TypeIR 的通用展示与下载（按 artifactKey 分组）到 `examples/logix-sandbox-mvp/src/ir/ArtifactsPanel.tsx`
@@ -51,7 +51,7 @@ description: "Task list for 035-module-reference-space (reference space: PortSpe
 
 ## Phase 4: User Story 2 - 端口/类型 IR 可 diff，用于 CI 与破坏性变更检测（Priority: P2）
 
-**Goal**: 两版本 PortSpec/TypeIR 可稳定 diff，并输出 breaking/risky 结论。  
+**Goal**: 两版本 PortSpec/TypeIR 可稳定 diff，并输出 breaking/risky 结论。
 **Independent Test**: 删除端口 key/收缩 exports/类型收窄能被识别为 breaking 或 WARN。
 
 - [ ] T013 [US2] 定义 PortSpec diff（breaking/risky/noise-free）到 `packages/logix-sandbox/src/workbench/ports/diffPortSpec.ts`
@@ -63,7 +63,7 @@ description: "Task list for 035-module-reference-space (reference space: PortSpe
 
 ## Phase 5: User Story 3 - 导出链路可扩展且有预算/截断/失败语义（Priority: P3）
 
-**Goal**: 导出链路可插拔、失败不阻塞、预算可控；并允许内部利用 SchemaAST（不外泄）。  
+**Goal**: 导出链路可插拔、失败不阻塞、预算可控；并允许内部利用 SchemaAST（不外泄）。
 **Independent Test**: 添加一个额外的 type projector（内部）不改变协议边界；失败时仍产出 artifacts 但带 error envelope。
 
 - [ ] T017 [US3] 抽象 TypeIR projector 接口（允许内部基于 SchemaAST 投影）到 `packages/logix-core/src/internal/reflection/ports/typeIrProjector.ts`
@@ -81,7 +81,7 @@ description: "Task list for 035-module-reference-space (reference space: PortSpe
 
 ## Phase 7: User Story 1 - 资产保存管线（CodeAsset：normalize/deps/digest/budgets）🎯 MVP
 
-**Goal**: 保存资产时得到：`normalizedIr + deps + digest`，并能基于 035 的引用空间做静态校验；黑盒资产不得“偷跑”。  
+**Goal**: 保存资产时得到：`normalizedIr + deps + digest`，并能基于 035 的引用空间做静态校验；黑盒资产不得“偷跑”。
 **Independent Test**: 给定一个可解析子集表达式，保存后 deps 自动推导；给定 blackbox 表达式，必须显式提供 deps 才能保存。
 
 - [ ] T022 [US1] 定义 CodeAsset 的保存入口（source → normalizedIr/deps/digest）到 `packages/logix-sandbox/src/assets/saveCodeAsset.ts`
@@ -97,7 +97,7 @@ description: "Task list for 035-module-reference-space (reference space: PortSpe
 
 ## Phase 8: User Story 1 - parseable 子集解析 + 引用越界静态拒绝
 
-**Goal**: 在可解析子集内自动提取 deps；并将 PortSpec/TypeIR 作为允许引用空间输入，静态拒绝越界引用。  
+**Goal**: 在可解析子集内自动提取 deps；并将 PortSpec/TypeIR 作为允许引用空间输入，静态拒绝越界引用。
 **Independent Test**: 可解析子集表达式自动推导 deps；越界引用（不在 PortSpec/TypeIR）被拒绝并给出修复建议。
 
 - [ ] T030 [US1] 定义“可解析子集”的最小语法边界与 normalizedIr 形状到 `packages/logix-sandbox/src/assets/normalized-ir.ts`
@@ -110,7 +110,7 @@ description: "Task list for 035-module-reference-space (reference space: PortSpe
 
 ## Phase 9: User Story 4 - Sandbox 可控预览：确定性、预算、可解释失败（Priority: P2）
 
-**Goal**: 资产可在 sandbox 受控执行：超时/超预算/非确定性违规可解释。  
+**Goal**: 资产可在 sandbox 受控执行：超时/超预算/非确定性违规可解释。
 **Independent Test**: 构造死循环/超大输出/随机调用等用例，预览会被拦截并返回结构化错误分类。
 
 - [ ] T035 [US4] 定义资产预览执行壳（timeout/maxBytes/允许能力）到 `packages/logix-sandbox/src/assets/preview.ts`
@@ -122,7 +122,7 @@ description: "Task list for 035-module-reference-space (reference space: PortSpe
 
 ## Phase 10: User Story 2 - 资产可审阅、可 diff、可被 agent 自动改写（Anchor/Diff）
 
-**Goal**: 资产具备可审阅 diff、可逆锚点与 agent 可重写边界。  
+**Goal**: 资产具备可审阅 diff、可逆锚点与 agent 可重写边界。
 **Independent Test**: 两版本 asset 的 diff 输出稳定；agent 仅改写 source 后，digest/deps/预算变化可被 036 验收闭环识别。
 
 - [ ] T039 [US2] 定义可逆锚点写入策略（spec/story/block 指针 + 生成指纹）到 `packages/logix-sandbox/src/assets/anchor.ts`

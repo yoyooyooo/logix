@@ -10,7 +10,7 @@ description: 'Task list for 016-serializable-diagnostics-and-identity implementa
 - `specs/016-serializable-diagnostics-and-identity/migration.md`
 - `specs/005-unify-observability-protocol/contracts/schemas/json-value.schema.json`
 - `specs/011-upgrade-lifecycle/contracts/schemas/{module-runtime-identity.schema.json,error-summary.schema.json}`
-- `specs/013-auto-converge-planner/contracts/schemas/trait-converge-event.schema.json`
+- `specs/013-auto-converge-planner/contracts/schemas/field-converge-event.schema.json`
 - `specs/009-txn-patch-dirtyset/spec.md`（稳定标识：`instanceId/txnSeq/opSeq/eventSeq`）
 
 **Note**:
@@ -61,7 +61,7 @@ description: 'Task list for 016-serializable-diagnostics-and-identity implementa
 - [X] T013 去随机化事务/事件标识：显式引入并贯穿 `txnSeq/opSeq/eventSeq`（对齐 009），并以此确定性派生 `txnId/opId/eventId`；移除 `Date.now/Math.random` 作为默认唯一标识在 `packages/logix-core/src/internal/runtime/core/StateTransaction.ts` 与相关事件元信息
 - [X] T014 建立导出边界：`toRuntimeDebugEventRef` 必须产出可 JSON 序列化的 slim 事件（禁止把 `cause/state` 原始对象图塞进 `meta`），并写入 `errorSummary/downgrade` 在 `packages/logix-core/src/internal/runtime/core/DebugSink.ts`
 - [X] T015 DevtoolsHub 只持有可导出形态：ring buffer 从存 `Debug.Event` 改为存 `RuntimeDebugEventRef`；`latestStates` 等按实例维度的 key 改为 `runtimeLabel::moduleId::instanceId`（避免继续使用第二锚点）在 `packages/logix-core/src/internal/runtime/core/DevtoolsHub.ts`
-- [X] T016 对外 Debug API 同步升级（类型/导出/label API）：更新 `DevtoolsSnapshot`/`setInstanceLabel` 等 public surface，移除双锚点入参在 `packages/logix-core/src/Debug.ts`
+- [X] T016 对外 Debug API 同步升级（类型/导出/label API）：更新 `DevtoolsSnapshot`/`setInstanceLabel` 等 public surface，移除双锚点入参在 `packages/logix-core/src/internal/debug-api.ts`
 - [X] T017 （Moved → 011）Lifecycle 核心语义（init gate / destroy LIFO / initProgress / setup-only）由 011 执行与验收：见 `specs/011-upgrade-lifecycle/tasks.md`（T007/T010/T016/T023–T029/T048）
 - [X] T018 （Moved → 011）ModuleRuntime 的 init/destroy 调度与失败链路由 011 执行：见 `specs/011-upgrade-lifecycle/tasks.md`（T010/T027/T029）
 - [X] T019 （Moved → 011）`$.lifecycle.*` setup-only phase guard 由 011 执行：见 `specs/011-upgrade-lifecycle/tasks.md`（T016/T014）
@@ -102,7 +102,7 @@ description: 'Task list for 016-serializable-diagnostics-and-identity implementa
 
 ### Implementation for User Story 3
 
-- [X] T028 [US3] 引入诊断分档配置（`off|light|full`）：把“是否记录/是否归一化/是否写入 ring buffer”变为显式策略，并保证 off 档位不产生新热路径开销在 `packages/logix-core/src/Debug.ts`、`packages/logix-core/src/internal/runtime/core/DebugSink.ts`、`packages/logix-core/src/internal/runtime/core/DevtoolsHub.ts`
+- [X] T028 [US3] 引入诊断分档配置（`off|light|full`）：把“是否记录/是否归一化/是否写入 ring buffer”变为显式策略，并保证 off 档位不产生新热路径开销在 `packages/logix-core/src/internal/debug-api.ts`、`packages/logix-core/src/internal/runtime/core/DebugSink.ts`、`packages/logix-core/src/internal/runtime/core/DevtoolsHub.ts`
 - [X] T029 [US3] 落地事件体积预算与裁剪：默认单条事件 JSON 体积 ≤4KB（超限截断或省略并标记 `downgrade: oversized`），并提供 dropped/oversized 计数在 `packages/logix-core/src/internal/observability/jsonValue.ts` 与 `packages/logix-core/src/internal/runtime/core/DevtoolsHub.ts`
 
 **Checkpoint**: off 档位近零成本；light/full 可解释且预算可验证
@@ -123,8 +123,8 @@ description: 'Task list for 016-serializable-diagnostics-and-identity implementa
 
 ### Implementation for User Story 1
 
-- [X] T031 [US1] 落地最小 EvidencePackage：定义 `ObservationEnvelope/EvidencePackage` 与 `export/import` codec（至少覆盖 `debug:event`），并从 `packages/logix-core/src/index.ts` 暴露在 `packages/logix-core/src/Observability.ts`、`packages/logix-core/src/internal/observability/evidence.ts`、`packages/logix-core/src/index.ts`
-- [X] T032 [US1] 将 Debug/DevtoolsHub 的导出接到 EvidencePackage：从 ring buffer 生成 `ObservationEnvelope(debug:event)` 列表并附带 `runId/seq` 在 `packages/logix-core/src/internal/runtime/core/DevtoolsHub.ts` 与 `packages/logix-core/src/Debug.ts`
+- [X] T031 [US1] 落地最小 EvidencePackage：定义 `ObservationEnvelope/EvidencePackage` 与 `export/import` codec（至少覆盖 `debug:event`），并从 `packages/logix-core/src/index.ts` 暴露在 `packages/logix-core/src/internal/evidence-api.ts`、`packages/logix-core/src/internal/observability/evidence.ts`、`packages/logix-core/src/index.ts`
+- [X] T032 [US1] 将 Debug/DevtoolsHub 的导出接到 EvidencePackage：从 ring buffer 生成 `ObservationEnvelope(debug:event)` 列表并附带 `runId/seq` 在 `packages/logix-core/src/internal/runtime/core/DevtoolsHub.ts` 与 `packages/logix-core/src/internal/debug-api.ts`
 
 **Checkpoint**: EvidencePackage roundtrip 不崩溃（核心 API 层面）；UI 交付延后
 
@@ -140,7 +140,7 @@ description: 'Task list for 016-serializable-diagnostics-and-identity implementa
 - [X] T034 （Moved → 011）React onError 的嵌套/覆盖策略与 ModuleCache 退化防线由 011 执行：见 `specs/011-upgrade-lifecycle/tasks.md`（T043）
 - [X] T035 [US2] Devtools React 消费面升级：修复 selection/聚合/展示逻辑对第二锚点的依赖，改为 `instanceId`（含 tests）在 `packages/logix-devtools-react/src/state/compute.ts`、`packages/logix-devtools-react/src/state/model.ts`、`packages/logix-devtools-react/src/DevtoolsHooks.tsx` 与 `packages/logix-devtools-react/test/devtools-react.integration.test.tsx`
 - [X] T036 [US1] Devtools UI 增加导出/导入入口与降级提示：支持粘贴/文件导入 EvidencePackage，并在错误详情展示 `errorSummary` + “已降级”原因在 `packages/logix-devtools-react/src/state/logic.ts` 与 `packages/logix-devtools-react/src/ui/overview/OverviewDetails.tsx`
-- [X] T037 [P] [US1] 为 013 converge 证据补齐序列化硬门：补齐/发出 `trait:converge` 事件时 `data` 必须是 JsonValue 且不泄露不可序列化对象在 `packages/logix-core/src/internal/state-trait/converge.ts` 与 `packages/logix-core/src/internal/runtime/core/DebugSink.ts`
+- [X] T037 [P] [US1] 为 013 converge 证据补齐序列化硬门：补齐/发出 `field:converge` 事件时 `data` 必须是 JsonValue 且不泄露不可序列化对象在 `packages/logix-core/src/internal/state-field/converge.ts` 与 `packages/logix-core/src/internal/runtime/core/DebugSink.ts`
 - [X] T038 [P] 标注 015 为 Devtools 后续项：在 `specs/015-devtools-converge-performance/tasks.md` 与 `specs/015-devtools-converge-performance/plan.md` 明确“依赖 016 core hardening 完成后再推进”
 - [X] T039 [P] 更新用户文档（产品视角，不出现内部术语）：解释降级标记、导出/导入、instanceId 锚点与诊断分档在 `apps/docs/content/docs/guide/advanced/debugging-and-devtools.md`
 - [X] T040 [P] 对齐 005/013/015 的 tasks 说明：明确“各自 tasks 为实施入口，横切硬化需对齐 016/011 的 contracts/SSoT 裁决源”，并将 005 的 Chrome 扩展任务标记为 Deferred（组件优先）避免出现双真相源在 `specs/005-unify-observability-protocol/tasks.md`、`specs/013-auto-converge-planner/tasks.md` 与 `specs/015-devtools-converge-performance/tasks.md`
@@ -152,9 +152,9 @@ description: 'Task list for 016-serializable-diagnostics-and-identity implementa
 **Purpose**: 把 `meta` 从“隐式对象图”收敛成可解释、可验证、可导出的 Slim 载荷；并为 Kit/Query/Form 等上层语法糖提供一致的去糖化锚点（避免语义漂移与双真相源）。
 
 - [X] T041 [P] 固化合同：Root IR / ControlSurfaceManifest / Static IR 中的可导出 `meta` 仅承诺 JsonValue（或结构化白名单），函数/闭包不会进入 IR（会被裁剪且可定位）；文档落点：`docs/ssot/platform/contracts/03-control-surface-manifest.md`、`specs/016-serializable-diagnostics-and-identity/contracts/README.md`、`docs/ssot/runtime/logix-core/observability/09-debugging.md`
-- [X] T042 [P] 收敛 `JsonValue` 类型真相源：统一以 `packages/logix-core/src/internal/observability/jsonValue.ts` 为唯一类型定义，并让 `packages/logix-core/src/internal/state-trait/meta.ts` 复用该类型（避免两处 `JsonValue` 漂移）
-- [X] T043 类型门禁：将“会进入 IR/导出边界”的 `meta` public surface 从 `Record<string, unknown>` 收敛到 `JsonValue`/`TraitMeta`（至少覆盖 `StateTrait`/`Module`/`BoundApiRuntime`），并一次性修复受影响调用点与示例：`packages/logix-core/src/StateTrait.ts`、`packages/logix-core/src/Module.ts`、`packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts`
-- [X] T044 [P] 开发态告警：当 `TraitMeta.sanitize` 丢弃字段/值（或 JsonValue 投影发生 downgrade）时，发出 Slim 且可序列化的诊断事件并可在 Devtools/DebugSink 中定位；补齐单测覆盖：`packages/logix-core/src/internal/state-trait/meta.ts`、`packages/logix-core/src/internal/state-trait/ir.ts`、`packages/logix-core/src/internal/runtime/core/DebugSink.ts`、`packages/logix-core/test/*`
+- [X] T042 [P] 收敛 `JsonValue` 类型真相源：统一以 `packages/logix-core/src/internal/observability/jsonValue.ts` 为唯一类型定义，并让 `packages/logix-core/src/internal/state-field/meta.ts` 复用该类型（避免两处 `JsonValue` 漂移）
+- [X] T043 类型门禁：将“会进入 IR/导出边界”的 `meta` public surface 从 `Record<string, unknown>` 收敛到 `JsonValue`/`TraitMeta`（至少覆盖 `FieldKernel`/`Module`/`BoundApiRuntime`），并一次性修复受影响调用点与示例：`packages/logix-core/src/FieldKernel.ts`、`packages/logix-core/src/Module.ts`、`packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts`
+- [X] T044 [P] 开发态告警：当 `TraitMeta.sanitize` 丢弃字段/值（或 JsonValue 投影发生 downgrade）时，发出 Slim 且可序列化的诊断事件并可在 Devtools/DebugSink 中定位；补齐单测覆盖：`packages/logix-core/src/internal/state-field/meta.ts`、`packages/logix-core/src/internal/state-field/ir.ts`、`packages/logix-core/src/internal/runtime/core/DebugSink.ts`、`packages/logix-core/test/*`
 
 ## Dependencies & Execution Order
 

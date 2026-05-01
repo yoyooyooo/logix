@@ -10,16 +10,15 @@ const CounterActionMap = {
   dec: Schema.Void,
 }
 
-export type CounterShape = Logix.Shape<typeof CounterStateSchema, typeof CounterActionMap>
+export type CounterShape = Logix.Module.Shape<typeof CounterStateSchema, typeof CounterActionMap>
 
-export const CounterDef = Logix.Module.make('CounterModule', {
+export const Counter = Logix.Module.make('CounterModule', {
   state: CounterStateSchema,
   actions: CounterActionMap,
 })
 
-export const CounterLogic = CounterDef.logic(($) => ({
-  setup: Effect.void,
-  run: Effect.gen(function* () {
+export const CounterLogic = Counter.logic('counter-logic', ($) =>
+  Effect.gen(function* () {
     yield* $.onAction('inc').runParallelFork(
       $.state.update((prev) => ({
         ...prev,
@@ -34,11 +33,9 @@ export const CounterLogic = CounterDef.logic(($) => ({
       })),
     )
   }),
-}))
+)
 
-export const CounterModule = CounterDef.implement({
+export const CounterProgram = Logix.Program.make(Counter, {
   initial: { value: 0 },
   logics: [CounterLogic],
 })
-
-export const CounterImpl = CounterModule.impl

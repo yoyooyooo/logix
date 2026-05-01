@@ -1,8 +1,8 @@
 # Quickstart: Workbench Contract Suite（036：Workbench/CI/Agent 复用同一闭环）
 
-**Date**: 2025-12-26  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/036-workbench-contract-suite/spec.md`  
-**Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/036-workbench-contract-suite/plan.md`
+**Date**: 2025-12-26
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/036-workbench-contract-suite/spec.md`
+**Plan**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/036-workbench-contract-suite/plan.md`
 
 > 本 quickstart 只描述“入口与产物”，不承诺具体 UI/脚本落点（实现细节以 `specs/036-workbench-contract-suite/tasks.md` 为准）。
 >

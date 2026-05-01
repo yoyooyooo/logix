@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "intent-flow://specs/088-async-action-coordinator/contracts/schemas/async-action-event.schema.json",
+  "$id": "logix://specs/088-async-action-coordinator/contracts/schemas/async-action-event.schema.json",
   "title": "AsyncActionEvent",
   "allOf": [
     {

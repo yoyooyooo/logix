@@ -1,43 +1,51 @@
 ---
-title: SSoT Root（平台 + 运行时）
+title: New SSoT Root
 status: living
+version: 14
 ---
 
-# SSoT Root（平台 + 运行时）
+# New SSoT Root
 
-本目录是本仓 **单一事实源（SSoT）** 的聚合根，分为三层：
+本目录承接当前生效的单一事实源。
 
-1. `platform/`：平台概念/模型/契约（原 `docs/ssot/platform`）。
-2. `runtime/`：Logix 运行时规范与 API/契约索引（原 `docs/ssot/runtime`）。
-3. `handbook/`：工程手册与导航索引（非裁决来源，原 `docs/ssot/handbook/*.md`）。
+## 当前状态
 
-## 双 SSoT：Authoring SSoT / Platform SSoT（本仓统一字面标题）
+- 历史 SSoT 已整体迁入 `docs/archive/ssot/`
+- 新 SSoT 只维护当前有效结论
+- 子树 owner 路由统一在各自 README 维护
 
-为避免“同一概念两套权威口径”，本仓将 SSoT 进一步划分为两大阵营（跨 `platform/` 与 `runtime/` 复用同一术语）：
+## 当前角色
 
-- **Authoring SSoT（可编辑）**：面向人/LLM/Studio 的“权威输入工件”（可落盘、可生成、可 Schema 校验、版本化；必须纯 JSON）。例如：`WorkflowDef`。
-- **Platform SSoT（只读消费）**：面向平台/Devtools/CI gate/diff 的“只读消费工件”（Root Static IR + slices/index 的组合；必须从 Authoring SSoT **确定性编译**得到；禁止手改、禁止成为第二语义源）。例如：`ControlSurfaceManifest` + `workflowSurface`。
+- 本页只负责把稳定事实分流到 `runtime/`、`form/` 或 `platform/`
+- 叶子页语义由对应子树 README 和 leaf pages 承接
+- 待升格内容先回到 `docs/next/**` 或 `docs/proposals/**`
 
-原则：
+## 当前入口
 
-- Authoring SSoT 可以有语法糖/压缩输入（TS DSL / Recipe / Studio），但语义必须 100% materialize 到 Authoring SSoT（禁止“隐式降级为黑盒/opaque”）。
-- Platform SSoT 只负责“可判定/可对比/可解释/可回放锚点化”，执行性能来自 runtime 的 internal 计划（例如 `RuntimePlan`），禁止把热路径成本转嫁到 Platform SSoT。
+| 子树 | 进入条件 | 当前入口 |
+| --- | --- | --- |
+| `capability/` | Logix-wide capability planning harness、API projection decision policy、frozen API shape、proposal workflow 等跨 domain 规划事实 | [Capability SSoT Root](./capability/README.md) |
+| `runtime/` | public spine、hot path、control plane、domain、verification、toolkit layer、selector type-safety ceiling、DVTools internal workbench、CLI Agent First control-plane route、Playground product workbench 等运行时事实 | [Runtime SSoT Root](./runtime/README.md) |
+| `form/` | form 领域语义、owner split、exact surface contract、场景矩阵与 capability planning harness | [Form SSoT Root](./form/README.md) |
+| `platform/` | 跨层结构、anchor/profile、instantiation 边界 | [Platform SSoT Root](./platform/README.md) |
 
-## 裁决优先级（冲突时）
+## 相关裁决
 
-1. `docs/ssot/platform/**`
-2. `docs/ssot/runtime/**` + `packages/logix-*` 的真实类型/实现
-3. `docs/specs/sdd-platform/workbench/**`（平台 UX/闭环草案）
-4. `docs/specs/sdd-platform/impl/**` / `docs/specs/sdd-platform/agents/**`（实现备忘）
-5. `examples/**`
+- [2026-04-04 Logix API Next Charter](../adr/2026-04-04-logix-api-next-charter.md)
+- [2026-04-05 AI Native Runtime First Charter](../adr/2026-04-05-ai-native-runtime-first-charter.md)
 
-## 其它入口（非裁决来源）
+## 相关规范
 
-以下目录均为非裁决来源；如与 SSoT 冲突，以 SSoT 为准并回写。
+- [Docs Governance](../standards/docs-governance.md)
+- [Effect V4 Baseline](../standards/effect-v4-baseline.md)
 
-- 未定稿探索：`docs/specs/drafts/**`
-- 单特性交付：`specs/<id>/**`
-- 对外用户文档：`apps/docs/content/docs/**`
-- 实现视角导航：`docs/ssot/handbook/reading-room/impl-notes/**`
-- 设计哲学与原则叙事：`docs/ssot/handbook/reading-room/philosophy/**`
-- 评审与证据/差距复盘：`docs/ssot/handbook/reading-room/reviews/**`
+## 导航说明
+
+- 稳定事实先判断进入 `runtime/`、`form/` 还是 `platform/`
+- 叶子页 owner 路由继续看对应子树 README
+- 仍待升格的专题先看 [Next Docs Root](../next/README.md)
+- 若需要查历史材料，转到 `docs/archive/ssot/`
+
+## 当前一句话结论
+
+这里是稳定事实的总入口；当前冻结 API 形状看 [capability/03-frozen-api-shape.md](./capability/03-frozen-api-shape.md)，叶子页 owner 路由继续看 [runtime/README.md](./runtime/README.md)、[form/README.md](./form/README.md) 和 [platform/README.md](./platform/README.md)。

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "intent-flow://specs/060-react-priority-scheduling/contracts/schemas/txn-lane-evidence.schema.json",
+  "$id": "logix://specs/060-react-priority-scheduling/contracts/schemas/txn-lane-evidence.schema.json",
   "title": "TxnLaneEvidence",
   "type": "object",
   "additionalProperties": false,
@@ -30,10 +30,10 @@
     "kind": {
       "type": "string",
       "minLength": 1,
-      "description": "Work kind label (e.g. trait:deferred_flush). Must be stable across versions for aggregation."
+      "description": "Work kind label (e.g. field:deferred_flush). Must be stable across versions for aggregation."
     },
     "policy": {
-      "$ref": "intent-flow://specs/060-react-priority-scheduling/contracts/schemas/txn-lane-policy.schema.json"
+      "$ref": "logix://specs/060-react-priority-scheduling/contracts/schemas/txn-lane-policy.schema.json"
     },
     "backlog": {
       "type": "object",

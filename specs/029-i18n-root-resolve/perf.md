@@ -1,6 +1,6 @@
 # Perf: 029 国际化接入与 `$.root.resolve(Tag)`（性能基线与回归门槛）
 
-> 目标：为 029 触及核心路径（Root 解析 / message token 归一化）提供“可复现的性能证据”。  
+> 目标：为 029 触及核心路径（Root 解析 / message token 归一化）提供“可复现的性能证据”。
 > 运行脚本：
 >
 > - `pnpm perf bench:029:i18n-root-resolve`
@@ -18,13 +18,13 @@
 
 - `Logix.Root.resolve(Tag)`：root/global 解析开销（diagnostics off 仍应接近零成本）。
 - `$.root.resolve(Tag)`：语法糖开销（必须与 `Root.resolve` 等价，且无额外分配/扫描）。
-- `I18n.token(key, options)`：token 构造 + canonicalize（key 排序、剔除 undefined、预算/序列化约束）。
+- `I18n.token(key, params)`：token 构造 + canonicalize（key 排序、剔除 undefined、预算/序列化约束）。
 
 ## Budgets（默认门槛）
 
 - `$.root.resolve(Tag)`：相对 `Root.resolve(Tag)` 的额外开销 ≤ 1%（同机同 Node 版本，取中位数）。
 - `Root.resolve(Tag)`：相对 “Before 基线” 回归不超过 1%（同机同 Node 版本，取中位数）。
-- `I18n.token(...)`：单次调用应为 O(k log k)（k=options key 数）；常见小 token（k≤8）不得出现可观测的线性额外分配爆炸。
+- `I18n.token(...)`：单次调用应为 O(k log k)（k=params key 数）；常见小 token（k≤8）不得出现可观测的线性额外分配爆炸。
 
 ## 环境元信息（本机）
 
@@ -76,7 +76,7 @@
     },
     "$.root.resolve(ServiceTag) (hit)": {
       "ok": false,
-      "error": "Error: [MissingApi] $.root.resolve is not implemented\n    at <anonymous> (/Users/yoyo/Documents/code/personal/intent-flow/scripts/perf/029-i18n-root-resolve.root-resolve-baseline.ts:105:13)"
+      "error": "Error: [MissingApi] $.root.resolve is not implemented\n    at <anonymous> (/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/scripts/perf/029-i18n-root-resolve.root-resolve-baseline.ts:105:13)"
     }
   }
 }
@@ -100,7 +100,7 @@
     },
     "@logixjs/i18n token (canonicalize)": {
       "ok": false,
-      "error": "Error: [MissingApi] @logixjs/i18n is not available\n    at <anonymous> (/Users/yoyo/Documents/code/personal/intent-flow/scripts/perf/029-i18n-root-resolve.message-token-baseline.ts:102:5)"
+      "error": "Error: [MissingApi] @logixjs/i18n is not available\n    at <anonymous> (/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/scripts/perf/029-i18n-root-resolve.message-token-baseline.ts:102:5)"
     }
   }
 }

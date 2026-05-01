@@ -1,7 +1,7 @@
 import { describe, it, expect } from '@effect/vitest'
 import { Effect, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
-import * as Debug from '../../src/Debug.js'
+import * as Debug from '../../src/internal/debug-api.js'
 
 describe('Runtime devtools diagnostics=off vacuum path', () => {
   it.effect('should skip DebugObserver and DevtoolsHub while preserving user sinks', () =>
@@ -19,13 +19,13 @@ describe('Runtime devtools diagnostics=off vacuum path', () => {
         },
       })
 
-      const impl = M.implement({
+      const program = Logix.Program.make(M, {
         initial: { value: 0 },
         logics: [],
       })
 
       const ring = Debug.makeRingBufferSink(256)
-      const runtime = Logix.Runtime.make(impl, {
+      const runtime = Logix.Runtime.make(program, {
         layer: Debug.replace([ring.sink]),
         devtools: { diagnosticsLevel: 'off' },
       })
@@ -71,12 +71,12 @@ describe('Runtime devtools diagnostics=off vacuum path', () => {
         },
       })
 
-      const impl = M.implement({
+      const program = Logix.Program.make(M, {
         initial: { value: 0 },
         logics: [],
       })
 
-      const runtime = Logix.Runtime.make(impl, {
+      const runtime = Logix.Runtime.make(program, {
         devtools: { bufferSize: 10 },
       })
 

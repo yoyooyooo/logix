@@ -1,8 +1,8 @@
 # Contracts: 008 层级 Injector 语义统一
 
-**Branch**: `008-hierarchical-injector`  
-**Source Spec**: `specs/008-hierarchical-injector/spec.md`  
-**Source Plan**: `specs/008-hierarchical-injector/plan.md`  
+**Branch**: `008-hierarchical-injector`
+**Source Spec**: `specs/008-hierarchical-injector/spec.md`
+**Source Plan**: `specs/008-hierarchical-injector/plan.md`
 **Source Research**: `specs/008-hierarchical-injector/research.md`
 
 > 作用：把 008 的关键行为约束写成“可断言的契约”，作为后续实现与测试的裁决口径。

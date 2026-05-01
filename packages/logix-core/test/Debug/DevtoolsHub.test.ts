@@ -1,3 +1,5 @@
+import * as CoreEvidence from '@logixjs/core/repo-internal/evidence-api'
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer } from 'effect'
@@ -6,32 +8,32 @@ import * as Logix from '../../src/index.js'
 describe('DevtoolsHub (core)', () => {
   it.effect('devtoolsHubLayer should append hub sink and collect events into snapshot', () =>
     Effect.gen(function* () {
-      Logix.Debug.clearDevtoolsEvents()
+      CoreDebug.clearDevtoolsEvents()
 
-      const collected: Logix.Debug.Event[] = []
+      const collected: CoreDebug.Event[] = []
       const instanceId = 'i-1'
-      const userSink: Logix.Debug.Sink = {
+      const userSink: CoreDebug.Sink = {
         record: (event) =>
           Effect.sync(() => {
             collected.push(event)
           }),
       }
 
-      const layer = Logix.Debug.devtoolsHubLayer(Logix.Debug.replace([userSink]), { bufferSize: 10 }) as Layer.Layer<
+      const layer = CoreDebug.devtoolsHubLayer(CoreDebug.replace([userSink]), { bufferSize: 10 }) as Layer.Layer<
         any,
         never,
         never
       >
 
       // Record a few different event kinds.
-      yield* Logix.Debug.record({
+      yield* CoreDebug.record({
         type: 'module:init',
         moduleId: 'A',
         instanceId,
         runtimeLabel: 'R',
       } as any).pipe(Effect.provide(layer))
 
-      yield* Logix.Debug.record({
+      yield* CoreDebug.record({
         type: 'action:dispatch',
         moduleId: 'A',
         instanceId,
@@ -41,7 +43,7 @@ describe('DevtoolsHub (core)', () => {
         runtimeLabel: 'R',
       } as any).pipe(Effect.provide(layer))
 
-      yield* Logix.Debug.record({
+      yield* CoreDebug.record({
         type: 'state:update',
         moduleId: 'A',
         instanceId,
@@ -51,7 +53,7 @@ describe('DevtoolsHub (core)', () => {
         runtimeLabel: 'R',
       } as any).pipe(Effect.provide(layer))
 
-      yield* Logix.Debug.record({
+      yield* CoreDebug.record({
         type: 'trace:foo',
         moduleId: 'A',
         instanceId,
@@ -60,8 +62,8 @@ describe('DevtoolsHub (core)', () => {
       } as any).pipe(Effect.provide(layer))
 
       // Hub snapshot is a global singleton; assert it contains these events and derived views.
-      const snapshot = Logix.Debug.getDevtoolsSnapshot()
-      expect(snapshot.snapshotToken).toBe(Logix.Debug.getDevtoolsSnapshotToken())
+      const snapshot = CoreDebug.getDevtoolsSnapshot()
+      expect(snapshot.snapshotToken).toBe(CoreDebug.getDevtoolsSnapshotToken())
       expect(snapshot.events.length).toBeGreaterThanOrEqual(4)
       expect(snapshot.instances.get('R::A') ?? 0).toBeGreaterThanOrEqual(1)
       expect(snapshot.latestStates.get('R::A::i-1')).toEqual({ count: 1 })
@@ -69,11 +71,11 @@ describe('DevtoolsHub (core)', () => {
       expect(snapshot.exportBudget.oversized).toBe(0)
       expect(() => JSON.stringify(snapshot)).not.toThrow()
 
-      const evidence = Logix.Debug.exportEvidencePackage({
+      const evidence = CoreDebug.exportEvidencePackage({
         runId: 'run-test',
         source: { host: 'test' },
       })
-      expect(evidence.protocolVersion).toBe(Logix.Observability.protocolVersion)
+      expect(evidence.protocolVersion).toBe(CoreEvidence.protocolVersion)
       expect(evidence.events.length).toBeGreaterThan(0)
       expect(() => JSON.stringify(evidence)).not.toThrow()
 
@@ -84,14 +86,14 @@ describe('DevtoolsHub (core)', () => {
 
   it.effect('exportBudget should accumulate dropped/oversized counts from JsonValue projection', () =>
     Effect.gen(function* () {
-      Logix.Debug.clearDevtoolsEvents()
+      CoreDebug.clearDevtoolsEvents()
 
-      const layer = Logix.Debug.devtoolsHubLayer({
+      const layer = CoreDebug.devtoolsHubLayer({
         bufferSize: 10,
         diagnosticsLevel: 'full',
       }) as Layer.Layer<any, never, never>
 
-      yield* Logix.Debug.record({
+      yield* CoreDebug.record({
         type: 'action:dispatch',
         moduleId: 'A',
         instanceId: 'i-1',
@@ -101,7 +103,7 @@ describe('DevtoolsHub (core)', () => {
         runtimeLabel: 'R',
       } as any).pipe(Effect.provide(layer))
 
-      const snapshot = Logix.Debug.getDevtoolsSnapshot()
+      const snapshot = CoreDebug.getDevtoolsSnapshot()
       expect(snapshot.exportBudget.oversized).toBeGreaterThan(0)
       expect(() => JSON.stringify(snapshot)).not.toThrow()
     }),
@@ -109,20 +111,20 @@ describe('DevtoolsHub (core)', () => {
 
   it.effect('configure bufferSize should emit ring trim policy diagnostics with slim payload', () =>
     Effect.gen(function* () {
-      Logix.Debug.clearDevtoolsEvents()
+      CoreDebug.clearDevtoolsEvents()
 
-      Logix.Debug.devtoolsHubLayer({
+      CoreDebug.devtoolsHubLayer({
         bufferSize: 5,
         diagnosticsLevel: 'light',
       })
-      Logix.Debug.clearDevtoolsEvents()
+      CoreDebug.clearDevtoolsEvents()
 
-      Logix.Debug.devtoolsHubLayer({
+      CoreDebug.devtoolsHubLayer({
         bufferSize: 6,
         diagnosticsLevel: 'light',
       })
 
-      const events = Logix.Debug.getDevtoolsSnapshot().events
+      const events = CoreDebug.getDevtoolsSnapshot().events
       const policyEvent = events[events.length - 1]
       expect(policyEvent?.label).toBe('trace:devtools:ring-trim-policy')
       expect(policyEvent?.meta).toEqual({
@@ -132,32 +134,32 @@ describe('DevtoolsHub (core)', () => {
       })
       expect(() => JSON.stringify(policyEvent?.meta)).not.toThrow()
 
-      Logix.Debug.clearDevtoolsEvents()
-      Logix.Debug.devtoolsHubLayer({
+      CoreDebug.clearDevtoolsEvents()
+      CoreDebug.devtoolsHubLayer({
         bufferSize: 7,
         diagnosticsLevel: 'off',
       })
-      expect(Logix.Debug.getDevtoolsSnapshot().events.length).toBe(0)
+      expect(CoreDebug.getDevtoolsSnapshot().events.length).toBe(0)
     }),
   )
 
   it.effect('getDevtoolsSnapshotByRuntimeLabel should isolate runtime buckets', () =>
     Effect.gen(function* () {
-      Logix.Debug.clearDevtoolsEvents()
+      CoreDebug.clearDevtoolsEvents()
 
-      const layer = Logix.Debug.devtoolsHubLayer({
+      const layer = CoreDebug.devtoolsHubLayer({
         bufferSize: 20,
         diagnosticsLevel: 'full',
       }) as Layer.Layer<any, never, never>
 
-      yield* Logix.Debug.record({
+      yield* CoreDebug.record({
         type: 'module:init',
         moduleId: 'A',
         instanceId: 'i-r1',
         runtimeLabel: 'R1',
       } as any).pipe(Effect.provide(layer))
 
-      yield* Logix.Debug.record({
+      yield* CoreDebug.record({
         type: 'state:update',
         moduleId: 'A',
         instanceId: 'i-r1',
@@ -166,14 +168,14 @@ describe('DevtoolsHub (core)', () => {
         state: { count: 1 },
       } as any).pipe(Effect.provide(layer))
 
-      yield* Logix.Debug.record({
+      yield* CoreDebug.record({
         type: 'module:init',
         moduleId: 'A',
         instanceId: 'i-r2',
         runtimeLabel: 'R2',
       } as any).pipe(Effect.provide(layer))
 
-      yield* Logix.Debug.record({
+      yield* CoreDebug.record({
         type: 'state:update',
         moduleId: 'A',
         instanceId: 'i-r2',
@@ -182,8 +184,8 @@ describe('DevtoolsHub (core)', () => {
         state: { count: 2 },
       } as any).pipe(Effect.provide(layer))
 
-      const r1 = Logix.Debug.getDevtoolsSnapshotByRuntimeLabel('R1')
-      const r2 = Logix.Debug.getDevtoolsSnapshotByRuntimeLabel('R2')
+      const r1 = CoreDebug.getDevtoolsSnapshotByRuntimeLabel('R1')
+      const r2 = CoreDebug.getDevtoolsSnapshotByRuntimeLabel('R2')
 
       expect(r1.events.length).toBeGreaterThan(0)
       expect(r2.events.length).toBeGreaterThan(0)
@@ -200,14 +202,14 @@ describe('DevtoolsHub (core)', () => {
 
   it.effect('clearDevtoolsEvents(runtimeLabel) should clear only target runtime bucket', () =>
     Effect.gen(function* () {
-      Logix.Debug.clearDevtoolsEvents()
+      CoreDebug.clearDevtoolsEvents()
 
-      const layer = Logix.Debug.devtoolsHubLayer({
+      const layer = CoreDebug.devtoolsHubLayer({
         bufferSize: 20,
         diagnosticsLevel: 'full',
       }) as Layer.Layer<any, never, never>
 
-      yield* Logix.Debug.record({
+      yield* CoreDebug.record({
         type: 'action:dispatch',
         moduleId: 'A',
         instanceId: 'i-r1',
@@ -217,7 +219,7 @@ describe('DevtoolsHub (core)', () => {
         action: { _tag: 'HugeAction', payload: 'x'.repeat(20_000) },
       } as any).pipe(Effect.provide(layer))
 
-      yield* Logix.Debug.record({
+      yield* CoreDebug.record({
         type: 'action:dispatch',
         moduleId: 'A',
         instanceId: 'i-r2',
@@ -227,23 +229,23 @@ describe('DevtoolsHub (core)', () => {
         action: { _tag: 'HugeAction', payload: 'y'.repeat(20_000) },
       } as any).pipe(Effect.provide(layer))
 
-      const beforeR1 = Logix.Debug.getDevtoolsSnapshotByRuntimeLabel('R1')
-      const beforeR2 = Logix.Debug.getDevtoolsSnapshotByRuntimeLabel('R2')
+      const beforeR1 = CoreDebug.getDevtoolsSnapshotByRuntimeLabel('R1')
+      const beforeR2 = CoreDebug.getDevtoolsSnapshotByRuntimeLabel('R2')
       expect(beforeR1.events.length).toBeGreaterThan(0)
       expect(beforeR2.events.length).toBeGreaterThan(0)
       expect(beforeR1.exportBudget.oversized).toBeGreaterThan(0)
       expect(beforeR2.exportBudget.oversized).toBeGreaterThan(0)
 
-      Logix.Debug.clearDevtoolsEvents('R1')
+      CoreDebug.clearDevtoolsEvents('R1')
 
-      const afterR1 = Logix.Debug.getDevtoolsSnapshotByRuntimeLabel('R1')
-      const afterR2 = Logix.Debug.getDevtoolsSnapshotByRuntimeLabel('R2')
+      const afterR1 = CoreDebug.getDevtoolsSnapshotByRuntimeLabel('R1')
+      const afterR2 = CoreDebug.getDevtoolsSnapshotByRuntimeLabel('R2')
       expect(afterR1.events.length).toBe(0)
       expect(afterR1.exportBudget.oversized).toBe(0)
       expect(afterR2.events.length).toBeGreaterThan(0)
       expect(afterR2.exportBudget.oversized).toBeGreaterThan(0)
 
-      const globalSnapshot = Logix.Debug.getDevtoolsSnapshot()
+      const globalSnapshot = CoreDebug.getDevtoolsSnapshot()
       expect(globalSnapshot.events.some((event) => event.runtimeLabel === 'R1')).toBe(false)
       expect(globalSnapshot.events.some((event) => event.runtimeLabel === 'R2')).toBe(true)
     }),
@@ -251,40 +253,40 @@ describe('DevtoolsHub (core)', () => {
 
   it.effect('clearDevtoolsEvents should only clear hub ring buffer', () =>
     Effect.gen(function* () {
-      Logix.Debug.clearDevtoolsEvents()
+      CoreDebug.clearDevtoolsEvents()
 
-      const layer = Logix.Debug.devtoolsHubLayer({ bufferSize: 5 }) as Layer.Layer<any, never, never>
+      const layer = CoreDebug.devtoolsHubLayer({ bufferSize: 5 }) as Layer.Layer<any, never, never>
 
-      yield* Logix.Debug.record({
+      yield* CoreDebug.record({
         type: 'trace:test',
         moduleId: 'B',
         instanceId: 'i-2',
         runtimeLabel: 'R',
       } as any).pipe(Effect.provide(layer))
 
-      expect(Logix.Debug.getDevtoolsSnapshot().events.length).toBeGreaterThan(0)
-      expect(Logix.Debug.getDevtoolsSnapshot().exportBudget.dropped).toBeGreaterThan(0)
+      expect(CoreDebug.getDevtoolsSnapshot().events.length).toBeGreaterThan(0)
+      expect(CoreDebug.getDevtoolsSnapshot().exportBudget.dropped).toBeGreaterThan(0)
 
-      Logix.Debug.clearDevtoolsEvents()
+      CoreDebug.clearDevtoolsEvents()
 
-      expect(Logix.Debug.getDevtoolsSnapshot().events.length).toBe(0)
-      expect(Logix.Debug.getDevtoolsSnapshot().exportBudget.dropped).toBe(0)
-      expect(Logix.Debug.getDevtoolsSnapshotByRuntimeLabel('R').events.length).toBe(0)
-      expect(Logix.Debug.getDevtoolsSnapshotByRuntimeLabel('R').exportBudget.dropped).toBe(0)
+      expect(CoreDebug.getDevtoolsSnapshot().events.length).toBe(0)
+      expect(CoreDebug.getDevtoolsSnapshot().exportBudget.dropped).toBe(0)
+      expect(CoreDebug.getDevtoolsSnapshotByRuntimeLabel('R').events.length).toBe(0)
+      expect(CoreDebug.getDevtoolsSnapshotByRuntimeLabel('R').exportBudget.dropped).toBe(0)
     }),
   )
 
   it.effect('exportEvidencePackage should use RuntimeDebugEventRef.eventSeq and fallback safely when missing', () =>
     Effect.gen(function* () {
-      Logix.Debug.startDevtoolsRun('run-export-seq')
+      CoreDebug.startDevtoolsRun('run-export-seq')
 
-      const layer = Logix.Debug.devtoolsHubLayer({
+      const layer = CoreDebug.devtoolsHubLayer({
         bufferSize: 3,
         diagnosticsLevel: 'light',
       }) as Layer.Layer<any, never, never>
 
       for (let i = 1; i <= 5; i++) {
-        yield* Logix.Debug.record({
+        yield* CoreDebug.record({
           type: 'trace:test',
           moduleId: 'B',
           instanceId: 'i-seq',
@@ -293,21 +295,21 @@ describe('DevtoolsHub (core)', () => {
         } as any).pipe(Effect.provide(layer))
       }
 
-      const snapshot = Logix.Debug.getDevtoolsSnapshot()
+      const snapshot = CoreDebug.getDevtoolsSnapshot()
       const eventSeqs = snapshot.events.map((event) => event.eventSeq)
       expect(eventSeqs).toHaveLength(3)
       expect(eventSeqs[0]).toBeGreaterThan(0)
       expect(eventSeqs[1]).toBe(eventSeqs[0] + 1)
       expect(eventSeqs[2]).toBe(eventSeqs[1] + 1)
 
-      const exported = Logix.Debug.exportEvidencePackage({
+      const exported = CoreDebug.exportEvidencePackage({
         runId: 'run-export-seq',
         source: { host: 'test' },
       })
       expect(exported.events.map((event) => event.seq)).toEqual(eventSeqs)
 
       ;(snapshot.events[0] as any).eventSeq = undefined
-      const fallbackExported = Logix.Debug.exportEvidencePackage({
+      const fallbackExported = CoreDebug.exportEvidencePackage({
         runId: 'run-export-seq-fallback',
         source: { host: 'test' },
       })
@@ -317,34 +319,34 @@ describe('DevtoolsHub (core)', () => {
 
   it.effect('startDevtoolsRun should reset per-instance eventSeq', () =>
     Effect.gen(function* () {
-      const layer = Logix.Debug.devtoolsHubLayer({
+      const layer = CoreDebug.devtoolsHubLayer({
         bufferSize: 5,
         diagnosticsLevel: 'light',
       }) as Layer.Layer<any, never, never>
 
-      Logix.Debug.startDevtoolsRun('run-test-1')
+      CoreDebug.startDevtoolsRun('run-test-1')
 
-      yield* Logix.Debug.record({
+      yield* CoreDebug.record({
         type: 'trace:test',
         moduleId: 'B',
         instanceId: 'i-1',
         runtimeLabel: 'R',
       } as any).pipe(Effect.provide(layer))
 
-      const first = Logix.Debug.getDevtoolsSnapshot().events[0]
+      const first = CoreDebug.getDevtoolsSnapshot().events[0]
       expect(first?.instanceId).toBe('i-1')
       expect(first?.eventSeq).toBe(1)
 
-      Logix.Debug.startDevtoolsRun('run-test-2')
+      CoreDebug.startDevtoolsRun('run-test-2')
 
-      yield* Logix.Debug.record({
+      yield* CoreDebug.record({
         type: 'trace:test',
         moduleId: 'B',
         instanceId: 'i-1',
         runtimeLabel: 'R',
       } as any).pipe(Effect.provide(layer))
 
-      const second = Logix.Debug.getDevtoolsSnapshot().events[0]
+      const second = CoreDebug.getDevtoolsSnapshot().events[0]
       expect(second?.instanceId).toBe('i-1')
       expect(second?.eventSeq).toBe(1)
     }),

@@ -7,9 +7,9 @@
 - 你只需要提供 `ExternalStore<T>`：同步 `getSnapshot()` + `subscribe(listener)`。
 - listener 只需要 **Signal Dirty**（点亮变化并触发一次 tick），不要把 payload 入队（tick flush 会 pull 最新 snapshot）。
 - 若需要 SSR：为 ExternalStore 提供 `getServerSnapshot()`（同步、无 IO），并由宿主保证 server/client 初始快照一致以避免 hydration mismatch（本特性不提供自动注水/rehydrate）。
-- 把外部输入 declaratively 接进模块：`StateTrait.externalStore`（不再手写订阅胶水）。
+- 把外部输入 declaratively 接进模块：`FieldKernel.externalStore`（不再手写订阅胶水）。
 - React 继续用 `useSelector`；底层通过 RuntimeStore 保证跨模块同一 `tickSeq` 快照（无 tearing）。
-- React 侧尽量不写“数据胶水 useEffect”：订阅/同步/拉取应在 Trait/ExternalStore/Source 中表达；`useEffect` 只保留给 DOM/第三方组件 integration（focus/scroll/measure/动画等）。
+- React 侧尽量不写“数据胶水 useEffect”：订阅/同步/拉取应在 Field/ExternalStore/Source 中表达；`useEffect` 只保留给 DOM/第三方组件 integration（focus/scroll/measure/动画等）。
 - 同一 `moduleId` 的多实例按 `ModuleInstanceKey = ${moduleId}::${instanceId}` 分片订阅：只会唤醒订阅该实例的组件（单例只是特例）。
 - 调度心智：microtask 只用于“合并触发（Signal Dirty → schedule once）”；tick 若超预算/遇到饥饿风险允许 yield-to-host（macrotask 续跑），但 no-tearing（tickSeq）仍成立。测试不要靠手写 `queueMicrotask` 循环碰运气，统一用 TestKit/Runtime 的 flush API（见 `contracts/scheduler.md`）。
 
@@ -21,7 +21,7 @@ type Listener = () => void
 let currentUserId = 'u1'
 const listeners = new Set<Listener>()
 
-const UserIdStore: Logix.ExternalStore<string> = {
+const UserIdStore: CoreRuntimeContracts.ExternalStore<string> = {
   getSnapshot: () => currentUserId,
   subscribe: (listener) => {
     listeners.add(listener)
@@ -37,14 +37,14 @@ listeners.forEach((l) => l())
 也可以用 sugar（概念）：
 
 ```ts
-const UserIdStore = Logix.ExternalStore.fromService(UserServiceTag, (svc) => ({
+const UserIdStore = CoreReadContracts.ExternalStore.fromService(UserServiceTag, (svc) => ({
   getSnapshot: () => svc.getCurrentUserId(),
   subscribe: (listener) => svc.subscribeUserId(listener),
 }))
 
-const UserIdStore1 = Logix.ExternalStore.fromSubscriptionRef(userIdRef)
+const UserIdStore1 = CoreReadContracts.ExternalStore.fromSubscriptionRef(userIdRef)
 
-const UserIdStore2 = Logix.ExternalStore.fromStream(userId$, { initial: 'u1' })
+const UserIdStore2 = CoreReadContracts.ExternalStore.fromStream(userId$, { initial: 'u1' })
 ```
 
 > 注意：
@@ -52,7 +52,7 @@ const UserIdStore2 = Logix.ExternalStore.fromStream(userId$, { initial: 'u1' })
 > - `fromStream` 若缺少 `initial/current` 必须 fail-fast（Runtime Error）。
 > - `fromSubscriptionRef` 仅适用于“同步纯读”的 ref：不要把 IO/副作用藏进 `SubscriptionRef.get`。
 
-## 2) Module：用 `StateTrait.externalStore` 写回 inputs
+## 2) Module：用 `FieldKernel.externalStore` 写回 inputs
 
 ```ts
 const State = Schema.Struct({
@@ -60,11 +60,11 @@ const State = Schema.Struct({
   profileResource: SnapshotSchema,
 })
 
-const Traits = Logix.StateTrait.from(State)({
-  "inputs.userId": Logix.StateTrait.externalStore({
+const Fields = Logix.FieldKernel.from(State)({
+  "inputs.userId": Logix.FieldKernel.externalStore({
     store: UserIdStore,
   }),
-  profileResource: Logix.StateTrait.source({
+  profileResource: Logix.FieldKernel.source({
     deps: ["inputs.userId"],
     resource: "user/profile",
     key: (userId) => (userId ? { userId } : undefined),
@@ -77,10 +77,10 @@ const Traits = Logix.StateTrait.from(State)({
 > 目标：把 “模块 A 的某个 selector 结果” 当作模块 B 的输入源，并在同一 tick 内与 B 的其它派生一起收敛（FR-012 / SC-005）。
 
 ```ts
-const UserFromA = Logix.ExternalStore.fromModule(ModuleA, (s) => s.user)
+const UserFromA = CoreReadContracts.ExternalStore.fromModule(ModuleA, (s) => s.user)
 
-const TraitsB = Logix.StateTrait.from(StateB)({
-  "inputs.user": Logix.StateTrait.externalStore({
+const TraitsB = Logix.FieldKernel.from(StateB)({
+  "inputs.user": Logix.FieldKernel.externalStore({
     store: UserFromA,
   }),
 })
@@ -88,7 +88,7 @@ const TraitsB = Logix.StateTrait.from(StateB)({
 
 语义要点：
 
-- `fromModule` 必须是 IR 可识别依赖（module readQuery → trait writeback），不能实现为 runtime 黑盒订阅；否则无法在 tick 内稳定化与解释链路。
+- `fromModule` 必须是 IR 可识别依赖（module readQuery → field writeback），不能实现为 runtime 黑盒订阅；否则无法在 tick 内稳定化与解释链路。
 - `module` 参数语义上是 ModuleHandleUnion（tag 或 runtime 实例）；多例场景必须指向具体实例（避免把多个 instance 混成一个源）。
 - 值语义：Runtime 不会自动 clone；写回的是 selector 返回值本身（按引用共享）。把返回值当作只读快照，并保持 selector 小且稳定（避免“镜像大状态”）。
 
@@ -98,10 +98,10 @@ const TraitsB = Logix.StateTrait.from(StateB)({
 
 优先级（从推荐到谨慎）：
 
-1. **同模块内派生**：优先用 `computed` / `source` / `StateTraitProgram` 表达依赖与收敛（单一事实源，最少同步点）。
+1. **同模块内派生**：优先用 `computed` / `source` / `FieldProgram` 表达依赖与收敛（单一事实源，最少同步点）。
 2. **只读跨模块**：如果你只是“用一下别的模块的值”，用 `ReadQuery` / `$.use(OtherModule).read(...)`，不要复制到本模块 state。
-3. **跨模块作为输入进入 state graph**：只有当下游模块必须把某个上游值作为 **自身状态机输入**（例如 source keyHash、idle 同步回收、稳定化链路的一部分）时，才用 `ExternalStore.fromModule(A, selector)` + `StateTrait.externalStore` 写回到 `inputs.*`（external-owned）。
-4. **跨模块写动作**：跨模块交互优先用 declarative link（dispatch-only，IR 可识别）；黑盒 `Process.link` 仅作为 escape hatch，并接受 Next Tick best-effort 的边界。
+3. **跨模块作为输入进入 state graph**：只有当下游模块必须把某个上游值作为 **自身状态机输入**（例如 source keyHash、idle 同步回收、稳定化链路的一部分）时，才用 `ExternalStore.fromModule(A, selector)` + `FieldKernel.externalStore` 写回到 `inputs.*`（external-owned）。
+4. **跨模块写动作**：跨模块交互优先用 declarative link（dispatch-only，IR 可识别）；黑盒 `orchestration process link surface` 仅作为 escape hatch，并接受 Next Tick best-effort 的边界。
 
 硬约束（防止组合失控）：
 
@@ -126,7 +126,7 @@ const userId = useSelector(UserModule, (s) => s.inputs.userId)
 ## 4) 输入优先级（urgent/nonUrgent）
 
 - 默认：输入/交互触发的 `dispatch/setState` 与 ExternalStoreTrait 写回视为 **urgent**（不需要额外配置）。
-- 显式降级：把“可延后/可合并”的链路标注为 **nonUrgent**（例如 `dispatchLowPriority` 或 `StateTrait.externalStore({ priority: "nonUrgent" })`），预算超限时只会推迟 nonUrgent backlog。
+- 显式降级：把“可延后/可合并”的链路标注为 **nonUrgent**（例如 `dispatchLowPriority` 或 `FieldKernel.externalStore({ priority: "nonUrgent" })`），预算超限时只会推迟 nonUrgent backlog。
 
 ## 5) 批处理（可选）
 

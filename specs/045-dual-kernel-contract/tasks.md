@@ -17,15 +17,15 @@
 
 > 目标：把 “Kernel Contract” 收敛为 `@logixjs/core` 可导出的稳定契约点，并提供 `core-ng` 可注入的实现扩展点；默认路径热循环保持零分支/零分配变化。
 
-- [x] T005 定义 `KernelId`/`KernelImplementationRef`/Tag 与 helper layer 于 `packages/logix-core/src/Kernel.ts`
+- [x] T005 定义 `KernelId`/`KernelImplementationRef`/Tag 与 helper layer 于 `packages/logix-core/src/internal/kernel-api.ts`
 - [x] T006 [P] 将 `Kernel` 作为 public submodule 导出：更新 `packages/logix-core/src/index.ts` 与 `packages/logix-core/package.json`（exports + publishConfig）
-- [x] T007 定义 `RuntimeServicesEvidence` 的对外读取入口（不暴露 `src/internal/*`）：在 `packages/logix-core/src/Kernel.ts` 或 `packages/logix-core/src/internal/InternalContracts.ts` 增加最小 accessor
+- [x] T007 定义 `RuntimeServicesEvidence` 的对外读取入口（不暴露 `src/internal/*`）：在 `packages/logix-core/src/internal/kernel-api.ts` 或 `packages/logix-core/src/internal/InternalContracts.ts` 增加最小 accessor
 - [x] T008 引入“可注入实现注册表”契约：在 `packages/logix-core/src/internal/runtime/core/RuntimeKernel.ts` 定义 Registry Tag（serviceId → impls），并在 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.ts` 合并 builtin + registry impls 后再 `selectRuntimeService(...)`
-- [x] T009 将 “按 `ManagedRuntime` 选择内核” 固化为装配点：在 `packages/logix-core/src/Runtime.ts`（或 `packages/logix-core/src/Kernel.ts`）提供构造 layer 的最小 helper（runtime_default scope），禁止按 moduleId 选择作为默认路径
+- [x] T009 将 “按 `ManagedRuntime` 选择内核” 固化为装配点：在 `packages/logix-core/src/Runtime.ts`（或 `packages/logix-core/src/internal/kernel-api.ts`）提供构造 layer 的最小 helper（runtime_default scope），禁止按 moduleId 选择作为默认路径
 - [x] T010 实现证据采集分档：在 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.ts` 对 `EvidenceCollectorTag.setRuntimeServicesEvidence(...)` 加闸门（diagnostics=off 不写入；light/sampled/full 写入）
 - [x] T011 扩展证据采集：为 `KernelImplementationRef` 增加 collector 通道并写入 EvidencePackage.summary（`packages/logix-core/src/internal/observability/evidenceCollector.ts`）
 - [x] T012 更新 TrialRun 报告的环境摘要：`packages/logix-core/src/internal/observability/trialRunModule.ts` 在 diagnostics=off 输出 `kernelImplementationRef`（极小摘要），在 light/sampled/full 才输出 `runtimeServicesEvidence`
-- [x] T013 [P] 补齐 JSON 可序列化与 schema 对齐检查：为 `KernelImplementationRef` 增加最小 runtime validator（位置：`packages/logix-core/src/internal/observability/jsonValue.ts` 或 `packages/logix-core/src/Kernel.ts`）
+- [x] T013 [P] 补齐 JSON 可序列化与 schema 对齐检查：为 `KernelImplementationRef` 增加最小 runtime validator（位置：`packages/logix-core/src/internal/observability/jsonValue.ts` 或 `packages/logix-core/src/internal/kernel-api.ts`）
 
 **Tests（Foundational）**
 
@@ -36,8 +36,8 @@
 **Contract Verification Harness（Foundational）**
 
 - [x] T017 实现 kernel contract verification harness：新增 `packages/logix-core/src/internal/reflection/kernelContract.ts`（用 trial-run 跑同一交互序列的两次执行，输出机器可读 diff；差异锚点必须包含 `instanceId/txnSeq/opSeq`）
-- [x] T018 [P] 对外导出 harness：更新 `packages/logix-core/src/Reflection.ts`（新增 `verifyKernelContract` 等最小入口，供 CI/TrialRun/Agent 消费）
-- [x] T019 [P] 新增测试：`Reflection.verifyKernelContract` 基础用例（core vs core）PASS，diff 可序列化且稳定（`packages/logix-core/test/Contracts/Contracts.045.KernelContractVerification.test.ts`）
+- [x] T018 [P] 对外导出 harness：更新 `packages/logix-core/src/internal/reflection-api.ts`（新增 `verifyKernelContract` 等最小入口，供 CI/TrialRun/Agent 消费）
+- [x] T019 [P] 新增测试：`CoreReflection.verifyKernelContract` 基础用例（core vs core）PASS，diff 可序列化且稳定（`packages/logix-core/test/Contracts/Contracts.045.KernelContractVerification.test.ts`）
 
 **Perf Evidence（Foundational）**
 
@@ -68,9 +68,9 @@
 - [x] T026 [US2] 在 `packages/logix-core-ng/src/index.ts` 导出 `coreNgKernelLayer`（以及未来扩展入口）
 - [x] T027 [P] [US2] 新增测试：当请求 `core-ng` 且覆盖某个 serviceId 时，`RuntimeServicesEvidence` 里 binding 的 implId=core-ng（`packages/logix-core-ng/test/RuntimeServicesSelection.test.ts`）
 - [x] T028 [P] [US2] 新增测试：当请求 `core-ng` 但 implId 不存在时，`RuntimeServicesEvidence.overridesApplied` 记录 fallback（`packages/logix-core-ng/test/RuntimeServicesFallback.test.ts`）
-- [x] T029 [US2] 新增“全套切换判定”工具函数（不引入新概念）：`packages/logix-core/src/Kernel.ts` 提供 `isKernelFullyActivated(...)`（基于 `RuntimeServicesEvidence.overridesApplied`/bindings 识别 fallback）
+- [x] T029 [US2] 新增“全套切换判定”工具函数（不引入新概念）：`packages/logix-core/src/internal/kernel-api.ts` 提供 `isKernelFullyActivated(...)`（基于 `RuntimeServicesEvidence.overridesApplied`/bindings 识别 fallback）
 - [x] T030 [P] [US2] 新增测试：`isKernelFullyActivated` 在发生 fallback 时返回 false（`packages/logix-core/test/Contracts/Contracts.045.KernelActivation.test.ts`）
-- [x] T031 [P] [US2] 运行对照验证：用 `Reflection.verifyKernelContract` 跑同一交互序列 core vs core-ng，并输出结构化 diff（`packages/logix-core-ng/test/KernelContract.verifyKernelContract.test.ts`）
+- [x] T031 [P] [US2] 运行对照验证：用 `CoreReflection.verifyKernelContract` 跑同一交互序列 core vs core-ng，并输出结构化 diff（`packages/logix-core-ng/test/KernelContract.verifyKernelContract.test.ts`）
 
 **Perf Evidence（US2）**
 

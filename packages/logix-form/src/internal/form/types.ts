@@ -139,6 +139,25 @@ type CanonicalValueInner<TValues, P> = P extends `${infer Head}.${infer Rest}`
  */
 export type CanonicalValue<TValues extends object, P extends CanonicalPath<TValues>> = CanonicalValueInner<TValues, P>
 
+type CanonicalDepValueInner<TValues, P> = P extends `${infer Head}.${infer Rest}`
+  ? Head extends keyof NonNull<TValues> & string
+    ? [NonNull<TValues>[Head]] extends [readonly (infer Item)[]]
+      ? ReadonlyArray<CanonicalDepValueInner<Item, Rest>>
+      : CanonicalDepValueInner<NonNull<TValues>[Head], Rest>
+    : never
+  : P extends keyof NonNull<TValues> & string
+    ? NonNull<TValues>[P]
+    : never
+
+/**
+ * CanonicalDepValue<TValues, P>：
+ * - Given a canonical dependency path, infers the value observed by `deps`.
+ * - Unlike `CanonicalValue`, array-piercing paths aggregate per-row values.
+ *   Example: `items.warehouseId` becomes `ReadonlyArray<string>`.
+ */
+export type CanonicalDepValue<TValues extends object, P extends CanonicalPath<TValues>> =
+  CanonicalDepValueInner<TValues, P>
+
 /**
  * CanonicalListPath<TValues>：
  * - The subset of CanonicalPath whose endpoints are arrays; used as listPath hints for Form.Rule.list.

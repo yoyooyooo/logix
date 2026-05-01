@@ -12,18 +12,18 @@ import * as Logix from '@logixjs/core'
  *   5. 更新结果 (Success)
  */
 export const runCascadePattern = <Sh extends Logix.AnyModuleShape, R, T, Data>(
-  $: Logix.BoundApi<Sh, R>,
+  $: Logix.Module.BoundApi<Sh, R>,
   config: {
     /** 监听的上游字段 */
-    source: (s: Logix.StateOf<Sh>) => T | undefined | null
+    source: (s: Logix.Module.StateOf<Sh>) => T | undefined | null
     /** 数据加载器（运行在 Logic.Env<Sh,R> 上，错误通道为 never） */
-    loader: (val: T) => Logix.Logic.Of<Sh, R, Data, never>
+    loader: (val: T) => Effect.Effect<Data, never, any>
     /** 重置下游字段的回调 (同步) */
-    onReset: (prev: Logix.StateOf<Sh>) => Logix.StateOf<Sh>
+    onReset: (prev: Logix.Module.StateOf<Sh>) => Logix.Module.StateOf<Sh>
     /** 加载成功的回调 (同步) */
-    onSuccess: (prev: Logix.StateOf<Sh>, data: Data) => Logix.StateOf<Sh>
+    onSuccess: (prev: Logix.Module.StateOf<Sh>, data: Data) => Logix.Module.StateOf<Sh>
     /** (可选) Loading 状态回调 */
-    onLoading?: (prev: Logix.StateOf<Sh>, isLoading: boolean) => Logix.StateOf<Sh>
+    onLoading?: (prev: Logix.Module.StateOf<Sh>, isLoading: boolean) => Logix.Module.StateOf<Sh>
   },
 ) => {
   return $.onState(config.source).runLatest((val: T | undefined | null) =>
@@ -35,7 +35,7 @@ export const runCascadePattern = <Sh extends Logix.AnyModuleShape, R, T, Data>(
 
       // 2. 标记 Loading (如果提供了回调)
       if (config.onLoading) {
-        yield* $.state.update((s: Logix.StateOf<Sh>) => config.onLoading!(s, true))
+        yield* $.state.update((s) => config.onLoading!(s, true))
       }
 
       // 3. 加载数据
@@ -44,7 +44,7 @@ export const runCascadePattern = <Sh extends Logix.AnyModuleShape, R, T, Data>(
       const data = yield* config.loader(val)
 
       // 4. 更新结果并关闭 Loading
-      yield* $.state.update((s: Logix.StateOf<Sh>) => {
+      yield* $.state.update((s) => {
         let next = config.onSuccess(s, data)
         if (config.onLoading) {
           next = config.onLoading(next, false)

@@ -1,9 +1,9 @@
 # Data Model: IR Reflection Loader（IR 反射与试运行提取）
 
-**Date**: 2025-12-24  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/025-ir-reflection-loader/spec.md`
+**Date**: 2025-12-24
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/025-ir-reflection-loader/spec.md`
 
-> 本文件固化 025 的“可导出/可序列化”数据结构口径（Manifest / Static IR / Environment IR / Trial Run Report）。  
+> 本文件固化 025 的“可导出/可序列化”数据结构口径（Manifest / Static IR / Environment IR / Trial Run Report）。
 > 所有跨宿主负载必须满足 005 的 `JsonValue` 硬门：`specs/005-unify-observability-protocol/contracts/schemas/json-value.schema.json`。
 
 ## Entity: ModuleManifest（Manifest IR）
@@ -59,7 +59,7 @@
 
 **Canonical shape（当前裁决）**
 
-- 复用 `StateTrait.exportStaticIr` 的输出（`packages/logix-core/src/internal/state-trait/ir.ts`）：
+- 复用 `FieldKernel.exportStaticIr` 的输出（`packages/logix-core/src/internal/state-field/ir.ts`）：
   - `version: string`（当前为 `"009"`）
   - `moduleId: string`
   - `digest: string`（稳定）

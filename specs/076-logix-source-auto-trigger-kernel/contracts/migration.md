@@ -8,10 +8,10 @@
 
 ## 迁移步骤（建议）
 
-1. 更新 `StateTrait.source`：使用 `autoRefresh` policy 替代 `triggers/debounceMs`（按本 spec 的 public-api 契约）。
+1. 更新 `FieldKernel.source`：使用 `autoRefresh` policy 替代 `triggers/debounceMs`（按本 spec 的 public-api 契约）。
 2. 内核落地 depsIndex + auto-trigger 后：
    - 删除 `packages/logix-query/src/internal/logics/auto-trigger.ts` 的默认挂载（或只保留手动 helper）。
-   - 删除/收敛 `TraitLifecycle.makeSourceWiring` 的对外使用点。
+   - 删除/收敛 `FieldLifecycle.makeSourceWiring` 的对外使用点。
 3. 若业务需要更复杂的时序：
    - `autoRefresh: false`
    - 用 Workflow（075；对外 DX 入口 `Workflow`）显式触发 refresh：通过 `callById('logix/kernel/sourceRefresh')`（保持 tick 证据链与 `serviceId` 锚点；`call(KernelPorts.sourceRefresh)` 仅作为 TS sugar）。

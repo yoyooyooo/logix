@@ -20,7 +20,7 @@ Builder 只做“静态读取 + 结构化产物”，不执行业务语义；运
 2. 跨模块句柄边界：`$.use(...)` 句柄仅 `read/changes/dispatch`，不允许跨模块直接写 state。
 3. Fluent 白盒链必须是单语句直接调用；拆成中间变量后视为 Raw/黑盒。
 
-> 若目标项目有 parser 约束文档，请在 `references/llms/99-project-anchor-template.md` 中登记。
+> 若本地实现存在额外 parser 约束，应把约束转写到当前任务说明中，不要让模型依赖外部路径。
 
 ## 3) Builder 工作流（最小闭环）
 
@@ -54,4 +54,3 @@ Builder 只做“静态读取 + 结构化产物”，不执行业务语义；运
 - `references/llms/01-core-glossary.md`
 - `references/llms/08-builder-ir-basics.md`
 - `references/llms/06-diagnostics-perf-basics.md`
-- `references/llms/99-project-anchor-template.md`（可选）

@@ -1,6 +1,6 @@
 # Implementation Plan: O-007 Logic 执行语义收敛（淘汰多重兼容分支）
 
-**Branch**: `097-o007-logic-semantics` | **Date**: 2026-02-25 | **Spec**: `specs/097-o007-logic-semantics/spec.md`  
+**Branch**: `097-o007-logic-semantics` | **Date**: 2026-02-25 | **Spec**: `specs/097-o007-logic-semantics/spec.md`
 **Input**: Feature specification from `specs/097-o007-logic-semantics/spec.md`
 
 ## Summary
@@ -19,14 +19,14 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: `effect` v3、`@effect/vitest`、`@logixjs/core` runtime 内核  
-**Storage**: N/A  
-**Testing**: Vitest + `@effect/vitest`（重点覆盖 `ModuleRuntime`）  
-**Target Platform**: Node.js（runtime 单测）  
-**Project Type**: pnpm workspace（packages/* + specs/*）  
-**Performance Goals**: `ModuleRuntime` logic 启动开销无 >5% 回归，并减少执行链路分支复杂度（以 perf diff + 代码路径证明）  
-**Constraints**: forward-only evolution、事务窗口禁 IO、诊断事件 Slim 可序列化、稳定标识不可随机化  
+**Language/Version**: TypeScript 5.9.x（ESM）
+**Primary Dependencies**: `effect` v3、`@effect/vitest`、`@logixjs/core` runtime 内核
+**Storage**: N/A
+**Testing**: Vitest + `@effect/vitest`（重点覆盖 `ModuleRuntime`）
+**Target Platform**: Node.js（runtime 单测）
+**Project Type**: pnpm workspace（packages/* + specs/*）
+**Performance Goals**: `ModuleRuntime` logic 启动开销无 >5% 回归，并减少执行链路分支复杂度（以 perf diff + 代码路径证明）
+**Constraints**: forward-only evolution、事务窗口禁 IO、诊断事件 Slim 可序列化、稳定标识不可随机化
 **Scale/Scope**: 仅聚焦 `logix-core` runtime logic 启动链路与对应诊断/测试/文档
 
 ## Constitution Check

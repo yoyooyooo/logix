@@ -4,7 +4,7 @@ description: "Task list for 081-platform-grade-parser-mvp (AnchorIndex@v1)"
 
 # Tasks: Platform-Grade Parser MVP（081：AnchorIndex@v1）
 
-**Input**: `specs/081-platform-grade-parser-mvp/spec.md`  
+**Input**: `specs/081-platform-grade-parser-mvp/spec.md`
 **Prerequisites**: `specs/081-platform-grade-parser-mvp/plan.md`（required）, `specs/081-platform-grade-parser-mvp/research.md`, `specs/081-platform-grade-parser-mvp/data-model.md`, `specs/081-platform-grade-parser-mvp/contracts/`, `specs/081-platform-grade-parser-mvp/quickstart.md`
 
 **Tests**: 本特性引入 Node-only AST 引擎（`ts-morph`），且其输出是后续回写闭环（082/079）的前置事实源；必须补齐 contracts/schema 预检 + 确定性/降级语义的单测，避免平台侧出现并行推断。
@@ -28,7 +28,7 @@ description: "Task list for 081-platform-grade-parser-mvp (AnchorIndex@v1)"
 
 ## Phase 2: Foundational（AnchorIndex 生成骨架：确定性/RawMode/ReasonCodes）
 
-**⚠️ CRITICAL**: 本阶段完成前，不开始任何 autofill/rewrite 对接（US2/US3 的细节扩展必须建立在稳定骨架上）。  
+**⚠️ CRITICAL**: 本阶段完成前，不开始任何 autofill/rewrite 对接（US2/US3 的细节扩展必须建立在稳定骨架上）。
 **Checkpoint**: 对一个小型 fixture 仓库能产出 `AnchorIndex@v1`，并满足稳定排序/确定性/可序列化。
 
 - [ ] T005 定义 Parser 公共入口（入参：repoRoot + includeGlobs/excludeGlobs + budgets）`packages/logix-anchor-engine/src/Parser.ts`
@@ -42,7 +42,7 @@ description: "Task list for 081-platform-grade-parser-mvp (AnchorIndex@v1)"
 
 ## Phase 3: User Story 1 - 仓库级锚点索引（Priority: P1）🎯 MVP
 
-**Goal**: 扫描仓库得到可平台消费的 `AnchorIndex@v1`，对子集外显式 Raw Mode，并给出可行动 reason codes。  
+**Goal**: 扫描仓库得到可平台消费的 `AnchorIndex@v1`，对子集外显式 Raw Mode，并给出可行动 reason codes。
 **Independent Test**: 仅依赖 fixture 输入即可验证：模块清单/定义点/RawMode 清单输出稳定且可 JSON 序列化。
 
 - [ ] T011 [P] [US1] 构造最小 fixture：包含 2 个 Platform-Grade `Module.make` 与 1 个子集外样例 `Module.make` `packages/logix-anchor-engine/test/fixtures/repo-basic/*`
@@ -55,7 +55,7 @@ description: "Task list for 081-platform-grade-parser-mvp (AnchorIndex@v1)"
 
 ## Phase 4: User Story 2 - 缺口点定位（Priority: P1）
 
-**Goal**: 为 079/082 提供“只改缺失字段”的插入点：`missing.services` / `missing.devSource`。  
+**Goal**: 为 079/082 提供“只改缺失字段”的插入点：`missing.services` / `missing.devSource`。
 **Independent Test**: 同一源码未变时，缺口点 insertSpan 稳定；当字段已显式声明（含 `services: {}`）时不输出缺口点。
 
 - [ ] T016 [US2] 计算 object literal 缺失字段的插入点（insertSpan）`packages/logix-anchor-engine/src/internal/missingField.ts`
@@ -69,7 +69,7 @@ description: "Task list for 081-platform-grade-parser-mvp (AnchorIndex@v1)"
 
 ## Phase 5: User Story 3 - 枚举依赖使用点（不做语义推断）（Priority: P2）
 
-**Goal**: 枚举高置信度 `$.use(Tag)` 使用点；动态/歧义/黑盒形态宁可漏并显式 reasonCodes。  
+**Goal**: 枚举高置信度 `$.use(Tag)` 使用点；动态/歧义/黑盒形态宁可漏并显式 reasonCodes。
 **Independent Test**: fixture 中同时包含“可解析 Tag”与“动态 Tag”，输出只收录前者，后者进入 rawMode 或 reasonCodes。
 
 - [ ] T022 [US3] 识别 `yield* $.use(<expr>)` 的使用点并输出 `ServiceUse` entry（含 tagSymbol/name）`packages/logix-anchor-engine/src/internal/scanServiceUse.ts`
@@ -82,7 +82,7 @@ description: "Task list for 081-platform-grade-parser-mvp (AnchorIndex@v1)"
 
 ## Phase 6: Workflow Anchors（WorkflowDef/stepKey 纳入 AnchorIndex） (Priority: P1)
 
-**Goal**: 识别 Platform-Grade `Workflow.make/fromJSON({ ... })` 的 WorkflowDef 定义点，并提供：`callById(serviceIdLiteral)` 的可枚举使用点、缺失 `steps[*].key` 的插入点、重复 key 的冲突定位。  
+**Goal**: 识别 Platform-Grade `Workflow.make/fromJSON({ ... })` 的 WorkflowDef 定义点，并提供：`callById(serviceIdLiteral)` 的可枚举使用点、缺失 `steps[*].key` 的插入点、重复 key 的冲突定位。
 **Independent Test**: fixture 中包含 1 个可解析 workflow、1 个子集外 workflow；输出确定性；缺失 key 输出 `missing.workflowStepKey`；重复 key 输出 `duplicate_step_key`。
 
 - [ ] T029 [P] 构造 workflow fixture：Platform-Grade WorkflowDef（缺失 key + 重复 key + callById(serviceIdLiteral)）`packages/logix-anchor-engine/test/fixtures/repo-workflow-def/*`

@@ -1,15 +1,15 @@
-import { useDispatch, useModule } from '@logixjs/react'
+import { useDispatch, useModule, useSelector } from '@logixjs/react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ProjectsDef } from '../galaxy/projects.module'
 
 export function ProjectsPage() {
-  const projects = useModule(ProjectsDef, (s) => s.projects) as any as ReadonlyArray<{
+  const projects = useSelector(ProjectsDef.tag, (s) => s.projects) as any as ReadonlyArray<{
     readonly projectId: number
     readonly name: string
   }>
-  const loading = useModule(ProjectsDef, (s) => s.projectsLoading)
-  const error = useModule(ProjectsDef, (s) => s.projectsError)
+  const loading = useSelector(ProjectsDef.tag, (s) => s.projectsLoading)
+  const error = useSelector(ProjectsDef.tag, (s) => s.projectsError)
 
   const dispatchProjects = useDispatch(ProjectsDef.tag)
 

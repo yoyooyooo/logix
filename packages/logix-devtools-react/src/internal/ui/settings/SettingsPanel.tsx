@@ -46,27 +46,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ settings, onUpdate
 
       <div className="flex flex-col gap-2">
         <label className="flex items-center justify-between gap-2">
-          <span>mode</span>
-          <select
-            value={settings.mode}
-            onChange={(e) => onUpdate({ mode: e.target.value as any })}
-            className="px-1 py-0.5 rounded border"
-            style={{
-              backgroundColor: 'var(--dt-bg-root)',
-              borderColor: 'var(--dt-border)',
-            }}
-          >
-            <option value="basic">basic</option>
-            <option value="deep">deep</option>
-          </select>
-        </label>
-
-        <label className="flex items-center justify-between gap-2">
-          <span>showTraitEvents</span>
+          <span>showFieldEvents</span>
           <input
             type="checkbox"
-            checked={settings.showTraitEvents}
-            onChange={(e) => onUpdate({ showTraitEvents: e.target.checked })}
+            checked={settings.showFieldEvents}
+            onChange={(e) => onUpdate({ showFieldEvents: e.target.checked })}
           />
         </label>
 
@@ -76,15 +60,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ settings, onUpdate
             type="checkbox"
             checked={settings.showReactRenderEvents}
             onChange={(e) => onUpdate({ showReactRenderEvents: e.target.checked })}
-          />
-        </label>
-
-        <label className="flex items-center justify-between gap-2">
-          <span>enableTimeTravelUI</span>
-          <input
-            type="checkbox"
-            checked={settings.enableTimeTravelUI}
-            onChange={(e) => onUpdate({ enableTimeTravelUI: e.target.checked })}
           />
         </label>
 

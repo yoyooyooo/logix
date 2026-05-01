@@ -5,7 +5,7 @@ import type { SandboxRuntime } from '../../modules/SandboxRuntime'
 import { SandboxPlaygroundView } from './SandboxPlaygroundView'
 
 export function SandboxPlayground() {
-  const runtime: SandboxRuntime = useModule(SandboxDef)
+  const runtime: SandboxRuntime = useModule(SandboxDef.tag)
   const dispatch = useDispatch(runtime)
 
   useEffect(() => {

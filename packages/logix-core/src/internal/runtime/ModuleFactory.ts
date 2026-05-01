@@ -1,8 +1,13 @@
 import { Effect, Layer, Option, Schema, ServiceMap } from 'effect'
-import * as ModuleRuntimeImpl from './ModuleRuntime.js'
-import * as BoundApiRuntime from './BoundApiRuntime.js'
+import * as ModuleRuntimeImpl from './core/ModuleRuntime.js'
+import * as BoundApiRuntime from './core/BoundApiRuntime.js'
 import * as LogicDiagnostics from './core/LogicDiagnostics.js'
+import * as LogicUnitMeta from './core/LogicUnitMeta.js'
 import * as LogicPlanMarker from './core/LogicPlanMarker.js'
+import {
+  attachLogicDeclarationCapture,
+  captureLogicDeclarations,
+} from '../authoring/logicDeclarationCapture.js'
 import type * as Action from '../action.js'
 import type { FieldPath } from '../field-path.js'
 import type {
@@ -16,15 +21,17 @@ import type {
   ActionOf,
   ModuleHandle,
   ModuleLogic,
-  ModuleImpl,
-  ModuleImplementStateTransactionOptions,
+  ProgramRuntimeBlueprint,
+  ProgramStateTransactionOptions,
 } from './core/module.js'
 
+// ModuleFactory owns module-tag construction, Link sugar, and blueprint assembly.
+// It remains an internal coordinator above core runtime primitives.
+
 /**
- * v3: Link (formerly Orchestrator)
- * A glue layer for cross-module collaboration.
+ * Link: glue layer for cross-module collaboration.
  *
- * - Does not own its own State.
+ * - Does not own State.
  * - Can access multiple Modules' readonly handles.
  * - Can define Logic only; cannot define State/Action.
  */
@@ -136,10 +143,21 @@ export function Module<Id extends string, SSchema extends AnySchema, AMap extend
      * Build a Logic program for the current Module:
      * - Read its ModuleRuntime from Context at runtime.
      * - Build a BoundApi from the runtime.
-     * - Pass the BoundApi to the caller to build business logic.
+     * - Pass the BoundApi to the caller for single-surface authoring:
+     *   do declaration work in the builder root and return the run effect.
      */
     logic: <R = unknown, E = never>(
+      logicId: string,
       build: (api: import('./core/module.js').BoundApi<typeof shape, R>) => ModuleLogic<typeof shape, R, E>,
+      options?: {
+        readonly kind?: string
+        readonly name?: string
+        readonly source?: {
+          readonly file: string
+          readonly line: number
+          readonly column: number
+        }
+      },
     ): ModuleLogic<typeof shape, R, E> => {
       const logicEffect = Effect.gen(function* () {
         const runtime = yield* Effect.service(tag).pipe(Effect.orDie)
@@ -171,12 +189,22 @@ export function Module<Id extends string, SSchema extends AnySchema, AMap extend
           return yield* built as Effect.Effect<any, any, any>
         }
 
-        const isLogicPlan = (value: unknown): value is import('./core/module.js').LogicPlan<typeof shape, R, E> =>
-          Boolean(value && typeof value === 'object' && 'setup' in (value as any) && 'run' in (value as any))
+        const isLogicDescriptor = (value: unknown): value is import('./core/module.js').LogicPlan<typeof shape, R, E> =>
+          Boolean(
+            value &&
+            typeof value === 'object' &&
+            (Object.prototype.hasOwnProperty.call(value, 'declare') ||
+              Object.prototype.hasOwnProperty.call(value, 'setup')) &&
+            Object.prototype.hasOwnProperty.call(value, 'run'),
+          )
 
-        const plan = isLogicPlan(built)
-          ? built
+        const plan = isLogicDescriptor(built)
+          ? ({
+              setup: ((built as any).declare ?? (built as any).setup) as any,
+              run: (built as any).run,
+            } satisfies import('./core/module.js').LogicPlan<typeof shape, R, E>)
           : ({
+              // Public single-phase logic is normalized into the internal declaration carrier here.
               setup: Effect.void,
               run: built as Effect.Effect<any, any, any>,
             } satisfies import('./core/module.js').LogicPlan<typeof shape, R, E>)
@@ -185,6 +213,21 @@ export function Module<Id extends string, SSchema extends AnySchema, AMap extend
       })
 
       LogicPlanMarker.markAsLogicPlanEffect(logicEffect)
+      const declarationCapture = captureLogicDeclarations({
+        shape,
+        moduleId: id,
+        build: build as any,
+      })
+      if (declarationCapture) {
+        attachLogicDeclarationCapture(logicEffect as any, declarationCapture)
+      }
+      LogicUnitMeta.attachLogicUnitMeta(logicEffect as any, {
+        id: logicId,
+        kind: options?.kind,
+        name: options?.name,
+        source: options?.source,
+        moduleId: id,
+      })
       return logicEffect
     },
 
@@ -214,22 +257,22 @@ export function Module<Id extends string, SSchema extends AnySchema, AMap extend
       >,
 
     /**
-     * implement: build a ModuleImpl blueprint from Module definition + initial state + a set of logics.
+     * implement: build a ProgramRuntimeBlueprint from Module definition + initial state + a set of logics.
      *
      * - R represents the Env required by the logics.
-     * - The returned ModuleImpl.layer carries R as its input environment.
+     * - The returned ProgramRuntimeBlueprint.layer carries R as its input environment.
      * - withLayer/withLayers can progressively narrow R to a more concrete Env (even never).
      */
     implement: <R = never>(config: {
       initial: StateOf<typeof shape>
       logics?: Array<ModuleLogic<typeof shape, R, never>>
-      imports?: ReadonlyArray<Layer.Layer<any, any, any> | ModuleImpl<any, AnyModuleShape, any>>
+      imports?: ReadonlyArray<Layer.Layer<any, any, any> | ProgramRuntimeBlueprint<any, AnyModuleShape, any>>
       /**
        * processes: a set of long-lived flows bound to this Module implementation (including Link).
        *
        * - These Effects will be forked by the runtime container (e.g. Runtime.make).
        * - Types use relaxed E/R to enable composing cross-module orchestration logic.
-       * - Business code typically builds these flows via Link.make.
+       * - Business code should keep these long-lived coordination flows on smaller, explicit contracts.
        */
       processes?: ReadonlyArray<Effect.Effect<void, any, any>>
       /**
@@ -238,12 +281,12 @@ export function Module<Id extends string, SSchema extends AnySchema, AMap extend
        * - If instrumentation is not provided, fall back to Runtime-level config (if any) or NODE_ENV defaults.
        * - If instrumentation is provided, it takes precedence over Runtime-level config and defaults.
        */
-      stateTransaction?: ModuleImplementStateTransactionOptions
-      }): ModuleImpl<Id, ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>, R> => {
+      stateTransaction?: ProgramStateTransactionOptions
+      }): ProgramRuntimeBlueprint<Id, ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>, R> => {
       const importedModules = (config.imports ?? []).flatMap((item) => {
-        if ((item as ModuleImpl<any, AnyModuleShape, any>)._tag === 'ModuleImpl') {
+        if ((item as ProgramRuntimeBlueprint<any, AnyModuleShape, any>)._tag === 'ProgramRuntimeBlueprint') {
           return [
-            (item as ModuleImpl<any, AnyModuleShape, any>).module as unknown as ServiceMap.Key<
+            (item as ProgramRuntimeBlueprint<any, AnyModuleShape, any>).module as unknown as ServiceMap.Key<
               any,
               import('./core/module.js').ModuleRuntime<any, any>
             >,
@@ -271,14 +314,14 @@ export function Module<Id extends string, SSchema extends AnySchema, AMap extend
 
       const processes = config.processes ?? []
 
-      const makeImplWithLayer = (
+      const makeBlueprintWithLayer = (
         layer: Layer.Layer<
           import('./core/module.js').ModuleRuntime<StateOf<typeof shape>, ActionOf<typeof shape>>,
           never,
           any
         >,
-      ): ModuleImpl<Id, ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>, any> => ({
-        _tag: 'ModuleImpl',
+      ): ProgramRuntimeBlueprint<Id, ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>, any> => ({
+        _tag: 'ProgramRuntimeBlueprint',
         module: moduleTag as unknown as LogixModuleTag<
           Id,
           ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>
@@ -288,7 +331,7 @@ export function Module<Id extends string, SSchema extends AnySchema, AMap extend
         stateTransaction: config.stateTransaction,
         withLayer: (
           extra: Layer.Layer<any, never, any>,
-        ): ModuleImpl<Id, ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>, any> => {
+        ): ProgramRuntimeBlueprint<Id, ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>, any> => {
           const provided = (
             layer as Layer.Layer<
               import('./core/module.js').ModuleRuntime<StateOf<typeof shape>, ActionOf<typeof shape>>,
@@ -303,14 +346,14 @@ export function Module<Id extends string, SSchema extends AnySchema, AMap extend
             any
           >
 
-          return makeImplWithLayer(merged)
+          return makeBlueprintWithLayer(merged)
         },
         withLayers: (
           ...extras: ReadonlyArray<Layer.Layer<any, never, any>>
-        ): ModuleImpl<Id, ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>, any> =>
-          extras.reduce<ModuleImpl<Id, ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>, any>>(
-            (implAcc, extra) => implAcc.withLayer(extra),
-            makeImplWithLayer(
+        ): ProgramRuntimeBlueprint<Id, ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>, any> =>
+          extras.reduce<ProgramRuntimeBlueprint<Id, ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>, any>>(
+            (blueprintAcc, extra) => blueprintAcc.withLayer(extra),
+            makeBlueprintWithLayer(
               layer as Layer.Layer<
                 import('./core/module.js').ModuleRuntime<StateOf<typeof shape>, ActionOf<typeof shape>>,
                 never,
@@ -320,8 +363,8 @@ export function Module<Id extends string, SSchema extends AnySchema, AMap extend
           ),
       })
 
-      // Start from baseLayer and layer-in imports (Layer or other ModuleImpl.layer) sequentially.
-      const initialImpl = makeImplWithLayer(
+      // Start from baseLayer and layer-in imports (Layer or other ProgramRuntimeBlueprint.layer) sequentially.
+      const initialBlueprint = makeBlueprintWithLayer(
         baseLayer as Layer.Layer<
           import('./core/module.js').ModuleRuntime<StateOf<typeof shape>, ActionOf<typeof shape>>,
           never,
@@ -331,18 +374,18 @@ export function Module<Id extends string, SSchema extends AnySchema, AMap extend
 
       const imports = config.imports ?? []
 
-      const finalImpl = imports.reduce<
-        ModuleImpl<Id, ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>, any>
-      >((implAcc, item) => {
+      const finalBlueprint = imports.reduce<
+        ProgramRuntimeBlueprint<Id, ModuleShape<SSchema, Schema.Schema<ActionsFromMap<AMap>>, AMap>, any>
+      >((blueprintAcc, item) => {
         const layer =
-          (item as ModuleImpl<any, AnyModuleShape, any>)._tag === 'ModuleImpl'
-            ? (item as ModuleImpl<any, AnyModuleShape, any>).layer
+          (item as ProgramRuntimeBlueprint<any, AnyModuleShape, any>)._tag === 'ProgramRuntimeBlueprint'
+            ? (item as ProgramRuntimeBlueprint<any, AnyModuleShape, any>).layer
             : (item as Layer.Layer<any, any, any>)
 
-        return implAcc.withLayer(layer as Layer.Layer<any, never, any>)
-      }, initialImpl)
+        return blueprintAcc.withLayer(layer as Layer.Layer<any, never, any>)
+      }, initialBlueprint)
 
-      return finalImpl
+      return finalBlueprint
     },
   })
 

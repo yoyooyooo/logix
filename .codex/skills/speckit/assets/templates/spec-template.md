@@ -15,6 +15,7 @@
   OPTIONAL (repo-specific): If this feature directly advances a known North Star
   (NS-*) or a Kill Feature (KF-*), record the IDs here and tag the relevant
   details below.
+  NS/KF 只是当前对齐载体；若它们阻碍更优设计，先更新事实源，再在这里写新的 IDs。
   Source of truth: docs/ssot/platform/foundation/04-north-stars.md (index: .specify/memory/north-stars.md)
 
   Recommended tagging convention in this repo:
@@ -25,6 +26,65 @@
 
 - **North Stars (NS)**: [e.g., NS-1, NS-4]
 - **Kill Features (KF)**: [e.g., KF-1]
+
+## Current Role
+
+<!--
+  Repo workflow gate:
+  - spec.md 先承接“最小必要 SSoT”
+  - 回答 owner / boundary / closure gate 之后，才进入 plan.md
+  - 不要把 plan / tasks / discussion 的职责提前塞进 spec
+-->
+
+- This page holds the minimum necessary SSoT for this feature.
+- This page MUST answer owner, boundary, and closure gate before planning starts.
+- This page MUST NOT delegate core truth to `discussion.md`.
+
+## Context
+
+<!--
+  ACTION REQUIRED:
+  - 说明当前为什么需要这份 spec
+  - 说明已经有哪些前置裁决、当前还缺什么
+  - 若这是 cutover / closure / hub spec，优先写清当前原则与边界
+-->
+
+[Describe the current context, predecessor decisions, and the gap that still needs to close]
+
+## Scope
+
+### In Scope
+
+- [What this spec owns]
+
+### Out of Scope
+
+- [What this spec explicitly does not own]
+
+## Imported Authority _(recommended)_
+
+<!--
+  ACTION REQUIRED:
+  - 列出当前 spec 依赖的 authority 页、predecessor spec、shared boundary
+  - 若这些页面已经冻结原则，这里只引用，不重写
+-->
+
+- [Authority page or predecessor spec]
+
+## Closure & Guardrails _(recommended for closure / cutover / hub specs)_
+
+### Closure Contract
+
+- [What must become true for this spec to count as closed]
+
+### Must Cut
+
+- [Rejected direction 1]
+- [Rejected direction 2]
+
+### Reopen Bar
+
+- [What evidence would justify reopening]
 
 ## User Scenarios & Testing _(mandatory)_
 

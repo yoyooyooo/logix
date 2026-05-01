@@ -1,7 +1,7 @@
 # Specification Quality Checklist: 国际化接入与 Root.resolve 语法糖
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-24  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-24
 **Feature**: `specs/029-i18n-root-resolve/spec.md`
 
 ## Content Quality

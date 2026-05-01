@@ -11,7 +11,7 @@ class ServiceB extends ServiceMap.Service<ServiceB, { readonly value: number }>(
 
 const baseRuntime = ManagedRuntime.make(Layer.succeed(ServiceA, { value: 'base' }) as Layer.Layer<any, never, never>)
 
-describe('RuntimeProvider layer merge & override', () => {
+describe('host adapter subtree layer merge & override', () => {
   it('should use runtime base env when no layer provided', () => {
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <RuntimeProvider runtime={baseRuntime} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>
@@ -33,7 +33,7 @@ describe('RuntimeProvider layer merge & override', () => {
     expect(result.current).toBe('base')
   })
 
-  it('should override service via RuntimeProvider.layer', async () => {
+  it('should override service via subtree layer', async () => {
     const overrideLayer = Layer.succeed(ServiceA, { value: 'override' }) as Layer.Layer<any, never, never>
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (

@@ -1,7 +1,7 @@
 # Contracts: 025 IR Reflection Loader
 
-**Date**: 2025-12-24  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/025-ir-reflection-loader/spec.md`
+**Date**: 2025-12-24
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/025-ir-reflection-loader/spec.md`
 
 本目录固化 025 的“对外契约层”产物：
 

@@ -1,7 +1,7 @@
 # Contract: Internal Structure（src/internal 收敛与分区）
 
-**Branch**: `030-packages-public-submodules`  
-**Date**: 2025-12-25  
+**Branch**: `030-packages-public-submodules`
+**Date**: 2025-12-25
 **Spec**: `specs/030-packages-public-submodules/spec.md`
 
 > 目标：把“public surface 收口”与“internal 可自由重构”真正落地到目录结构上，让多人并行时冲突面最小、未来抽包成本可控。
@@ -32,16 +32,16 @@
 
 ### `@logixjs/form`
 
-- `src/Form.ts` / `src/Rule.ts` / `src/Error.ts` / `src/Trait.ts` / `src/Path.ts` / ...（Public Submodules）
-- `src/internal/form/**`：表单内核（controller/reducer/traits/rules/errors/arrays 等）
-- `src/internal/dsl/**`：DSL 构造器（from/traits/derived/rules/node/list）
+- `src/Form.ts` / `src/Rule.ts` / `src/Error.ts` / `src/Field.ts` / `src/Path.ts` / ...（Public Submodules）
+- `src/internal/form/**`：表单内核（controller/reducer/fields/rules/errors/arrays 等）
+- `src/internal/dsl/**`：DSL 构造器（from/fields/derived/rules/node/list）
 - `src/internal/schema/**`：schema 映射相关实现（path/error mapping）
 - `src/internal/validators/**`：校验实现（如需拆分）
 - Independent Entry Point：`src/react/index.ts`（`@logixjs/form/react` 聚合入口）
 
 ### `@logixjs/query`
 
-- `src/Query.ts` / `src/Engine.ts` / `src/Traits.ts` / `src/Middleware.ts` / `src/TanStack.ts`（Public Submodules）
+- `src/Query.ts` / `src/Engine.ts` / `src/Fields.ts` / `src/Middleware.ts` / `src/TanStack.ts`（Public Submodules）
 - `src/internal/engine/**`：engine 实现与状态
 - `src/internal/tanstack/**`：TanStack 集成实现
 - `src/internal/logics/**`：logics 实现
@@ -58,7 +58,7 @@
 
 ### `@logixjs/devtools-react`
 
-- `src/LogixDevtools.tsx` / `src/DevtoolsLayer.ts` / `src/StateTraitGraphView.tsx`（Public Submodules）
+- `src/LogixDevtools.tsx` / `src/DevtoolsLayer.ts` / `src/FieldGraphView.tsx`（Public Submodules）
 - `src/internal/ui/**`：UI 实现
 - `src/internal/state/**`：UI 状态管理实现
 - `src/internal/snapshot/**`：snapshot 相关实现

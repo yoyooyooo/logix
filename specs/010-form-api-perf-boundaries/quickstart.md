@@ -3,8 +3,8 @@
 本 quickstart 用 `case11-dynamic-list-cascading-exclusion` 的“仓库跨行互斥（uniqueWarehouse）”演示如何用 list-scope Rule 一次扫描产出一致错误，并删除 `listValidateOnChange` 开关。
 
 > 注意：本文档同时记录「终态 DX 目标」与「当前 worktree 已实现基线」。
-> - 当前 `@logixjs/form` 的主入口仍是 `Form.make({ values, initialValues, validateOn, reValidateOn, debounceMs, traits })`（直接声明 traits/StateTraitSpec）。
-> - 早期草案提过 `rules/fieldArrays` 作为更高层配置入口；当前实现已把它们收敛为 `traits`（非数组字段 `traits.<path>.check`；数组字段 `traits.<listPath> = { identityHint, item, list }`），不再需要额外 `fieldArrays/Form.fieldArray`。
+> - 当前 `@logixjs/form` 的主入口仍是 `Form.make({ values, initialValues, validateOn, reValidateOn, debounceMs, fields })`（直接声明 fields/FieldKernelSpec）。
+> - 早期草案提过 `rules/fieldArrays` 作为更高层配置入口；当前实现已把它们收敛为 `fields`（非数组字段 `fields.<path>.check`；数组字段 `fields.<listPath> = { identityHint, item, list }`），不再需要额外 `fieldArrays/Form.fieldArray`。
 
 ## 0) 终态 DX（一眼看完）
 
@@ -12,29 +12,29 @@
 
 - **字段绑定极简且强类型**：`useField(form, "userList.0.warehouseId")` 返回 `{ value, error, touched, dirty, onChange, onBlur }`，且 `value/error` 类型可推导（不再 `unknown`）；`dirty` 默认采用 persistent dirty（一次 dirty 直到 `reset()`）。
 - **FieldArray 稳定 rowId**：`useFieldArray(form, "userList").fields[i].id` 与 runtime rowId 对齐，增删/重排不漂移；错误与 UI 状态跟随 rowId 而不是 index。
-- **跨行规则是一等公民**：跨行互斥/唯一性通过在 `traits` 的数组字段上声明 list 结构（`identityHint.trackBy` + `item.check/list.check`）来完成；一次扫描、多行写回、所有冲突行都标错；不允许 UI 手写全表扫描。
+- **跨行规则是一等公民**：跨行互斥/唯一性通过在 `fields` 的数组字段上声明 list 结构（`identityHint.trackBy` + `item.check/list.check`）来完成；一次扫描、多行写回、所有冲突行都标错；不允许 UI 手写全表扫描。
 - **触发语义完全自动**：删除 `listValidateOnChange`；触发范围只由 deps/IR 推导（对齐 009 的 patch/dirty-set），结构变更（insert/remove/reorder）也会触发跨行规则刷新。
-- **联动/派生也是一等公民**：级联清理、字段联动、可选项派生等必须以 `computed/link` 这类“事务内派生收敛”表达（产出 patch/dirty-set，可回放可解释），禁止在 UI 里串多个 `setValue` 手写联动；并且业务侧应只用 `@logixjs/form` 的领域包装来声明这些能力（保持可降解，不直接写 `@logixjs/core` 的 StateTrait）。
+- **联动/派生也是一等公民**：级联清理、字段联动、可选项派生等必须以 `computed/link` 这类“事务内派生收敛”表达（产出 patch/dirty-set，可回放可解释），禁止在 UI 里串多个 `setValue` 手写联动；并且业务侧应只用 `@logixjs/form` 的领域包装来声明这些能力（保持可降解，不直接写 `@logixjs/core` 的 FieldKernel）。
 - **提交/校验/重置有默认语义**：提供 `validate/reset/handleSubmit`（事务内无 IO；IO 必须通过 Task/事务外）；Schema/Rules 的错误写回与清理语义统一。
-- **可解释且可回放**：当 `Diagnostics Level=light|full` 时，每次校验输出 Slim 可序列化 `trait:check` 事件（复用 009 DynamicTrace；`off` 不产出），支持 Devtools/平台解释“哪个规则、因何触发、影响了哪些行”。
+- **可解释且可回放**：当 `Diagnostics Level=light|full` 时，每次校验输出 Slim 可序列化 `field:check` 事件（复用 009 DynamicTrace；`off` 不产出），支持 Devtools/平台解释“哪个规则、因何触发、影响了哪些行”。
 
 ## 0.1) 当前 worktree 基线（可运行）
 
-- 可运行示例：`/Users/yoyo/Documents/code/personal/intent-flow/examples/logix-react/src/demos/form/cases/case11-dynamic-list-cascading-exclusion.tsx`
-- 最小心智模型：用 `Logix.StateTrait.list(...).list.check` 声明 list-scope 规则；用 `validateOn/reValidateOn` 控制默认自动校验阶段；用 rule 级 `validateOn` 精确放行/禁用 onChange/onBlur。
+- 可运行示例：`/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/examples/logix-react/src/demos/form/cases/case11-dynamic-list-cascading-exclusion.tsx`
+- 最小心智模型：用 `Logix.FieldKernel.list(...).list.check` 声明 list-scope 规则；用 `validateOn/reValidateOn` 控制默认自动校验阶段；用 rule 级 `validateOn` 精确放行/禁用 onChange/onBlur。
 
 ## 1) 业务写法（对齐当前实现）
 
 关键约束：
 
-- 非数组字段规则挂在 `traits.<path>.check`（跨字段校验也建议锚定到“要展示错误的字段”上）。
-- 行内规则挂在 `traits.<listPath>.item.check`（只看当前行，不扫全表）。
-- 跨行规则挂在 `traits.<listPath>.list.check`（输入整列，一次扫描，多行写回）。
+- 非数组字段规则挂在 `fields.<path>.check`（跨字段校验也建议锚定到“要展示错误的字段”上）。
+- 行内规则挂在 `fields.<listPath>.item.check`（只看当前行，不扫全表）。
+- 跨行规则挂在 `fields.<listPath>.list.check`（输入整列，一次扫描，多行写回）。
 - `values` 与 `initialValues` 只描述“值树”（不含 `errors/ui`）。
-- 数组字段的“列表语义”（rowId/结构触发/校验 scope）通过 list trait 结构显式声明：`traits.<listPath> = { identityHint, item, list }`；`useFieldArray(form, listPath)` 负责派发 `arrayAppend/Remove/...` 等动作与生成稳定 `fields[i].id`。
-- 联动/派生（`computed/link`）仍属于 Form 的核心能力：业务侧不应直接写 StateTraitSpec，而应通过 Form 领域层的包装入口声明（下文给出终态写法与其降解后的 Trait IR 形态）。
+- 数组字段的“列表语义”（rowId/结构触发/校验 scope）通过 list field 结构显式声明：`fields.<listPath> = { identityHint, item, list }`；`useFieldArray(form, listPath)` 负责派发 `arrayAppend/Remove/...` 等动作与生成稳定 `fields[i].id`。
+- 联动/派生（`computed/link`）仍属于 Form 的核心能力：业务侧不应直接写 FieldKernelSpec，而应通过 Form 领域层的包装入口声明（下文给出终态写法与其降解后的 Field IR 形态）。
 
-示意（终态推荐：业务侧只写 `Form.make` 的领域配置；`Form.make` 内部会把它编译为 StateTraitSpec/IR）：
+示意（终态推荐：业务侧只写 `Form.make` 的领域配置；`Form.make` 内部会把它编译为 FieldKernelSpec/IR）：
 
 ```ts
 import * as Form from "@logixjs/form"
@@ -133,7 +133,7 @@ export const DemoForm = Form.make('DemoForm', {
   validateOn: ['onChange'],
   initialValues: { isDraft: false, title: '', userList: [] },
 
-  traits: Form.traits(ValuesSchema)({
+  fields: Form.fields(ValuesSchema)({
     title: {
       check: Form.Rule.make(titleRules),
     },
@@ -146,14 +146,14 @@ export const DemoForm = Form.make('DemoForm', {
 })
 ```
 
-### 1.0（内部视角）如何降解到 Trait IR
+### 1.0（内部视角）如何降解到 Field IR
 
-上面的 `traits`（经 `Form.traits` 归一化）会落成可直接挂到 Module.traits 的 StateTraitSpec（仅用于说明）：
+上面的 `fields`（经 `Form.fields` 归一化）会落成可直接挂到 Module.fields 的 FieldKernelSpec（仅用于说明）：
 
 ```ts
-traits: {
-  // (提案) 联动/派生仍可完全降解为 trait 的 computed/link（但业务侧不直接写 StateTrait）
-  "ui.userList.usedWarehouseIds": Form.Trait.computed({
+fields: {
+  // (提案) 联动/派生仍可完全降解为 field 的 computed/link（但业务侧不直接写 FieldKernel）
+  "ui.userList.usedWarehouseIds": Form.Field.computed({
     deps: ["userList"],
     get: (userList) =>
       Array.from(
@@ -175,7 +175,7 @@ traits: {
 
 ### 1.1 Rule 声明（直写 / 复用）
 
-默认写法推荐“直写形态”：直接在 `traits.<path>.check`（含 list 的 `item.check/list.check`）里用对象声明规则。
+默认写法推荐“直写形态”：直接在 `fields.<path>.check`（含 list 的 `item.check/list.check`）里用对象声明规则。
 `Form.Rule.make/merge` 是可选的“复用/组合工具”，用于把常用规则库提取出来复用，并在合并时对重复 ruleName 稳定失败。
 
 无论你用哪种形态声明，rule 都不会被手动调用：它会在 `Form.install` 触发 scoped validate（`setValue/blur/submit`）时被 runtime 执行；你只负责声明规则（挂在 `check`）与显式 deps。
@@ -249,7 +249,7 @@ const codeRules = {
 
 **E) 规则挂载语法糖（可选）**
 
-当表单规则很多、需要条件拼装或避免对象 spread 的静默覆盖时，可用 `Form.Rule.field/fields` 以“声明列表”的方式构造 `traits` 片段（key= valuePath）：
+当表单规则很多、需要条件拼装或避免对象 spread 的静默覆盖时，可用 `Form.Rule.field/fields` 以“声明列表”的方式构造 `fields` 片段（key= valuePath）：
 
 ```ts
 const emailTrait = (path = "email") =>
@@ -270,7 +270,7 @@ const baseTraits = [
   emailTrait(),
 ] as const
 
-const traits = Form.Rule.fields(baseTraits, Form.Rule.field("code", { check: Form.Rule.make(codeRules) }))
+const fields = Form.Rule.fields(baseTraits, Form.Rule.field("code", { check: Form.Rule.make(codeRules) }))
 ```
 
 推荐把“通用规则包”做成可参数化的挂载函数（默认值就是常见字段名），避免把 path 写死在规则包里：
@@ -290,9 +290,9 @@ const emailTrait = (path = "email") =>
   })
 ```
 
-### 1.2 list trait 用法（多数组字段 / deps 触发粒度）
+### 1.2 list field 用法（多数组字段 / deps 触发粒度）
 
-数组字段的“列表语义”（identity/rowId、触发/写回、React FieldArray key）由 list trait 显式声明：`traits.<listPath> = { identityHint, item, list }`。
+数组字段的“列表语义”（identity/rowId、触发/写回、React FieldArray key）由 list field 显式声明：`fields.<listPath> = { identityHint, item, list }`。
 
 - **identity/rowId**：`identityHint.trackBy` 用于生成稳定 rowId（增删/重排不漂移）
 - **触发/写回**：list/row scope 的触发粒度与错误写回形态（`$list/rows[]`）
@@ -305,7 +305,7 @@ export const DemoForm = Form.make('DemoForm', {
   values: ValuesSchema,
   validateOn: ['onChange'],
   initialValues: { userList: [], addressList: [] },
-  traits: Form.traits(ValuesSchema)({
+  fields: Form.fields(ValuesSchema)({
     userList: {
       identityHint: { trackBy: "id" },
       item: { check: Form.Rule.make(userRowRules) },
@@ -357,7 +357,7 @@ const listRules = Form.Rule.make<ReadonlyArray<Row>>({
 - 可诊断：能输出“写回由谁触发/写回了什么”的 Slim 证据；
 - 可优化：未来可结合 patch/dirty-set 做增量派生，而不是每次 UI render 扫全表。
 
-终态目标：业务侧只 import `@logixjs/form`，用 Form 领域层的包装声明 `computed/link`，而不是直接写 `@logixjs/core` 的 `StateTrait`。
+终态目标：业务侧只 import `@logixjs/form`，用 Form 领域层的包装声明 `computed/link`，而不是直接写 `@logixjs/core` 的 `FieldKernel`。
 
 **示例：派生一份 UI 用的“已选仓库集合”，避免 UI 自己扫大树**
 
@@ -369,7 +369,7 @@ export const DemoForm = Form.make('DemoForm', {
   validateOn: ['onChange'],
   initialValues: { isDraft: false, title: '', userList: [] },
 
-  traits: Form.traits(ValuesSchema)({
+  fields: Form.fields(ValuesSchema)({
     title: { check: Form.Rule.make(titleRules) },
     userList: {
       identityHint: { trackBy: "id" },
@@ -380,7 +380,7 @@ export const DemoForm = Form.make('DemoForm', {
 
   // (提案) derived：Form 领域层声明 computed/link 的入口（只写 values/ui，不写 errors）
   derived: {
-    'ui.userList.usedWarehouseIds': Form.Trait.computed({
+    'ui.userList.usedWarehouseIds': Form.Field.computed({
       // deps 是唯一依赖事实源；这里用粗粒度依赖（整列）覆盖派生读取
       deps: ['userList'],
       get: (userList) =>
@@ -424,11 +424,11 @@ export const DemoForm2 = Form.make('DemoForm2', {
     shipping: { recipientName: '' },
   },
   derived: {
-    'profile.fullName': Form.Trait.computed({
+    'profile.fullName': Form.Field.computed({
       deps: ['profile.firstName', 'profile.lastName'],
       get: (firstName, lastName) => `${firstName} ${lastName}`.trim(),
     }),
-    'shipping.recipientName': Form.Trait.link({
+    'shipping.recipientName': Form.Field.link({
       from: 'profile.fullName',
     }),
   },
@@ -599,9 +599,11 @@ export const Host = Logix.Module.make('Host', {
   actions: {},
 })
 
-export const HostImpl = Host.implement({
+export const HostProgram = Logix.Program.make(Host, {
   initial: {},
-  imports: [DemoForm.impl],
+  capabilities: {
+    imports: [DemoFormProgram],
+  },
   logics: [
     Host.logic(($) =>
       Effect.gen(function* () {

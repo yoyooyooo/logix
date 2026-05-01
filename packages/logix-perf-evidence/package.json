@@ -1,0 +1,37 @@
+{
+  "name": "@logixjs/perf-evidence",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./package.json": "./package.json",
+    "./assets/matrix.json": "./assets/matrix.json",
+    "./assets/schemas/perf-report.schema.json": "./assets/schemas/perf-report.schema.json",
+    "./assets/schemas/perf-diff.schema.json": "./assets/schemas/perf-diff.schema.json"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run scripts/**/*.test.ts",
+    "collect": "pnpm -C ../.. exec tsx packages/logix-perf-evidence/scripts/collect.ts",
+    "ci:decision-smoke": "pnpm -C ../.. exec vitest run packages/logix-perf-evidence/scripts/lib/capacity-collect-budget-controller.test.ts packages/logix-perf-evidence/scripts/lib/capacity-collect-decision.test.ts packages/logix-perf-evidence/scripts/lib/steps-grid-guard.test.ts packages/logix-perf-evidence/scripts/lib/steps-grid.test.ts packages/logix-perf-evidence/scripts/lib/capacity-envelope.test.ts",
+    "ci:replay": "pnpm -C ../.. exec tsx packages/logix-perf-evidence/scripts/ci.replay-capacity-collect.ts && pnpm -C ../.. exec tsx packages/logix-perf-evidence/scripts/ci.replay-summary.ts",
+    "ci:tiny-collect": "VITE_LOGIX_PERF_STEPS_LEVELS=200,400 pnpm -C ../.. exec tsx packages/logix-perf-evidence/scripts/collect.ts --profile smoke --files test/browser/perf-boundaries/converge-steps.test.tsx --out /tmp/logix-perf-tiny-collect.json",
+    "ci:preflight": "pnpm -C ../.. exec tsx packages/logix-perf-evidence/scripts/ci.preflight.ts",
+    "ci:check-steps-grid": "pnpm -C ../.. exec tsx packages/logix-perf-evidence/scripts/ci.check-steps-grid.ts",
+    "collect:smoke": "pnpm -C ../.. exec tsx packages/logix-perf-evidence/scripts/collect.ts --profile smoke",
+    "collect:quick": "pnpm -C ../.. exec tsx packages/logix-perf-evidence/scripts/collect.ts --profile quick",
+    "capacity:collect": "pnpm -C ../.. exec tsx packages/logix-perf-evidence/scripts/capacity.collect.ts",
+    "ci:interpret": "pnpm -C ../.. exec tsx packages/logix-perf-evidence/scripts/ci.interpret-artifact.ts",
+    "diff": "pnpm -C ../.. exec tsx packages/logix-perf-evidence/scripts/diff.ts",
+    "diff:triage": "pnpm -C ../.. exec tsx packages/logix-perf-evidence/scripts/diff.ts --allow-config-drift --allow-env-drift",
+    "validate": "pnpm -C ../.. exec tsx packages/logix-perf-evidence/scripts/validate.ts",
+    "tuning:recommend": "pnpm -C ../.. exec tsx packages/logix-perf-evidence/scripts/tuning.recommend.ts",
+    "tuning:best": "pnpm -C ../.. exec tsx packages/logix-perf-evidence/scripts/tuning.recommend.ts --profile quick"
+  },
+  "dependencies": {
+    "@logixjs/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.1"
+  }
+}

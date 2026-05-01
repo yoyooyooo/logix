@@ -13,9 +13,9 @@ export const CustomerSearchActionMap = {
   'customerSearch/setKeyword': Schema.String,
 }
 
-export type CustomerSearchShape = Logix.Shape<typeof CustomerSearchStateSchema, typeof CustomerSearchActionMap>
+export type CustomerSearchShape = Logix.Module.Shape<typeof CustomerSearchStateSchema, typeof CustomerSearchActionMap>
 
-export const CustomerSearchDef = Logix.Module.make('CustomerSearch', {
+export const CustomerSearch = Logix.Module.make('CustomerSearch', {
   state: CustomerSearchStateSchema,
   actions: CustomerSearchActionMap,
   immerReducers: {

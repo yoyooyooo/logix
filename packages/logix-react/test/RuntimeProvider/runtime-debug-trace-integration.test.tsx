@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 // @vitest-environment happy-dom
 
 import React from 'react'
@@ -12,10 +13,10 @@ const Counter = Logix.Module.make('ReactDebugTraceCounter', {
   actions: { inc: Schema.Void },
 })
 
-const logic = Counter.logic(($) =>
+const logic = Counter.logic('counter-logic', ($) =>
   Effect.gen(function* () {
     yield* $.onAction('inc').run(() =>
-      Logix.Debug.record({
+      CoreDebug.record({
         type: 'trace:inc',
         moduleId: Counter.id,
         data: { source: 'runtime-debug-trace-integration.test' },
@@ -24,25 +25,25 @@ const logic = Counter.logic(($) =>
   }),
 )
 
-const Impl = Counter.implement({
+const CounterProgram = Logix.Program.make(Counter, {
   initial: { count: 0 },
   logics: [logic],
 })
 
 describe('Runtime + Debug trace integration (React happy-dom)', () => {
   it('should deliver trace:* events to a DebugSink provided via Runtime.make(layer)', async () => {
-    const events: Logix.Debug.Event[] = []
+    const events: CoreDebug.Event[] = []
 
-    const debugLayer = Logix.Debug.replace([
+    const debugLayer = CoreDebug.replace([
       {
-        record: (event: Logix.Debug.Event) =>
+        record: (event: CoreDebug.Event) =>
           Effect.sync(() => {
             events.push(event)
           }),
       },
     ]) as Layer.Layer<any, never, never>
 
-    const baseRuntime = Logix.Runtime.make(Impl, {
+    const baseRuntime = Logix.Runtime.make(CounterProgram, {
       layer: debugLayer,
     })
 

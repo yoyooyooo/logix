@@ -7,6 +7,7 @@
 
 import { Effect } from 'effect'
 import * as Logix from '@logixjs/core'
+import { programLayer } from '../runtime/programLayer.js'
 import {
   LongTaskStateSchema,
   LongTaskActionMap,
@@ -18,12 +19,12 @@ import {
 // ---------------------------------------------------------------------------
 // Logic：与 long-task-pattern.ts 类似，但作为独立 Module 复用同一 Pattern
 // Module：复用模式下的长任务模块
-export const TaskDef = Logix.Module.make('TaskModule', {
+export const Task = Logix.Module.make('TaskModule', {
   state: LongTaskStateSchema,
   actions: LongTaskActionMap,
 })
 
-export const TaskLogic = TaskDef.logic(($) =>
+export const TaskLogic = Task.logic('task-logic', ($) =>
   Effect.gen(function* () {
     // 启动长任务：如果已经在 running，runExhaust 会丢弃后续触发，避免重复启动
     const startEffect = Effect.gen(function* () {
@@ -44,10 +45,10 @@ export const TaskLogic = TaskDef.logic(($) =>
 )
 
 // ---------------------------------------------------------------------------
-// Module / Impl / Live：组合 State / Action / Logic 成为另一棵可注入的领域模块
+// Program / Layer：组合 State / Action / Logic 成为另一棵可注入的领域程序
 // ---------------------------------------------------------------------------
 
-export const TaskModule = TaskDef.implement({
+export const TaskProgram = Logix.Program.make(Task, {
   initial: {
     status: 'idle',
     progress: 0,
@@ -55,5 +56,4 @@ export const TaskModule = TaskDef.implement({
   logics: [TaskLogic],
 })
 
-export const TaskImpl = TaskModule.impl
-export const TaskLive = TaskImpl.layer
+export const TaskLayer = programLayer(TaskProgram)

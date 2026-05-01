@@ -1,26 +1,28 @@
 ---
 title: API Reference
-description: Reference for the Logix core APIs.
+description: Use the API docs as the reference layer for core and React public surfaces.
 ---
 
-This section contains detailed documentation for Logix runtime core APIs.
+The API docs are the reference layer of the public surface.
 
-If you want a complete, drift-free “dictionary” of exports and signatures, use the **auto-generated API Reference**:
+Use them when object roles, entry points, route boundaries, or canonical usage need to be checked.
+
+## Main sections
+
+- [Core runtime APIs](/docs/api/core/runtime)
+- [React host APIs](/docs/api/react/provider)
+
+## Generated reference
+
+For a signature-first export index:
 
 - [/api-reference](/api-reference)
 
-## Contents
+## Suggested order
 
-- [**Runtime and ManagedRuntime**](/docs/api/core/runtime): how to build an app-level Runtime and run Logix in different host environments.
-- [**Bound API ($)**](/docs/api/core/bound-api): the `$` object you use inside Logic to read/write state, dispatch actions, watch signals, and manage lifecycle.
-- [**Module definition and implementation**](/docs/api/core/module): how to define a Module’s Shape (Schema), create instances, and assemble `ModuleImpl`.
-- [**Flow API**](/docs/api/core/flow): low-level Fluent Flow APIs, matching `$.onAction / $.onState / $.on` one-to-one.
-- [**React integration**](/docs/api/react/provider): using Logix in React via `RuntimeProvider` / `useModule` / `useSelector` / `useDispatch`.
-
-## Type conventions
-
-You will frequently see the following type parameters in the API docs:
-
-- `Sh` (Shape): the Module shape, including State and Action schemas.
-- `R` (Requirements): the required dependency environment (Services) for running Logic.
-- `E` (Error): the error type a program may fail with.
+1. [Runtime](/docs/api/core/runtime)
+2. [Module](/docs/api/core/module)
+3. [Bound API ($)](/docs/api/core/bound-api)
+4. [RuntimeProvider](/docs/api/react/provider)
+5. [useModule](/docs/api/react/use-module)
+6. [useSelector](/docs/api/react/use-selector)

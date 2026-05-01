@@ -1,8 +1,8 @@
 # Feature Specification: 运行时可观测性加固（事务链路贯穿 + Devtools 事件聚合器性能/内存 + 快照订阅契约）
 
-**Feature Branch**: `[027-runtime-observability-hardening]`  
-**Created**: 2025-12-23  
-**Status**: Draft  
+**Feature Branch**: `[027-runtime-observability-hardening]`
+**Created**: 2025-12-23
+**Status**: Draft
 **Input**: User description: "修复事务队列边界导致的链路断裂、优化 Devtools 事件聚合器的性能与内存、并提供外部订阅安全的 DevtoolsSnapshot 接口"
 
 ## User Scenarios & Testing _(mandatory)_

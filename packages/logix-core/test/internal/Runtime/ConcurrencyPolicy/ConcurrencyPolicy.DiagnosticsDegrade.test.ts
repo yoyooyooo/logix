@@ -3,7 +3,7 @@ import { it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
 import { TestClock } from 'effect/testing'
 import * as ConcurrencyDiagnostics from '../../../../src/internal/runtime/core/ConcurrencyDiagnostics.js'
-import * as Debug from '../../../../src/Debug.js'
+import * as Debug from '../../../../src/internal/debug-api.js'
 
 describe('ConcurrencyPolicy (US3): diagnostics degrade', () => {
   it.effect('should merge warnings within cooldown window and expose suppressedCount', () =>

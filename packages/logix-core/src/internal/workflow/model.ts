@@ -1,4 +1,4 @@
-import type { JsonValue } from '../observability/jsonValue.js'
+import type { JsonValue } from '../protocol/jsonValue.js'
 
 export type WorkflowAstVersion = 1
 
@@ -48,7 +48,7 @@ export type WorkflowDefV1 = {
 
 export type WorkflowDef = WorkflowDefV1
 
-// ---- Static IR (workflowSurface / Π slice) ----
+// ---- Static IR (controlProgramSurface / Π slice) ----
 
 export type WorkflowStaticIrVersion = 1
 

@@ -4,8 +4,9 @@ description: "Task list for 079-platform-anchor-autofill (conservative write-bac
 
 # Tasks: 保守自动补全 Platform-Grade 锚点声明（079：单一真相源）
 
-**Input**: `specs/079-platform-anchor-autofill/spec.md`  
+**Input**: `specs/079-platform-anchor-autofill/spec.md`
 **Prerequisites**: `specs/079-platform-anchor-autofill/plan.md`（required）, `specs/079-platform-anchor-autofill/research.md`, `specs/079-platform-anchor-autofill/data-model.md`, `specs/079-platform-anchor-autofill/contracts/`, `specs/079-platform-anchor-autofill/quickstart.md`
+**Status**: Frozen historical task list. These tasks are not in the current implementation queue.
 
 **Tests**: 本特性会写回源码锚点字段（高风险），且强约束“宁可漏不乱补/只补未声明/幂等/最小 diff”；必须补齐契约预检 + 关键跳过原因与幂等回归。
 
@@ -29,7 +30,7 @@ description: "Task list for 079-platform-anchor-autofill (conservative write-bac
 
 ## Phase 2: Foundational（Autofill Policy 骨架：输入/决策/报告）
 
-**⚠️ CRITICAL**: 本阶段完成前，不开始任何具体写回候选生成（US1/US2 依赖稳定的 decision/report 骨架）。  
+**⚠️ CRITICAL**: 本阶段完成前，不开始任何具体写回候选生成（US1/US2 依赖稳定的 decision/report 骨架）。
 **Checkpoint**: 给定最小 AnchorIndex 输入，能输出确定性的 AutofillReport（report-only），且 reason codes 可枚举。
 
 - [ ] T005 定义 Autofill 对外入口（输入 AnchorIndex@v1 + mode + budgets）`packages/logix-anchor-engine/src/Autofill.ts`
@@ -42,7 +43,7 @@ description: "Task list for 079-platform-anchor-autofill (conservative write-bac
 
 ## Phase 3: User Story 1 - 依赖锚点补全（services/imports）（Priority: P1）
 
-**Goal**: 对缺失依赖锚点声明的模块生成高置信度候选，并通过 082 产出 PatchPlan/WriteBackResult（report/write）。  
+**Goal**: 对缺失依赖锚点声明的模块生成高置信度候选，并通过 082 产出 PatchPlan/WriteBackResult（report/write）。
 **Independent Test**: 对“缺失 services 且存在高置信度 use”样例，report-only 产生可审阅计划；write-back 后幂等且只改缺失字段。
 
 - [ ] T010 [P] [US1] fixture：缺失 services 且存在 `yield* $.use(Tag)` 的 Platform-Grade 模块 `packages/logix-anchor-engine/test/fixtures/repo-autofill-services/*`
@@ -56,7 +57,7 @@ description: "Task list for 079-platform-anchor-autofill (conservative write-bac
 
 ## Phase 4: User Story 2 - 定位锚点补全（dev.source）（Priority: P1）
 
-**Goal**: 对缺失定位锚点的模块补齐 `dev.source`，用于 Devtools 跳转与解释链路；避免进入结构 digest。  
+**Goal**: 对缺失定位锚点的模块补齐 `dev.source`，用于 Devtools 跳转与解释链路；避免进入结构 digest。
 **Independent Test**: 对缺失 dev.source 的模块，写回后可在 Manifest 中被反射导出；重复运行幂等。
 
 - [ ] T016 [P] [US2] fixture：缺失 dev/source 的 Platform-Grade 模块 `packages/logix-anchor-engine/test/fixtures/repo-autofill-devsource/*`
@@ -67,7 +68,7 @@ description: "Task list for 079-platform-anchor-autofill (conservative write-bac
 
 ## Phase 5: User Story 3 - 高置信度门槛 + 可解释报告（Priority: P1）
 
-**Goal**: 所有“跳过/降级/失败”必须有结构化 reason codes；默认 report-only；write-back 必须显式开关。  
+**Goal**: 所有“跳过/降级/失败”必须有结构化 reason codes；默认 report-only；write-back 必须显式开关。
 **Independent Test**: 对一组混合输入（可写/不可写/已声明），报告能稳定输出 written/skipped/failed 与 reasons 统计。
 
 - [ ] T019 [US3] 将 AutofillPolicy 输出映射为 082 PatchPlan 操作列表（AddObjectProperty）`packages/logix-anchor-engine/src/internal/autofill/toPatchOperations.ts`
@@ -79,7 +80,7 @@ description: "Task list for 079-platform-anchor-autofill (conservative write-bac
 
 ## Phase 6: User Story 4 - 已显式声明不被自动改写（Priority: P2）
 
-**Goal**: 任何已显式声明的锚点字段不得被自动写回覆盖（含 `services: {}`）。  
+**Goal**: 任何已显式声明的锚点字段不得被自动写回覆盖（含 `services: {}`）。
 **Independent Test**: 输入包含显式声明时，write-back 改动数为 0，且报告标记为 already_declared。
 
 - [ ] T023 [P] [US4] fixture：显式 `services: {}` 与显式 `dev: { source: ... }` 的模块 `packages/logix-anchor-engine/test/fixtures/repo-autofill-explicit/*`
@@ -97,7 +98,7 @@ description: "Task list for 079-platform-anchor-autofill (conservative write-bac
 
 ## Phase 8: Workflow StepKey Autofill（对齐 075；全双工硬前置） (Priority: P1)
 
-**Goal**: 对 Platform-Grade WorkflowDef 缺失 `steps[*].key` 的场景生成确定性补全候选，并通过 082 产出 PatchPlan/WriteBackResult；对重复 key 必须拒绝写回并可解释。  
+**Goal**: 对 Platform-Grade WorkflowDef 缺失 `steps[*].key` 的场景生成确定性补全候选，并通过 082 产出 PatchPlan/WriteBackResult；对重复 key 必须拒绝写回并可解释。
 **Independent Test**: report-only 输出缺失 key 定位与候选；write-back 后幂等；重复 key 场景不写回且 reason code=duplicate_step_key。
 
 - [ ] T028 [P] fixture：WorkflowDef 缺失 stepKey（Workflow.make/fromJSON + steps array literal）`packages/logix-anchor-engine/test/fixtures/repo-autofill-workflow-stepkey/*`

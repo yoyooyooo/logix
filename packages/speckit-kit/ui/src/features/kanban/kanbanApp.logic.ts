@@ -46,9 +46,8 @@ const specsToEnsureLoadedOf = (s: KanbanState): ReadonlyArray<SpecListItem> => {
   return openedSpec ? [...visible, openedSpec] : visible
 }
 
-export const KanbanFilterLogic = KanbanAppDef.logic(($) => ({
-  setup: Effect.void,
-  run: Effect.gen(function* () {
+export const KanbanFilterLogic = KanbanAppDef.logic('kanban-filter-logic', ($) =>
+  Effect.gen(function* () {
     const onHideDone = $.onAction('board/setHideDone').mutate((draft, a) => {
       draft.hideDoneTasks = a.payload
     })
@@ -68,11 +67,10 @@ export const KanbanFilterLogic = KanbanAppDef.logic(($) => ({
 
     yield* Effect.all([onHideDone, onSetViewMode, onSetSpecViewMode, onClearSpecViewMode], { concurrency: 'unbounded' })
   }),
-}))
+)
 
-export const KanbanRefreshLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
-  setup: Effect.void,
-  run: Effect.gen(function* () {
+export const KanbanRefreshLogic = KanbanAppDef.logic<SpecboardApi>('kanban-refresh-logic', ($) =>
+  Effect.gen(function* () {
     const api = yield* $.use(SpecboardApi)
     const initRes = yield* Effect.exit(api.listSpecs())
     yield* $.state.mutate((draft) => {
@@ -121,11 +119,10 @@ export const KanbanRefreshLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
 
     yield* onRefresh
   }),
-}))
+)
 
-export const KanbanEnsureTasksLoadedLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
-  setup: Effect.void,
-  run: Effect.gen(function* () {
+export const KanbanEnsureTasksLoadedLogic = KanbanAppDef.logic<SpecboardApi>('kanban-ensure-tasks-loaded-logic', ($) =>
+  Effect.gen(function* () {
     const visibleKey$ = $.flow.fromState((s) => {
       const state = s as KanbanState
       const visible = specsToEnsureLoadedOf(state)
@@ -235,11 +232,10 @@ export const KanbanEnsureTasksLoadedLogic = KanbanAppDef.logic<SpecboardApi>(($)
 
     yield* ensure
   }),
-}))
+)
 
-export const KanbanToggleTaskLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
-  setup: Effect.void,
-  run: Effect.gen(function* () {
+export const KanbanToggleTaskLogic = KanbanAppDef.logic<SpecboardApi>('kanban-toggle-task-logic', ($) =>
+  Effect.gen(function* () {
     const toggleTask = (specId: string, line: number, checked: boolean) =>
       Effect.gen(function* () {
         const api = yield* $.use(SpecboardApi)
@@ -278,11 +274,10 @@ export const KanbanToggleTaskLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
 
     yield* Effect.all([onToggle, onToggleFocused], { concurrency: 'unbounded' })
   }),
-}))
+)
 
-export const KanbanSpecDetailLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
-  setup: Effect.void,
-  run: Effect.gen(function* () {
+export const KanbanSpecDetailLogic = KanbanAppDef.logic<SpecboardApi>('kanban-spec-detail-logic', ($) =>
+  Effect.gen(function* () {
     const close = $.onAction('specDetail/close').mutate((draft) => {
       draft.specDetail.open = false
       draft.specDetail.specId = null
@@ -548,11 +543,10 @@ export const KanbanSpecDetailLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
       { concurrency: 'unbounded' },
     )
   }),
-}))
+)
 
-export const KanbanTaskDetailLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
-  setup: Effect.void,
-  run: Effect.gen(function* () {
+export const KanbanTaskDetailLogic = KanbanAppDef.logic<SpecboardApi>('kanban-task-detail-logic', ($) =>
+  Effect.gen(function* () {
     const close = $.onAction('taskDetail/close').mutate((draft) => {
       draft.taskDetail.open = false
       draft.taskDetail.specId = null
@@ -709,11 +703,10 @@ export const KanbanTaskDetailLogic = KanbanAppDef.logic<SpecboardApi>(($) => ({
       concurrency: 'unbounded',
     })
   }),
-}))
+)
 
-export const KanbanFocusLogic = KanbanAppDef.logic(($) => ({
-  setup: Effect.void,
-  run: Effect.gen(function* () {
+export const KanbanFocusLogic = KanbanAppDef.logic('kanban-focus-logic', ($) =>
+  Effect.gen(function* () {
     const getVisibleTasks = (s: KanbanState) => {
       const allSpecs = visibleSpecsOf(s)
       const tasks: Array<{ specId: string; task: TaskItem }> = []
@@ -784,4 +777,4 @@ export const KanbanFocusLogic = KanbanAppDef.logic(($) => ({
 
     yield* Effect.all([next, prev, setFocus], { concurrency: 'unbounded' })
   }),
-}))
+)

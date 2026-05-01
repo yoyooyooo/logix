@@ -1,7 +1,7 @@
 # Specification Quality Checklist: logix-galaxy-api（PostgreSQL 接口服务样例）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-30  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-30
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality

@@ -193,27 +193,27 @@ const validateStateTransactionTraitOverrides = (
 ): ReadonlyArray<string> => {
   const issues: string[] = []
 
-  if ('traitConvergeMode' in obj && obj.traitConvergeMode != null) {
-    if (!isConvergeMode(obj.traitConvergeMode)) {
-      issues.push(`${prefix}traitConvergeMode: expected "auto" | "full" | "dirty"`)
+  if ('fieldConvergeMode' in obj && obj.fieldConvergeMode != null) {
+    if (!isConvergeMode(obj.fieldConvergeMode)) {
+      issues.push(`${prefix}fieldConvergeMode: expected "auto" | "full" | "dirty"`)
     }
   }
-  if ('traitConvergeBudgetMs' in obj && obj.traitConvergeBudgetMs != null) {
-    if (normalizePositiveNumber(obj.traitConvergeBudgetMs) == null) {
-      issues.push(`${prefix}traitConvergeBudgetMs: expected positive number`)
+  if ('fieldConvergeBudgetMs' in obj && obj.fieldConvergeBudgetMs != null) {
+    if (normalizePositiveNumber(obj.fieldConvergeBudgetMs) == null) {
+      issues.push(`${prefix}fieldConvergeBudgetMs: expected positive number`)
     }
   }
-  if ('traitConvergeDecisionBudgetMs' in obj && obj.traitConvergeDecisionBudgetMs != null) {
-    if (normalizePositiveNumber(obj.traitConvergeDecisionBudgetMs) == null) {
-      issues.push(`${prefix}traitConvergeDecisionBudgetMs: expected positive number`)
+  if ('fieldConvergeDecisionBudgetMs' in obj && obj.fieldConvergeDecisionBudgetMs != null) {
+    if (normalizePositiveNumber(obj.fieldConvergeDecisionBudgetMs) == null) {
+      issues.push(`${prefix}fieldConvergeDecisionBudgetMs: expected positive number`)
     }
   }
-  if ('traitConvergeTimeSlicing' in obj && obj.traitConvergeTimeSlicing != null) {
-    const timeSlicing = obj.traitConvergeTimeSlicing
+  if ('fieldConvergeTimeSlicing' in obj && obj.fieldConvergeTimeSlicing != null) {
+    const timeSlicing = obj.fieldConvergeTimeSlicing
     if (!isRecord(timeSlicing)) {
-      issues.push(`${prefix}traitConvergeTimeSlicing: expected object`)
+      issues.push(`${prefix}fieldConvergeTimeSlicing: expected object`)
     } else {
-      const tsPrefix = `${prefix}traitConvergeTimeSlicing.`
+      const tsPrefix = `${prefix}fieldConvergeTimeSlicing.`
       issues.push(...collectUnknownKeys(timeSlicing, new Set(['enabled', 'debounceMs', 'maxLagMs']), tsPrefix))
 
       if ('enabled' in timeSlicing && timeSlicing.enabled != null) {
@@ -287,7 +287,7 @@ const validateTxnLanesPatch = (obj: Record<string, unknown>, prefix: string): Re
   return issues
 }
 
-export const warnInvalidStateTransactionTraitConvergeOverridesDevOnly = (value: unknown, label: string): void => {
+export const warnInvalidStateTransactionFieldConvergeOverridesDevOnly = (value: unknown, label: string): void => {
   if (!isDevEnv()) return
   if (value == null) return
   if (!isRecord(value)) {
@@ -300,10 +300,10 @@ export const warnInvalidStateTransactionTraitConvergeOverridesDevOnly = (value: 
     ...collectUnknownKeys(
       value,
       new Set([
-        'traitConvergeBudgetMs',
-        'traitConvergeDecisionBudgetMs',
-        'traitConvergeMode',
-        'traitConvergeTimeSlicing',
+        'fieldConvergeBudgetMs',
+        'fieldConvergeDecisionBudgetMs',
+        'fieldConvergeMode',
+        'fieldConvergeTimeSlicing',
       ]),
       '',
     ),
@@ -327,11 +327,11 @@ export const warnInvalidStateTransactionRuntimeConfigDevOnly = (value: unknown, 
       value,
       new Set([
         'instrumentation',
-        'traitConvergeBudgetMs',
-        'traitConvergeDecisionBudgetMs',
-        'traitConvergeMode',
-        'traitConvergeTimeSlicing',
-        'traitConvergeOverridesByModuleId',
+        'fieldConvergeBudgetMs',
+        'fieldConvergeDecisionBudgetMs',
+        'fieldConvergeMode',
+        'fieldConvergeTimeSlicing',
+        'fieldConvergeOverridesByModuleId',
         'txnLanes',
         'txnLanesOverridesByModuleId',
       ]),
@@ -364,13 +364,13 @@ export const warnInvalidStateTransactionRuntimeConfigDevOnly = (value: unknown, 
     }
   }
 
-  const overridesByModuleId = value.traitConvergeOverridesByModuleId
+  const overridesByModuleId = value.fieldConvergeOverridesByModuleId
   if (overridesByModuleId != null) {
     if (!isRecord(overridesByModuleId)) {
-      issues.push(`traitConvergeOverridesByModuleId: expected record`)
+      issues.push(`fieldConvergeOverridesByModuleId: expected record`)
     } else {
       for (const [moduleId, patch] of Object.entries(overridesByModuleId)) {
-        const prefix = `traitConvergeOverridesByModuleId.${moduleId}.`
+        const prefix = `fieldConvergeOverridesByModuleId.${moduleId}.`
         if (patch == null) continue
         if (!isRecord(patch)) {
           issues.push(`${prefix}<value>: expected object`)
@@ -380,10 +380,10 @@ export const warnInvalidStateTransactionRuntimeConfigDevOnly = (value: unknown, 
           ...collectUnknownKeys(
             patch,
             new Set([
-              'traitConvergeMode',
-              'traitConvergeBudgetMs',
-              'traitConvergeDecisionBudgetMs',
-              'traitConvergeTimeSlicing',
+              'fieldConvergeMode',
+              'fieldConvergeBudgetMs',
+              'fieldConvergeDecisionBudgetMs',
+              'fieldConvergeTimeSlicing',
             ]),
             prefix,
           ),
@@ -441,11 +441,11 @@ export const warnInvalidStateTransactionOverridesDevOnly = (value: unknown, labe
     ...collectUnknownKeys(
       value,
       new Set([
-        'traitConvergeBudgetMs',
-        'traitConvergeDecisionBudgetMs',
-        'traitConvergeMode',
-        'traitConvergeTimeSlicing',
-        'traitConvergeOverridesByModuleId',
+        'fieldConvergeBudgetMs',
+        'fieldConvergeDecisionBudgetMs',
+        'fieldConvergeMode',
+        'fieldConvergeTimeSlicing',
+        'fieldConvergeOverridesByModuleId',
         'txnLanes',
         'txnLanesOverridesByModuleId',
       ]),
@@ -472,13 +472,13 @@ export const warnInvalidStateTransactionOverridesDevOnly = (value: unknown, labe
     }
   }
 
-  const overridesByModuleId = value.traitConvergeOverridesByModuleId
+  const overridesByModuleId = value.fieldConvergeOverridesByModuleId
   if (overridesByModuleId != null) {
     if (!isRecord(overridesByModuleId)) {
-      issues.push(`traitConvergeOverridesByModuleId: expected record`)
+      issues.push(`fieldConvergeOverridesByModuleId: expected record`)
     } else {
       for (const [moduleId, patch] of Object.entries(overridesByModuleId)) {
-        const prefix = `traitConvergeOverridesByModuleId.${moduleId}.`
+        const prefix = `fieldConvergeOverridesByModuleId.${moduleId}.`
         if (patch == null) continue
         if (!isRecord(patch)) {
           issues.push(`${prefix}<value>: expected object`)
@@ -488,10 +488,10 @@ export const warnInvalidStateTransactionOverridesDevOnly = (value: unknown, labe
           ...collectUnknownKeys(
             patch,
             new Set([
-              'traitConvergeMode',
-              'traitConvergeBudgetMs',
-              'traitConvergeDecisionBudgetMs',
-              'traitConvergeTimeSlicing',
+              'fieldConvergeMode',
+              'fieldConvergeBudgetMs',
+              'fieldConvergeDecisionBudgetMs',
+              'fieldConvergeTimeSlicing',
             ]),
             prefix,
           ),

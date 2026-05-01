@@ -2,7 +2,7 @@
 
 本 quickstart 用“复杂表单（联动 + 条件必填 + 动态列表行/列表级校验）”说明 028 的终态推荐写法与心智模型，并给出性能/诊断的成本模型与优化梯子。
 
-> 目标：让业务侧默认只用 `rules + derived` 完成绝大多数表单；`traits` 只作为高级入口存在。
+> 目标：让业务侧默认只用 `rules + derived` 完成绝大多数表单；`fields` 只作为高级入口存在。
 
 ## 0) 五个关键词（≤5）
 
@@ -59,7 +59,7 @@ const FormM = Form.make("MyForm", {
 
 - `derived` 只关心“值/交互态的联动”，禁止写 errors。
 - `rules` 只关心“错误产物”，必须显式 deps 与 list identity。
-- 所有内容最终会编译为 `StateTraitSpec`，由 runtime 执行与产出 trace（不引入第二套运行时）。
+- 所有内容最终会编译为 `FieldSpec`，由 runtime 执行与产出 trace（不引入第二套运行时）。
 
 ### 1.2 schema（组合式 authoring：像 zod 一样的 object/array）
 
@@ -67,17 +67,17 @@ const FormM = Form.make("MyForm", {
 
 入口（推荐终态）：
 
-- `const z = $.rules`（作者侧可以刻意命名为 `z`，获得 zod 风格的 `z.object/z.array` 读写体验）  
-- `z.schema(node)`：把规则树编译为 decl list（等价 1.1 的 `$.rules(...decls)`）。  
-- `z.field(rule)`：字段叶子；`rule` 输入形态与 `Form.Rule.make(...)` 一致（builtins + validate + deps + validateOn）。  
-- `z.object(shape)`：对象节点；只负责拼路径；`.refine(rule)` 表示对象级 refine，错误写回 `errors.<path>.$self`。  
-- `z.array(item, { identity })`：数组节点；每一层数组都显式声明 `identity`；`.refine(rule)` 表示 list-level/跨行校验（写回 `$list/rows[]`）。  
-- `node.superRefine(fn)`：高级组合能力（zod-like）：允许在一次校验里向多个子路径写错误（等价于返回一个嵌套 error patch）；用于跨字段/跨行的多点报错。  
+- `const z = $.rules`（作者侧可以刻意命名为 `z`，获得 zod 风格的 `z.object/z.array` 读写体验）
+- `z.schema(node)`：把规则树编译为 decl list（等价 1.1 的 `$.rules(...decls)`）。
+- `z.field(rule)`：字段叶子；`rule` 输入形态与 `Form.Rule.make(...)` 一致（builtins + validate + deps + validateOn）。
+- `z.object(shape)`：对象节点；只负责拼路径；`.refine(rule)` 表示对象级 refine，错误写回 `errors.<path>.$self`。
+- `z.array(item, { identity })`：数组节点；每一层数组都显式声明 `identity`；`.refine(rule)` 表示 list-level/跨行校验（写回 `$list/rows[]`）。
+- `node.superRefine(fn)`：高级组合能力（zod-like）：允许在一次校验里向多个子路径写错误（等价于返回一个嵌套 error patch）；用于跨字段/跨行的多点报错。
 
 路径直觉：
 
-- `field` 不携带 path；path 由 `object/array` 的嵌套位置决定（即 state 的 `a.b.c`）。  
-- 因为数组节点本身就是 `array(item)`，所以 list-in-list 自然表达：`array(object({ options: array(object(...)) }))`（不需要额外的 `list({ shape: ... })`）。  
+- `field` 不携带 path；path 由 `object/array` 的嵌套位置决定（即 state 的 `a.b.c`）。
+- 因为数组节点本身就是 `array(item)`，所以 list-in-list 自然表达：`array(object({ options: array(object(...)) }))`（不需要额外的 `list({ shape: ... })`）。
 
 下面用一个近似 zod 的写法同时演示：`对象>对象`、`对象>数组item>对象`、以及 `对象>数组item>对象>数组item>对象`（list-in-list）。
 
@@ -229,9 +229,9 @@ const rules = z.schema(
 
 为什么 schema 已经有约束，还要“取出来”挂到 rules？
 
-- schema 本身只描述“约束是什么”，但表单运行时还需要知道“什么时候跑、按什么 scope 增量跑、怎么出静态 IR/诊断证据”。  
-- 把 schema leaf 显式挂到 rules 树上，相当于把它接入同一套 `rules` 编译链路（decl list → trait spec → RulesManifest/trace），从而可以像其它规则一样参与 scoped validate / validateOn。  
-- 终态可以进一步做得更自动：例如 `z.fromValuesSchema(ValuesSchema)` 一键生成基础规则树，再在其上叠加交互约束（扩展方向，当前未实现）。  
+- schema 本身只描述“约束是什么”，但表单运行时还需要知道“什么时候跑、按什么 scope 增量跑、怎么出静态 IR/诊断证据”。
+- 把 schema leaf 显式挂到 rules 树上，相当于把它接入同一套 `rules` 编译链路（decl list → field spec → RulesManifest/trace），从而可以像其它规则一样参与 scoped validate / validateOn。
+- 终态可以进一步做得更自动：例如 `z.fromValuesSchema(ValuesSchema)` 一键生成基础规则树，再在其上叠加交互约束（扩展方向，当前未实现）。
 
 如果你的目标只是“submit/手动校验时兜底”，那其实**不需要**把 schema leaf 接入 rules（`z.field(schema)`）：当前 `Form.controller.handleSubmit/validate` 已经会对 `values` 做一次 `Schema.decodeUnknownEither`，并把结果写到 `errors.$schema`（UI 会按 `manual > rules > schema` 读取）。schema→rules 桥接更多是为了把 schema 约束接入 rules 的增量/触发/诊断链路；背后运行链路小抄见 `runtime-validation-cheatsheet.md`。
 
@@ -256,7 +256,7 @@ const z = $.rules
 const rules = z.schema(
   z.object({
     contact: z.object({
-      // 复用 schema 上的约束与 message（并编译到 rules 的 decl list / trait spec）
+      // 复用 schema 上的约束与 message（并编译到 rules 的 decl list / field spec）
       email: z.field(Email),
       // 等价写法（类型更强，但更啰嗦）：
       // email: z.field(ValuesSchema.fields.contact.fields.email),
@@ -294,9 +294,9 @@ const rules2 = z.schema(
 
 i18n 提醒：
 
-- `effect/Schema` 的 `message: () => string` 是**同步**函数（懒求值），不是异步执行。  
-- 如果 message 里直接调用 `t("...")`，切换语言后需要**触发一次 re-validate**（不一定是 submit；也可以在 locale change 时调用表单的 `controller.validate()` / `validatePaths(...)`）才能生成新语言的错误字符串。  
-- 若希望“切换语言立即刷新已存在的错误”，推荐让 errors 存储可序列化的**消息描述符**（例如 `{ key, params }`）而不是最终字符串；UI 渲染时按当前语言翻译。  
+- `effect/Schema` 的 `message: () => string` 是**同步**函数（懒求值），不是异步执行。
+- 如果 message 里直接调用 `t("...")`，切换语言后需要**触发一次 re-validate**（不一定是 submit；也可以在 locale change 时调用表单的 `controller.validate()` / `validatePaths(...)`）才能生成新语言的错误字符串。
+- 若希望“切换语言立即刷新已存在的错误”，推荐让 errors 存储可序列化的**消息描述符**（例如 `{ key, params }`）而不是最终字符串；UI 渲染时按当前语言翻译。
 
 ### 1.3 内置 rule（RHF-like builtins）怎么被用到的
 
@@ -321,7 +321,7 @@ rules: $.rules(
 )
 ```
 
-约束：推荐路径默认只用 `rules + derived`；`traits` 仅作为高级入口存在，且应与 `rules` 互斥（避免混用导致心智与行为漂移）。
+约束：推荐路径默认只用 `rules + derived`；`fields` 仅作为高级入口存在，且应与 `rules` 互斥（避免混用导致心智与行为漂移）。
 
 ## 2) 粗成本模型（性能心智）
 
@@ -345,11 +345,11 @@ rules: $.rules(
 - `derived` 写入 `errors/$form`（产生第二套事实源）。
 - 规则里执行 IO/await（破坏事务窗口定义）。
 - 不声明 identity 就期望列表错误稳定对齐（必须显式选择策略）。
-- `rules` 与 `traits` 混用（推荐路径只用 `rules + derived`；需要 escape hatch 则只用 `traits`）。
+- `rules` 与 `fields` 混用（推荐路径只用 `rules + derived`；需要 escape hatch 则只用 `fields`）。
 - 为了“收集全部错误”把 errors 真相源膨胀为多错误数组（默认只保留 firstError；多错误交给诊断层）。
 
 ## 5) 排障入口（最短路径）
 
-- **错位/漂移**：看 `trait:check` 的 `rowIdMode/degraded`，确认当前 identity 是否降级（以及原因）。
+- **错位/漂移**：看 `field:check` 的 `rowIdMode/degraded`，确认当前 identity 是否降级（以及原因）。
 - **为何某规则没跑**：看规则的 `validateOn` 与本次触发模式（submit/blur/valueChange/manual）。
 - **为何错误不消失**：检查错误优先级（manual > rules > schema）与写回路径是否一致。

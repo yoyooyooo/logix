@@ -12,6 +12,7 @@
 
 import { Effect, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
+import { programLayer } from '../runtime/programLayer.js'
 import {
   runBulkOperationPattern,
   SelectionService,
@@ -35,15 +36,15 @@ const CompositionActionMap = {
   'combo/reset': Schema.Void,
 }
 
-export type CompositionShape = Logix.Shape<typeof CompositionStateSchema, typeof CompositionActionMap>
-export type CompositionState = Logix.StateOf<CompositionShape>
-export type CompositionAction = Logix.ActionOf<CompositionShape>
+export type CompositionShape = Logix.Module.Shape<typeof CompositionStateSchema, typeof CompositionActionMap>
+export type CompositionState = Logix.Module.StateOf<CompositionShape>
+export type CompositionAction = Logix.Module.ActionOf<CompositionShape>
 
 // ---------------------------------------------------------------------------
 // Module：定义组合场景模块
 // ---------------------------------------------------------------------------
 
-export const CompositionDef = Logix.Module.make('CompositionModule', {
+export const Composition = Logix.Module.make('CompositionModule', {
   state: CompositionStateSchema,
   actions: CompositionActionMap,
 })
@@ -59,8 +60,7 @@ type CompositionServices =
   | FileUploadService
   | ImportService
 
-export const CompositionLogic = CompositionDef.logic<CompositionServices>(
-  ($: Logix.BoundApi<CompositionShape, CompositionServices>) =>
+export const CompositionLogic = Composition.logic<CompositionServices>('composition-logic', ($: Logix.Module.BoundApi<CompositionShape, CompositionServices>) =>
     Effect.gen(function* () {
       const handleRun = Effect.gen(function* () {
         // 标记为 running
@@ -105,12 +105,10 @@ export const CompositionLogic = CompositionDef.logic<CompositionServices>(
 )
 
 // ---------------------------------------------------------------------------
-// Impl / Live：组合 State / Action / Logic
+// Program / Layer：组合 State / Action / Logic
 // ---------------------------------------------------------------------------
 
-export const CompositionModule = CompositionDef.implement<
-  SelectionService | BulkOperationService | NotificationService | FileUploadService | ImportService
->({
+export const CompositionProgram = Logix.Program.make(Composition, {
   initial: {
     lastBulkCount: 0,
     lastImportTaskId: undefined,
@@ -119,5 +117,4 @@ export const CompositionModule = CompositionDef.implement<
   logics: [CompositionLogic],
 })
 
-export const CompositionImpl = CompositionModule.impl
-export const CompositionLive = CompositionImpl.layer
+export const CompositionLayer = programLayer(CompositionProgram)

@@ -31,22 +31,22 @@
 
 ## Deepening Notes
 
-- Decision: perf evidence 以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为 SSoT，交付结论以 `profile=default`（或 `soak`）且 `comparable=true && regressions==0` 为硬门（source: spec clarify AUTO）
+- Decision: perf evidence 以 `packages/logix-perf-evidence/assets/matrix.json` 为 SSoT，交付结论以 `profile=default`（或 `soak`）且 `comparable=true && regressions==0` 为硬门（source: spec clarify AUTO）
 - Decision: 045 的 perf baseline 语义为“代码前后”（默认内核选择以当时 `Runtime.make` 的裁决为准；默认切换/迁移口径由 048 裁决），用于证明契约/装配层不引入热路径回归（source: spec clarify AUTO）
 - Decision: before/after 必须隔离采集（独立 worktree/目录），混杂改动结果仅作线索（source: spec clarify AUTO）
 - Decision: Gate baseline 以 `diagnostics=off` 为准；light/full 仅用于开销曲线与解释链路验证（source: spec clarify AUTO）
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.8.2（ESM）  
-**Primary Dependencies**: `effect` v3（workspace override 3.19.13）、pnpm workspace、`@logixjs/*`  
-**Storage**: N/A（内存态：Effect Context/Scope + Ref/SubscriptionRef）  
-**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）  
-**Target Platform**: Node.js 20+ + modern browsers（React 运行环境）  
-**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）  
+**Language/Version**: TypeScript 5.8.2（ESM）
+**Primary Dependencies**: `effect` v3（workspace override 3.19.13）、pnpm workspace、`@logixjs/*`
+**Storage**: N/A（内存态：Effect Context/Scope + Ref/SubscriptionRef）
+**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）
+**Target Platform**: Node.js 20+ + modern browsers（React 运行环境）
+**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）
 **Performance Goals**:
 
-- 默认路径（仅当前内核）不回归：以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为 SSoT；交付结论必须 `profile=default`（或 `soak`），且 `pnpm perf diff` 满足 `meta.comparability.comparable=true` 且 `summary.regressions==0`。
+- 默认路径（仅当前内核）不回归：以 `packages/logix-perf-evidence/assets/matrix.json` 为 SSoT；交付结论必须 `profile=default`（或 `soak`），且 `pnpm perf diff` 满足 `meta.comparability.comparable=true` 且 `summary.regressions==0`。
 - 诊断关闭（off）额外开销接近零；诊断开启（light/full）事件 Slim 且可序列化，并有预算闸门。
 - 内核选择/注入必须是“创建时决定、热路径零分支”：禁止在事务/收敛循环里做动态分发。
 
@@ -65,7 +65,7 @@
 ## Perf Evidence Plan（MUST）
 
 - Baseline 语义：代码前后（before=引入 Kernel Contract/装配点改动前，after=改动后；默认内核以当时 `Runtime.make` 的裁决为准；对照实验需显式固定 `kernelId`，避免混入 baseline）
-- Matrix SSoT：`.codex/skills/logix-perf-evidence/assets/matrix.json`（before/after 的 `meta.matrixId/matrixHash` 必须一致）
+- Matrix SSoT：`packages/logix-perf-evidence/assets/matrix.json`（before/after 的 `meta.matrixId/matrixHash` 必须一致）
 - Hard conclusion：交付结论必须 `profile=default`（`quick` 仅线索；需要更稳可用 `soak` 复核）
 - 采集隔离：before/after/diff 必须在独立 `git worktree/单独目录` 中采集；混杂工作区结果仅作线索不得用于宣称 Gate PASS
 - PASS 判据：`pnpm perf diff` 输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`
@@ -164,7 +164,7 @@ packages/logix-react/
 
 045 完成实现后，下一步不建议“直接全量重写内核”，而是沿两条主线并行推进（并保持证据门禁）：
 
-1. **把当前内核做到“够硬”**：以 `specs/039-trait-converge-int-exec-evidence/` 打通整型执行链路与证据达标（纯优化不改语义），让你可以放心继续做平台与上层生态。
+1. **把当前内核做到“够硬”**：以 `specs/039-field-converge-int-exec-evidence/` 打通整型执行链路与证据达标（纯优化不改语义），让你可以放心继续做平台与上层生态。
 2. **并行推进 core-ng**：在 045 固化的 Kernel Contract 与对照验证 harness 之上，让 `@logixjs/core-ng` 逐步覆盖更多 runtime services；每一次关键切换都必须通过 `$logix-perf-evidence` 的 Node+Browser before/after/diff 与结构化差异报告。
 
 更长线的 NG 方向（AOT / Flat Memory / Wasm Planner）以 topic 草案为探索入口，统一收敛到：`docs/specs/drafts/topics/logix-ng-architecture/`（不作为裁决，裁决以新的 `specs/<NNN-*>/` 交付）。

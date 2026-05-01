@@ -1,6 +1,6 @@
 # Implementation Plan: 047 core-ng 全套切换达标门槛（无 fallback）
 
-**Branch**: `047-core-ng-full-cutover-gate` | **Date**: 2025-12-27 | **Spec**: `specs/047-core-ng-full-cutover-gate/spec.md`  
+**Branch**: `047-core-ng-full-cutover-gate` | **Date**: 2025-12-27 | **Spec**: `specs/047-core-ng-full-cutover-gate/spec.md`
 **Input**: Feature specification from `specs/047-core-ng-full-cutover-gate/spec.md`
 
 ## Summary
@@ -14,20 +14,20 @@
 - 支持装配期失败锚点：`txnSeq=0` 代表 assembly（满足最小可序列化锚点字段集合）
 - 把 `$logix-perf-evidence` 的 Node + Browser before/after/diff 作为硬门槛（证据采集必须隔离：独立 `git worktree/单独目录`）
 - perf evidence 的硬结论 profile 锁死为 `default`（`quick` 仅线索；`soak` 可选复核）
-- 提供一键入口（例如 `Reflection.verifyFullCutoverGate`）供 CI/TrialRun/Agent 统一调用
+- 提供一键入口（例如 `CoreReflection.verifyFullCutoverGate`）供 CI/TrialRun/Agent 统一调用
 
 本特性本身仍属于“规划与门槛固化”：不实现 core-ng 的具体优化算法，但会拆出实现阶段 tasks（落点到 `packages/logix-core/*`、`packages/logix-core-ng/*`、`packages/logix-react/*` 与 perf evidence）。
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.8.x（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（实现阶段）`@logixjs/core-ng`  
-**Storage**: N/A（证据落盘到 `specs/047-*/perf/*`）  
-**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）  
-**Target Platform**: Node.js 20+ + modern browsers（必须含 ≥1 headless browser evidence）  
-**Project Type**: pnpm workspace（`packages/*` + `examples/*`）  
-**Performance Goals**: 在 matrix.json 的 `priority=P1` suites 上，core-ng Full Cutover 相对 core 默认不得出现 budget regression（`pnpm perf diff`：`comparability.comparable=true` 且 `summary.regressions==0`）  
-**Constraints**: 统一最小 IR（Static IR + Dynamic Trace）+ 稳定锚点（instanceId/txnSeq/opSeq）；事务窗口禁 IO；`diagnostics=off` 近零成本；上层不直接依赖 `@logixjs/core-ng`  
+**Language/Version**: TypeScript 5.8.x（ESM）
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（实现阶段）`@logixjs/core-ng`
+**Storage**: N/A（证据落盘到 `specs/047-*/perf/*`）
+**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）
+**Target Platform**: Node.js 20+ + modern browsers（必须含 ≥1 headless browser evidence）
+**Project Type**: pnpm workspace（`packages/*` + `examples/*`）
+**Performance Goals**: 在 matrix.json 的 `priority=P1` suites 上，core-ng Full Cutover 相对 core 默认不得出现 budget regression（`pnpm perf diff`：`comparability.comparable=true` 且 `summary.regressions==0`）
+**Constraints**: 统一最小 IR（Static IR + Dynamic Trace）+ 稳定锚点（instanceId/txnSeq/opSeq）；事务窗口禁 IO；`diagnostics=off` 近零成本；上层不直接依赖 `@logixjs/core-ng`
 **Scale/Scope**: 本特性固化“达标门槛与验证矩阵”；实现阶段主要为 contract/cutover gate/证据跑道与少量必要的诊断字段补强
 
 ## Kernel support matrix
@@ -38,7 +38,7 @@
 ## Perf Evidence Plan（MUST）
 
 - Baseline 语义：策略 A/B（同一份代码下 before=core（default），after=core-ng（full cutover，无 fallback））
-- Matrix SSoT：`.codex/skills/logix-perf-evidence/assets/matrix.json`（before/after 的 `meta.matrixId/matrixHash` 必须一致）
+- Matrix SSoT：`packages/logix-perf-evidence/assets/matrix.json`（before/after 的 `meta.matrixId/matrixHash` 必须一致）
 - Hard conclusion：交付结论必须 `profile=default`（`quick` 仅线索；需要更稳可用 `soak` 复核）
 - 采集隔离：before/after/diff 必须在独立 `git worktree/单独目录` 中采集；混杂工作区结果仅作线索不得用于宣称 Gate PASS
 - PASS 判据：`pnpm perf diff` 输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`
@@ -100,7 +100,7 @@ packages/logix-core-ng/
 packages/logix-react/
 └── test/browser/perf-boundaries/*   # perf evidence suites（由 $logix-perf-evidence 统一口径采集）
 
-.codex/skills/logix-perf-evidence/
+packages/logix-perf-evidence/
 └── package.json + scripts/*
 ```
 

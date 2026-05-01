@@ -1,8 +1,8 @@
 # Feature Specification: core-ng 整型桥（Integer Bridge）
 
-**Feature Branch**: `050-core-ng-integer-bridge`  
-**Created**: 2025-12-27  
-**Status**: Done  
+**Feature Branch**: `050-core-ng-integer-bridge`
+**Created**: 2025-12-27
+**Status**: Done
 **Input**: User description: "继续添加 050：把整型化（Integer Bridge）作为 core-ng 路线的关键 spec，定义从源头到执行的‘不往返、不半成品、可证据化’门槛与任务拆分（先完善文档，不进入实现阶段）。"
 
 ## Terminology
@@ -17,7 +17,7 @@
 
 - `specs/046-core-ng-roadmap/`（路线总控：P1 全链路整型化）
 - `specs/045-dual-kernel-contract/`（Kernel Contract 与对照验证跑道）
-- `specs/039-trait-converge-int-exec-evidence/`（当前内核整型化与 guardrails（严禁 split/join 往返、argument-based recording、pathAsArray 透传））
+- `specs/039-field-converge-int-exec-evidence/`（当前内核整型化与 guardrails（严禁 split/join 往返、argument-based recording、pathAsArray 透传））
 - `specs/016-serializable-diagnostics-and-identity/`（稳定身份与可序列化证据）
 - `specs/009-txn-patch-dirtyset/`（txn/patch/dirtyset 相关历史约束）
 - `docs/specs/drafts/topics/logix-ng-architecture/`（NG 探索：integer handles / flat memory）
@@ -32,7 +32,7 @@
 
 ### Session 2025-12-28
 
-- AUTO: Q: 本特性的 perf evidence 预算口径是什么？ → A: 以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为唯一 SSoT；交付结论必须 `profile=default`（或 `soak`）并满足 `pnpm perf diff` 输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`；before/after 必须 `meta.matrixId/matrixHash` 一致。
+- AUTO: Q: 本特性的 perf evidence 预算口径是什么？ → A: 以 `packages/logix-perf-evidence/assets/matrix.json` 为唯一 SSoT；交付结论必须 `profile=default`（或 `soak`）并满足 `pnpm perf diff` 输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`；before/after 必须 `meta.matrixId/matrixHash` 一致。
 - AUTO: Q: perf evidence 采集是否允许在 dev 工作区（git dirty）完成？ → A: 允许（当前阶段）；但必须确保 `matrix/config/env` 一致，并在 diff 中保留 `git.dirty.*` warnings；若出现 `stabilityWarning` 或结论存疑，必须复测（必要时升级到 `profile=soak`）。
 - AUTO: Q: 动态路径/无法整型化的写入如何处理？ → A: 允许，但必须在 txn 内仍以 FieldPath segments 进入 registry；若出现异常/超出容量，必须显式降级为 `dirtyAll=true` 并带 `DirtyAllReason`（Slim、可序列化），且该降级在 Perf Gate 覆盖场景中视为 FAIL（必须先收敛/证据化）。
 - AUTO: Q: FieldPathId/StepId 的“稳定”要求到什么程度？ → A: 必须在同一 Static IR/同一交互序列下可重复对齐；id 分配不得依赖随机/时间，且 diff/对照验证的 primary anchors 仍以 `instanceId/txnSeq/opSeq` +（可解释的）path/step 锚点为准；mapping 必须可导出以复核。

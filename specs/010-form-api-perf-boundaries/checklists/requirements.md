@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Form API（设计收敛与性能边界）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-16  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-16
 **Feature**: `../spec.md`
 
 ## Content Quality

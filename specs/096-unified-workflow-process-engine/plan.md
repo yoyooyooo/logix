@@ -1,6 +1,6 @@
 # Implementation Plan: Workflow/Process 统一内核第一阶段（O-003）
 
-**Branch**: `096-unified-workflow-process-engine` | **Date**: 2026-02-25 | **Spec**: `specs/096-unified-workflow-process-engine/spec.md`  
+**Branch**: `096-unified-workflow-process-engine` | **Date**: 2026-02-25 | **Spec**: `specs/096-unified-workflow-process-engine/spec.md`
 **Input**: `specs/096-unified-workflow-process-engine/spec.md`
 
 ## Summary
@@ -13,14 +13,14 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: `effect` v3、`@logixjs/core` runtime 内核  
-**Storage**: N/A  
-**Testing**: Vitest + `@effect/vitest`（非 watch）  
-**Target Platform**: Node.js（runtime/test）  
-**Project Type**: pnpm monorepo  
-**Performance Goals**: 核心路径无明显回退；保留可复现 baseline 命令  
-**Constraints**: forward-only evolution；诊断 Slim 可序列化；稳定标识；事务窗口禁止 IO；不改 DSL API  
+**Language/Version**: TypeScript 5.9.x（ESM）
+**Primary Dependencies**: `effect` v3、`@logixjs/core` runtime 内核
+**Storage**: N/A
+**Testing**: Vitest + `@effect/vitest`（非 watch）
+**Target Platform**: Node.js（runtime/test）
+**Project Type**: pnpm monorepo
+**Performance Goals**: 核心路径无明显回退；保留可复现 baseline 命令
+**Constraints**: forward-only evolution；诊断 Slim 可序列化；稳定标识；事务窗口禁止 IO；不改 DSL API
 **Scale/Scope**: 仅 O-003 第一阶段，限定授权文件范围
 
 ## Constitution Check

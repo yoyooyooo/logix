@@ -1,6 +1,6 @@
 # Implementation Plan: 048 切默认到 core-ng（迁移与回退口径）
 
-**Branch**: `048-core-ng-default-switch-migration` | **Date**: 2025-12-27 | **Spec**: `specs/048-core-ng-default-switch-migration/spec.md`  
+**Branch**: `048-core-ng-default-switch-migration` | **Date**: 2025-12-27 | **Spec**: `specs/048-core-ng-default-switch-migration/spec.md`
 **Input**: Feature specification from `specs/048-core-ng-default-switch-migration/spec.md`
 
 > NOTE（2025-12-31）：本 plan 对应“默认切到 `core-ng`”的历史实现；当前仓库已选择 **单内核默认**（默认 `core`，`core-ng` 仅对照/试跑显式启用），因此本文不再作为当前行为裁决。以 `specs/046-core-ng-roadmap/roadmap.md` 的 Policy Update 为准。
@@ -24,14 +24,14 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.8.x（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`（默认切换与证据导出）；`@logixjs/core-ng` 仅用于 tests/bench/trial-run 对照（consumer 禁止直接依赖）  
-**Storage**: N/A（证据落盘到 `specs/048-*/perf/*`）  
-**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）  
-**Target Platform**: Node.js 20+ + modern browsers  
-**Project Type**: pnpm workspace  
-**Performance Goals**: 在 matrix.json 的 `priority=P1` suites 上，切默认前/后不得出现 budget regression（`pnpm perf diff`：`comparability.comparable=true` 且 `summary.regressions==0`）  
-**Constraints**: 上层只依赖 `@logixjs/core`；统一最小 IR + 稳定锚点；事务窗口禁 IO；`diagnostics=off` 近零成本；禁止隐式 fallback  
+**Language/Version**: TypeScript 5.8.x（ESM）
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`（默认切换与证据导出）；`@logixjs/core-ng` 仅用于 tests/bench/trial-run 对照（consumer 禁止直接依赖）
+**Storage**: N/A（证据落盘到 `specs/048-*/perf/*`）
+**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）
+**Target Platform**: Node.js 20+ + modern browsers
+**Project Type**: pnpm workspace
+**Performance Goals**: 在 matrix.json 的 `priority=P1` suites 上，切默认前/后不得出现 budget regression（`pnpm perf diff`：`comparability.comparable=true` 且 `summary.regressions==0`）
+**Constraints**: 上层只依赖 `@logixjs/core`；统一最小 IR + 稳定锚点；事务窗口禁 IO；`diagnostics=off` 近零成本；禁止隐式 fallback
 **Scale/Scope**: 本特性以“默认选择切换 + 迁移说明 + 证据落盘”为交付，不引入长期兼容层
 
 ## Kernel support matrix
@@ -42,7 +42,7 @@
 ## Perf Evidence Plan（MUST）
 
 - Baseline 语义：代码前后（before=切默认前默认仍为 core，after=切默认后默认变为 core-ng；两侧都必须走“未显式指定 kernelId”的默认路径）
-- Matrix SSoT：`.codex/skills/logix-perf-evidence/assets/matrix.json`（before/after 的 `meta.matrixId/matrixHash` 必须一致）
+- Matrix SSoT：`packages/logix-perf-evidence/assets/matrix.json`（before/after 的 `meta.matrixId/matrixHash` 必须一致）
 - envId：按 `$logix-perf-evidence` 约定写进文件名（建议 `darwin-arm64.m2max.chromium-131.headless` / `darwin-arm64.m2max.node`）
 - Hard conclusion：交付结论必须 `profile=default`（`quick` 仅线索；需要更稳可用 `soak` 复核）
 - 采集隔离：before/after/diff 必须在独立 `git worktree/单独目录` 中采集；混杂工作区结果仅作线索不得用于宣称切默认完成

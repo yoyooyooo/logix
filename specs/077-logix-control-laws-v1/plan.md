@@ -1,6 +1,6 @@
 # Implementation Plan: Logix Control Laws v1（Group Spec）
 
-**Branch**: `077-logix-control-laws-v1` | **Date**: 2026-01-05 | **Spec**: [spec.md](./spec.md)  
+**Branch**: `077-logix-control-laws-v1` | **Date**: 2026-01-05 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature group description from `specs/077-logix-control-laws-v1/spec.md`
 
 ## Summary
@@ -16,17 +16,17 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.9.x（ESM；以仓库 `package.json` 为准）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、`@logixjs/react`、（迁移包）`@logixjs/query`/`@logixjs/form`  
-**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`；React 集成按需要走 browser）  
-**Target Platform**: Node.js 20+ + modern browsers  
-**Constraints**: 统一最小 IR（Static IR + Dynamic Trace）；稳定标识（tickSeq/instanceId/txnSeq/opSeq）；事务窗口禁 IO；禁止影子时间线与双真相源  
+**Language/Version**: TypeScript 5.9.x（ESM；以仓库 `package.json` 为准）
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、`@logixjs/react`、（迁移包）`@logixjs/query`/`@logixjs/form`
+**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`；React 集成按需要走 browser）
+**Target Platform**: Node.js 20+ + modern browsers
+**Constraints**: 统一最小 IR（Static IR + Dynamic Trace）；稳定标识（tickSeq/instanceId/txnSeq/opSeq）；事务窗口禁 IO；禁止影子时间线与双真相源
 
 ## Constitution Check（总控口径）
 
 - 本 group 的 SSoT：`docs/ssot/platform/foundation/01-the-one.md`
 - 参考系（Einstein）：先完成 073 M1（`RuntimeStore + tickSeq` 单一订阅点，no-tearing）再谈更高层 Π。
-- 控制律（Newton+）：任何自由编排必须进入 `Π`（Workflow），不得回退到 trait meta + 反射式解释。
+- 控制律（Newton+）：任何自由编排必须进入 `Π`（Workflow），不得回退到 field meta + 反射式解释。
 - 受限控制律：source 的默认自动触发属于 `Π_source`，必须内核化并可解释；复杂时序升级到 075。
 - 证据链：IR/Trace Slim、可序列化、稳定锚点；diagnostics=off 近零成本。
 
@@ -38,7 +38,7 @@
 - **M3（Fan-out Foundations）**：074（显式 deps selector）+ 068（watcher fan-out 纯赚）把 Action/State 传播从 O(N) 拉回到 O(k)。
 - **M4（Program First）**：075 提供 Workflow IR（含时间算子）并与 tickSeq 证据链打通；至少 1 条 submit 工作流可声明式表达。
 - **M5（Glue Elimination）**：076 以内核 auto-trigger 取代 Query/Form 的 watcher 胶水与反射式解释入口。
-- **M6（Close_{C_T} Perf）**：006 把 Trait converge 的成本上限与降级口径固化成可回归证据。
+- **M6（Close_{C_T} Perf）**：006 把 Field converge 的成本上限与降级口径固化成可回归证据。
 - **M7（Calibration, Optional）**：018 基于 014/017 工作负载做默认值审计与用户侧自校准（不影响默认档位）。
 
 ## Perf Evidence Plan（Delegated）
@@ -51,7 +51,7 @@
 - 068：watcher fan-out / state 通知链路的回归与证据
 - 075：Program watcher vs 手写 watcher 的 before/after
 - 076：大量 sources + 高频输入下 `O(|dirtyPaths|+|affected|)` 的证据
-- 006：Trait converge 的真实场景 + 合成压力场景（证据与阈值）
+- 006：Field converge 的真实场景 + 合成压力场景（证据与阈值）
 - 018：默认值审计/自校准的证据输出（可复跑一致性）
 
 总控验收只检查：证据存在、可比（同 envId/profile/matrixHash）、并且结论已回写到各自 `plan.md`。

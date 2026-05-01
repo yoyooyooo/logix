@@ -6,7 +6,7 @@ import type { ManagedRuntime } from 'effect'
 export interface ReactRuntimeContextValue {
   /**
    * The "effective runtime" available to the current Provider subtree:
-   * - Applies Env/Scope overrides from RuntimeProvider.layer (and ancestor Provider layers).
+   * - Applies Env/Scope overrides from subtree layers on the current React host adapter chain.
    * - The reference is stable within the same Provider subtree, enabling cross-component sharing (e.g. ModuleCache).
    */
   readonly runtime: ManagedRuntime.ManagedRuntime<any, any>

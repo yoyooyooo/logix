@@ -14,7 +14,7 @@
 
 - 对照验证（core vs core-ng）输出结构化 diff（045 harness）。
 - `$logix-perf-evidence` 的 Node + Browser before/after/diff（落盘到 `specs/047-core-ng-full-cutover-gate/perf/*`）。
-- suites/budgets 的口径以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为准（至少覆盖 `priority=P1`）。
+- suites/budgets 的口径以 `packages/logix-perf-evidence/assets/matrix.json` 为准（至少覆盖 `priority=P1`）。
 
 ## 4) 下一步要做什么？
 

@@ -1,5 +1,5 @@
 {
-  "name": "@intent-flow/logix-form-poc",
+  "name": "@logixjs/form-poc",
   "version": "0.1.0",
   "private": true,
   "type": "module",

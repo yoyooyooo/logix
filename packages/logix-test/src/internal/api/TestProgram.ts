@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { Chunk, Clock, Effect, Layer, Ref, Scope, Stream } from 'effect'
 import { TestClock } from 'effect/testing'
 import * as Logix from '@logixjs/core'
@@ -31,10 +32,10 @@ const defaultOptions = (options?: TestProgramOptions): OpenProgramOptions => {
 
 const makeTestApi = <Sh extends AnyModuleShape>(
   ctx: ProgramRunContext<Sh>,
-  actionsRef: Ref.Ref<Chunk.Chunk<Logix.ActionOf<Sh>>>,
+  actionsRef: Ref.Ref<Chunk.Chunk<Logix.Module.ActionOf<Sh>>>,
 ): TestApi<Sh> => {
   const assertStateEffect = (
-    predicate: (s: Logix.StateOf<Sh>) => boolean,
+    predicate: (s: Logix.Module.StateOf<Sh>) => boolean,
     options?: WaitUntilOptions,
   ): Effect.Effect<void, Error, TestClock.TestClock> =>
     Effect.gen(function* () {
@@ -81,7 +82,7 @@ const makeTestApi = <Sh extends AnyModuleShape>(
 const startTraceCollectors = <Sh extends AnyModuleShape>(
   ctx: ProgramRunContext<Sh>,
   traceRef: Ref.Ref<Chunk.Chunk<TraceEvent<Sh>>>,
-  actionsRef: Ref.Ref<Chunk.Chunk<Logix.ActionOf<Sh>>>,
+  actionsRef: Ref.Ref<Chunk.Chunk<Logix.Module.ActionOf<Sh>>>,
 ): Effect.Effect<void, never, Scope.Scope> =>
   Effect.gen(function* () {
     yield* Stream.runForEach(ctx.module.actions$, (action) =>
@@ -118,16 +119,16 @@ const runInProgramScope = <Sh extends AnyModuleShape, A, E, R>(
   }).pipe(Effect.orDie)
 
 export const runProgram = <Sh extends AnyModuleShape>(
-  program: Logix.ModuleImpl<any, Sh, any> | Logix.AnyModule,
+  program: Logix.Module.AnyProgram,
   body: (api: TestApi<Sh>) => Effect.Effect<void, any, any>,
   options?: TestProgramOptions,
 ): Effect.Effect<ExecutionResult<Sh>, unknown, Scope.Scope> =>
   Effect.gen(function* () {
     const traceRef = yield* Ref.make<Chunk.Chunk<TraceEvent<Sh>>>(Chunk.empty())
-    const actionsRef = yield* Ref.make<Chunk.Chunk<Logix.ActionOf<Sh>>>(Chunk.empty())
+    const actionsRef = yield* Ref.make<Chunk.Chunk<Logix.Module.ActionOf<Sh>>>(Chunk.empty())
 
-    const debugSink: Logix.Debug.Sink = {
-      record: (event: Logix.Debug.Event) => {
+    const debugSink: CoreDebug.Sink = {
+      record: (event: CoreDebug.Event) => {
         if (event.type !== 'lifecycle:error') {
           return Effect.void
         }
@@ -146,8 +147,8 @@ export const runProgram = <Sh extends AnyModuleShape>(
     const resolved = defaultOptions(options)
 
     const ctx = yield* Effect.provideService(
-      Logix.Runtime.openProgram(program, resolved),
-      Logix.Debug.internal.currentDebugSinks,
+      Logix.Runtime.openProgram<Sh>(program, resolved),
+      CoreDebug.internal.currentDebugSinks,
       [debugSink],
     )
 

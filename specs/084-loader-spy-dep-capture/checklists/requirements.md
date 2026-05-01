@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Loader Spy 依赖采集（加载态自描述证据：不作权威）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2026-01-09  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2026-01-09
 **Feature**: `specs/084-loader-spy-dep-capture/spec.md`
 
 ## Content Quality

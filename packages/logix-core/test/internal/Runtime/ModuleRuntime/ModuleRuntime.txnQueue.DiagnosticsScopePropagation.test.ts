@@ -2,10 +2,10 @@ import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
 import type { ConcurrencyDiagnostics } from '../../../../src/internal/runtime/core/ConcurrencyDiagnostics.js'
-import type { ResolvedConcurrencyPolicy } from '../../../../src/internal/runtime/ModuleRuntime.concurrencyPolicy.js'
-import { makeEnqueueTransaction } from '../../../../src/internal/runtime/ModuleRuntime.txnQueue.js'
+import type { ResolvedConcurrencyPolicy } from '../../../../src/internal/runtime/core/ModuleRuntime.concurrencyPolicy.js'
+import { makeEnqueueTransaction } from '../../../../src/internal/runtime/core/ModuleRuntime.txnQueue.js'
 import * as EffectOpCore from '../../../../src/internal/runtime/core/EffectOpCore.js'
-import * as Debug from '../../../../src/Debug.js'
+import * as Debug from '../../../../src/internal/debug-api.js'
 
 describe('ModuleRuntime.txnQueue (diagnostics scope propagation)', () => {
   it.effect(

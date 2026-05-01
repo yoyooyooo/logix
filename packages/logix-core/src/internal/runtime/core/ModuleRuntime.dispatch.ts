@@ -78,7 +78,7 @@ export const makeDispatchOps = <S, A>(args: {
     reason: StateTransaction.PatchReason,
     from?: unknown,
     to?: unknown,
-    traitNodeId?: string,
+    fieldNodeId?: string,
     stepId?: number,
   ) => void
   readonly actionHub: PubSub.PubSub<A>

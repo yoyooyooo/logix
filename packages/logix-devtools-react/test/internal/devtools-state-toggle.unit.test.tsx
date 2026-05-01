@@ -22,7 +22,7 @@ describe('@logixjs/devtools-react · DevtoolsModule state', () => {
     expect(after.open).toBe(true)
   })
 
-  it('setMode action updates DevtoolsSettings.mode and derived flags', async () => {
+  it('updateSettings changes evidence display flags without legacy mode state', async () => {
     const getState = () =>
       devtoolsRuntime.runSync(devtoolsModuleRuntime.getState as any as Effect.Effect<DevtoolsState, never, any>)
 
@@ -30,21 +30,26 @@ describe('@logixjs/devtools-react · DevtoolsModule state', () => {
     expect(before.settings).toBeDefined()
 
     await devtoolsRuntime.runPromise(
-      devtoolsModuleRuntime.dispatch({ _tag: 'setMode', payload: 'basic' }) as Effect.Effect<unknown, unknown, any>,
+      devtoolsModuleRuntime.dispatch({
+        _tag: 'updateSettings',
+        payload: { showFieldEvents: false, showReactRenderEvents: false },
+      }) as Effect.Effect<unknown, unknown, any>,
     )
 
     const after = getState()
-    expect(after.settings.mode).toBe('basic')
-    expect(after.settings.showTraitEvents).toBe(false)
+    expect(after.settings).not.toHaveProperty('mode')
+    expect(after.settings.showFieldEvents).toBe(false)
     expect(after.settings.showReactRenderEvents).toBe(false)
 
     await devtoolsRuntime.runPromise(
-      devtoolsModuleRuntime.dispatch({ _tag: 'setMode', payload: 'deep' }) as Effect.Effect<unknown, unknown, any>,
+      devtoolsModuleRuntime.dispatch({
+        _tag: 'updateSettings',
+        payload: { showFieldEvents: true, showReactRenderEvents: true },
+      }) as Effect.Effect<unknown, unknown, any>,
     )
 
     const afterDeep = getState()
-    expect(afterDeep.settings.mode).toBe('deep')
-    expect(afterDeep.settings.showTraitEvents).toBe(true)
+    expect(afterDeep.settings.showFieldEvents).toBe(true)
     expect(afterDeep.settings.showReactRenderEvents).toBe(true)
   })
 })

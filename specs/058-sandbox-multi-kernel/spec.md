@@ -1,8 +1,8 @@
 # Feature Specification: Sandbox 多内核试跑与对照（core/core-ng）
 
-**Feature Branch**: `058-sandbox-multi-kernel`  
-**Created**: 2025-12-28  
-**Status**: Draft  
+**Feature Branch**: `058-sandbox-multi-kernel`
+**Created**: 2025-12-28
+**Status**: Draft
 **Input**: User description: "那你顺便加上这个 spec（为 @logixjs/sandbox 增加多 kernel 资产与选择能力，支持 core/core-ng 对照试跑）"
 
 ## Clarifications

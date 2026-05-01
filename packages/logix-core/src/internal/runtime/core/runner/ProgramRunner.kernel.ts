@@ -1,6 +1,6 @@
 import { Cause, Effect, Exit, Scope } from 'effect'
 import type { ManagedRuntime } from 'effect'
-import type { AnyModuleShape, ModuleImpl } from '../module.js'
+import type { AnyModuleShape, ProgramRuntimeBlueprint } from '../module.js'
 import { make as makeBoundApi } from '../BoundApiRuntime.js'
 import { closeProgramScope } from './ProgramRunner.closeScope.js'
 import { DisposeError, DisposeTimeoutError, type ProgramIdentity } from './ProgramRunner.errors.js'
@@ -8,7 +8,7 @@ import { installGracefulShutdownHandlers } from './ProgramRunner.signals.js'
 import type { ProgramRunContext } from './ProgramRunner.context.js'
 
 export type RuntimeFactory = (
-  rootImpl: ModuleImpl<any, AnyModuleShape, any>,
+  rootBlueprint: ProgramRuntimeBlueprint<any, AnyModuleShape, any>,
   options?: unknown,
 ) => ManagedRuntime.ManagedRuntime<any, never>
 
@@ -27,17 +27,17 @@ export interface ProgramRunnerKernel<Sh extends AnyModuleShape> {
 
 export const makeProgramRunnerKernel = <Sh extends AnyModuleShape>(
   makeRuntime: RuntimeFactory,
-  rootImpl: ModuleImpl<any, Sh, any>,
+  rootBlueprint: ProgramRuntimeBlueprint<any, Sh, any>,
   options?: unknown,
 ): Effect.Effect<ProgramRunnerKernel<Sh>> =>
   Effect.gen(function* () {
     const identity: ProgramIdentity = {
-      moduleId: String(rootImpl.module.id),
+      moduleId: String(rootBlueprint.module.id),
       instanceId: 'unknown',
     }
 
     const scope = yield* Scope.make()
-    const runtime = makeRuntime(rootImpl as unknown as ModuleImpl<any, AnyModuleShape, any>, options)
+    const runtime = makeRuntime(rootBlueprint as unknown as ProgramRuntimeBlueprint<any, AnyModuleShape, any>, options)
 
     const setInstanceId = (value: unknown) => {
       identity.instanceId = typeof value === 'string' && value.length > 0 ? value : String(value ?? 'unknown')
@@ -105,7 +105,7 @@ export const makeProgramRunnerKernel = <Sh extends AnyModuleShape>(
         scope,
         runtime,
         module: moduleRuntime as any,
-        $: makeBoundApi(rootImpl.module.shape as any, moduleRuntime as any) as any,
+        $: makeBoundApi(rootBlueprint.module.shape as any, moduleRuntime as any) as any,
       }) satisfies ProgramRunContext<Sh>
 
     return {

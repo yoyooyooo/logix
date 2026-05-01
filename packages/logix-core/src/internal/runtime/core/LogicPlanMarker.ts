@@ -1,6 +1,6 @@
 export type PhaseRef = { current: 'setup' | 'run' }
 
-const LOGIC_PLAN_EFFECT = Symbol.for('@logixjs/core/logicPlanEffect')
+const LOGIC_DESCRIPTOR_EFFECT = Symbol.for('@logixjs/core/logicPlanEffect')
 const LOGIC_PHASE_REF = Symbol.for('@logixjs/core/logicPhaseRef')
 const LOGIC_SKIP_RUN = Symbol.for('@logixjs/core/logicSkipRun')
 
@@ -15,11 +15,11 @@ const defineHidden = (target: object, key: symbol, value: unknown): void => {
 
 export const markAsLogicPlanEffect = (value: unknown): void => {
   if (!value || typeof value !== 'object') return
-  defineHidden(value as object, LOGIC_PLAN_EFFECT, true)
+  defineHidden(value as object, LOGIC_DESCRIPTOR_EFFECT, true)
 }
 
 export const isLogicPlanEffect = (value: unknown): boolean =>
-  Boolean(value && typeof value === 'object' && (value as any)[LOGIC_PLAN_EFFECT] === true)
+  Boolean(value && typeof value === 'object' && (value as any)[LOGIC_DESCRIPTOR_EFFECT] === true)
 
 export const attachPhaseRef = (value: unknown, phaseRef: PhaseRef): void => {
   if (!value || typeof value !== 'object') return

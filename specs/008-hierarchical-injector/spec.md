@@ -1,8 +1,8 @@
 # Feature Specification: 层级 Injector 语义统一（Nearest Wins + Root Provider）
 
-**Feature Branch**: `[008-hierarchical-injector]`  
-**Created**: 2025-12-15  
-**Status**: Draft  
+**Feature Branch**: `[008-hierarchical-injector]`
+**Created**: 2025-12-15
+**Status**: Draft
 **Input**: User description: "保留现有函数式 DI 的优势，吸收 Angular 的层级 injector 核心（最近 wins + root provider），并为分形模块实例提供清晰一致的解析语义。"
 
 ## User Scenarios & Testing _(mandatory)_
@@ -82,11 +82,11 @@
 - **FR-003**: 系统 MUST 支持“Root Provider”语义：允许在创建 runtime tree 时通过 root layer/provide 提供全局单例，并能在需要时明确解析到该单例。
 - **FR-004**: 系统 MUST 支持“严格子作用域语义”：当调用方声明依赖必须来自某个更近的作用域（例如 imports-scope）时，若该作用域缺失提供者，系统必须失败而不是回退到更远作用域。
 - **FR-005**: 系统 MUST 在不同入口/集成形态下保持一致的解析语义（例如：业务逻辑执行、跨模块协作逻辑、UI 读取/派发）。
-- **FR-010**: 系统 MUST 收敛跨模块协作的默认入口：业务层仅保留 `$.use`（strict）与 `Link.make`（显式跨模块/IR 承载），并移除 `$.useRemote` 作为公共 API，避免“双入口等价”导致语义分裂与误用。
+- **FR-010**: 系统 MUST 收敛跨模块协作的默认入口：业务层仅保留 `$.use`（strict）与 `orchestration link alias`（显式跨模块/IR 承载），并移除 `$.useRemote` 作为公共 API，避免“双入口等价”导致语义分裂与误用。
 - **FR-011**: 系统 MUST 提供显式 root provider 解析入口（例如 `Root.resolve(Tag)`），且该入口只解析“当前 runtime 树的 rootContext”，不受 React `RuntimeProvider.layer` 等局部 override 影响；当 `Tag` 为 `ModuleTag` 时语义固定为“root 单例 module runtime”，不得用于选择 imports-scope 或多实例实例。
 - **FR-006**: 系统 MUST 在解析失败时提供可读、可操作的诊断信息，至少包含：请求 token 标识、解析发生的作用域/入口、以及修复建议。
 - **FR-007**: 系统 MUST 对“多实例并存”提供一等支持：同一模块/同一 token 的不同实例不得串扰，且诊断信息必须能区分实例。
-- **FR-008**: 系统 MUST 明确并文档化“作用域边界”的语义：何时是 root、何时是 imports-scope、何时需要显式 key 才能表达多实例；并明确 React `useModule(Impl,{ key })` 的 key 语义（同 key 复用、异 key 隔离、缺省 key 为组件级独立实例）；同时明确 React `useModule(Impl)` 不得隐式复用 root 单例（root 单例语义必须显式通过 `useModule(ModuleTag)` / `useModule(Impl.module)` / `Root.resolve(ModuleTag)` 选择）；并明确 `ModuleDef.implement({ imports })` 的 imports 仅用于“提供实现/实例构造”，因此只接受 `Child.impl`（ModuleImpl），`Child.module`（ModuleTag）仅作为解析 token 使用。
+- **FR-008**: 系统 MUST 明确并文档化“作用域边界”的语义：何时是 root、何时是 imports-scope、何时需要显式 key 才能表达多实例；并明确 React `useModule(Program,{ key })` 的 key 语义（同 key 复用、异 key 隔离、缺省 key 为组件级独立实例）；同时明确 React `useModule(Program)` 不得隐式复用 root 单例（root 单例语义必须显式通过 `useModule(ModuleTag)` / `Root.resolve(ModuleTag)` 选择）；并明确 `Program.make(Module, { capabilities: { imports } })` 的 imports 接受 child `Program`，`ModuleTag` 仅作为解析 token 使用。
 - **FR-009**: 系统 MUST 提供最小化的概念与 API 表面积：在不引入第二套 DI 模型的前提下完成上述能力（以现有 DI 原语为基底）。
 
 ### Scope Boundaries & Assumptions
@@ -115,14 +115,14 @@
 
 ### Session 2025-12-15
 
-- Q: `useModule(Host.impl)` 是否必须传 `key`？ → A: 默认 strict，`useModule(Host.impl,{key})` 用于构造/区分局部实例，缺失 `key` 仍会创建局部 scope；只有 `useModule(Host.module)` / `useModule(ModuleTag)` 直接拿 root 单例。
-- Q: `useModule(Impl,{ key })` 的 `key` 是 label 还是实例标识？ → A: `key` 作为实例标识参与实例复用：同一 `RuntimeProvider` 下同 `key`（+同 deps）复用同一局部实例；异 `key` 隔离；未提供 `key` 时按组件生成临时 key（每组件独立）。
-- Q: `useModule(Impl)`（不传 options）是否允许隐式复用 root 单例？ → A: 不允许；`useModule(Impl)` 永远走局部实例语义，root 单例必须显式使用 `useModule(ModuleTag)` / `useModule(Impl.module)`（以及 `Root.resolve(ModuleTag)`）。
+- Q: `useModule(HostProgram)` 是否必须传 `key`？ → A: 默认 strict，`useModule(HostProgram,{key})` 用于构造/区分局部实例，缺失 `key` 仍会创建局部 scope；只有 `useModule(ModuleTag)` 直接拿 root 单例。
+- Q: `useModule(Program,{ key })` 的 `key` 是 label 还是实例标识？ → A: `key` 作为实例标识参与实例复用：同一 `RuntimeProvider` 下同 `key`（+同 deps）复用同一局部实例；异 `key` 隔离；未提供 `key` 时按组件生成临时 key（每组件独立）。
+- Q: `useModule(Program)`（不传 options）是否允许隐式复用 root 单例？ → A: 不允许；`useModule(Program)` 永远走局部实例语义，root 单例必须显式使用 `useModule(ModuleTag)`（以及 `Root.resolve(ModuleTag)`）。
 - Q: 在嵌套 `RuntimeProvider` 并追加 `layer` 的子树中，`useModule(ModuleTag)` 是否受 override 影响？ → A: 受影响；`useModule(ModuleTag)` 按当前运行环境解析（最近 wins），要忽略 override 并强制 root 单例则使用 `Root.resolve(Tag)`。
-- Q: `ModuleDef.implement({ imports: [...] })` 的 imports 应接收 `Child.impl` 还是 `Child.module`？ → A: 只接收 `Child.impl`（ModuleImpl）作为“提供实现/构造子实例”的声明；`Child.module`（ModuleTag）只用于解析（`$.use`/`imports.get`/`Root.resolve`）。
+- Q: `Program.make(Module, { capabilities: { imports } })` 的 imports 应接收 `ChildProgram` 还是 `Child.module`？ → A: 只接收 `ChildProgram` 作为“提供实现/构造子实例”的声明；`Child.module`（ModuleTag）只用于解析（`$.use`/`imports.get`/`Root.resolve`）。
 - Q: strict 默认下，`host.imports.get(Child.module)` / `useImportedModule(host, Child.module)` 是否支持 host 为 root 单例？ → A: 支持；root 也是一种模块实例，`imports.get` 只依赖该 host 实例的 imports-scope injector（`ImportsScope`），不区分 root/local。
-- Q: 是否保留 `$.useRemote` 作为跨模块协作入口？ → A: 不保留；删除 `$.useRemote`，跨模块协作/IR 承载只保留 `Link.make`，业务层默认只使用 `$.use`（strict）。
+- Q: 是否保留 `$.useRemote` 作为跨模块协作入口？ → A: 不保留；删除 `$.useRemote`，跨模块协作/IR 承载只保留 `orchestration link alias`，业务层默认只使用 `$.use`（strict）。
 - Q: `Root.resolve(Tag)` 是否受 `RuntimeProvider.layer` 覆盖影响？ → A: 不受影响；它固定解析当前 runtime 树的 root provider（rootContext），与 React 层的局部 override 无关。
-- Q: 是否允许 `Root.resolve(ModuleTag)`？ → A: 允许；它始终解析 root 单例（root/global 语义），不用于拿父实例 scope 的子模块实例；后者必须使用 `$.use` / `imports.get` / `Link.make`（透传实例句柄）。
-- Q: 全局 module（root 单例）通过什么方式“提供到 root provider”？ → A: 在创建 runtime tree（`Runtime.make` / `ManagedRuntime.make` / 最外层 `RuntimeProvider.runtime`）时把对应 `ModuleImpl.layer` 合并进 root layer/provide；业务模块用 `Root.resolve(ModuleTag)` 获取，不需要在每个业务模块的 `implement({ imports })` 里重复声明。
+- Q: 是否允许 `Root.resolve(ModuleTag)`？ → A: 允许；它始终解析 root 单例（root/global 语义），不用于拿父实例 scope 的子模块实例；后者必须使用 `$.use` / `imports.get` / `orchestration link alias`（透传实例句柄）。
+- Q: 全局 module（root 单例）通过什么方式“提供到 root provider”？ → A: 在创建 runtime tree（`Runtime.make(Program)` / 最外层 `RuntimeProvider.runtime`）时通过 `Program.make(..., { capabilities: { imports } })` 组合；业务模块用 `Root.resolve(ModuleTag)` 获取，不需要在每个业务模块的 imports 里重复声明。
 - Q: React 的 `useImportedModule/host.imports.get` 是否需要支持 `{ mode: "global" }`？ → A: 不需要；这两个 API 只做 strict（从 host 实例的 imports-scope 解析子模块）。root/global 单例语义统一使用 `useModule(ModuleTag)`（当前运行环境）或 `runtime.runSync(Root.resolve(Tag))`（固定 root provider）。

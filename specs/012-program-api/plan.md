@@ -1,7 +1,7 @@
 # Implementation Plan: Process（长效逻辑与跨模块协同收敛）
 
-**Branch**: `[012-program-api]` | **Date**: 2025-12-16 | **Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/012-program-api/spec.md`  
-**Input**: Feature specification from `/Users/yoyo/Documents/code/personal/intent-flow/specs/012-program-api/spec.md`
+**Branch**: `[012-program-api]` | **Date**: 2025-12-16 | **Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/012-program-api/spec.md`
+**Input**: Feature specification from `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/012-program-api/spec.md`
 
 **Note**: This template is copied into `specs/[###-feature-name]/plan.md` by
 `.specify/scripts/bash/setup-plan.sh` (invoked by the feature workflow).
@@ -12,14 +12,14 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.8.2（ESM） + Node.js 20+  
-**Primary Dependencies**: effect v3、`@logixjs/core`（运行时主线）、`@logixjs/react`（UI 子树作用域安装）、Devtools/Sandbox（作为诊断事件消费方）  
-**Storage**: 内存态（Effect Context/Scope + Ref/SubscriptionRef），不引入持久化存储  
-**Testing**: Vitest + `@effect/vitest`（Effect-heavy 用例）；React 侧用 Testing Library（按既有用例风格）  
-**Target Platform**: Node.js 20+（runtime/test/基准）+ modern browsers（React/Devtools 消费）  
-**Project Type**: pnpm workspace monorepo（`packages/*` + `apps/*` + `examples/*`）  
-**Performance Goals**: 以“动作分发→Process 触发判定/调度→跨模块驱动”为关键路径；在约定基线用例下引入 Process 后 p95 额外开销 ≤ 5%（诊断关闭时 ≤ 1%）；基线测量采用固定场景重复运行 30 次（丢弃 warmup）并记录 p50/p95 与分配计数（至少一类指标）  
-**Constraints**: 稳定标识（禁止随机/时间默认 id）、事务窗口禁止 IO/await、跨模块影响必须通过动作协议、诊断事件 Slim 且可序列化、诊断关闭近零成本、packages 子包对外子模块铁律（030：对外子模块 PascalCase；hooks/components/worker 下沉 `src/internal/**`；`exports` 屏蔽 `./internal/*`）、拒绝向后兼容（迁移说明替代兼容层）  
+**Language/Version**: TypeScript 5.8.2（ESM） + Node.js 20+
+**Primary Dependencies**: effect v3、`@logixjs/core`（运行时主线）、`@logixjs/react`（UI 子树作用域安装）、Devtools/Sandbox（作为诊断事件消费方）
+**Storage**: 内存态（Effect Context/Scope + Ref/SubscriptionRef），不引入持久化存储
+**Testing**: Vitest + `@effect/vitest`（Effect-heavy 用例）；React 侧用 Testing Library（按既有用例风格）
+**Target Platform**: Node.js 20+（runtime/test/基准）+ modern browsers（React/Devtools 消费）
+**Project Type**: pnpm workspace monorepo（`packages/*` + `apps/*` + `examples/*`）
+**Performance Goals**: 以“动作分发→Process 触发判定/调度→跨模块驱动”为关键路径；在约定基线用例下引入 Process 后 p95 额外开销 ≤ 5%（诊断关闭时 ≤ 1%）；基线测量采用固定场景重复运行 30 次（丢弃 warmup）并记录 p50/p95 与分配计数（至少一类指标）
+**Constraints**: 稳定标识（禁止随机/时间默认 id）、事务窗口禁止 IO/await、跨模块影响必须通过动作协议、诊断事件 Slim 且可序列化、诊断关闭近零成本、packages 子包对外子模块铁律（030：对外子模块 PascalCase；hooks/components/worker 下沉 `src/internal/**`；`exports` 屏蔽 `./internal/*`）、拒绝向后兼容（迁移说明替代兼容层）
 **Scale/Scope**: 单进程多实例并存（同模块多 key/多会话）；同一作用域内可安装多个 Process（例如 0–50）；Devtools ring buffer 需有容量上限与裁剪策略
 
 ## Constitution Check
@@ -82,7 +82,7 @@ specs/012-program-api/
 ```text
 packages/logix-core/
 ├── src/Process.ts                                  # 新的公共入口（对外概念收口；基于 processes）
-├── src/Link.ts                                     # Process.link(...) 的下沉实现/等价别名（跨模块胶水；原 Link.make）
+├── src/Link.ts                                     # orchestration process link surface(...) 的下沉实现/等价别名（跨模块胶水；原 orchestration link alias）
 ├── src/internal/runtime/AppRuntime.ts               # 应用级 scope 下统一 fork processes（现有）
 ├── src/internal/runtime/ModuleRuntime.ts            # （新增/扩展）实例级 scope 下 fork processes（用于实例级安装点）
 ├── src/internal/runtime/core/DebugSink.ts           # Process 诊断事件（Slim/可序列化）
@@ -128,7 +128,7 @@ No violations identified for this feature at planning time.
 - 产出 `data-model.md`：固化 Process Definition / Installation / Instance / Trigger / Diagnostics Event / Error Summary 的字段与关系，并给出关键状态转换。
 - 产出 `contracts/`：以 OpenAPI 3.1 + JSON Schema 固化 Process 可观测协议（不暗示具体传输实现）。
 - 产出 `quickstart.md`：提供最小接线方式、默认策略说明与迁移指引（应用级/实例级/子树级三种安装点）。
-- 更新 agent context：运行 `/Users/yoyo/Documents/code/personal/intent-flow/.specify/scripts/bash/update-agent-context.sh codex`，同步本计划的技术上下文与目录结构。
+- 更新 agent context：运行 `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/.specify/scripts/bash/update-agent-context.sh codex`，同步本计划的技术上下文与目录结构。
 
 ### Phase 1 - Constitution Re-check (Post-Design)
 

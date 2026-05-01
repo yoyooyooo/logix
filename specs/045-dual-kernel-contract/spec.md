@@ -1,8 +1,8 @@
 # Feature Specification: Dual Kernel Contract（可替换内核契约：当前内核 + core-ng 并行）
 
-**Feature Branch**: `[045-dual-kernel-contract]`  
-**Created**: 2025-12-27  
-**Status**: Done  
+**Feature Branch**: `[045-dual-kernel-contract]`
+**Created**: 2025-12-27
+**Status**: Done
 **Input**: User description: "打造可替换内核契约：现有 @logixjs/* 内核与 core-ng 并行；上层（Logix React/平台/Devtools/Sandbox）只依赖稳定的 Kernel Contract 与统一最小 IR；允许未来一次性切换内核；禁止使用历史版本号旧称；旧 specs 不改动，仅做关联引用。"
 
 ## Terminology
@@ -19,7 +19,7 @@
 - `specs/016-serializable-diagnostics-and-identity/`（可序列化诊断与稳定身份）
 - `specs/005-unify-observability-protocol/`（统一观测协议与证据包）
 - `specs/024-root-runtime-runner/`（根模块运行入口与试运行边界）
-- `specs/039-trait-converge-int-exec-evidence/`（核心热路径证据达标：可作为契约验收集来源）
+- `specs/039-field-converge-int-exec-evidence/`（核心热路径证据达标：可作为契约验收集来源）
 - `specs/057-core-ng-static-deps-without-proxy/`（读状态车道：ReadQuery/SelectorSpec + SelectorGraph）
 
 ## Clarifications
@@ -34,7 +34,7 @@
 
 ### Session 2025-12-28
 
-- AUTO: Q: 045 的 perf evidence 预算口径是什么？ → A: 以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为唯一 SSoT；交付结论必须 `profile=default`（或 `soak`）并满足 `pnpm perf diff` 输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`；before/after 必须 `meta.matrixId/matrixHash` 一致。
+- AUTO: Q: 045 的 perf evidence 预算口径是什么？ → A: 以 `packages/logix-perf-evidence/assets/matrix.json` 为唯一 SSoT；交付结论必须 `profile=default`（或 `soak`）并满足 `pnpm perf diff` 输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`；before/after 必须 `meta.matrixId/matrixHash` 一致。
 - AUTO: Q: 045 的 perf evidence baseline 语义是什么？ → A: 代码前后：before=引入 Kernel Contract/装配点改动前，after=改动后（默认仍用当前内核 core）；用于证明“装配/契约层”不引入热路径回归。
 - AUTO: Q: perf evidence 采集是否允许在混杂改动的 worktree 上完成？ → A: 不允许；代码前后对比必须在隔离 worktree/目录分别采 before/after（避免并行改动污染），否则只能作为线索不得宣称 Gate PASS。
 - AUTO: Q: Perf Gate 必须覆盖哪些诊断档位？ → A: P1 suites 的 Gate baseline 以 `diagnostics=off` 为准；light/full 仅用于开销曲线与解释链路验证，不作为默认 Gate baseline。
@@ -117,7 +117,7 @@
 
 ### Non-Functional Requirements (Performance & Diagnosability)
 
-- **NFR-001**: 系统 MUST 为“契约适配层”定义可复现的性能基线与预算：以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为 SSoT；交付结论必须 `profile=default`（或 `soak`），且 before/after 必须满足 `meta.matrixId/matrixHash` 一致；`pnpm perf diff` 输出必须满足 `meta.comparability.comparable=true` 且 `summary.regressions==0`，否则不得宣称 Gate PASS。
+- **NFR-001**: 系统 MUST 为“契约适配层”定义可复现的性能基线与预算：以 `packages/logix-perf-evidence/assets/matrix.json` 为 SSoT；交付结论必须 `profile=default`（或 `soak`），且 before/after 必须满足 `meta.matrixId/matrixHash` 一致；`pnpm perf diff` 输出必须满足 `meta.comparability.comparable=true` 且 `summary.regressions==0`，否则不得宣称 Gate PASS。
 - **NFR-002**: 系统 MUST 在诊断关闭时保持近零额外开销，且至少能导出 `KernelImplementationRef`（极小摘要）；在诊断开启（light/full）时提供 Slim 且可序列化的结构化证据（包含 `RuntimeServicesEvidence`），以支撑解释链路。
 - **NFR-003**: 系统 MUST 使用确定性标识（实例/事务/操作等）作为证据锚点；不得默认使用随机数或时间作为主锚点来源。
 - **NFR-004**: 系统 MUST 严格维护同步事务窗口边界：事务窗口内禁止 IO/async；不得提供写逃逸。

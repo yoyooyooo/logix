@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { collectTrialRunArtifacts } from '../../src/internal/observability/artifacts/collect.js'
-import type { TrialRunArtifactExporter } from '../../src/internal/observability/artifacts/exporter.js'
+import type { TrialRunArtifactExporter } from '../../src/internal/artifacts/exporter.js'
 
 describe('TrialRunArtifacts.collect: partial failure', () => {
   it('does not block other artifacts when one exporter fails', () => {

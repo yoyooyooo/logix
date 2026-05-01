@@ -1,8 +1,10 @@
 import { describe } from '@effect/vitest'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import { performance } from 'node:perf_hooks'
 import * as Logix from '../../../src/index.js'
+import * as RuntimeContracts from '../../../src/internal/runtime-contracts.js'
 import { TickSchedulerTag } from '../../../src/internal/runtime/core/env.js'
 import { flushAllHostScheduler, makeTestHostScheduler, testHostSchedulerLayer } from '../testkit/hostSchedulerTestKit.js'
 
@@ -71,7 +73,7 @@ const benchmarkSameTargetModuleAsSource = (args: {
     })
 
     const TargetState = makeNumberStruct(targetFields)
-    const SourceValueRead = Logix.ReadQuery.make({
+    const SourceValueRead = RuntimeContracts.Selector.make({
       selectorId: `rq_perf_same_target_module_${fanout}`,
       debugKey: `PerfSameTargetModuleSource${fanout}.value`,
       reads: ['value'],
@@ -79,35 +81,38 @@ const benchmarkSameTargetModuleAsSource = (args: {
       equalsKind: 'objectIs',
     })
 
-    const Target = Logix.Module.make(`PerfSameTargetModuleTarget${fanout}`, {
-      state: TargetState,
-      actions: {},
-      traits: Logix.StateTrait.from(TargetState)(
+    const Target = FieldContracts.withModuleFieldDeclarations(Logix.Module.make(`PerfSameTargetModuleTarget${fanout}`, {
+  state: TargetState,
+  actions: {}
+}), FieldContracts.fieldFrom(TargetState)(
         Object.fromEntries(
           targetFields.map((field) => [
             field,
-            Logix.StateTrait.externalStore({
-              store: Logix.ExternalStore.fromModule(Source, SourceValueRead),
+            FieldContracts.fieldExternalStore({
+              store: RuntimeContracts.ExternalInput.fromModule(Source, SourceValueRead),
             }),
           ]),
         ) as any,
-      ),
-    })
+      ))
 
-    const SourceImpl = Source.implement({ initial: { value: 0 } })
+    const sourceProgram = Logix.Program.make(Source, { initial: { value: 0 } })
     const Root = Logix.Module.make(`PerfSameTargetModuleRoot${fanout}`, { state: Schema.Void, actions: {} })
-    const RootImpl = Root.implement({
+    const targetProgram = Logix.Program.make(Target, {
+      initial: makeInitialNumbers(targetFields, 0),
+      capabilities: {
+        imports: [sourceProgram],
+      },
+      logics: [],
+    })
+    const rootProgram = Logix.Program.make(Root, {
       initial: undefined,
-      imports: [
-        Target.implement({
-          initial: makeInitialNumbers(targetFields, 0),
-          imports: [SourceImpl.impl],
-        }).impl,
-      ],
+      capabilities: {
+        imports: [targetProgram],
+      },
     })
 
     const hostScheduler = makeTestHostScheduler()
-    const runtime = Logix.Runtime.make(RootImpl, {
+    const runtime = Logix.Runtime.make(rootProgram, {
       layer: Layer.mergeAll(testHostSchedulerLayer(hostScheduler), Layer.empty) as Layer.Layer<any, never, never>,
     })
 

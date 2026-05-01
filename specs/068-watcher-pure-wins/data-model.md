@@ -2,7 +2,7 @@
 
 > 说明：本特性不是业务数据模型，而是 Runtime 内部的“传播/订阅/证据”实体模型。目标是让实现与回归用例对齐到同一套可解释术语与字段集合（避免并行真相源）。
 
-**Spec**: `specs/068-watcher-pure-wins/spec.md`  
+**Spec**: `specs/068-watcher-pure-wins/spec.md`
 **Plan**: `specs/068-watcher-pure-wins/plan.md`
 
 ## Key Entities
@@ -47,7 +47,7 @@
   - `dirtyAll: boolean`
   - `paths: ReadonlyArray<FieldPath>`
 - **Patch evidence**：
-  - 由写入侧（mutate/reducer/traits）提供字段级 evidence
+  - 由写入侧（mutate/reducer/fields）提供字段级 evidence
   - 若缺失则可能退化为 `dirtyAll`
 
 ### 5) Perf/Regression Evidence

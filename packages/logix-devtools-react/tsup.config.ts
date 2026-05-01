@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 const packageDir = dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
-  entry: ['src/*.tsx'],
+  entry: ['src/index.tsx'],
   format: ['cjs', 'esm'],
   dts: true,
   clean: true,

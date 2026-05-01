@@ -4,7 +4,23 @@
     "module": "ESNext",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@logixjs/core": ["../../packages/logix-core/src/index.ts"],
+      "@logixjs/core/*": ["../../packages/logix-core/src/*"],
+      "@logixjs/form": ["../../packages/logix-form/src/index.ts"],
+      "@logixjs/form/*": ["../../packages/logix-form/src/*"],
+      "@logixjs/i18n": ["../../packages/i18n/src/index.ts"],
+      "@logixjs/i18n/*": ["../../packages/i18n/src/*"],
+      "@logixjs/query": ["../../packages/logix-query/src/index.ts"],
+      "@logixjs/query/*": ["../../packages/logix-query/src/*"],
+      "@logixjs/react": ["../../packages/logix-react/src/index.ts"],
+      "@logixjs/react/*": ["../../packages/logix-react/src/*"],
+      "@logixjs/test": ["../../packages/logix-test/src/index.ts"],
+      "@logixjs/test/*": ["../../packages/logix-test/src/*"]
+    }
   },
   "include": ["src", "test"]
 }

@@ -30,7 +30,7 @@ export namespace AddressForm {
 
   export type Shape = FormCore.FormShape<Values, ActionMap>
 
-  export type ModuleTag = LogixCore.ModuleTagType<'AddressForm', Shape>
+  export type ModuleTag = LogixCore.Module.ModuleTag<'AddressForm', Shape>
 }
 
 export declare const AddressFormModule: AddressForm.ModuleTag

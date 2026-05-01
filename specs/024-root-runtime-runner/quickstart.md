@@ -1,7 +1,7 @@
 # Quickstart: Program Runner（根模块运行入口）
 
 **Date**: 2025-12-23
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/024-root-runtime-runner/spec.md`
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/024-root-runtime-runner/spec.md`
 
 ## 1) 你将获得什么
 
@@ -59,7 +59,7 @@ export interface ProgramRunContext<Sh extends Logix.AnyModuleShape> {
 }
 
 export declare const runProgram: <Sh extends Logix.AnyModuleShape, Args, A, E, R>(
-  module: Logix.AnyModule | Logix.ModuleImpl<any, Sh, any>,
+  program: Logix.Program.Program<string, Sh, any, any>,
   main: (ctx: ProgramRunContext<Sh>, args: Args) => Effect.Effect<A, E, R>,
   options?: Logix.Runtime.RuntimeOptions & {
     readonly closeScopeTimeout?: number
@@ -71,7 +71,7 @@ export declare const runProgram: <Sh extends Logix.AnyModuleShape, Args, A, E, R
 ) => Promise<A>
 
 export declare const openProgram: <Sh extends Logix.AnyModuleShape>(
-  module: Logix.AnyModule | Logix.ModuleImpl<any, Sh, any>,
+  program: Logix.Program.Program<string, Sh, any, any>,
   options?: Logix.Runtime.RuntimeOptions,
 ) => Effect.Effect<ProgramRunContext<Sh>, never, Scope.Scope>
 ```
@@ -106,7 +106,7 @@ await Logix.Runtime.runProgram(AppRoot, main, {
 import * as Logix from "@logixjs/core"
 import { Effect, Stream } from "effect"
 
-// AppRoot：你的 program module（Module 或 ModuleImpl）
+// AppRoot：你的 Program.make(...) 产物
 // OrdersCrud：你希望通过 $.use(...) 访问的领域模块（Module/ModuleDef/ModuleTag）
 const AppRoot = /* ... */
 const OrdersCrud = /* ... */

@@ -1,15 +1,15 @@
 import { describe } from 'vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
-import { TestProgram, Execution } from '@logixjs/test'
+import { TestProgram } from '@logixjs/test'
 
-import { CounterImpl } from '../src/modules/counter'
-import { CounterMultiImpl } from '../src/modules/counterMulti'
-import { StepCounterImpl } from '../src/modules/stepCounter'
+import { CounterProgram } from '../src/modules/counter'
+import { CounterMultiProgram } from '../src/modules/counterMulti'
+import { StepCounterProgram } from '../src/modules/stepCounter'
 
 describe('examples/logix-react · module flows (integration)', () => {
-  it.effect('CounterModule + CounterLogic · inc / dec sequence', () =>
-    TestProgram.runProgram(CounterImpl, ($) =>
+  it.effect('CounterProgram + CounterLogic · inc / dec sequence', () =>
+    TestProgram.runProgram(CounterProgram, ($) =>
       Effect.gen(function* () {
         yield* $.dispatch({ _tag: 'inc', payload: undefined })
         yield* $.dispatch({ _tag: 'inc', payload: undefined })
@@ -20,17 +20,17 @@ describe('examples/logix-react · module flows (integration)', () => {
     ).pipe(
       Effect.tap((result) =>
         Effect.sync(() => {
-          Execution.expectActionTag(result, 'inc')
-          Execution.expectActionTag(result, 'dec', { times: 1 })
-          Execution.expectNoError(result)
+          TestProgram.expectActionTag(result, 'inc')
+          TestProgram.expectActionTag(result, 'dec', { times: 1 })
+          TestProgram.expectNoError(result)
           expect(result.state.value).toBe(1)
         }),
       ),
     ),
   )
 
-  it.effect('CounterMultiModule · multiple increments', () =>
-    TestProgram.runProgram(CounterMultiImpl, ($) =>
+  it.effect('CounterMultiProgram · multiple increments', () =>
+    TestProgram.runProgram(CounterMultiProgram, ($) =>
       Effect.gen(function* () {
         yield* $.dispatch({ _tag: 'increment', payload: undefined })
         yield* $.dispatch({ _tag: 'increment', payload: undefined })
@@ -40,16 +40,16 @@ describe('examples/logix-react · module flows (integration)', () => {
     ).pipe(
       Effect.tap((result) =>
         Effect.sync(() => {
-          Execution.expectActionTag(result, 'increment')
-          Execution.expectNoError(result)
+          TestProgram.expectActionTag(result, 'increment')
+          TestProgram.expectNoError(result)
           expect(result.state.count).toBe(2)
         }),
       ),
     ),
   )
 
-  it.effect('StepCounterModule · inc once', () =>
-    TestProgram.runProgram(StepCounterImpl, ($) =>
+  it.effect('StepCounterProgram · inc once', () =>
+    TestProgram.runProgram(StepCounterProgram, ($) =>
       Effect.gen(function* () {
         yield* $.dispatch({ _tag: 'inc', payload: undefined })
         yield* $.assert.state((s) => s.value === 1)
@@ -57,8 +57,8 @@ describe('examples/logix-react · module flows (integration)', () => {
     ).pipe(
       Effect.tap((result) =>
         Effect.sync(() => {
-          Execution.expectActionTag(result, 'inc', { times: 1 })
-          Execution.expectNoError(result)
+          TestProgram.expectActionTag(result, 'inc', { times: 1 })
+          TestProgram.expectNoError(result)
         }),
       ),
     ),

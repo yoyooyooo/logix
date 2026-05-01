@@ -9,11 +9,11 @@
 已覆盖（✅）：
 
 - `traitConvergeMode` 覆盖优先级与 builtin 默认值
-  - `packages/logix-core/test/StateTrait.ConvergeAuto.Config.test.ts`
+  - `packages/logix-core/test/FieldKernel.ConvergeAuto.Config.test.ts`
 - `traitConvergeMode` 的热切换（`setTraitConvergeOverride`）与“Provider 仍然最高优先级”
-  - `packages/logix-core/test/StateTrait.ConvergeAuto.ModuleOverride.test.ts`
+  - `packages/logix-core/test/FieldKernel.ConvergeAuto.ModuleOverride.test.ts`
 - `traitConvergeBudgetMs` / `traitConvergeDecisionBudgetMs` 的默认值与覆盖优先级链路
-  - `packages/logix-core/test/StateTrait.ConvergeBudgetConfig.test.ts`
+  - `packages/logix-core/test/FieldKernel.ConvergeBudgetConfig.test.ts`
 
 ## 2) 017 sweep 的可复现性（跑道层）
 

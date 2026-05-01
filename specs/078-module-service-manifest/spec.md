@@ -1,8 +1,8 @@
 # Feature Specification: Module↔Service 关系纳入 Manifest IR（平台可诊断/可回放）
 
-**Feature Branch**: `078-module-service-manifest`  
-**Created**: 2026-01-09  
-**Status**: Draft  
+**Feature Branch**: `078-module-service-manifest`
+**Created**: 2026-01-09
+**Status**: Draft
 **Input**: 补齐平台终态 IR/反射：将 Module 与 Service 的关系纳入可序列化 Manifest/IR，用于试运行、Devtools 诊断与可回放
 
 ## Context

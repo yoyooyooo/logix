@@ -52,7 +52,7 @@
 
 - [x] T017 实现 `RuntimeProvider` 的 `policy.mode="sync"`（含 syncBudgetMs + 超预算回退），并输出诊断事件（Slim）：`packages/logix-react/src/internal/provider/RuntimeProvider.tsx`
 - [x] T018 实现 `RuntimeProvider` 的 `policy.mode="defer"`（Provider gating：commit 后完成快照稳定 + preload，ready 后再 mount children）：`packages/logix-react/src/internal/provider/RuntimeProvider.tsx`
-- [x] T019 实现 `policy.preload`：支持预初始化 ModuleImpl 列表并复用 ModuleCache（不依赖 Suspense），并提供 `concurrency` 且设置保守默认值（建议 `5`），同时输出 `react.module.preload` 诊断事件（Slim）：`packages/logix-react/src/internal/provider/RuntimeProvider.tsx`、`packages/logix-react/src/internal/store/ModuleCache.ts`
+- [x] T019 实现 `policy.preload`：支持预初始化 ProgramRuntimeBlueprint 列表并复用 ModuleCache（不依赖 Suspense），并提供 `concurrency` 且设置保守默认值（建议 `5`），同时输出 `react.module.preload` 诊断事件（Slim）：`packages/logix-react/src/internal/provider/RuntimeProvider.tsx`、`packages/logix-react/src/internal/store/ModuleCache.ts`
 - [x] T020 在 `defer+preload` 下补齐用例：验证子组件 `useModule(PreloadedImpl)` 不再触发二次 fallback/suspend（无闪烁冷启动）：`packages/logix-react/test/browser/perf-boundaries/react-defer-preload.test.tsx`
 - [x] T021 为 `useModuleRuntime(handle=ModuleTag)` 增加策略入口（至少支持 suspend + yield 的可控路径），并输出 `react.moduleTag.resolve` 诊断事件（Slim）：`packages/logix-react/src/internal/hooks/useModuleRuntime.ts`
 - [x] T022 实现 `onlyWhenOverBudgetMs` 的“首次运行”记忆（runtime/session 维度，HMR/remount 鲁棒）：`packages/logix-react/src/internal/store/perfWorkloads.ts`、`packages/logix-react/src/internal/store/ModuleCache.ts`

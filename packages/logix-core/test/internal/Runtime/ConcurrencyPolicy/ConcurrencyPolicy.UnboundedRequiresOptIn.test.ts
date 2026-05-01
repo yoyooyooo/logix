@@ -1,11 +1,11 @@
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Ref, Stream } from 'effect'
-import * as Debug from '../../../../src/Debug.js'
-import * as ModuleRuntime from '../../../../src/internal/runtime/ModuleRuntime.js'
-import * as FlowRuntime from '../../../../src/internal/runtime/FlowRuntime.js'
+import * as Debug from '../../../../src/internal/debug-api.js'
+import * as ModuleRuntime from '../../../../src/internal/runtime/core/ModuleRuntime.js'
+import * as FlowRuntime from '../../../../src/internal/runtime/core/FlowRuntime.js'
 import { getRuntimeInternals } from '../../../../src/internal/runtime/core/runtimeInternalsAccessor.js'
-import { ConcurrencyPolicyTag } from '../../../../src/internal/runtime/core/env.js'
+import { SchedulingPolicySurfaceTag } from '../../../../src/internal/runtime/core/env.js'
 
 describe('ConcurrencyPolicy (US2): unbounded requires explicit opt-in', () => {
   it('should fall back to bounded concurrency and emit a diagnostic when allowUnbounded=false', async () => {
@@ -52,7 +52,7 @@ describe('ConcurrencyPolicy (US2): unbounded requires explicit opt-in', () => {
         expect(typeof details?.configScope).toBe('string')
         expect(Object.keys(details ?? {})).toEqual(['configScope', 'limit'])
       }).pipe(
-        Effect.provideService(ConcurrencyPolicyTag, {
+        Effect.provideService(SchedulingPolicySurfaceTag, {
           concurrencyLimit: 'unbounded',
           allowUnbounded: false,
         }),

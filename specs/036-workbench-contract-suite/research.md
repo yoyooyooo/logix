@@ -1,10 +1,10 @@
 # Research: Workbench Contract Suite（036：031-035 统一验收入口）
 
-**Date**: 2025-12-26  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/036-workbench-contract-suite/spec.md`  
-**Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/036-workbench-contract-suite/plan.md`
+**Date**: 2025-12-26
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/036-workbench-contract-suite/spec.md`
+**Plan**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/036-workbench-contract-suite/plan.md`
 
-> 本文件只固化“关键裁决/原则/权衡”，用于避免 036 在实现阶段漂移成“只为 Workbench UI 服务的 demo”。  
+> 本文件只固化“关键裁决/原则/权衡”，用于避免 036 在实现阶段漂移成“只为 Workbench UI 服务的 demo”。
 > IR/TrialRun 的实现链路与字段语义，直接外链到 runtime SSoT（避免重复叙事）：`docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md`。
 
 ## Decisions

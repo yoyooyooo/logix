@@ -1,6 +1,6 @@
 # Tasks: 087 Async Coordination Roadmap（总控调度型）
 
-**Input**: `specs/087-async-coordination-roadmap/spec.md`, `specs/087-async-coordination-roadmap/plan.md`  
+**Input**: `specs/087-async-coordination-roadmap/spec.md`, `specs/087-async-coordination-roadmap/plan.md`
 **Note**: 本 tasks 仅做“调度/索引/门槛回写”，严禁复制 member 的实现任务；实现请进入 member 的 `tasks.md`。
 
 ## Phase 1: Setup（总控产物齐全）

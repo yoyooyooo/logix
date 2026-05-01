@@ -1,7 +1,7 @@
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Deferred, Effect, Fiber, Layer, Option, Schema } from 'effect'
-import * as Debug from '../../../src/Debug.js'
+import * as Debug from '../../../src/internal/debug-api.js'
 import * as Logix from '../../../src/index.js'
 
 describe('ModuleRuntime init gate', () => {
@@ -19,26 +19,27 @@ describe('ModuleRuntime init gate', () => {
           actions: {},
         })
 
-        const logic = TestModule.logic(($) => ({
-          setup: Effect.sync(() => {
-            $.lifecycle.onInitRequired(
-              Effect.gen(function* () {
-                steps.push('init0:start')
-                yield* Deferred.succeed(firstStarted, undefined)
-                yield* Deferred.await(gate)
-                steps.push('init0:end')
-              }),
-            )
+        const logic = TestModule.logic('test-module-logic', ($) => {
+          $.readyAfter(
+            Effect.gen(function* () {
+              steps.push('init0:start')
+              yield* Deferred.succeed(firstStarted, undefined)
+              yield* Deferred.await(gate)
+              steps.push('init0:end')
+            }),
+            { id: 'init0' },
+          )
 
-            $.lifecycle.onInitRequired(
-              Effect.gen(function* () {
-                steps.push('init1:start')
-                yield* Deferred.succeed(secondStarted, undefined)
-              }),
-            )
-          }),
-          run: Effect.void,
-        }))
+          $.readyAfter(
+            Effect.gen(function* () {
+              steps.push('init1:start')
+              yield* Deferred.succeed(secondStarted, undefined)
+            }),
+            { id: 'init1' },
+          )
+
+          return Effect.void
+        })
 
         const layer = TestModule.live({ value: 0 }, logic) as unknown as Layer.Layer<
           Logix.ModuleRuntime<any, any>,
@@ -92,12 +93,10 @@ describe('ModuleRuntime init gate', () => {
           actions: {},
         })
 
-        const logic = TestModule.logic(($) => ({
-          setup: Effect.sync(() => {
-            $.lifecycle.onInitRequired(Effect.die(new Error('Init Failed')))
-          }),
-          run: Effect.void,
-        }))
+        const logic = TestModule.logic('test-module-logic-2', ($) => {
+          $.readyAfter(Effect.die(new Error('Init Failed')), { id: 'init-failure' })
+          return Effect.void
+        })
 
         const layer = TestModule.live({ value: 0 }, logic) as unknown as Layer.Layer<
           Logix.ModuleRuntime<any, any>,

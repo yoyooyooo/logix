@@ -1,7 +1,7 @@
 # Phase 1 Data Model: Process（长效逻辑与跨模块协同收敛）
 
-**Feature**: [spec.md](./spec.md) (`/Users/yoyo/Documents/code/personal/intent-flow/specs/012-program-api/spec.md`)  
-**Research**: [research.md](./research.md) (`/Users/yoyo/Documents/code/personal/intent-flow/specs/012-program-api/research.md`)  
+**Feature**: [spec.md](./spec.md) (`/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/012-program-api/spec.md`)
+**Research**: [research.md](./research.md) (`/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/012-program-api/research.md`)
 **Created**: 2025-12-16
 
 本数据模型用于固化 Process 的最小可序列化事实源，为 Runtime / Devtools / Sandbox / React 集成提供共同语言。

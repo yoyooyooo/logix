@@ -1,10 +1,11 @@
 import React from 'react'
 import * as Logix from '@logixjs/core'
-import { RuntimeProvider, useDispatch, useModule, useSelector } from '@logixjs/react'
+import { Layer } from 'effect'
+import { RuntimeProvider, fieldValue, useDispatch, useModule, useSelector } from '@logixjs/react'
 import i18next from 'i18next'
 import { I18nextProvider, initReactI18next, useTranslation } from 'react-i18next'
-import { I18n, type I18nDriver } from '@logixjs/i18n'
-import { I18nDemoDef, I18nDemoModule } from '../modules/i18n-demo'
+import { I18n } from '@logixjs/i18n'
+import { I18nDemo, I18nDemoProgram } from '../modules/i18n-demo'
 
 const i18n = i18next.createInstance()
 
@@ -30,35 +31,39 @@ void i18n.use(initReactI18next).init({
 const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && value !== null && !Array.isArray(value)
 
-const i18nDriver: I18nDriver = {
+type DriverEvent = 'initialized' | 'languageChanged'
+type DriverHandler = (...args: ReadonlyArray<unknown>) => void
+type LocalI18nDriver = Parameters<typeof I18n.layer>[0]
+
+const i18nDriver: LocalI18nDriver = {
   get language() {
     return i18n.language
   },
   get isInitialized() {
     return i18n.isInitialized
   },
-  t: (key, options) => String(i18n.t(key, isPlainRecord(options) ? options : undefined)),
-  changeLanguage: (language) => i18n.changeLanguage(language),
-  on: (event, handler) => i18n.on(event, handler),
-  off: (event, handler) => i18n.off(event, handler),
+  t: (key: string, options?: unknown) => String(i18n.t(key, isPlainRecord(options) ? options : undefined)),
+  changeLanguage: (language: string) => i18n.changeLanguage(language),
+  on: (event: DriverEvent, handler: DriverHandler) => i18n.on(event, handler),
+  off: (event: DriverEvent, handler: DriverHandler) => i18n.off(event, handler),
 }
 
-const i18nDemoRuntime = Logix.Runtime.make(I18nDemoModule, {
+const i18nDemoRuntime = Logix.Runtime.make(I18nDemoProgram, {
   label: 'I18nDemoRuntime',
   devtools: true,
   layer: I18n.layer(i18nDriver),
 })
 
 const I18nDemoCard: React.FC = () => {
-  const demo = useModule(I18nDemoDef)
-  const name = useSelector(demo, (s) => s.name)
-  const token = useSelector(demo, (s) => s.token)
-  const derived = useSelector(demo, (s) => s.derived)
+  const demo = useModule(I18nDemo.tag)
+  const name = useSelector(demo, fieldValue('name'))
+  const token = useSelector(demo, fieldValue('token'))
+  const derived = useSelector(demo, fieldValue('derived'))
   const dispatch = useDispatch(demo)
 
   const { t, i18n: i18nReact } = useTranslation()
 
-  const renderedByUi = token ? String(t(token.key, token.options ? { ...token.options } : undefined)) : '(no token)'
+  const renderedByUi = token ? String(t(token.key, token.params ? { ...token.params } : undefined)) : '(no token)'
 
   return (
     <div className="space-y-6">
@@ -99,7 +104,7 @@ const I18nDemoCard: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">Module</span>
+              <span className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">Program</span>
               <button
                 type="button"
                 onClick={() => dispatch({ _tag: 'setLanguage', payload: 'en' })}

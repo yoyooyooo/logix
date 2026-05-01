@@ -1,6 +1,6 @@
-import { type UiIntentPacket } from '@logixjs/sandbox'
 import { EmptyState } from '../_shared/SandboxShell'
 import type { SandboxState } from '../../modules/SandboxRuntime'
+import type { UiIntentPacket } from '../../sandbox-contract'
 
 export type ScenarioStep = SandboxState['scenarioSteps'][number]
 export type SemanticWidget = SandboxState['semanticWidgets'][number]

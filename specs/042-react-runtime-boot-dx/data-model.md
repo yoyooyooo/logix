@@ -1,7 +1,7 @@
 # Data Model: React 冷启动/解析策略（概念模型）
 
-**Feature**: `042-react-runtime-boot-dx`  
-**Created**: 2025-12-27  
+**Feature**: `042-react-runtime-boot-dx`
+**Created**: 2025-12-27
 **Note**: 本特性不引入持久化数据；此文件描述“策略配置/诊断/基线证据”的概念模型，供实现与文档对齐。
 
 ## 1. 启动/解析策略（Boot/Resolve Policy）
@@ -26,7 +26,7 @@
 
 ### 1.2 Module 解析策略
 
-- **ModuleImplInitPolicy**
+- **ProgramRuntimeBlueprintInitPolicy**
   - `mode`: `"sync" | "suspend"`
   - `requireExplicitKeyInSuspend`: boolean（dev/test 强制；prod 可告警/诊断）
   - `initTimeoutMs?`: number（suspend 的 pending 上界）
@@ -48,7 +48,7 @@
 
 - **RenderPhaseSyncGuardrails**
   - `warnThresholdMs`: number（默认建议 5ms，仅 dev/test 生效）
-  - `surfaces`: `["provider", "moduleImplSync", "moduleTagSync"]`（告警覆盖点）
+  - `surfaces`: `["provider", "programReadySync", "moduleTagSync"]`（告警覆盖点）
   - `actionHint`: `"switchToSuspend" | "enableYield" | "addBudget"`（输出到 warning 的修复建议模板）
   - `warningFormat`: “包含 source/duration/fix/docs 指针”（告警内容需可复制粘贴、可行动）
 
@@ -91,7 +91,7 @@
 
 - **react.module.preload**
   - `mode`: `"defer"`
-  - `handleKind`: `"ModuleImpl" | "ModuleTag"`
+  - `handleKind`: `"ProgramRuntimeBlueprint" | "ModuleTag"`
   - `moduleId?`: string
   - `tokenId?`: string
   - `key?`: string

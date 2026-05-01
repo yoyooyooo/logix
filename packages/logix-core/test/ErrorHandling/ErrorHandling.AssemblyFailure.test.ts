@@ -1,7 +1,7 @@
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Cause, Deferred, Effect, Layer, Schema } from 'effect'
-import * as Debug from '../../src/Debug.js'
+import * as Debug from '../../src/internal/debug-api.js'
 import * as Logix from '../../src/index.js'
 
 describe('Error handling - assembly failure', () => {
@@ -29,12 +29,11 @@ describe('Error handling - assembly failure', () => {
         actions: {},
       })
 
-      const logic = Parent.logic(($) => ({
-        setup: Effect.void,
-        run: Effect.gen(function* () {
+      const logic = Parent.logic('parent-logic', ($) =>
+        Effect.gen(function* () {
           yield* $.use(Child)
         }),
-      }))
+      )
 
       const layer = Parent.live({ value: 0 }, logic) as unknown as Layer.Layer<
         Logix.ModuleRuntime<any, any>,

@@ -4,7 +4,7 @@
 
 ## 1) 默认：自动触发（onMount + depsChange）
 
-- 只要声明 `StateTrait.source({ resource, deps, key })`，不再需要写 `$.onAction('setParams')...` 的 auto-trigger watcher。
+- 只要声明 `FieldKernel.source({ resource, deps, key })`，不再需要写 `$.onAction('setParams')...` 的 auto-trigger watcher。
 - deps 变化后由内核触发 refresh；开启 debounce 时会自动合并。
 
 ## 2) manual-only：关闭自动触发
@@ -16,4 +16,4 @@
 ## 3) 迁移提示（Query/Form）
 
 - `@logixjs/query`：删除/收敛 `auto-trigger` 默认逻辑；把 cache-peek skip-loading 下沉到 refresh 实现。
-- `@logixjs/form`：不再依赖 `TraitLifecycle.makeSourceWiring.refreshOnKeyChange` 的反射式解释入口。
+- `@logixjs/form`：不再依赖 `FieldLifecycle.makeSourceWiring.refreshOnKeyChange` 的反射式解释入口。

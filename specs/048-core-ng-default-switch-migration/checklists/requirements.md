@@ -1,7 +1,7 @@
 # Specification Quality Checklist: 切默认到 core-ng（迁移与回退口径）
 
-**Purpose**: 在进入规划（plan/tasks）之前，校验规格是否可验收、无明显歧义  
-**Created**: 2025-12-27  
+**Purpose**: 在进入规划（plan/tasks）之前，校验规格是否可验收、无明显歧义
+**Created**: 2025-12-27
 **Feature**: `specs/048-core-ng-default-switch-migration/spec.md`
 
 ## Content Quality

@@ -1,6 +1,6 @@
 # Tasks: 070 core 纯赚/近纯赚性能优化（默认零成本诊断与单内核）
 
-**Input**: Design documents from `specs/070-core-pure-perf-wins/`  
+**Input**: Design documents from `specs/070-core-pure-perf-wins/`
 **Prerequisites**: `specs/070-core-pure-perf-wins/plan.md`、`specs/070-core-pure-perf-wins/spec.md`（其余为可选补充）
 
 **Tests**: 涉及 `packages/logix-core` 热路径，测试与回归防线视为必需；并必须完成 Node + Browser perf evidence（见 plan.md）。
@@ -30,9 +30,9 @@
 - perf evidence：Node（`converge.txnCommit`）+ Browser（`diagnostics.overhead.e2e`）diff 可判定且无回归（`meta.comparability.comparable=true && summary.regressions==0`）；若要主张“纯赚收益”，按 SC-004 补充可证据化收益并回写 quickstart
 
 - [ ] T004 [US1] 在 `packages/logix-core/src/internal/runtime/core/DebugSink.ts` 实现 errorOnly fast-path：errorOnly-only 时对非 `lifecycle:error`、非 `diagnostic(warn/error)` 的高频事件 early-return（保持 `diagnostic(info)` 丢弃语义）
-- [ ] T005 [US1] 在 `packages/logix-core/src/internal/state-trait/converge-in-transaction.ts` 收紧门控：`shouldCollectDecision` 仅要求 sinks 非 errorOnly-only（存在明确 consumer）；并将 heavy/exportable 细节门控到 `diagnosticsLevel!=off`，确保默认档不构造 `dirtySummary/topK/hotspots/decision` 等纯观测 payload
+- [ ] T005 [US1] 在 `packages/logix-core/src/internal/state-field/converge-in-transaction.ts` 收紧门控：`shouldCollectDecision` 仅要求 sinks 非 errorOnly-only（存在明确 consumer）；并将 heavy/exportable 细节门控到 `diagnosticsLevel!=off`，确保默认档不构造 `dirtySummary/topK/hotspots/decision` 等纯观测 payload
 - [ ] T006 [US1]（可选但推荐）在 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts` 的 commit 点增加门控：errorOnly-only 时跳过 `state:update` 事件对象构造与 `Debug.record` 调用
-- [ ] T007 [P] [US1] 新增单测（建议新增文件）`packages/logix-core/test/StateTrait/StateTrait.Converge.DecisionOffByDefault.test.ts`：在 diagnostics=off + errorOnly-only 下运行一次 converge，并断言 outcome 不包含 decision（从而阻断默认档 payload 回归）
+- [ ] T007 [P] [US1] 新增单测（建议新增文件）`packages/logix-core/test/FieldKernel/FieldKernel.Converge.DecisionOffByDefault.test.ts`：在 diagnostics=off + errorOnly-only 下运行一次 converge，并断言 outcome 不包含 decision（从而阻断默认档 payload 回归）
 - [ ] T008 [US1] 准备隔离采集目录 `./.agent/perf-worktrees/070-before` 与 `./.agent/perf-worktrees/070-after`（硬结论必须隔离采集；混杂改动结果仅作线索）
 - [ ] T009 [US1] 采集 Node(before)：`specs/070-core-pure-perf-wins/perf/before.node.converge.txnCommit.<sha>.<envId>.default.json`（suite: `converge.txnCommit`；命令见 `specs/070-core-pure-perf-wins/plan.md`）
 - [ ] T010 [US1] 采集 Node(after)：`specs/070-core-pure-perf-wins/perf/after.node.converge.txnCommit.<sha|local>.<envId>.default.json`（suite: `converge.txnCommit`）
@@ -52,10 +52,10 @@
 
 **Independent Test**:
 
-- diagnostics=light/sampled/full 下，DevtoolsHub snapshot/evidence 可序列化且包含 trait converge 的解释字段（或 trace 事件）
+- diagnostics=light/sampled/full 下，DevtoolsHub snapshot/evidence 可序列化且包含 field converge 的解释字段（或 trace 事件）
 - diagnostics=off 下，不导出纯观测 payload（保持零成本口径）
 
-- [ ] T016 [P] [US2] 扩展或新增单测（推荐扩展）`packages/logix-core/test/Debug/DevtoolsHub.test.ts`：在 `devtoolsHubLayer + diagnosticsLevel=full` 下跑一次 trait converge，并断言 snapshot/evidence 包含与 converge 决策相关的可序列化字段
+- [ ] T016 [P] [US2] 扩展或新增单测（推荐扩展）`packages/logix-core/test/Debug/DevtoolsHub.test.ts`：在 `devtoolsHubLayer + diagnosticsLevel=full` 下跑一次 field converge，并断言 snapshot/evidence 包含与 converge 决策相关的可序列化字段
 - [ ] T017 [P] [US2] 新增单测 `packages/logix-core/test/Debug/DevtoolsHub.DiagnosticsOff.test.ts`：在 diagnostics=off 下不导出 converge 决策 payload（但不影响 `lifecycle:error`/`diagnostic(warn/error)` 兜底）
 - [ ] T018 [US2] 若实现中引入了新的门控 helper 或命名调整，同步更新 `specs/070-core-pure-perf-wins/contracts/debug-consumption-contract.md`
 

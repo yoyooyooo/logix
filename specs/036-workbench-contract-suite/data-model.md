@@ -1,8 +1,8 @@
 # Data Model: Workbench Contract Suite（036：Integrated Verdict + Agent Context Pack）
 
-**Date**: 2025-12-26  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/036-workbench-contract-suite/spec.md`  
-**Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/036-workbench-contract-suite/plan.md`
+**Date**: 2025-12-26
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/036-workbench-contract-suite/spec.md`
+**Plan**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/036-workbench-contract-suite/plan.md`
 
 > 本文件固化 036 的治理层数据模型（Integrated Verdict / Context Pack），并明确哪些字段是“事实源”（来自 artifacts），哪些字段只是“解释/提示”。
 
@@ -21,7 +21,7 @@
 
 - 源码：`examples/logix-react/src/modules/rules-composition-form.ts`
 - 导出：`RulesCompositionForm`（Form module）
-- 用作 program module：`RulesCompositionForm.impl`（供 TrialRun / artifacts 导出）
+- 用作 Program：`RulesCompositionFormProgram`（供 runtime.trial / artifacts 导出）
 
 **覆盖点**：
 
@@ -111,7 +111,7 @@
 
 ### 2) artifacts（031/035：平台验收的核心输入）
 
-> 默认假设：对于 “代表性模块”（见上文），下列 artifacts 都应产出；缺失即视为契约未满足。  
+> 默认假设：对于 “代表性模块”（见上文），下列 artifacts 都应产出；缺失即视为契约未满足。
 > 对“非代表性模块”，RulesManifest 可按适用性降级为 `SKIPPED`。
 
 | artifactKey | status | 默认 verdict | 主要 reason code（建议） | 典型 action（建议） |

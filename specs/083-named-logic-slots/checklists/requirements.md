@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Named Logic Slots（具名逻辑插槽：从结构可见到语义可见）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2026-01-09  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2026-01-09
 **Feature**: `specs/083-named-logic-slots/spec.md`
 
 ## Content Quality

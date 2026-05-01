@@ -4,8 +4,10 @@ import React, { Suspense } from 'react'
 import { act, render, fireEvent, renderHook, waitFor } from '@testing-library/react'
 import { Effect, Layer, ManagedRuntime, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
-import { useModule } from '../../src/Hooks.js'
+import { useModule, useSelector } from '../../src/Hooks.js'
+import { useProgramRuntimeBlueprint } from '../../src/internal/hooks/useProgramRuntimeBlueprint.js'
 
 const Counter = Logix.Module.make('SuspendCounter', {
   state: Schema.Struct({ value: Schema.Number }),
@@ -14,14 +16,14 @@ const Counter = Logix.Module.make('SuspendCounter', {
   },
 })
 
-const CounterLogic = Counter.logic(($) =>
+const CounterLogic = Counter.logic('counter-logic', ($) =>
   Effect.gen(function* () {
     yield* $.onAction('inc').run($.state.update((s) => ({ ...s, value: s.value + 1 })))
   }),
 )
 
-// Simulate an "async-built" ModuleImpl (use Effect.sleep as a stand-in for real IO).
-const AsyncCounterImpl = Counter.implement({
+// Simulate an "async-built" ProgramRuntimeBlueprint (use Effect.sleep as a stand-in for real IO).
+const AsyncCounterProgram = Logix.Program.make(Counter, {
   initial: { value: 0 },
   logics: [
     Effect.gen(function* () {
@@ -32,14 +34,15 @@ const AsyncCounterImpl = Counter.implement({
     }),
   ] as any,
 })
+const AsyncCounterBlueprint = RuntimeContracts.getProgramRuntimeBlueprint(AsyncCounterProgram)
 
 const waitForAsyncCounterLogic = (runtime: ManagedRuntime.ManagedRuntime<any, any>) =>
   act(async () => {
     await runtime.runPromise(Effect.sleep('20 millis'))
   })
 
-describe('useModule(Impl) suspend mode', () => {
-  it('should reuse same key across hook calls even when RuntimeProvider.layer is present', async () => {
+describe('useProgramRuntimeBlueprint suspend mode', () => {
+  it('should reuse same key across hook calls even when a subtree layer is present', async () => {
     const runtime = ManagedRuntime.make(Layer.empty as Layer.Layer<any, never, never>)
     const EnvTag = ServiceMap.Service<{ readonly name: string }>('@logixjs/react-test/useModuleSuspend/env')
     const EnvLayer = Layer.succeed(EnvTag, { name: 'env' })
@@ -53,16 +56,16 @@ describe('useModule(Impl) suspend mode', () => {
     )
 
     const useTest = () => {
-      const a = useModule(AsyncCounterImpl, {
+      const a = useProgramRuntimeBlueprint(AsyncCounterBlueprint, {
         suspend: true,
         key: 'AsyncCounter:shared',
       })
-      const b = useModule(AsyncCounterImpl, {
+      const b = useProgramRuntimeBlueprint(AsyncCounterBlueprint, {
         suspend: true,
         key: 'AsyncCounter:shared',
       })
-      const aValue = useModule(a, (s) => (s as { value: number }).value)
-      const bValue = useModule(b, (s) => (s as { value: number }).value)
+      const aValue = useSelector(a, (s) => (s as { value: number }).value)
+      const bValue = useSelector(b, (s) => (s as { value: number }).value)
       return { a, b, aValue, bValue }
     }
 
@@ -87,7 +90,7 @@ describe('useModule(Impl) suspend mode', () => {
     await runtime.dispose()
   })
 
-  it('should isolate instances for different keys even when RuntimeProvider.layer is present', async () => {
+  it('should isolate instances for different keys even when a subtree layer is present', async () => {
     const runtime = ManagedRuntime.make(Layer.empty as Layer.Layer<any, never, never>)
     const EnvTag = ServiceMap.Service<{ readonly name: string }>('@logixjs/react-test/useModuleSuspend/env-keys')
     const EnvLayer = Layer.succeed(EnvTag, { name: 'env' })
@@ -101,16 +104,16 @@ describe('useModule(Impl) suspend mode', () => {
     )
 
     const useTest = () => {
-      const a = useModule(AsyncCounterImpl, {
+      const a = useProgramRuntimeBlueprint(AsyncCounterBlueprint, {
         suspend: true,
         key: 'AsyncCounter:a',
       })
-      const b = useModule(AsyncCounterImpl, {
+      const b = useProgramRuntimeBlueprint(AsyncCounterBlueprint, {
         suspend: true,
         key: 'AsyncCounter:b',
       })
-      const aValue = useModule(a, (s) => (s as { value: number }).value)
-      const bValue = useModule(b, (s) => (s as { value: number }).value)
+      const aValue = useSelector(a, (s) => (s as { value: number }).value)
+      const bValue = useSelector(b, (s) => (s as { value: number }).value)
       return { a, b, aValue, bValue }
     }
 
@@ -135,18 +138,18 @@ describe('useModule(Impl) suspend mode', () => {
     await runtime.dispose()
   })
 
-  it('should not share instances across different RuntimeProvider.layer scopes even with the same key', async () => {
+  it('should not share instances across different subtree layer scopes even with the same key', async () => {
     const runtime = ManagedRuntime.make(Layer.empty as Layer.Layer<any, never, never>)
     const EnvTag = ServiceMap.Service<{ readonly name: string }>('@logixjs/react-test/useModuleSuspend/scope-env')
     const LayerA = Layer.succeed(EnvTag, { name: 'A' })
     const LayerB = Layer.succeed(EnvTag, { name: 'B' })
 
     const Panel = ({ testId, buttonId }: { testId: string; buttonId: string }) => {
-      const counter = useModule(AsyncCounterImpl, {
+      const counter = useProgramRuntimeBlueprint(AsyncCounterBlueprint, {
         suspend: true,
         key: 'AsyncCounter:shared',
       })
-      const value = useModule(counter, (s) => (s as { value: number }).value)
+      const value = useSelector(counter, (s) => (s as { value: number }).value)
       return (
         <>
           <button type="button" data-testid={buttonId} onClick={() => counter.dispatchers.inc()}>
@@ -209,11 +212,11 @@ describe('useModule(Impl) suspend mode', () => {
     )
 
     const useTest = () => {
-      const counter = useModule(AsyncCounterImpl, {
+      const counter = useProgramRuntimeBlueprint(AsyncCounterBlueprint, {
         suspend: true,
         key: 'AsyncCounter:test',
       })
-      const value = useModule(counter, (s) => (s as { value: number }).value)
+      const value = useSelector(counter, (s) => (s as { value: number }).value)
       return { counter, value }
     }
 
@@ -256,7 +259,7 @@ describe('useModule(Impl) suspend mode', () => {
         // preventing callers from using suspend:true without an explicit resource identity.
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-expect-error suspend:true requires an explicit key
-        useModule(AsyncCounterImpl, {
+        useProgramRuntimeBlueprint(AsyncCounterBlueprint, {
           suspend: true,
         })
         return null

@@ -1,11 +1,12 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import React from 'react'
 import { Effect, Layer, ManagedRuntime, Schema, Logger } from 'effect'
 import * as Logix from '@logixjs/core'
-import { RuntimeProvider, useModule, ReactPlatformLayer } from '@logixjs/react'
+import { RuntimeProvider, fieldValue, useModule, useSelector } from '@logixjs/react'
 
-// 异步局部 ModuleImpl 示例：演示 suspend:true + ModuleImpl.layer 内部存在异步初始化逻辑
+// 异步局部 Program 示例：演示 suspend:true + Program.layer 内部存在异步初始化逻辑
 
-const AsyncCounterDef = Logix.Module.make('AsyncLocalCounter', {
+const AsyncCounter = Logix.Module.make('AsyncLocalCounter', {
   state: Schema.Struct({ count: Schema.Number, ready: Schema.Boolean }),
   actions: {
     increment: Schema.Void,
@@ -14,13 +15,10 @@ const AsyncCounterDef = Logix.Module.make('AsyncLocalCounter', {
 })
 
 // 模拟异步初始化：先 sleep 一小段时间，再挂载真正的业务逻辑
-const AsyncCounterLogic = AsyncCounterDef.logic(($) => ({
-  setup: Effect.gen(function* () {
-    yield* $.lifecycle.onStart(Effect.log('AsyncCounterLogic init'))
-    yield* $.lifecycle.onSuspend(Effect.log('[SessionCounter] suspended'))
-    yield* $.lifecycle.onResume(Effect.log('[SessionCounter] resumed'))
-  }),
-  run: Effect.gen(function* () {
+const AsyncCounterLogic = AsyncCounter.logic('async-counter-logic', ($) => {
+  return Effect.gen(function* () {
+    yield* Effect.log('AsyncCounterLogic init')
+
     // 这里可以替换成真实的 IO 初始化（如远程配置 / IndexedDB 等）
     yield* Effect.sleep('1200 millis')
 
@@ -40,24 +38,21 @@ const AsyncCounterLogic = AsyncCounterDef.logic(($) => ({
         s.count -= 1
       }),
     )
-  }),
-}))
+  })
+})
 
-const AsyncCounterModule = AsyncCounterDef.implement({
+const AsyncCounterProgram = Logix.Program.make(AsyncCounter, {
   initial: { count: 0, ready: false },
   logics: [AsyncCounterLogic],
 })
 
-const AsyncCounterImpl = AsyncCounterModule.impl
-
-// Root 级 Runtime：只负责提供 Effect Env，真正的 ModuleRuntime 由 useModule(Impl) 在组件内构造
+// Root 级 Runtime：只负责提供 Effect Env，真正的 ModuleRuntime 由 useModule(Program) 在组件内构造
 const asyncLocalRuntime = ManagedRuntime.make(
   Layer.mergeAll(
-    Logix.Debug.runtimeLabel('AsyncLocalModuleDemo'),
-    Logix.Debug.devtoolsHubLayer(),
+    CoreDebug.runtimeLabel('AsyncLocalModuleDemo'),
+    CoreDebug.devtoolsHubLayer(),
     Logger.layer([Logger.consolePretty()]),
-    ReactPlatformLayer,
-  ) as Layer.Layer<any, never, never>,
+  ) as Layer.Layer<unknown, never, never>,
 )
 
 interface AsyncLocalCounterViewProps {
@@ -70,20 +65,21 @@ interface AsyncLocalCounterViewProps {
 }
 
 const AsyncLocalCounterView: React.FC<AsyncLocalCounterViewProps> = ({ title, cacheKey }) => {
-  const moduleRuntime = useModule(AsyncCounterImpl, {
+  const moduleRuntime = useModule(AsyncCounterProgram, {
     suspend: true,
     // 显式提供稳定 key：一个 layout 内多实例时，用 cacheKey 区分。
     key: `AsyncLocalCounter:${cacheKey}`,
   })
 
-  const state = useModule(moduleRuntime, (s) => s as { count: number; ready: boolean })
+  const ready = useSelector(moduleRuntime, fieldValue('ready'))
+  const count = useSelector(moduleRuntime, fieldValue('count'))
 
-  if (!state.ready) {
+  if (!ready) {
     return (
       <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 max-w-sm flex flex-col gap-4 items-center justify-center">
         <div className="h-6 w-24 rounded-full bg-gray-100 dark:bg-gray-800 animate-pulse" />
         <div className="h-10 w-32 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
-        <p className="text-xs text-gray-500 dark:text-gray-400">正在初始化局部模块…</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">正在初始化局部 Program…</p>
       </div>
     )
   }
@@ -96,7 +92,7 @@ const AsyncLocalCounterView: React.FC<AsyncLocalCounterViewProps> = ({ title, ca
           <p className="text-xs text-emerald-600 dark:text-emerald-300 mt-1">suspend:true · 异步初始化完成</p>
         </div>
         <div className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-full text-xs font-medium">
-          Async ModuleImpl
+          Async Program
         </div>
       </div>
 
@@ -105,7 +101,7 @@ const AsyncLocalCounterView: React.FC<AsyncLocalCounterViewProps> = ({ title, ca
           当前值
         </span>
         <span className="text-5xl font-bold text-gray-900 dark:text-white tabular-nums tracking-tight">
-          {state.count}
+          {count}
         </span>
       </div>
 
@@ -136,15 +132,15 @@ export const AsyncLocalModuleLayout: React.FC = () => {
         fallback={
           <div className="space-y-6">
             <div className="border-b border-gray-200 dark:border-gray-800 pb-6">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">异步局部 ModuleImpl 示例</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">异步局部 Program 示例</h2>
               <p className="text-gray-600 dark:text-gray-400 max-w-2xl leading-relaxed">
                 本示例展示如何在{' '}
                 <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm font-mono text-pink-600 dark:text-pink-400">
-                  ModuleImpl.layer
+                  Program.layer
                 </code>{' '}
                 中执行异步初始化，并通过{' '}
                 <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm font-mono text-pink-600 dark:text-pink-400">
-                  useModule(Impl, &#123; suspend: true &#125;)
+                  useModule(Program, &#123; suspend: true &#125;)
                 </code>{' '}
                 让 React Suspense 负责加载状态。
               </p>
@@ -158,9 +154,9 @@ export const AsyncLocalModuleLayout: React.FC = () => {
       >
         <div className="space-y-6">
           <div className="border-b border-gray-200 dark:border-gray-800 pb-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">异步局部 ModuleImpl 示例</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">异步局部 Program 示例</h2>
             <p className="text-gray-600 dark:text-gray-400 max-w-2xl leading-relaxed">
-              这里的 ModuleImpl 在挂载时会先执行一段异步初始化逻辑（模拟 IO）， 完成后才对外暴露可用的{' '}
+              这里的 Program 在挂载时会先执行一段异步初始化逻辑（模拟 IO）， 完成后才对外暴露可用的{' '}
               <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm font-mono text-pink-600 dark:text-pink-400">
                 ModuleRuntime
               </code>

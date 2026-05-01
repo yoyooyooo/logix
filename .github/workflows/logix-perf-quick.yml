@@ -178,20 +178,20 @@ jobs:
           # Ensure the package import path resolves for browser perf tests regardless.
           if [ ! -e node_modules/@logixjs/perf-evidence ]; then
             mkdir -p node_modules/@logixjs
-            ln -s "$PWD/.codex/skills/logix-perf-evidence" node_modules/@logixjs/perf-evidence
+            ln -s "$PWD/packages/logix-perf-evidence" node_modules/@logixjs/perf-evidence
           fi
           if [ -d packages/logix-react/node_modules ] && [ ! -e packages/logix-react/node_modules/@logixjs/perf-evidence ]; then
             mkdir -p packages/logix-react/node_modules/@logixjs
-            ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
+            ln -s "$PWD/packages/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
           fi
 
       - name: Perf preflight (fast-fail)
         if: env.PERF_PREFLIGHT_ENABLE == '1'
         run: |
           if [ "${PERF_PREFLIGHT_WITH_TINY_COLLECT:-0}" = "1" ]; then
-            pnpm -C .codex/skills/logix-perf-evidence run ci:preflight -- --with-tiny-collect
+            pnpm -C packages/logix-perf-evidence run ci:preflight -- --with-tiny-collect
           else
-            pnpm -C .codex/skills/logix-perf-evidence run ci:preflight
+            pnpm -C packages/logix-perf-evidence run ci:preflight
           fi
 
       - name: Install Playwright Chromium deps
@@ -202,7 +202,7 @@ jobs:
           set -euo pipefail
           PINNED_MATRIX="$RUNNER_TEMP/logix-perf-matrix.json"
           mkdir -p "$(dirname "$PINNED_MATRIX")"
-          cp .codex/skills/logix-perf-evidence/assets/matrix.json "$PINNED_MATRIX"
+          cp packages/logix-perf-evidence/assets/matrix.json "$PINNED_MATRIX"
           echo "PERF_PINNED_MATRIX=$PINNED_MATRIX" >> "$GITHUB_ENV"
           # Base commits may lag behind Vite/Vitest alias changes.
           # Pin the head `vitest.shared.ts` so base/head use the same module resolution rules.
@@ -213,23 +213,23 @@ jobs:
       - name: Collect (base)
         run: |
           mkdir -p "$PERF_OUT_DIR"
-          git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
+          git update-index --no-assume-unchanged packages/logix-perf-evidence/assets/matrix.json || true
           git checkout --quiet -f "$BASE_SHA"
           if [ "${LOCKFILE_CHANGED:-0}" = "1" ]; then
             pnpm install --frozen-lockfile
           fi
           cp "$PERF_PINNED_VITEST_SHARED" vitest.shared.ts
           # Ensure base run uses the SAME matrix spec as head (tests import it).
-          mkdir -p .codex/skills/logix-perf-evidence/assets
-          git update-index --assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
-          cp "$PERF_PINNED_MATRIX" .codex/skills/logix-perf-evidence/assets/matrix.json
+          mkdir -p packages/logix-perf-evidence/assets
+          git update-index --assume-unchanged packages/logix-perf-evidence/assets/matrix.json || true
+          cp "$PERF_PINNED_MATRIX" packages/logix-perf-evidence/assets/matrix.json
           if [ ! -e node_modules/@logixjs/perf-evidence ]; then
             mkdir -p node_modules/@logixjs
-            ln -s "$PWD/.codex/skills/logix-perf-evidence" node_modules/@logixjs/perf-evidence
+            ln -s "$PWD/packages/logix-perf-evidence" node_modules/@logixjs/perf-evidence
           fi
           if [ -d packages/logix-react/node_modules ] && [ ! -e packages/logix-react/node_modules/@logixjs/perf-evidence ]; then
             mkdir -p packages/logix-react/node_modules/@logixjs
-            ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
+            ln -s "$PWD/packages/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
           fi
           IFS=',' read -r -a PERF_FILES_ARRAY <<< "${PERF_FILES}"
           FILE_ARGS=()
@@ -248,27 +248,27 @@ jobs:
           VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
             "${FILE_ARGS[@]}" \
             --out "$PERF_OUT_DIR/before.${BASE_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
-          git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
-          git checkout --quiet -f -- .codex/skills/logix-perf-evidence/assets/matrix.json || true
+          git update-index --no-assume-unchanged packages/logix-perf-evidence/assets/matrix.json || true
+          git checkout --quiet -f -- packages/logix-perf-evidence/assets/matrix.json || true
 
       - name: Collect (head)
         run: |
-          git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
+          git update-index --no-assume-unchanged packages/logix-perf-evidence/assets/matrix.json || true
           git checkout --quiet -f "$HEAD_SHA"
           if [ "${LOCKFILE_CHANGED:-0}" = "1" ]; then
             pnpm install --frozen-lockfile
           fi
           cp "$PERF_PINNED_VITEST_SHARED" vitest.shared.ts
-          mkdir -p .codex/skills/logix-perf-evidence/assets
-          git update-index --assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
-          cp "$PERF_PINNED_MATRIX" .codex/skills/logix-perf-evidence/assets/matrix.json
+          mkdir -p packages/logix-perf-evidence/assets
+          git update-index --assume-unchanged packages/logix-perf-evidence/assets/matrix.json || true
+          cp "$PERF_PINNED_MATRIX" packages/logix-perf-evidence/assets/matrix.json
           if [ ! -e node_modules/@logixjs/perf-evidence ]; then
             mkdir -p node_modules/@logixjs
-            ln -s "$PWD/.codex/skills/logix-perf-evidence" node_modules/@logixjs/perf-evidence
+            ln -s "$PWD/packages/logix-perf-evidence" node_modules/@logixjs/perf-evidence
           fi
           if [ -d packages/logix-react/node_modules ] && [ ! -e packages/logix-react/node_modules/@logixjs/perf-evidence ]; then
             mkdir -p packages/logix-react/node_modules/@logixjs
-            ln -s "$PWD/.codex/skills/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
+            ln -s "$PWD/packages/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
           fi
           IFS=',' read -r -a PERF_FILES_ARRAY <<< "${PERF_FILES}"
           FILE_ARGS=()
@@ -287,8 +287,8 @@ jobs:
           VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
             "${FILE_ARGS[@]}" \
             --out "$PERF_OUT_DIR/after.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
-          git update-index --no-assume-unchanged .codex/skills/logix-perf-evidence/assets/matrix.json || true
-          git checkout --quiet -f -- .codex/skills/logix-perf-evidence/assets/matrix.json || true
+          git update-index --no-assume-unchanged packages/logix-perf-evidence/assets/matrix.json || true
+          git checkout --quiet -f -- packages/logix-perf-evidence/assets/matrix.json || true
 
       - name: Normalize reports (pin matrixHash + browser.version)
         run: |

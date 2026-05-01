@@ -1,4 +1,5 @@
 import { renderHook, act, waitFor } from '@testing-library/react'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 import { RuntimeProvider, useModule, useSelector, useRuntime } from '../../src/index.js'
 import * as Logix from '@logixjs/core'
 import { Effect, Layer, ManagedRuntime, Schema, ServiceMap } from 'effect'
@@ -17,7 +18,7 @@ describe('React Hooks', () => {
   let runtime: ManagedRuntime.ManagedRuntime<any, any>
 
   const makeRuntime = (layer: Layer.Layer<any, never, any>) => {
-    const tickServicesLayer = Logix.InternalContracts.tickServicesLayer as Layer.Layer<any, never, any>
+    const tickServicesLayer = RuntimeContracts.tickServicesLayer as Layer.Layer<any, never, any>
     return ManagedRuntime.make(
       Layer.mergeAll(tickServicesLayer, Layer.provide(layer, tickServicesLayer)) as Layer.Layer<any, never, never>,
     )
@@ -43,11 +44,11 @@ describe('React Hooks', () => {
     expect(result.current).toBe(firstInstance)
   })
 
-  it('useModule(handle, selector) should return state', async () => {
+  it('useSelector(handle, selector) should return state', async () => {
     const { result } = renderHook(
       () =>
         // In aggregated hooks tests we don't over-constrain types; only verify behavior.
-        useModule(CounterModule.tag, (s) => (s as { readonly count: number }).count),
+        useSelector(CounterModule.tag, (s) => (s as { readonly count: number }).count),
       { wrapper },
     )
     await waitFor(() => expect(result.current).toBe(0))
@@ -67,7 +68,7 @@ describe('React Hooks', () => {
   })
 
   it('should react to state changes', async () => {
-    const { result } = renderHook(() => useModule(CounterModule.tag, (s) => (s as { readonly count: number }).count), {
+    const { result } = renderHook(() => useSelector(CounterModule.tag, (s) => (s as { readonly count: number }).count), {
       wrapper,
     })
 
@@ -115,13 +116,13 @@ describe('React Hooks', () => {
       actions: {},
     })
 
-    const counterLogic = Counter.logic(($) =>
+    const counterLogic = Counter.logic('counter-logic', ($) =>
       Effect.gen(function* () {
         yield* $.onAction('inc').run(() => $.state.update((s) => ({ ...s, count: s.count + 1 })))
       }),
     )
 
-    const badgeLogic = Badge.logic(($) =>
+    const badgeLogic = Badge.logic('badge-logic', ($) =>
       Effect.gen(function* () {
         const counter = yield* $.use(Counter)
 
@@ -136,18 +137,20 @@ describe('React Hooks', () => {
       }),
     )
 
-    const CounterImpl = Counter.implement({
+    const CounterProgram = Logix.Program.make(Counter, {
       initial: { count: 0 },
       logics: [counterLogic],
     })
 
-    const BadgeImpl = Badge.implement({
+    const BadgeProgram = Logix.Program.make(Badge, {
       initial: { text: '' },
       logics: [badgeLogic],
-      imports: [CounterImpl.impl],
+      capabilities: {
+        imports: [CounterProgram],
+      },
     })
 
-    runtime = Logix.Runtime.make(BadgeImpl)
+    runtime = Logix.Runtime.make(BadgeProgram)
 
     const wrapperWithApp = ({ children }: { children: React.ReactNode }) => (
       <RuntimeProvider runtime={runtime} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>
@@ -155,7 +158,7 @@ describe('React Hooks', () => {
       </RuntimeProvider>
     )
 
-    const badgeHook = renderHook(() => useModule(Badge.tag, (s) => (s as { readonly text: string }).text), {
+    const badgeHook = renderHook(() => useSelector(Badge.tag, (s) => (s as { readonly text: string }).text), {
       wrapper: wrapperWithApp,
     })
 
@@ -184,7 +187,7 @@ describe('React Hooks', () => {
     await waitFor(() => expect(badgeHook.result.current).toBe('count:1'))
   })
 
-  it('RuntimeProvider.layer should allow nested Env override', async () => {
+  it('subtree layer should allow nested Env override', async () => {
     const StepConfigTag = ServiceMap.Service<{ readonly step: number }>('@test/StepConfigReact')
 
     const BaseLayer = Layer.succeed(StepConfigTag, { step: 1 })
@@ -270,7 +273,7 @@ describe('React Hooks', () => {
     await waitFor(() => expect(result.current).toBe(5))
   })
 
-  it('should not leak scoped resources when RuntimeProvider unmounts', async () => {
+  it('should not leak scoped resources when the React host adapter unmounts', async () => {
     let activeResources = 0
 
     const ResourceTag = ServiceMap.Service<number>('@test/Resource')
@@ -297,7 +300,7 @@ describe('React Hooks', () => {
       </RuntimeProvider>
     )
 
-    const { unmount } = renderHook(() => useModule(CounterModule.tag, (s) => (s as { readonly count: number }).count), {
+    const { unmount } = renderHook(() => useSelector(CounterModule.tag, (s) => (s as { readonly count: number }).count), {
       wrapper,
     })
 
@@ -311,7 +314,7 @@ describe('React Hooks', () => {
     })
   })
 
-  it('nested RuntimeProvider.runtime should override parent runtime', async () => {
+  it('nested host adapter runtime should override parent runtime', async () => {
     const DualState = Schema.Struct({ count: Schema.Number })
     const DualActions = { inc: Schema.Void }
     const DualCounter = Logix.Module.make('DualCounter', {
@@ -319,7 +322,7 @@ describe('React Hooks', () => {
       actions: DualActions,
     })
 
-    const DualLogic = DualCounter.logic(($) =>
+    const DualLogic = DualCounter.logic('dual-logic', ($) =>
       Effect.gen(function* () {
         // Mount watchers in the run phase to avoid triggering the Phase Guard during setup.
         yield* $.onAction('inc').update((s) => ({ ...s, count: s.count + 1 }))
@@ -329,7 +332,7 @@ describe('React Hooks', () => {
     const runtimeA = makeRuntime(DualCounter.live({ count: 1 }, DualLogic) as Layer.Layer<any, never, any>)
     const runtimeB = makeRuntime(DualCounter.live({ count: 10 }, DualLogic) as Layer.Layer<any, never, any>)
 
-    const useDualCount = () => useModule(DualCounter.tag, (s) => (s as { readonly count: number }).count)
+    const useDualCount = () => useSelector(DualCounter.tag, (s) => (s as { readonly count: number }).count)
 
     const outerWrapper = ({ children }: { children: React.ReactNode }) => (
       <RuntimeProvider runtime={runtimeA} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>
@@ -354,14 +357,14 @@ describe('React Hooks', () => {
     await waitFor(() => expect(innerHook.result.current).toBe(10))
   })
 
-  it('should support multiple modules in a single RuntimeProvider', async () => {
+  it('should support multiple modules in a single host adapter tree', async () => {
     const LoggerState = Schema.Struct({ logs: Schema.Array(Schema.String) })
     const Logger = Logix.Module.make('Logger', {
       state: LoggerState,
       actions: { log: Schema.String },
     })
 
-    const loggerLogic = Logger.logic(($) =>
+    const loggerLogic = Logger.logic('logger-logic', ($) =>
       Effect.gen(function* () {
         // Logger listens to the log action only in the run phase.
         yield* $.onAction('log').run((action) =>

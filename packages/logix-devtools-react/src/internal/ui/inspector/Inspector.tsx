@@ -1,10 +1,12 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import React from 'react'
-import * as Logix from '@logixjs/core'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { useDevtoolsState, useDevtoolsDispatch } from '../hooks/DevtoolsHooks.js'
-import { StateTraitGraphView } from '../graph/StateTraitGraphView.js'
+import { FieldGraphView } from '../graph/FieldGraphView.js'
 
 export interface InspectorProps {
-  readonly getProgramForModule?: (moduleId: string) => Logix.StateTrait.StateTraitProgram<any> | undefined
+  readonly getProgramForModule?: (moduleId: string) => FieldContracts.FieldProgram<any> | undefined
+  readonly compact?: boolean
 }
 
 type DepsMismatchView = {
@@ -33,12 +35,12 @@ const parseBracketList = (message: string, label: string): ReadonlyArray<string>
 const parseDepsMismatch = (event: unknown): DepsMismatchView | undefined => {
   if (!event || typeof event !== 'object') return undefined
 
-  const ref = event as Logix.Debug.RuntimeDebugEventRef
+  const ref = event as CoreDebug.RuntimeDebugEventRef
   if (ref.kind !== 'diagnostic') return undefined
 
   const metaAny = ref.meta as any
   const code = metaAny && typeof metaAny === 'object' ? ((metaAny as any).code as string | undefined) : undefined
-  if ((code ?? ref.label) !== 'state_trait::deps_mismatch') return undefined
+  if ((code ?? ref.label) !== 'field_kernel::deps_mismatch') return undefined
 
   const message =
     metaAny && typeof metaAny === 'object' && typeof (metaAny as any).message === 'string'
@@ -87,7 +89,7 @@ const parseDepsMismatch = (event: unknown): DepsMismatchView | undefined => {
   }
 }
 
-export const Inspector: React.FC<InspectorProps> = ({ getProgramForModule }) => {
+export const Inspector: React.FC<InspectorProps> = ({ getProgramForModule, compact = false }) => {
   const state = useDevtoolsState()
   const dispatch = useDevtoolsDispatch()
 
@@ -98,9 +100,6 @@ export const Inspector: React.FC<InspectorProps> = ({ getProgramForModule }) => 
     activeState,
     selectedEventIndex,
     timeline,
-    settings,
-    timeTravel,
-    runtimes,
   } = state
 
   const hasSelectedEvent =
@@ -123,7 +122,7 @@ export const Inspector: React.FC<InspectorProps> = ({ getProgramForModule }) => 
       for (let i = timeline.length - 1; i >= 0; i--) {
         const ev = timeline[i]?.event
         if (!ev) continue
-        const ref = ev as Logix.Debug.RuntimeDebugEventRef
+        const ref = ev as CoreDebug.RuntimeDebugEventRef
         if (ref?.txnId) return ev
       }
       return undefined
@@ -133,15 +132,15 @@ export const Inspector: React.FC<InspectorProps> = ({ getProgramForModule }) => 
       return undefined
     }
 
-    const ref = txnAnchorEvent as Logix.Debug.RuntimeDebugEventRef
+    const ref = txnAnchorEvent as CoreDebug.RuntimeDebugEventRef
     if (!ref?.txnId) {
       return undefined
     }
 
     const txnId = ref.txnId
     const refsForTxn = timeline
-      .map((entry) => entry.event as Logix.Debug.RuntimeDebugEventRef | undefined)
-      .filter((r): r is Logix.Debug.RuntimeDebugEventRef => r != null && r.txnId === txnId)
+      .map((entry) => entry.event as CoreDebug.RuntimeDebugEventRef | undefined)
+      .filter((r): r is CoreDebug.RuntimeDebugEventRef => r != null && r.txnId === txnId)
 
     if (refsForTxn.length === 0) {
       return undefined
@@ -187,56 +186,10 @@ export const Inspector: React.FC<InspectorProps> = ({ getProgramForModule }) => 
     [dispatch],
   )
 
-  const handleTimeTravel = React.useCallback(
-    (mode: 'before' | 'after' | 'latest') => {
-      if (!settings.enableTimeTravelUI) return
-      if (!transactionSummary) return
-      if (!selectedModule || !selectedRuntime) return
-
-      // If no Instance is explicitly selected, auto-select the first instance under the current Runtime + Module.
-      let instanceId = selectedInstance
-      if (!instanceId) {
-        const runtimeView = runtimes.find((r) => r.runtimeLabel === selectedRuntime)
-        const moduleView = runtimeView?.modules.find((m) => m.moduleId === selectedModule)
-        instanceId = moduleView?.instances[0]
-      }
-      if (!instanceId) return
-
-      if (mode === 'latest') {
-        dispatch({
-          _tag: 'timeTravelLatest',
-          payload: {
-            moduleId: selectedModule,
-            instanceId,
-          },
-        })
-        return
-      }
-
-      dispatch({
-        _tag: mode === 'before' ? 'timeTravelBefore' : 'timeTravelAfter',
-        payload: {
-          moduleId: selectedModule,
-          instanceId,
-          txnId: transactionSummary.txnId,
-        },
-      })
-    },
-    [
-      dispatch,
-      settings.enableTimeTravelUI,
-      transactionSummary,
-      selectedModule,
-      selectedInstance,
-      selectedRuntime,
-      runtimes,
-    ],
-  )
-
   if (!selectedRuntime || !selectedModule) {
     return (
       <div
-        className="w-[400px] h-full border-l flex items-center justify-center text-xs"
+        className={`${compact ? 'w-full' : 'w-[400px]'} h-full border-l flex items-center justify-center text-xs`}
         style={{
           backgroundColor: 'var(--dt-bg-surface)',
           borderColor: 'var(--dt-border)',
@@ -250,7 +203,7 @@ export const Inspector: React.FC<InspectorProps> = ({ getProgramForModule }) => 
 
   return (
     <div
-      className="w-[400px] h-full min-h-0 border-l backdrop-blur-sm"
+      className={`${compact ? 'w-full' : 'w-[400px]'} h-full min-h-0 border-l backdrop-blur-sm`}
       style={{
         backgroundColor: 'var(--dt-bg-surface)',
         borderColor: 'var(--dt-border)',
@@ -277,15 +230,6 @@ export const Inspector: React.FC<InspectorProps> = ({ getProgramForModule }) => 
             </span>
             <span style={{ color: 'var(--dt-primary)' }}>{selectedModule}</span>
           </div>
-          {settings.enableTimeTravelUI && timeTravel && (
-            <div className="mt-1 text-[10px] font-mono">
-              <span style={{ color: 'var(--dt-warning)' }}>TIME TRAVEL</span>
-              <span style={{ color: 'var(--dt-text-muted)' }}>
-                {' '}
-                txn={timeTravel.txnId} · mode={timeTravel.mode}
-              </span>
-            </div>
-          )}
         </div>
 
         {transactionSummary && (
@@ -320,46 +264,6 @@ export const Inspector: React.FC<InspectorProps> = ({ getProgramForModule }) => 
                 react-render: <span style={{ color: 'var(--dt-warning)' }}>{transactionSummary.renderCount}</span>
               </span>
             </div>
-            {settings.enableTimeTravelUI && selectedInstance && (
-              <div className="px-4 pb-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="px-2 py-1 rounded border text-[10px] font-mono"
-                  style={{
-                    borderColor: 'var(--dt-border)',
-                    color: 'var(--dt-text-secondary)',
-                    backgroundColor: 'var(--dt-bg-surface)',
-                  }}
-                  onClick={() => handleTimeTravel('before')}
-                >
-                  Back to pre-transaction state
-                </button>
-                <button
-                  type="button"
-                  className="px-2 py-1 rounded border text-[10px] font-mono"
-                  style={{
-                    borderColor: 'var(--dt-border)',
-                    color: 'var(--dt-text-secondary)',
-                    backgroundColor: 'var(--dt-bg-surface)',
-                  }}
-                  onClick={() => handleTimeTravel('after')}
-                >
-                  Back to post-transaction state
-                </button>
-                <button
-                  type="button"
-                  className="px-2 py-1 rounded border text-[10px] font-mono"
-                  style={{
-                    borderColor: 'var(--dt-border)',
-                    color: 'var(--dt-text-secondary)',
-                    backgroundColor: 'var(--dt-bg-surface)',
-                  }}
-                  onClick={() => handleTimeTravel('latest')}
-                >
-                  Back to latest state
-                </button>
-              </div>
-            )}
           </div>
         )}
 
@@ -433,13 +337,13 @@ export const Inspector: React.FC<InspectorProps> = ({ getProgramForModule }) => 
             }}
           >
             <span className="text-[10px] font-mono" style={{ color: 'var(--dt-text-secondary)' }}>
-              Traits / StateTraitGraph
+              Fields / FieldGraph
             </span>
             <span className="text-[9px]" style={{ color: 'var(--dt-text-muted)' }}>
-              {program ? 'Click a field node to filter the timeline' : 'This module does not provide a StateTraitProgram'}
+              {program ? 'Click a field node to filter the timeline' : 'This module does not provide a FieldProgram'}
             </span>
           </div>
-          <StateTraitGraphView
+          <FieldGraphView
             program={program}
             selectedFieldPath={selectedFieldPath}
             onSelectNode={handleSelectFieldPath}
@@ -459,13 +363,13 @@ export const Inspector: React.FC<InspectorProps> = ({ getProgramForModule }) => 
                 {detailEventLabel}
               </span>
               <span className="text-[9px] font-mono" style={{ color: 'var(--dt-text-muted)' }}>
-                {(detailEvent as Logix.Debug.RuntimeDebugEventRef).kind} ·{' '}
-                {(detailEvent as Logix.Debug.RuntimeDebugEventRef).label}
+                {(detailEvent as CoreDebug.RuntimeDebugEventRef).kind} ·{' '}
+                {(detailEvent as CoreDebug.RuntimeDebugEventRef).label}
               </span>
             </div>
             <div className="p-4">
 	              {(() => {
-	                const ref = detailEvent as Logix.Debug.RuntimeDebugEventRef
+	                const ref = detailEvent as CoreDebug.RuntimeDebugEventRef
 	                const downgradeReason = (() => {
 	                  const downgrade = (ref as any).downgrade as unknown
 	                  if (!downgrade) return undefined

@@ -1,8 +1,8 @@
 # Feature Specification: 事务 IR + Patch/Dirty-set 一等公民
 
-**Feature Branch**: `[009-txn-patch-dirtyset]`  
-**Created**: 2025-12-15  
-**Status**: Draft  
+**Feature Branch**: `[009-txn-patch-dirtyset]`
+**Created**: 2025-12-15
+**Status**: Draft
 **Input**: User description: "好现在我们把 docs/ssot/handbook/reading-room/reviews/99-roadmap-and-breaking-changes.md 展开细节，梳理一个新需求"
 
 ## Clarifications
@@ -12,7 +12,7 @@
 - Q: 同一事务内对同一路径多次写入时的语义与 `patch` 合并规则是什么？ → A: 仅允许同一 `stepId` 内对同一目标路径重复写入（最终值=按事务内单调序号 `opSeq` 的最后一次写入）；跨 `stepId` 的重复写入视为冲突并使事务稳定失败（可解释）；`patch` 在 `full` 诊断级别记录完整写入序列，在 `light` 下仅保留合并结果与计数摘要。
 - Q: 对列表/动态行写入（如 `items[index].name`），`dirty-set` 的路径归一化口径是什么？ → A: 去除索引、保留字段段：`items[index].name → items.name`；插入/删除/重排等结构变更统一记为 `items` 根。
 - Q: 诊断等级如何分档（`off`/`light`/`sampled`/`full`），各档保留哪些信息？ → A: 四档：`off`/`light`/`sampled`/`full`。`off` 不记录 trace/patch（仅保留运行正确性所需的瞬时数据，不进入诊断缓冲区）；`light` 记录可序列化事务摘要（例如 `txnId`、`dirtyRootCount/patchCount`、`dirtyAll`、降级/冲突摘要、Top-cost steps 摘要），不保留完整 patch 序列；`sampled` 采用确定性采样（基于稳定锚点，如 `txnSeq`）：未命中时等价于 `light`，命中时允许记录**有界**的 patch/trace 细节（例如有界 patch 序列与少量 per-step 计时摘要），用于低成本定位长尾；`full` 记录完整可序列化 Dynamic Trace（事务→步骤→op 因果链）与 patch 写入序列（含 `from/to/reason/stepId/opSeq/...`），并支持 ring buffer 上限与裁剪策略配置。
-- Q: 当 Static IR 中出现“两个规则/trait 声明写入同一路径”时，默认裁决是什么？ → A: 构建 Static IR 即稳定失败（默认单写者），并输出冲突详情（`path` + 涉及 `writerId/stepId`）。
+- Q: 当 Static IR 中出现“两个规则/field 声明写入同一路径”时，默认裁决是什么？ → A: 构建 Static IR 即稳定失败（默认单写者），并输出冲突详情（`path` + 涉及 `writerId/stepId`）。
 - Q: 事务/步骤/写入 op 的稳定标识模型具体采用哪套字段？ → A: `instanceId` 必须外部注入；`txnSeq` 为 instance 内单调递增；`opSeq` 为 txn 内单调递增；`stepId/writerId` 必须可映射到 Static IR 节点；`txnId/opId` 仅作为确定性派生编码（由上述字段可重建）。
 - Q: `patch` / `dirty-set` / Static IR 中的 `path` 使用哪种 canonical 表示？ → A: 段数组（例如 `["profile","name"]`）作为唯一 canonical 表示；展示层可渲染为点分字符串用于阅读。
 - Q: 默认“避免负优化”的降级阀门触发条件是什么？ → A: 同时支持两类阈值：`dirtyRootCount` 超阈值或 `affectedSteps/totalSteps` 超阈值，任一触发即自动降级为 `dirtyAll`；并在 trace 中记录触发原因与阈值（可配置）。
@@ -34,7 +34,7 @@
   IMPORTANT: User stories should be PRIORITIZED as user journeys ordered by importance.
   Each user story/journey must be INDEPENDENTLY TESTABLE - meaning if you implement just ONE of them,
   you should still have a viable MVP (Minimum Viable Product) that delivers value.
-  
+
   Assign priorities (P1, P2, P3, etc.) to each story, where P1 is the most critical.
   Think of each story as a standalone slice of functionality that can be:
   - Developed independently
@@ -47,7 +47,7 @@
 
 作为业务模块作者/运行时使用者，我希望每次事务更新都能生成字段级的 `dirty-set`（必要时可附带 `patch`），从而让运行时只对“受影响的派生/校验/刷新”做增量计算，避免因为小改动触发全量收敛，且不会引入额外的负优化。
 
-**Why this priority**: 这是把性能压力压到最低的核心支点；没有 Patch/Dirty-set，后续的 trait/事务体系、React 批处理、Devtools 因果分析都会退化为“全量扫描 + 事后猜测”。
+**Why this priority**: 这是把性能压力压到最低的核心支点；没有 Patch/Dirty-set，后续的 field/事务体系、React 批处理、Devtools 因果分析都会退化为“全量扫描 + 事后猜测”。
 
 **Independent Test**: 在一个包含多条派生/校验步骤的模块中，只更新一个字段，系统能证明：只执行受影响步骤，并输出对应的 dirty-set（以及可选 patch）；当更新触发“未知写入/无法精确定位”时，系统必须显式降级并可解释原因。
 
@@ -68,7 +68,7 @@
 
 **Acceptance Scenarios**:
 
-1. **Given** 两个规则/trait 写入同一路径，**When** 构建 Static IR，**Then** 必须稳定失败（默认单写者），并输出冲突详情（`path` + 涉及 `writerId/stepId`）；不得出现顺序相关或静默覆盖。
+1. **Given** 两个规则/field 写入同一路径，**When** 构建 Static IR，**Then** 必须稳定失败（默认单写者），并输出冲突详情（`path` + 涉及 `writerId/stepId`）；不得出现顺序相关或静默覆盖。
 2. **Given** 一次事务产生 dirty-set（以及可选 patch），**When** 输出 Dynamic Trace，**Then** trace 中包含稳定标识与输入/变更快照，使平台可回放与解释。
 
 ---
@@ -77,7 +77,7 @@
 
 作为开发者与运行时维护者，我希望每次事务的“派生/刷新/丢弃”都能提供：稳定标识、触发原因、输入快照、状态变更记录；且在关闭诊断时几乎零额外成本，从而既能把性能压到最低，也能解释“为什么发生”。
 
-**Why this priority**: 事务与 trait 的增量化一旦出错，会导致极难排查的“缺更新/多更新/串因果”；必须把解释链路变成默认能力，同时保证不开诊断时不负优化。
+**Why this priority**: 事务与 field 的增量化一旦出错，会导致极难排查的“缺更新/多更新/串因果”；必须把解释链路变成默认能力，同时保证不开诊断时不负优化。
 
 **Independent Test**: 对同一事务分别在“诊断关闭/诊断开启（full）”运行，关闭时开销接近基线，开启时能输出完整可序列化 trace，且能把每个执行步骤与原因关联起来。
 
@@ -93,7 +93,7 @@
 
 作为运行时维护者，我希望在改造 Patch/Dirty-set/增量调度相关热路径之前，就准备好可复现的性能基线（Before）与压力极限（Worst-case/Limit），并在改造后用同一套脚本/用例对比出差异，从而避免“追求增量化却引入负优化”。
 
-**Why this priority**: 本特性会触及事务提交与 trait converge 的核心路径；没有基线与极限用例，任何“更快/更慢”的结论都不可复现，也无法指导进一步的优化取舍。
+**Why this priority**: 本特性会触及事务提交与 field converge 的核心路径；没有基线与极限用例，任何“更快/更慢”的结论都不可复现，也无法指导进一步的优化取舍。
 
 **Independent Test**: 在同一台机器、同一 Node 版本下，用同一套脚本分别记录 Before/After 的结果，输出包含至少一类可量化指标（耗时/执行步数/分配），并能稳定重跑获得接近的中位数结果。
 （统计口径：每场景运行 30 次，丢弃前 5 次 warmup，报告中位数与 p95，并记录环境元信息。）
