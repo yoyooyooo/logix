@@ -2,7 +2,8 @@ import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Chunk, Effect, Fiber, Layer, Queue, PubSub, Schema, Stream, Deferred, ServiceMap } from 'effect'
 import * as Logix from '../../../src/index.js'
-import * as ModuleRuntimeImpl from '../../../src/internal/runtime/ModuleRuntime.js'
+import * as Bound from '../../../src/Bound.js'
+import * as ModuleRuntimeImpl from '../../../src/internal/runtime/core/ModuleRuntime.js'
 import type { RuntimeInternals } from '../../../src/internal/runtime/core/RuntimeInternals.js'
 import { setRuntimeInternals } from '../../../src/internal/runtime/core/runtimeInternalsAccessor.js'
 
@@ -73,7 +74,7 @@ const waitUntilStable = <A>(
 
 describe('Bound API (public)', () => {
   it('should handle onAction filter/map/update/mutate', async () => {
-    const CounterLogic = CounterModule.logic(($) =>
+    const CounterLogic = CounterModule.logic('counter-logic', ($) =>
       Effect.gen(function* () {
         yield* Effect.all(
           [
@@ -96,12 +97,12 @@ describe('Bound API (public)', () => {
       }),
     )
 
-    const impl = CounterModule.implement({
+    const programModule = Logix.Program.make(CounterModule, {
       initial: { count: 0, value: 'init' },
       logics: [CounterLogic],
     })
 
-    const runtime = Logix.Runtime.make(impl, {
+    const runtime = Logix.Runtime.make(programModule, {
       layer: Layer.empty as Layer.Layer<any, never, never>,
     })
     const program = Effect.gen(function* () {
@@ -125,7 +126,7 @@ describe('Bound API (public)', () => {
   })
 
   it('should settle repeated matching dispatches without late duplicate commits', async () => {
-    const CounterLogic = CounterModule.logic(($) =>
+    const CounterLogic = CounterModule.logic('counter-logic-2', ($) =>
       Effect.gen(function* () {
         yield* Effect.all(
           [
@@ -142,12 +143,12 @@ describe('Bound API (public)', () => {
       }),
     )
 
-    const impl = CounterModule.implement({
+    const programModule = Logix.Program.make(CounterModule, {
       initial: { count: 0, value: 'init' },
       logics: [CounterLogic],
     })
 
-    const runtime = Logix.Runtime.make(impl, {
+    const runtime = Logix.Runtime.make(programModule, {
       layer: Layer.empty as Layer.Layer<any, never, never>,
     })
 
@@ -171,7 +172,7 @@ describe('Bound API (public)', () => {
   it('should support match and matchTag helpers', async () => {
     const results: Array<string> = []
 
-    const logic = CounterModule.logic(($) =>
+    const logic = CounterModule.logic('counter-module-logic', ($) =>
       Effect.gen(function* () {
         const v = yield* $.match(10)
           .with(
@@ -189,12 +190,12 @@ describe('Bound API (public)', () => {
       }),
     )
 
-    const impl = CounterModule.implement({
+    const programModule = Logix.Program.make(CounterModule, {
       initial: { count: 0, value: 'init' },
       logics: [logic],
     })
 
-    const runtime = Logix.Runtime.make(impl, {
+    const runtime = Logix.Runtime.make(programModule, {
       layer: Layer.empty as Layer.Layer<any, never, never>,
     })
 
@@ -210,7 +211,7 @@ describe('Bound API (public)', () => {
   it('should expose state.read and state.ref for current module', async () => {
     const values: Array<number> = []
 
-    const logic = CounterModule.logic(($) =>
+    const logic = CounterModule.logic('counter-module-logic-2', ($) =>
       Effect.gen(function* () {
         const initial = yield* $.state.read
         values.push(initial.count)
@@ -230,12 +231,12 @@ describe('Bound API (public)', () => {
       }),
     )
 
-    const impl = CounterModule.implement({
+    const programModule = Logix.Program.make(CounterModule, {
       initial: { count: 0, value: 'init' },
       logics: [logic],
     })
 
-    const runtime = Logix.Runtime.make(impl, {
+    const runtime = Logix.Runtime.make(programModule, {
       layer: Layer.empty as Layer.Layer<any, never, never>,
     })
 
@@ -244,7 +245,7 @@ describe('Bound API (public)', () => {
     expect(values).toEqual([0, 0, 1, 1])
   })
 
-  it('should allow reacting to imported module state via $.use + ModuleHandle', async () => {
+  it('should allow reacting to imported module state via $.imports.get + child.read', async () => {
     const Source = Logix.Module.make('BoundSource', {
       state: Schema.Struct({ lastCount: Schema.Number }),
       actions: {},
@@ -255,33 +256,37 @@ describe('Bound API (public)', () => {
       actions: { inc: Schema.Void },
     })
 
-    const targetLogic = Target.logic(($) =>
+    const targetLogic = Target.logic('target-logic', ($) =>
       Effect.gen(function* () {
         yield* $.onAction('inc').update((s) => ({ ...s, count: s.count + 1 }))
       }),
     )
 
-    const sourceLogic = Source.logic(($) =>
+    const sourceLogic = Source.logic('source-logic', ($) =>
       Effect.gen(function* () {
-        const $Target = yield* $.use(Target)
-        yield* $.on($Target.changes((s) => s.count)).run((count) =>
+        const child = yield* $.imports.get(Target.tag)
+        const initial = yield* child.read((s) => s.count)
+        yield* $.state.update((prev) => ({ ...prev, lastCount: initial }))
+        yield* $.on(child.changes((s) => s.count)).run((count) =>
           $.state.update((prev) => ({ ...prev, lastCount: count })),
         )
       }),
     )
 
-    const targetImpl = Target.implement({
+    const targetProgram = Logix.Program.make(Target, {
       initial: { count: 0 },
       logics: [targetLogic],
     })
 
-    const sourceImpl = Source.implement({
+    const sourceProgram = Logix.Program.make(Source, {
       initial: { lastCount: 0 },
       logics: [sourceLogic],
-      imports: [targetImpl.impl],
+      capabilities: {
+        imports: [targetProgram],
+      },
     })
 
-    const runtime = Logix.Runtime.make(sourceImpl)
+    const runtime = Logix.Runtime.make(sourceProgram)
 
     try {
       await runtime.runPromise(
@@ -310,7 +315,7 @@ describe('Bound API (public)', () => {
     }
   })
 
-  it('should allow reacting to imported module actions via $.use + ModuleHandle', async () => {
+  it('should allow reacting to imported module actions via $.imports.get', async () => {
     const Logger = Logix.Module.make('BoundLogger', {
       state: Schema.Struct({ logs: Schema.Array(Schema.String) }),
       actions: {},
@@ -321,17 +326,17 @@ describe('Bound API (public)', () => {
       actions: { inc: Schema.Void },
     })
 
-    const counterLogic = Counter.logic(($) =>
+    const counterLogic = Counter.logic('counter-logic-3', ($) =>
       Effect.gen(function* () {
         yield* $.onAction('inc').update((s) => ({ ...s, count: s.count + 1 }))
       }),
     )
 
-    const loggerLogic = Logger.logic(($) =>
+    const loggerLogic = Logger.logic('logger-logic', ($) =>
       Effect.gen(function* () {
-        const $Counter = yield* $.use(Counter)
+        const child = yield* $.imports.get(Counter.tag)
 
-        yield* $.on($Counter.actions$)
+        yield* $.on(child.actions$)
           .filter((a: any) => a._tag === 'inc')
           .run(() =>
             $.state.update((s) => ({
@@ -342,18 +347,20 @@ describe('Bound API (public)', () => {
       }),
     )
 
-    const counterImpl = Counter.implement({
+    const counterProgram = Logix.Program.make(Counter, {
       initial: { count: 0 },
       logics: [counterLogic],
     })
 
-    const loggerImpl = Logger.implement({
+    const loggerProgram = Logix.Program.make(Logger, {
       initial: { logs: [] },
       logics: [loggerLogic],
-      imports: [counterImpl.impl],
+      capabilities: {
+        imports: [counterProgram],
+      },
     })
 
-    const runtime = Logix.Runtime.make(loggerImpl)
+    const runtime = Logix.Runtime.make(loggerProgram)
 
     try {
       await runtime.runPromise(
@@ -384,7 +391,7 @@ describe('Bound API (public)', () => {
     }
   })
 
-  it('should allow one module to listen to another via $.use + ModuleHandle', async () => {
+  it('should allow one module to listen to another via $.imports.get', async () => {
     const SourceModule = Logix.Module.make('BoundSourceUse', {
       state: Schema.Struct({
         value: Schema.Number,
@@ -394,7 +401,7 @@ describe('Bound API (public)', () => {
       },
     })
 
-    const SourceLogic = SourceModule.logic(($) =>
+    const SourceLogic = SourceModule.logic('source-logic-2', ($) =>
       Effect.gen(function* () {
         yield* $.onAction((a): a is { _tag: 'update'; payload: number } => a._tag === 'update').update(
           (s, { payload }) => ({ ...s, value: payload }),
@@ -409,11 +416,11 @@ describe('Bound API (public)', () => {
       actions: {},
     })
 
-    const ConsumerLogic = ConsumerModule.logic(($) =>
+    const ConsumerLogic = ConsumerModule.logic('consumer-logic', ($) =>
       Effect.gen(function* () {
-        const $Source = yield* $.use(SourceModule)
+        const child = yield* $.imports.get(SourceModule.tag)
 
-        yield* $.on($Source.changes((s) => s.value)).update((s, value) => ({
+        yield* $.on(child.changes((s) => s.value)).update((s, value) => ({
           ...s,
           received: value,
         }))
@@ -438,18 +445,20 @@ describe('Bound API (public)', () => {
       expect((yield* consumer.getState).received).toBe(42)
     })
 
-    const sourceImpl = SourceModule.implement({
+    const sourceProgram = Logix.Program.make(SourceModule, {
       initial: { value: 0 },
       logics: [SourceLogic],
     })
 
-    const consumerImpl = ConsumerModule.implement({
+    const consumerProgram = Logix.Program.make(ConsumerModule, {
       initial: { received: 0 },
       logics: [ConsumerLogic],
-      imports: [sourceImpl.impl],
+      capabilities: {
+        imports: [sourceProgram],
+      },
     })
 
-    const runtime = Logix.Runtime.make(consumerImpl)
+    const runtime = Logix.Runtime.make(consumerProgram)
 
     try {
       await runtime.runPromise(program as Effect.Effect<void, never, any>)
@@ -547,18 +556,15 @@ describe('Bound API (public)', () => {
             queueMode: 'fifo',
           }),
       },
-      traits: {
+      fields: {
         rowIdStore: {},
         getListConfigs: () => [],
         registerSourceRefresh: () => {},
         getSourceRefreshHandler: () => undefined,
-        registerStateTraitProgram: () => {},
-        enqueueStateTraitValidateRequest: () => {},
-        registerModuleTraitsContribution: () => {},
-        freezeModuleTraits: () => {},
-        getModuleTraitsContributions: () => [],
-        getModuleTraitsSnapshot: () => undefined,
-        setModuleTraitsSnapshot: () => {},
+        registerFieldProgram: () => {},
+        enqueueFieldValidateRequest: () => {},
+        getModuleFieldsSnapshot: () => undefined,
+        setModuleFieldsSnapshot: () => {},
       },
       effects: {
         registerEffect: () => Effect.succeed({ sourceKey: 'unknown::h1', duplicate: false }),
@@ -569,7 +575,7 @@ describe('Bound API (public)', () => {
     }
     setRuntimeInternals(dummyRuntime as any, internals)
 
-    const $ = Logix.Bound.make(AdvancedModule.shape, dummyRuntime)
+    const $ = Bound.make(AdvancedModule.shape, dummyRuntime)
 
     const svcEffect = $.use(ServiceTag)
     const resolvedService = Effect.runSync(
@@ -605,7 +611,7 @@ describe('Bound API (public)', () => {
       payload: Schema.Number,
     })
 
-    const SchemaLogic = SchemaModule.logic(($) =>
+    const SchemaLogic = SchemaModule.logic('schema-logic', ($) =>
       Effect.gen(function* () {
         yield* $.onAction(IncActionSchema).update((state, action) => ({
           ...state,
@@ -614,12 +620,12 @@ describe('Bound API (public)', () => {
       }),
     )
 
-    const impl = SchemaModule.implement({
+    const programModule = Logix.Program.make(SchemaModule, {
       initial: { count: 0 },
       logics: [SchemaLogic],
     })
 
-    const runtime = Logix.Runtime.make(impl, {
+    const runtime = Logix.Runtime.make(programModule, {
       layer: Layer.empty as Layer.Layer<any, never, never>,
     })
 
@@ -671,7 +677,7 @@ describe('Bound API (public)', () => {
         )
 
         const collectorFiber = yield* setupActionCollector(actionHub, 2)
-        const $ = Logix.Bound.make(ActionsModule.shape, moduleRuntime)
+        const $ = Bound.make(ActionsModule.shape, moduleRuntime)
 
         yield* $.dispatchers.foo()
         yield* $.dispatchers.bar()
@@ -704,7 +710,7 @@ describe('Bound API (public)', () => {
           },
         )
 
-        const $ = Logix.Bound.make(SimpleModule.shape, runtime)
+        const $ = Bound.make(SimpleModule.shape, runtime)
         const handle = yield* Effect.provideService($.use(SimpleModule), SimpleModule.tag, runtime)
 
         expect(yield* handle.read((s) => s.count)).toBe(0)

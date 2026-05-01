@@ -1,8 +1,8 @@
 # Research: 运行时可观测性加固
 
-**Feature**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/027-runtime-observability-hardening/spec.md`  
-**Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/027-runtime-observability-hardening/plan.md`  
-**Created**: 2025-12-23  
+**Feature**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/027-runtime-observability-hardening/spec.md`
+**Plan**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/027-runtime-observability-hardening/plan.md`
+**Created**: 2025-12-23
 **Status**: Complete
 
 本文件聚焦“如何在不破坏事务语义与默认性能”的前提下，达成链路贯穿、事件窗口性能与缓存回收、以及快照订阅契约。
@@ -49,9 +49,9 @@
 - circular buffer + 每次读快照时重建有序数组（Rejected）：在高频订阅下可能退化为“每次通知 O(bufferSize) 拷贝”。
 - 允许窗口长度大幅超出（Rejected）：会削弱 memory bound 的可预期性与心智模型。
 
-## Decision 3: latestStates/latestTraitSummaries 的回收策略
+## Decision 3: latestStates/latestFieldSummaries 的回收策略
 
-**Decision**: 在收到实例销毁语义（module:destroy）时，按实例聚合键回收该实例对应的派生缓存条目（latestStates/latestTraitSummaries），并保持其他索引不受影响。
+**Decision**: 在收到实例销毁语义（module:destroy）时，按实例聚合键回收该实例对应的派生缓存条目（latestStates/latestFieldSummaries），并保持其他索引不受影响。
 
 **Rationale**:
 

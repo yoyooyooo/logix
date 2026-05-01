@@ -1,17 +1,18 @@
 import { Effect, Layer } from 'effect'
 import * as Logix from '@logixjs/core'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 
-export type DeterministicHostScheduler = Logix.InternalContracts.DeterministicHostScheduler
-export type TickSchedulerConfig = Logix.InternalContracts.TickSchedulerConfig
+export type DeterministicHostScheduler = RuntimeContracts.DeterministicHostScheduler
+export type TickSchedulerConfig = RuntimeContracts.TickSchedulerConfig
 
 export const makeTestHostScheduler = (): DeterministicHostScheduler =>
-  Logix.InternalContracts.makeDeterministicHostScheduler() as DeterministicHostScheduler
+  RuntimeContracts.makeDeterministicHostScheduler() as DeterministicHostScheduler
 
 export const testHostSchedulerLayer = (scheduler: DeterministicHostScheduler): Layer.Layer<any, never, never> =>
-  Logix.InternalContracts.hostSchedulerTestLayer(scheduler) as Layer.Layer<any, never, never>
+  RuntimeContracts.hostSchedulerTestLayer(scheduler) as Layer.Layer<any, never, never>
 
 export const tickSchedulerTestLayer = (config?: TickSchedulerConfig): Layer.Layer<any, never, never> =>
-  Logix.InternalContracts.tickSchedulerTestLayer(config) as Layer.Layer<any, never, never>
+  RuntimeContracts.tickSchedulerTestLayer(config) as Layer.Layer<any, never, never>
 
 export const flushAllHostScheduler = (
   scheduler: DeterministicHostScheduler,

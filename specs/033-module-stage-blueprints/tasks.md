@@ -4,7 +4,7 @@ description: "Task list for 033-module-stage-blueprints (StageBlueprint / Intent
 
 # Tasks: Module Stage Blueprints（033：Module 舞台语义蓝图）
 
-**Input**: `specs/033-module-stage-blueprints/spec.md`  
+**Input**: `specs/033-module-stage-blueprints/spec.md`
 **Prerequisites**: `specs/033-module-stage-blueprints/plan.md`（required）, `specs/033-module-stage-blueprints/research.md`, `specs/033-module-stage-blueprints/data-model.md`, `specs/033-module-stage-blueprints/contracts/`, `specs/033-module-stage-blueprints/quickstart.md`
 
 **Tests**: 本特性会影响平台“画布→出码→试跑→验收”的主链路；至少需要 contracts/schema 预检 + 蓝图校验/归一化/出码关键路径的单测（纯函数优先），避免 drift。
@@ -38,7 +38,7 @@ description: "Task list for 033-module-stage-blueprints (StageBlueprint / Intent
 
 ## Phase 3: User Story 1 - 场景画布编排多个 Module，并可落盘/出码/验收（Priority: P1）🎯 MVP
 
-**Goal**: 最小可行的“语义蓝图→代码→试跑验收”闭环：节点=ModuleInstance，边=IntentRule。  
+**Goal**: 最小可行的“语义蓝图→代码→试跑验收”闭环：节点=ModuleInstance，边=IntentRule。
 **Independent Test**: 给定一个 StageBlueprint（含至少 2 个模块实例 + 1 条规则边），能生成可运行代码并通过 trial-run 工件验收“边确实生效且可解释”。
 
 - [ ] T008 [US1] 定义 StageBlueprint → 代码生成器（输出 TS 源码字符串或文件）到 `packages/logix-sandbox/src/workbench/stage/codegen.ts`
@@ -51,7 +51,7 @@ description: "Task list for 033-module-stage-blueprints (StageBlueprint / Intent
 
 ## Phase 4: User Story 2 - 多 UI 投影同一语义蓝图（Priority: P2）
 
-**Goal**: 语义蓝图不携带 UI；同一 StageBlueprint 可绑定多个 UiBlueprint/BindingSchema 投影（032）。  
+**Goal**: 语义蓝图不携带 UI；同一 StageBlueprint 可绑定多个 UiBlueprint/BindingSchema 投影（032）。
 **Independent Test**: 改 UI 投影不改 StageBlueprint；试跑行为不变。
 
 - [ ] T013 [US2] 定义 StageBlueprint 与 UiBlueprint/BindingSchema 的绑定约定（instanceId 作为锚点）到 `packages/logix-sandbox/src/workbench/stage/bindProjections.ts`
@@ -62,7 +62,7 @@ description: "Task list for 033-module-stage-blueprints (StageBlueprint / Intent
 
 ## Phase 5: User Story 3 - 动态列表回填使用稳定 rowRef（Priority: P3）
 
-**Goal**: 列表回填不使用 index；rowRef（rowPath + rowId）稳定定位。  
+**Goal**: 列表回填不使用 index；rowRef（rowPath + rowId）稳定定位。
 **Independent Test**: 列表重排/插入/删除后回填仍命中正确行（基于 rowId）。
 
 - [ ] T016 [US3] 在 codegen 中支持 rowRef 作为映射输入（禁止 index）到 `packages/logix-sandbox/src/workbench/stage/codegenRules.ts`

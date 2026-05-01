@@ -1,5 +1,9 @@
 # Safety: Logix CLI（085）
 
+> Superseded background only. This 085 safety contract is not current CLI authority.
+> Current CLI authority is [../../160-cli-agent-first-control-plane-cutover/spec.md](../../160-cli-agent-first-control-plane-cutover/spec.md) and [../../../docs/ssot/runtime/15-cli-agent-first-control-plane.md](../../../docs/ssot/runtime/15-cli-agent-first-control-plane.md).
+> `mode=report|write`, writeback, and `CommandResult.mode` are negative-only legacy references for `160`.
+
 ## 1) 默认 report-only
 
 - 任何可能写回源码的命令默认必须是 `mode=report`（不写回）。

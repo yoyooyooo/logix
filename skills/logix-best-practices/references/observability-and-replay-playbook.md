@@ -4,11 +4,13 @@ title: 可观测性与回放手册（Slim 事件链）
 
 # 可观测性与回放手册（Slim 事件链）
 
+本页术语只属于观测、回放与对齐消费层，不进入业务 authoring surface，也不要求生成 public scenario/report/evidence 对象。
+
 ## 1) 最小目标
 
 - 事件可解释：知道“谁在何时为何触发”。
 - 事件可导出：`meta` 可序列化为 `JsonValue`。
-- 回放可验证：不是只比最终状态，而是比关键决策链。
+- 回放可验证：同时比较最终状态与关键决策链。
 
 ## 2) 事件模型边界
 
@@ -31,7 +33,7 @@ title: 可观测性与回放手册（Slim 事件链）
 
 ## 5) 回放最小闭环
 
-1. 导出 evidence package（事件 + metadata + version）。
+1. 导出 diagnostic bundle（事件 + metadata + version），只供观测消费层使用。
 2. 按稳定锚点重建顺序。
 3. 对照静态控制面与规则节点。
 4. 输出差异与不可回放原因。
@@ -40,7 +42,7 @@ title: 可观测性与回放手册（Slim 事件链）
 
 - 关键 guard 事件（invalid_phase/invalid_usage/enqueue guard）有结论。
 - 事件频率与体积满足预算，不拖垮热路径。
-- 独立环境可读取 evidence 并完成最小回放。
+- 独立环境可读取 diagnostic bundle 并完成最小回放。
 - 差异能回链到模块/流程/事务边界。
 
 ## 7) 延伸阅读（Skill 内）
@@ -48,4 +50,3 @@ title: 可观测性与回放手册（Slim 事件链）
 - `references/llms/04-runtime-transaction-rules.md`
 - `references/llms/06-diagnostics-perf-basics.md`
 - `references/llms/08-builder-ir-basics.md`
-- `references/llms/99-project-anchor-template.md`（可选）

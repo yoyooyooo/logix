@@ -65,14 +65,14 @@ export type CrudAction<
   QueryInput,
   Id,
   ExtraActions extends Record<string, Logix.AnySchema> = {},
-> = Logix.ActionsFromMap<CrudActionMap<Entity, QueryInput, Id, ExtraActions>>
+> = Logix.Module.ActionOf<CrudShape<Entity, QueryInput, Id, ExtraActions>>
 
 export type CrudShape<
   Entity extends object,
   QueryInput,
   Id,
   ExtraActions extends Record<string, Logix.AnySchema> = {},
-> = Logix.Shape<Schema.Schema<CrudState<Entity, QueryInput>>, CrudActionMap<Entity, QueryInput, Id, ExtraActions>>
+> = Logix.Module.Shape<Schema.Schema<CrudState<Entity, QueryInput>>, CrudActionMap<Entity, QueryInput, Id, ExtraActions>>
 
 export type CrudServices<Entity extends object, QueryInput, Id> = {
   readonly api: ServiceMap.Key<any, CrudApi<Entity, QueryInput, Id>>
@@ -84,11 +84,14 @@ export type CrudHandleExt<
   Id,
   ExtraActions extends Record<string, Logix.AnySchema> = {},
 > = {
-  readonly controller: CrudController<Entity, QueryInput, Id, ExtraActions>['controller']
+  readonly commands: Pick<
+    CrudCommandsHandle<Entity, QueryInput, Id, ExtraActions>,
+    'list' | 'save' | 'remove' | 'clearError' | 'idField'
+  >
   readonly services: CrudServices<Entity, QueryInput, Id>
 }
 
-export interface CrudController<
+export interface CrudCommandsHandle<
   Entity extends object,
   QueryInput,
   Id,
@@ -97,13 +100,11 @@ export interface CrudController<
   readonly runtime: Logix.ModuleRuntime<CrudState<Entity, QueryInput>, CrudAction<Entity, QueryInput, Id, ExtraActions>>
   readonly getState: Effect.Effect<CrudState<Entity, QueryInput>>
   readonly dispatch: (action: CrudAction<Entity, QueryInput, Id, ExtraActions>) => Effect.Effect<void>
-  readonly controller: {
-    readonly list: (input: QueryInput) => Effect.Effect<void>
-    readonly save: (entity: Entity) => Effect.Effect<void>
-    readonly remove: (id: Id) => Effect.Effect<void>
-    readonly clearError: () => Effect.Effect<void>
-    readonly idField: string
-  }
+  readonly list: (input: QueryInput) => Effect.Effect<void>
+  readonly save: (entity: Entity) => Effect.Effect<void>
+  readonly remove: (id: Id) => Effect.Effect<void>
+  readonly clearError: () => Effect.Effect<void>
+  readonly idField: string
 }
 
 const makeActions = <Entity extends object, QueryInput, Id>(
@@ -168,19 +169,19 @@ const removeByIdField = <Entity extends object>(
   idField: string,
 ): ReadonlyArray<Entity> => items.filter((x) => (x as Record<string, unknown>)[idField] !== id)
 
-export type CrudModule<
+export type CrudProgram<
   Id extends string,
   Entity extends object,
   QueryInput,
   EntityId,
   ExtraActions extends Record<string, Logix.AnySchema> = {},
-> = Logix.Module.Module<
+> = Logix.Program.Program<
   Id,
   CrudShape<Entity, QueryInput, EntityId, ExtraActions>,
   CrudHandleExt<Entity, QueryInput, EntityId, ExtraActions>,
   unknown
 > & {
-  readonly _kind: 'Module'
+  readonly _kind: 'Program'
   readonly services: CrudServices<Entity, QueryInput, EntityId>
 }
 
@@ -198,7 +199,7 @@ const defineCrud = <
     CrudActionMap<Entity, QueryInput, EntityId>,
     ExtraActions
   >,
-): CrudModule<Id, Entity, QueryInput, EntityId, ExtraActions> => {
+): CrudProgram<Id, Entity, QueryInput, EntityId, ExtraActions> => {
   const QuerySchema = (spec.query ?? DefaultQueryInputSchema) as Schema.Schema<QueryInput>
   const IdSchema = (spec.id ?? Schema.String) as Schema.Schema<EntityId>
 
@@ -356,9 +357,10 @@ const defineCrud = <
       >(id, def)
 
   const install = module.logic(
+    'install',
     ($) =>
       Effect.gen(function* () {
-        const missingApiMessage = `[CRUDModule] Missing services.api; provide Layer.succeed(${id}.services.api, impl) via withLayer/withLayers/Runtime layer.`
+        const missingApiMessage = `[Crud.make] Missing services.api; provide Layer.succeed(${id}.services.api, impl) via withLayer/withLayers/Runtime layer.`
 
         const runWithApi = (
           dispatchFailed: (message: string) => Effect.Effect<void, never, any>,
@@ -396,30 +398,27 @@ const defineCrud = <
           ),
         )
       }),
-    { id: 'install' },
   )
 
-  const controller = {
+  const commands = {
     make: (
       runtime: Logix.ModuleRuntime<
         CrudState<Entity, QueryInput>,
         CrudAction<Entity, QueryInput, EntityId, ExtraActions>
       >,
-    ): CrudController<Entity, QueryInput, EntityId, ExtraActions> => ({
+    ): CrudCommandsHandle<Entity, QueryInput, EntityId, ExtraActions> => ({
       runtime,
       getState: runtime.getState,
       dispatch: runtime.dispatch,
-      controller: {
-        list: (input: QueryInput) =>
-          runtime.dispatch({ _tag: 'query', payload: input } as CrudAction<Entity, QueryInput, EntityId, ExtraActions>),
-        save: (entity: Entity) =>
-          runtime.dispatch({ _tag: 'save', payload: entity } as CrudAction<Entity, QueryInput, EntityId, ExtraActions>),
-        remove: (id: EntityId) =>
-          runtime.dispatch({ _tag: 'remove', payload: id } as CrudAction<Entity, QueryInput, EntityId, ExtraActions>),
-        clearError: () =>
-          runtime.dispatch({ _tag: 'clearError' } as CrudAction<Entity, QueryInput, EntityId, ExtraActions>),
-        idField,
-      },
+      list: (input: QueryInput) =>
+        runtime.dispatch({ _tag: 'query', payload: input } as CrudAction<Entity, QueryInput, EntityId, ExtraActions>),
+      save: (entity: Entity) =>
+        runtime.dispatch({ _tag: 'save', payload: entity } as CrudAction<Entity, QueryInput, EntityId, ExtraActions>),
+      remove: (id: EntityId) =>
+        runtime.dispatch({ _tag: 'remove', payload: id } as CrudAction<Entity, QueryInput, EntityId, ExtraActions>),
+      clearError: () =>
+        runtime.dispatch({ _tag: 'clearError' } as CrudAction<Entity, QueryInput, EntityId, ExtraActions>),
+      idField,
     }),
   }
 
@@ -428,15 +427,21 @@ const defineCrud = <
     runtime: Logix.ModuleRuntime<CrudState<Entity, QueryInput>, CrudAction<Entity, QueryInput, EntityId, ExtraActions>>,
     base: Logix.ModuleHandle<Logix.AnyModuleShape>,
   ) => {
-    const crud = controller.make(runtime)
+    const crud = commands.make(runtime)
     return {
       ...base,
-      controller: crud.controller,
+      commands: {
+        list: crud.list,
+        save: crud.save,
+        remove: crud.remove,
+        clearError: crud.clearError,
+        idField: crud.idField,
+      },
       services,
     }
   }
 
-  return module.implement({
+  return Logix.Program.make(module, {
     initial: {
       items: Array.from(spec.initial ?? []),
       loading: false,
@@ -445,10 +450,7 @@ const defineCrud = <
       total: undefined,
     } as CrudState<Entity, QueryInput>,
     logics: [install],
-  }) as unknown as CrudModule<Id, Entity, QueryInput, EntityId, ExtraActions>
+  }) as unknown as CrudProgram<Id, Entity, QueryInput, EntityId, ExtraActions>
 }
 
-export const CRUDModule = Logix.Module.Manage.make({
-  kind: 'crud',
-  define: defineCrud,
-})
+export const make = defineCrud

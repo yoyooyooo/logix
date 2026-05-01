@@ -1,9 +1,9 @@
 # Tasks: Runtime-Scoped Observability for Diagnostics Hot Path
 
-**Input**: Design documents from `specs/097-runtime-scoped-observability/`  
+**Input**: Design documents from `specs/097-runtime-scoped-observability/`
 **Prerequisites**: `spec.md`（required）, `plan.md`（required）
 
-**Tests**: 本特性触及 `packages/logix-core` 运行时核心路径，测试与性能/可诊断回归防线视为必需项。  
+**Tests**: 本特性触及 `packages/logix-core` 运行时核心路径，测试与性能/可诊断回归防线视为必需项。
 **Organization**: 任务按用户故事组织，确保可独立实现与验收。
 
 ## Format: `[ID] [P?] [Story] Description`
@@ -157,8 +157,8 @@
 
 ### MVP First (US1)
 
-1. 完成 Phase 1 + Phase 2。  
-2. 完成 US1（T011-T019）。  
+1. 完成 Phase 1 + Phase 2。
+2. 完成 US1（T011-T019）。
 3. 用性能 diff 验证“诊断开启下主链显著降耗”达标后再进入 US2。
 
 ### Incremental Delivery

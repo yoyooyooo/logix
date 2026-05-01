@@ -3,7 +3,7 @@ import React from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { Effect } from 'effect'
-import { LogixDevtools } from '../../src/LogixDevtools.js'
+import { LogixDevtools } from '../../src/internal/ui/shell/LogixDevtools.js'
 import { devtoolsRuntime, devtoolsModuleRuntime, type DevtoolsState } from '../../src/internal/state/index.js'
 
 if (typeof window !== 'undefined') {
@@ -47,8 +47,8 @@ describe('015 · Converge Performance Pane', () => {
       txnSeq: params.txnSeq,
       txnId: `txn-${params.txnSeq}`,
       timestamp: now + params.txnSeq,
-      kind: 'trait:converge',
-      label: 'trait:converge',
+      kind: 'field:converge',
+      label: 'field:converge',
       meta: params.meta,
     })
 

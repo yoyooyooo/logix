@@ -8,8 +8,8 @@
 
 - `key: string`：稳定 key（用于下拉选择与 URL/状态存储；默认不要求写入 URL）
 - `label: string`：面向用户的显示名（包含导出名与 kind）
-- `kind: 'ModuleDef' | 'Module' | 'ModuleImpl' | 'Unknown'`
-- `value: unknown`：真实对象（传给 `Reflection.extractManifest` 时可能需要 `as any` 适配类型签名）
+- `kind: 'Module' | 'Program' | 'Unknown'`
+- `value: unknown`：真实对象（传给 `CoreReflection.extractManifest` 时可能需要 `as any` 适配类型签名）
 
 ## Entity: ExtractManifestOptions（UI）
 
@@ -44,4 +44,3 @@ Diff Viewer 的 before/after 输入统一建模。
 - `specId: '078' | '031' | '035' | '081' | '082' | '085'`
 - `label: string`
 - `notes: string`
-

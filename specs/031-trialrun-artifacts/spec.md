@@ -1,8 +1,8 @@
 # Feature Specification: TrialRun Artifacts（试运行补充 IR 工件槽位）
 
-**Feature Branch**: `[031-trialrun-artifacts]`  
-**Created**: 2025-12-25  
-**Status**: Draft  
+**Feature Branch**: `[031-trialrun-artifacts]`
+**Created**: 2025-12-25
+**Status**: Draft
 **Input**: 将 RulesManifest 明确为 Trial Run 的 Supplemental Static IR artifact，并通过统一 artifacts 槽位贯通 sandbox/CLI/devtools；平台侧当前以 `examples/logix-sandbox-mvp` 的 `/ir` 作为最小消费者。
 
 ## Assumptions

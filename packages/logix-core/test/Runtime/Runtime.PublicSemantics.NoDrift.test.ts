@@ -1,7 +1,8 @@
 import { describe, it, expect } from '@effect/vitest'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { Cause, Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
-import * as Debug from '../../src/Debug.js'
+import * as Debug from '../../src/internal/debug-api.js'
 
 describe('Runtime public semantics: transaction window fail-fast (US1)', () => {
   it.effect('production path should fail-fast on async escape and keep later txns consistent', () =>
@@ -19,23 +20,22 @@ describe('Runtime public semantics: transaction window fail-fast (US1)', () => {
           bump: Schema.Void,
         }
 
-        const M = Logix.Module.make('Runtime.PublicSemantics.NoDrift', {
-          state: State,
-          actions: Actions,
-          reducers: {
+        const M = FieldContracts.withModuleFieldDeclarations(Logix.Module.make('Runtime.PublicSemantics.NoDrift', {
+  state: State,
+  actions: Actions,
+  reducers: {
             bump: Logix.Module.Reducer.mutate((draft) => {
               draft.base += 1
             }),
-          },
-          traits: Logix.StateTrait.from(State)({
-            derived: Logix.StateTrait.computed({
+          }
+}), FieldContracts.fieldFrom(State)({
+            derived: FieldContracts.fieldComputed({
               deps: ['base'],
               get: (base) => base + 1,
             }),
-          }),
-        })
+          }))
 
-        const impl = M.implement({
+        const program = Logix.Program.make(M, {
           initial: { base: 0, derived: 1 },
           logics: [],
         })
@@ -47,7 +47,7 @@ describe('Runtime public semantics: transaction window fail-fast (US1)', () => {
           never
         >
 
-        const runtime = Logix.Runtime.make(impl, { layer })
+        const runtime = Logix.Runtime.make(program, { layer })
 
         yield* Effect.promise(() =>
           runtime.runPromise(
@@ -55,7 +55,7 @@ describe('Runtime public semantics: transaction window fail-fast (US1)', () => {
               const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
               const escapeExit = yield* Effect.exit(
-                Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 'async_escape' }, () =>
+                FieldContracts.runWithStateTransaction(rt, { kind: 'test', name: 'async_escape' }, () =>
                   Effect.gen(function* () {
                     const prev: any = yield* rt.getState
                     yield* Effect.sleep('10 millis')

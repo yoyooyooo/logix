@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
@@ -11,7 +12,7 @@ import { makeTickScheduler } from '../../../src/internal/runtime/core/TickSchedu
 describe('TickScheduler (fixpoint / budget / safety)', () => {
   it.effect('fixpoint: should flush to a single tick with stable=true', () =>
     Effect.gen(function* () {
-      Logix.Debug.clearDevtoolsEvents()
+      CoreDebug.clearDevtoolsEvents()
 
       const store = makeRuntimeStore()
       const queue = makeJobQueue()
@@ -48,15 +49,15 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
       })
       queue.markTopicDirty(bKey, 'low')
 
-      yield* Effect.provideService(scheduler.flushNow, Logix.Debug.internal.currentDiagnosticsLevel as any, 'light').pipe(
-        Effect.provide(Logix.Debug.devtoolsHubLayer({ bufferSize: 64 })),
+      yield* Effect.provideService(scheduler.flushNow, CoreDebug.internal.currentDiagnosticsLevel as any, 'light').pipe(
+        Effect.provide(CoreDebug.devtoolsHubLayer({ bufferSize: 64 })),
       )
 
       expect(store.getTickSeq()).toBe(1)
       expect(store.getModuleState(aKey)).toEqual({ v: 1 })
       expect(store.getModuleState(bKey)).toEqual({ v: 1 })
 
-      const ticks = Logix.Debug.getDevtoolsSnapshot().events
+      const ticks = CoreDebug.getDevtoolsSnapshot().events
         .filter((e) => e.label === 'trace:tick')
         .map((e) => (e.meta ?? {}) as any)
         .filter((m) => m.phase === 'settled')
@@ -182,7 +183,7 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
   )
   it.effect('budget steps: should defer nonUrgent backlog and emit trace + warn evidence', () =>
     Effect.gen(function* () {
-      Logix.Debug.clearDevtoolsEvents()
+      CoreDebug.clearDevtoolsEvents()
 
       const store = makeRuntimeStore()
       const queue = makeJobQueue()
@@ -245,22 +246,22 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
           txnId: 'i-1::t1',
           commitMode: 'lowPriority',
           priority: 'low',
-          originKind: 'trait-external-store',
+          originKind: 'field-external-store',
           originName: 'field:x',
         },
         opSeq: 2,
       })
       queue.markTopicDirty(slowKey, 'low')
 
-      yield* Effect.provideService(scheduler.flushNow, Logix.Debug.internal.currentDiagnosticsLevel as any, 'light').pipe(
-        Effect.provide(Logix.Debug.devtoolsHubLayer({ bufferSize: 128 })),
+      yield* Effect.provideService(scheduler.flushNow, CoreDebug.internal.currentDiagnosticsLevel as any, 'light').pipe(
+        Effect.provide(CoreDebug.devtoolsHubLayer({ bufferSize: 128 })),
       )
 
       expect(store.getTickSeq()).toBe(1)
       expect(store.getModuleState(urgentKey)).toEqual({ v: 1 })
       expect(store.getModuleState(slowKey)).toEqual({ v: 0 })
 
-      const events = Logix.Debug.getDevtoolsSnapshot().events
+      const events = CoreDebug.getDevtoolsSnapshot().events
       const budgetExceeded = events
         .filter((e) => e.label === 'trace:tick')
         .map((e) => (e.meta ?? {}) as any)
@@ -278,9 +279,9 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
       expect(inversion?.reason).toBe('deferredBacklog')
 
       // Second tick should catch up the deferred backlog.
-      Logix.Debug.clearDevtoolsEvents()
-      yield* Effect.provideService(scheduler.flushNow, Logix.Debug.internal.currentDiagnosticsLevel as any, 'light').pipe(
-        Effect.provide(Logix.Debug.devtoolsHubLayer({ bufferSize: 128 })),
+      CoreDebug.clearDevtoolsEvents()
+      yield* Effect.provideService(scheduler.flushNow, CoreDebug.internal.currentDiagnosticsLevel as any, 'light').pipe(
+        Effect.provide(CoreDebug.devtoolsHubLayer({ bufferSize: 128 })),
       )
 
       expect(store.getTickSeq()).toBe(2)
@@ -292,7 +293,7 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
 
   it.effect('urgent safety: should cut urgent backlog when urgentStepCap is exceeded (cycle_detected)', () =>
     Effect.gen(function* () {
-      Logix.Debug.clearDevtoolsEvents()
+      CoreDebug.clearDevtoolsEvents()
 
       const store = makeRuntimeStore()
       const queue = makeJobQueue()
@@ -340,8 +341,8 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
       })
       queue.markTopicDirty(lowKey, 'low')
 
-      yield* Effect.provideService(scheduler.flushNow, Logix.Debug.internal.currentDiagnosticsLevel as any, 'light').pipe(
-        Effect.provide(Logix.Debug.devtoolsHubLayer({ bufferSize: 128 })),
+      yield* Effect.provideService(scheduler.flushNow, CoreDebug.internal.currentDiagnosticsLevel as any, 'light').pipe(
+        Effect.provide(CoreDebug.devtoolsHubLayer({ bufferSize: 128 })),
       )
 
       expect(store.getTickSeq()).toBe(1)
@@ -349,7 +350,7 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
       expect(store.getModuleState(bKey)).toEqual({ v: 0 })
       expect(store.getModuleState(lowKey)).toEqual({ v: 0 })
 
-      const events = Logix.Debug.getDevtoolsSnapshot().events
+      const events = CoreDebug.getDevtoolsSnapshot().events
       const budgetExceeded = events
         .filter((e) => e.label === 'trace:tick')
         .map((e) => (e.meta ?? {}) as any)
@@ -359,9 +360,9 @@ describe('TickScheduler (fixpoint / budget / safety)', () => {
       expect(budgetExceeded?.result?.degradeReason).toBe('cycle_detected')
 
       // Next tick should finish the deferred urgent backlog.
-      Logix.Debug.clearDevtoolsEvents()
-      yield* Effect.provideService(scheduler.flushNow, Logix.Debug.internal.currentDiagnosticsLevel as any, 'light').pipe(
-        Effect.provide(Logix.Debug.devtoolsHubLayer({ bufferSize: 128 })),
+      CoreDebug.clearDevtoolsEvents()
+      yield* Effect.provideService(scheduler.flushNow, CoreDebug.internal.currentDiagnosticsLevel as any, 'light').pipe(
+        Effect.provide(CoreDebug.devtoolsHubLayer({ bufferSize: 128 })),
       )
 
       expect(store.getTickSeq()).toBe(2)

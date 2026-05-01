@@ -1,7 +1,7 @@
 import { Effect, Exit, Schema, Stream } from 'effect'
 import * as Logix from '@logixjs/core'
 import { galaxyApi } from '../galaxy-api/client'
-import { AuthDef, AuthImpl } from './auth.module'
+import { AuthDef, AuthProgram } from './auth.module'
 
 const ProjectsStateSchema = Schema.Struct({
   projects: Schema.Array(Schema.Any),
@@ -58,7 +58,7 @@ export const ProjectsDef = Logix.Module.make('GalaxyProjects', {
   },
 })
 
-export const ProjectsLogic = ProjectsDef.logic(($) => {
+export const ProjectsLogic = ProjectsDef.logic('projects', ($) => {
   const resetAll = Effect.gen(function* () {
     yield* $.dispatchers.setProjects([])
     yield* $.dispatchers.setProjectsError(null)
@@ -219,7 +219,7 @@ export const ProjectsLogic = ProjectsDef.logic(($) => {
   }
 })
 
-export const ProjectsModule = ProjectsDef.implement({
+export const ProjectsProgram = Logix.Program.make(ProjectsDef, {
   initial: {
     projects: [],
     projectsLoading: false,
@@ -234,8 +234,8 @@ export const ProjectsModule = ProjectsDef.implement({
     accessLoading: false,
     accessError: null,
   } satisfies ProjectsState,
-  // imports: [AuthImpl],
+  capabilities: {
+    imports: [AuthProgram],
+  },
   logics: [ProjectsLogic],
 })
-
-export const ProjectsImpl = ProjectsModule.impl

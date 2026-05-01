@@ -8,8 +8,111 @@
 - `Active`：正在持续推进/扩展中的跑道或实验场。
 - `Draft`：已成文但未落地（或仅局部落地），实现路径可能仍会随新裁决调整。
 - `Planned`：明确想做，但尚未进入可执行任务阶段。
+- `Stopped`：已显式停止推进，只保留历史语义或证据；若要继续，先看替代主线或重新裁决。
 - `Frozen`：暂缓/冻结，不应排入近期实施顺序；需要重新裁决才会解冻。
 - `Done/Complete/Superseded/Archived`：已完成/已关闭/已替代/已归档（不在本文主清单）。
+
+## 目录约定
+
+从现在开始，新 spec 默认至少包含：
+
+- `spec.md`
+
+`discussion.md` 是按需 companion artifact，只在存在真实未冻结候选、开放问题、deferred item 或 reopen evidence 时生成。
+
+- `spec.md` 持 authority、scope、requirements、success criteria
+- `discussion.md` 只承接值得继续细化的候选形态、实施前必须关闭的问题、可后置追踪的问题、reopen evidence
+
+`discussion.md` 不是 authority。
+任何达成裁决的内容都必须回写到 `spec.md` / `plan.md` / `tasks.md`。
+若没有开放性问题或候选分歧，不生成 `discussion.md`。
+若 `discussion.md` 存在，开放问题必须分为：
+
+- `Must Close Before Implementation`：实施前必须关闭，关闭后把裁决合并回 authority artifact，并从 discussion 移除。
+- `Deferred / Non-Blocking`：不阻塞当前实施，但必须写明后置原因和重新打开条件。
+
+## 推荐工作流
+
+本仓 spec 默认按下面 4 个阶段推进：
+
+1. 最小必要 SSoT
+2. 计划约束
+3. 实施
+4. 结果性回写
+
+### 阶段 1：最小必要 SSoT
+
+先在 `spec.md` 里补足最小必要真相，再进入 `plan.md`。
+
+最低要求通常包括：
+
+- owner / boundary
+- 当前页面角色
+- in scope / out of scope
+- imported authority / predecessor
+- closure gate / exit rule
+- must cut
+- verification evidence route
+
+如果是 closure / cutover / hub 类 spec，推荐再补：
+
+- default terminal choice
+- reopen bar
+
+### Gate A
+
+在 `spec.md` 还回答不了下面三问之前，不进入 `plan.md`：
+
+- 当前议题归谁
+- 当前边界在哪
+- 什么条件算闭环
+
+### 阶段 2：计划约束
+
+`plan.md` 只写执行约束，不代持新的 owner truth。
+
+优先写这些内容：
+
+- likely landing files
+- execution order / milestone order
+- required proof / evidence set
+- verification matrix
+- writeback matrix
+- non-goals
+
+`plan.md` 的职责是把“怎么做”和“做完后往哪回写”写清楚，不重写 `spec.md` 里的原则裁决。
+
+### Gate B
+
+在 `plan.md` 还没有写清下面这些门槛之前，不进入实施：
+
+- verification 如何过
+- writeback 要回写哪些 authority
+- non-goals 是什么
+
+### 阶段 3：实施
+
+实施只承接 `spec.md + plan.md` 已经裁决的内容。
+
+此阶段约束：
+
+- `discussion.md` 只在存在时承接未冻结候选、开放问题、reopen evidence；`Must Close Before Implementation` 必须先清零
+- 不在实现中临时发明第二套 owner law
+- 若实现暴露出原则缺口，先回写 `spec.md` 或 authority 页，再继续
+
+### 阶段 4：结果性回写
+
+实施完成后，必须做结果性回写。
+
+最低要求通常包括：
+
+- authority 页面回写
+- spec status 更新
+- group registry 同步
+- discussion 清理
+- tests / examples / proof 文档回写
+
+结果性回写不能只写“做了什么”，还要把“现在真相是什么”写回事实源。
 
 ## 关系总览（建议顺序＝“先打地基，再做出码跑道”）
 
@@ -26,7 +129,7 @@
 
 1. **M0（锚点与证据硬门）**：先把可序列化/去随机化与 TrialRun 输出打实（优先 `016`、`025`；必要时补 `005/031` 的协议与 artifacts 槽位）。
 2. **M1（结构可见）**：让平台能枚举并对齐 actions/servicePorts/ports&typeIR（优先 `067`、`078`、`035`）；同时把 `Π` 的 workflow slice（`075`）与 `078.servicePorts` 对齐，避免 workflow 的 `serviceId` 变成灰区字符串。
-3. **M2（下一阶段里程碑：Agent 自证跑道）**：以 `085` 收口 CLI 工具箱（Oracle/Gate/Transform），并把 `081 → 082 → 079` 的保守回写闭环接入同一跑道（含 workflow `stepKey`）；达标定义见下方「下一阶段里程碑」。
+3. **M2（下一阶段里程碑：Agent 自证跑道）**：以 `085` 收口 CLI 工具箱（Oracle/Gate/Transform）；`081 / 082` 保留为独立规划线，不进入当前 CLI public surface；`079` 已冻结为历史锚点回写规划输入。
 4. **M3（语义与证据增强，可选）**：在回写闭环达标后再推进 `083/084`（能看见/能建议之前先确保能写回，避免演进死角）。
 5. **消费者回归面（可选增强）**：`086` 作为 Manifest/Diff/TrialRun/Workflow slices 的可视化试验场与 UI 回归面，字段缺失必须显式提示（不作为 M0–M3 硬门槛）。
 
@@ -34,8 +137,7 @@
 
 ```text
 085 logix CLI（Oracle：ir export/trialrun；Gate：ir validate/ir diff；Transform：transform module）
-  consumes: 078 Manifest + 075 workflowSurface（Root IR slices）
-  drives:   081 AnchorIndex → 082 PatchPlan/WriteBack → 079 保守 autofill（含 stepKey）
+  consumes: 078 Manifest + 075 controlProgramSurface（Root IR slices）
   outputs:  可门禁确定性工件 + 可解释 reason codes + exit code（0/2/1）
 ```
 
@@ -47,8 +149,8 @@
 
 现状（已落地/可直接复用）：
 
-- `@logixjs/core` 已提供 Root IR/差异/试跑底座：`Reflection.exportControlSurface` / `Reflection.diffManifest` / `Observability.trialRunModule`。
-- Root IR 已支持 workflow slice 引用：`ControlSurfaceManifest.modules[*].workflowSurface.digest`（并已有回归测试）。
+- `@logixjs/core` 已提供 Root IR/差异/试跑底座：`Reflection.exportControlSurface` / `CoreReflection.diffManifest` / `Runtime.trial`。
+- Root IR 已支持 workflow slice 引用：`ControlSurfaceManifest.modules[*].controlProgramSurface.digest`（并已有回归测试）。
 - 过渡工具已存在：`scripts/ir/inspect-module.ts` 可做“导出 + 试跑 + diff”的一体化脚本验证（但尚未收敛到 085 的统一输出与 exit code 语义）。
 
 待实施（本里程碑交付清单，仍未落地）：
@@ -56,7 +158,7 @@
 - `packages/logix-cli` + `logix` bin：统一 `CommandResult@v1` 输出、`--mode report|write`、exit code（0/2/1）。
 - Gate：`logix ir validate` / `logix ir diff` 的结构化报告与 reason codes（可门禁）。
 - `ModuleManifest.servicePorts` + TrialRun 端口级缺失定位（078）。
-- `AnchorIndex@v1` / `PatchPlan@v1` / `WriteBackResult@v1` 的闭环（081/082/079），并接入 `logix anchor index/autofill` 与 `transform module`。
+- `transform module` 的 PatchPlan / TransformReport / WriteBackResult 闭环；`081/082/079` 不接入当前 CLI public surface。
 - 确定性门禁口径：门禁工件默认不得包含 evidence 的 `createdAt/timestamp` 等噪音字段（否则无法 byte-level diff）。
 
 边界/风险（需提前对齐）：
@@ -82,11 +184,12 @@
 
 定位：**AI/平台专属出码层**，不以“人类手写爽”为主目标；人类可读写主要交给更上层 Recipe/Pattern（仍需可降解）。
 
-### 主线 C：平台化出码/回写跑道（Parser/Rewrite/Anchors/Manifest）
+### 主线 C：平台化出码/回写跑道（Parser/Rewrite/Manifest）
 
 ```text
-078 Module↔Service Manifest（servicePorts/ServiceId/TrialRun 对齐） ↔ 075 workflowSurface（Π slice）
-  → 081 受限解析（AnchorIndex） → 082 受限重写（PatchPlan→WriteBack） → 079 保守自动补全（只补缺失字段）
+078 Module↔Service Manifest（servicePorts/ServiceId/TrialRun 对齐） ↔ 075 controlProgramSurface（Π slice）
+  → 081 受限解析 → 082 受限重写
+  → 079 保守锚点自动补全已冻结为历史规划输入，不进入当前 CLI public surface
   → 083 具名逻辑插槽（语义可见） / 084 Loader Spy（证据采集；不作权威）
   ↘（可选）086 可视化实验室（消费者回归面：Manifest/Diff/TrialRun/Workflow slices）
 ```
@@ -111,23 +214,25 @@
 ### 跑道 1：Runtime Core / Control Laws（总控：077）
 
 - [`077-logix-control-laws-v1`](./077-logix-control-laws-v1)（Group）— 参考系 + 控制律 + 热路径性能（成员关系 SSoT：`specs/077-logix-control-laws-v1/spec-registry.json`）
-  - 未完成成员：[`070-core-pure-perf-wins`](./070-core-pure-perf-wins)、[`074-readquery-create-selector`](./074-readquery-create-selector)、[`068-watcher-pure-wins`](./068-watcher-pure-wins)、[`006-optimize-traits`](./006-optimize-traits)、[`076-logix-source-auto-trigger-kernel`](./076-logix-source-auto-trigger-kernel)、[`018-periodic-self-calibration`](./018-periodic-self-calibration)
-- [`093-logix-kit-factory`](./093-logix-kit-factory)（Draft）— 语法糖机器（Kit/PortKit）：把端口型能力统一接到 Trait/Logic/Workflow（零副作用 + 稳定 identity；Router 只是实例）
+  - 未完成成员：[`070-core-pure-perf-wins`](./070-core-pure-perf-wins)、[`074-readquery-create-selector`](./074-readquery-create-selector)、[`068-watcher-pure-wins`](./068-watcher-pure-wins)、[`006-optimize-fields`](./006-optimize-fields)、[`076-logix-source-auto-trigger-kernel`](./076-logix-source-auto-trigger-kernel)、[`018-periodic-self-calibration`](./018-periodic-self-calibration)
+- [`093-logix-kit-factory`](./093-logix-kit-factory)（Draft）— 语法糖机器（Kit/PortKit）：把端口型能力统一接到 Field/Logic/Workflow（零副作用 + 稳定 identity；Router 只是实例）
 
 ### 跑道 2：Async Coordination（总控：087）
 
 - [`087-async-coordination-roadmap`](./087-async-coordination-roadmap)（Group）— 统一异步协调面（pending/optimistic/resource/busy/trace）
   - 未完成成员：[`088-async-action-coordinator`](./088-async-action-coordinator)、[`089-optimistic-protocol`](./089-optimistic-protocol)、[`090-suspense-resource-query`](./090-suspense-resource-query)、[`091-busy-indicator-policy`](./091-busy-indicator-policy)、[`092-e2e-latency-trace`](./092-e2e-latency-trace)
 
-### 跑道 3：Observability Protocol + Devtools（协议真相源：005）
+### 跑道 3：Observability Protocol + DVTools（工作台真相源：159）
 
 - [`005-unify-observability-protocol`](./005-unify-observability-protocol)（Draft）— 观测协议与聚合引擎（跨宿主传输 + 证据包导入导出）
-- [`038-devtools-session-ui`](./038-devtools-session-ui)（Draft）— Devtools Session-First UI（消费 005 的协议与证据）
+- [`159-dvtools-internal-workbench-cutover`](./159-dvtools-internal-workbench-cutover)（Draft）：DVTools 内部证据解释工作台 cutover（以 `docs/ssot/runtime/14-dvtools-internal-workbench.md` 为权威）
+- [`038-devtools-session-ui`](./038-devtools-session-ui)（Draft）：历史 Session-First UI 草案；当前只作 159 背景材料
 
 ### 跑道 4：Full-Duplex Toolchain / Agent 自证跑道（总控：080）
 
 - [`080-full-duplex-prelude`](./080-full-duplex-prelude)（Group）— 统一最小 IR + 回写前置（M0–M3 门槛）
-  - 下一阶段（M2）里程碑范围：[`085-logix-cli-node-only`](./085-logix-cli-node-only)、[`078-module-service-manifest`](./078-module-service-manifest)、[`075-workflow-codegen-ir`](./075-workflow-codegen-ir)、[`081-platform-grade-parser-mvp`](./081-platform-grade-parser-mvp)、[`082-platform-grade-rewriter-mvp`](./082-platform-grade-rewriter-mvp)、[`079-platform-anchor-autofill`](./079-platform-anchor-autofill)
+  - 下一阶段（M2）里程碑范围：[`085-logix-cli-node-only`](./085-logix-cli-node-only)、[`078-module-service-manifest`](./078-module-service-manifest)、[`075-workflow-codegen-ir`](./075-workflow-codegen-ir)、[`081-platform-grade-parser-mvp`](./081-platform-grade-parser-mvp)、[`082-platform-grade-rewriter-mvp`](./082-platform-grade-rewriter-mvp)
+  - 冻结历史输入：[`079-platform-anchor-autofill`](./079-platform-anchor-autofill)，不接入当前 CLI public surface
   - 可选消费者回归面：[`086-platform-visualization-lab`](./086-platform-visualization-lab)
 
 ### Frozen：core-ng（tasks 未清零，但不排期）
@@ -138,7 +243,7 @@
 
 ### 已收口：Router 不再单列为 Runtime backlog
 
-- Route Snapshot：按 `073 ExternalStore` 作为外部输入源（避免单独 Router 真相源；见用户文档 `apps/docs/content/docs/guide/recipes/external-store.md`）。
+- Route Snapshot：按 `073` 的外部输入与 tick 约束作为输入源（避免单独 Router 真相源；相关说明已并入当前 guide/runtime 口径）。
 - Navigation Intent：以 `088 Async Action` 的“事务外 IO + 事务内回写”形态集成（需要时再新增/固化注入契约；不再单独维护 `071` 规划）。
 
 ## 未完成 specs（按主题分组）
@@ -151,10 +256,9 @@
 
 - [`085-logix-cli-node-only`](./085-logix-cli-node-only)（Draft）— Node-only CLI 跑道（Oracle/Gate/Transform）
 - [`078-module-service-manifest`](./078-module-service-manifest)（Draft）— Module↔Service 关系纳入 Manifest IR（servicePorts）
-- [`075-workflow-codegen-ir`](./075-workflow-codegen-ir)（Draft）— Workflow Codegen IR（WorkflowDef → workflowSurface）
+- [`075-workflow-codegen-ir`](./075-workflow-codegen-ir)（Draft）— Workflow Codegen IR（WorkflowDef → controlProgramSurface）
 - [`081-platform-grade-parser-mvp`](./081-platform-grade-parser-mvp)（Draft）— Platform-Grade Parser MVP（受限子集解析器）
 - [`082-platform-grade-rewriter-mvp`](./082-platform-grade-rewriter-mvp)（Draft）— Platform-Grade Rewriter MVP（受限子集重写器）
-- [`079-platform-anchor-autofill`](./079-platform-anchor-autofill)（Draft）— Platform-Grade 锚点声明与保守自动补全（单一真相源）
 
 #### 基础/依赖（控制律/性能/调度 + 总控）
 
@@ -174,16 +278,16 @@
 
 - [`086-platform-visualization-lab`](./086-platform-visualization-lab)（Draft）— 可视化实验室（IR / Evidence / Gate）
 
-### B) Kernel/Runtime 基建（Traits/Txn/Concurrency/Contracts）
+### B) Kernel/Runtime 基建（Fields/Txn/Concurrency/Contracts）
 
-- [`000-module-traits-runtime`](./000-module-traits-runtime)（Draft）— 统一 Module Traits（StateTrait）与 Runtime Middleware/EffectOp
+- [`000-module-fields-runtime`](./000-module-fields-runtime)（Draft）— 统一 Module Fields（FieldKernel）与 Runtime Middleware/EffectOp
 - [`001-effectop-unify-boundaries`](./001-effectop-unify-boundaries)（Draft）— EffectOp 边界收口（移除局部加固入口）
-- [`003-trait-txn-lifecycle`](./003-trait-txn-lifecycle)（Draft）— StateTrait 状态事务与生命周期分层
-- [`006-optimize-traits`](./006-optimize-traits)（Draft）— Trait 运行时性能上限提升
-- [`007-unify-trait-system`](./007-unify-trait-system)（Draft）— Trait 系统统一（形状 × 性能 × 可回放）
+- [`003-field-txn-lifecycle`](./003-field-txn-lifecycle)（Draft）— FieldKernel 状态事务与生命周期分层
+- [`006-optimize-fields`](./006-optimize-fields)（Draft）— Field 运行时性能上限提升
+- [`007-unify-field-system`](./007-unify-field-system)（Draft）— Field 系统统一（形状 × 性能 × 可回放）
 - [`008-hierarchical-injector`](./008-hierarchical-injector)（Draft）— 层级 Injector 语义统一（Nearest Wins + Root Provider）
 - [`009-txn-patch-dirtyset`](./009-txn-patch-dirtyset)（Draft）— 事务 IR + Patch/Dirty-set 一等公民
-- [`011-upgrade-lifecycle`](./011-upgrade-lifecycle)（Draft）— Lifecycle 全面升级
+- [`011-upgrade-lifecycle`](./011-upgrade-lifecycle)（Draft）：Lifecycle 全面升级；public authoring surface 已由 [`170-runtime-lifecycle-authoring-surface`](./170-runtime-lifecycle-authoring-surface) 接管
 - [`012-program-api`](./012-program-api)（Draft）— Process（长效逻辑与跨模块协同收敛）
 - [`013-auto-converge-planner`](./013-auto-converge-planner)（Draft）— Auto Converge Planner（及格线控制面）
 - [`018-periodic-self-calibration`](./018-periodic-self-calibration)（Draft）— 定期自校准（默认值审计 + 运行时自校准）
@@ -191,7 +295,7 @@
 - [`020-runtime-internals-contracts`](./020-runtime-internals-contracts)（Draft）— 运行时内部契约化（Kernel/Services + TrialRun/Reflection）
 - [`021-limit-unbounded-concurrency`](./021-limit-unbounded-concurrency)（Draft）— 并发护栏与预警（限制无上限并发）
 - [`022-module`](./022-module)（Draft）— Module（定义对象）+ ModuleTag（身份锚点）
-- [`023-logic-traits-setup`](./023-logic-traits-setup)（Draft）— Logic Traits in Setup
+- [`023-logic-fields-setup`](./023-logic-fields-setup)（Draft）— Logic Fields in Setup
 - [`024-root-runtime-runner`](./024-root-runtime-runner)（Draft）— Root Runtime Runner（根模块运行入口）
 - [`025-ir-reflection-loader`](./025-ir-reflection-loader)（Draft）— IR Reflection Loader（反射与试运行提取）
 - [`031-trialrun-artifacts`](./031-trialrun-artifacts)（Draft）— TrialRun Artifacts（试运行 IR 工件槽位）
@@ -204,17 +308,25 @@
 - [`005-unify-observability-protocol`](./005-unify-observability-protocol)（Draft）— 统一观测协议与聚合引擎（平台协议层优先）
 - [`014-browser-perf-boundaries`](./014-browser-perf-boundaries)（Active）— 浏览器压测基线与性能边界地图
 - [`017-perf-tuning-lab`](./017-perf-tuning-lab)（Active）— 调参实验场（消费 perf 跑道与控制面）
-- [`015-devtools-converge-performance`](./015-devtools-converge-performance)（Draft）— Devtools 性能面板
+- [`159-dvtools-internal-workbench-cutover`](./159-dvtools-internal-workbench-cutover)（Draft）：DVTools 内部证据解释工作台 cutover
+- [`015-devtools-converge-performance`](./015-devtools-converge-performance)（Draft）：历史 Devtools 性能面板草案；当前只作 159 背景材料
 - [`016-serializable-diagnostics-and-identity`](./016-serializable-diagnostics-and-identity)（Draft）— 可序列化诊断与稳定身份
-- [`038-devtools-session-ui`](./038-devtools-session-ui)（Draft）— Devtools Session-First 界面重设计
-- [`044-trait-converge-diagnostics-sampling`](./044-trait-converge-diagnostics-sampling)（Planned）— Trait 诊断低成本采样（计时/统计）
+- [`038-devtools-session-ui`](./038-devtools-session-ui)（Draft）：历史 Devtools Session-First 界面重设计草案；当前只作 159 背景材料
+- [`044-field-converge-diagnostics-sampling`](./044-field-converge-diagnostics-sampling)（Planned）— Field 诊断低成本采样（计时/统计）
 - [`092-e2e-latency-trace`](./092-e2e-latency-trace)（Draft）— E2E Latency Trace（action→txn→notify→commit）
 
 ### D) 领域包与页面高频模式（Form/Query/i18n + 协调/乐观/资源）
 
-- [`004-trait-bridge-form`](./004-trait-bridge-form)（Draft）— Trait 生命周期桥接 × Form
+- [`004-field-bridge-form`](./004-field-bridge-form)（Draft）— Field 生命周期桥接 × Form
 - [`010-form-api-perf-boundaries`](./010-form-api-perf-boundaries)（Draft）— Form API（设计收敛与性能边界）
 - [`028-form-api-dx`](./028-form-api-dx)（Draft）— Form API 收敛与 DX 提升
+- [`155-form-api-shape`](./155-form-api-shape)（Draft）— Form API shape 主提案与 challenge workflow
+- [`150-form-semantic-closure-group`](./150-form-semantic-closure-group)（Stopped）— 已停止的 Form semantic closure group hub（历史 route manifest / registry / DAG）
+- [`149-list-row-identity-public-projection`](./149-list-row-identity-public-projection)（Stopped）— 已停止的 row roster projection theorem / legality gate
+- [`151-form-active-set-cleanup`](./151-form-active-set-cleanup)（Stopped）— 已停止的 active set / presence / cleanup lane
+- [`154-form-resource-source-boundary`](./154-form-resource-source-boundary)（Stopped）— 已停止的 Query-owned Resource boundary / `field(path).source(...)` gate
+- [`152-form-settlement-contributor`](./152-form-settlement-contributor)（Stopped）— 已停止的 settlement contributor / submit truth / cardinality basis
+- [`153-form-reason-projection`](./153-form-reason-projection)（Stopped）— 已停止的 reason slot / evidence envelope / compare-repair-trial feed
 - [`026-unify-query-domain`](./026-unify-query-domain)（Draft）— Query 收口到 `@logixjs/query`（与 Form 同形）
 - [`074-readquery-create-selector`](./074-readquery-create-selector)（Draft）— ReadQuery.createSelector（显式 deps 的静态选择器）
 - [`029-i18n-root-resolve`](./029-i18n-root-resolve)（Draft）— i18n 接入与 `Root.resolve` 语法糖
@@ -237,6 +349,7 @@
 - [`064-speckit-kanban-timeline`](./064-speckit-kanban-timeline)（Draft）— Specs Timeline Board（Kanban）
 - [`067-action-surface-manifest`](./067-action-surface-manifest)（Draft）— Action Surface 与 Manifest
 - [`069-schema-first-codegen-action-surface`](./069-schema-first-codegen-action-surface)（Draft）— Schema-first 派生 Action Surface
+- [`168-kernel-to-playground-verification-parity`](./168-kernel-to-playground-verification-parity)（Draft）：内核 verification/reflection 到 CLI/Workbench/Playground 的终局 parity 收口；后续走 plan-optimality-loop 打磨
 
 ### F) 示例应用（Galaxy）
 
@@ -251,3 +364,10 @@
 - [`053-core-ng-aot-artifacts`](./053-core-ng-aot-artifacts)（Frozen）— core-ng AOT Artifacts（Static IR / Exec IR 工件化）
 - [`054-core-ng-wasm-planner`](./054-core-ng-wasm-planner)（Frozen）— core-ng Wasm Planner（可选极致路线）
 - [`055-core-ng-flat-store-poc`](./055-core-ng-flat-store-poc)（Frozen）— core-ng Flat Store PoC（arena/SoA/handle 化）
+
+### H) 2026 Runtime 收口补充
+
+- [`131-expert-verification-decouple`](./131-expert-verification-decouple)（Planned）— expert verification backing 脱离 observability，收口内部 owner、shared primitive 与 import 拓扑
+- [`132-verification-proof-kernel`](./132-verification-proof-kernel)（Done）— proof-kernel 第二波，把 canonical trial adapter 压成最小生成元，防止 verification 重新长成多段半独立实现
+- [`168-kernel-to-playground-verification-parity`](./168-kernel-to-playground-verification-parity)（Draft）：从 core verification / reflection authority 到 CLI transport、Workbench projection、Playground diagnostics 的全链路 parity 方向
+- [`170-runtime-lifecycle-authoring-surface`](./170-runtime-lifecycle-authoring-surface)（Implemented）：public lifecycle authoring surface cutover；Logic 只通过 `$.readyAfter(effect, { id?: string })` 贡献 readiness，其余 lifecycle 关注点归 runtime instance、returned run effect、Scope、Runtime / Provider / diagnostics、Platform / host carrier；当前脏分支不作性能结论

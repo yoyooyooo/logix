@@ -29,7 +29,7 @@
   - `traitConvergeBudgetMs`（executionBudgetMs）
   - `traitConvergeDecisionBudgetMs`（decisionBudgetMs）
   - （可选）按 `moduleId` 粒度覆盖
-- Rationale：这些旋钮已有明确证据字段（`traitSummary.converge.*`）与止损语义（`outcome/reasons`），且已在 017 实验场具备人机可读口径；扩展到“缺少证据字段/语义不清”的参数会导致不可解释与不可审计。
+- Rationale：这些旋钮已有明确证据字段（`fieldSummary.converge.*`）与止损语义（`outcome/reasons`），且已在 017 实验场具备人机可读口径；扩展到“缺少证据字段/语义不清”的参数会导致不可解释与不可审计。
 - Alternatives：
   - 扩大到更多内置参数：会引入口径漂移与不可解释结论（Deferred）。
 

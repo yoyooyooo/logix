@@ -1,8 +1,12 @@
 // @ts-nocheck
 import * as Logix from '@logixjs/core'
 import { Chunk, Effect, Layer, Stream } from 'effect'
-import type { CrudApi, CrudDefaultQueryInput } from '@logixjs/domain'
-import { OrdersCrud, type Order } from './crud.business.module.js'
+import type { CrudApi } from '@logixjs/domain/Crud'
+import { OrdersCrud, type Order } from './crud.business.program.js'
+
+type CrudDefaultQueryInput = {
+  readonly pageSize: number
+}
 
 const apiInMemory = (): CrudApi<Order, CrudDefaultQueryInput, string> => {
   const store = new Map<string, Order>()

@@ -1,7 +1,7 @@
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Deferred, Effect, Exit, PubSub, Queue, Scope } from 'effect'
-import * as ModuleRuntime from '../../../../src/internal/runtime/ModuleRuntime.js'
+import * as ModuleRuntime from '../../../../src/internal/runtime/core/ModuleRuntime.js'
 
 const waitForStartup = Effect.promise(
   () =>

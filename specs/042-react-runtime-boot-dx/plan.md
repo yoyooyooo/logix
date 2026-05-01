@@ -9,7 +9,7 @@
 本特性聚焦 `@logixjs/react` 的三类关键路径：
 
 1. `RuntimeProvider` 挂载阶段（运行时/配置快照/Layer 绑定）
-2. `useModule` / `useModuleRuntime` 的首次解析（ModuleImpl 构建 / ModuleTag 解析）
+2. `useModule` / `useModuleRuntime` 的首次解析（ProgramRuntimeBlueprint 构建 / ModuleTag 解析）
 3. 相关诊断事件与 perf-boundary 测量用例（防止同步阻塞回归）
 
 **Decision Digest**（2025-12-27）
@@ -29,14 +29,14 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.8.x（ESM）  
-**Primary Dependencies**: `effect` v3（workspace override 固定 3.19.13）、`@logixjs/core`、`@logixjs/react`、React 19  
-**Storage**: N/A（内存态）  
-**Testing**: Vitest（含浏览器 perf-boundaries 用例）  
-**Target Platform**: Node.js 22.x + 现代浏览器（Vitest browser）  
-**Project Type**: pnpm workspace（packages + examples + apps）  
-**Performance Goals**: 避免在“渲染提交关键路径”引入不可控同步阻塞；为关键路径建立 browser perf-boundary 基线与阈值 gate（详见下文预算与测量口径）  
-**Constraints**: 诊断事件 Slim & 可序列化；禁用时接近零成本；稳定标识（instance/txn/op）不漂移  
+**Language/Version**: TypeScript 5.8.x（ESM）
+**Primary Dependencies**: `effect` v3（workspace override 固定 3.19.13）、`@logixjs/core`、`@logixjs/react`、React 19
+**Storage**: N/A（内存态）
+**Testing**: Vitest（含浏览器 perf-boundaries 用例）
+**Target Platform**: Node.js 22.x + 现代浏览器（Vitest browser）
+**Project Type**: pnpm workspace（packages + examples + apps）
+**Performance Goals**: 避免在“渲染提交关键路径”引入不可控同步阻塞；为关键路径建立 browser perf-boundary 基线与阈值 gate（详见下文预算与测量口径）
+**Constraints**: 诊断事件 Slim & 可序列化；禁用时接近零成本；稳定标识（instance/txn/op）不漂移
 **Scale/Scope**: 以真实业务路由切换/首次进入模块页面为主要场景；需要覆盖 StrictMode/Suspense 行为矩阵
 
 ## Constitution Check
@@ -132,7 +132,7 @@ examples/logix-react/      # 集成 demo（用于手工验收与场景回归）
 研究范围（必须覆盖，且在 `research.md` 中逐项落证据落点）：
 
 - `RuntimeProvider`：同步 `runSync(ReactRuntimeConfigSnapshot.load)` 的渲染期阻塞风险与替代策略（例如完全异步快照、或带 budget/阈值的同步尝试）。
-- `useModule`（ModuleImpl 路径）：`ModuleCache.readSync` 与 `read` 的差异；`suspend:true` 的真实收益边界（runPromise 仍可能同步执行到第一个异步点）；`key`/StrictMode/Suspense 的稳定性约束。
+- `useModule`（ProgramRuntimeBlueprint 路径）：`ModuleCache.readSync` 与 `read` 的差异；`suspend:true` 的真实收益边界（runPromise 仍可能同步执行到第一个异步点）；`key`/StrictMode/Suspense 的稳定性约束。
 - `useModuleRuntime`（ModuleTag 路径）：`runtime.runSync(tag)` 在渲染期可能触发的同步重活与替代策略（例如 suspense/延后/预热）。
 - `ModuleCache`：`read/readSync` 的关键同步点、Scope 生命周期与 GC 策略，及其对 DX（StrictMode jitter / 渲染 abort）的影响。
 - perf-boundaries：现有用例覆盖面（当前以 runtime converge/diagnostics 为主），以及新增“React boot/resolve”测量口径的对齐策略。
@@ -142,16 +142,16 @@ examples/logix-react/      # 集成 demo（用于手工验收与场景回归）
 设计目标：在不引入隐式全局开关的前提下，提供清晰的策略配置入口，让使用者可以用“同一套心智模型”控制：
 
 1. Provider 冷启动行为（尤其是渲染期同步 work）
-2. 模块解析行为（ModuleImpl/ModuleTag）
+2. 模块解析行为（ProgramRuntimeBlueprint/ModuleTag）
 3. 可观测与回归防线（诊断事件 + 性能基线）
 
 拟定方案（允许在 tasks 阶段进一步细化命名，但必须保持语义不漂移）：
 
-- **方案选择（拍板）**：以 **方案 B（cooperative yield）为主线**，优先治理“纯同步重活导致的渲染期阻塞”，并覆盖 ModuleImpl init + ModuleTag resolve；在此基础上交付两层 DX 收敛：**方案 A（Provider 统一 fallback / Suspense 包装）** 与 **方案 C（defer：Provider gating + 可选 preload）**，避免业务侧在“阻塞/挂起/延后”之间散落样板与错误用法。
+- **方案选择（拍板）**：以 **方案 B（cooperative yield）为主线**，优先治理“纯同步重活导致的渲染期阻塞”，并覆盖 ProgramRuntimeBlueprint init + ModuleTag resolve；在此基础上交付两层 DX 收敛：**方案 A（Provider 统一 fallback / Suspense 包装）** 与 **方案 C（defer：Provider gating + 可选 preload）**，避免业务侧在“阻塞/挂起/延后”之间散落样板与错误用法。
 - **关键约束（必须显式治理）**：`RuntimeProvider` 当前会在快照变化时递增 `configVersion`，而 `useModule`/`useLocalModule` 通过 `getModuleCache(runtime, snapshot, configVersion)` 在版本变化时 dispose 旧 cache 并重建；因此“Provider 异步加载快照”若导致快照在子树 mount 后发生变化，会引发 **模块实例被动重建/状态抖动/额外成本**。本特性必须把这条链路收敛为明确策略：要么在子树 mount 前就确定 cache-critical 快照（通过 gating/fallback），要么将快照更新与 cache 版本解耦（只让真正影响 cache 的字段触发版本变更）。
 - **DX 一致性（fallback 统一）**：`RuntimeProvider` 的 `fallback` 作为统一入口：当选择 Provider 级 `suspend/defer`（以及现有 “layer 未就绪”）时都使用同一个 `fallback`，避免业务侧形成两套 fallback 心智。
-- **默认策略（倾向性能友好）**：若业务使用 `RuntimeProvider` 且未显式指定策略，默认推荐走 `suspend`（ModuleImpl init + ModuleTag resolve），并由 `RuntimeProvider.fallback` 承接“未就绪占位”；需要强确定性/无挂起（例如部分测试或极简场景）时，显式切回 `sync`。
-- **实现落点补充（DX 默认策略如何生效）**：`useModule`/`useModuleRuntime` 不要求业务每次显式传 `{ suspend: true }`；而是在内部读取 `RuntimeProvider` 下发的 policy（Context 字段），计算“有效模式”（调用点 options > Provider policy > 内置默认），并据此选择 `ModuleCache.read(...)`（suspend）或 `ModuleCache.readSync(...)`（sync）。ModuleImpl 在 suspend 模式下默认 key 策略为 `autoUseId`（组件级），仅当需要跨组件共享实例时才要求显式 `key`。
+- **默认策略（倾向性能友好）**：若业务使用 `RuntimeProvider` 且未显式指定策略，默认推荐走 `suspend`（ProgramRuntimeBlueprint init + ModuleTag resolve），并由 `RuntimeProvider.fallback` 承接“未就绪占位”；需要强确定性/无挂起（例如部分测试或极简场景）时，显式切回 `sync`。
+- **实现落点补充（DX 默认策略如何生效）**：`useModule`/`useModuleRuntime` 不要求业务每次显式传 `{ suspend: true }`；而是在内部读取 `RuntimeProvider` 下发的 policy（Context 字段），计算“有效模式”（调用点 options > Provider policy > 内置默认），并据此选择 `ModuleCache.read(...)`（suspend）或 `ModuleCache.readSync(...)`（sync）。ProgramRuntimeBlueprint 在 suspend 模式下默认 key 策略为 `autoUseId`（组件级），仅当需要跨组件共享实例时才要求显式 `key`。
 - **审查结论补强（必须解耦 cache invalidation）**：配置刷新（`ReactRuntimeConfigSnapshot.load` 的结果更新）必须与 `ModuleCache` 失效解耦：传递给 `getModuleCache(...)` 的版本标识（现有 `configVersion`）应当仅在 **cache-critical 字段**实际变化时才变化（当前实现里实际影响 `ModuleCache` 的只有 `gcTime`）；`initTimeoutMs` / `lowPriority*` 等非 critical 字段变化不应触发 cache dispose。
 - **协作式让出默认语义（yieldNow）**：cooperative yield 的默认实现建议使用 `Effect.yieldNow()`（microtask 语义）以打断同步前缀并尽快进入 pending；同时保留可配置项（microtask/macrotask/none），避免强制引入 4ms+ 的 macrotask 延迟。
 - **Yield 抖动风险（需要可控默认）**：yield 可能让“原本同步可用”的模块短暂进入 pending，造成极少数场景的 UI 闪烁；默认策略应偏保守：`sync` 模式不引入 yield，`suspend` 模式默认使用 `microtask`（可显式切换为 `none`/`macrotask`），并提供策略入口让调用方只在需要时启用更激进的让出。
@@ -167,7 +167,7 @@ examples/logix-react/      # 集成 demo（用于手工验收与场景回归）
 - **诊断与告警**：当发生渲染期同步阻塞（例如 `runSync` 超过阈值）时，必须产出 Slim 的结构化事件（包含入口点、耗时、模块/实例标识、策略来源），并在 dev/test 环境提供可读错误/告警提示。
 - **DX Guardrails（开发期强提示）**：在开发环境下，若检测到 React render 阶段发生了超过阈值的同步 Logix 初始化/解析（例如 `ModuleCache.readSync` / `useModuleRuntime(tag)` / Provider sync 路径），应输出可行动的 warning（提示切到 `suspend`、开启 yield、或切换 `sync` 预算策略），避免问题只在“卡顿体验”层面暴露。
 - **DX Guardrails（告警格式约束）**：warning 至少包含：阻塞入口点、阻塞时长、可复制修复片段、以及指向用户文档的指针（最终落 `apps/docs`）。
-- **性能基线与回归**：新增 browser perf-boundaries 用例，至少覆盖：RuntimeProvider mount、ModuleTag resolve、ModuleImpl init（sync vs suspend/yield 策略）三个维度，并与 `$logix-perf-evidence` 的证据格式对齐（用于后续提炼性能基线）。
+- **性能基线与回归**：新增 browser perf-boundaries 用例，至少覆盖：RuntimeProvider mount、ModuleTag resolve、ProgramRuntimeBlueprint init（sync vs suspend/yield 策略）三个维度，并与 `$logix-perf-evidence` 的证据格式对齐（用于后续提炼性能基线）。
 
 ## Phase 2: Tasks（在 `$speckit tasks` 中细化）
 
@@ -176,7 +176,7 @@ examples/logix-react/      # 集成 demo（用于手工验收与场景回归）
 1. RuntimeConfig/Provider 策略字段定义与默认值
 2. `RuntimeProvider` 渲染期同步点收敛（含诊断/预算/回退）
 3. `useModule` / `useModuleRuntime` 解析模式与 cooperative yield 支持（含 DX 错误与文档）
-4. `configVersion` 与 cache invalidation 解耦（仅 cache-critical 触发）+ 回归用例：Provider 配置更新不会单纯导致 ModuleImpl 实例重建/remount
+4. `configVersion` 与 cache invalidation 解耦（仅 cache-critical 触发）+ 回归用例：Provider 配置更新不会单纯导致 ProgramRuntimeBlueprint 实例重建/remount
 5. perf-boundaries 新用例 + 阈值 gate（relative budgets）+ 证据输出口径
 6. DX Guardrails（render 阶段超阈值同步阻塞告警）+ 对应用例覆盖
 7. 文档与示例同步（runtime SSoT SSoT + apps/docs + examples）

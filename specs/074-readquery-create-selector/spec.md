@@ -1,8 +1,8 @@
 # Feature Specification: ReadQuery.createSelector（reselect 风格组合器，显式 deps 的静态选择器组合）
 
-**Feature Branch**: `074-readquery-create-selector`  
-**Created**: 2026-01-05  
-**Status**: Draft  
+**Feature Branch**: `074-readquery-create-selector`
+**Created**: 2026-01-05
+**Status**: Draft
 **Input**: 用户问题收敛：proxy-memoize/reselect 是否有用？如何做 reselect 风格 ReadQuery 组合器？ReadQuery 是否会因闭包退化为 dirtyAll？`reads` 是什么？（并与 073 topic 分片订阅相交）
 
 ## Context

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { Effect, Layer, ManagedRuntime, Schema } from 'effect'
 import * as Logix from '../../../../src/index.js'
-import * as BoundApiRuntime from '../../../../src/internal/runtime/BoundApiRuntime.js'
+import * as BoundApiRuntime from '../../../../src/internal/runtime/core/BoundApiRuntime.js'
 
 describe('HierarchicalInjector strict isolation', () => {
   it('does not fall back to process-level runtimeRegistry from other roots', async () => {
@@ -41,7 +41,7 @@ describe('HierarchicalInjector strict isolation', () => {
       expect(pretty).toContain('tokenId: HierStrictChild')
       expect(pretty).toContain('from: HierStrictParent')
       expect(pretty).toContain('fix:')
-      expect(pretty).toContain('imports: [HierStrictChild.impl]')
+      expect(pretty).toContain('imports: [HierStrictChild]')
     } finally {
       await otherRoot.dispose()
       await parentRoot.dispose()

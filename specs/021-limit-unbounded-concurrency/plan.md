@@ -1,7 +1,7 @@
 # Implementation Plan: 并发护栏与预警（限制无上限并发）
 
 **Branch**: `021-limit-unbounded-concurrency` | **Date**: 2025-12-21 | **Spec**: [spec.md](./spec.md)
-**Input**: Feature specification from `/Users/yoyo/Documents/code/personal/intent-flow/specs/021-limit-unbounded-concurrency/spec.md`
+**Input**: Feature specification from `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/021-limit-unbounded-concurrency/spec.md`
 
 ## Summary
 
@@ -15,12 +15,12 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.8.2 + Node.js 22.21.1  
-**Primary Dependencies**: effect v3 (`effect@^3.19.8`) + `@logixjs/*`（核心落点 `@logixjs/core`）  
-**Storage**: N/A（本特性不引入持久化存储）  
-**Testing**: Vitest 4 (`vitest run`) + `@effect/vitest`（Effect-heavy 场景）  
-**Target Platform**: Node.js（测试/脚本） + 现代浏览器（React/Devtools 场景）  
-**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）  
+**Language/Version**: TypeScript 5.8.2 + Node.js 22.21.1
+**Primary Dependencies**: effect v3 (`effect@^3.19.8`) + `@logixjs/*`（核心落点 `@logixjs/core`）
+**Storage**: N/A（本特性不引入持久化存储）
+**Testing**: Vitest 4 (`vitest run`) + `@effect/vitest`（Effect-heavy 场景）
+**Target Platform**: Node.js（测试/脚本） + 现代浏览器（React/Devtools 场景）
+**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）
 **Performance Goals**:
 
 - 默认（diagnostics off）：新增护栏/计数逻辑对代表性跑道的影响 ≤ 2%
@@ -31,7 +31,7 @@
 - 诊断事件必须 slim、可序列化；diagnostics off 接近零成本
 - 诊断/Devtools/Trace 通道允许采样/降噪/降级，但必须可观测且不得反向拖垮业务通道
 - 复用稳定 identity（moduleId/instanceId/txnSeq/opSeq/linkId），禁止随机/时间默认
-- 严格事务边界：事务窗口内不得长耗时 IO/async  
+- 严格事务边界：事务窗口内不得长耗时 IO/async
   **Scale/Scope**:
 - 目标是防止“异常场景资源无限增长”，并提供可观测/可调参的控制面；
 - 不自动改写业务代码内部的并发实现（如用户手写 `Effect.all({ concurrency: "unbounded" })`）。
@@ -86,7 +86,7 @@ packages/logix-core/src/
       └── DebugSink.ts                      # 诊断信号通道（复用 diagnostic 事件类型）
 
 apps/docs/content/docs/guide/advanced/
-└── (新增或更新) concurrency-control-plane.md / performance-and-optimization.md
+└── (新增或更新) concurrency-policy.md / performance-and-optimization.md
 
 packages/logix-core/test/
 └── (新增) ConcurrencyPolicy.*.test.ts

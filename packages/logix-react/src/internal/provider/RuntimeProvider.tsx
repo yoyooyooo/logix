@@ -1,11 +1,13 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import React, { useContext, useEffect, useMemo, useState } from 'react'
 import { Cause, Effect, Layer, ManagedRuntime, Scope, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 import { RuntimeContext, ReactRuntimeContextValue } from './ReactContext.js'
 import { DEFAULT_CONFIG_SNAPSHOT, ReactRuntimeConfigSnapshot, type ReactConfigSnapshot } from './config.js'
 import { isDevEnv } from './env.js'
 import type { FallbackPhase } from './fallback.js'
-import { FallbackProbe, resolveRuntimeProviderFallback } from './fallback.js'
+import { FallbackDurationRecorder, resolveRuntimeProviderFallback } from './fallback.js'
 import { createRuntimeAdapter, useLayerBinding } from './runtimeBindings.js'
 import { getModuleCache, type ModuleCacheFactory } from '../store/ModuleCache.js'
 import {
@@ -16,14 +18,17 @@ import {
   DEFAULT_PRELOAD_CONCURRENCY,
   getPreloadKeyForModuleId,
   getPreloadKeyForTagId,
+  getProgramOwnerId,
+  isProgramHandle,
 } from './policy.js'
+import { useRuntimeHotLifecycleProjectionCleanup } from './runtimeHotLifecycle.js'
+import { bindInstalledDevLifecycleCarrier } from './runtimeDevLifecycleBridge.js'
 
 const SYNC_CONFIG_OVER_BUDGET_BY_RUNTIME = new WeakMap<object, true>()
-
 export interface RuntimeProviderProps {
   // The layer for the React integration must have a closed environment (R = never).
   // It should depend only on global env already provided by runtime, avoiding introducing unsatisfied deps inside the component tree.
-  // Note: StateTransaction observation policy can only be configured via Logix.Runtime.make / Module.implement.
+  // Note: StateTransaction observation policy can only be configured via Logix.Runtime.make / Program.make.
   // RuntimeProvider does not expose any stateTransaction-related props to avoid introducing a second transaction mode at the React layer.
   readonly layer?: Layer.Layer<any, any, never>
   readonly runtime?: ManagedRuntime.ManagedRuntime<any, any>
@@ -66,6 +71,8 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
 }) => {
   const parent = useContext(RuntimeContext)
   const baseRuntime = useRuntimeResolution(runtime, parent)
+  const devLifecycleBinding = useMemo(() => bindInstalledDevLifecycleCarrier(baseRuntime), [baseRuntime])
+  useRuntimeHotLifecycleProjectionCleanup(baseRuntime)
   const providerStartedAtRef = React.useRef(performance.now())
   const providerReadyAtRef = React.useRef<number | undefined>(undefined)
   const didReportProviderGatingRef = React.useRef(false)
@@ -83,7 +90,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
 
   const hasTickServices = useMemo(() => {
     try {
-      Logix.InternalContracts.getRuntimeStore(baseRuntime)
+      RuntimeContracts.getRuntimeStore(baseRuntime)
       return true
     } catch {
       return false
@@ -92,17 +99,25 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
 
   const { binding: tickBinding } = useLayerBinding(
     baseRuntime,
-    Logix.InternalContracts.tickServicesLayer as Layer.Layer<any, never, never>,
+    RuntimeContracts.tickServicesLayer as Layer.Layer<any, never, never>,
     !hasTickServices,
     onErrorRef.current,
   )
 
-  const { binding: layerBinding } = useLayerBinding(baseRuntime, layer, Boolean(layer), onErrorRef.current)
+  const effectiveLayer = useMemo(() => {
+    const devLayer = devLifecycleBinding?.layer
+    if (devLayer && layer) {
+      return Layer.mergeAll(devLayer, layer) as Layer.Layer<any, any, never>
+    }
+    return (layer ?? devLayer) as Layer.Layer<any, any, never> | undefined
+  }, [devLifecycleBinding?.layer, layer])
 
-  const onErrorSink = useMemo<Logix.Debug.Sink | null>(() => {
+  const { binding: layerBinding } = useLayerBinding(baseRuntime, effectiveLayer, Boolean(effectiveLayer), onErrorRef.current)
+
+  const onErrorSink = useMemo<CoreDebug.Sink | null>(() => {
     if (!onError) return null
-    const sink: Logix.Debug.Sink = {
-      record: (event: Logix.Debug.Event) => {
+    const sink: CoreDebug.Sink = {
+      record: (event: CoreDebug.Event) => {
         const handler = onErrorRef.current
         if (!handler) {
           return Effect.void
@@ -144,7 +159,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
     return sink
   }, [Boolean(onError)])
 
-  const inheritedDebugSinks = useMemo<ReadonlyArray<Logix.Debug.Sink>>(() => {
+  const inheritedDebugSinks = useMemo<ReadonlyArray<CoreDebug.Sink>>(() => {
     if (!onErrorSink) {
       return []
     }
@@ -152,7 +167,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
       return layerBinding.debugSinks
     }
     try {
-      return baseRuntime.runSync(Effect.service(Logix.Debug.internal.currentDebugSinks).pipe(Effect.orDie))
+      return baseRuntime.runSync(Effect.service(CoreDebug.internal.currentDebugSinks).pipe(Effect.orDie))
     } catch {
       return []
     }
@@ -160,7 +175,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
 
   // Note: the same Provider subtree must share the same runtime adapter reference.
   // Otherwise ModuleCache (keyed by runtime WeakMap) degrades into "one cache per component",
-  // causing `useModule(Impl,{ key })` to lose cross-component instance reuse.
+  // causing `useModule(Program,{ key })` to lose cross-component instance reuse.
   const runtimeWithBindings = useMemo(
     () =>
       tickBinding || layerBinding || onErrorSink
@@ -172,7 +187,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
             layerBinding ? [layerBinding.logLevel] : tickBinding ? [tickBinding.logLevel] : [],
             [
               onErrorSink
-                ? ([onErrorSink, ...inheritedDebugSinks] as ReadonlyArray<Logix.Debug.Sink>)
+                ? ([onErrorSink, ...inheritedDebugSinks] as ReadonlyArray<CoreDebug.Sink>)
                 : layerBinding
                   ? layerBinding.debugSinks
                   : [],
@@ -239,7 +254,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
 
     void runtimeWithBindings
       .runPromise(
-        Logix.Debug.record({
+        CoreDebug.record({
           type: 'trace:react.runtime.config.snapshot',
           data: {
             source: configState.snapshot.source,
@@ -285,7 +300,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
 
         void runtimeWithBindings
           .runPromise(
-            Logix.Debug.record({
+            CoreDebug.record({
               type: 'trace:react.runtime.config.snapshot',
               data: {
                 source: snapshot.source,
@@ -298,7 +313,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
       .catch((error) => {
         if (cancelled) return
         // eslint-disable-next-line no-console
-        console.debug('[RuntimeProvider] Failed to load React runtime config snapshot, fallback to default.', error)
+        console.debug('[ReactHostAdapter] Failed to load React runtime config snapshot, fallback to default.', error)
         setConfigState((prev) => ({
           snapshot: DEFAULT_CONFIG_SNAPSHOT,
           version: prev.version,
@@ -323,7 +338,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
   )
 
   const isTickServicesReady = hasTickServices || tickBinding !== null
-  const isLayerReady = !layer || layerBinding !== null
+  const isLayerReady = !effectiveLayer || layerBinding !== null
   const isConfigReady = configState.loaded
 
   const resolveFallback = (phase: FallbackPhase): React.ReactNode => {
@@ -344,15 +359,16 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
     if (handles.length === 0) return true
 
     for (const handle of handles) {
-      if ((handle as any)?._tag === 'ModuleImpl') {
-        const moduleId = (handle as any).module?.id ?? 'ModuleImpl'
-        const key = resolvedPolicy.preload.keysByModuleId.get(moduleId) ?? getPreloadKeyForModuleId(moduleId)
+      if (isProgramHandle(handle)) {
+        const blueprint = RuntimeContracts.getProgramRuntimeBlueprint(handle)
+        const ownerId = getProgramOwnerId(handle)
+        const key = resolvedPolicy.preload.keysByModuleId.get(ownerId) ?? getPreloadKeyForModuleId(ownerId)
         const factory: ModuleCacheFactory = (scope: Scope.Scope) =>
-          Layer.buildWithScope((handle as any).layer, scope).pipe(
-            Effect.map((context) => ServiceMap.get(context, (handle as any).module) as any),
+          Layer.buildWithScope(blueprint.layer, scope).pipe(
+            Effect.map((context) => ServiceMap.get(context, blueprint.module) as any),
           )
 
-        const value = preloadCache.warmSync(key, factory, configState.snapshot.gcTime, moduleId, {
+        const value = preloadCache.warmSync(key, factory, configState.snapshot.gcTime, ownerId, {
           entrypoint: 'react.runtime.preload.sync-warm',
           policyMode: 'defer',
         })
@@ -425,17 +441,18 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
 
         const startedAt = performance.now()
 
-        if ((handle as any)?._tag === 'ModuleImpl') {
-          const moduleId = (handle as any).module?.id ?? 'ModuleImpl'
-          const key = resolvedPolicy.preload!.keysByModuleId.get(moduleId) ?? getPreloadKeyForModuleId(moduleId)
+        if (isProgramHandle(handle)) {
+          const blueprint = RuntimeContracts.getProgramRuntimeBlueprint(handle)
+          const ownerId = getProgramOwnerId(handle)
+          const key = resolvedPolicy.preload!.keysByModuleId.get(ownerId) ?? getPreloadKeyForModuleId(ownerId)
 
           const factory: ModuleCacheFactory = (scope: Scope.Scope) =>
-            Layer.buildWithScope((handle as any).layer, scope).pipe(
-              Effect.map((context) => ServiceMap.get(context, (handle as any).module) as any),
+            Layer.buildWithScope(blueprint.layer, scope).pipe(
+              Effect.map((context) => ServiceMap.get(context, blueprint.module) as any),
             )
 
           const op = cache.preload(key, factory, {
-            ownerId: moduleId,
+            ownerId,
             yield: resolvedPolicy.preload!.yield,
             entrypoint: 'react.runtime.preload',
             policyMode: 'defer',
@@ -447,17 +464,18 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
           const durationMs = performance.now() - startedAt
           void runtimeWithBindings
             .runPromise(
-              Logix.Debug.record({
+              CoreDebug.record({
                 type: 'trace:react.module.preload',
-                moduleId,
+                moduleId: blueprint.module.id ?? ownerId,
                 data: {
                   mode: 'defer',
-                  handleKind: 'ModuleImpl',
+                  handleKind: 'Program',
                   key,
                   durationMs: Math.round(durationMs * 100) / 100,
                   concurrency,
                   yieldStrategy: resolvedPolicy.preload!.yield.strategy,
                   yieldOnlyWhenOverBudgetMs: resolvedPolicy.preload!.yield.onlyWhenOverBudgetMs,
+                  ownerId,
                 },
               }) as unknown as Effect.Effect<void, never, never>,
             )
@@ -484,7 +502,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
         const durationMs = performance.now() - startedAt
         void runtimeWithBindings
           .runPromise(
-            Logix.Debug.record({
+            CoreDebug.record({
               type: 'trace:react.module.preload',
               data: {
                 mode: 'defer',
@@ -575,10 +593,10 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
     if (didReportProviderGatingRef.current) {
       return
     }
-    let diagnosticsLevel: Logix.Debug.DiagnosticsLevel = 'off'
+    let diagnosticsLevel: CoreDebug.DiagnosticsLevel = 'off'
     try {
       diagnosticsLevel = runtimeWithBindings.runSync(
-        Effect.service(Logix.Debug.internal.currentDiagnosticsLevel).pipe(Effect.orDie),
+        Effect.service(CoreDebug.internal.currentDiagnosticsLevel).pipe(Effect.orDie),
       )
     } catch {
       diagnosticsLevel = isDevEnv() ? 'light' : 'off'
@@ -594,7 +612,7 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
 
     void runtimeWithBindings
       .runPromise(
-        Logix.Debug.record({
+        CoreDebug.record({
           type: 'trace:react.provider.gating',
           data: {
             event: 'ready',
@@ -621,14 +639,14 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
     const blockers = blockersList.length > 0 ? blockersList.join('+') : undefined
 
     return (
-      <FallbackProbe
+      <FallbackDurationRecorder
         runtime={runtimeWithBindings}
         phase="provider.gating"
         policyMode={resolvedPolicy.mode}
         blockers={blockers}
       >
         {resolveFallback('provider.gating')}
-      </FallbackProbe>
+      </FallbackDurationRecorder>
     )
   }
 
@@ -638,9 +656,9 @@ export const RuntimeProvider: React.FC<RuntimeProviderProps> = ({
     ) : (
       <React.Suspense
         fallback={
-          <FallbackProbe runtime={runtimeWithBindings} phase="react.suspense" policyMode={resolvedPolicy.mode}>
+          <FallbackDurationRecorder runtime={runtimeWithBindings} phase="react.suspense" policyMode={resolvedPolicy.mode}>
             {resolveFallback('react.suspense')}
-          </FallbackProbe>
+          </FallbackDurationRecorder>
         }
       >
         {children}
@@ -657,11 +675,11 @@ const useRuntimeResolution = (
   const baseRuntime = runtimeProp ?? parent?.runtime
   if (!baseRuntime) {
     throw new Error(
-      '[RuntimeProvider] Missing runtime.\n' +
+      '[ReactHostAdapter] Missing runtime for <RuntimeProvider>.\n' +
         '\n' +
         'Fix:\n' +
         '- Provide `runtime` prop: <RuntimeProvider runtime={runtime}>...\n' +
-        '- Or nest under an ancestor RuntimeProvider that provides `runtime`.\n',
+        '- Or nest under an ancestor React host adapter that provides `runtime`.\n',
     )
   }
   return baseRuntime

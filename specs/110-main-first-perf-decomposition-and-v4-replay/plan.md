@@ -23,19 +23,19 @@
 
 - `110`：唯一主控 spec，负责 route、ledgers、promotion gate、`110 -> 111` handoff。
 - `111`：后续系统性方向，只能消费 `110` 的 latest ledger 与 residual latest，在 `main` 控制线上先做 shadow / PoC。
-- `013-auto-converge-planner`：当前 `trait:converge` 契约与 schema baseline。`111` 必须在其基础上增量扩展。
+- `013-auto-converge-planner`：当前 `field:converge` 契约与 schema baseline。`111` 必须在其基础上增量扩展。
 - `v4-perf` worktree 的 `103-effect-v4-forward-cutover`：保留为 dated artifacts / replay / residual 工件池，`110` 只维护 latest pointer 与 route 裁决。
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.x  
-**Primary Dependencies**: effect v3、@logixjs/core、@logixjs/react、pnpm workspace  
-**Storage**: 文件系统规格与 perf 工件  
-**Testing**: Vitest、browser perf collect、PerfDiff  
-**Target Platform**: Node.js 22 + Chromium browser perf harness  
-**Project Type**: pnpm workspace / packages + specs  
-**Performance Goals**: 提高性能主线路线的可解释性和可复用性，减少错误 replay  
-**Constraints**: 不打断当前 perf 主线；不让 `v4-perf` 在无硬证据前重新成为最终母线  
+**Language/Version**: TypeScript 5.x
+**Primary Dependencies**: effect v3、@logixjs/core、@logixjs/react、pnpm workspace
+**Storage**: 文件系统规格与 perf 工件
+**Testing**: Vitest、browser perf collect、PerfDiff
+**Target Platform**: Node.js 22 + Chromium browser perf harness
+**Project Type**: pnpm workspace / packages + specs
+**Performance Goals**: 提高性能主线路线的可解释性和可复用性，减少错误 replay
+**Constraints**: 不打断当前 perf 主线；不让 `v4-perf` 在无硬证据前重新成为最终母线
 **Scale/Scope**: 覆盖 `main` 本体、`main.v3-*` 控制实验线、`v4-perf` replay 策略与 accepted cut 管理
 
 ## Constitution Check

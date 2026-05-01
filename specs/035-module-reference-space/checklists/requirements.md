@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Module Reference Space（模块引用空间事实源）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-25  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-25
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality

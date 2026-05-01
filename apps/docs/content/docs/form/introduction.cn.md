@@ -1,62 +1,193 @@
 ---
-title: 概览：Form 的模型
-description: 先建立清晰的心智模型，再开始写 Demo。
+title: 介绍
+description: Form 负责输入状态领域语义。React 获取与投影继续留在 core host route。
 ---
 
-## 1) Form 是什么
+`@logixjs/form` 在 Logix runtime 之上定义输入状态语义。
 
-`@logixjs/form` 提供 `Form.make(id, config)`：它返回一个 **Form Module**（模块定义对象），可以直接被 Runtime / React 消费。
+当前用户面可以先压成三层：
 
-- **Runtime**：可以直接 `Logix.Runtime.make(FormModule, ...)` 启动（无需手动拆出 `FormModule.impl`）。
-- **React**：可以直接 `useForm(FormModule)` 获取表单视图与默认 `controller`（如 `handleSubmit/validate/reset/...`）。
-- **组合**：当你需要把表单作为子模块装进更大的 Runtime 时，才需要用到 `imports: [FormModule.impl]`。
+1. `Form.make(...)` 负责声明表单语义
+2. returned `FormProgram` 像其他 program 一样进入 Runtime
+3. form handle 负责校验、submit、field 编辑和 list 编辑
 
-也就是说：Form 不是“挂在 React 组件上的局部 state”，而是一个可以被 Runtime 管理、组合与调试的模块。
+## 公开表面
 
-> [!TIP]
-> Form 的派生/联动/校验能力底层来自 traits（能力声明与收敛）。如果你想建立更系统的心智模型：
-> - [Traits（能力声明与收敛）](../guide/essentials/traits)
+根导出包括：
 
-## 2) 表单状态长什么样
+- `Form.make`
+- `Form.Rule`
+- `Form.Error`
+- `Form.Companion`
 
-一个 Form 的 state 由四部分组成：
+可选公开子路径：
 
-- **values**：你关心的业务表单值（由 `config.values` 的 Schema 决定）
-- **errors**：错误树（规则、手动错误、Schema 错误都写进这棵树）
-- **ui**：交互态（例如 touched/dirty）
-- **$form**：表单元信息（submitCount/isSubmitting/isDirty/errorCount 等）
+- `@logixjs/form/locales`
 
-其中 `errorCount` 用于在 UI 侧 O(1) 判断 `isValid/canSubmit`，避免扫描整个错误树。
+React 消费继续留在 core host route：
 
-## 3) 错误树的统一口径：`$list/rows[]`
+- 通过 `RuntimeProvider` 挂载
+- 通过 `useModule(...)` 获取
+- 通过 `useSelector(...)` 读取
+- 通过 form handle 写入
 
-数组字段的错误写回统一使用 `rows` 映射：
+## 默认阅读顺序
 
-- valuePath：`items.0.name`
-- errorsPath：`errors.items.rows.0.name`
+- 先看默认 authoring 与 submit/validation
+- 再看共享实例、局部实例和 keyed 恢复
+- 再看 source scheduling 与远端事实链
+- 再看 companion local support facts
+- 最后看 row identity、cleanup receipt 与 row-heavy 编辑
 
-列表级与行级错误也有固定位置：
+## 作者面
 
-- 列表级：`errors.items.$list`
-- 行级：`errors.items.rows.0.$item`
+```ts
+import * as Form from "@logixjs/form"
+import { Schema } from "effect"
 
-这套口径的目的：让 **数组增删/重排** 时，错误树与 UI 树能稳定“跟着行走”，而不是因为 index 漂移产生错位。
+const Values = Schema.Struct({
+  name: Schema.String,
+  email: Schema.String,
+})
 
-## 4) 事务语义：一次交互最多一次可观察提交
+const SubmitPayload = Schema.Struct({
+  name: Schema.String,
+  email: Schema.String,
+})
 
-在 React 侧你通常会调用：
+export const ProfileForm = Form.make(
+  "ProfileForm",
+  {
+    values: Values,
+    initialValues: {
+      name: "",
+      email: "",
+    },
+    validateOn: ["onSubmit"],
+    reValidateOn: ["onChange"],
+  },
+  (form) => {
+    form.field("name").rule(
+      Form.Rule.make({
+        required: "profile.name.required",
+        minLength: {
+          min: 2,
+          message: "profile.name.minLength",
+        },
+      }),
+    )
 
-- `useField(form, path).onChange(...)`（内部派发 `setValue`）
-- `useField(form, path).onBlur()`（内部派发 `blur`）
-- `useFieldArray(form, listPath).append/remove/swap/move(...)`
+    form.field("email").rule(
+      Form.Rule.make({
+        required: "profile.email.required",
+      }),
+    )
 
-这些都进入同一个 Runtime 的事务窗口，由运行时统一执行派生/校验写回，并以“最多一次提交”的方式通知订阅者。
+    form.submit({
+      decode: SubmitPayload,
+    })
+  },
+)
+```
 
-## 5) 推荐入口：`derived + rules`
+## Runtime 消费
 
-日常业务表单推荐只用两类顶层概念完成：
+```tsx
+import React from "react"
+import * as Logix from "@logixjs/core"
+import { Effect } from "effect"
+import { RuntimeProvider, useModule, useSelector } from "@logixjs/react"
+import { ProfileForm } from "./ProfileForm"
 
-- `derived`：派生/联动（computed/link/source），只写 values/ui
-- `rules`：校验（field/list/root），只写 errors
+const runtime = Logix.Runtime.make(ProfileForm)
 
-`traits` 仍然保留，但更适合高级能力或性能/诊断对照，不建议作为默认入口。
+function ProfilePage() {
+  const form = useModule(ProfileForm.tag)
+  const name = useSelector(form, (s) => s.name)
+  const email = useSelector(form, (s) => s.email)
+  const nameError = useSelector(form, (s) => s.errors?.name)
+  const canSubmit = useSelector(
+    form,
+    (s) => s.$form.errorCount === 0 && !s.$form.isSubmitting,
+  )
+
+  return (
+    <form>
+      <input
+        value={String(name ?? "")}
+        onChange={(e) => void Effect.runPromise(form.field("name").set(e.target.value))}
+        onBlur={() => void Effect.runPromise(form.field("name").blur())}
+      />
+
+      <input
+        value={String(email ?? "")}
+        onChange={(e) => void Effect.runPromise(form.field("email").set(e.target.value))}
+        onBlur={() => void Effect.runPromise(form.field("email").blur())}
+      />
+
+      {nameError ? <p>{String(nameError)}</p> : null}
+
+      <button
+        type="button"
+        disabled={!canSubmit}
+        onClick={() =>
+          void Effect.runPromise(
+            form.submit({
+              onValid: (payload) => Effect.log(payload),
+            }),
+          )
+        }
+      >
+        提交
+      </button>
+    </form>
+  )
+}
+
+export const App = () => (
+  <RuntimeProvider runtime={runtime}>
+    <ProfilePage />
+  </RuntimeProvider>
+)
+```
+
+## 实例选择
+
+当 Runtime 已经托管一个共享实例时，用 `useModule(ProfileForm.tag)`。
+
+当页面需要一个独立实例时，用 `useModule(ProfileForm, { key })`：
+
+```tsx
+const form = useModule(ProfileForm, { key: "profile:42" })
+```
+
+如果每个组件需要自己的副本，可以省略 key：
+
+```tsx
+const form = useModule(ProfileForm)
+```
+
+如果路由切换后需要短时间恢复，给 keyed 实例加 `gcTime`：
+
+```tsx
+const form = useModule(ProfileForm, {
+  key: "profile:42",
+  gcTime: 60_000,
+})
+```
+
+## 排除项
+
+当前表面不包括：
+
+- 第二套 form-owned React hook family
+- package-local React wrapper 被当成公开真相
+- rule declaration 直接产出 render-ready string
+- 替代 core host route 的 helper family
+
+## 延伸阅读
+
+- [Instances](/cn/docs/form/instances)
+- [Sources](/cn/docs/form/sources)
+- [Companion](/cn/docs/form/companion)
+- [Field arrays](/cn/docs/form/field-arrays)

@@ -27,10 +27,10 @@ git log --oneline origin/main -- .github/workflows/logix-perf-quick.yml .github/
 - `.github/workflows/logix-perf-sweep.yml`
 - `.github/scripts/logix-perf-normalize-ci-reports.cjs`
 - `.github/scripts/logix-perf-quick-summary.cjs`
-- `.codex/skills/logix-perf-evidence/scripts/collect.ts`
-- `.codex/skills/logix-perf-evidence/scripts/diff.ts`
-- `.codex/skills/logix-perf-evidence/scripts/validate.ts`
-- `.codex/skills/logix-perf-evidence/scripts/bench.traitConverge.node.ts`
+- `packages/logix-perf-evidence/scripts/collect.ts`
+- `packages/logix-perf-evidence/scripts/diff.ts`
+- `packages/logix-perf-evidence/scripts/validate.ts`
+- `packages/logix-perf-evidence/scripts/bench.traitConverge.node.ts`
 
 ## notes
 

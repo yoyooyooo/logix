@@ -2,7 +2,7 @@
 
 > 目标：为脚本/CLI/测试提供统一的“根模块运行入口”，并让 `@logixjs/test` 彻底复用同一套生命周期语义（不再维护独立的 Scenario/TestRuntime 模型）。
 
-Date: 2025-12-25  
+Date: 2025-12-25
 Scope: `specs/024-root-runtime-runner/`
 
 ## ✅ 当前状态
@@ -104,11 +104,16 @@ After（新模型）：
 import { TestProgram } from "@logixjs/test"
 import * as Logix from "@logixjs/core"
 
-const program = HostModule.implement({
+const targetProgram = Logix.Program.make(TargetModule, {
+  initial: targetInitial,
+})
+
+const program = Logix.Program.make(HostModule, {
   initial,
   logics: [HostLogic],
-  imports: [TargetModule.impl],
-  processes: [Logix.Link.make({ modules: [HostModule, TargetModule] }, ($) => /* ... */)],
+  capabilities: {
+    imports: [targetProgram],
+  },
 })
 
 yield* TestProgram.runProgram(program, (api) => /* ... */)

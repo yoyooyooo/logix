@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://intent-flow.local/specs/032-ui-projection-contract/schemas/ui-blueprint.schema.json",
+  "$id": "https://logix.local/specs/032-ui-projection-contract/schemas/ui-blueprint.schema.json",
   "title": "UiBlueprint",
   "type": "object",
   "additionalProperties": false,

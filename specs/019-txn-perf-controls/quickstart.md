@@ -1,6 +1,6 @@
 # Quickstart: 事务性能控制（高性能最佳实践）
 
-**Feature**: `specs/019-txn-perf-controls/spec.md`  
+**Feature**: `specs/019-txn-perf-controls/spec.md`
 **Created**: 2025-12-20
 
 ## ≤5 关键词（心智模型）

@@ -1,11 +1,12 @@
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
-import * as Debug from '../src/Debug.js'
+import * as Debug from '@logixjs/core/repo-internal/debug-api'
 import * as Logix from '../src/index.js'
+import * as Platform from '../src/internal/runtime/core/Platform.js'
 import { makeEventCollectorSink } from './fixtures/lifecycle.js'
 
-class TestPlatform implements Logix.Platform.Service {
+class TestPlatform implements Platform.Service {
   private readonly suspendHandlers: Array<Effect.Effect<void, never, any>> = []
   private readonly resumeHandlers: Array<Effect.Effect<void, never, any>> = []
   private readonly resetHandlers: Array<Effect.Effect<void, never, any>> = []
@@ -47,10 +48,7 @@ describe('Platform signals (no handlers)', () => {
           actions: {},
         })
 
-        const logic = TestModule.logic(() => ({
-          setup: Effect.void,
-          run: Effect.void,
-        }))
+        const logic = TestModule.logic('test-module-logic', () => Effect.void)
 
         const baseLayer = TestModule.live({ count: 0 }, logic) as unknown as Layer.Layer<
           Logix.ModuleRuntime<any, any>,
@@ -59,7 +57,7 @@ describe('Platform signals (no handlers)', () => {
         >
 
         const platform = new TestPlatform()
-        const platformLayer = Layer.succeed(Logix.Platform.tag, platform)
+        const platformLayer = Layer.succeed(Platform.Tag, platform)
         const layer = Layer.provideMerge(baseLayer, platformLayer) as unknown as Layer.Layer<
           Logix.ModuleRuntime<any, any>,
           never,

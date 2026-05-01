@@ -1,8 +1,8 @@
 # Feature Specification: O-007 Logic 执行语义收敛（淘汰多重兼容分支）
 
-**Feature Branch**: `097-o007-logic-semantics`  
-**Created**: 2026-02-25  
-**Status**: Planned  
+**Feature Branch**: `097-o007-logic-semantics`
+**Created**: 2026-02-25
+**Status**: Planned
 **Input**: User description: "O-007 Logic 执行语义收敛（淘汰多重兼容分支）：定义单一 canonical 执行模型（setup/run 边界固定），迁移后删掉兼容逻辑分支，确保 phase 错误可解释且启动链路缩短。"
 
 ## North Stars & Kill Features Traceability _(optional)_
@@ -29,8 +29,8 @@
 
 作为 runtime 维护者，我希望不同形态的 logic（单相、plan、plan effect）都先归一到一个 canonical plan，再走同一 setup/run 管线，避免每种形态各走一套分支。
 
-**Why this priority**: 这是 O-007 的核心目标，直接决定热路径复杂度和可维护性。  
-**Independent Test**: 使用 `ModuleRuntime` 单测构造三类 logic 输入，断言最终均走同一 setup/run 执行路径且行为一致。  
+**Why this priority**: 这是 O-007 的核心目标，直接决定热路径复杂度和可维护性。
+**Independent Test**: 使用 `ModuleRuntime` 单测构造三类 logic 输入，断言最终均走同一 setup/run 执行路径且行为一致。
 
 **Acceptance Scenarios**:
 
@@ -43,13 +43,13 @@
 
 作为调试 runtime 的开发者，我希望 setup/run 越界错误统一收敛为结构化诊断，不需要从多个分支推断错误来源。
 
-**Why this priority**: O-007 验收要求明确包含“phase 相关错误更可解释”。  
-**Independent Test**: 在 setup 中调用 run-only API、在 run 中调用 setup-only API，断言产出稳定 `logic::invalid_phase` 事件，并包含明确 hint。  
+**Why this priority**: O-007 验收要求明确包含“phase 相关错误更可解释”。
+**Independent Test**: 在 setup 中调用 run-only API、在 run 中调用 setup-only API，断言产出稳定 `logic::invalid_phase` 事件，并包含明确 hint。
 
 **Acceptance Scenarios**:
 
 1. **Given** logic 在 setup 中调用 `$.onAction` 或 `$.use`，**When** runtime 启动，**Then** 输出 `logic::invalid_phase` 诊断且不导致构造链路崩溃。
-2. **Given** logic 在 run 中调用 `$.lifecycle.*` 或 `$.traits.declare`，**When** runtime 运行，**Then** 输出可解释的 phase 错误诊断并保持诊断事件 Slim/可序列化。
+2. **Given** logic 在 run 中调用 `$.lifecycle.*` 或 `$.fields`，**When** runtime 运行，**Then** 输出可解释的 phase 错误诊断并保持诊断事件 Slim/可序列化。
 
 ---
 
@@ -57,8 +57,8 @@
 
 作为性能负责人，我希望在语义统一后验证启动路径没有回归，且有 before/after 证据可以复现。
 
-**Why this priority**: 本任务触及 `logix-core` 核心执行路径，必须满足性能与可诊断性优先原则。  
-**Independent Test**: 采集 O-007 专项 perf 报告并产出 diff，验证 ModuleRuntime logic 启动路径无回归。  
+**Why this priority**: 本任务触及 `logix-core` 核心执行路径，必须满足性能与可诊断性优先原则。
+**Independent Test**: 采集 O-007 专项 perf 报告并产出 diff，验证 ModuleRuntime logic 启动路径无回归。
 
 **Acceptance Scenarios**:
 

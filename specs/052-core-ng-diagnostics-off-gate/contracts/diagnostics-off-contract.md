@@ -10,7 +10,7 @@
 
 ## Enforcement（实现落点 / SSoT）
 
-- Converge 热路径 off 闸门：`packages/logix-core/src/internal/state-trait/converge.ts`（见 039 的 T030 约束）
+- Converge 热路径 off 闸门：`packages/logix-core/src/internal/state-field/converge.ts`（见 039 的 T030 约束）
 - Debug 事件补全闸门：`packages/logix-core/src/internal/runtime/core/DebugSink.ts`
 - Exec VM 证据 off 早退：`packages/logix-core-ng/src/ExecVmEvidence.ts`
 - Devtools 导出裁剪：`packages/logix-core/src/internal/runtime/core/DevtoolsHub.ts`（`toRuntimeDebugEventRef` 在 off 下返回 `undefined`）

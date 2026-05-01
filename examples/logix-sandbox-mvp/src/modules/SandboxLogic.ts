@@ -1,6 +1,7 @@
 import { Effect, Stream } from 'effect'
 import { SandboxDef } from './SandboxModule'
-import { SandboxClientTag, type MockManifest, type RunResult, type SandboxErrorInfo } from '@logixjs/sandbox'
+import { SandboxClientTag } from '@logixjs/sandbox'
+import type { MockManifest, SandboxErrorInfo, SandboxRunResult } from '../sandbox-contract'
 import type { SpecFeature, SpecScenario, SpecStep } from '../types/spec'
 
 const LOGIX_AUTO_IMPORT_SNIPPET = `import * as Logix from "@logixjs/core"\n`
@@ -18,13 +19,10 @@ const withLogixAutoImport = (code: string): string => {
   return `${LOGIX_AUTO_IMPORT_SNIPPET}\n${code}`
 }
 
-export const SandboxLogic = SandboxDef.logic<SandboxClientTag>(($) => {
-  // Two-phase Logic: setup (synchronous, no Env) + run (async, Env available)
-  return {
-    setup: Effect.void, // No setup needed for this module
-
-    run: Effect.gen(function* () {
-      yield* Effect.log('[SandboxLogic] Logic run phase started')
+export const SandboxLogic = SandboxDef.logic<SandboxClientTag>('sandbox-logic', ($) => {
+  // Declaration is empty for this module; return the run effect directly.
+  return Effect.gen(function* () {
+    yield* Effect.log('[SandboxLogic] Logic run phase started')
 
       // Get the SandboxClient service
       const client = yield* $.use(SandboxClientTag)
@@ -156,7 +154,7 @@ export const SandboxLogic = SandboxDef.logic<SandboxClientTag>(($) => {
 
               // 2. Run
               yield* Effect.log('[SandboxLogic] run: executing...')
-              const result: RunResult = yield* client.run({
+              const result: SandboxRunResult = yield* client.run({
                 useCompiledCode: true,
                 kernelId,
                 strict,
@@ -242,6 +240,5 @@ export const SandboxLogic = SandboxDef.logic<SandboxClientTag>(($) => {
         ],
         { concurrency: 'unbounded' },
       )
-    }),
-  }
+  })
 })

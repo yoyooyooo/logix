@@ -47,15 +47,17 @@ Logix “productizes” lifecycles, but it’s still Scope underneath:
 - held by the Runtime created via `Logix.Runtime.make(...)`
 - typical close:
   - the host calls `runtime.dispose()`;
-  - Node/CLI uses `Runtime.runProgram/openProgram`, which closes `ctx.scope` on finish/signal.
+  - Node/CLI uses `Runtime.run/openProgram`, which closes `ctx.scope` on finish/signal.
 - React: `RuntimeProvider` does **not** automatically call `runtime.dispose()` (a runtime may be shared). Therefore:
   - typical SPA: export a module-level singleton runtime (don’t create it in render) and you usually don’t need an explicit dispose;
   - micro-frontends / repeated mount-unmount / tests: call `runtime.dispose()` at the host boundary that created the runtime (e.g. micro-frontend `unmount()`, or your React root teardown).
+  - development HMR: let the boundary that created the runtime own the hot lifecycle. In this wave the owner applies `reset` when a successor runtime exists and `dispose` when no successor exists.
 - impact: global modules resolved via `useModule(Tag)` run `onDestroy` here.
 
 ### 4.2 Local Module Scope (local / multi-instance)
 
-- created/managed by `useModule(Impl)` / `useLocalModule(Module)` / `ModuleScope` (usually with caching and `gcTime`)
+- created/managed by `useModule(Program, options?)` by default
+- `useModule(Impl)` / `useLocalModule(...)` / `ModuleScope` remain specialized routes (usually with caching and `gcTime`)
 - typical close: after the last holder unmounts (optionally delayed by `gcTime`)
 - impact: local module `onDestroy` is “instance scope closes”, not “a single component unmounts”.
 
@@ -64,6 +66,19 @@ Logix “productizes” lifecycles, but it’s still Scope underneath:
 - each `RuntimeProvider.layer` builds its `Layer` inside an independent Scope
 - typical close: Provider unmounts, or the `layer` reference changes and triggers a rebuild
 - impact: affects only subtree Env overrides (services / logger / debug sinks, etc.), not `runtime.dispose()`.
+
+### 4.4 Development hot lifecycle
+
+- The owner is the boundary that creates the runtime.
+- `RuntimeProvider` only projects the current runtime into React.
+- Enable the dev lifecycle carrier once at the host boundary:
+  - Vite: add `logixReactDevLifecycle()` in `vite.config.ts`.
+  - Vitest: call `installLogixDevLifecycleForVitest()` from a setup file.
+- Do not add per-demo or per-component lifecycle helpers. User code should keep normal `Logix.Runtime.make(...)` and `RuntimeProvider` authoring.
+- A hot update closes runtime-owned work from the previous owner before the successor becomes authoritative.
+- Current decisions are limited to `reset` and `dispose`.
+- State survival across arbitrary code edits is a separate future gate.
+- Lifecycle evidence is emitted as `runtime.hot-lifecycle` through the existing evidence envelope.
 
 ## 5) `addFinalizer` vs `ensuring/acquireRelease`: don’t mix them up
 
@@ -95,10 +110,11 @@ const program = Effect.acquireRelease(
 
 - Treating `useModule(Tag)` as “local state disposed on component unmount”: wrong. It’s Runtime-scoped; lifetime is driven by `runtime.dispose()`.
 - Creating a new `Layer` / new deps array every render under `RuntimeProvider`: causes frequent Provider layer Scope rebuilds; memoize with `useMemo`.
+- Creating runtimes in many unrelated HMR snippets: centralize ownership at the runtime creation boundary so hot updates use one reset/dispose path.
 - Doing IO / reading Env in the setup phase of `logic()`: likely to trigger `logic::invalid_phase` / `logic::setup_unsafe_effect`; move IO into `onInitRequired/onStart` or run-phase watchers.
 - Expecting `addFinalizer` to run when a watcher finishes: wrong. `addFinalizer` is Scope-bound; use `ensuring/acquireRelease` for task-level cleanup.
 
-## Next
+## See also
 
 - Watcher mounting/stopping patterns: [Lifecycle and Watchers](../learn/lifecycle-and-watchers).
-- “Actually cancel the HTTP request”: [Cancelable IO (cancellation and timeouts)](./resource-cancellation).
+- To actually cancel an HTTP request, pass Effect's `AbortSignal` through to the HTTP client you use in the load path.

@@ -1,7 +1,7 @@
 # Tasks: 090 Suspense Resource/Query
 
-**Input**: `specs/090-suspense-resource-query/spec.md`, `specs/090-suspense-resource-query/plan.md`  
-**Prerequisites**: `specs/088-async-action-coordinator/`（action 链路与稳定标识）  
+**Input**: `specs/090-suspense-resource-query/spec.md`, `specs/090-suspense-resource-query/plan.md`
+**Prerequisites**: `specs/088-async-action-coordinator/`（action 链路与稳定标识）
 **Tests**: 涉及 IO/缓存/React 关键路径，测试与 perf evidence 视为必需。
 
 ## Phase 1: Setup（文档与术语）

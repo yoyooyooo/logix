@@ -1,0 +1,40 @@
+import { defineDiagnosticsDemoProject } from '../shared'
+
+const mainProgramSource = [
+  'import { Config, Effect, Schema } from "effect"',
+  'import * as Logix from "@logixjs/core"',
+  '',
+  'const Root = Logix.Module.make("Diagnostics.TrialMissingConfig", {',
+  '  state: Schema.Void,',
+  '  actions: {},',
+  '})',
+  '',
+  'export const Program = Logix.Program.make(Root, {',
+  '  initial: undefined,',
+  '  logics: [',
+  '    Root.logic("read-config-on-startup", ($) => {',
+  '      $.readyAfter(',
+  '        Effect.gen(function* () {',
+  '          yield* Config.string("MISSING_CONFIG_KEY")',
+  '        }) as any,',
+  '        { id: "missing-config" },',
+  '      )',
+  '      return Effect.void',
+  '    }),',
+  '  ],',
+  '})',
+  '',
+  'export const main = () => Effect.succeed({ trialDemo: "missing-config" })',
+].join('\n')
+
+export const logixReactTrialMissingConfigDiagnosticsProject = defineDiagnosticsDemoProject({
+  id: 'logix-react.diagnostics.trial-missing-config',
+  demoId: 'trial-missing-config',
+  authorityClass: 'runtime-trial-report',
+  title: 'Trial missing config diagnostics',
+  mainProgramSource,
+  expectedCodes: ['MissingDependency'],
+  expectedAuthorities: ['runtime.trial/startup'],
+  expectedEvidence: ['config:MISSING_CONFIG_KEY'],
+  expectedTrialDependencyKinds: ['config'],
+})

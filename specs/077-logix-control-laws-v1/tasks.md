@@ -1,6 +1,6 @@
 # Tasks: Logix Control Laws v1（Spec Group）
 
-**Input**: `specs/077-logix-control-laws-v1/{spec,plan}.md`  
+**Input**: `specs/077-logix-control-laws-v1/{spec,plan}.md`
 **Rule**: 不复制 member tasks；只做索引、门槛与验收派发。
 
 ## Phase 1: Registry（关系 SSoT）

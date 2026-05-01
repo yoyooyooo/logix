@@ -1,6 +1,6 @@
 # Tasks: 022 Module（定义对象）+ ModuleTag（身份锚点）
 
-**Input**: Design documents from `/specs/022-module/`  
+**Input**: Design documents from `/specs/022-module/`
 **Prerequisites**: `plan.md` (required), `spec.md` (required), `research.md`, `data-model.md`, `contracts/`, `quickstart.md`
 
 ## Format: `[ID] [P?] [Story] Description`
@@ -15,7 +15,7 @@
 
 **Purpose**: 为 022 的性能证据与落点准备可复跑脚手架
 
-- [X] T001 Add 022 perf scripts to `.codex/skills/logix-perf-evidence/package.json`（`bench:useModule`、`bench:useModule:quick`）
+- [X] T001 Add 022 perf scripts to `packages/logix-perf-evidence/package.json`（`bench:useModule`、`bench:useModule:quick`）
 - [X] T002 Add perf evidence doc scaffold in `specs/022-module/perf.md` (copy structure from `specs/008-hierarchical-injector/perf.md`)
 - [X] T003 [P] Implement 022 micro-bench runner（入口：`pnpm perf bench:useModule`）(bench `$.use(ModuleTag)` vs `$.use(Module)` hit/miss; output JSON)
 - [X] T004 Record **BEFORE** perf evidence in `specs/022-module/perf.md` (run `pnpm perf bench:useModule`; store raw JSON in `specs/022-module/perf/before.useModule.json`)
@@ -36,8 +36,8 @@
 - [X] T010 Extend Bound API typing to accept `$.use(module)` in `packages/logix-core/src/Bound.ts` and `packages/logix-core/src/internal/runtime/core/module.ts` (Module overload + extended ModuleHandle typing)
 - [X] T011 Extend runtime Bound API implementation to unwrap Module in `packages/logix-core/src/internal/runtime/BoundApiRuntime.ts` (O(1) detect/unwrap; preserve `Symbol.for(\"logix.module.handle.extend\")` behavior; no IO/async)
 - [X] T012 Add `$.self` support for `module.logic(build, { id? })` in `packages/logix-core/src/Module.ts` (Bound API wrapper that yields current ModuleHandle)
-- [X] T013 Support `Logix.Runtime.make(module)` in `packages/logix-core/src/Runtime.ts` (unwrap to `module.impl`; keep behavior equal to `Runtime.make(module.impl)`)
-- [X] T014 Support `useModule(module)` in `packages/logix-react/src/hooks/useModule.ts` (unwrap to `module.impl` by default; global usage stays `useModule(module.tag)` / ModuleTag)
+- [X] T013 Support `Logix.Runtime.make(program)` in `packages/logix-core/src/Runtime.ts` (resolve internal runtime blueprint through the Program helper)
+- [X] T014 Support `useModule(program)` in `packages/logix-react/src/hooks/useModule.ts` (Program gives local instance semantics; global usage stays `useModule(module.tag)` / ModuleTag)
 - [X] T015 [P] Implement handle-extend merge for React `useModule` in `packages/logix-react/src/hooks/useModule.ts` + `packages/logix-react/src/internal/ModuleRef.ts` (apply `Symbol.for(\"logix.module.handle.extend\")`; ref gains controller/services when available)
 - [X] T016 [P] Align `@logixjs/react` docs for Module consumption in `docs/ssot/runtime/logix-react/01-react-integration.md`
 - [X] T017 Implement `ModuleDescriptor` builder (pure + slim + serializable; include `moduleId/instanceId`; `logicUnits[].id` from resolved slot keys, and mark derived ids when applicable) in `packages/logix-core/src/Module.ts` (match `specs/022-module/contracts/schemas/module-descriptor.schema.json`)
@@ -92,13 +92,13 @@
 
 **Goal**: 迁移说明与示例更新，让业务开发者理解“直接吃 Module”的局部/全局语义与拆壳规则
 
-**Independent Test**: 更新后的 `examples/logix-react` 表单 demos 不再依赖显式 `.module/.impl` 拆壳即可跑通；文档能解释“入口直接吃 Module”默认是局部还是全局
+**Independent Test**: 更新后的 `examples/logix-react` 表单 demos 不再依赖旧蓝图拆壳即可跑通；文档能解释 `useModule(Program)` 与 `useModule(ModuleTag)` 的局部/全局边界
 
 - [X] T038 [P] [US3] Update core API docs for Module/ModuleTag in `docs/ssot/runtime/logix-core/api/02-module-and-logic-api.md` and runtime glossary in `docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.md`
 - [X] T039 [P] [US3] Document `$.use(module)` / `$.self` semantics in `docs/ssot/runtime/logix-core/api/03-logic-and-flow.md`
 - [X] T040 [P] [US3] Update user docs for Form Module migration in `apps/docs/content/docs/form/quick-start.md` and `apps/docs/content/docs/form/introduction.md`
-- [X] T041 [US3] Migrate React form demos to consume Module directly in `examples/logix-react/src/demos/form/FormDemoLayout.tsx` and `examples/logix-react/src/demos/form/TraitFormDemoLayout.tsx`
-- [X] T042 [P] [US3] Migrate remaining form demo layouts to Module in `examples/logix-react/src/demos/form/FormCasesDemoLayout.tsx` and `examples/logix-react/src/demos/form/ComplexTraitFormDemoLayout.tsx`
+- [X] T041 [US3] Migrate React form demos to consume Module directly in `examples/logix-react/src/demos/form/FormDemoLayout.tsx` and `examples/logix-react/src/demos/form/FieldFormDemoLayout.tsx`
+- [X] T042 [P] [US3] Migrate remaining form demo layouts to Module in `examples/logix-react/src/demos/form/FormCasesDemoLayout.tsx` and `examples/logix-react/src/demos/form/ComplexFieldFormDemoLayout.tsx`
 
 **Checkpoint**: 迁移文档与示例一致，调用侧心智模型统一
 
@@ -168,4 +168,4 @@ Task: "Implement CRUD Module factory in packages/domain/src/Crud.ts"
 2. **先打通 Phase 2**：把 Module 的拆壳协议（`$.use(module)`、`Runtime.make(module)`、`useModule(module)`）做成统一入口，避免下游各自 duck-typing。
 3. **US1 做 MVP**：优先让 Form 跑通 “Module + withLogic + $.self + controller”，并用 `packages/logix-form/test` 锁死语义。
 4. **US2 做第二领域样本**：用最小 CRUD 工厂验证“领域工厂产物统一形状”，避免为 demo 引入网络/持久化。
-5. **US3 做迁移收口**：最后集中迁移 docs/demos（以及必要的测试/fixture），确保“免 `.module/.impl`”的心智模型在代码与文档侧一致。
+5. **US3 做迁移收口**：最后集中迁移 docs/demos（以及必要的测试/fixture），确保 `Module -> Program -> Runtime` 的心智模型在代码与文档侧一致。

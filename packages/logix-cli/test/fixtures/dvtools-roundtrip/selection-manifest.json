@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "kind": "LogixSelectionManifest",
+  "selectionId": "fixture:selection:dvtools-roundtrip",
+  "sessionId": "session:checkout",
+  "findingId": "finding:missing-service",
+  "artifactOutputKey": "dvtools-selected-finding",
+  "focusRef": {
+    "sourceRef": "examples/checkout.ts:42"
+  }
+}

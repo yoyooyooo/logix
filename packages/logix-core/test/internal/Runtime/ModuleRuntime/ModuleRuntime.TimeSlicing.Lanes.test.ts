@@ -1,3 +1,5 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Schema } from 'effect'
@@ -34,22 +36,21 @@ describe('ModuleRuntime time-slicing (lanes enabled)', () => {
       const State = Schema.Struct(fields) as any
       const Actions = { noop: Schema.Void }
 
-      const traits: Record<string, any> = {}
+      const fieldDeclarations: Record<string, any> = {}
       for (let i = 0; i < DEFERRED; i++) {
         const key = `d${i}`
-        traits[key] = Logix.StateTrait.computed({
+        fieldDeclarations[key] = FieldContracts.fieldComputed({
           deps: ['a'] as any,
           get: (a: any) => computeValue(a, i),
           scheduling: 'deferred',
         } as any)
       }
 
-      const M = Logix.Module.make('ModuleRuntime_TimeSlicing_Lanes', {
-        state: State as any,
-        actions: Actions,
-        reducers: { noop: (s: any) => s },
-        traits: Logix.StateTrait.from(State as any)(traits as any),
-      })
+      const M = FieldContracts.withModuleFieldDeclarations(Logix.Module.make('ModuleRuntime_TimeSlicing_Lanes', {
+  state: State as any,
+  actions: Actions,
+  reducers: { noop: (s: any) => s }
+}), FieldContracts.fieldFrom(State as any)(fieldDeclarations as any))
 
       const initial: Record<string, number> = {
         a: 0,
@@ -59,18 +60,18 @@ describe('ModuleRuntime time-slicing (lanes enabled)', () => {
         initial[`d${i}`] = computeValue(0, i)
       }
 
-      const impl = M.implement({
+      const programModule = Logix.Program.make(M, {
         initial: initial as any,
         logics: [],
       })
 
-      const runtime = Logix.Runtime.make(impl, {
-        layer: Logix.Debug.noopLayer,
+      const runtime = Logix.Runtime.make(programModule, {
+        layer: CoreDebug.noopLayer,
         stateTransaction: {
-          traitConvergeMode: 'dirty',
-          traitConvergeBudgetMs: 100_000,
-          traitConvergeDecisionBudgetMs: 100_000,
-          traitConvergeTimeSlicing: { enabled: true, debounceMs: 1, maxLagMs: 50 },
+          fieldConvergeMode: 'dirty',
+          fieldConvergeBudgetMs: 100_000,
+          fieldConvergeDecisionBudgetMs: 100_000,
+          fieldConvergeTimeSlicing: { enabled: true, debounceMs: 1, maxLagMs: 50 },
           txnLanes: {
             enabled: true,
             budgetMs: 0,
@@ -86,11 +87,11 @@ describe('ModuleRuntime time-slicing (lanes enabled)', () => {
           Effect.gen(function* () {
             const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
-            yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 't1' }, () =>
+            yield* FieldContracts.runWithStateTransaction(rt, { kind: 'test', name: 't1' }, () =>
               Effect.gen(function* () {
                 const prev = yield* rt.getState
                 yield* rt.setState({ ...prev, a: 1 })
-                Logix.InternalContracts.recordStatePatch(rt, 'a', 'unknown')
+                FieldContracts.recordStatePatch(rt, 'a', 'unknown')
               }),
             )
 
@@ -105,7 +106,7 @@ describe('ModuleRuntime time-slicing (lanes enabled)', () => {
               ),
             )
 
-            yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 'urgent' }, () =>
+            yield* FieldContracts.runWithStateTransaction(rt, { kind: 'test', name: 'urgent' }, () =>
               Effect.gen(function* () {
                 const prev = yield* rt.getState
                 yield* rt.setState({ ...prev, b: 1 })

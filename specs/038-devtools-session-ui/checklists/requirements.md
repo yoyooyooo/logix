@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Logix Devtools Session-First 界面重设计
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-26  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-26
 **Feature**: [Link to spec.md](../spec.md)
 
 ## Content Quality

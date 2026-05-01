@@ -1,48 +1,46 @@
 ---
 title: useImportedModule
-description: Resolve a child module instance from the parent instance's imports scope.
+description: Resolve a child module instance from a parent instance's imports scope.
 ---
 
-When a module composes child modules via `imports`, the UI often needs to read/dispatch the child module **within the parent instance scope** (e.g. Query, sub-forms, sub-features).
+`useImportedModule(parent, childTag)` resolves a child module from the imports scope of a parent instance.
 
-`useImportedModule(parent, childModule)` solves this: it resolves `childModule` from the imports scope of the `parent` instance and returns a `ModuleRef` that you can pass directly to `useSelector` / `useDispatch`.
+It is equivalent to:
+
+```ts
+parent.imports.get(childTag)
+```
 
 ## Usage
 
 ```tsx
-import { useImportedModule, useModule, useSelector } from '@logixjs/react'
-import { HostImpl, ChildModule } from './modules'
+import { useImportedModule, useModule, useSelector } from "@logixjs/react"
+import { HostProgram, ChildModule } from "./modules"
 
 function Page() {
-  // For multi-instance scenarios (session/tab/sharding), use key to distinguish parent instances
-  const host = useModule(HostImpl, { key: 'SessionA' })
-
-  // Resolve the child module under the host instance scope (won't mix across host instances)
+  const host = useModule(HostProgram, { key: "session-a" })
   const child = useImportedModule(host, ChildModule.tag)
-
   const value = useSelector(child, (s) => s.value)
+
   return <div>{value}</div>
 }
 ```
 
-You can also use the chained sugar (recommended):
+## When to use it
 
-```ts
-const child = host.imports.get(ChildModule.tag)
-```
+Use `useImportedModule(...)` when the UI must directly read or dispatch a child module that belongs to a parent instance scope.
+
+If the UI only needs orchestration, prefer resolving or coordinating the child inside the host logic.
 
 ## Notes
 
-- `parent` must be a handle with “instance scope semantics” (e.g. the return value of `useModule(HostImpl, { key })`, `useModule(HostImpl)`, or `useLocalModule(...)`). Do not use `useModule(HostModule)` (global singleton semantics) as parent when resolving imports.
-- `host.imports.get(ChildModule.tag)` returns a stable `ModuleRef`, safe to use directly in render (no `useMemo` needed).
+- `parent` should be an instance-scoped handle.
+- `useImportedModule(...)` does not search across runtime scopes.
+- `parent.imports.get(childTag)` is the non-hook equivalent and is often sufficient.
+- Logic uses `$.imports.get(childTag)` for the same parent-scope child resolution route.
 
-## Best Practices
+## See also
 
-- **Prefer UI depends on the Host only**: if you only need to “trigger/orchestrate” child behavior, do it inside Host Logic via `$.use(ChildModule)` (or Link/Process), then expose needed state/actions at the Host boundary.
-- **When UI must connect to child modules**: only when UI must render child state directly, or pass the child module ref down as props, use `useImportedModule` / `host.imports.get(...)`.
-- **Multi-level imports**: you can chain `host.imports.get(A).imports.get(B)`, but prefer resolving once at the boundary and passing the `ModuleRef` down to avoid deep components “climbing the tree” everywhere.
-
-## See Also
-
-- [API: ModuleScope](./module-scope)
-- [Advanced: Composability map](../../guide/advanced/composability)
+- [useModule](./use-module)
+- [ModuleScope](./module-scope)
+- [Cross-module communication](../../guide/learn/cross-module-communication)

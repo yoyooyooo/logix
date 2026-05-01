@@ -1,53 +1,78 @@
 ---
-title: 性能与优化
-description: 大表单/大列表下保持交互流畅的关键实践。
+title: Performance
+description: 把读取面和校验面都压窄。
 ---
 
-## 1) UI 订阅：优先用 `useFormState(form, selector)`
+## 优先使用 core selector
 
-避免在 React 侧订阅整棵 values/errors：这会把小改动放大成大范围渲染。
+用 `useSelector(form, selector)` 只订阅真正要渲染的最小切片。
 
-推荐只订阅你真正需要的“视图状态切片”：
+```tsx
+const canSubmit = useSelector(
+  form,
+  (s) => s.$form.errorCount === 0 && !s.$form.isSubmitting,
+)
 
-```ts
-const canSubmit = useFormState(form, (v) => v.canSubmit)
-const submitCount = useFormState(form, (v) => v.submitCount)
+const submitCount = useSelector(form, (s) => s.$form.submitCount)
+const lineItem = useSelector(form, (s) => s.items[index])
 ```
 
-## 2) 校验触发：把“每次输入”留给增量
+如果组件只关心一个 flag 或一行数据，就不要把整份表单状态都读出来。
+同一页面多个局部实例时，也不要用共享实例来减少订阅数量；实例隔离优先于表面上的少一次创建。
 
-对复杂表单的常见策略是：
+## 优先做 scoped validation
 
-- 提交前：`validateOn=["onSubmit"]`（更省）
-- 提交后：`reValidateOn=["onChange"]`（更即时）
+```ts
+yield* form.validatePaths(["shipping.address"])
+```
 
-当你只想校验某一段路径时，优先用 `controller.validatePaths(...)` 精准触发。
+当只有一个字段或一个子树变化时，用 `validatePaths(...)`，不要无差别跑整表单。
 
-> 建议：把“跨字段联动触发”写成显式 `deps`，把“什么时候自动校验”写成 `validateOn/reValidateOn`（表单级）或规则上的 `validateOn`（规则级，仅 onChange/onBlur）。
+## 把数组视为结构热路径
 
-## 3) 动态列表：提供稳定 identity（trackBy）
+列表编辑统一走 `form.fieldArray(path)`：
 
-对长列表来说，显式声明 list identity（推荐 `trackBy`）的收益通常体现在：
+- `insert`
+- `update`
+- `replace`
+- `remove`
+- `swap`
+- `move`
+- `byRowId(...)`
 
-- React `key` 稳定，重排/插入时少重渲染
-- 行级错误与 UI 状态更稳定，不容易错位
+这样结构编辑会和 row ownership、cleanup 语义保持一致。
 
-## 4) 把重型逻辑移出同步校验
+identity 配置上：
 
-同步校验与同步派生适合轻量工作（纯函数、快速、可预测）。当你需要 IO 或重计算时，优先用 `source` 或把重逻辑下沉到服务调用，避免把每次输入的事务窗口拖得过长。
+- 行已经有稳定业务 id 时，优先 `trackBy`
+- 行是客户端临时创建但仍要稳定结构编辑时，用 `store`
+- 重排频繁的列表，避免使用 `index`
 
-> 实践：列表场景里，跨行规则尽量写成 list scope（一次扫描 + 写回 `errors.<list>.$list/rows[]`），避免在 item scope 里重复做 O(n) 扫描。
+## 恢复实例时控制成本
 
-## 5) 写回方式：优先字段级写入（`mutate`/controller），避免全量替换
+keyed 实例加 `gcTime` 可以在路由切换后恢复已有状态。
+恢复本身不应重新跑整页订阅；成本主要来自重新挂载的组件会读取哪些切片。
 
-`useFormState(form, selector)` 能减少 React 重渲染，但并不能抵消“全量写入”带来的派生/校验成本。
+```tsx
+const form = useModule(CheckoutForm, {
+  key: `checkout:${cartId}`,
+  gcTime: 60_000,
+})
+```
 
-在 Logix 中，`update/setState` 这类“全量替换”写法通常无法提供明确的变更路径证据，运行时更容易把派生/校验退化为全量处理；表单越大、输入越频繁，这个差距越明显。
+对于复杂 Form：
 
-在高频输入与联动场景下，优先使用：
+- route 级共享用 `useModule(Form.tag)`
+- 可恢复的页面编辑会话用 `useModule(Form, { key, gcTime })`
+- 同屏多个独立副本用 `useModule(Form)` 或不同 key
 
-- `field.onChange/onBlur`、`controller.setValue/setError/clearErrors/...`（让表单内部保持字段级影响域）
-- 在自定义 Logic 中用 `$.state.mutate(...)`（让运行时自动采集变更路径）
-- 在 `Module.make({ immerReducers })` 中直接写 draft 风格 reducers（或在 `Module.make({ reducers })` 中用 `Logix.Module.Reducer.mutate(...)` / `Logix.Module.Reducer.mutateMap({...})` 批量包装）
+## 错误渲染保持 data-first
 
-如果你的表单很小、更新频率很低，那么 `update` + selector 在大多数日常场景也可以工作；只是当你开始关心性能上界时，应优先把高频写回迁到 `mutate`/controller。
+渲染应该由 canonical error leaf 和当前 i18n snapshot 共同驱动。
+不要在校验深处提前把错误结果压成临时显示字符串。
+
+## 延伸阅读
+
+- [Instances](/cn/docs/form/instances)
+- [Field arrays](/cn/docs/form/field-arrays)
+- [Selectors and support facts](/cn/docs/form/selectors)

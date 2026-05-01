@@ -1,9 +1,10 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import { makePerfKernelLayer, silentDebugLayer } from './harness.js'
 
 export type DispatchShellEntrypointMode = 'reuseScope' | 'resolveEach'
-export type DispatchShellDiagnosticsLevel = Logix.Debug.DiagnosticsLevel
+export type DispatchShellDiagnosticsLevel = CoreDebug.DiagnosticsLevel
 
 export type DispatchShellControlPlane = {
   readonly tuningId?: string
@@ -22,7 +23,7 @@ export type DispatchShellTxnPhaseTiming = {
   readonly dispatchActionCount?: number
   readonly bodyShellMs?: number
   readonly asyncEscapeGuardMs?: number
-  readonly traitConvergeMs?: number
+  readonly fieldConvergeMs?: number
   readonly scopedValidateMs?: number
   readonly sourceSyncMs?: number
   readonly commitTotalMs?: number
@@ -65,7 +66,7 @@ const summarizeTxnPhaseTimings = (
     dispatchActionCount: numericField((trace) => trace?.dispatchActionCount),
     bodyShellMs: numericField((trace) => trace?.bodyShellMs),
     asyncEscapeGuardMs: numericField((trace) => trace?.asyncEscapeGuardMs),
-    traitConvergeMs: numericField((trace) => trace?.traitConvergeMs),
+    fieldConvergeMs: numericField((trace) => trace?.fieldConvergeMs),
     scopedValidateMs: numericField((trace) => trace?.scopedValidateMs),
     sourceSyncMs: numericField((trace) => trace?.sourceSyncMs),
     commitTotalMs: numericField((trace) => trace?.commit?.totalMs),
@@ -135,7 +136,7 @@ export const makeDispatchShellRuntime = (
     initial[`f${i}`] = 0
   }
 
-  const impl = M.implement({
+  const program = Logix.Program.make(M, {
     initial: initial as any,
     logics: [],
   })
@@ -147,7 +148,7 @@ export const makeDispatchShellRuntime = (
   }
   const getTxnPhaseTimingSummary = (): DispatchShellTxnPhaseTiming | undefined => summarizeTxnPhaseTimings(phaseTraces)
 
-  const captureTxnPhaseLayer = Logix.Debug.replace([
+  const captureTxnPhaseLayer = CoreDebug.replace([
     {
       record: (event) => {
         if (event.type === 'trace:txn-phase') {
@@ -158,7 +159,7 @@ export const makeDispatchShellRuntime = (
     },
   ])
 
-  const runtime = Logix.Runtime.make(impl, {
+  const runtime = Logix.Runtime.make(program, {
     stateTransaction: {
       instrumentation: 'light',
     },
@@ -209,7 +210,7 @@ export const runDispatchShellSampleWithDiagnosticsLevel = (
   diagnosticsLevel: DispatchShellDiagnosticsLevel,
 ): Effect.Effect<void, never, any> =>
   runDispatchShellSample(rt, entrypointMode, iterations).pipe(
-    (effect) => Effect.provideService(effect, Logix.Debug.internal.currentDiagnosticsLevel, diagnosticsLevel),
+    (effect) => Effect.provideService(effect, CoreDebug.internal.currentDiagnosticsLevel, diagnosticsLevel),
   )
 
 export const runDispatchShellSampleWithBreakdown = (

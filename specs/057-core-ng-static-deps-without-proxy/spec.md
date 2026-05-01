@@ -1,8 +1,8 @@
 # Feature Specification: ReadQuery/SelectorSpec + SelectorGraph（静态 deps / 无 Proxy）
 
-**Feature Branch**: `057-core-ng-static-deps-without-proxy`  
-**Created**: 2025-12-28  
-**Status**: Complete  
+**Feature Branch**: `057-core-ng-static-deps-without-proxy`
+**Created**: 2025-12-28
+**Status**: Complete
 **Input**: User discussion: "NG-first / compiler-first；继续允许函数 selector（如 useSelector/fromState），但编译期尽可能静态化；对象字面量 selector 默认 struct memo 复用引用；三段式车道 AOT(可选)→JIT(默认)→Dynamic(兜底)；dynamic 回退必须可观测且可在 strict gate 下失败；Devtools 要清晰区分静态/动态车道。"
 
 ## Terminology
@@ -28,7 +28,7 @@
 - Q: strict gate 的 `requireStatic` 应该以什么作为主匹配键（SSoT）？ → A: 以 `selectorId` 为主（SSoT）；`debugKey` 仅用于展示/报错辅助，不作为判定主键（避免压缩/冲突导致误杀）。
 - Q: `fallbackReason` 是否要冻结为最小枚举（避免 Devtools/StrictGate 漂移）？ → A: 要冻结：`missingDeps | unsupportedSyntax | unstableSelectorId`，且不得随意新增自由字符串；需要扩展时必须更新 spec/contracts。
 - Q: perf evidence 的采集隔离要求是否要对 NG 相关 specs（至少 048/057）统一强制？ → A: 强制统一：所有 `$logix-perf-evidence` 的 Node+Browser before/after/diff 必须在独立 `git worktree/单独目录` 中采集；混杂工作区结果仅作线索，不得用于宣称 Gate PASS。
-- Q: perf evidence 的 suites/budgets 的单一事实源（SSoT）怎么定？ → A: 统一以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为 SSoT（至少覆盖 `priority=P1`），并以 `matrixId+matrixHash` 保证可比性；硬结论至少 `profile=default`。
+- Q: perf evidence 的 suites/budgets 的单一事实源（SSoT）怎么定？ → A: 统一以 `packages/logix-perf-evidence/assets/matrix.json` 为 SSoT（至少覆盖 `priority=P1`），并以 `matrixId+matrixHash` 保证可比性；硬结论至少 `profile=default`。
 - AUTO: Q: selectorFn 元数据的字段名与读取规则是什么？ → A: runtime 只读取函数对象上的 `debugKey?: string` 与 `fieldPaths?: string[]`（debugKey 为空可回退到函数名）；不引入 Symbol key。
 - AUTO: Q: JIT 静态化的最小子集边界如何定义？ → A: 仅支持单参数 `=>`/`function(){return}`，且 body 只能是 `s.a.b` 或 `{ k: s.a, ... }`（key 必须是标识符、value 只能是点路径）；其它一律 dynamic，并以 `fallbackReason=unsupportedSyntax` 证据化。
 - AUTO: Q: reads 的最小表示与语法（无 Proxy）怎么定？ → A: 初期 reads 使用 canonical 的 fieldPath string（点分标识符段；不含 bracket/index），number 仅作为未来 pathId 预留；JIT 子集只产出 string reads。

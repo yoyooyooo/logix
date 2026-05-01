@@ -1,4 +1,4 @@
-import type { TraitConvergeRequestedMode } from './snippets.js'
+import type { FieldConvergeRequestedMode } from './snippets.js'
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -20,7 +20,7 @@ const asStringArray = (value: unknown): ReadonlyArray<string> | undefined => {
 }
 
 export type ConvergeDecisionEvidence = {
-  readonly requestedMode?: TraitConvergeRequestedMode
+  readonly requestedMode?: FieldConvergeRequestedMode
   readonly executedMode?: 'full' | 'dirty'
   readonly outcome?: 'Converged' | 'Noop' | 'Degraded'
   readonly configScope?: 'provider' | 'runtime_module' | 'runtime_default' | 'builtin'
@@ -58,7 +58,7 @@ export const parseConvergeDecisionEvidence = (evidence: unknown): ConvergeDecisi
   const cacheRaw = isRecord(evidence.cache) ? evidence.cache : undefined
 
   return {
-    requestedMode: asString(evidence.requestedMode) as TraitConvergeRequestedMode | undefined,
+    requestedMode: asString(evidence.requestedMode) as FieldConvergeRequestedMode | undefined,
     executedMode: asString(evidence.executedMode) as 'full' | 'dirty' | undefined,
     outcome: asString(evidence.outcome) as 'Converged' | 'Noop' | 'Degraded' | undefined,
     configScope: asString(evidence.configScope) as any,

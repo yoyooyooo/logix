@@ -1,6 +1,6 @@
 # Implementation Plan: O-005 单一最小 IR 收敛（Static IR + Dynamic Trace）
 
-**Branch**: `[098-unified-minimal-ir]` | **Date**: 2026-02-25 | **Spec**: `specs/098-unified-minimal-ir/spec.md`  
+**Branch**: `[098-unified-minimal-ir]` | **Date**: 2026-02-25 | **Spec**: `specs/098-unified-minimal-ir/spec.md`
 **Input**: Feature specification from `specs/098-unified-minimal-ir/spec.md`
 
 ## Summary
@@ -14,25 +14,25 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: effect v3、`@logixjs/core`、`@logixjs/react`、`@logixjs/sandbox`、Vitest  
-**Storage**: N/A（以规格文档与可序列化证据工件为主）  
-**Testing**: `pnpm typecheck`、`pnpm lint`、`pnpm test:turbo`，必要时 `pnpm --filter @logixjs/core typecheck:test` + `vitest run`  
-**Target Platform**: Node.js 20+ + 现代浏览器（含 Devtools/Sandbox 消费场景）  
-**Project Type**: pnpm workspace monorepo  
+**Language/Version**: TypeScript 5.9.x（ESM）
+**Primary Dependencies**: effect v3、`@logixjs/core`、`@logixjs/react`、`@logixjs/sandbox`、Vitest
+**Storage**: N/A（以规格文档与可序列化证据工件为主）
+**Testing**: `pnpm typecheck`、`pnpm lint`、`pnpm test:turbo`，必要时 `pnpm --filter @logixjs/core typecheck:test` + `vitest run`
+**Target Platform**: Node.js 20+ + 现代浏览器（含 Devtools/Sandbox 消费场景）
+**Project Type**: pnpm workspace monorepo
 **Performance Goals**:
 - 默认策略下核心热路径（事务提交/收敛/导出）相对基线回归不超过 5%（p95）
 - 默认策略下分配回归不超过 8%（以可复现 bench/profile 为准）
 - diagnostics=off 额外开销目标不超过 2%
 - 默认 full cutover 路径的隐式 fallback 次数必须为 0
-  
+
 **Constraints**:
 - 必须遵守统一最小 IR：Static IR 与 Dynamic Trace 分层但同一事实链
 - 稳定标识去随机化：`instanceId/txnSeq/opSeq` 可复现
 - 事务窗口禁止 IO/await；业务不可写 SubscriptionRef
 - 诊断事件必须 Slim 且可 JSON 序列化
 - breaking 允许但必须提供迁移说明；无兼容层、无弃用期
-  
+
 **Scale/Scope**:
 - 规划覆盖 Runtime IR/锚点/事件协议与四类消费者一致性验收
 - 预期改动集中在 `packages/logix-core`（runtime/reflection/debug/replay）与对应 SSoT 文档
@@ -117,7 +117,7 @@ packages/logix-core/src/internal/
 ├── reflection/
 │   ├── staticIr.ts
 │   └── controlSurface.ts
-├── state-trait/
+├── state-field/
 │   └── converge-ir.ts
 ├── workflow/
 │   └── model.ts

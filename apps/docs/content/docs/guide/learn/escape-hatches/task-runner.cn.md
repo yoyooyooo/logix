@@ -1,16 +1,15 @@
 ---
 title: Task Runner（长链路：pending → IO → writeback）
+description: 把一次触发拆成可观察的 pending、IO 与结果写回阶段。
 ---
 
-当你需要写“长链路交互”（例如：点击按钮 → 立刻进入 loading → 等待请求 → 成功/失败写回）时，推荐使用 `run*Task` 系列 API。
-
-它的目标是：**保持代码写法线性**，同时把长链路自动拆成多段提交，让 UI 能看到 `pending`（loading）阶段。
+当一次触发必须先暴露 `pending` 状态，再等待 IO 并最终写回结果时，优先使用 `run*Task`。它保留线性 authoring，同时把生命周期拆成可观察的多次提交。
 
 ## 1. 你会遇到的典型问题
 
 如果你把 “loading=true → 等待 IO → loading=false + data” 全写进同一个 `run*` handler，UI 往往只能看到最后结果，而看不到中间的 loading。
 
-原因不是 `runLatest` 不好用，而是**长链路需要拆分为多次提交**：pending 一次、结果写回一次。
+根因在于**长链路需要拆分为多次提交**：一次负责 `pending`，一次负责结果写回。
 
 ## 2. run\*Task 的写法与语义
 
@@ -63,4 +62,4 @@ yield* $.onAction("search").runLatestTask({
 ## 4. 使用边界
 
 - `run*Task` 只能用在 `$.onAction / $.onState / $.on` 这类 watcher 的链尾。
-- 不要在 reducer / trait.run 这类“同步事务逻辑”里直接调用 `run*Task`。
+- 不要在 reducer 或同步字段逻辑里直接调用 `run*Task`。

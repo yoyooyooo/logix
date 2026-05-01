@@ -7,7 +7,7 @@
     "directory": "packages/domain"
   },
   "license": "Apache-2.0",
-  "description": "Domain modules (based on Logix.Module.Manage) for Logix v3",
+  "description": "Program-first domain pattern kits for the current Logix runtime",
   "files": [
     "dist/**"
   ],
@@ -17,23 +17,19 @@
   "types": "./src/index.ts",
   "exports": {
     "./package.json": "./package.json",
-    ".": "./src/index.ts",
-    "./*": "./src/*.ts",
+    ".": null,
+    "./Crud": "./src/Crud.ts",
     "./internal/*": null
   },
   "publishConfig": {
     "access": "public",
     "exports": {
       "./package.json": "./package.json",
-      ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js",
-        "require": "./dist/index.cjs"
-      },
-      "./*": {
-        "types": "./dist/*.d.ts",
-        "import": "./dist/*.js",
-        "require": "./dist/*.cjs"
+      ".": null,
+      "./Crud": {
+        "types": "./dist/Crud.d.ts",
+        "import": "./dist/Crud.js",
+        "require": "./dist/Crud.cjs"
       },
       "./internal/*": null
     },

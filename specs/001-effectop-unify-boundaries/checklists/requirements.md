@@ -1,7 +1,7 @@
 # Specification Quality Checklist: EffectOp 边界收口
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-12  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-12
 **Feature**: [Link to spec.md](../spec.md)
 
 ## Content Quality

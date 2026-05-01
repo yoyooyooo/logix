@@ -4,11 +4,13 @@ import React, { Suspense } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import { Effect, Layer, ManagedRuntime, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
-import { useModule } from '../../src/Hooks.js'
+import { fieldValue, useSelector } from '../../src/index.js'
+import { useProgramRuntimeBlueprint } from '../../src/internal/hooks/useProgramRuntimeBlueprint.js'
 
 // Reproduce the core logic from examples/logix-react/src/demos/AsyncLocalModuleLayout.tsx
-// to verify suspend:true + local ModuleImpl behavior under tests.
+// to verify suspend:true + local Program runtime blueprint behavior under tests.
 
 const AsyncCounterModule = Logix.Module.make('AsyncLocalCounter:test', {
   state: Schema.Struct({ count: Schema.Number, ready: Schema.Boolean }),
@@ -18,7 +20,7 @@ const AsyncCounterModule = Logix.Module.make('AsyncLocalCounter:test', {
   },
 })
 
-const AsyncCounterLogic = AsyncCounterModule.logic(($) =>
+const AsyncCounterLogic = AsyncCounterModule.logic('async-counter-logic', ($) =>
   Effect.gen(function* () {
     yield* Effect.sleep('10 millis')
 
@@ -41,29 +43,31 @@ const AsyncCounterLogic = AsyncCounterModule.logic(($) =>
   }),
 )
 
-const AsyncCounterImpl = AsyncCounterModule.implement({
+const AsyncCounterProgram = Logix.Program.make(AsyncCounterModule, {
   initial: { count: 0, ready: false },
   logics: [AsyncCounterLogic],
 })
+const AsyncCounterBlueprint = RuntimeContracts.getProgramRuntimeBlueprint(AsyncCounterProgram)
 
 const asyncLocalRuntime = ManagedRuntime.make(
   Layer.empty as Layer.Layer<never, never, never>,
 ) as unknown as ManagedRuntime.ManagedRuntime<any, any>
 
 const AsyncLocalCounterView: React.FC = () => {
-  const counter = useModule(AsyncCounterImpl, {
+  const counter = useProgramRuntimeBlueprint(AsyncCounterBlueprint, {
     suspend: true,
     key: 'AsyncLocalCounter:test-instance',
   })
-  const state = useModule(counter, (s) => s as { count: number; ready: boolean })
+  const ready = useSelector(counter, fieldValue('ready'))
+  const count = useSelector(counter, fieldValue('count'))
 
-  if (!state.ready) {
+  if (!ready) {
     return <div>Initializing…</div>
   }
 
   return (
     <div>
-      <span data-testid="value">{state.count}</span>
+      <span data-testid="value">{count}</span>
       <button type="button" onClick={() => counter.dispatchers.increment()}>
         inc
       </button>

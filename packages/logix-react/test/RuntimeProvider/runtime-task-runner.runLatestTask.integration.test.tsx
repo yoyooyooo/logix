@@ -4,8 +4,10 @@ import React from 'react'
 import { describe, it, expect } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import * as Logix from '@logixjs/core'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 import { Deferred, Effect, Schema } from 'effect'
-import { RuntimeProvider, useModule, useRuntime } from '../../src/index.js'
+import { RuntimeProvider, fieldValue, useRuntime, useSelector } from '../../src/index.js'
+import { useProgramRuntimeBlueprint } from '../../src/internal/hooks/useProgramRuntimeBlueprint.js'
 
 describe('TaskRunner integration (React): runLatestTask', () => {
   const StateSchema = Schema.Struct({
@@ -27,7 +29,7 @@ describe('TaskRunner integration (React): runLatestTask', () => {
     const io1 = await Effect.runPromise(Deferred.make<number>())
     const io2 = await Effect.runPromise(Deferred.make<number>())
 
-    const logic = TaskModule.logic(($) =>
+    const logic = TaskModule.logic('task-module-logic', ($) =>
       Effect.gen(function* () {
         yield* $.onAction('refresh').runLatestTask({
           pending: (a: any) =>
@@ -48,7 +50,7 @@ describe('TaskRunner integration (React): runLatestTask', () => {
       }),
     )
 
-    const impl = TaskModule.implement({
+    const program = Logix.Program.make(TaskModule, {
       initial: {
         loading: false,
         data: 0,
@@ -56,8 +58,9 @@ describe('TaskRunner integration (React): runLatestTask', () => {
       },
       logics: [logic],
     })
+    const blueprint = RuntimeContracts.getProgramRuntimeBlueprint(program)
 
-    const appRuntime = Logix.Runtime.make(impl)
+    const appRuntime = Logix.Runtime.make(program)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <RuntimeProvider runtime={appRuntime} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>
@@ -68,25 +71,19 @@ describe('TaskRunner integration (React): runLatestTask', () => {
     const { result } = renderHook(
       () => {
         const runtime = useRuntime()
-        const moduleRuntime = useModule(impl).runtime as Logix.ModuleRuntime<
+        const moduleRuntime = useProgramRuntimeBlueprint(blueprint).runtime as Logix.ModuleRuntime<
           { loading: boolean; data: number; logs: ReadonlyArray<string> },
           { _tag: 'refresh'; payload: number }
         >
 
-        const state = useModule(
-          moduleRuntime,
-          (s) =>
-            s as {
-              loading: boolean
-              data: number
-              logs: ReadonlyArray<string>
-            },
-        )
+        const loading = useSelector(moduleRuntime, fieldValue('loading'))
+        const data = useSelector(moduleRuntime, fieldValue('data'))
+        const logs = useSelector(moduleRuntime, fieldValue('logs')) as ReadonlyArray<string>
 
         const dispatchRefresh = (n: number) =>
           runtime.runPromise(moduleRuntime.dispatch({ _tag: 'refresh', payload: n } as any) as any)
 
-        return { state, dispatchRefresh }
+        return { state: { loading, data, logs }, dispatchRefresh }
       },
       { wrapper },
     )

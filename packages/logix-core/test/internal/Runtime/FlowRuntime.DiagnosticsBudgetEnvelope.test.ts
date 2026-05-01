@@ -1,9 +1,9 @@
 import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer, Stream } from 'effect'
-import * as Debug from '../../../src/Debug.js'
-import * as Middleware from '../../../src/Middleware.js'
+import * as Debug from '../../../src/internal/debug-api.js'
+import * as Middleware from '../../../src/internal/middleware.js'
 import * as EffectOpCore from '../../../src/internal/runtime/core/EffectOpCore.js'
-import * as FlowRuntime from '../../../src/internal/runtime/FlowRuntime.js'
+import * as FlowRuntime from '../../../src/internal/runtime/core/FlowRuntime.js'
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)

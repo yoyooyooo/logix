@@ -1,4 +1,4 @@
-// Resource module: public facade (@logixjs/core/Resource).
+// Resource module owner.
 // Note: implementation lives in `src/internal/resource.ts` to avoid internal importing root submodules.
 
 import type * as Internal from './internal/resource.js'

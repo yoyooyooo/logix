@@ -1,6 +1,6 @@
 # Contracts: Public API（Source Auto-Trigger）
 
-## 1) `@logixjs/core`：`StateTrait.source` policy
+## 1) `@logixjs/core`：`FieldKernel.source` policy
 
 目标：把 `Π_source` 的受限自由度从“反射式 meta（triggers/debounceMs）”升级为明确契约，并可导出 IR。
 

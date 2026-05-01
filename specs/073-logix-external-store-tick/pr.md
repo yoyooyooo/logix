@@ -11,7 +11,7 @@
 在 `specs/073-logix-external-store-tick/spec.md` 我们明确固化了三层分工：
 
 1. 观测参考系：`RuntimeStore + tickSeq`
-2. 受限绑定：Traits（externalStore/source/link…）
+2. 受限绑定：Fields（externalStore/source/link…）
 3. 自由编排：Control Laws / **Workflows（Π）**
 
 而在 `specs/075-workflow-codegen-ir/spec.md` 中：
@@ -22,7 +22,7 @@
 如果不及时清理旧文档/旧实现，会让读者在同一条链路上看到多套词：
 
 - `Flow`（已有的 Flow API / FlowRuntime）
-- `Workflow`（平台口径：Π/WorkflowDef/workflowSurface）
+- `Workflow`（平台口径：Π/WorkflowDef/controlProgramSurface）
 
 对新成员非常不友好，也容易让工作台/Parser/Rewrite 文档出现“同义不同名”的长期漂移。
 
@@ -34,7 +34,7 @@
   - 形态仍然是“携带 `WorkflowDef` 的值对象”
   - 只提供冷路径方法：`validate / exportStaticIr / install / toJSON / fromJSON`
 - 落盘权威输入：继续叫 `WorkflowDef`（不变）
-- 导出工件：`WorkflowStaticIr` / `workflowSurface`（不变）
+- 导出工件：`WorkflowStaticIr` / `controlProgramSurface`（不变）
 - 运行时已有 `Flow`（订阅/管道/执行语义）保持原名，不混入 Π/workflow 语义
 
 > 直觉：`Flow` = “运行时订阅/管道”；`Workflow` = “可导出/可编译的控制律（Π）”。
@@ -43,7 +43,7 @@
 
 - 不在 073 内实现任何 075 的 API
 - 不提供兼容层（forward-only）：只提供迁移说明/批量替换建议
-- 不重命名协议字段（例如 `workflowSurface`、`WorkflowDef`）——这些已是平台真理源的一部分
+- 不重命名协议字段（例如 `controlProgramSurface`、`WorkflowDef`）——这些已是平台真理源的一部分
 
 ## 直接改名会引出的“需要先裁决”的点
 
@@ -58,8 +58,8 @@
    - 目前 075 已经在 spec 里写了定位，但平台侧文档/Workbench 页面也需要统一口径（避免 UI 上出现历史词）
    - 建议：把“Π=Workflow（def+slice）/Flow=运行时订阅管道”的术语裁决回写到平台 glossary 或 contracts（以 SSoT 为准）
 
-3. **公共子模块命名：是否需要统一到 `@logixjs/core/Workflow`？**
-   - 建议实现落点直接是 `packages/logix-core/src/Workflow.ts`，避免“实现落地又制造一次迁移”
+3. **公共子模块命名：是否需要统一到 `legacy workflow surface`？**
+   - 建议实现落点直接是 `packages/logix-core/src/internal/runtime/core/WorkflowRuntime.ts`，避免“实现落地又制造一次迁移”
 
 4. **与 012 Program→Process 的交叉：是否会把“Program”词重新引回公共 API？**
    - 012 已把 Program 语义收口到 Process 侧；继续保留历史别名会把“Program”这个词重新引回公共 API
@@ -75,7 +75,7 @@
 
 ## 关联入口（读这些就够定位）
 
-- 073 分层（tick/traits/workflows）：`specs/073-logix-external-store-tick/spec.md`
+- 073 分层（tick/fields/workflows）：`specs/073-logix-external-store-tick/spec.md`
 - 075 定位与“出码层 + Root IR slice”：`specs/075-workflow-codegen-ir/spec.md`
 - 075 public API 合同：`specs/075-workflow-codegen-ir/contracts/public-api.md`
 - Workbench 里对 Π 的口径：`docs/specs/sdd-platform/workbench/05-intent-pipeline.md`

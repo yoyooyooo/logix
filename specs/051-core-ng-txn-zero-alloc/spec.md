@@ -1,8 +1,8 @@
 # Feature Specification: core-ng 事务零分配（txn zero-alloc）
 
-**Feature Branch**: `051-core-ng-txn-zero-alloc`  
-**Created**: 2025-12-29  
-**Status**: Done  
+**Feature Branch**: `051-core-ng-txn-zero-alloc`
+**Created**: 2025-12-29
+**Status**: Done
 **Input**: User description: "在 1+2（Integer Bridge + Evidence）做到位的前提下，把 txn/patch/dirtyset 路径的分配行为收口到极致：light/off 档位不产生额外对象分配，并用 Node+Browser 证据门禁拦截回归。"
 
 ## Terminology
@@ -18,7 +18,7 @@
 
 - `specs/046-core-ng-roadmap/`（NG 路线总控：P1 纯赚 specs）
 - `specs/045-dual-kernel-contract/`（Kernel Contract + 对照验证跑道）
-- `specs/039-trait-converge-int-exec-evidence/`（已达标基线：argument-based recording、诊断闸门、Exec IR/bitset）
+- `specs/039-field-converge-int-exec-evidence/`（已达标基线：argument-based recording、诊断闸门、Exec IR/bitset）
 - `specs/050-core-ng-integer-bridge/`（Integer Bridge：id-first 表示与可解释映射）
 - `specs/049-core-ng-linear-exec-vm/`（Exec VM：线性 plan + typed buffers）
 - `specs/009-txn-patch-dirtyset/`（txn/patch/dirtyset 历史约束）
@@ -31,7 +31,7 @@
 - Q: “零分配”是否意味着整个事务完全无分配？ → A: 不是；允许 begin/commit 的常数级分配，但禁止热循环/调用点按 step/patch 增长的分配。
 - Q: 051 与 050 的边界？ → A: 050 定义 id/表示与可解释链路；051 只收口分配行为与分支形态（见 `specs/046-core-ng-roadmap/spec-registry.md` 的 P1 边界表）。
 
-- AUTO: Q: perf evidence 预算口径是什么？ → A: 以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为唯一 SSoT；交付结论必须 `profile=default`（或 `soak`）并满足 `pnpm perf diff` 输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`；before/after 必须 `meta.matrixId/matrixHash` 一致。
+- AUTO: Q: perf evidence 预算口径是什么？ → A: 以 `packages/logix-perf-evidence/assets/matrix.json` 为唯一 SSoT；交付结论必须 `profile=default`（或 `soak`）并满足 `pnpm perf diff` 输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`；before/after 必须 `meta.matrixId/matrixHash` 一致。
 - AUTO: Q: perf evidence 采集是否允许在 dev 工作区（git dirty）完成？ → A: 允许（当前阶段）；但必须确保 `matrix/config/env` 一致，并在 diff 中保留 `git.dirty.*` warnings；若出现 `stabilityWarning` 或结论存疑，必须复测（必要时升级到 `profile=soak`）。
 - AUTO: Q: Node/Browser 都要 Gate PASS 吗？ → A: 是；任一平台出现回归都视为 FAIL（不得 cherry-pick）。
 - AUTO: Q: Perf Gate 的 baseline runtime 组合是什么？ → A: 固定 `diagnostics=off + stateTransaction.instrumentation=light`；light/full 仅用于解释链路与开销曲线，不作为默认 Gate baseline。

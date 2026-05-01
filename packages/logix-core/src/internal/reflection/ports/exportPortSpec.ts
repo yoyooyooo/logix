@@ -1,8 +1,8 @@
-import type { AnyModuleShape, ModuleImpl, ModuleTag } from '../../runtime/core/module.js'
+import type { AnyModuleShape, ProgramRuntimeBlueprint, ModuleTag } from '../../runtime/core/module.js'
 import type { ModuleManifest } from '../manifest.js'
 import type { exportStaticIr } from '../staticIr.js'
-import type { JsonValue } from '../../observability/jsonValue.js'
-import type { TrialRunArtifactExporter } from '../../observability/artifacts/exporter.js'
+import type { JsonValue } from '../../protocol/jsonValue.js'
+import type { TrialRunArtifactExporter } from '../../artifacts/exporter.js'
 import * as SchemaAST from 'effect/SchemaAST'
 import { normalizeFieldPath, toPathString } from '../../field-path.js'
 import { fnv1a32, stableStringify } from '../../digest.js'
@@ -67,7 +67,7 @@ const normalizeText = (value: unknown): string | undefined => {
 
 const resolveModuleTag = (input: unknown): ModuleTag<string, AnyModuleShape> | undefined => {
   if (!isRecord(input)) return undefined
-  if ((input as any)._tag === 'ModuleImpl' && isRecord((input as any).module)) {
+  if ((input as any)._tag === 'ProgramRuntimeBlueprint' && isRecord((input as any).module)) {
     return (input as any).module as ModuleTag<string, AnyModuleShape>
   }
   const tag = (input as any).tag

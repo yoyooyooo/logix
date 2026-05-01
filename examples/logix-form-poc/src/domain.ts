@@ -72,7 +72,7 @@ export namespace FormCore {
 
   export type SchemaOf<T> = Schema.Schema<T>
 
-  export type FormShape<TValues, TActionMap extends Record<string, AnySchema>> = LogixCore.Shape<
+  export type FormShape<TValues, TActionMap extends Record<string, AnySchema>> = LogixCore.Module.Shape<
     SchemaOf<FormState<TValues>>,
     TActionMap
   >

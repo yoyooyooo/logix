@@ -1,5 +1,6 @@
 import React from 'react'
-import { Effect, Exit, Layer, Schema, ServiceMap } from 'effect'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
+import { Effect, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 
 const State = Schema.Struct({
@@ -11,27 +12,32 @@ const Actions = {
   noop: Schema.Void,
 }
 
-const TrialRunDef = Logix.Module.make('TrialRunEvidenceDemo', {
+const TrialRun = Logix.Module.make('TrialRunEvidenceDemo', {
   state: State,
   actions: Actions,
-  reducers: { noop: (s: any) => s },
-  traits: Logix.StateTrait.from(State)({
-    derivedA: Logix.StateTrait.computed({
-      deps: ['a'],
-      get: (a) => a + 1,
-    }),
+})
+
+const TrialRunFields = FieldContracts.fieldFrom(State)({
+  derivedA: FieldContracts.fieldComputed({
+    deps: ['a'],
+    get: (a) => a + 1,
   }),
 })
 
-const TrialRunModule = TrialRunDef.implement({
+const TrialRunFieldsLogic = TrialRun.logic('trial-run-evidence-demo-fields', ($) => {
+  $.fields(TrialRunFields)
+  return Effect.void
+})
+
+const TrialRunProgram = Logix.Program.make(TrialRun, {
   initial: { a: 0, derivedA: 1 },
-  logics: [],
+  logics: [TrialRunFieldsLogic],
 })
 
 export const TrialRunEvidenceDemo: React.FC = () => {
   const [running, setRunning] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
-  const [evidenceJson, setEvidenceJson] = React.useState<string>('(尚未运行)')
+  const [reportJson, setReportJson] = React.useState<string>('(尚未运行)')
 
   const onRun = React.useCallback(() => {
     setRunning(true)
@@ -39,34 +45,19 @@ export const TrialRunEvidenceDemo: React.FC = () => {
 
     const runId = `run-browser-${Date.now()}`
 
-    const program = Effect.gen(function* () {
-      const ctx = yield* TrialRunModule.impl.layer.pipe(Layer.build)
-      const runtime = ServiceMap.get(ctx, TrialRunDef.tag)
-
-      yield* runtime.dispatch({ _tag: 'noop', payload: undefined })
-      yield* Effect.yieldNow
-
-      return runtime.instanceId as string
-    })
-
     Effect.runPromise(
-      Effect.scoped(
-        Logix.Observability.trialRun(program, {
-          runId,
-          source: { host: 'browser', label: 'TrialRunEvidenceDemo' },
-          diagnosticsLevel: 'full',
-          runtimeServicesInstanceOverrides: {
-            txnQueue: { implId: 'trace', notes: 'demo: browser instance override' },
-          },
-          maxEvents: 300,
-        }),
-      ).pipe(Effect.orDie),
+      Logix.Runtime.trial(TrialRunProgram, {
+        runId,
+        buildEnv: { hostKind: 'browser', config: {} },
+        diagnosticsLevel: 'full',
+        maxEvents: 300,
+      }).pipe(Effect.orDie),
     )
       .then((result) => {
-        if (Exit.isFailure(result.exit)) {
-          setError(`trialRun failed: ${String(result.exit)}`)
+        if (result.verdict !== 'PASS') {
+          setError(`trial failed: ${String(result.errorCode)}`)
         }
-        setEvidenceJson(JSON.stringify(result.evidence.summary ?? {}, null, 2))
+        setReportJson(JSON.stringify(result, null, 2))
       })
       .catch((err) => {
         setError(String(err))
@@ -82,7 +73,7 @@ export const TrialRunEvidenceDemo: React.FC = () => {
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">TrialRun Evidence Demo</h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            在浏览器中运行一次受控试跑，导出 EvidencePackage.summary（含 runtime.services 与 converge 静态 IR）
+            在浏览器中运行一次受控试跑，查看 standardized control-plane report shell
           </p>
         </div>
         <button
@@ -99,10 +90,10 @@ export const TrialRunEvidenceDemo: React.FC = () => {
 
       <div>
         <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-          Evidence Summary (JSON)
+          Trial Report (JSON)
         </div>
         <pre className="text-xs bg-gray-50 dark:bg-gray-800 rounded p-3 overflow-auto max-h-[calc(100vh-200px)]">
-          {evidenceJson}
+          {reportJson}
         </pre>
       </div>
     </div>

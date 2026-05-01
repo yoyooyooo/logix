@@ -3,6 +3,7 @@ import { Duration, Effect, Layer, Schema } from 'effect'
 import { QueryClient } from '@tanstack/query-core'
 import * as Logix from '@logixjs/core'
 import * as Query from '../src/index.js'
+import { engine as tanstackEngine } from '../src/internal/engine/tanstack.js'
 
 describe('TanStack.engine.cacheLimit', () => {
   it('maxEntriesPerResource=1 should evict and cause reload when key flips', async () => {
@@ -28,7 +29,7 @@ describe('TanStack.engine.cacheLimit', () => {
       const KeySchema = Schema.Struct({ q: Schema.String })
 
       let loadCalls = 0
-      const spec = Logix.Resource.make({
+      const spec = Query.Engine.Resource.make({
         id: 'demo/tanstack-engine-cache-limit',
         keySchema: KeySchema,
         load: (key: { readonly q: string }) =>
@@ -55,17 +56,17 @@ describe('TanStack.engine.cacheLimit', () => {
       })
 
       const queryClient = new QueryClient()
-      const runtime = Logix.Runtime.make(module.impl, {
+      const runtime = Logix.Runtime.make(module, {
         layer: Layer.mergeAll(
-          Logix.Resource.layer([spec]),
-          Query.Engine.layer(Query.TanStack.engine(queryClient, { maxEntriesPerResource: 1 })),
+          Query.Engine.Resource.layer([spec]),
+          Query.Engine.layer(tanstackEngine(queryClient, { maxEntriesPerResource: 1 })),
         ),
         middleware: [Query.Engine.middleware()],
       })
 
       const program = Effect.gen(function* () {
         const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
-        const controller = module.controller.make(rt)
+        const commands = module.commands.make(rt)
         yield* Effect.promise(
           () =>
             new Promise<void>((resolve) => {
@@ -75,14 +76,14 @@ describe('TanStack.engine.cacheLimit', () => {
 
         const keys = ['a', 'b', 'a', 'b', 'a', 'b'] as const
         for (const q of keys) {
-          yield* controller.controller.setParams({ q } as any)
-          yield* waitUntil(controller.getState as any, (s: any) => s.params?.q === q)
+          yield* commands.setParams({ q } as any)
+          yield* waitUntil(commands.getState as any, (s: any) => s.params?.q === q)
 
-          yield* controller.controller.refresh('search' as any)
+          yield* commands.refresh('search' as any)
 
-          const expectedKeyHash = Logix.Resource.keyHash({ q })
+          const expectedKeyHash = Query.Engine.Resource.keyHash({ q })
           yield* waitUntil(
-            controller.getState as any,
+            commands.getState as any,
             (s: any) => s.queries.search?.status === 'success' && s.queries.search?.keyHash === expectedKeyHash,
           )
         }

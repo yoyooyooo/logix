@@ -5,7 +5,7 @@
  *   当前示例使用 Fluent DSL（`$.use + $.onAction(...).run* / .update/.mutate`）表达跨 Store 协作，
  *   主要用于说明平台 IR / Parser 与代码之间的映射关系。
  *
- *   在 v3 最终形态下，业务代码更推荐使用 Fluent DSL：
+ *   在当前口径下，业务代码更推荐使用 Fluent DSL：
  *     - 通过 `$.use(Search)` / `$.use(Detail)` 获取 Store 句柄；
  *     - 使用 `$.on($Search.changes(...)).run((results) => $Detail.dispatch(...))` 编排跨 Store 联动；
  *   本文件保留作为跨 Store Fluent Intent 的 IR 级示例，而非推荐业务写法。
@@ -18,6 +18,7 @@
 
 import { Effect, Schema, ServiceMap, Stream } from 'effect'
 import * as Logix from '@logixjs/core'
+import { programLayer } from '../../runtime/programLayer.js'
 
 // ---------------------------------------------------------------------------
 // 模块一：全局搜索 (Search Module)
@@ -44,15 +45,15 @@ const SearchActionMap = {
 }
 
 // 1.3. Store Shape
-type SearchShape = Logix.Shape<typeof SearchStateSchema, typeof SearchActionMap>
+type SearchShape = Logix.Module.Shape<typeof SearchStateSchema, typeof SearchActionMap>
 
 // 1.4. 搜索模块 Module + Logic (只关心自身)
-export const SearchDef = Logix.Module.make('SearchModule', {
+export const Search = Logix.Module.make('SearchModule', {
   state: SearchStateSchema,
   actions: SearchActionMap,
 })
 
-const SearchLogic = SearchDef.logic<SearchApi>(($Search) =>
+const SearchLogic = Search.logic<SearchApi>('search-logic', ($Search) =>
   Effect.gen(function* () {
     const searchEffect = Effect.gen(function* () {
       const api = yield* $Search.use(SearchApi)
@@ -101,15 +102,15 @@ const DetailActionMap = {
 }
 
 // 2.2. Store Shape
-type DetailShape = Logix.Shape<typeof DetailStateSchema, typeof DetailActionMap>
+type DetailShape = Logix.Module.Shape<typeof DetailStateSchema, typeof DetailActionMap>
 
 // 2.3. 详情模块 Module + Logic (只关心自身)
-export const DetailDef = Logix.Module.make('DetailModule', {
+export const Detail = Logix.Module.make('DetailModule', {
   state: DetailStateSchema,
   actions: DetailActionMap,
 })
 
-const DetailLogic = DetailDef.logic(($Detail) =>
+const DetailLogic = Detail.logic('detail-logic', ($Detail) =>
   Effect.gen(function* () {
     // 监听到初始化动作，就更新自己的状态
     yield* $Detail.onAction('detail/initialize').run((action) =>
@@ -127,10 +128,10 @@ const DetailLogic = DetailDef.logic(($Detail) =>
 // 模块三：应用层协调逻辑 (Coordinator Logic)
 // ---------------------------------------------------------------------------
 
-// 3.1. 协调逻辑：监听 SearchDef，操作 DetailDef（Fluent DSL 写法）
+// 3.1. 协调逻辑：监听 Search，操作 Detail（Fluent DSL 写法）
 //
 // 这里使用上层 Logic + $.use + $.onAction 组合表达跨 Module 协作：
-// - 通过 $.use(SearchDef) / $.use(DetailDef) 获取只读句柄；
+// - 通过 $.use(Search) / $.use(Detail) 获取只读句柄；
 // - 监听 $Search.changes(results)；
 // - 在 then 中向 DetailStore 派发初始化 Action。
 
@@ -138,17 +139,17 @@ const CoordinatorStateSchema = Schema.Struct({})
 const CoordinatorActionMap = {
   noop: Schema.Void,
 }
-type CoordinatorShape = Logix.Shape<typeof CoordinatorStateSchema, typeof CoordinatorActionMap>
+type CoordinatorShape = Logix.Module.Shape<typeof CoordinatorStateSchema, typeof CoordinatorActionMap>
 
-export const CoordinatorDef = Logix.Module.make('SearchDetailCoordinator', {
+export const Coordinator = Logix.Module.make('SearchDetailCoordinator', {
   state: CoordinatorStateSchema,
   actions: CoordinatorActionMap,
 })
 
-export const CoordinatorLogic = CoordinatorDef.logic(($) =>
+export const CoordinatorLogic = Coordinator.logic('coordinator-logic', ($) =>
   Effect.gen(function* () {
-    const $SearchHandle = yield* $.use(SearchDef)
-    const $DetailHandle = yield* $.use(DetailDef)
+    const $SearchHandle = yield* $.use(Search)
+    const $DetailHandle = yield* $.use(Detail)
 
     const results$ = $SearchHandle.changes((s) => s.results) as Stream.Stream<
       readonly { id: string; name: string }[],
@@ -171,10 +172,10 @@ export const CoordinatorLogic = CoordinatorDef.logic(($) =>
 )
 
 // ---------------------------------------------------------------------------
-// 组装：导出可供 UI / Runtime 使用的 ModuleImpl 实现和协调程序
+// 组装：导出可供 UI / Runtime 使用的 Program 与协调程序
 // ---------------------------------------------------------------------------
 
-export const SearchModule = SearchDef.implement<SearchApi>({
+export const SearchProgram = Logix.Program.make(Search, {
   initial: {
     keyword: '',
     results: [],
@@ -183,7 +184,7 @@ export const SearchModule = SearchDef.implement<SearchApi>({
   logics: [SearchLogic],
 })
 
-export const DetailModule = DetailDef.implement({
+export const DetailProgram = Logix.Program.make(Detail, {
   initial: {
     selectedItem: undefined,
     isLoading: false,
@@ -191,15 +192,11 @@ export const DetailModule = DetailDef.implement({
   logics: [DetailLogic],
 })
 
-export const CoordinatorModule = CoordinatorDef.implement({
+export const CoordinatorProgram = Logix.Program.make(Coordinator, {
   initial: {},
   logics: [CoordinatorLogic],
 })
 
-export const SearchImpl = SearchModule.impl
-export const DetailImpl = DetailModule.impl
-export const CoordinatorImpl = CoordinatorModule.impl
-
-export const SearchLive = SearchImpl.layer
-export const DetailLive = DetailImpl.layer
-export const CoordinatorLive = CoordinatorImpl.layer
+export const SearchLayer = programLayer(SearchProgram)
+export const DetailLayer = programLayer(DetailProgram)
+export const CoordinatorLayer = programLayer(CoordinatorProgram)

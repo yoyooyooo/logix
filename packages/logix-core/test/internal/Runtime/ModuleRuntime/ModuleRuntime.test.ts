@@ -1,13 +1,15 @@
 import { describe } from '@effect/vitest'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { it, expect } from '@effect/vitest'
 import { Chunk, Deferred, Effect, Fiber, Layer, ManagedRuntime, Option, PubSub, Queue, Schema, Scope, ServiceMap, Stream, SubscriptionRef } from 'effect'
 import { TestClock } from 'effect/testing'
 import * as Logix from '../../../../src/index.js'
-import * as ModuleRuntime from '../../../../src/internal/runtime/ModuleRuntime.js'
-import * as Debug from '../../../../src/Debug.js'
+import * as ModuleRuntime from '../../../../src/internal/runtime/core/ModuleRuntime.js'
+import * as Debug from '../../../../src/internal/debug-api.js'
 import * as StateTransaction from '../../../../src/internal/runtime/core/StateTransaction.js'
 import * as EffectOpCore from '../../../../src/internal/runtime/core/EffectOpCore.js'
-import * as BoundApiRuntime from '../../../../src/internal/runtime/BoundApiRuntime.js'
+import * as BoundApiRuntime from '../../../../src/internal/runtime/core/BoundApiRuntime.js'
 import * as LogicPlanMarker from '../../../../src/internal/runtime/core/LogicPlanMarker.js'
 import { getBoundInternals } from '../../../../src/internal/runtime/core/runtimeInternalsAccessor.js'
 import { getDefaultStateTxnInstrumentation } from '../../../../src/internal/runtime/core/env.js'
@@ -202,7 +204,7 @@ describe('ModuleRuntime (internal)', () => {
 
     it.effect('actionsByTag$ should keep _tag/type OR semantics for topic routing', () =>
       Effect.gen(function* () {
-        const TopicModule = Logix.Module.make('ActionTopicLegacyCompatModule', {
+        const TopicModule = Logix.Module.make('ActionTopicTopicAliasModule', {
           state: Schema.Struct({ count: Schema.Number }),
           actions: {
             inc: Schema.Void,
@@ -213,7 +215,7 @@ describe('ModuleRuntime (internal)', () => {
         const runtime = yield* ModuleRuntime.make(
           { count: 0 },
           {
-            moduleId: 'action-topic-legacy-compat',
+            moduleId: 'action-topic-topic-alias',
             tag: TopicModule.tag,
           },
         )
@@ -273,7 +275,7 @@ describe('ModuleRuntime (internal)', () => {
 
     it.effect('actionsByTag$ fallback should keep _tag/type OR semantics for undeclared topics', () =>
       Effect.gen(function* () {
-        const TopicModule = Logix.Module.make('ActionTopicFallbackLegacyCompatModule', {
+        const TopicModule = Logix.Module.make('ActionTopicFallbackAliasModule', {
           state: Schema.Struct({ count: Schema.Number }),
           actions: {
             inc: Schema.Void,
@@ -284,7 +286,7 @@ describe('ModuleRuntime (internal)', () => {
         const runtime = yield* ModuleRuntime.make(
           { count: 0 },
           {
-            moduleId: 'action-topic-fallback-legacy-compat',
+            moduleId: 'action-topic-fallback-alias',
             tag: TopicModule.tag,
           },
         )
@@ -292,15 +294,15 @@ describe('ModuleRuntime (internal)', () => {
         expect(typeof runtime.actionsByTag$).toBe('function')
         const actionsByTag = requireActionsByTag(runtime.actionsByTag$)
 
-        const legacyFiber = yield* Effect.forkChild(Stream.runCollect(Stream.take(actionsByTag('legacy'), 1)))
+        const aliasFiber = yield* Effect.forkChild(Stream.runCollect(Stream.take(actionsByTag('alias'), 1)))
         yield* Effect.yieldNow
 
-        yield* runtime.dispatch({ _tag: 'inc', type: 'legacy', payload: undefined } as any)
+        yield* runtime.dispatch({ _tag: 'inc', type: 'alias', payload: undefined } as any)
 
-        const legacyActions = Array.from((yield* Fiber.join(legacyFiber)) as Iterable<any>)
-        expect(legacyActions).toHaveLength(1)
-        expect((legacyActions[0] as any)._tag).toBe('inc')
-        expect((legacyActions[0] as any).type).toBe('legacy')
+        const aliasActions = Array.from((yield* Fiber.join(aliasFiber)) as Iterable<any>)
+        expect(aliasActions).toHaveLength(1)
+        expect((aliasActions[0] as any)._tag).toBe('inc')
+        expect((aliasActions[0] as any).type).toBe('alias')
       }),
     )
   })
@@ -462,7 +464,7 @@ describe('ModuleRuntime (internal)', () => {
           actions: {},
         })
 
-        const logic = ModuleWithEnv.logic(($) =>
+        const logic = ModuleWithEnv.logic('module-with-env-logic', ($) =>
           Effect.gen(function* () {
             // Reading Env during setup should be blocked by the phase guard and converted into a logic::invalid_phase diagnostic.
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -500,6 +502,7 @@ describe('ModuleRuntime (internal)', () => {
         expect(diagnosticEvent).toBeDefined()
         expect(diagnosticEvent?.type === 'diagnostic' ? diagnosticEvent.severity : undefined).toBe('error')
         expect(diagnosticEvent?.moduleId).toBe('module-with-env')
+        expect(String((diagnosticEvent as any)?.hint ?? '')).toContain('declaration phase')
       }),
     )
 
@@ -519,7 +522,7 @@ describe('ModuleRuntime (internal)', () => {
           actions: { ping: Schema.Void },
         })
 
-        const logic = ModuleWithWatcher.logic(($) =>
+        const logic = ModuleWithWatcher.logic('module-with-watcher-logic', ($) =>
           Effect.gen(function* () {
             // Using run-only watcher APIs during setup should trigger a phase-guard diagnostic.
             yield* $.onAction('ping').run(Effect.void)
@@ -569,7 +572,7 @@ describe('ModuleRuntime (internal)', () => {
           actions: { ping: Schema.Void },
         })
 
-        const logic = PlanModule.logic<never>(($) => {
+        const logic = PlanModule.logic<never>('plan-module-logic', ($) => {
           const setup = $.onAction('ping').run(Effect.void)
           const run = Effect.void
           const plan = { setup, run }
@@ -619,7 +622,7 @@ describe('ModuleRuntime (internal)', () => {
           actions: { ping: Schema.Void },
         })
 
-        const logic = PlanModule.logic<never>(($) => {
+        const logic = PlanModule.logic<never>('plan-module-logic-2', ($) => {
           const setup = $.onAction('ping').run(Effect.void)
           const run = Effect.void
 
@@ -657,7 +660,7 @@ describe('ModuleRuntime (internal)', () => {
       }),
     )
 
-    it.effect('should emit logic::invalid_phase when using lifecycle.onInit in LogicPlan.run', () =>
+    it.effect('should emit logic::invalid_phase when using readyAfter in LogicPlan.run', () =>
       Effect.gen(function* () {
         const events: Debug.Event[] = []
 
@@ -673,12 +676,12 @@ describe('ModuleRuntime (internal)', () => {
           actions: {},
         })
 
-        const logic = PlanModule.logic(($) => ({
+        const logic = PlanModule.tag.logic('plan-module-logic-3', ($) => ({
           setup: Effect.void,
           run: Effect.gen(function* () {
-            // Using $.lifecycle.onInit during LogicPlan.run should be blocked by the phase guard,
+            // Using $.readyAfter during LogicPlan.run should be blocked by the phase guard,
             // converted into a logic::invalid_phase diagnostic, and must not affect runtime construction.
-            yield* $.lifecycle.onInit(Effect.void)
+            yield* $.readyAfter(Effect.void, { id: 'late-ready' })
           }),
         }))
 
@@ -728,7 +731,7 @@ describe('ModuleRuntime (internal)', () => {
           actions: {},
         })
 
-        const logic = PlanModule.logic(($) => {
+        const logic = PlanModule.tag.logic('plan-module-logic-4', ($) => {
           const setup = Effect.void
           const run = Effect.gen(function* () {
             const svc = yield* $.use(EnvService)
@@ -779,7 +782,7 @@ describe('ModuleRuntime (internal)', () => {
           actions: { inc: Schema.Void },
         })
 
-        const logic = PlanModule.logic(($) => {
+        const logic = PlanModule.tag.logic('plan-module-logic-5', ($) => {
           const setup = $.reducer(
             'inc',
             Logix.Module.Reducer.mutate((draft) => {
@@ -832,7 +835,7 @@ describe('ModuleRuntime (internal)', () => {
           actions: { inc: Schema.Void },
         })
 
-        const logic = PlanModule.logic(($) => ({
+        const logic = PlanModule.tag.logic('plan-module-logic-6', ($) => ({
           setup: $.reducer(
             'inc',
             Logix.Module.Reducer.mutate((draft) => {
@@ -876,12 +879,12 @@ describe('ModuleRuntime (internal)', () => {
       }),
     )
 
-    it.effect('should ignore legacy single-phase return value that looks like LogicPlan', () =>
+    it.effect('should ignore historical single-phase return value that looks like LogicPlan', () =>
       Effect.gen(function* () {
         let setupExecuted = false
         let runExecuted = false
 
-        const LegacyCompatModule = Logix.Module.make('LegacyCompatPlanReturn', {
+        const HistoricalPlanReturnModule = Logix.Module.make('HistoricalPlanReturn', {
           state: Schema.Struct({ count: Schema.Number }),
           actions: {},
         })
@@ -900,9 +903,9 @@ describe('ModuleRuntime (internal)', () => {
         const runtime = yield* ModuleRuntime.make(
           { count: 0 },
           {
-            moduleId: 'legacy-compat-plan-return',
+            moduleId: 'historical-plan-return',
             logics: [logic],
-            tag: LegacyCompatModule.tag,
+            tag: HistoricalPlanReturnModule.tag,
           },
         )
 
@@ -921,7 +924,7 @@ describe('ModuleRuntime (internal)', () => {
         let setupExecuted = false
         let runExecuted = false
 
-        const LegacyCompatPlanEffectModule = Logix.Module.make('LegacyCompatPlanEffectReturn', {
+        const HistoricalPlanEffectModule = Logix.Module.make('HistoricalPlanEffectReturn', {
           state: Schema.Struct({ count: Schema.Number }),
           actions: {},
         })
@@ -946,9 +949,9 @@ describe('ModuleRuntime (internal)', () => {
         const runtime = yield* ModuleRuntime.make(
           { count: 0 },
           {
-            moduleId: 'legacy-compat-plan-effect-return',
+            moduleId: 'historical-plan-effect-return',
             logics: [logic],
-            tag: LegacyCompatPlanEffectModule.tag,
+            tag: HistoricalPlanEffectModule.tag,
           },
         )
 
@@ -1102,7 +1105,7 @@ describe('ModuleRuntime (internal)', () => {
           StateTransaction.updateDraft(ctx, { value: i + 1 })
           StateTransaction.recordPatch(ctx, 'value', 'reducer', i, i + 1)
 
-          StateTransaction.recordPatch(ctx, 'value', 'trait-computed', i + 1, i + 1)
+          StateTransaction.recordPatch(ctx, 'value', 'field-computed', i + 1, i + 1)
         }
 
         const txn = yield* StateTransaction.commit(ctx, ref)
@@ -1267,7 +1270,7 @@ describe('ModuleRuntime (internal)', () => {
           ).pipe(
             Effect.flatMap((runtime) =>
               Effect.gen(function* () {
-                yield* Logix.InternalContracts.runWithStateTransaction(
+                yield* FieldContracts.runWithStateTransaction(
                   runtime as any,
                   { kind: 'unit-test', name: 'in-txn-setState' },
                   () => runtime.setState({ a: 1, b: 0 }),
@@ -1407,7 +1410,7 @@ describe('ModuleRuntime (internal)', () => {
                 expect(typeof txnId).toBe('string')
         
                 // Travel back to the state before that transaction started (should be value = 1).
-                yield* Logix.InternalContracts.applyTransactionSnapshot(runtime as any, txnId, 'before')
+                yield* FieldContracts.applyTransactionSnapshot(runtime as any, txnId, 'before')
         
                 const afterTravel = yield* runtime.getState
                 expect(afterTravel.value).toBe(1)
@@ -1750,7 +1753,7 @@ describe('ModuleRuntime (internal)', () => {
     )
 
     it.effect(
-      'traits.source.refresh should execute within a single transaction and emit one additional state:update',
+      'fields.source.refresh should execute within a single transaction and emit one additional state:update',
       () =>
         Effect.gen(function* () {
           type State = { value: number }
@@ -1795,7 +1798,7 @@ describe('ModuleRuntime (internal)', () => {
                   expect((beforeUpdates[0] as any).state).toEqual({ value: 0 })
           
                   const internals = getBoundInternals(bound as any)
-                  const register = internals.traits.registerSourceRefresh
+                  const register = internals.fields.registerSourceRefresh
                   expect(register).toBeDefined()
           
                   register(
@@ -1806,9 +1809,9 @@ describe('ModuleRuntime (internal)', () => {
                       }) as any,
                   )
           
-                  // Call traits.source.refresh: on runtimes that support StateTransaction,
+                  // Call fields.source.refresh: on runtimes that support StateTransaction,
                   // it should be wrapped as a single standalone transaction and append only one state:update.
-                  yield* bound.traits.source.refresh('value')
+                  yield* bound.fields.source.refresh('value')
           
                   const after = ring.getSnapshot()
                   const afterUpdates = after.filter(
@@ -1829,7 +1832,7 @@ describe('ModuleRuntime (internal)', () => {
         }),
     )
 
-    it.effect('traits.source.refresh should not deadlock when called inside an existing transaction', () =>
+    it.effect('fields.source.refresh should not deadlock when called inside an existing transaction', () =>
       Effect.gen(function* () {
         type State = { value: number }
 
@@ -1866,7 +1869,7 @@ describe('ModuleRuntime (internal)', () => {
                 )
         
                 const internals = getBoundInternals(bound as any)
-                const register = internals.traits.registerSourceRefresh
+                const register = internals.fields.registerSourceRefresh
                 expect(register).toBeDefined()
         
                 register(
@@ -1883,19 +1886,19 @@ describe('ModuleRuntime (internal)', () => {
                 )
                 expect(beforeUpdates).toHaveLength(1)
         
-                // Calling traits.source.refresh inside a transaction window:
+                // Calling fields.source.refresh inside a transaction window:
                 // - must not go through enqueueTransaction (otherwise deadlock);
                 // - must not start a nested transaction (otherwise extra state:update).
-                yield* Logix.InternalContracts.runWithStateTransaction(
+                yield* FieldContracts.runWithStateTransaction(
                   runtime as any,
                   { kind: 'test', name: 'outer' },
-                  () => bound.traits.source.refresh('value') as any,
+                  () => bound.fields.source.refresh('value') as any,
                 ).pipe(
                   Effect.timeoutOption('200 millis'),
                   Effect.flatMap((maybe) =>
                     Option.isSome(maybe)
                       ? Effect.void
-                      : Effect.die(new Error('[test] traits.source.refresh deadlocked inside transaction')),
+                      : Effect.die(new Error('[test] fields.source.refresh deadlocked inside transaction')),
                   ),
                 )
         
@@ -1927,7 +1930,7 @@ describe('ModuleRuntime (internal)', () => {
           },
         )
 
-        const instrumentation = Logix.InternalContracts.getStateTransactionInstrumentation(runtime as any)
+        const instrumentation = RuntimeContracts.getStateTransactionInstrumentation(runtime as any)
         expect(instrumentation).toBe(getDefaultStateTxnInstrumentation())
       }),
     )
@@ -1939,19 +1942,19 @@ describe('ModuleRuntime (internal)', () => {
           actions: { inc: Schema.Void },
         })
 
-        const CounterImpl = Counter.implement({
+        const counterProgram = Logix.Program.make(Counter, {
           initial: { count: 0 },
           logics: [],
         })
 
-        const runtimeManager = Logix.Runtime.make(CounterImpl, {
+        const runtimeManager = Logix.Runtime.make(counterProgram, {
           layer: Layer.empty as Layer.Layer<any, never, never>,
           stateTransaction: { instrumentation: 'light' },
         })
 
         const program = Effect.gen(function* () {
           const rt = yield* Effect.service(Counter.tag).pipe(Effect.orDie)
-          const instrumentation = Logix.InternalContracts.getStateTransactionInstrumentation(rt as any)
+          const instrumentation = RuntimeContracts.getStateTransactionInstrumentation(rt as any)
           expect(instrumentation).toBe('light')
         })
 
@@ -1959,27 +1962,27 @@ describe('ModuleRuntime (internal)', () => {
       }),
     )
 
-    it.effect('ModuleImpl.stateTransaction should override RuntimeOptions.stateTransaction', () =>
+    it.effect('Program.stateTransaction should override RuntimeOptions.stateTransaction', () =>
       Effect.gen(function* () {
         const Counter = Logix.Module.make('ModuleInstrCounter', {
           state: Schema.Struct({ count: Schema.Number }),
           actions: { inc: Schema.Void },
         })
 
-        const CounterImpl = Counter.implement({
+        const counterProgram = Logix.Program.make(Counter, {
           initial: { count: 0 },
           logics: [],
           stateTransaction: { instrumentation: 'full' },
         })
 
-        const runtimeManager = Logix.Runtime.make(CounterImpl, {
+        const runtimeManager = Logix.Runtime.make(counterProgram, {
           layer: Layer.empty as Layer.Layer<any, never, never>,
           stateTransaction: { instrumentation: 'light' },
         })
 
         const program = Effect.gen(function* () {
           const rt = yield* Effect.service(Counter.tag).pipe(Effect.orDie)
-          const instrumentation = Logix.InternalContracts.getStateTransactionInstrumentation(rt as any)
+          const instrumentation = RuntimeContracts.getStateTransactionInstrumentation(rt as any)
           expect(instrumentation).toBe('full')
         })
 

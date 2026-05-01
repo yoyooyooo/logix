@@ -6,6 +6,7 @@
  */
 
 import * as Logix from '@logixjs/core'
+import { programLayer } from '../runtime/programLayer.js'
 import {
   ToggleStateSchema,
   ToggleActionMap,
@@ -14,7 +15,7 @@ import {
 } from '../patterns/optimistic-toggle.js'
 
 // ---------------------------------------------------------------------------
-// Module / Live：使用 Pattern 提供的 Logic 直接装配领域模块
+// Module / Program：使用 Pattern 提供的 Logic 直接装配领域程序
 // ---------------------------------------------------------------------------
 
 export const ToggleDefFromPattern = Logix.Module.make('ToggleFromPattern', {
@@ -22,9 +23,9 @@ export const ToggleDefFromPattern = Logix.Module.make('ToggleFromPattern', {
   actions: ToggleActionMap,
 })
 
-export const ToggleLogicFromPattern = ToggleDefFromPattern.logic(makeOptimisticToggleLogicPattern())
+export const ToggleLogicFromPattern = ToggleDefFromPattern.logic('toggle-logic-from-pattern', makeOptimisticToggleLogicPattern())
 
-export const ToggleModuleFromPattern = ToggleDefFromPattern.implement({
+export const ToggleProgramFromPattern = Logix.Program.make(ToggleDefFromPattern, {
   initial: {
     id: 'toggle-from-pattern',
     enabled: true,
@@ -35,5 +36,4 @@ export const ToggleModuleFromPattern = ToggleDefFromPattern.implement({
   logics: [ToggleLogicFromPattern],
 })
 
-export const ToggleImplFromPattern = ToggleModuleFromPattern.impl
-export const ToggleLiveFromPattern = ToggleImplFromPattern.layer
+export const ToggleLayerFromPattern = programLayer(ToggleProgramFromPattern)

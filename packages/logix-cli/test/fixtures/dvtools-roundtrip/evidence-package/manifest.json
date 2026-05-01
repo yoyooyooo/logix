@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "kind": "CanonicalEvidencePackage",
+  "packageId": "fixture:evidence:dvtools-roundtrip",
+  "artifacts": [
+    {
+      "outputKey": "dvtools-selected-finding",
+      "kind": "DVToolsFindingSnapshot",
+      "ref": "./finding.json"
+    }
+  ]
+}

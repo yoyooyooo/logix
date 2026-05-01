@@ -1,6 +1,6 @@
 # Quickstart: Sandbox 多内核试跑与对照（core/core-ng）
 
-**Date**: 2025-12-28  
+**Date**: 2025-12-28
 **Feature**: [058-sandbox-multi-kernel](./plan.md)
 
 ## 目标
@@ -9,8 +9,8 @@
 
 ## 使用方式（概念级）
 
-1) Host 注册多个内核变体（`kernelId → kernelUrl`）；当存在多个变体时必须显式提供 `defaultKernelId`（用于默认选择与 fallback 目标）。  
-2) 每次运行时指定 `requestedKernelId`（可选）与 strict/fallback 策略（默认 `strict=true`；fallback 仅在显式允许时启用，且目标固定为 `defaultKernelId`）。  
+1) Host 注册多个内核变体（`kernelId → kernelUrl`）；当存在多个变体时必须显式提供 `defaultKernelId`（用于默认选择与 fallback 目标）。
+2) 每次运行时指定 `requestedKernelId`（可选）与 strict/fallback 策略（默认 `strict=true`；fallback 仅在显式允许时启用，且目标固定为 `defaultKernelId`）。
 3) 运行结果必须可解释：包含 `requested/effective kernelId`、`fallbackReason`（若发生）、以及从 TrialRunReport 提取的 `kernelImplementationRef`（复用 045 契约）。
 
 ## 典型用法（面向 consumer）

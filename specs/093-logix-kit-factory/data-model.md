@@ -24,7 +24,7 @@ type ServiceKit<Tag> = {
 
 ### 1.2 InputKit<T>（外部输入 kit）
 
-InputKit 代表一个外部输入源（ExternalStore），以及把它接到 StateTrait 的标准化写法：
+InputKit 代表一个外部输入源（ExternalStore），以及把它接到 FieldKernel 的标准化写法：
 
 ```ts
 type InputKit<T> = {
@@ -35,19 +35,19 @@ type InputKit<T> = {
     readonly coalesceWindowMs?: number
     readonly priority?: "urgent" | "nonUrgent"
     readonly meta?: TraitMeta
-  }) => StateTraitEntry<S, P>
+  }) => FieldKernelEntry<S, P>
 }
 ```
 
 语义边界：
 
 - 读侧真相源仍属于宿主/上游模块；InputKit 只是提供 “写回 state graph 的声明”。
-- `externalTrait` 等价展开到 `StateTrait.externalStore({ store, ... })`，并继承 073 的 external-owned 纪律。
+- `externalTrait` 等价展开到 `FieldKernel.externalStore({ store, ... })`，并继承 073 的 external-owned 纪律。
 - `meta` 不承诺“原样进入 Root IR”：Static IR 导出时会按 `TraitMeta.sanitize` 白名单裁剪（不在白名单内的字段会被忽略）。
 
 #### TraitMeta（可导出 meta 白名单，Slim JSON）
 
-事实源：`packages/logix-core/src/internal/state-trait/meta.ts`（`TraitMeta` + `sanitize`）。
+事实源：`packages/logix-core/src/internal/state-field/meta.ts`（`TraitMeta` + `sanitize`）。
 
 ```ts
 type JsonValue =

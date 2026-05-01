@@ -1,6 +1,6 @@
 # Implementation Plan: Full-Duplex Prelude（080 · Group Spec）
 
-**Branch**: `080-full-duplex-prelude` | **Date**: 2026-01-09 | **Spec**: [spec.md](./spec.md)  
+**Branch**: `080-full-duplex-prelude` | **Date**: 2026-01-09 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature group description from `specs/080-full-duplex-prelude/spec.md`
 
 ## Summary
@@ -37,13 +37,13 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript（workspace：5.8.2；子包可能用 5.9.x；以 `package.json` 为准）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`（IR/TrialRun/Diagnostics/Manifest）、Node-only：`ts-morph`（Parser/Rewriter）、`swc`（AST 辅助，按需）  
-**Storage**: N/A（本 group 不引入持久化；导出工件为 JSON 文件）  
-**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`；CLI/engine 以 Node 集成用例为主）  
-**Target Platform**: Node.js 20+（构建期/CLI） + modern browsers（IR/证据的消费者：sandbox/devtools）  
-**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）  
-**Performance Goals**: N/A（本 group 主要是工具链/导出/回写；触及 runtime 热路径的 perf evidence 由成员 specs 自己出证据）  
+**Language/Version**: TypeScript（workspace：5.8.2；子包可能用 5.9.x；以 `package.json` 为准）
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`（IR/TrialRun/Diagnostics/Manifest）、Node-only：`ts-morph`（Parser/Rewriter）、`swc`（AST 辅助，按需）
+**Storage**: N/A（本 group 不引入持久化；导出工件为 JSON 文件）
+**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`；CLI/engine 以 Node 集成用例为主）
+**Target Platform**: Node.js 20+（构建期/CLI） + modern browsers（IR/证据的消费者：sandbox/devtools）
+**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）
+**Performance Goals**: N/A（本 group 主要是工具链/导出/回写；触及 runtime 热路径的 perf evidence 由成员 specs 自己出证据）
 **Constraints**: 统一最小 IR（Static IR + Dynamic Trace）、稳定锚点（去随机化）、事务窗口禁 IO、诊断输出 Slim 且可序列化、forward-only（无兼容层/无弃用期）
 
 ## Constitution Check（总控口径）
@@ -73,7 +73,7 @@
 
 ## Perf Evidence Plan
 
-N/A（本 group 本身不改 runtime 热路径）。  
+N/A（本 group 本身不改 runtime 热路径）。
 若某个 member 触及核心路径：按其 `plan.md` 产出 `$logix-perf-evidence` 的 before/after/diff，并在 group checklist 里只检查“证据存在且可比”。
 
 ## Project Structure（本 group 的产物）

@@ -1,6 +1,4 @@
 packages:
   - 'packages/*'
   - 'apps/*'
-  - 'docs/specs/runtime-logix/form/poc'
   - 'examples/*'
-  - '.codex/skills/logix-perf-evidence'

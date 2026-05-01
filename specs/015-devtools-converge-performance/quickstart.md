@@ -1,12 +1,12 @@
 # Quickstart: 015 Devtools Converge Performance Pane
 
-**Feature**: `015-devtools-converge-performance`  
-**Created**: 2025-12-18  
+**Feature**: `015-devtools-converge-performance`
+**Created**: 2025-12-18
 
 本 Quickstart 的目标是用最少步骤验证 015 的三个核心承诺：
 
-1) converge 时间轴可用（多行 + txn 分段 + 关键标签）；  
-2) Audits 可操作（有稳定 ID + 建议 + 可复制代码片段）；  
+1) converge 时间轴可用（多行 + txn 分段 + 关键标签）；
+2) Audits 可操作（有稳定 ID + 建议 + 可复制代码片段）；
 3) 证据不足不误导（显式降级），且内嵌面板与离线导入结论一致。
 
 ## 1) 准备一份包含 converge 证据的证据包

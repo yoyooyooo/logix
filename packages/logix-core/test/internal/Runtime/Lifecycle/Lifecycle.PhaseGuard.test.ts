@@ -2,7 +2,7 @@ import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Deferred, Effect, Layer, Schema } from 'effect'
 import { TestClock } from 'effect/testing'
-import * as Debug from '../../../../src/Debug.js'
+import * as Debug from '../../../../src/internal/debug-api.js'
 import * as Logix from '../../../../src/index.js'
 import * as Lifecycle from '../../../../src/internal/runtime/core/Lifecycle.js'
 import { makeEventCollectorSink } from '../../../fixtures/lifecycle.js'
@@ -21,26 +21,20 @@ describe('Lifecycle phase guard', () => {
         actions: {},
       })
 
-      const logic = TestModule.logic(($) => ({
-        setup: Effect.gen(function* () {
-          yield* $.lifecycle.onInitRequired(Effect.void)
-          yield* $.lifecycle.onStart(Effect.void)
-          yield* $.lifecycle.onDestroy(Effect.void)
-        }),
-        run: Effect.gen(function* () {
+      const logic = TestModule.logic('test-module-logic', ($) => {
+        $.readyAfter(Effect.void, { id: 'declared' })
+
+        return Effect.gen(function* () {
           const lifecycle = yield* Lifecycle.LifecycleContext as any
           const before = yield* lifecycle.getTaskSnapshot
 
-          yield* $.lifecycle.onInitRequired(Effect.void)
-          yield* $.lifecycle.onStart(Effect.void)
-          yield* $.lifecycle.onDestroy(Effect.void)
-          yield* $.lifecycle.onError(() => Effect.void)
+          yield* $.readyAfter(Effect.void, { id: 'late' })
 
           const after = yield* lifecycle.getTaskSnapshot
 
           yield* Deferred.succeed(snapshotSeen, { before, after })
-        }) as any,
-      }))
+        }) as any
+      })
 
       const layer = TestModule.live({ value: 0 }, logic) as unknown as Layer.Layer<
         Logix.ModuleRuntime<any, any>,
@@ -60,9 +54,12 @@ describe('Lifecycle phase guard', () => {
       expect(after).toEqual(before)
 
       const invalidPhaseEvents = events.filter(
-        (e) => e.type === 'diagnostic' && e.code === 'logic::invalid_phase' && e.kind === 'lifecycle_in_run',
+        (e) => e.type === 'diagnostic' && e.code === 'logic::invalid_phase' && e.kind === 'readiness_in_run',
       )
       expect(invalidPhaseEvents.length).toBeGreaterThan(0)
+      const first = invalidPhaseEvents[0] as any
+      expect(String(first?.message ?? '')).toContain('declaration phase')
+      expect(String(first?.hint ?? '')).toContain('$.readyAfter')
     }),
   )
 })

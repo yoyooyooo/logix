@@ -1,7 +1,7 @@
 import { describe, it, expect } from '@effect/vitest'
 import { Deferred, Effect, Layer, Ref, Schema } from 'effect'
 import * as Logix from '../../../src/index.js'
-import * as Debug from '../../../src/Debug.js'
+import * as Debug from '../../../src/internal/debug-api.js'
 
 describe('Runtime effects (US4)', () => {
   it.effect('should de-duplicate by (actionTag, sourceKey) and emit duplicate_registration', () =>
@@ -18,7 +18,7 @@ describe('Runtime effects (US4)', () => {
       const handler = (payload: number) =>
         Ref.update(observed, (arr) => [...arr, payload]).pipe(Effect.asVoid)
 
-      const L = M.logic(($) => ({
+      const L = M.tag.logic('m-logic', ($) => ({
         setup: Effect.gen(function* () {
           yield* $.effect($.actions.ping, handler)
           yield* $.effect($.actions.ping, handler)
@@ -26,10 +26,10 @@ describe('Runtime effects (US4)', () => {
         run: Effect.void,
       }))
 
-      const impl = M.implement({ initial: { value: 0 }, logics: [L] })
+      const programModule = Logix.Program.make(M, { initial: { value: 0 }, logics: [L] })
 
       const ring = Debug.makeRingBufferSink(64)
-      const runtime = Logix.Runtime.make(impl, {
+      const runtime = Logix.Runtime.make(programModule, {
         layer: Layer.mergeAll(
           Debug.replace([ring.sink]) as Layer.Layer<any, never, never>,
           Debug.diagnosticsLevel('light'),
@@ -69,7 +69,7 @@ describe('Runtime effects (US4)', () => {
       const handler = (payload: number) =>
         Ref.update(observed, (arr) => [...arr, payload]).pipe(Effect.asVoid)
 
-      const L = M.logic(($) => ({
+      const L = M.tag.logic('m-logic-2', ($) => ({
         setup: Effect.void,
         run: Effect.gen(function* () {
           yield* Deferred.await(gate)
@@ -77,10 +77,10 @@ describe('Runtime effects (US4)', () => {
         }),
       }))
 
-      const impl = M.implement({ initial: { value: 0 }, logics: [L] })
+      const programModule = Logix.Program.make(M, { initial: { value: 0 }, logics: [L] })
 
       const ring = Debug.makeRingBufferSink(64)
-      const runtime = Logix.Runtime.make(impl, {
+      const runtime = Logix.Runtime.make(programModule, {
         layer: Layer.mergeAll(
           Debug.replace([ring.sink]) as Layer.Layer<any, never, never>,
           Debug.diagnosticsLevel('light'),
@@ -127,7 +127,7 @@ describe('Runtime effects (US4)', () => {
       const pingObserved = yield* Ref.make<ReadonlyArray<number>>([])
       const pongObserved = yield* Ref.make<ReadonlyArray<string>>([])
 
-      const L = M.logic(($) => ({
+      const L = M.tag.logic('m-logic-3', ($) => ({
         setup: Effect.gen(function* () {
           yield* $.effect($.actions.ping, (payload) =>
             Ref.update(pingObserved, (arr) => [...arr, payload as number]).pipe(Effect.asVoid),
@@ -140,8 +140,8 @@ describe('Runtime effects (US4)', () => {
         run: Effect.void,
       }))
 
-      const impl = M.implement({ initial: { value: 0 }, logics: [L] })
-      const runtime = Logix.Runtime.make(impl)
+      const programModule = Logix.Program.make(M, { initial: { value: 0 }, logics: [L] })
+      const runtime = Logix.Runtime.make(programModule)
 
       const program = Effect.gen(function* () {
         const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
@@ -175,7 +175,7 @@ describe('Runtime effects (US4)', () => {
       const ok = (_payload: number) => Ref.update(okCount, (n) => n + 1).pipe(Effect.asVoid)
       const bad = (_payload: number) => Effect.fail(new Error('boom'))
 
-      const L = M.logic(($) => ({
+      const L = M.tag.logic('m-logic-4', ($) => ({
         setup: Effect.gen(function* () {
           yield* $.effect($.actions.ping, bad)
           yield* $.effect($.actions.ping, ok)
@@ -183,10 +183,10 @@ describe('Runtime effects (US4)', () => {
         run: Effect.void,
       }))
 
-      const impl = M.implement({ initial: { value: 0 }, logics: [L] })
+      const programModule = Logix.Program.make(M, { initial: { value: 0 }, logics: [L] })
 
       const ring = Debug.makeRingBufferSink(64)
-      const runtime = Logix.Runtime.make(impl, {
+      const runtime = Logix.Runtime.make(programModule, {
         layer: Layer.mergeAll(
           Debug.replace([ring.sink]) as Layer.Layer<any, never, never>,
           Debug.diagnosticsLevel('light'),

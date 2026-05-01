@@ -1,8 +1,8 @@
 # Feature Specification: logix-galaxy-api（PostgreSQL 接口服务样例）
 
-**Feature Branch**: `[062-galaxy-api-postgres]`  
-**Created**: 2025-12-30  
-**Status**: Draft  
+**Feature Branch**: `[062-galaxy-api-postgres]`
+**Created**: 2025-12-30
+**Status**: Draft
 **Input**: User description: "在 apps/logix-galaxy-api 下面创建以 postgresql 为数据库的接口服务，我已创建服务，端口 7001 ，然后打个样，能做好自动化测试"
 
 ## User Scenarios & Testing _(mandatory)_

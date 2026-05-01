@@ -10,7 +10,7 @@ type SpecScenario = SpecStory['scenarios'][number]
 type SpecStep = SpecScenario['steps'][number]
 
 export function StepDetailPanel() {
-  const runtime: SandboxRuntime = useModule(SandboxDef)
+  const runtime: SandboxRuntime = useModule(SandboxDef.tag)
   const dispatch = useDispatch(runtime)
 
   // Selectors

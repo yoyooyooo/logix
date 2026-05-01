@@ -1,8 +1,8 @@
 # Feature Specification: Form API 收敛与 DX 提升
 
-**Feature Branch**: `[028-form-api-dx]`  
-**Created**: 2025-12-23  
-**Status**: Draft  
+**Feature Branch**: `[028-form-api-dx]`
+**Created**: 2025-12-23
+**Status**: Draft
 **Input**: User description: "Form API 收敛、开发体验提升，并治理表单包内部的超大文件与可维护性问题。"
 
 ## Assumptions

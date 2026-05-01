@@ -1,7 +1,7 @@
 # Specification Quality Checklist: 091 Busy Indicator Policy
 
-**Purpose**: Validate specification completeness and quality before proceeding to execution  
-**Created**: 2026-01-10  
+**Purpose**: Validate specification completeness and quality before proceeding to execution
+**Created**: 2026-01-10
 **Feature**: `specs/091-busy-indicator-policy/spec.md`
 
 ## Content Quality

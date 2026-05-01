@@ -1,39 +1,41 @@
 import React from 'react'
 import { Effect, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
-import { RuntimeProvider, useImportedModule, useModule, useRuntime, useSelector } from '@logixjs/react'
-import { CounterDef, CounterImpl } from '../modules/counter'
-import { CounterMultiDef, CounterMultiImpl } from '../modules/counterMulti'
+import { RuntimeProvider, fieldValue, useImportedModule, useModule, useRuntime, useSelector } from '@logixjs/react'
+import { Counter, CounterProgram } from '../modules/counter'
+import { CounterMulti, CounterMultiProgram } from '../modules/counterMulti'
 
 // -----------------------------------------------------------------------------
-// DI Showcase：演示 “root provider / imports-scope / local multi-instance”
+// Host projection showcase：演示 root provider / imports-scope / local multi-instance
 // -----------------------------------------------------------------------------
 
 interface EnvService {
   readonly name: string
 }
 
-const EnvTag = ServiceMap.Service<EnvService>('@examples/di-showcase/env')
+const EnvTag = ServiceMap.Service<EnvService>('@examples/host-root-imports/env')
 const RootEnvLayer = Layer.succeed(EnvTag, { name: 'RootEnv' })
 const FeatureEnvLayer = Layer.succeed(EnvTag, { name: 'FeatureEnv' })
 
-const counterRuntime = Logix.Runtime.make(CounterImpl, {
+const counterRuntime = Logix.Runtime.make(CounterProgram, {
   label: 'DI · CounterRuntime',
   devtools: true,
   layer: RootEnvLayer,
 })
 
-const ImportedHostDef = Logix.Module.make('DiShowcaseImportedHost', {
+const ImportedHost = Logix.Module.make('DiShowcaseImportedHost', {
   state: Schema.Void,
   actions: { noop: Schema.Void },
 })
 
-const ImportedHostModule = ImportedHostDef.implement({
+const ImportedHostProgram = Logix.Program.make(ImportedHost, {
   initial: undefined,
-  imports: [CounterMultiImpl],
+  capabilities: {
+    imports: [CounterMultiProgram],
+  },
 })
 
-const importsRuntime = Logix.Runtime.make(ImportedHostModule, {
+const importsRuntime = Logix.Runtime.make(ImportedHostProgram, {
   label: 'DI · ImportsRuntime',
   devtools: true,
 })
@@ -68,10 +70,9 @@ const CounterPanel: React.FC<{
   kind: 'global' | 'local'
   options?: { key?: string; label?: string }
 }> = ({ title, kind, options }) => {
-  const ref =
-    kind === 'global' ? useModule(CounterDef) : options ? useModule(CounterImpl, options) : useModule(CounterImpl)
+  const ref = kind === 'global' ? useModule(Counter.tag) : options ? useModule(CounterProgram, options) : useModule(CounterProgram)
 
-  const value = useSelector(ref, (s) => s.value)
+  const value = useSelector(ref, fieldValue('value'))
 
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-4 space-y-3">
@@ -83,7 +84,7 @@ const CounterPanel: React.FC<{
           </div>
         </div>
         <span className="px-2 py-0.5 text-[10px] rounded-full bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-medium">
-          {kind === 'global' ? 'useModule(ModuleTag)' : 'useModule(ModuleImpl)'}
+          {kind === 'global' ? 'useModule(ModuleTag)' : 'useModule(Program)'}
         </span>
       </div>
 
@@ -112,10 +113,9 @@ const CounterPanel: React.FC<{
   )
 }
 
-const RootResolveProbe: React.FC = () => {
+const RuntimeEnvPanel: React.FC = () => {
   const runtime = useRuntime()
   const [currentEnv, setCurrentEnv] = React.useState<string>('(loading)')
-  const [rootEnv, setRootEnv] = React.useState<string>('(loading)')
 
   React.useEffect(() => {
     void runtime
@@ -126,52 +126,38 @@ const RootResolveProbe: React.FC = () => {
         }),
       )
       .then(setCurrentEnv)
-
-    void runtime
-      .runPromise(Logix.Root.resolve(EnvTag).pipe(Effect.map((env: EnvService) => env.name)) as Effect.Effect<string, never, never>)
-      .then(setRootEnv)
   }, [runtime])
 
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <div className="text-sm font-semibold text-gray-900 dark:text-white">Root.resolve vs 当前 Env</div>
+        <div className="text-sm font-semibold text-gray-900 dark:text-white">Runtime scope Env</div>
         <span className="px-2 py-0.5 text-[10px] rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
-          root provider
+          runtime scope
         </span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-        <div className="rounded-lg bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 p-3">
-          <div className="text-[11px] text-gray-500 dark:text-gray-400 mb-1">当前 Provider（受 layer 覆盖）</div>
-          <div className="font-mono text-xs text-gray-900 dark:text-gray-100 break-all">{currentEnv}</div>
-        </div>
-        <div className="rounded-lg bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 p-3">
-          <div className="text-[11px] text-gray-500 dark:text-gray-400 mb-1">Root.resolve（固定 root provider）</div>
-          <div className="font-mono text-xs text-gray-900 dark:text-gray-100 break-all">{rootEnv}</div>
-        </div>
+      <div className="rounded-lg bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 p-3 text-sm">
+        <div className="text-[11px] text-gray-500 dark:text-gray-400 mb-1">当前 Provider（受 layer 覆盖）</div>
+        <div className="font-mono text-xs text-gray-900 dark:text-gray-100 break-all">{currentEnv}</div>
       </div>
 
       <div className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
         <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-[11px] font-mono">
-          RuntimeProvider.layer
+          subtree layer
         </code>{' '}
-        只影响“当前子树”的 Env；当你需要显式拿到 root provider 的单例（类似 Angular 的 root provider），使用{' '}
-        <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-[11px] font-mono">
-          Logix.Root.resolve(Tag)
-        </code>
-        。
+        只影响“当前子树”的 Env。当前推荐写法里，service 读取统一以当前 runtime scope 为准，不再保留额外的 fixed-root expert route。
       </div>
     </div>
   )
 }
 
 const ImportsPanel: React.FC = () => {
-  const host = useModule(ImportedHostDef)
-  const childByGet = host.imports.get(CounterMultiDef.tag)
-  const childByHook = useImportedModule(host, CounterMultiDef.tag)
+  const host = useModule(ImportedHost.tag)
+  const childByGet = host.imports.get(CounterMulti.tag)
+  const childByHook = useImportedModule(host, CounterMulti.tag)
 
-  const count = useSelector(childByHook, (s) => s.count)
+  const count = useSelector(childByHook, fieldValue('count'))
 
   return (
     <div className="space-y-4">
@@ -251,25 +237,23 @@ export const DiShowcaseLayout: React.FC = () => {
     return (
       <div className="space-y-10">
         <div className="border-b border-gray-200 dark:border-gray-800 pb-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            DI Showcase（Root / Imports / Instances）
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Host Projection · Root / Imports / Env</h2>
           <p className="text-gray-600 dark:text-gray-400 max-w-3xl leading-relaxed">
-            这页把 React + Logix 的 DI 用法放到同一个视图里对照：全局单例（ModuleTag）、局部多实例（ModuleImpl +
-            key）、imports-scope（Host.imports / useImportedModule），以及 Root.resolve 的 root provider 语义。
+            这页把 React 宿主上的 provider 读取方式放到同一个视图里对照：全局单例、局部多实例、imports scope，
+            以及 `Root.resolve` 的 root provider 语义。
           </p>
         </div>
 
         {warmupError ? (
           <div className="rounded-lg border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/30 p-4 space-y-2">
-            <div className="text-sm font-semibold text-red-700 dark:text-red-300">DI Showcase 初始化失败</div>
+            <div className="text-sm font-semibold text-red-700 dark:text-red-300">Host Projection 初始化失败</div>
             <div className="font-mono text-xs text-red-700 dark:text-red-200 break-all">{warmupError}</div>
           </div>
         ) : (
           <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/40 p-4">
             <div className="text-sm text-gray-700 dark:text-gray-300">正在预热 Runtime…</div>
             <div className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-              这页会同时启动两个 Runtime（root provider + imports-scope），避免切路由时卡顿。
+              这页会同时启动两个 Runtime 视图（root provider + imports scope），避免切路由时卡顿。
             </div>
           </div>
         )}
@@ -280,12 +264,10 @@ export const DiShowcaseLayout: React.FC = () => {
   return (
     <div className="space-y-10">
       <div className="border-b border-gray-200 dark:border-gray-800 pb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          DI Showcase（Root / Imports / Instances）
-        </h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Host Projection · Root / Imports / Env</h2>
         <p className="text-gray-600 dark:text-gray-400 max-w-3xl leading-relaxed">
-          这页把 React + Logix 的 DI 用法放到同一个视图里对照：全局单例（ModuleTag）、局部多实例（ModuleImpl +
-          key）、imports-scope（Host.imports / useImportedModule），以及 Root.resolve 的 root provider 语义。
+          这页把 React 宿主上的 provider 读取方式放到同一个视图里对照：全局单例、局部多实例、imports scope，
+          以及 `Root.resolve` 的 root provider 语义。
         </p>
       </div>
 
@@ -296,7 +278,7 @@ export const DiShowcaseLayout: React.FC = () => {
         <div className="space-y-6">
           <Card
             title="1) 全局单例 vs 局部多实例"
-            subtitle="同一个 Module 蓝图：useModule(ModuleTag) 取 root 单例；useModule(ModuleImpl) 创建组件级多实例（key 相同则复用）。"
+            subtitle="同一个 Program 蓝图：useModule(ModuleTag) 取 root 单例；useModule(Program) 创建组件级多实例（key 相同则复用）。"
           >
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <CounterPanel title="全局单例（root provider）" kind="global" />
@@ -323,15 +305,15 @@ export const DiShowcaseLayout: React.FC = () => {
           </Card>
 
           <Card
-            title="2) Root.resolve（固定 root provider）"
-            subtitle="Root.resolve 用于显式拿到 root provider 的单例，不受嵌套 RuntimeProvider.layer 覆盖影响。"
+            title="2) Runtime scope Env"
+            subtitle="当前示例展示 subtree layer 如何覆盖当前 runtime scope 内的 Env 读取。"
           >
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="space-y-3">
                 <div className="text-xs text-gray-500 dark:text-gray-400">
                   根 Provider：提供 <code className="font-mono">EnvTag=RootEnv</code>
                 </div>
-                <RootResolveProbe />
+                <RuntimeEnvPanel />
               </div>
 
               <RuntimeProvider
@@ -342,7 +324,7 @@ export const DiShowcaseLayout: React.FC = () => {
                   <div className="text-xs text-gray-500 dark:text-gray-400">
                     子树 Provider：覆盖 <code className="font-mono">EnvTag=FeatureEnv</code>
                   </div>
-                  <RootResolveProbe />
+                  <RuntimeEnvPanel />
                 </div>
               </RuntimeProvider>
             </div>
@@ -355,8 +337,8 @@ export const DiShowcaseLayout: React.FC = () => {
         fallback={<p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>}
       >
         <Card
-          title="3) imports-scope：host.imports.get / useImportedModule"
-          subtitle="子模块实例属于 Host 的 scope：组件内通过 host.imports 或 useImportedModule 解析；Logic 内则通过 $.use(Child.module)。"
+          title="3) imports scope：host.imports.get / useImportedModule"
+          subtitle="子模块实例属于 Host 的 scope：组件内通过 host.imports 或 useImportedModule 解析；Logic 内固定走 $.imports.get(Child.tag) 再配 child.read(selector)。"
         >
           <ImportsPanel />
         </Card>

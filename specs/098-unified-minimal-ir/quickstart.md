@@ -35,7 +35,7 @@ pnpm --filter @logixjs/core typecheck:test
 - 若旧调用方依赖隐式 trial，请显式注入：
 
 ```ts
-Logix.Kernel.fullCutoverGateModeLayer('trial')
+CoreKernel.fullCutoverGateModeLayer('trial')
 ```
 
 - 同时消费失败对象上的 `reason/evidence` 字段用于诊断与日志。

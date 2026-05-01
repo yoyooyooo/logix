@@ -16,7 +16,7 @@
 - 覆盖层级：`provider > runtime_module > runtime_default > builtin`（下一笔事务生效）。
 - 当前证据覆盖：
   - 014：`converge.txnCommit`（含 `auto<=full*1.05` 硬门），`negativeBoundaries.dirtyPattern`。
-  - 单测：已覆盖优先级与热切换（`packages/logix-core/test/StateTrait.ConvergeAuto.*`）。
+  - 单测：已覆盖优先级与热切换（`packages/logix-core/test/FieldKernel.ConvergeAuto.*`）。
 
 ### A2) `stateTransaction.traitConvergeBudgetMs`
 
@@ -27,7 +27,7 @@
 - 当前证据覆盖：
   - 014：目前主要测 commit/decision 耗时；预算导致的降级次数尚未纳入统一 evidence（候补项）。
   - 017：已可将该旋钮纳入 sweep candidates，并在 `recommendation.latest.md|json` 输出推荐默认值（见 `specs/017-perf-tuning-lab/quickstart.md`）。
-  - 单测：已覆盖默认值与优先级链路（`packages/logix-core/test/StateTrait.ConvergeBudgetConfig.test.ts`）。
+  - 单测：已覆盖默认值与优先级链路（`packages/logix-core/test/FieldKernel.ConvergeBudgetConfig.test.ts`）。
 
 ### A3) `stateTransaction.traitConvergeDecisionBudgetMs`
 
@@ -37,12 +37,12 @@
 - 覆盖层级：同上。
 - 当前证据覆盖：
   - 014：`converge.txnCommit` / `negativeBoundaries.dirtyPattern` 产出 `runtime.decisionMs`。
-  - 单测：已覆盖默认值与优先级链路（`packages/logix-core/test/StateTrait.ConvergeBudgetConfig.test.ts`）。
+  - 单测：已覆盖默认值与优先级链路（`packages/logix-core/test/FieldKernel.ConvergeBudgetConfig.test.ts`）。
 
 ### A4) 按模块覆盖 & Provider 子树覆盖
 
 - 作用：局部止血与灰度调参（只影响某个模块或某棵 React 子树）。
-- 配方/文档：`apps/docs/content/docs/guide/advanced/converge-control-plane.md`。
+- 配方/文档：`apps/docs/content/docs/guide/advanced/field-convergence-policy.md`。
 - 当前证据覆盖：优先级/热切换已被单测覆盖；014 的调参推荐脚本会给出可读证据（见下文）。
 
 ## B. 观测/诊断旋钮（非 013，但会影响开销）
@@ -54,7 +54,7 @@
 - 作用：控制事务内部记录的细节（Patch/快照等）。
   - `full`：更易调试（默认 dev/test）。
   - `light`：更省（默认 production）。
-- 覆盖层级：`ModuleImpl > Runtime.make > NODE_ENV 默认`。
+- 覆盖层级：`Program/module override > Runtime.make > NODE_ENV 默认`。
 - 当前证据覆盖：
   - 014：未纳入统一矩阵（候补项：可加入一条“事务观测开销曲线” suite）。
 

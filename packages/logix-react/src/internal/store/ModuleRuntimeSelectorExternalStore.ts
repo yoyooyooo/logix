@@ -1,10 +1,12 @@
 import type * as Logix from '@logixjs/core'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 import { Effect, Fiber, Stream } from 'effect'
 import type { ManagedRuntime } from 'effect'
 import { shallow } from '../hooks/shallow.js'
 import type { ExternalStore, ExternalStoreOptions } from './ModuleRuntimeExternalStore.js'
 
 type SelectorId = string
+type ReadQueryCompiled<S, V> = RuntimeContracts.Selector.ReadQueryCompiled<S, V>
 
 type StoreMap = Map<SelectorId, ExternalStore<any>>
 
@@ -26,7 +28,7 @@ const getOrCreateSelectorMapForModule = (byModule: WeakMap<object, StoreMap>, mo
   return next
 }
 
-const equalsValue = <V>(readQuery: Logix.ReadQuery.ReadQueryCompiled<any, V>, a: V, b: V): boolean => {
+const equalsValue = <V>(readQuery: ReadQueryCompiled<any, V>, a: V, b: V): boolean => {
   if (readQuery.equalsKind === 'custom' && typeof readQuery.equals === 'function') {
     return readQuery.equals(a, b)
   }
@@ -39,7 +41,7 @@ const equalsValue = <V>(readQuery: Logix.ReadQuery.ReadQueryCompiled<any, V>, a:
 export const getModuleRuntimeSelectorExternalStore = <S, V>(
   runtime: ManagedRuntime.ManagedRuntime<any, any>,
   moduleRuntime: Logix.ModuleRuntime<S, any>,
-  selectorReadQuery: Logix.ReadQuery.ReadQueryCompiled<S, V>,
+  selectorReadQuery: ReadQueryCompiled<S, V>,
   options?: ExternalStoreOptions,
 ): ExternalStore<V> => {
   const byModule = getStoreMapForRuntime(runtime as any)
@@ -49,6 +51,7 @@ export const getModuleRuntimeSelectorExternalStore = <S, V>(
     return cached as ExternalStore<V>
   }
 
+  let hasValue = false
   let currentValue: V | undefined
   const listeners = new Set<() => void>()
 
@@ -129,13 +132,14 @@ export const getModuleRuntimeSelectorExternalStore = <S, V>(
   }
 
   const refreshSnapshotIfStale = () => {
-    if (currentValue === undefined) {
+    if (!hasValue) {
       return
     }
     try {
       const state = runtime.runSync(moduleRuntime.getState as Effect.Effect<S, never, any>)
-      const next = selectorReadQuery.select(state)
-      if (currentValue === undefined || !equalsValue(selectorReadQuery, currentValue, next)) {
+      const next = selectorReadQuery.select(state) as V
+      if (!equalsValue(selectorReadQuery, currentValue as V, next)) {
+        hasValue = true
         currentValue = next
         scheduleNotify('normal')
       }
@@ -144,11 +148,12 @@ export const getModuleRuntimeSelectorExternalStore = <S, V>(
     }
   }
 
-  const getSnapshot = () => {
-    if (currentValue !== undefined) return currentValue
+  const getSnapshot = (): V => {
+    if (hasValue) return currentValue as V
     const state = runtime.runSync(moduleRuntime.getState as Effect.Effect<S, never, any>)
-    currentValue = selectorReadQuery.select(state)
-    return currentValue
+    hasValue = true
+    currentValue = selectorReadQuery.select(state) as V
+    return currentValue as V
   }
 
   const subscribe = (listener: () => void) => {

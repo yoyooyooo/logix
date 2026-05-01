@@ -1,6 +1,6 @@
 # Research: Sandbox 多内核试跑与对照（core/core-ng）
 
-**Date**: 2025-12-28  
+**Date**: 2025-12-28
 **Feature**: [058-sandbox-multi-kernel](./plan.md)
 
 ## Decision 1: 内核变体由 Host 显式注册（kernelId → kernelUrl）

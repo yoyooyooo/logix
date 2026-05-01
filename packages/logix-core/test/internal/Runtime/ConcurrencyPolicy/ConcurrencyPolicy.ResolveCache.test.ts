@@ -3,7 +3,7 @@ import { it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
 import type { ConcurrencyDiagnostics } from '../../../../src/internal/runtime/core/ConcurrencyDiagnostics.js'
 import { makeResolveConcurrencyPolicy } from '../../../../src/internal/runtime/core/ModuleRuntime.concurrencyPolicy.js'
-import { ConcurrencyPolicyOverridesTag, ConcurrencyPolicyTag } from '../../../../src/internal/runtime/core/env.js'
+import { SchedulingPolicySurfaceOverridesTag, SchedulingPolicySurfaceTag } from '../../../../src/internal/runtime/core/env.js'
 
 describe('ConcurrencyPolicy resolver cache', () => {
   it.effect('reuses resolved object when runtime/provider policy references are unchanged', () =>
@@ -32,8 +32,8 @@ describe('ConcurrencyPolicy resolver cache', () => {
 
       const providePolicy = <A, E>(eff: Effect.Effect<A, E>) =>
         eff.pipe(
-          Effect.provideService(ConcurrencyPolicyTag, runtimePolicy),
-          Effect.provideService(ConcurrencyPolicyOverridesTag, providerOverrides),
+          Effect.provideService(SchedulingPolicySurfaceTag, runtimePolicy),
+          Effect.provideService(SchedulingPolicySurfaceOverridesTag, providerOverrides),
         )
 
       const first = yield* providePolicy(resolveConcurrencyPolicy())
@@ -68,26 +68,26 @@ describe('ConcurrencyPolicy resolver cache', () => {
       }
 
       const first = yield* resolveConcurrencyPolicy().pipe(
-        Effect.provideService(ConcurrencyPolicyTag, runtimePolicyA),
-        Effect.provideService(ConcurrencyPolicyOverridesTag, providerOverridesA),
+        Effect.provideService(SchedulingPolicySurfaceTag, runtimePolicyA),
+        Effect.provideService(SchedulingPolicySurfaceOverridesTag, providerOverridesA),
       )
       const second = yield* resolveConcurrencyPolicy().pipe(
-        Effect.provideService(ConcurrencyPolicyTag, runtimePolicyA),
-        Effect.provideService(ConcurrencyPolicyOverridesTag, providerOverridesA),
+        Effect.provideService(SchedulingPolicySurfaceTag, runtimePolicyA),
+        Effect.provideService(SchedulingPolicySurfaceOverridesTag, providerOverridesA),
       )
 
       providerOverridesA.losslessBackpressureCapacity = 192
       const secondAfterMutation = yield* resolveConcurrencyPolicy().pipe(
-        Effect.provideService(ConcurrencyPolicyTag, runtimePolicyA),
-        Effect.provideService(ConcurrencyPolicyOverridesTag, providerOverridesA),
+        Effect.provideService(SchedulingPolicySurfaceTag, runtimePolicyA),
+        Effect.provideService(SchedulingPolicySurfaceOverridesTag, providerOverridesA),
       )
       const third = yield* resolveConcurrencyPolicy().pipe(
-        Effect.provideService(ConcurrencyPolicyTag, runtimePolicyB),
-        Effect.provideService(ConcurrencyPolicyOverridesTag, providerOverridesA),
+        Effect.provideService(SchedulingPolicySurfaceTag, runtimePolicyB),
+        Effect.provideService(SchedulingPolicySurfaceOverridesTag, providerOverridesA),
       )
       const fourth = yield* resolveConcurrencyPolicy().pipe(
-        Effect.provideService(ConcurrencyPolicyTag, runtimePolicyB),
-        Effect.provideService(ConcurrencyPolicyOverridesTag, providerOverridesB),
+        Effect.provideService(SchedulingPolicySurfaceTag, runtimePolicyB),
+        Effect.provideService(SchedulingPolicySurfaceOverridesTag, providerOverridesB),
       )
 
       expect(first).toBe(second)

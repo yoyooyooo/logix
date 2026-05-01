@@ -22,7 +22,7 @@
 - `specs/047-core-ng-full-cutover-gate/`（切默认前置门槛：M3）
 - `specs/045-dual-kernel-contract/`（Kernel Contract 与对照验证跑道）
 - `specs/057-core-ng-static-deps-without-proxy/`（读状态车道：ReadQuery/SelectorSpec + SelectorGraph）
-- `specs/039-trait-converge-int-exec-evidence/`（当前内核够硬：热路径证据达标）
+- `specs/039-field-converge-int-exec-evidence/`（当前内核够硬：热路径证据达标）
 - `.specify/memory/constitution.md`（双内核硬约束：上层只依赖 core、证据门禁、AOT-ready）
 
 ## Clarifications
@@ -35,7 +35,7 @@
 ### Session 2025-12-28
 
 - Q: perf evidence 的采集隔离要求是否强制？ → A: 强制：所有 `$logix-perf-evidence` 的 Node+Browser before/after/diff 必须在独立 `git worktree/单独目录` 中采集；混杂工作区结果仅作线索，不得用于宣称 Gate PASS。
-- Q: perf evidence 的 suites/budgets 的单一事实源（SSoT）怎么定？ → A: 统一以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为 SSoT（`priority/suites/budgets`），并以 `matrixId+matrixHash` 保证可比性；spec/plan 只声明“至少覆盖 P1 + profile=default”。
+- Q: perf evidence 的 suites/budgets 的单一事实源（SSoT）怎么定？ → A: 统一以 `packages/logix-perf-evidence/assets/matrix.json` 为 SSoT（`priority/suites/budgets`），并以 `matrixId+matrixHash` 保证可比性；spec/plan 只声明“至少覆盖 P1 + profile=default”。
 - Q: perf evidence 的 profile 门槛是否需要定死？ → A: 需要。切默认完成的硬结论至少要求 `profile=default`；`soak` 作为更稳的可选复核档；`quick` 仅作迭代线索，不得用于宣称完成。
 
 ### Session 2025-12-29

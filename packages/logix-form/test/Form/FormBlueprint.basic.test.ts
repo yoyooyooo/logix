@@ -2,6 +2,7 @@ import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
+import { materializeExtendedHandle } from '../support/form-harness.js'
 
 describe('FormBlueprint.basic', () => {
   it.effect('Blueprint → Module → Runtime can run', () =>
@@ -29,13 +30,13 @@ describe('FormBlueprint.basic', () => {
 
       const program = Effect.gen(function* () {
         const rt = yield* Effect.service(form.tag).pipe(Effect.orDie)
-        const controller = form.controller.make(rt)
+        const handle = materializeExtendedHandle(form.tag, rt) as any
 
-        yield* controller.field('name').set('Alice')
-        yield* controller.field('count').set(5)
-        yield* controller.fieldArray('items').append('x')
+        yield* handle.field('name').set('Alice')
+        yield* handle.field('count').set(5)
+        yield* handle.fieldArray('items').append('x')
 
-        const state = yield* controller.getState
+        const state = yield* handle.getState
         expect(state.name).toBe('Alice')
         expect(state.count).toBe(5)
         expect(state.items).toEqual(['x'])

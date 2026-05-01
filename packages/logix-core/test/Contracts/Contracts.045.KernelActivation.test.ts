@@ -1,3 +1,4 @@
+import * as CoreKernel from '@logixjs/core/repo-internal/kernel-api'
 import { describe, expect, it } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
@@ -10,17 +11,17 @@ describe('contracts (045): Kernel activation判定', () => {
         actions: {},
       })
 
-      const program = Root.implement({ initial: undefined, logics: [] })
+      const program = Logix.Program.make(Root, { initial: undefined, logics: [] })
 
       const layer = Layer.mergeAll(
-        Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logixjs/core-ng' }),
-        Logix.Kernel.fullCutoverGateModeLayer('trial'),
-        Logix.Kernel.runtimeDefaultServicesOverridesLayer({
+        CoreKernel.experimentalLayer(),
+        CoreKernel.fullCutoverGateModeLayer('trial'),
+        CoreKernel.runtimeDefaultServicesOverridesLayer({
           txnQueue: { implId: '__missing__' },
         }),
       )
 
-      const report = yield* Logix.Observability.trialRunModule(program, {
+      const report = yield* Logix.Runtime.trial(program, {
         runId: 'run:test:kernel-activation:fallback',
         buildEnv: { hostKind: 'node', config: {} },
         diagnosticsLevel: 'light',
@@ -29,7 +30,7 @@ describe('contracts (045): Kernel activation判定', () => {
 
       const evidence = report.environment?.runtimeServicesEvidence as any
       expect(evidence).toBeDefined()
-      expect(Logix.Kernel.isKernelFullyActivated(evidence)).toBe(false)
+      expect(CoreKernel.isKernelFullyActivated(evidence)).toBe(false)
       expect(
         Array.isArray(evidence?.overridesApplied) &&
           evidence.overridesApplied.some((s: unknown) => String(s).includes('fallback=')),
@@ -44,17 +45,17 @@ describe('contracts (045): Kernel activation判定', () => {
         actions: {},
       })
 
-      const program = Root.implement({ initial: undefined, logics: [] })
+      const program = Logix.Program.make(Root, { initial: undefined, logics: [] })
 
       const layer = Layer.mergeAll(
-        Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logixjs/core-ng' }),
-        Logix.Kernel.fullCutoverGateModeLayer('trial'),
-        Logix.Kernel.runtimeDefaultServicesOverridesLayer({
+        CoreKernel.experimentalLayer(),
+        CoreKernel.fullCutoverGateModeLayer('trial'),
+        CoreKernel.runtimeDefaultServicesOverridesLayer({
           txnQueue: { implId: 'trace' },
         }),
       )
 
-      const report = yield* Logix.Observability.trialRunModule(program, {
+      const report = yield* Logix.Runtime.trial(program, {
         runId: 'run:test:kernel-activation:no-fallback',
         buildEnv: { hostKind: 'node', config: {} },
         diagnosticsLevel: 'light',
@@ -63,7 +64,7 @@ describe('contracts (045): Kernel activation判定', () => {
 
       const evidence = report.environment?.runtimeServicesEvidence as any
       expect(evidence).toBeDefined()
-      expect(Logix.Kernel.isKernelFullyActivated(evidence)).toBe(true)
+      expect(CoreKernel.isKernelFullyActivated(evidence)).toBe(true)
       expect(
         Array.isArray(evidence?.overridesApplied) &&
           evidence.overridesApplied.some((s: unknown) => String(s).includes('fallback=')),
@@ -78,7 +79,7 @@ describe('contracts (045): Kernel activation判定', () => {
         actions: {},
       })
 
-      const program = Root.implement({ initial: undefined, logics: [] })
+      const program = Logix.Program.make(Root, { initial: undefined, logics: [] })
 
       const runtime = yield* Effect.acquireRelease(
         Effect.sync(() => Logix.Runtime.make(program)),
@@ -88,14 +89,14 @@ describe('contracts (045): Kernel activation判定', () => {
       const read = Effect.gen(function* () {
         const moduleRuntime = yield* Effect.service(Root.tag).pipe(Effect.orDie)
         return {
-          kernel: Logix.Kernel.getKernelImplementationRef(moduleRuntime),
-          evidence: Logix.Kernel.getRuntimeServicesEvidence(moduleRuntime),
+          kernel: CoreKernel.getKernelImplementationRef(moduleRuntime),
+          evidence: CoreKernel.getRuntimeServicesEvidence(moduleRuntime),
         } as const
       })
 
       const { kernel, evidence } = yield* Effect.promise(() => runtime.runPromise(read))
       expect(kernel.kernelId).toBe('core')
-      expect(Logix.Kernel.isKernelFullyActivated(evidence)).toBe(true)
+      expect(CoreKernel.isKernelFullyActivated(evidence)).toBe(true)
     }),
   )
 
@@ -106,14 +107,14 @@ describe('contracts (045): Kernel activation判定', () => {
         actions: {},
       })
 
-      const program = Root.implement({ initial: undefined, logics: [] })
+      const program = Logix.Program.make(Root, { initial: undefined, logics: [] })
 
       const runtime = yield* Effect.acquireRelease(
         Effect.sync(() =>
           Logix.Runtime.make(program, {
             layer: Layer.mergeAll(
-              Logix.Kernel.kernelLayer(Logix.Kernel.defaultKernelImplementationRef),
-              Logix.Kernel.runtimeDefaultServicesOverridesLayer({}),
+              CoreKernel.kernelLayer(CoreKernel.defaultKernelImplementationRef),
+              CoreKernel.runtimeDefaultServicesOverridesLayer({}),
             ) as Layer.Layer<any, never, never>,
           }),
         ),
@@ -123,14 +124,14 @@ describe('contracts (045): Kernel activation判定', () => {
       const read = Effect.gen(function* () {
         const moduleRuntime = yield* Effect.service(Root.tag).pipe(Effect.orDie)
         return {
-          kernel: Logix.Kernel.getKernelImplementationRef(moduleRuntime),
-          evidence: Logix.Kernel.getRuntimeServicesEvidence(moduleRuntime),
+          kernel: CoreKernel.getKernelImplementationRef(moduleRuntime),
+          evidence: CoreKernel.getRuntimeServicesEvidence(moduleRuntime),
         } as const
       })
 
       const { kernel, evidence } = yield* Effect.promise(() => runtime.runPromise(read))
       expect(kernel.kernelId).toBe('core')
-      expect(Logix.Kernel.isKernelFullyActivated(evidence)).toBe(true)
+      expect(CoreKernel.isKernelFullyActivated(evidence)).toBe(true)
     }),
   )
 })

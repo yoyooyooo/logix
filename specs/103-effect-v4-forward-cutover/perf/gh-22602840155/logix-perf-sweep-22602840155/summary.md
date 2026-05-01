@@ -175,7 +175,7 @@ _Tip: quick profile still has limited samples vs default; tail-only failures are
 <details>
 <summary>Head maps (where -> maxLevel / firstFail / p95 series)</summary>
 
-_Each row shows which primary-axis level starts failing for that `where` slice. Levels are the discrete test levels (e.g. steps=200/800/2000)._ 
+_Each row shows which primary-axis level starts failing for that `where` slice. Levels are the discrete test levels (e.g. steps=200/800/2000)._
 
 **[P1] `converge.txnCommit` — converge: txn commit / derive — `auto<=full*1.05`**
 - where axis: `dirtyRootsRatio` (17 rows)

@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
+import * as RuntimeContracts from '../../src/internal/runtime-contracts.js'
 import { Cause, Effect, Fiber, Stream } from 'effect'
-import * as Debug from '../../src/Debug.js'
-import * as ModuleRuntime from '../../src/internal/runtime/ModuleRuntime.js'
+import * as Debug from '../../src/internal/debug-api.js'
+import * as ModuleRuntime from '../../src/internal/runtime/core/ModuleRuntime.js'
 import { ReadQueryStrictGateConfigTag } from '../../src/internal/runtime/core/env.js'
 import * as Logix from '../../src/index.js'
 
@@ -25,7 +26,7 @@ describe('ReadQuery.runtimeConsumption', () => {
       )
 
       const selector = (s: { count: number }) => (s.count > 0 ? s.count : 0)
-      const graded = Logix.ReadQuery.gradeReadQueryAtBuild({
+      const graded = RuntimeContracts.Selector.gradeReadQueryAtBuild({
         moduleId: 'M',
         input: selector,
       })
@@ -99,8 +100,8 @@ describe('ReadQuery.runtimeConsumption', () => {
       expect(strictGateDiag).toBeDefined()
       expect(strictGateDiag?.trigger?.details?.fallbackReason).toBe('missingBuildGrade')
 
-      const compiled = Logix.ReadQuery.compile(selector)
-      const marked = Logix.ReadQuery.markRuntimeMissingBuildGrade(compiled)
+      const compiled = RuntimeContracts.Selector.compile(selector)
+      const marked = RuntimeContracts.Selector.markRuntimeMissingBuildGrade(compiled)
       expect(marked.fallbackReason).toBe('missingBuildGrade')
       expect(marked.quality?.source).toBe('runtime_dynamic_fallback')
       expect(marked.quality?.missingBuildGrade).toBe(true)
@@ -116,7 +117,7 @@ describe('ReadQuery.runtimeConsumption', () => {
       const runtime = yield* ModuleRuntime.make({ count: 0 }, { moduleId: 'M', instanceId: 'i' } as any)
 
       const selector = (s: { count: number }) => (s.count > 0 ? s.count : 0)
-      const graded = Logix.ReadQuery.gradeReadQueryAtBuild({
+      const graded = RuntimeContracts.Selector.gradeReadQueryAtBuild({
         moduleId: 'M',
         input: selector,
         strictGate: { mode: 'error' },
@@ -143,8 +144,8 @@ describe('ReadQuery.runtimeConsumption', () => {
 
   it('marks runtime dynamic fallback with missingBuildGrade quality marker', () => {
     const selector = (s: { count: number }) => (s.count > 0 ? s.count : 0)
-    const compiled = Logix.ReadQuery.compile(selector)
-    const marked = Logix.ReadQuery.markRuntimeMissingBuildGrade(compiled)
+    const compiled = RuntimeContracts.Selector.compile(selector)
+    const marked = RuntimeContracts.Selector.markRuntimeMissingBuildGrade(compiled)
 
     expect(marked.quality?.source).toBe('runtime_dynamic_fallback')
     expect(marked.quality?.missingBuildGrade).toBe(true)

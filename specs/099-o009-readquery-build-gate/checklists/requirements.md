@@ -1,7 +1,7 @@
 # Specification Quality Checklist: O-009 ReadQuery 严格门禁前移到构建期
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2026-02-25  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2026-02-25
 **Feature**: `specs/099-o009-readquery-build-gate/spec.md`
 
 ## Content Quality

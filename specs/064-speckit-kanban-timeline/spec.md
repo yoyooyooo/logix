@@ -1,8 +1,8 @@
 # Feature Specification: Speckit 时间线 Kanban（Specs Timeline Board）
 
-**Feature Branch**: `[064-speckit-kanban-timeline]`  
-**Created**: 2025-12-31  
-**Status**: Draft  
+**Feature Branch**: `[064-speckit-kanban-timeline]`
+**Created**: 2025-12-31
+**Status**: Draft
 **Input**: User description: "为 $speckit 增加一个类似 drafts-tiered-system 的配套工具：提供线性时间线式 Kanban 视图浏览 specs（最新 spec 在最左侧，横向滚动；列内纵向滚动；页面整体无滚动条），卡片可点开查看详情；通过本地后端 HTTP 接口读写 specs 下的文件；命令行一键启动并自动打开页面；后端初始化改用 effect-api-project-init 模板；并将交付形态迁移为可 `npx` 一键运行的 npm CLI（skill 目录不内置前后端项目/构建产物）。"
 
 ## User Scenarios & Testing _(mandatory)_

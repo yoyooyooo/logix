@@ -19,13 +19,11 @@ describe('FormModule.withLogic immutability', () => {
 
       const done = yield* Deferred.make<void>()
 
-      const SetName = form.logic(
-        ($) =>
+      const SetName = form.logic('set-name', ($) =>
           Effect.gen(function* () {
             yield* $.dispatchers.setValue({ path: 'name', value: 'Alice' } as any)
             yield* Deferred.succeed(done, undefined)
           }),
-        { id: 'SetName' },
       )
 
       const live = form.withLogic(SetName)

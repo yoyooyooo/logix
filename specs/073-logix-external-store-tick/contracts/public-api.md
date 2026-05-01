@@ -9,7 +9,7 @@
 - 语义：外部输入源的归一化抽象（对齐 React external store 心智）
 - 约束：`getSnapshot()` 必须同步且无 IO
 - SSR：可选提供 `getServerSnapshot()`（同步、无 IO），用于 server render 的快照对齐（宿主负责保证 hydration 一致性，本特性不提供自动注水/rehydrate）
-- 容错：若 `getSnapshot()` 同步抛错，Runtime 会熔断该 trait（保留 last committed 值并记录诊断），不会崩溃整个 Runtime。
+- 容错：若 `getSnapshot()` 同步抛错，Runtime 会熔断该 field（保留 last committed 值并记录诊断），不会崩溃整个 Runtime。
 
 概念签名：
 
@@ -36,11 +36,11 @@ type ExternalStore<T> = {
   - 仅当提供 `initial/current` 时允许；否则必须以 Runtime Error fail-fast（Stream 无 current）
   - ⚠️ `initial` 可能 stale（订阅时序导致）：若业务需要可靠 current，请优先用 `fromService/fromSubscriptionRef` 或直接手写 `ExternalStore<T>` 的 `getSnapshot()`
 
-## 2) `@logixjs/core`：StateTrait.externalStore（声明式接入）
+## 2) `@logixjs/core`：FieldKernel.externalStore（声明式接入）
 
 ### 2.1 DSL 入口
 
-`StateTrait.externalStore(...)` 作为 `StateTrait` 的一个 entry，声明“某个 state field 的值来自 ExternalStore”。
+`FieldKernel.externalStore(...)` 作为 `FieldKernel` 的一个 entry，声明“某个 state field 的值来自 ExternalStore”。
 
 概念签名（以本仓库 TypeScript 类型为准）：
 
@@ -58,7 +58,7 @@ type ExternalStoreTraitOptions<T, V = T> = {
 语义要点：
 
 - 只负责“写回 state 字段”（SRP）；派生与联动由 `computed/link/source` 表达。
-- 写回字段为 **external-owned**：除 externalStore trait 外禁止其它写入路径并发修改同一路径（如需 override，使用独立字段 + computed 合并）。
+- 写回字段为 **external-owned**：除 externalStore field 外禁止其它写入路径并发修改同一路径（如需 override，使用独立字段 + computed 合并）。
 - 写回进入事务窗口并参与 converge/validate；不允许事务窗口 IO。
 - 初始化必须保证“getSnapshot 与 subscribe 之间不漏事件”的原子语义。
 - priority：默认视为 `urgent`；当标注为 `nonUrgent` 时，预算超限只会推迟该类 backlog（允许 partial fixpoint，但必须可解释）。
@@ -67,13 +67,13 @@ type ExternalStoreTraitOptions<T, V = T> = {
 ### 2.2 推荐的业务写法（概念）
 
 ```ts
-const Traits = Logix.StateTrait.from(StateSchema)({
-  "inputs.router": Logix.StateTrait.externalStore({
+const Fields = Logix.FieldKernel.from(StateSchema)({
+  "inputs.router": Logix.FieldKernel.externalStore({
     store: RouterExternalStore,
     select: (snap) => ({ pathname: snap.pathname, params: snap.params }),
     priority: "urgent",
   }),
-  profile: Logix.StateTrait.source({ deps: ["inputs.router.params.id"], resource: "user/profile", key: ... }),
+  profile: Logix.FieldKernel.source({ deps: ["inputs.router.params.id"], resource: "user/profile", key: ... }),
 })
 ```
 
@@ -99,4 +99,4 @@ TickScheduler 是 Runtime 内部能力，但需要对外暴露“可控的配置
 ## 5) 非目标（明确不提供）
 
 - 不提供对业务代码的“可写 Ref”逃逸口（禁止绕过事务/诊断通道）。
-- 不承诺黑盒 `Process.link` 能进入强一致稳定化（强一致只对 declarative IR 生效）。
+- 不承诺黑盒 `orchestration process link surface` 能进入强一致稳定化（强一致只对 declarative IR 生效）。

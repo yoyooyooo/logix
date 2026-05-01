@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "feature": "158-runtime-hmr-lifecycle",
+  "generatedAt": "2026-04-26T00:00:00.000Z",
+  "command": "pnpm -C examples/logix-react exec vitest run test/hmr-host-carrier.contract.test.ts test/browser/hmr-active-demo-reset.contract.test.tsx test/browser/hmr-module-invalidation-carrier.contract.test.tsx test/browser/hmr-repeated-reset.contract.test.tsx",
+  "environment": {
+    "host": "vitest",
+    "carrier": "@logixjs/react:vitest-dev-lifecycle",
+    "browserProject": "chromium"
+  },
+  "witnesses": [
+    {
+      "name": "host-carrier-setup",
+      "eventCount": 0,
+      "residualActiveCounts": [],
+      "verdict": "PASS"
+    },
+    {
+      "name": "active-demo-reset",
+      "eventCount": 1,
+      "residualActiveCounts": [
+        0
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "name": "module-invalidation-carrier",
+      "eventCount": 1,
+      "residualActiveCounts": [
+        0
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "name": "repeated-reset-20",
+      "eventCount": 20,
+      "residualActiveCounts": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "verdict": "PASS"
+    }
+  ],
+  "perf": {
+    "comparable": false,
+    "conclusion": "Functional carrier evidence only; no production steady-state overhead claim."
+  }
+}

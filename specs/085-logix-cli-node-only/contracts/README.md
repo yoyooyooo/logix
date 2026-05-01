@@ -1,5 +1,9 @@
 # 085 · Logix CLI Contracts
 
+> Superseded background only. These 085 contracts are not current CLI contract authority.
+> Current CLI authority is [../../160-cli-agent-first-control-plane-cutover/spec.md](../../160-cli-agent-first-control-plane-cutover/spec.md) and [../../../docs/ssot/runtime/15-cli-agent-first-control-plane.md](../../../docs/ssot/runtime/15-cli-agent-first-control-plane.md).
+> Old toolbox routes, public discovery, writeback, `CommandResult.mode`, `ControlSurfaceManifest`, and `controlProgramSurface` are negative-only legacy references for `160`.
+
 本目录固化 085 的 contracts（长期可存储、可 diff 的协议面），用于平台/CI/Devtools/脚本统一消费：
 
 - `CommandResult@v1`：CLI 输出 envelope（stdout + 落盘引用），承载各类 IR/报告工件

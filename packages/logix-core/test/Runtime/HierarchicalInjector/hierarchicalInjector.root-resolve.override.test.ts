@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {Effect, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../../src/index.js'
+import * as Root from '../../../src/internal/root.js'
 
 describe('Root.resolve override semantics', () => {
   it('ignores local overrides; root mocking happens at runtime creation', async () => {
@@ -15,20 +16,20 @@ describe('Root.resolve override semantics', () => {
       actions: { noop: Schema.Void },
     })
 
-    const RootImpl = RootModule.implement({ initial: { ok: true } })
+    const RootProgram = Logix.Program.make(RootModule, { initial: { ok: true } })
 
-    const runtime = Logix.Runtime.make(RootImpl, {
+    const runtime = Logix.Runtime.make(RootProgram, {
       layer: Layer.succeed(StepConfigTag, { step: 1 }),
     })
 
-    const mockRuntime = Logix.Runtime.make(RootImpl, {
+    const mockRuntime = Logix.Runtime.make(RootProgram, {
       layer: Layer.succeed(StepConfigTag, { step: 999 }),
     })
 
     try {
       const inOverrideScope = Effect.gen(function* () {
         const override = yield* Effect.service(StepConfigTag).pipe(Effect.orDie)
-        const root = yield* Logix.Root.resolve(StepConfigTag)
+        const root = yield* Root.resolve(StepConfigTag)
         return { override, root }
       }).pipe(Effect.provideService(StepConfigTag, { step: 5 }))
 
@@ -36,7 +37,7 @@ describe('Root.resolve override semantics', () => {
       expect(result.override.step).toBe(5)
       expect(result.root.step).toBe(1)
 
-      const mocked = mockRuntime.runSync(Logix.Root.resolve(StepConfigTag))
+      const mocked = mockRuntime.runSync(Root.resolve(StepConfigTag))
       expect(mocked.step).toBe(999)
     } finally {
       await mockRuntime.dispose()

@@ -8,18 +8,17 @@ import { ConvergeDetailsPanel } from './ConvergeDetailsPanel.js'
 export const ConvergePerformancePane: React.FC = () => {
   const state = useDevtoolsState()
 
-  const { selectedRuntime, selectedModule, selectedInstance, timeline, timelineRange } = state
+  const { selectedRuntime, selectedModule, selectedInstance, timeline } = state
 
   const { rows, lanes } = React.useMemo(() => {
     if (!selectedModule) {
       return { rows: [], lanes: [] }
     }
     return computeConvergeLanes(timeline, {
-      timelineRange,
       moduleId: selectedModule,
       instanceId: selectedInstance,
     })
-  }, [timeline, timelineRange, selectedModule, selectedInstance])
+  }, [timeline, selectedModule, selectedInstance])
 
   const audits = React.useMemo(() => computeConvergeAudits(rows), [rows])
   const auditMatchTxnKeysById = React.useMemo(() => computeConvergeAuditMatchTxnKeys(rows), [rows])
@@ -78,7 +77,7 @@ export const ConvergePerformancePane: React.FC = () => {
           No converge evidence found
         </div>
         <div className="text-[10px] leading-relaxed" style={{ color: 'var(--dt-text-muted)' }}>
-          Requires evidence events with <span className="font-mono">kind="trait:converge"</span>.
+          Requires evidence events with <span className="font-mono">kind="field:converge"</span>.
           <br />
           Make sure DiagnosticsLevel is not <span className="font-mono">off</span>, then trigger a converge transaction.
         </div>

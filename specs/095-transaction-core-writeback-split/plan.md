@@ -1,6 +1,6 @@
 # Implementation Plan: Transaction Core Writeback Split（O-002）
 
-**Branch**: `095-transaction-core-writeback-split` | **Date**: 2026-02-25 | **Spec**: `specs/095-transaction-core-writeback-split/spec.md`  
+**Branch**: `095-transaction-core-writeback-split` | **Date**: 2026-02-25 | **Spec**: `specs/095-transaction-core-writeback-split/spec.md`
 **Input**: `specs/095-transaction-core-writeback-split/spec.md`
 
 ## Summary
@@ -13,10 +13,10 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: effect v3、logix-core runtime internals  
-**Testing**: Vitest + `@effect/vitest`（非 watch）  
-**Project Type**: pnpm workspace  
+**Language/Version**: TypeScript 5.9.x（ESM）
+**Primary Dependencies**: effect v3、logix-core runtime internals
+**Testing**: Vitest + `@effect/vitest`（非 watch）
+**Project Type**: pnpm workspace
 **Scope**:
 
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`

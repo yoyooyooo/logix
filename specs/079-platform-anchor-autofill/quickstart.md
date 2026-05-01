@@ -1,5 +1,7 @@
 # Quickstart: 079 保守自动补全 Platform-Grade 锚点声明（怎么用/怎么验收）
 
+> Freeze note: 本 quickstart 只保留历史规划语境。当前 CLI public surface 不提供 anchor/autofill route，下面命令不能作为当前贡献者入口。
+
 ## 0) 背景：它解决什么
 
 当模块缺失关键锚点（例如没写 `services`、没写 `dev.source`）时，平台侧会出现：
@@ -46,4 +48,3 @@
 - `dynamic_or_ambiguous_usage`：依赖来自动态表达式/中转变量/多候选；
 - `unresolvable_service_id`：Tag 无法解析出稳定 id；
 - `unsafe_to_patch`：定义形态无法安全改写（例如对象含 spread / 非字面量）。
-

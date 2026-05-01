@@ -1,19 +1,19 @@
 import React from 'react'
-import { useModule } from '@logixjs/react'
-import { CounterDef } from '../modules/counter'
-import { CounterAllDef } from '../modules/counterAll'
-import { CounterMultiDef, CounterMultiImpl } from '../modules/counterMulti'
+import { fieldValue, useModule, useSelector } from '@logixjs/react'
+import { Counter } from '../modules/counter'
+import { CounterAll } from '../modules/counterAll'
+import { CounterMulti, CounterMultiProgram } from '../modules/counterMulti'
 
 export function CounterRunFork() {
-  const counter = useModule(CounterDef)
-  const value = useModule(CounterDef, (s) => s.value)
+  const counter = useModule(Counter.tag)
+  const value = useSelector(Counter.tag, fieldValue('value'))
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white">runFork 模式</h3>
         <span className="text-[10px] font-mono bg-gray-100 dark:bg-gray-800 text-gray-500 px-1.5 py-0.5 rounded">
-          CounterModule
+          CounterProgram
         </span>
       </div>
 
@@ -43,15 +43,15 @@ export function CounterRunFork() {
 }
 
 export function CounterAllDemo() {
-  const counter = useModule(CounterAllDef)
-  const value = useModule(CounterAllDef, (s) => s.value)
+  const counter = useModule(CounterAll.tag)
+  const value = useSelector(CounterAll.tag, fieldValue('value'))
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Effect.all + run 模式</h3>
         <span className="text-[10px] font-mono bg-gray-100 dark:bg-gray-800 text-gray-500 px-1.5 py-0.5 rounded">
-          CounterAllModule
+          CounterAllProgram
         </span>
       </div>
 
@@ -81,8 +81,8 @@ export function CounterAllDemo() {
 }
 
 export function TagSharedCounter() {
-  const counter = useModule(CounterMultiDef)
-  const count = useModule(CounterMultiDef, (s) => s.count)
+  const counter = useModule(CounterMulti.tag)
+  const count = useSelector(CounterMulti.tag, fieldValue('count'))
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 flex flex-col items-center shadow-sm">
@@ -100,12 +100,12 @@ export function TagSharedCounter() {
 }
 
 export function ImplLocalCounter() {
-  const counter = useModule(CounterMultiImpl)
-  const count = useModule(counter, (s) => s.count)
+  const counter = useModule(CounterMultiProgram)
+  const count = useSelector(counter, fieldValue('count'))
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 flex flex-col items-center shadow-sm">
-      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">局部 Counter（ModuleImpl 模式）</span>
+      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">局部 Counter（Program 模式）</span>
       <span className="text-3xl font-bold text-gray-900 dark:text-white tabular-nums tracking-tight mb-3">{count}</span>
       <button
         type="button"

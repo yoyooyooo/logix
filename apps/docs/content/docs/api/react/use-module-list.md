@@ -1,23 +1,24 @@
 ---
 title: useModuleList
-description: Build a stable list of module instances from dynamic data items.
+description: Map dynamic items to a stable list of module definitions or programs.
 ---
 
-`useModuleList` helps you map a dynamic list of items into a **stable list of module instances**, preserving identity across renders.
+`useModuleList` maps dynamic items to a stable list of module definitions or programs.
 
-This is useful when you render repeated UI blocks that each own a local module instance, and you want instance identity to follow the item id instead of render order.
+It is useful when repeated UI blocks should preserve instance identity by item key instead of render order.
 
-## Basic usage
+## Usage
 
 ```tsx
-import { useModuleList } from '@logixjs/react'
-import { RowModule } from './modules/row'
+import { useModuleList } from "@logixjs/react"
+import * as Logix from "@logixjs/core"
+import { RowDef } from "./modules/row"
 
 function RowList({ rows }: { rows: Array<{ id: string; name: string }> }) {
   const modules = useModuleList(
     rows,
     (row) => row.id,
-    (id, row) => RowModule.implement({ initial: { id, name: row.name } }),
+    (id, row) => Logix.Program.make(RowDef, { initial: { id, name: row.name } }),
   )
 
   return (
@@ -32,9 +33,11 @@ function RowList({ rows }: { rows: Array<{ id: string; name: string }> }) {
 
 ## Notes
 
-- The internal cache is not actively pruned when items are removed. In most cases, module definitions/impls are lightweight; the heavy part is the Runtime, managed by `useModule/useLocalModule`.
+- identity follows the item key, not render order
+- runtime ownership still belongs to `useModule(...)` or `useLocalModule(...)`
+- this is an advanced helper, not part of the canonical host law
 
 ## See also
 
-- [API: useLocalModule](./use-local-module)
-- [API: useModule](./use-module)
+- [useModule](./use-module)
+- [useLocalModule](./use-local-module)

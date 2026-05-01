@@ -1,8 +1,8 @@
 # Quickstart: UI Projection Contract（032：UI 只做投影）
 
-**Date**: 2025-12-26  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/032-ui-projection-contract/spec.md`  
-**Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/032-ui-projection-contract/plan.md`
+**Date**: 2025-12-26
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/032-ui-projection-contract/spec.md`
+**Plan**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/032-ui-projection-contract/plan.md`
 
 ## 0) 目标一句话
 
@@ -16,7 +16,7 @@
 
 ## 2) 平台如何做补全与校验（不靠 UI 推断）
 
-1. 通过 trial-run artifacts 导出 `@logixjs/module.portSpec@v1`/`@logixjs/module.typeIr@v1`（035；经由 031 artifacts 槽位）。  
+1. 通过 trial-run artifacts 导出 `@logixjs/module.portSpec@v1`/`@logixjs/module.typeIr@v1`（035；经由 031 artifacts 槽位）。
 2. 生成可引用空间（ports/exports）→ 用于：
    - 绑定编辑器的 autocomplete
    - 保存前的越界引用/类型不匹配拦截

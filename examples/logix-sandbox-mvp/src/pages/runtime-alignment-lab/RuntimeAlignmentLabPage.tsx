@@ -160,7 +160,7 @@ function RuntimeStatusBar({ runtime }: { runtime: SandboxRuntime }) {
 }
 
 export function RuntimeAlignmentLabPage() {
-  const runtime: SandboxRuntime = useModule(SandboxDef)
+  const runtime: SandboxRuntime = useModule(SandboxDef.tag)
   const dispatch = useDispatch(runtime)
 
   useEffect(() => {

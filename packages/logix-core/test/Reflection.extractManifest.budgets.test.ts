@@ -1,3 +1,4 @@
+import * as CoreReflection from '@logixjs/core/repo-internal/reflection-api'
 import { describe, it, expect } from '@effect/vitest'
 import { Schema } from 'effect'
 import * as Logix from '../src/index.js'
@@ -13,9 +14,9 @@ describe('Reflection.extractManifest (budgets)', () => {
       },
     })
 
-    const program = Root.implement({ initial: { value: 0 }, logics: [] })
+    const program = Logix.Program.make(Root, { initial: { value: 0 }, logics: [] })
 
-    const manifest = Logix.Reflection.extractManifest(program, {
+    const manifest = CoreReflection.extractManifest(program, {
       budgets: { maxBytes: 512 },
     })
 

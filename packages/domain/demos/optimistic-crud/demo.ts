@@ -1,8 +1,12 @@
 // @ts-nocheck
 import * as Logix from '@logixjs/core'
 import { Chunk, Deferred, Effect, FiberId, Layer, Schema, Stream } from 'effect'
-import type { CrudApi, CrudDefaultQueryInput } from '@logixjs/domain'
-import { makeOptimisticCrudModule } from './OptimisticCrudModule.js'
+import type { CrudApi } from '@logixjs/domain/Crud'
+import { makeOptimisticCrudProgram } from './OptimisticCrudProgram.js'
+
+type CrudDefaultQueryInput = {
+  readonly pageSize: number
+}
 
 const OrderSchema = Schema.Struct({
   id: Schema.String,
@@ -65,7 +69,7 @@ const waitFor = <S>(
 const demo: Effect.Effect<void, unknown> = Effect.gen(function* () {
   const done = Deferred.unsafeMake<void, unknown>(FiberId.none)
 
-  const Orders = makeOptimisticCrudModule('demo.OptimisticOrders', {
+  const Orders = makeOptimisticCrudProgram('demo.OptimisticOrders', {
     entity: OrderSchema,
     initial: [],
     idField: 'id',
@@ -78,7 +82,7 @@ const demo: Effect.Effect<void, unknown> = Effect.gen(function* () {
     actions: {},
   })
 
-  const Main = Host.logic(($) =>
+  const Main = Host.logic('main', ($) =>
     Effect.gen(function* () {
       const orders = yield* $.use(LiveOrders)
       const changes = orders.changes((s: any) => s)
@@ -86,7 +90,7 @@ const demo: Effect.Effect<void, unknown> = Effect.gen(function* () {
       console.log('[OptimisticCrud] initial:', yield* orders.read((s: any) => s))
 
       // 1) optimistic save success
-      yield* orders.controller.save({ id: 'o1', name: 'Alice' } satisfies Order)
+      yield* orders.commands.save({ id: 'o1', name: 'Alice' } satisfies Order)
       console.log(
         '[OptimisticCrud] after save(o1) optimistic:',
         yield* orders.read((s: any) => ({ items: s.items, pending: s.pending.length })),
@@ -99,7 +103,7 @@ const demo: Effect.Effect<void, unknown> = Effect.gen(function* () {
       )
 
       // 2) optimistic save failure -> rollback
-      yield* orders.controller.save({ id: 'o2', name: 'FAIL' } satisfies Order)
+      yield* orders.commands.save({ id: 'o2', name: 'FAIL' } satisfies Order)
       console.log(
         '[OptimisticCrud] after save(o2) optimistic:',
         yield* orders.read((s: any) => ({ items: s.items, pending: s.pending.length })),
@@ -116,7 +120,7 @@ const demo: Effect.Effect<void, unknown> = Effect.gen(function* () {
       )
 
       // 3) optimistic remove
-      yield* orders.controller.remove('o1')
+      yield* orders.commands.remove('o1')
       console.log(
         '[OptimisticCrud] after remove(o1) optimistic:',
         yield* orders.read((s: any) => ({ items: s.items, pending: s.pending.length })),
@@ -132,10 +136,12 @@ const demo: Effect.Effect<void, unknown> = Effect.gen(function* () {
     }).pipe(Effect.catchAllCause((cause) => Deferred.failCause(done, cause).pipe(Effect.asVoid))),
   )
 
-  const host = Host.implement({
+  const host = Logix.Program.make(Host, {
     initial: { ok: true },
     logics: [Main],
-    imports: [LiveOrders.impl],
+    capabilities: {
+      imports: [LiveOrders],
+    },
   })
 
   const runtime = Logix.Runtime.make(host)

@@ -2,6 +2,7 @@ import type { FieldPath, SchemaError, SchemaPathMappingOptions } from './SchemaP
 import { mapSchemaErrorToFieldPaths } from './SchemaPathMapping.js'
 import { setAtPath } from '../form/path.js'
 import { toSchemaErrorsPath } from '../../Path.js'
+import { makeDecodeErrorLeaf } from '../form/errors.js'
 
 export interface SchemaErrorMappingOptions extends SchemaPathMappingOptions {
   /**
@@ -23,15 +24,25 @@ export type SchemaErrorWrite = {
   readonly error: unknown
 }
 
+const defaultDecodeLeaf = (schemaError: SchemaError): unknown => makeDecodeErrorLeaf(schemaError)
+
 export const toSchemaErrorWrites = (
   schemaError: SchemaError,
   options?: SchemaErrorMappingOptions,
 ): ReadonlyArray<SchemaErrorWrite> => {
   const fieldPaths = mapSchemaErrorToFieldPaths(schemaError, options)
-  if (fieldPaths.length === 0) return []
-
-  const toLeaf = options?.toLeaf ?? ((e: SchemaError) => e)
+  const toLeaf = options?.toLeaf ?? defaultDecodeLeaf
   const leaf = toLeaf(schemaError)
+
+  if (fieldPaths.length === 0) {
+    return [
+      {
+        fieldPath: '$self',
+        errorPath: 'errors.$schema.$self',
+        error: leaf,
+      },
+    ]
+  }
 
   return fieldPaths.map((fieldPath) => ({
     fieldPath,

@@ -1,4 +1,6 @@
 import type { StateCommitMeta, StateCommitPriority } from './module.js'
+import { Effect } from 'effect'
+import type { RuntimeHotLifecycleContext } from './hotLifecycle/index.js'
 
 export type ModuleInstanceKey = `${string}::${string}`
 export type TopicKey = string
@@ -7,13 +9,13 @@ export type TopicKind = 'module' | 'readQuery'
 
 export type TopicInfo =
   | { readonly kind: 'module'; readonly moduleInstanceKey: ModuleInstanceKey }
-  | { readonly kind: 'readQuery'; readonly moduleInstanceKey: ModuleInstanceKey; readonly selectorId: string }
+  | { readonly kind: 'readQuery'; readonly moduleInstanceKey: ModuleInstanceKey; readonly selectorFingerprint: string }
 
 export const makeModuleInstanceKey = (moduleId: string, instanceId: string): ModuleInstanceKey =>
   `${moduleId}::${instanceId}`
 
-export const makeReadQueryTopicKey = (moduleInstanceKey: ModuleInstanceKey, selectorId: string): TopicKey =>
-  `${moduleInstanceKey}::rq:${selectorId}`
+export const makeReadQueryTopicKey = (moduleInstanceKey: ModuleInstanceKey, selectorFingerprint: string): TopicKey =>
+  `${moduleInstanceKey}::rq:${selectorFingerprint}`
 
 export const parseTopicKey = (topicKey: string): TopicInfo | undefined => {
   const idx = topicKey.indexOf('::')
@@ -31,12 +33,12 @@ export const parseTopicKey = (topicKey: string): TopicInfo | undefined => {
   const instanceId = rest.slice(0, idx2)
   const suffix = rest.slice(idx2 + 2)
   if (suffix.startsWith('rq:')) {
-    const selectorId = suffix.slice('rq:'.length)
-    if (selectorId.length === 0) return undefined
+    const selectorFingerprint = suffix.slice('rq:'.length)
+    if (selectorFingerprint.length === 0) return undefined
     return {
       kind: 'readQuery',
       moduleInstanceKey: `${moduleId}::${instanceId}`,
-      selectorId,
+      selectorFingerprint,
     }
   }
 
@@ -91,6 +93,7 @@ export interface RuntimeStore {
   readonly subscribeTopic: (topicKey: TopicKey, listener: () => void) => () => void
   readonly getTopicSubscriberCount: (topicKey: TopicKey) => number
   readonly getModuleSubscriberCount: (moduleInstanceKey: ModuleInstanceKey) => number
+  readonly disposeTopic: (topicKey: TopicKey) => void
 
   // ---- Runtime integration ----
   readonly registerModuleInstance: (args: {
@@ -98,6 +101,7 @@ export interface RuntimeStore {
     readonly instanceId: string
     readonly moduleInstanceKey: ModuleInstanceKey
     readonly initialState: unknown
+    readonly hotLifecycle?: RuntimeHotLifecycleContext
   }) => void
   readonly unregisterModuleInstance: (moduleInstanceKey: ModuleInstanceKey) => void
 
@@ -180,11 +184,29 @@ export const makeRuntimeStore = (): RuntimeStore => {
   const getTopicSubscriberCount = (topicKey: TopicKey): number => listenersByTopic.get(topicKey)?.listeners.size ?? 0
   const getModuleSubscriberCount = (moduleInstanceKey: ModuleInstanceKey): number => subscriberCountByModule.get(moduleInstanceKey) ?? 0
 
+  const disposeTopic = (topicKey: TopicKey): void => {
+    const info = parseTopicKey(topicKey)
+    const state = listenersByTopic.get(topicKey)
+    if (state && info) {
+      const prev = subscriberCountByModule.get(info.moduleInstanceKey) ?? 0
+      const next = prev - state.listeners.size
+      if (next <= 0) {
+        subscriberCountByModule.delete(info.moduleInstanceKey)
+      } else {
+        subscriberCountByModule.set(info.moduleInstanceKey, next)
+      }
+    }
+    listenersByTopic.delete(topicKey)
+    topicVersions.delete(topicKey)
+    topicPriorities.delete(topicKey)
+  }
+
   const registerModuleInstance = (args: {
     readonly moduleId: string
     readonly instanceId: string
     readonly moduleInstanceKey: ModuleInstanceKey
     readonly initialState: unknown
+    readonly hotLifecycle?: RuntimeHotLifecycleContext
   }): void => {
     moduleStates.set(args.moduleInstanceKey, args.initialState)
     // Ensure the module topic exists with a stable baseline version/priority.
@@ -192,6 +214,17 @@ export const makeRuntimeStore = (): RuntimeStore => {
       topicVersions.set(args.moduleInstanceKey, 0)
       topicPriorities.set(args.moduleInstanceKey, 'normal')
     }
+    args.hotLifecycle?.register({
+      resourceId: `${args.hotLifecycle.owner.ownerId}::runtime-store-topic:${args.moduleInstanceKey}`,
+      category: 'runtime-store-topic',
+      moduleId: args.moduleId,
+      moduleInstanceId: args.instanceId,
+      cleanup: () =>
+        Effect.sync(() => {
+          disposeTopic(args.moduleInstanceKey)
+          unregisterModuleInstance(args.moduleInstanceKey)
+        }),
+    })
   }
 
   const unregisterModuleInstance = (moduleInstanceKey: ModuleInstanceKey): void => {
@@ -326,6 +359,7 @@ export const makeRuntimeStore = (): RuntimeStore => {
     subscribeTopic,
     getTopicSubscriberCount,
     getModuleSubscriberCount,
+    disposeTopic,
     registerModuleInstance,
     unregisterModuleInstance,
     commitTick,

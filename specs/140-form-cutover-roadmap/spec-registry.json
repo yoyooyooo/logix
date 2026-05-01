@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "group": "140-form-cutover-roadmap",
+  "statusEnum": ["idea", "draft", "planned", "active", "done", "frozen"],
+  "entries": [
+    {
+      "id": "141",
+      "dir": "specs/141-runtime-control-plane-report-shell-cutover",
+      "status": "done",
+      "dependsOn": [],
+      "scope": "verification control plane exact shell, coordinate-first repair target, artifact-backed linking, cli/core/test contract alignment"
+    },
+    {
+      "id": "142",
+      "dir": "specs/142-form-validation-bridge-cutover",
+      "status": "done",
+      "dependsOn": ["141"],
+      "scope": "submit-only decode gate, decode-origin canonical bridge, adapter path and lowering route implementation"
+    },
+    {
+      "id": "143",
+      "dir": "specs/143-form-canonical-error-carrier-cutover",
+      "status": "done",
+      "dependsOn": ["142"],
+      "scope": "canonical FormErrorLeaf cutover, raw schema writeback cleanup, string/raw leaf residue removal"
+    },
+    {
+      "id": "144",
+      "dir": "specs/144-form-settlement-submit-cutover",
+      "status": "done",
+      "dependsOn": ["142", "143"],
+      "scope": "submitAttempt, decoded payload, blocking summary, error lifetime and submit verdict convergence"
+    },
+    {
+      "id": "145",
+      "dir": "specs/145-form-active-shape-locality-cutover",
+      "status": "done",
+      "dependsOn": ["143"],
+      "scope": "row ownership, cleanup, remap, locality receipts, reasonSlotId.subjectRef stability and active-shape residue cleanup"
+    },
+    {
+      "id": "146",
+      "dir": "specs/146-form-host-examples-dogfooding-cutover",
+      "status": "done",
+      "dependsOn": ["141", "142", "143", "144", "145"],
+      "scope": "react host consumption, examples, docs and dogfooding cleanup on top of the cutover contracts"
+    }
+  ]
+}

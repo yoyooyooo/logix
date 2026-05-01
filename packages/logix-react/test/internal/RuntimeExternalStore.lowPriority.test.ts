@@ -55,8 +55,8 @@ describe('RuntimeExternalStore lowPriority scheduling', () => {
       },
     })
 
-    const impl = M.implement({ initial: { value: 0 }, logics: [] })
-    const runtime = Logix.Runtime.make(impl, {
+    const program = Logix.Program.make(M, { initial: { value: 0 }, logics: [] })
+    const runtime = Logix.Runtime.make(program, {
       hostScheduler: hostScheduler.scheduler,
       layer: Layer.empty as Layer.Layer<any, never, never>,
     })

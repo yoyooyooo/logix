@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://intent-flow.local/specs/079/autofill-reason-codes.schema.json",
+  "$id": "https://logix.local/specs/079/autofill-reason-codes.schema.json",
   "title": "AutofillReasonCode@v1",
   "type": "string",
   "enum": [

@@ -12,7 +12,7 @@
 - **自动触发**：`deps` 变化 →（可选 debounce）→ `source.refresh` → keyHash 门控 → snapshot 写回
 - **并发策略**：`switch`（只认最新）与 `exhaust`（trailing）在高频输入下的竞态正确性与开销
 - **key 可用性切换**：`key(state) => undefined ↔ defined` 的门控成本与快照回收语义（idle/no-op）
-- **引擎接管点**：`Query.Engine.middleware()` 拦截 `EffectOp(kind="trait-source")` 的决策与委托开销
+- **引擎接管点**：`Query.Engine.middleware()` 拦截 `EffectOp(kind="field-source")` 的决策与委托开销
 - **诊断分档**：`off` vs `light/full`（同一 workload 的时间/分配差异）
 
 ## 2) 场景（最小集）

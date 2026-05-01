@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Logix Runes（Svelte-like 赋值驱动状态语法糖）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2026-01-03  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2026-01-03
 **Feature**: `specs/072-logix-runes-dx/spec.md`
 
 ## Content Quality

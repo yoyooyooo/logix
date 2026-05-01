@@ -5,9 +5,9 @@ export type DirtyAllReason = 'unknownWrite' | 'customMutation' | 'nonTrackablePa
 
 export type PatchReason =
   | 'reducer'
-  | 'trait-computed'
-  | 'trait-link'
-  | 'trait-external-store'
+  | 'field-computed'
+  | 'field-link'
+  | 'field-external-store'
   | 'source-refresh'
   | 'devtools'
   | 'perf'
@@ -16,9 +16,9 @@ export type PatchReason =
 export const normalizePatchReason = (reason: unknown): PatchReason => {
   switch (reason) {
     case 'reducer':
-    case 'trait-computed':
-    case 'trait-link':
-    case 'trait-external-store':
+    case 'field-computed':
+    case 'field-link':
+    case 'field-external-store':
     case 'source-refresh':
     case 'devtools':
     case 'perf':

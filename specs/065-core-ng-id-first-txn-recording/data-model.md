@@ -42,8 +42,8 @@
 目标：避免自由字符串导致统计/gate 失效。建议枚举：
 
 - `reducer`
-- `trait-computed`
-- `trait-link`
+- `field-computed`
+- `field-link`
 - `source-refresh`
 - `devtools`
 - `perf`

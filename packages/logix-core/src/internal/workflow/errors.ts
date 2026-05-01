@@ -1,5 +1,5 @@
 import { stableStringify } from '../digest.js'
-import { isJsonValue, type JsonValue, projectJsonValue } from '../observability/jsonValue.js'
+import { isJsonValue, type JsonValue, projectJsonValue } from '../protocol/jsonValue.js'
 
 export type WorkflowErrorCode =
   | 'WORKFLOW_UNSUPPORTED_VERSION'

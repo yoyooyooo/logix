@@ -40,15 +40,25 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 1.5 **Update spec status** (monotonic, no regression): Run `SKILL_DIR/scripts/bash/update-spec-status.sh --ensure --status Planned` (add `--feature <id>` if needed). This will move `**Status**` from Draft → Planned when planning is ready, and keep Active/Done untouched.
 
-2. **Load context**: Read FEATURE_SPEC and `.specify/memory/constitution.md`. If `.specify/memory/north-stars.md` is present, also read it (and optionally `docs/ssot/platform/foundation/04-north-stars.md`) so the plan can keep NS/KF traceability consistent with spec.md. If it is missing, do NOT create it implicitly here—proceed without it or suggest `$speckit north-stars` (init) / `$speckit north-stars sync` (generate the derived index). Load IMPL_PLAN template (already copied).
+2. **Load context**: Read FEATURE_SPEC and `.specify/memory/constitution.md`. Derive `FEATURE_DIR = dirname(FEATURE_SPEC)`. If `FEATURE_DIR/discussion.md` exists, read it as a non-authoritative working artifact and extract only:
+   - `Must Close Before Implementation` items
+   - `Deferred / Non-Blocking` items
+   - unresolved candidate shapes
+   - reopen evidence
+   Do NOT let `discussion.md` override owner / boundary / closure truth already fixed in `spec.md`.
+   If `.specify/memory/north-stars.md` is present, also read it (and optionally `docs/ssot/platform/foundation/04-north-stars.md`) so the plan can keep NS/KF traceability consistent with spec.md. If it is missing, do NOT create it implicitly here—proceed without it or suggest `$speckit north-stars` (init) / `$speckit north-stars sync` (generate the derived index). Load IMPL_PLAN template (already copied).
 
 3. **Execute plan workflow**: Follow the structure in IMPL_PLAN template to:
    - Fill Technical Context (mark unknowns as "NEEDS CLARIFICATION")
    - Fill Constitution Check section from constitution
+   - Fill execution constraints, required witness set, and result writeback targets
    - Evaluate gates (ERROR if violations unjustified)
    - Phase 0: Generate research.md (resolve all NEEDS CLARIFICATION)
    - Phase 1: Generate data-model.md, contracts/, quickstart.md
    - Re-evaluate Constitution Check post-design
+   - If `discussion.md` contains adopted decisions after planning, write them back into `plan.md` and trim them from `discussion.md`
+   - If `discussion.md` still contains `Must Close Before Implementation` items after planning, list them as planning blockers and do not mark the spec implementation-ready
+   - If all discussion items were adopted or dropped, delete the empty `discussion.md` instead of leaving a shell file
 
 4. **Stop and report**: Command ends after Phase 2 planning. Report branch, IMPL_PLAN path, and generated artifacts.
 

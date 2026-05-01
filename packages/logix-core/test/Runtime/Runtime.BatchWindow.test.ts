@@ -1,7 +1,7 @@
 import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
-import * as Debug from '../../src/Debug.js'
+import * as Debug from '../../src/internal/debug-api.js'
 
 describe('Runtime batch window semantics', () => {
   it.effect('dispatchBatch merges multiple dispatches into a single commit (commitMode=batch)', () =>
@@ -19,7 +19,7 @@ describe('Runtime batch window semantics', () => {
         },
       })
 
-      const impl = M.implement({
+      const program = Logix.Program.make(M, {
         initial: { value: 0 },
         logics: [],
       })
@@ -31,9 +31,9 @@ describe('Runtime batch window semantics', () => {
         never
       >
 
-      const runtime = Logix.Runtime.make(impl, { layer })
+      const runtime = Logix.Runtime.make(program, { layer })
 
-      const program = Effect.gen(function* () {
+      const run = Effect.gen(function* () {
         const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
         yield* rt.dispatchBatch([
@@ -52,7 +52,7 @@ describe('Runtime batch window semantics', () => {
         expect(commits[0]?.commitMode).toBe('batch')
       })
 
-      yield* Effect.promise(() => runtime.runPromise(program))
+      yield* Effect.promise(() => runtime.runPromise(run))
     }),
   )
 })

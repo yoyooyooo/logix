@@ -17,7 +17,7 @@
 - [x] T004 验证前置条件：045 kernel contract 可用且 core-ng 可被注入试跑 `specs/045-dual-kernel-contract/tasks.md`
 - [x] T005 定义 Exec VM 的最小可解释摘要字段并接入证据链路（off 近零成本；light/full 输出 `reasonCode` 稳定枚举码 + 可选 `reasonDetail`）`packages/logix-core-ng/src/*`、`packages/logix-core/src/internal/observability/*`
 - [x] T006 实现 Exec IR 的构造期预编译与 generation 生命周期绑定（禁止每窗口重建；产出 `execIrVersion/execIrHash` 以支撑 AOT-ready）`packages/logix-core-ng/src/*`
-- [x] T007 确保执行 loop 内无字符串解析/无新增临时集合分配（按 049/039 guardrails；必要时引入 microbench）入口：`packages/logix-core/src/internal/state-trait/converge.ts`
+- [x] T007 确保执行 loop 内无字符串解析/无新增临时集合分配（按 049/039 guardrails；必要时引入 microbench）入口：`packages/logix-core/src/internal/state-field/converge.ts`
 
 **Tests（Foundational）**
 
@@ -33,7 +33,7 @@
 **Independent Test**: 复用 045 contract verification（core vs core-ng），并能在 light/full evidence 中解释 Exec VM 命中/未命中（含 `reasonCode`）。
 
 - [x] T010 [US1] 将 converge/txn 热路径接入 Exec VM（先覆盖 1 条关键路径，确保可证据化）`packages/logix-core-ng/src/*`
-- [x] T011 [US1] 补齐“未命中原因/降级策略”并证据化（`reasonCode` 稳定枚举码；不得自由文本；不得隐式 fallback）`packages/logix-core-ng/src/*`、`packages/logix-core/src/Kernel.ts`
+- [x] T011 [US1] 补齐“未命中原因/降级策略”并证据化（`reasonCode` 稳定枚举码；不得自由文本；不得隐式 fallback）`packages/logix-core-ng/src/*`、`packages/logix-core/src/internal/kernel-api.ts`
 
 ---
 

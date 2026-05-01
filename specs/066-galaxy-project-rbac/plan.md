@@ -1,6 +1,6 @@
 # Implementation Plan: 066 logix-galaxy 项目管理与 RBAC（成员/角色/权限/成员组）
 
-**Branch**: `066-galaxy-project-rbac` | **Date**: 2025-12-31 | **Spec**: `specs/066-galaxy-project-rbac/spec.md`  
+**Branch**: `066-galaxy-project-rbac` | **Date**: 2025-12-31 | **Spec**: `specs/066-galaxy-project-rbac/spec.md`
 **Input**: Feature specification from `specs/066-galaxy-project-rbac/spec.md`
 
 ## Summary
@@ -44,11 +44,11 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@effect/platform(-node)`、`@effect/sql-pg`、`better-auth`（身份来源）、React 19、`react-router-dom`、`@logixjs/*`  
-**Storage**: PostgreSQL（`DATABASE_URL` 注入；BetterAuth 表在 schema `auth`，业务表在 `public`）  
-**Testing**: Vitest（以 handler-level tests 为主，通过 Layer 注入替身 Repo/Service）  
-**Target Platform**: Node.js 20+ + 现代浏览器（Vite dev）  
+**Language/Version**: TypeScript（ESM）
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@effect/platform(-node)`、`@effect/sql-pg`、`better-auth`（身份来源）、React 19、`react-router-dom`、`@logixjs/*`
+**Storage**: PostgreSQL（`DATABASE_URL` 注入；BetterAuth 表在 schema `auth`，业务表在 `public`）
+**Testing**: Vitest（以 handler-level tests 为主，通过 Layer 注入替身 Repo/Service）
+**Target Platform**: Node.js 20+ + 现代浏览器（Vite dev）
 **Constraints**:
 
 - 错误体必须结构化且稳定（`{ _tag, message }`），并对 `401/403/409/400/404` 给出一致语义。

@@ -1,8 +1,8 @@
 # Feature Specification: O-008 调度平面统一（Scheduling Surface）
 
-**Feature Branch**: `098-o008-scheduling-surface`  
-**Created**: 2026-02-25  
-**Status**: Planned  
+**Feature Branch**: `098-o008-scheduling-surface`
+**Created**: 2026-02-25
+**Status**: Planned
 **Input**: 用户要求统一 `txnQueue + TickScheduler + ConcurrencyPolicy` 的决策面，保证队列/tick/并发策略同源，并让 backlog/degrade 诊断事件与真实调度行为一一对应。
 
 ## North Stars & Kill Features Traceability _(optional)_

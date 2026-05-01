@@ -1,6 +1,6 @@
 # Implementation Plan: 055 core-ng Flat Store PoC（arena/SoA/handle 化）
 
-**Branch**: `055-core-ng-flat-store-poc` | **Date**: 2025-12-31 | **Spec**: `specs/055-core-ng-flat-store-poc/spec.md`  
+**Branch**: `055-core-ng-flat-store-poc` | **Date**: 2025-12-31 | **Spec**: `specs/055-core-ng-flat-store-poc/spec.md`
 **Input**: Feature specification from `specs/055-core-ng-flat-store-poc/spec.md`
 
 ## Summary
@@ -22,7 +22,7 @@
 
 - 稳定 id/handle 基座：`specs/050-core-ng-integer-bridge/`
 - txn/patch/dirtyset 零分配 guardrails：`specs/051-core-ng-txn-zero-alloc/`
-- converge/txn 热路径（当前对象图 + draft）：`packages/logix-core/src/internal/state-trait/converge.ts`
+- converge/txn 热路径（当前对象图 + draft）：`packages/logix-core/src/internal/state-field/converge.ts`
 - dirty-set/事务：`packages/logix-core/src/internal/runtime/core/StateTransaction.ts`
 
 ## Constitution Check
@@ -39,7 +39,7 @@
 
 > 试点已预选（`patch/dirties/dirtyRoots` 数据面）；但在解冻前仍仅作为预案保留。
 
-- Matrix SSoT：`.codex/skills/logix-perf-evidence/assets/matrix.json`（至少覆盖 `priority=P1`）
+- Matrix SSoT：`packages/logix-perf-evidence/assets/matrix.json`（至少覆盖 `priority=P1`）
 - Browser 必须覆盖：关注长尾（p95/p99）与 heap/alloc delta
 - PASS 判据：Node 与 Browser diff 都必须 `comparable=true && regressions==0`
 
@@ -58,7 +58,7 @@ specs/055-core-ng-flat-store-poc/
 ### Source Code (implementation targets)
 
 ```text
-packages/logix-core/src/internal/state-trait/*        # 现有对象图路径（对照）
+packages/logix-core/src/internal/state-field/*        # 现有对象图路径（对照）
 packages/logix-core-ng/src/*                          # core-ng trial-only 注入 flat store PoC
 packages/logix-react/test/browser/*                   # browser perf suites（P1）
 ```

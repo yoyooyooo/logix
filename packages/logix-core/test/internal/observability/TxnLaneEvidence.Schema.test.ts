@@ -1,3 +1,5 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { readFileSync } from 'node:fs'
@@ -136,22 +138,21 @@ const makeModule = (args: { readonly deferred: number }) => {
   const State = Schema.Struct(fields) as any
   const Actions = { noop: Schema.Void }
 
-  const traits: Record<string, any> = {}
+  const fieldDeclarations: Record<string, any> = {}
   for (let i = 0; i < args.deferred; i++) {
     const key = `d${i}`
-    traits[key] = Logix.StateTrait.computed({
+    fieldDeclarations[key] = FieldContracts.fieldComputed({
       deps: ['a'] as any,
       get: (a: any) => computeValue(a, i),
       scheduling: 'deferred',
     } as any)
   }
 
-  const M = Logix.Module.make('TxnLaneEvidence_Schema', {
-    state: State as any,
-    actions: Actions,
-    reducers: { noop: (s: any) => s },
-    traits: Logix.StateTrait.from(State as any)(traits as any),
-  })
+  const M = FieldContracts.withModuleFieldDeclarations(Logix.Module.make('TxnLaneEvidence_Schema', {
+  state: State as any,
+  actions: Actions,
+  reducers: { noop: (s: any) => s }
+}), FieldContracts.fieldFrom(State as any)(fieldDeclarations as any))
 
   const initial: Record<string, number> = {
     a: 0,
@@ -161,12 +162,12 @@ const makeModule = (args: { readonly deferred: number }) => {
     initial[`d${i}`] = computeValue(0, i)
   }
 
-  const impl = M.implement({
+  const programModule = Logix.Program.make(M, {
     initial: initial as any,
     logics: [],
   })
 
-  return { M, impl }
+  return { M, programModule }
 }
 
 describe('TxnLaneEvidence schema (060)', () => {
@@ -187,30 +188,30 @@ describe('TxnLaneEvidence schema (060)', () => {
         ),
       } as const
 
-      const events: Array<Logix.Debug.Event> = []
-      const sink: Logix.Debug.Sink = {
-        record: (event: Logix.Debug.Event) =>
+      const events: Array<CoreDebug.Event> = []
+      const sink: CoreDebug.Sink = {
+        record: (event: CoreDebug.Event) =>
           Effect.sync(() => {
             events.push(event)
           }),
       }
 
-      const layer = Layer.mergeAll(Logix.Debug.diagnosticsLevel('full'), Logix.Debug.replace([sink])) as Layer.Layer<
+      const layer = Layer.mergeAll(CoreDebug.diagnosticsLevel('full'), CoreDebug.replace([sink])) as Layer.Layer<
         any,
         never,
         never
       >
 
       const DEFERRED = 64
-      const { M, impl } = makeModule({ deferred: DEFERRED })
+      const { M, programModule } = makeModule({ deferred: DEFERRED })
 
-      const runtime = Logix.Runtime.make(impl, {
+      const runtime = Logix.Runtime.make(programModule, {
         layer,
         stateTransaction: {
-          traitConvergeMode: 'dirty',
-          traitConvergeBudgetMs: 100_000,
-          traitConvergeDecisionBudgetMs: 100_000,
-          traitConvergeTimeSlicing: { enabled: true, debounceMs: 1, maxLagMs: 50 },
+          fieldConvergeMode: 'dirty',
+          fieldConvergeBudgetMs: 100_000,
+          fieldConvergeDecisionBudgetMs: 100_000,
+          fieldConvergeTimeSlicing: { enabled: true, debounceMs: 1, maxLagMs: 50 },
           txnLanes: { enabled: true, budgetMs: 0, debounceMs: 0, maxLagMs: 50, allowCoalesce: true },
         },
       })
@@ -220,11 +221,11 @@ describe('TxnLaneEvidence schema (060)', () => {
           Effect.gen(function* () {
             const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
-            yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 't1' }, () =>
+            yield* FieldContracts.runWithStateTransaction(rt, { kind: 'test', name: 't1' }, () =>
               Effect.gen(function* () {
                 const prev = yield* rt.getState
                 yield* rt.setState({ ...prev, a: 1 })
-                Logix.InternalContracts.recordStatePatch(rt, 'a', 'unknown')
+                FieldContracts.recordStatePatch(rt, 'a', 'unknown')
               }),
             )
 
@@ -253,30 +254,30 @@ describe('TxnLaneEvidence schema (060)', () => {
 
   it.effect('does not emit TxnLaneEvidence when diagnostics is off', () =>
     Effect.gen(function* () {
-      const events: Array<Logix.Debug.Event> = []
-      const sink: Logix.Debug.Sink = {
-        record: (event: Logix.Debug.Event) =>
+      const events: Array<CoreDebug.Event> = []
+      const sink: CoreDebug.Sink = {
+        record: (event: CoreDebug.Event) =>
           Effect.sync(() => {
             events.push(event)
           }),
       }
 
-      const layer = Layer.mergeAll(Logix.Debug.diagnosticsLevel('off'), Logix.Debug.replace([sink])) as Layer.Layer<
+      const layer = Layer.mergeAll(CoreDebug.diagnosticsLevel('off'), CoreDebug.replace([sink])) as Layer.Layer<
         any,
         never,
         never
       >
 
       const DEFERRED = 32
-      const { M, impl } = makeModule({ deferred: DEFERRED })
+      const { M, programModule } = makeModule({ deferred: DEFERRED })
 
-      const runtime = Logix.Runtime.make(impl, {
+      const runtime = Logix.Runtime.make(programModule, {
         layer,
         stateTransaction: {
-          traitConvergeMode: 'dirty',
-          traitConvergeBudgetMs: 100_000,
-          traitConvergeDecisionBudgetMs: 100_000,
-          traitConvergeTimeSlicing: { enabled: true, debounceMs: 1, maxLagMs: 50 },
+          fieldConvergeMode: 'dirty',
+          fieldConvergeBudgetMs: 100_000,
+          fieldConvergeDecisionBudgetMs: 100_000,
+          fieldConvergeTimeSlicing: { enabled: true, debounceMs: 1, maxLagMs: 50 },
           txnLanes: { enabled: true, budgetMs: 0, debounceMs: 0, maxLagMs: 50, allowCoalesce: true },
         },
       })
@@ -286,11 +287,11 @@ describe('TxnLaneEvidence schema (060)', () => {
           Effect.gen(function* () {
             const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
 
-            yield* Logix.InternalContracts.runWithStateTransaction(rt, { kind: 'test', name: 't1' }, () =>
+            yield* FieldContracts.runWithStateTransaction(rt, { kind: 'test', name: 't1' }, () =>
               Effect.gen(function* () {
                 const prev = yield* rt.getState
                 yield* rt.setState({ ...prev, a: 1 })
-                Logix.InternalContracts.recordStatePatch(rt, 'a', 'unknown')
+                FieldContracts.recordStatePatch(rt, 'a', 'unknown')
               }),
             )
 

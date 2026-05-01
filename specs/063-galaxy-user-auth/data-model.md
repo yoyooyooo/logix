@@ -1,6 +1,6 @@
 # Data Model: 063 logix-galaxy-api 登录与用户模块（BetterAuth-first）
 
-**Feature**: `specs/063-galaxy-user-auth/spec.md`  
+**Feature**: `specs/063-galaxy-user-auth/spec.md`
 **Date**: 2025-12-30
 
 ## 1) 范围

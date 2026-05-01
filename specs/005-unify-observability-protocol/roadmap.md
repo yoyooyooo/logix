@@ -1,11 +1,11 @@
-# Roadmap: 005 Timeline Rendering × 007 Trait System 融合
+# Roadmap: 005 Timeline Rendering × 007 Field System 融合
 
 **Branch**: `005-unify-observability-protocol`
 **Created**: 2025-12-14
 **Status**: Active
-**Related**: `specs/007-unify-trait-system/spec.md`, `design-timeline-rendering.md`
+**Related**: `specs/007-unify-field-system/spec.md`, `design-timeline-rendering.md`
 
-> 本文档分析 005 Timeline Rendering 设计如何与 007 Trait System 落实后的 Logix 实现融合，并给出分阶段实施路径。
+> 本文档分析 005 Timeline Rendering 设计如何与 007 Field System 落实后的 Logix 实现融合，并给出分阶段实施路径。
 
 ---
 
@@ -22,11 +22,11 @@
 
 ### 1.2 007 落实后的新现实
 
-根据 `007-unify-trait-system/spec.md` 与 `data-model.md`：
+根据 `007-unify-field-system/spec.md` 与 `data-model.md`：
 
-- Trait 系统引入了 **Operation Window**（单次操作窗口）概念
+- Field 系统引入了 **Operation Window**（单次操作窗口）概念
 - 每次窗口对外保证 **0/1 次可观察提交**（FR-006）
-- 引入了 **traitSummary**（收敛摘要）用于诊断（FR-011）
+- 引入了 **fieldSummary**（收敛摘要）用于诊断（FR-011）
 - **ReplayLog** 提供了 `ResourceSnapshot` 等可回放事件（FR-015）
 - 诊断需要回答：触发范围、跳过原因、TopN 成本、降级原因
 
@@ -40,7 +40,7 @@
 
 ```typescript
 // 核心事件类型
-"state:update" → 包含 patchCount, originKind, originName, traitSummary, replayEvent
+"state:update" → 包含 patchCount, originKind, originName, fieldSummary, replayEvent
 "diagnostic"   → 包含 code, severity, message, hint, trigger
 "trace:*"      → 扩展钩子（trace:react-render, trace:effectop）
 ```
@@ -52,7 +52,7 @@
 | `txnId`                 | 事务 ID            | ✅ 已实现     |
 | `patchCount`            | Patch 数量         | ✅ 已实现     |
 | `originKind/originName` | 触发来源           | ✅ 已实现     |
-| `traitSummary`          | 收敛摘要（预留位） | ⚠️ 结构待固化 |
+| `fieldSummary`          | 收敛摘要（预留位） | ⚠️ 结构待固化 |
 | `replayEvent`           | 回放事件关联       | ⚠️ 结构待固化 |
 
 ### 2.2 ReplayLog 已具备的能力
@@ -71,7 +71,7 @@ type ReplayLogEvent =
 
 `packages/logix-devtools-react/src/state/compute.ts`：
 
-1. **TraitConvergeWindow** 聚合：从 `state:update.traitSummary.converge` 提取
+1. **TraitConvergeWindow** 聚合：从 `state:update.fieldSummary.converge` 提取
    - outcomes: Converged/Noop/Degraded
    - degradedReasons: budget_exceeded/runtime_error
    - top3: 最高成本的前 3 条规则
@@ -89,7 +89,7 @@ type ReplayLogEvent =
 | 维度            | 005 设计要求                       | 007 提供的能力                              | 当前实现                | Gap                 |
 | --------------- | ---------------------------------- | ------------------------------------------- | ----------------------- | ------------------- |
 | **时序精度**    | 每个事件的 `[start, end]` span     | `StateTransaction` 提供 `startedAt/endedAt` | 事件只有 `timestamp` 点 | 🔴 缺少 span 形态   |
-| **泳道模型**    | Main Flow Lane + Event Signal Lane | `traitSummary.converge` + 独立事件          | 只有单一 timeline       | 🔴 缺少泳道分层     |
+| **泳道模型**    | Main Flow Lane + Event Signal Lane | `fieldSummary.converge` + 独立事件          | 只有单一 timeline       | 🔴 缺少泳道分层     |
 | **因果关系**    | Flow→Effect→Resource 调用栈        | `EffectOp.meta` 可挂 resourceId/keyHash     | 部分解析 trace:effectop | 🟡 可扩展           |
 | **Brush 交互**  | 双向滑块控制视口                   | `timelineRange` 已预留                      | 只有范围字段，无 UI     | 🟡 需 UI 实现       |
 | **Canvas 渲染** | Off-Main-Thread                    | 设计文档建议 Worker                         | DOM 堆叠方式            | 🔴 需架构重构       |
@@ -101,12 +101,12 @@ type ReplayLogEvent =
 
 ### 4.1 数据模型扩展
 
-#### 4.1.1 扩展 traitSummary 结构
+#### 4.1.1 扩展 fieldSummary 结构
 
 **现有结构**（已部分固化）：
 
 ```typescript
-traitSummary: {
+fieldSummary: {
   converge: {
     outcome: "Converged" | "Noop" | "Degraded"
     degradedReason?: "budget_exceeded" | "runtime_error"
@@ -122,7 +122,7 @@ traitSummary: {
 **建议扩展**（用于 Timeline Span）：
 
 ```typescript
-traitSummary: {
+fieldSummary: {
   converge: { /* 同上 */ }
 
   // NEW: Operation Window 的完整时序边界
@@ -157,7 +157,7 @@ traitSummary: {
 type ReplayLogEvent =
   | { _tag: "ResourceSnapshot"; ... }       // 已有
   | { _tag: "InvalidateRequest"; ... }      // 已有
-  // NEW: Trait 收敛事件（与 StateTransaction 对应）
+  // NEW: Field 收敛事件（与 StateTransaction 对应）
 	  | {
 	      _tag: "TraitConverge"
 	      txnId: string
@@ -189,7 +189,7 @@ type ReplayLogEvent =
 │     └─ 颜色区分: Converged(绿) / Noop(灰) / Degraded(黄)   │
 │     └─ Span 宽度 = endedAt - startedAt                   │
 ├──────────────────────────────────────────────────────────┤
-│  Trait Execution Lane (中层 Span，可折叠)                  │
+│  Field Execution Lane (中层 Span，可折叠)                  │
 │  └─ computed/link/source/check 步骤的执行跨度             │
 │     └─ 仅在 deep 模式且 steps 存在时渲染                  │
 │     └─ 支持 Flamegraph 展开（按 deps 关系嵌套）            │
@@ -204,8 +204,8 @@ type ReplayLogEvent =
 
 | 泳道             | 数据来源                                              | 渲染形态                |
 | ---------------- | ----------------------------------------------------- | ----------------------- |
-| Operation Window | `state:update` + `traitSummary.window`                | 长条 Span               |
-| Trait Execution  | `traitSummary.steps`                                  | 嵌套 Span（Flamegraph） |
+| Operation Window | `state:update` + `fieldSummary.window`                | 长条 Span               |
+| Field Execution  | `fieldSummary.steps`                                  | 嵌套 Span（Flamegraph） |
 | Event Signal     | `action:dispatch`, `trace:react-render`, `diagnostic` | Dots / Ticks            |
 
 ### 4.3 Brush 交互与视口同步
@@ -256,13 +256,13 @@ type ReplayLogEvent =
 
 | Phase | 任务                                                        | 对应 Spec 要求 | 优先级 | 工作量 |
 | ----- | ----------------------------------------------------------- | -------------- | ------ | ------ |
-| **1** | 扩展 `StateTransaction` 输出 `window` 边界到 `traitSummary` | 007 FR-011     | P0     | S      |
-| **1** | Devtools `compute.ts` 解析 `traitSummary.window`            | 005 FR-004     | P0     | S      |
+| **1** | 扩展 `StateTransaction` 输出 `window` 边界到 `fieldSummary` | 007 FR-011     | P0     | S      |
+| **1** | Devtools `compute.ts` 解析 `fieldSummary.window`            | 005 FR-004     | P0     | S      |
 | **1** | `OverviewStrip` 渲染 Operation Window Span（DOM）           | 005 设计 §2.2  | P0     | M      |
 | **1** | 实现 Brush 交互组件（双边滑块）                             | 005 FR-004     | P1     | M      |
 | **1** | Detail 视图与 Brush 双向联动                                | 005 FR-004     | P1     | M      |
-| **2** | 扩展 `traitSummary.steps` 记录详细执行日志                  | 007 FR-011     | P1     | M      |
-| **2** | 泳道分层 UI（Operation / Trait / Event）                    | 005 设计 §2.2  | P1     | M      |
+| **2** | 扩展 `fieldSummary.steps` 记录详细执行日志                  | 007 FR-011     | P1     | M      |
+| **2** | 泳道分层 UI（Operation / Field / Event）                    | 005 设计 §2.2  | P1     | M      |
 | **2** | Flamegraph 展开交互                                         | 005 设计 §5.3  | P2     | L      |
 | **2** | ReplayLog 增加 `TraitConverge` 事件类型                     | 007 FR-015     | P2     | S      |
 | **3** | Canvas 渲染 `OverviewStrip`                                 | 005 FR-012     | P2     | L      |
@@ -273,14 +273,14 @@ type ReplayLogEvent =
 
 **M1：Timeline Span 基础可用**
 
-- [x] DebugSink 事件模型支持 traitSummary
-- [ ] traitSummary.window 边界从 StateTransaction 写入
+- [x] DebugSink 事件模型支持 fieldSummary
+- [ ] fieldSummary.window 边界从 StateTransaction 写入
 - [ ] OverviewStrip 渲染 Operation Window Span
 - [ ] Brush 基础交互可用
 
 **M2：泳道分层与深度诊断**
 
-- [ ] traitSummary.steps 记录详细执行日志（deep 模式）
+- [ ] fieldSummary.steps 记录详细执行日志（deep 模式）
 - [ ] 三泳道 UI 布局
 - [ ] Flamegraph 展开交互
 - [ ] TraitConverge 事件进入 ReplayLog
@@ -296,7 +296,7 @@ type ReplayLogEvent =
 
 ## 6. 关键决策记录
 
-### 6.1 traitSummary.steps 是否默认开启？
+### 6.1 fieldSummary.steps 是否默认开启？
 
 **决策**：仅在 `settings.mode === 'deep'` 时记录
 
@@ -306,7 +306,7 @@ type ReplayLogEvent =
 - 默认 `basic` 模式只记录 `converge` 摘要，满足 80% 场景
 - 用户可在 Devtools Settings 中切换
 
-### 6.2 ReplayLog 是否统一承接 Trait 事件？
+### 6.2 ReplayLog 是否统一承接 Field 事件？
 
 **决策**：统一，增加 `_tag: "TraitConverge"` 类型
 
@@ -332,8 +332,8 @@ type ReplayLogEvent =
 
 | Spec                   | 关联点                           | 依赖方向  |
 | ---------------------- | -------------------------------- | --------- |
-| 007-unify-trait-system | `traitSummary` 结构定义          | 007 → 005 |
-| 007-unify-trait-system | `ReplayLog` 事件类型             | 007 → 005 |
+| 007-unify-field-system | `fieldSummary` 结构定义          | 007 → 005 |
+| 007-unify-field-system | `ReplayLog` 事件类型             | 007 → 005 |
 | 005 data-model         | `ObservationEnvelope` 外壳       | 005 内部  |
 | 005 spec               | FR-004 核心视图、FR-012 性能要求 | 005 内部  |
 

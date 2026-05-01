@@ -1,7 +1,7 @@
 # Contract: Test Structure（测试目录与源码对齐）
 
-**Branch**: `030-packages-public-submodules`  
-**Date**: 2025-12-25  
+**Branch**: `030-packages-public-submodules`
+**Date**: 2025-12-25
 **Spec**: `specs/030-packages-public-submodules/spec.md`
 
 > 目标：让测试目录成为“概念地图”的镜像，和 Public Submodules / internal 分区一起收敛，减少并行冲突并提升可维护性。
@@ -57,22 +57,22 @@
 ### `@logixjs/core`
 
 - `test/Module/**`、`test/Runtime/**`、`test/Logic/**`、`test/Flow/**`
-- `test/StateTrait/**`、`test/TraitLifecycle/**`、`test/Resource/**`
+- `test/FieldKernel/**`、`test/FieldLifecycle/**`、`test/Resource/**`
 - `test/EffectOp/**`、`test/Middleware/**`、`test/Bound/**`、`test/Link/**`
 - `test/Debug/**`、`test/Observability/**`、`test/Reflection/**`
-- `test/internal/runtime/**`、`test/internal/state-trait/**`（仅当必须测试 internal 语义时）
+- `test/internal/runtime/**`、`test/internal/state-field/**`（仅当必须测试 internal 语义时）
 - `test/fixtures/**`
 
 ### `@logixjs/form`
 
-- `test/Form/**`、`test/Rule/**`、`test/Trait/**`、`test/Path/**`
+- `test/Form/**`、`test/Rule/**`、`test/Field/**`、`test/Path/**`
 - `test/SchemaPathMapping.test.ts`、`test/SchemaErrorMapping.test.ts`（或分到对应概念目录）
 - `test/internal/**`（例如 rowid/path 等内部实现）
 - `test/fixtures/**`、`test/typecheck/**`
 
 ### `@logixjs/query`
 
-- `test/Query/**`、`test/Engine/**`、`test/Traits/**`、`test/Middleware/**`、`test/TanStack/**`
+- `test/Query/**`、`test/Engine/**`、`test/Fields/**`、`test/Middleware/**`、`test/TanStack/**`
 - `test/internal/**`（engine/tanstack/logics 等分区）
 
 ### `@logixjs/react`
@@ -83,7 +83,7 @@
 
 ### `@logixjs/devtools-react`
 
-- `test/LogixDevtools/**`、`test/DevtoolsLayer/**`、`test/StateTraitGraphView/**`
+- `test/LogixDevtools/**`、`test/DevtoolsLayer/**`、`test/FieldGraphView/**`
 - `test/internal/**`（ui/state/snapshot/theme 等分区）
 
 ### `@logixjs/sandbox`

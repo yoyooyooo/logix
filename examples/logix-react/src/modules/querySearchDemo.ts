@@ -2,6 +2,7 @@ import { Duration, Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import { QueryClient } from '@tanstack/query-core'
 import * as Query from '@logixjs/query'
+import { makeQueryClientEngine } from './queryClientEngine'
 
 const SearchKeySchema = Schema.Struct({
   keyword: Schema.String,
@@ -60,7 +61,7 @@ const matchKeyword = (item: SearchItem, keyword: string): boolean => {
 
 const clampPage = (page: number): number => (Number.isFinite(page) ? Math.max(1, Math.floor(page)) : 1)
 
-export const SearchSpec = Logix.Resource.make({
+export const SearchSpec = Query.Engine.Resource.make({
   id: 'demo/query/search',
   keySchema: SearchKeySchema,
   load: (key: { readonly keyword: string; readonly page: number }) => {
@@ -92,7 +93,7 @@ export const SearchSpec = Logix.Resource.make({
   },
 })
 
-export const DetailSpec = Logix.Resource.make({
+export const DetailSpec = Query.Engine.Resource.make({
   id: 'demo/query/detail',
   keySchema: DetailKeySchema,
   load: (key: { readonly id: string }) =>
@@ -127,6 +128,7 @@ export const SearchQuery = Query.make('QuerySearchDemo', {
   params: ParamsSchema,
   initialParams: { q: '', page: 1, selectedId: null },
   ui: initialUi,
+  // Canonical day-one path: query declarations stay inside Query.make(..., { queries }).
   queries: ($) => ({
     search: $.source({
       resource: SearchSpec,
@@ -150,23 +152,25 @@ export const SearchQuery = Query.make('QuerySearchDemo', {
   }),
 })
 
-// Host Module：演示 Query module（其 `.impl` 是 ModuleImpl）作为子模块，被引入到另一个 program module 中。
-export const QuerySearchDemoHostDef = Logix.Module.make('QuerySearchDemoHost', {
+// Host Program：演示 Query program 作为子模块，被引入到另一个 host program 中。
+export const QuerySearchDemoHost = Logix.Module.make('QuerySearchDemoHost', {
   state: Schema.Void,
   actions: {
     noop: Schema.Void,
   },
 })
 
-export const QuerySearchDemoHostModule = QuerySearchDemoHostDef.implement({
+export const QuerySearchDemoHostProgram = Logix.Program.make(QuerySearchDemoHost, {
   initial: undefined,
-  imports: [SearchQuery.impl],
+  capabilities: {
+    imports: [SearchQuery],
+  },
 })
 
 const AppLayer = Layer.mergeAll(
-  Logix.Resource.layer([SearchSpec, DetailSpec]),
+  Query.Engine.Resource.layer([SearchSpec, DetailSpec]),
   Query.Engine.layer(
-    Query.TanStack.engine(
+    makeQueryClientEngine(
       new QueryClient({
         defaultOptions: {
           queries: {
@@ -178,7 +182,7 @@ const AppLayer = Layer.mergeAll(
   ),
 )
 
-export const queryRuntime = Logix.Runtime.make(QuerySearchDemoHostModule, {
+export const queryRuntime = Logix.Runtime.make(QuerySearchDemoHostProgram, {
   label: 'QuerySearchDemo',
   devtools: true,
   layer: AppLayer,

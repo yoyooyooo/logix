@@ -1,3 +1,5 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 import { expect, test } from 'vitest'
 import React from 'react'
 import { render } from 'vitest-browser-react'
@@ -5,7 +7,8 @@ import { Effect, Fiber, Layer, Schema, Stream } from 'effect'
 import * as Logix from '@logixjs/core'
 import matrix from '@logixjs/perf-evidence/assets/matrix.json'
 import { RuntimeProvider } from '../../../src/RuntimeProvider.js'
-import { useModule } from '../../../src/Hooks.js'
+import { useModule, useSelector } from '../../../src/Hooks.js'
+import { useProgramRuntimeBlueprint } from '../../../src/internal/hooks/useProgramRuntimeBlueprint.js'
 import { getRuntimeModuleExternalStore } from '../../../src/internal/store/RuntimeExternalStore.js'
 import { emitPerfReport, type PerfReport } from './protocol.js'
 import { getProfileConfig, makePerfKernelLayer, runMatrixSuite, silentDebugLayer, summarizeMs, withNodeEnv } from './harness.js'
@@ -62,23 +65,27 @@ semanticTest('runtime store: no tearing across modules + sharded selector notify
     },
   })
 
-  const AImpl = A.implement({ initial: { a: 0, b: 0 } })
-  const BImpl = B.implement({ initial: { x: 0 } })
+  const AProgram = Logix.Program.make(A, { initial: { a: 0, b: 0 } })
+  const BProgram = Logix.Program.make(B, { initial: { x: 0 } })
 
   const Root = Logix.Module.make('T033.RuntimeStoreNoTearing.Root', {
     state: Schema.Void,
     actions: {},
   })
 
+  const rootProgram = Logix.Program.make(Root, {
+    initial: undefined,
+    capabilities: {
+      imports: [AProgram, BProgram],
+    },
+  })
+
   const runtime = Logix.Runtime.make(
-    Root.implement({
-      initial: undefined,
-      imports: [AImpl.impl, BImpl.impl],
-    }),
+    rootProgram,
     { layer: Layer.empty as Layer.Layer<any, never, never> },
   )
 
-  const runtimeStore = Logix.InternalContracts.getRuntimeStore(runtime) as unknown as {
+  const runtimeStore = RuntimeContracts.getRuntimeStore(runtime) as unknown as {
     readonly getTickSeq: () => number
     readonly getModuleState: (moduleInstanceKey: string) => unknown
   }
@@ -105,8 +112,8 @@ semanticTest('runtime store: no tearing across modules + sharded selector notify
       metrics.bRuntime = b.runtime
     }, [a, b])
 
-    const aValue = useModule(a, selectA)
-    const bValue = useModule(b, (s) => (s as any).x as number)
+    const aValue = useSelector(a, selectA)
+    const bValue = useSelector(b, (s: any) => (s as any).x as number)
 
     React.useEffect(() => {
       metrics.history.push({ a: aValue, b: bValue, tickSeq: runtimeStore.getTickSeq() })
@@ -218,43 +225,53 @@ test('runtime store: multi-instance isolation (same moduleId, different instance
     },
   })
 
-  const MImpl = M.implement({ initial: { a: 0, b: 0 } }).impl
+  const MProgram = Logix.Program.make(M, { initial: { a: 0, b: 0 } })
+  const MBlueprint = RuntimeContracts.getProgramRuntimeBlueprint(MProgram)
 
   const Root = Logix.Module.make('T036.RuntimeStoreNoTearing.Root', {
     state: Schema.Void,
     actions: {},
   })
 
-  const runtime = Logix.Runtime.make(Root.implement({ initial: undefined }), { layer: Layer.empty as Layer.Layer<any, never, never> })
-
-  const metrics = {
-    s1Runs: 0,
-    s2Runs: 0,
-  }
+  const rootProgram = Logix.Program.make(Root, { initial: undefined })
+  const runtime = Logix.Runtime.make(rootProgram, { layer: Layer.empty as Layer.Layer<any, never, never> })
 
   const selectA1 = (state: unknown): number => {
-    metrics.s1Runs += 1
     return (state as any).a as number
   }
   ;(selectA1 as any).fieldPaths = ['a']
 
   const selectA2 = (state: unknown): number => {
-    metrics.s2Runs += 1
     return (state as any).a as number
   }
   ;(selectA2 as any).fieldPaths = ['a']
 
-  const App: React.FC = () => {
-    const m1 = useModule(MImpl, { key: 'i-1' }) as any
-    const m2 = useModule(MImpl, { key: 'i-2' }) as any
+  const runtimeStore = RuntimeContracts.getRuntimeStore(runtime) as unknown as {
+    subscribeTopic: (topicKey: string, listener: () => void) => () => void
+  }
+  const selectorFingerprint = RuntimeContracts.Selector.route(
+    RuntimeContracts.Selector.compile(selectA2 as any),
+  ).selectorFingerprint.value
+  const m2TopicKey = `${M.id}::program:${M.id}:i-2::rq:${selectorFingerprint}`
+  const subscribeOriginal = runtimeStore.subscribeTopic.bind(runtimeStore)
+  let m2TopicNotifications = 0
+  runtimeStore.subscribeTopic = (topicKey: string, listener: () => void) => {
+    if (topicKey !== m2TopicKey) {
+      return subscribeOriginal(topicKey, listener)
+    }
+    return subscribeOriginal(topicKey, () => {
+      m2TopicNotifications += 1
+      listener()
+    })
+  }
 
-    const a1 = useModule(m1, selectA1)
-    const a2 = useModule(m2, selectA2)
+  const InstanceOne: React.FC = () => {
+    const m1 = useProgramRuntimeBlueprint(MBlueprint, { key: 'i-1' }) as any
+    const a1 = useSelector(m1, selectA1)
 
     return (
-      <div>
+      <>
         <p>A1: {a1}</p>
-        <p>A2: {a2}</p>
         <button
           type="button"
           onClick={() => {
@@ -263,6 +280,22 @@ test('runtime store: multi-instance isolation (same moduleId, different instance
         >
           SetA1
         </button>
+      </>
+    )
+  }
+
+  const InstanceTwo: React.FC = () => {
+    const m2 = useProgramRuntimeBlueprint(MBlueprint, { key: 'i-2' }) as any
+    const a2 = useSelector(m2, selectA2)
+
+    return <p>A2: {a2}</p>
+  }
+
+  const App: React.FC = () => {
+    return (
+      <div>
+        <InstanceOne />
+        <InstanceTwo />
       </div>
     )
   }
@@ -279,13 +312,13 @@ test('runtime store: multi-instance isolation (same moduleId, different instance
     await waitForBodyText('A1: 0', timeoutMs)
     await waitForBodyText('A2: 0', timeoutMs)
 
-    const selectorRuns2Before = metrics.s2Runs
+    const m2TopicNotificationsBefore = m2TopicNotifications
     await screen.getByRole('button', { name: 'SetA1' }).click()
 
     await waitForBodyText('A1: 1', timeoutMs)
     await waitForBodyText('A2: 0', timeoutMs)
 
-    expect(metrics.s2Runs).toBe(selectorRuns2Before)
+    expect(m2TopicNotifications).toBe(m2TopicNotificationsBefore)
   } finally {
     screen.unmount()
     document.body.innerHTML = ''
@@ -499,7 +532,7 @@ test(
           },
         }),
       )
-      const moduleImpls = moduleDefs.map((m) => m.implement({ initial: { value: 0 } }).impl)
+      const modulePrograms = moduleDefs.map((m) => Logix.Program.make(m, { initial: { value: 0 } }))
 
       const Root = Logix.Module.make('PerfRuntimeStoreNoTearing.Root', {
         state: Schema.Void,
@@ -527,15 +560,19 @@ test(
         if (cached) return cached
 
         const instrumentation = args.diagnosticsLevel === 'full' ? 'full' : 'light'
-        const debugLayer = Logix.Debug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
+        const debugLayer = CoreDebug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
           diagnosticsLevel: args.diagnosticsLevel,
         }) as Layer.Layer<any, never, never>
 
+        const rootProgram = Logix.Program.make(Root, {
+          initial: undefined,
+          capabilities: {
+            imports: modulePrograms,
+          },
+        })
+
         const runtime = Logix.Runtime.make(
-          Root.implement({
-            initial: undefined,
-            imports: moduleImpls,
-          }),
+          rootProgram,
           {
             stateTransaction: { instrumentation },
             layer: Layer.mergeAll(debugLayer, perfKernelLayer) as Layer.Layer<any, never, never>,

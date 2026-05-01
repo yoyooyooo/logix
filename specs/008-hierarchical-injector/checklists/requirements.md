@@ -1,7 +1,7 @@
 # Specification Quality Checklist: 层级 Injector 语义统一（Nearest Wins + Root Provider）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-15  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-15
 **Feature**: [Link to spec.md](../spec.md)
 
 ## Content Quality

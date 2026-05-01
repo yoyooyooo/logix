@@ -6,7 +6,7 @@
 
 - txn 侧已有“避免 split/join 往返”的约束：`packages/logix-core/src/internal/runtime/core/StateTransaction.ts` 在事务窗口内收集 `dirtyPaths: Set<string | FieldPath>`，并在 `commit` 时生成 `dirtySet`（当前为 path-first：`DirtySet.paths: FieldPath[]`）。
 - converge 侧已具备整型化基础设施：build 期构建 `fieldPaths` + `fieldPathIdRegistry`，并形成 `ConvergeStaticIrExport`（包含 `staticIrDigest`、`fieldPaths[]`、`stepOutFieldPathIdByStepId[]` 等）。
-- devtools/export 已有“id → 可读反解”的模式：`DebugSink` 在 `trace:trait:converge` 投影阶段可以用 `staticIrDigest` 反解 `rootIds → rootPaths`（仅用于显示/序列化边界）。
+- devtools/export 已有“id → 可读反解”的模式：`DebugSink` 在 `trace:field:converge` 投影阶段可以用 `staticIrDigest` 反解 `rootIds → rootPaths`（仅用于显示/序列化边界）。
 - **缺口**：txn 侧的 `dirtySet/patch recording/state:update` 仍主要是 path-first 或 reason 可自由扩展，导致：
   - 热路径分配与字符串处理仍可能占主要成本；
   - 证据/门禁难以用稳定锚点对齐（对比/回放容易漂移）；
@@ -148,8 +148,8 @@
   - `packages/logix-core/src/internal/InternalContracts.ts`
 - path/id：
   - `packages/logix-core/src/internal/field-path.ts`
-  - `packages/logix-core/src/internal/state-trait/build.ts`（build 期 registry/table）
-  - `packages/logix-core/src/internal/state-trait/converge-ir.ts`（`staticIrDigest` + export）
+  - `packages/logix-core/src/internal/state-field/build.ts`（build 期 registry/table）
+  - `packages/logix-core/src/internal/state-field/converge-ir.ts`（`staticIrDigest` + export）
 - diagnostics/export：
   - `packages/logix-core/src/internal/runtime/core/DebugSink.ts`
   - `packages/logix-core-ng/src/ExecVmEvidence.ts`

@@ -14,8 +14,8 @@ describe('RuntimeProvider.onError (nested providers)', () => {
       state: Schema.Void,
       actions: {},
     })
-    const brokenLogic = Broken.logic(() => Effect.die(new Error('nested boom')))
-    const BrokenImpl = Broken.implement({
+    const brokenLogic = Broken.logic('broken-logic', () => Effect.die(new Error('nested boom')))
+    const BrokenProgram = Logix.Program.make(Broken, {
       initial: undefined,
       logics: [brokenLogic],
     })
@@ -24,12 +24,14 @@ describe('RuntimeProvider.onError (nested providers)', () => {
       state: Schema.Void,
       actions: {},
     })
-    const RootImpl = Root.implement({
+    const RootProgram = Logix.Program.make(Root, {
       initial: undefined,
-      imports: [BrokenImpl.impl],
+      capabilities: {
+        imports: [BrokenProgram],
+      },
     })
 
-    const runtime = Logix.Runtime.make(RootImpl, {
+    const runtime = Logix.Runtime.make(RootProgram, {
       layer: Layer.empty as Layer.Layer<any, never, never>,
     })
 
@@ -56,7 +58,7 @@ describe('RuntimeProvider.onError (nested providers)', () => {
       </RuntimeProvider>
     )
 
-    renderHook(() => useModule(BrokenImpl), { wrapper })
+    renderHook(() => useModule(BrokenProgram), { wrapper })
 
     await waitFor(() => expect(order.length).toBeGreaterThanOrEqual(2))
     expect(order[0]).toBe('inner')
@@ -68,26 +70,28 @@ describe('RuntimeProvider.onError (nested providers)', () => {
       state: Schema.Void,
       actions: {},
     })
-    const StableImpl = Stable.implement({ initial: undefined })
+    const StableProgram = Logix.Program.make(Stable, { initial: undefined })
 
     const Root = Logix.Module.make('RootNestedProviderCache', {
       state: Schema.Void,
       actions: {},
     })
-    const RootImpl = Root.implement({
+    const RootProgram = Logix.Program.make(Root, {
       initial: undefined,
-      imports: [StableImpl.impl],
+      capabilities: {
+        imports: [StableProgram],
+      },
     })
 
-    const runtime = Logix.Runtime.make(RootImpl, {
+    const runtime = Logix.Runtime.make(RootProgram, {
       layer: Layer.empty as Layer.Layer<any, never, never>,
     })
 
     const seen: Array<{ readonly nonce: number; readonly a: string; readonly b: string }> = []
 
     const App = ({ nonce }: { nonce: number }) => {
-      const a = useModule(StableImpl, { key: 'shared' })
-      const b = useModule(StableImpl, { key: 'shared' })
+      const a = useModule(StableProgram, { key: 'shared' })
+      const b = useModule(StableProgram, { key: 'shared' })
       useEffect(() => {
         seen.push({ nonce, a: a.runtime.instanceId!, b: b.runtime.instanceId! })
       }, [nonce, a.runtime.instanceId, b.runtime.instanceId])

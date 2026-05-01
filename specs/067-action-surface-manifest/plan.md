@@ -1,6 +1,6 @@
 # Implementation Plan: Action Surface（actions/dispatchers/reducers/effects）与 Manifest
 
-**Branch**: `067-action-surface-manifest` | **Date**: 2026-01-02 | **Spec**: [spec.md](./spec.md)  
+**Branch**: `067-action-surface-manifest` | **Date**: 2026-01-02 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `specs/067-action-surface-manifest/spec.md`
 
 ## Review Digest
@@ -23,7 +23,7 @@ Source: `review.md`（Status: APPROVED；Reviewer: Antigravity；Date: 2026-01-0
    - canonical：`$.dispatch(token, payload)` / `$.dispatch(action)`；监听：`$.onAction(token)`（避免 Proxy 动态属性作为主路径）。
    - DX 约定：`onAction(token)` 的回调参数 payload-first；predicate/string 监听仍回调完整 action object（用于区分 `_tag`）。
    - React 侧衔接：`useModule(...)` 返回的 `ModuleRef.dispatchers.<K>(payload)` 作为 UI 便捷派发入口（同步 dispatch），并与 `ModuleDef.actions.<K>` 的符号锚点对齐（IDE 可跳转/找引用/重命名）。
-3. **Manifest IR 扩展（免 AST）**：在现有 `Reflection.extractManifest` 的 `ModuleManifest` 基础上扩展 `actions[]` 描述符（payload 形态、primary reducer 摘要、可选 source），输出为 deterministic JSON（可 diff），并与 token 定义一致。
+3. **Manifest IR 扩展（免 AST）**：在现有 `CoreReflection.extractManifest` 的 `ModuleManifest` 基础上扩展 `actions[]` 描述符（payload 形态、primary reducer 摘要、可选 source），输出为 deterministic JSON（可 diff），并与 token 定义一致。
 4. **事件 → 定义锚点对齐**：复用 `RuntimeDebugEventRef` 的 `moduleId + kind=action + label=actionTag` 作为 `ActionRef`（单一事实源），Studio/Devtools 通过 manifest 反查 ActionAnchor（无定义则降级为 unknown/opaque）。
 5. **Reducer DX 对齐（payload-first）**：将 `Reducer.mutate` 的 **mutator 回调**签名改为 `(draft, payload)`（payload-first），避免 `action.payload` 样板；`mutate` 返回的 reducer 仍按 `(state, action, sink?) => state` 运行，并保持事务窗口纯同步与 patchPaths 语义不变。
 6. **Effects/`$.effect`（副作用面）**：把散落的 watcher 监听提升为可治理的副作用注册面（允许同 tag 多 handler），在 run 阶段统一装配为“每 tag 单 watcher + fan-out”，并提供去重与极致诊断（重复注册/动态注册/晚注册/失败隔离），保证事务外执行且不阻塞 dispatch。
@@ -43,12 +43,12 @@ Source: `review.md`（Status: APPROVED；Reviewer: Antigravity；Date: 2026-01-0
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: effect v3（override 3.19.13）、`@logixjs/core`、`@logixjs/react`、`@logixjs/sandbox`  
-**Storage**: N/A（只产出 deterministic JSON 工件）  
-**Testing**: Vitest（`vitest run`）+ `@effect/vitest`（Effect-heavy 场景）  
-**Target Platform**: Node.js（Loader/CI/TrialRun）+ 现代浏览器（Devtools/Studio）  
-**Project Type**: pnpm workspace（packages/apps/examples）  
+**Language/Version**: TypeScript 5.9.x（ESM）
+**Primary Dependencies**: effect v3（override 3.19.13）、`@logixjs/core`、`@logixjs/react`、`@logixjs/sandbox`
+**Storage**: N/A（只产出 deterministic JSON 工件）
+**Testing**: Vitest（`vitest run`）+ `@effect/vitest`（Effect-heavy 场景）
+**Target Platform**: Node.js（Loader/CI/TrialRun）+ 现代浏览器（Devtools/Studio）
+**Project Type**: pnpm workspace（packages/apps/examples）
 **Performance Goals**:
 
 - diagnostics=off：`dispatch` 热路径保持近零额外成本（不新增 JsonValue 投影，不新增 O(n) 扫描）。

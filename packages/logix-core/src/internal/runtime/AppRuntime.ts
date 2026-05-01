@@ -1,6 +1,5 @@
 import { Effect, Exit, Layer, ManagedRuntime, ServiceMap } from 'effect'
 import {
-  ConcurrencyPolicyTag,
   ReadQueryStrictGateConfigTag,
   SchedulingPolicySurfaceTag,
   StateTransactionConfigTag,
@@ -9,7 +8,6 @@ import {
   HostSchedulerTag,
   runtimeStoreLayer,
   tickSchedulerLayer,
-  type ConcurrencyPolicy,
   type SchedulingPolicySurface,
   type ReadQueryStrictGateRuntimeConfig,
   type StateTransactionRuntimeConfig,
@@ -30,6 +28,9 @@ import {
 import type { HostScheduler } from './core/HostScheduler.js'
 import * as ProcessRuntime from './core/process/ProcessRuntime.js'
 import type { AnyModuleShape, ModuleTag, ModuleRuntime, StateOf, ActionOf } from './core/module.js'
+
+// AppRuntime assembles app-scope env/modules/processes into one managed runtime.
+// It is an internal coordinator, not a public or steady-state kernel surface.
 
 /**
  * AppModuleEntry: a module entry produced by Logix.provide.
@@ -67,7 +68,7 @@ export interface LogixAppConfig<R> {
    * Runtime-level default StateTransaction config:
    * - If not provided, each ModuleRuntime falls back to NODE_ENV-based default instrumentation.
    * - If instrumentation is provided, it becomes the default instrumentation for modules under this Runtime;
-   *   individual modules may still override it via ModuleImpl.stateTransaction.
+   *   individual modules may still override it via ProgramRuntimeBlueprint.stateTransaction.
    */
   readonly stateTransaction?: StateTransactionRuntimeConfig
   /**
@@ -77,10 +78,6 @@ export interface LogixAppConfig<R> {
    *   individual modules may still override via runtime_module/provider (merged by ModuleRuntime resolver).
    */
   readonly schedulingPolicy?: SchedulingPolicySurface
-  /**
-   * Legacy alias for schedulingPolicy (migration path).
-   */
-  readonly concurrencyPolicy?: ConcurrencyPolicy
   /**
    * ReadQuery strict gate (057):
    * - Used in CI/perf gates to upgrade dynamic fallbacks into failures or warnings.
@@ -255,12 +252,9 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
     ? (Layer.succeed(StateTransactionConfigTag, config.stateTransaction) as Layer.Layer<R, never, never>)
     : (Layer.empty as Layer.Layer<R, never, never>)
 
-  const resolvedSchedulingPolicy = config.schedulingPolicy ?? config.concurrencyPolicy
-
   // If the Runtime provides a unified scheduling policy, attach the corresponding service to the app Env.
-  // NOTE: ConcurrencyPolicyTag remains a legacy alias of SchedulingPolicySurfaceTag.
-  const schedulingPolicyLayer: Layer.Layer<R, never, never> = resolvedSchedulingPolicy
-    ? (Layer.succeed(SchedulingPolicySurfaceTag, resolvedSchedulingPolicy) as Layer.Layer<R, never, never>)
+  const schedulingPolicyLayer: Layer.Layer<R, never, never> = config.schedulingPolicy
+    ? (Layer.succeed(SchedulingPolicySurfaceTag, config.schedulingPolicy) as Layer.Layer<R, never, never>)
     : (Layer.empty as Layer.Layer<R, never, never>)
 
   // If the Runtime provides a ReadQuery strict gate, attach the corresponding service to the app Env.
@@ -290,11 +284,6 @@ export const makeApp = <R>(config: LogixAppConfig<R>): AppDefinition<R> => {
     pinnedHostSchedulerLayer ?? (Layer.empty as Layer.Layer<any, never, never>),
     stateTxnLayer,
     schedulingPolicyLayer,
-    // Keep explicit legacy alias provisioning in the Env merge path so older callsites that reference
-    // ConcurrencyPolicyTag keep identical behavior during phase-1 migration.
-    resolvedSchedulingPolicy
-      ? (Layer.succeed(ConcurrencyPolicyTag, resolvedSchedulingPolicy) as Layer.Layer<R, never, never>)
-      : (Layer.empty as Layer.Layer<R, never, never>),
     readQueryStrictGateLayer,
     ProcessRuntime.layer(),
     Layer.effect(

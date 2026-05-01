@@ -3,25 +3,9 @@ title: Suspense & Async
 description: Handling asynchronous data with React Suspense.
 ---
 
-Logix supports using React Suspense **optionally** to “wait for module initialization before rendering”.
+`useModule` defaults to synchronous acquisition. `useModule(Program)` returns a handle immediately, and loading or failure stays in module state. Only `useModule(..., { suspend: true })` hands initialization over to Suspense and Error Boundaries.
 
-The default behavior is **non-suspending**: `useModule(Impl)` returns the module handle synchronously, and you render loading/error from state. Only when you explicitly enable `suspend: true` will `useModule` suspend the component via Suspense.
-
-### Who is this for?
-
-- You use React 18+ and want to handle “module init loading/failure” via Suspense.
-- You plan to load data in a module’s `onInit` or via async Layer building and want to understand how it interacts with Suspense / ErrorBoundary.
-
-### Prerequisites
-
-- Familiar with basic React Suspense / ErrorBoundary usage.
-- You’ve read [Lifecycle](../essentials/lifecycle) and understand what `onInit` means for a Module instance lifecycle.
-
-### What you’ll get
-
-- A safe way to add async initialization to a Module and use it with Suspense.
-- A clear mental model of `useModule` behavior in sync mode vs Suspense mode.
-- Clear ownership of “where errors go on init failure” and “who should render fallback”.
+Choose Suspense when the UI truly must wait for initialization. For ongoing user interactions, keep loading and error in state and render them explicitly.
 
 ## 1. Async initialization
 
@@ -31,7 +15,7 @@ In React, distinguish two strategies:
 
 ### 1.1 Default sync mode (no suspend)
 
-By default, `useModule(Impl)` returns the handle synchronously without waiting for initialization; therefore the init phase should not include real async waiting (e.g. `Effect.sleep` / async Layer building).
+By default, `useModule(Program)` returns the handle synchronously without waiting for initialization; therefore the init phase should not include real async waiting (e.g. `Effect.sleep` / async Layer building).
 
 The recommended style is: render an initial state first; start async loading via `onStart` or a watcher; drive UI via state (e.g. `isLoading/error`).
 
@@ -60,7 +44,7 @@ When you want “do not render UI before initialization completes”, use `suspe
 
 ```ts
 const UserLogic = UserModule.logic(($) => {
-  // setup-only: register init logic (scheduled by the Runtime; works with Suspense/ErrorBoundary)
+  // declaration-only: register init logic (scheduled by the Runtime; works with Suspense/ErrorBoundary)
   $.lifecycle.onInitRequired(
     Effect.gen(function* () {
       // Simulate async loading
@@ -84,7 +68,7 @@ To “avoid rendering UI before initialization completes”, explicitly enable S
 ```tsx
 function UserProfile() {
   // suspend: true: suspends here until init completes (requires a Suspense boundary)
-  const userModule = useModule(UserImpl, { suspend: true, key: 'user:current' })
+  const userModule = useModule(UserProgram, { suspend: true, key: 'user:current' })
   const user = useSelector(userModule, (s) => s.user)
 
   return <div>Hello, {user.name}</div>
@@ -142,8 +126,7 @@ In `suspend: true` mode, if initialization fails (e.g. async Layer build failure
 </ErrorBoundary>
 ```
 
-## Next
+## See also
 
 - Learn how to handle errors: [Error handling](./error-handling)
-- Debug module behavior: [Debugging and Devtools](./debugging-and-devtools)
 - Test your modules: [Testing](./testing)

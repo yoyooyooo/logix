@@ -1,7 +1,7 @@
 # Quickstart: Query 收口到 `@logixjs/query`（与 Form 同形）
 
 **Date**: 2025-12-23
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/026-unify-query-domain/spec.md`
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/026-unify-query-domain/spec.md`
 
 ## 0) 五个关键词（≤5）
 
@@ -14,7 +14,7 @@
 ## 1) 你将获得什么
 
 - Query 相关能力只有一个入口：`@logixjs/query`（仓库内不再出现 `@logixjs/core/Middleware/Query`）。
-- 与 `@logixjs/form` 同构的领域包形状：domain-module 工厂 + controller 句柄扩展 +（高级）traits/building blocks（含外部引擎集成）。
+- 与 `@logixjs/form` 同构的领域包形状：domain-module 工厂 + controller 句柄扩展 +（高级）fields/building blocks（含外部引擎集成）。
 - 外部查询引擎注入边界清晰：启用需要引擎的能力时，缺失注入会给出可操作的配置错误（不再静默退化）。
 
 > 说明：与 Form 的“同形”只约束对外入口与 controller 句柄扩展，不强求 Query 去类比 Form 的 authoring DSL（`from/$.rules/derived`）。
@@ -28,7 +28,7 @@ import * as Query from "@logixjs/query"
 // import { QueryClient } from "@tanstack/query-core"
 
 // 1) 定义 ResourceSpec（resourceId + keySchema + load）
-export const SearchSpec = Logix.Resource.make({
+export const SearchSpec = CoreReadContracts.Resource.make({
   id: "demo/query/search",
   keySchema: /* ... */,
   load: /* ... */,
@@ -52,7 +52,7 @@ export const SearchQuery = Query.make("SearchQuery", {
 
 // 3) Runtime 装配：Resource +（可选）外部引擎 + middleware
 const layer = Layer.mergeAll(
-  Logix.Resource.layer([SearchSpec]),
+  CoreReadContracts.Resource.layer([SearchSpec]),
   // 启用外部引擎时注入（否则省略）
   // Query.Engine.layer(Query.TanStack.engine(new QueryClient())),
 )
@@ -66,11 +66,11 @@ export const runtime = Logix.Runtime.make(SearchQuery, {
 
 类型与句柄形状（与 Form 对齐）：
 
-- `useModule(SearchQuery)` / `$.self`：能拿到完整的强类型 state，并获得 `controller.*` 句柄扩展。
+- `useModule(SearchQueryProgram)` / `$.self`：能拿到完整的强类型 state，并获得 `controller.*` 句柄扩展。
 - `useImportedModule(host, SearchQuery.tag)` / `host.imports.get(SearchQuery.tag)`：只保证 state/actions 的强类型（不附带 controller）；跨模块触发建议走 owner wiring（或调用 `actions.*`）。
-- `Query.make` 对外是一发返回 Module 的入口；内部仍使用 `Module.make → implement` 两步生成可运行模块（只是对业务隐藏），以保持 Form/Query 的同构 DX 与句柄类型闭环。
+- `Query.make` 对外返回可进入 `Program.make` / `Runtime.make` 主链的 Query Program，以保持 Form/Query 的同构 DX 与句柄类型闭环。
 - 为了类型尽可能完整：
-  - React 侧优先传 `SearchQuery`（Module）给 `useModule`，避免传 `SearchQuery.impl` / `SearchQuery.tag` 导致 controller 扩展在类型层丢失；
+  - React 侧优先传 `SearchQueryProgram` 给 `useModule`，避免直接传 `SearchQuery.tag` 导致 controller 扩展在类型层丢失；
   - Logic 侧优先用 `$.use(SearchQuery)`（ModuleLike），避免用 `$.use(SearchQuery.tag)`（Tag）导致扩展丢失。
 
 四种组合语义（可解释）：
@@ -86,23 +86,23 @@ export const runtime = Logix.Runtime.make(SearchQuery, {
 
 - `Query.make(id, config)` 等价于：
   - 用 `Logix.Module.make(id, ...)` 定义一个包含 `{ params; ui; queries }` 的模块 state；
-  - 把 `queries` 规则降解为 `StateTrait.source(...)`（写回 `state.queries.<name>` 的 `ResourceSnapshot` 字段）；
+  - 把 `queries` 规则降解为 `FieldKernel.source(...)`（写回 `state.queries.<name>` 的 `ResourceSnapshot` 字段）；
   - 挂载两条默认 logic：`autoTrigger`（onMount/onKeyChange/手动 refresh）与 `invalidate`（事件化 + optional engine.invalidate + source.refresh）；
   - 通过 handle 扩展把 `controller.*` 挂到模块句柄上（对齐 Form 的“同形 DX”）。
   - 入口实现：`packages/logix-query/src/Query.ts`
 
-- `Query.traits({ queries })` 等价于（每条 query 一条 source 规则）：
-  - `{ ['queries.<name>']: Logix.StateTrait.source({ resource: ResourceSpec.id, deps, triggers, debounceMs, concurrency, key }) }`
-  - 入口实现：`packages/logix-query/src/Traits.ts`
+- `Query.fields({ queries })` 等价于（每条 query 一条 source 规则）：
+  - `{ ['queries.<name>']: Logix.FieldKernel.source({ resource: ResourceSpec.id, deps, triggers, debounceMs, concurrency, key }) }`
+  - 入口实现：`packages/logix-query/src/Fields.ts`
 
 - `Query.Engine.middleware()` 等价于一条 EffectOp middleware：
-  - 命中 `kind="trait-source"` 且携带 `meta.resourceId + meta.keyHash` 的请求时，把执行委托给注入的 `Query.Engine.fetch(...)`（缓存/去重/失效由引擎负责）；
+  - 命中 `kind="field-source"` 且携带 `meta.resourceId + meta.keyHash` 的请求时，把执行委托给注入的 `Query.Engine.fetch(...)`（缓存/去重/失效由引擎负责）；
   - 同时保持 Logix 的事实源语义：写回仍由 runtime 的 `keyHash` gate 保证（正确性不依赖“网络是否真正取消”）。
   - 入口实现：`packages/logix-query/src/internal/middleware/middleware.ts`、`packages/logix-query/src/Engine.ts`
 
 哪些字段会进入 IR/导出边界（只列“关键口径”）：
 
-- **静态可治理**：`resourceId` / `deps` / `triggers` / `debounceMs` / `concurrency`（来自 traits；可进入 Static IR / ControlSurfaceManifest 的 slice）。
+- **静态可治理**：`resourceId` / `deps` / `triggers` / `debounceMs` / `concurrency`（来自 fields；可进入 Static IR / ControlSurfaceManifest 的 slice）。
 - **运行时闭包（不导出）**：`key(...)` 是运行时函数，不进入 IR；只有其派生结果 `keyHash` 会进入 replay/诊断链路，并作为写回门控锚点。
 - **可导出 meta**：任何进入 IR/证据包/Devtools 的 `meta` 必须是 Slim `JsonValue`（纯 JSON）；口径对齐 `specs/016-serializable-diagnostics-and-identity` 与 `docs/ssot/platform/contracts/03-control-surface-manifest.md`。
 
@@ -113,19 +113,19 @@ export const runtime = Logix.Runtime.make(SearchQuery, {
 - 组件里用 `useStore` 取出一些 state（例如 `q/filters/sort/page`）；
 - 把它们拼成 `queryKey` 交给 `useQuery`；参数变化时 `useQuery` 自动重跑并更新 `data/loading/error`。
 
-在 Logix 体系里，“参数变化自动刷新”仍然是声明式的：它由 `StateTrait.source` 的 `deps/autoRefresh/key/concurrency` 驱动（Query 领域只是把这套能力组织得更像 TanStack/更好用）。  
+在 Logix 体系里，“参数变化自动刷新”仍然是声明式的：它由 `FieldKernel.source` 的 `deps/autoRefresh/key/concurrency` 驱动（Query 领域只是把这套能力组织得更像 TanStack/更好用）。
 不同的是：当 Query 作为 `imports` 子模块时，组件必须先选中“具体是哪一个实例”，所以才会出现 `useImportedModule(...)` 这一步（这是把 TanStack 的“隐式全局缓存语义”显式化）。
 
 下面给出两种等价组织方式：
 
-#### A) `Query.traits`：把 Query 当作模块内资源字段（最接近旧写法）
+#### A) `Query.fields`：把 Query 当作模块内资源字段（最接近旧写法）
 
 适用：Query 的参数就是“这个模块自己的状态”，你希望像以前一样在**同一个模块**里同时拿到 params 与 query 快照。
 
 要点：
 
 - 把“查询参数”作为模块 state 的一部分（推荐命名为 `params`，与 Query 约定同名）；
-- 用 `Query.traits({ queries })` 直接在该模块上声明 source 字段（每个 queryName 对应 `state.queries[queryName]` 的一个 `ResourceSnapshot` 字段）；
+- 用 `Query.fields({ queries })` 直接在该模块上声明 source 字段（每个 queryName 对应 `state.queries[queryName]` 的一个 `ResourceSnapshot` 字段）；
 - 业务更新 `state.params` 时，会按 autoRefresh 自动刷新（不需要组件里再写 `refresh()`）。
 
 概念示例（只展示关键段落）：
@@ -145,8 +145,8 @@ const StateSchema = Schema.Struct({
   }),
 })
 
-export const Traits = Logix.StateTrait.from(StateSchema)({
-  ...Query.traits({
+export const Fields = Logix.FieldKernel.from(StateSchema)({
+  ...Query.fields({
 	    queries: {
 	      search: {
 	        resource: SearchSpec,
@@ -205,7 +205,7 @@ const q = useSelector(host, (s) => s.filters.q)
 const snapshot = useSelector(query, (s) => s.queries.search)
 ```
 
-> 备注：`useImportedModule(host, SearchQuery.tag)` 本质是在“host 实例的 scope”里选中被 imports 的那一个 Query 实例。  
+> 备注：`useImportedModule(host, SearchQuery.tag)` 本质是在“host 实例的 scope”里选中被 imports 的那一个 Query 实例。
 > 如果你不希望 UI 层显式写这一步，通常意味着 Query 不该做局部 imports：要么选 A（把 query 字段收敛进主模块），要么把 Query 模块提升到更上层/根作用域（让组件用 `useModule(SearchQuery)` 直接拿到同一实例）。
 
 ## 3) 如何验证（对应 spec 的验收场景）

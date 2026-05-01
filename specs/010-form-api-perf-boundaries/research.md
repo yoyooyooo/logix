@@ -1,21 +1,21 @@
 # Research: 010 Form API（设计收敛与性能边界）
 
-本文档用于把「动态列表 + 跨行规则」从 demo 写法收敛为可推导、可诊断、可优化的运行时能力，并明确：`StateTrait.list({ item, list })` 里 **两者都可以传 `StateTrait.node(...)`**，且我们要把它们“真正跑通到终态”。
+本文档用于把「动态列表 + 跨行规则」从 demo 写法收敛为可推导、可诊断、可优化的运行时能力，并明确：`FieldKernel.list({ item, list })` 里 **两者都可以传 `FieldKernel.node(...)`**，且我们要把它们“真正跑通到终态”。
 
 ## 现状结论（代码事实）
 
-- `StateTrait.list({ item: StateTrait.node(...) })`
-  - `item.source` ✅ 已支持（含 RowIdStore 门控、重排/插入后写回稳定）：`packages/logix-core/src/internal/state-trait/source.ts`
-  - `item.check` ✅ 已支持（scoped validate flush + ReverseClosure）：`packages/logix-core/src/internal/state-trait/validate.ts`
+- `FieldKernel.list({ item: FieldKernel.node(...) })`
+  - `item.source` ✅ 已支持（含 RowIdStore 门控、重排/插入后写回稳定）：`packages/logix-core/src/internal/state-field/source.ts`
+  - `item.check` ✅ 已支持（scoped validate flush + ReverseClosure）：`packages/logix-core/src/internal/state-field/validate.ts`
   - `item.computed/link` ❌ 当前不支持：`converge` 写入路径不理解 `userList[].x`，会把 `userList[]` 当普通 key 写进 state（语义错误）
-- `StateTrait.list({ list: StateTrait.node(...) })`
+- `FieldKernel.list({ list: FieldKernel.node(...) })`
   - `list.check` ✅ 可运行（输入为整列数组），但当前 deps 归一化会把 `deps:["warehouseId"]` 变成 `userList.warehouseId`，导致 onChange 触发范围推导失真（需要 `listValidateOnChange` 兜底）
 
 结论：类型/结构上“可以传 node”，但要达成终态（删除开关、跨行规则一次扫描多行写回、错误归属稳定、可诊断且不负优化）仍需补齐一组关键语义。
 
 ## Decision 1：跨行规则强制收敛为 list-scope check（唯一推荐写法）
 
-- **Decision**：跨行互斥/唯一性/聚合类规则必须放在 `StateTrait.list({ list: StateTrait.node({ check }) })`；行内规则放在 `item.check`。
+- **Decision**：跨行互斥/唯一性/聚合类规则必须放在 `FieldKernel.list({ list: FieldKernel.node({ check }) })`；行内规则放在 `item.check`。
 - **Rationale**：从结构上杜绝“每行扫全表”的 O(n²) 写法；为运行时增量触发/诊断/回放提供唯一事实源。
 
 ## Decision 2：list-scope deps 语义 = `userList[].<field>`（并自动补齐结构依赖）
@@ -62,16 +62,16 @@
 
 - **rowId**：优先用 `identityHint.trackBy` 派生（字符串化或稳定 hash），避免 `Date.now/Math.random`；缺失 trackBy 时用可重建的单调序号（绑定到 runtime instance）。
 - **instanceId/txnSeq/opSeq/eventSeq**：完全对齐 Spec 009：`instanceId` 必须外部注入；`txnSeq` 为 instance 内单调递增；`opSeq` 为 txn 内单调递增；`eventSeq` 为 instance 内单调递增；`txnId/opId/eventId` 必须可由上述字段确定性重建；诊断分档 `off/light/sampled/full` 的“是否写入缓冲区/载荷预算”以 009 为准。
-- **nodeId/ruleId**：`nodeId` 必须可映射到 Static IR 节点；`ruleId` 建议稳定为 `<scope>#<ruleName>`（展示形态可用 `userList#uniqueWarehouse`）；`trait:check` 事件以 009 DynamicTrace.events 形式输出（`kind="trait:check"`），并在 payload 中携带 Trigger（kind+path+op）与 summary（scanned/affected/changed）。
+- **nodeId/ruleId**：`nodeId` 必须可映射到 Static IR 节点；`ruleId` 建议稳定为 `<scope>#<ruleName>`（展示形态可用 `userList#uniqueWarehouse`）；`field:check` 事件以 009 DynamicTrace.events 形式输出（`kind="field:check"`），并在 payload 中携带 Trigger（kind+path+op）与 summary（scanned/affected/changed）。
 
 ## Decision 8：Form API 收口（Rules/Errors 的产物必须“可直挂、可降解”）
 
 - **Decision**：
-  - 业务/示例/文档默认只使用 `@logixjs/form` 的领域入口：`Form.make({ traits, derived })` + `Form.traits/Form.Rule/Form.Error/Form.Trait`，而不是直接写 `@logixjs/core` 的 `StateTrait.*`；
-  - `Form.Rule.make(...)` 的返回值必须是**可直接挂到** `StateTrait.node({ check })` 的形态（即 `Record<ruleName, { deps, validate, meta? }>`），不得引入额外包壳（例如 `{ rules: ... }` 这种二次结构）；
+  - 业务/示例/文档默认只使用 `@logixjs/form` 的领域入口：`Form.make({ fields, derived })` + `Form.fields/Form.Rule/Form.Error/Form.Field`，而不是直接写 `@logixjs/core` 的 `FieldKernel.*`；
+  - `Form.Rule.make(...)` 的返回值必须是**可直接挂到** `FieldKernel.node({ check })` 的形态（即 `Record<ruleName, { deps, validate, meta? }>`），不得引入额外包壳（例如 `{ rules: ... }` 这种二次结构）；
   - `Form.Error.*` 只负责组织错误树形态（例如 `$list/rows[]`），不改变 kernel 语义，不引入第二套运行时；
-  - `Form.Trait.*` 与 `StateTrait.*` 同形状，供 `derived` 声明联动/派生（默认写回 `values/ui`），仍可完全降解为 StateTraitSpec/IR；`Form.node/Form.list` 仅作为最小 escape hatch（示例默认用 `Form.traits` 组织片段）。
-- **Rationale**：否则“Form 领域包”会变成“只换了名字的 StateTrait”，并产生文档/实现不一致与团队写法分裂（尤其是 list-scope 场景会被迫保留 `listValidateOnChange` 这类专家开关）。
+  - `Form.Field.*` 与 `FieldKernel.*` 同形状，供 `derived` 声明联动/派生（默认写回 `values/ui`），仍可完全降解为 FieldKernelSpec/IR；`Form.node/Form.list` 仅作为最小 escape hatch（示例默认用 `Form.fields` 组织片段）。
+- **Rationale**：否则“Form 领域包”会变成“只换了名字的 FieldKernel”，并产生文档/实现不一致与团队写法分裂（尤其是 list-scope 场景会被迫保留 `listValidateOnChange` 这类专家开关）。
 
 ## Decision 9：Schema/Resolver 默认只在 submit/root validate 运行
 
@@ -103,14 +103,14 @@
 - **Decision**：ErrorValue 必须可 JSON 序列化，且 JSON 序列化后体积 ≤256B。
 - **Rationale**：错误树是热路径数据结构与回放/诊断资产；限制体积可避免把大对象图塞进 state 导致 churn、不可控分配与 Devtools 负担；复杂信息应进入诊断事件（light/full）或业务侧映射层。
 
-## Decision 14：`trait:check` 事件的产出档位（off 近零成本）
+## Decision 14：`field:check` 事件的产出档位（off 近零成本）
 
-- **Decision**：`trait:check` 仅在 `Diagnostics Level=light|full` 产出；`Diagnostics Level=off` 不产出。
+- **Decision**：`field:check` 仅在 `Diagnostics Level=light|full` 产出；`Diagnostics Level=off` 不产出。
 - **Rationale**：`off` 的验收目标是“接近零成本”，禁止为诊断目的在热路径引入额外对象分配与 O(n) 事件构造；而 `light/full` 才承担解释链路与证据聚合职责。
 
 ## Decision 15：`rowIdMode` 显式区分 runtime `rowIdStore`
 
-- **Decision**：`trait:check.data.rowIdMode` 枚举为 `trackBy|store|index`，其中 `store` 表示 runtime `rowIdStore`（缺失 trackBy 的稳定 rowId 来源）。
+- **Decision**：`field:check.data.rowIdMode` 枚举为 `trackBy|store|index`，其中 `store` 表示 runtime `rowIdStore`（缺失 trackBy 的稳定 rowId 来源）。
 - **Rationale**：避免把“业务稳定 id”与“运行时生成 id”混为一谈；让 degraded/迁移问题在诊断与回放中可解释、可定位、可量化。
 
 ## Decision 16：Schema 默认不进热路径时的错误清理语义

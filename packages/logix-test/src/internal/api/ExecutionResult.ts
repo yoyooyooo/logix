@@ -3,18 +3,18 @@ import type * as Logix from '@logixjs/core'
 
 export interface ExecutionResult<Sh extends Logix.AnyModuleShape> {
   readonly trace: ReadonlyArray<TraceEvent<Sh>>
-  readonly state: Logix.StateOf<Sh>
-  readonly actions: ReadonlyArray<Logix.ActionOf<Sh>>
+  readonly state: Logix.Module.StateOf<Sh>
+  readonly actions: ReadonlyArray<Logix.Module.ActionOf<Sh>>
 }
 
 export type TraceEvent<Sh extends Logix.AnyModuleShape> =
-  | { _tag: 'Action'; action: Logix.ActionOf<Sh>; timestamp: number }
-  | { _tag: 'State'; state: Logix.StateOf<Sh>; timestamp: number }
+  | { _tag: 'Action'; action: Logix.Module.ActionOf<Sh>; timestamp: number }
+  | { _tag: 'State'; state: Logix.Module.StateOf<Sh>; timestamp: number }
   | { _tag: 'Error'; cause: unknown; timestamp: number }
 
 export const make = <Sh extends Logix.AnyModuleShape>(
-  state: Logix.StateOf<Sh>,
-  actions: ReadonlyArray<Logix.ActionOf<Sh>>,
+  state: Logix.Module.StateOf<Sh>,
+  actions: ReadonlyArray<Logix.Module.ActionOf<Sh>>,
   trace: ReadonlyArray<TraceEvent<Sh>>,
 ): ExecutionResult<Sh> => ({
   state,
@@ -28,13 +28,13 @@ export const make = <Sh extends Logix.AnyModuleShape>(
 
 export const hasAction = <Sh extends Logix.AnyModuleShape>(
   result: ExecutionResult<Sh>,
-  predicate: (action: Logix.ActionOf<Sh>) => boolean,
+  predicate: (action: Logix.Module.ActionOf<Sh>) => boolean,
 ): boolean => result.actions.some(predicate)
 
 export const getActionsByTag = <Sh extends Logix.AnyModuleShape>(
   result: ExecutionResult<Sh>,
   tag: string,
-): ReadonlyArray<Logix.ActionOf<Sh>> =>
+): ReadonlyArray<Logix.Module.ActionOf<Sh>> =>
   result.actions.filter((action) => typeof (action as any)._tag === 'string' && (action as any)._tag === tag)
 
 export const hasError = <Sh extends Logix.AnyModuleShape>(result: ExecutionResult<Sh>): boolean =>
@@ -45,7 +45,7 @@ export const getErrors = <Sh extends Logix.AnyModuleShape>(
 ): ReadonlyArray<Extract<TraceEvent<Sh>, { _tag: 'Error' }>> =>
   result.trace.filter((event): event is Extract<TraceEvent<Sh>, { _tag: 'Error' }> => event._tag === 'Error')
 
-const actionTagOf = (action: Logix.ActionOf<Logix.AnyModuleShape>): string | undefined => {
+const actionTagOf = (action: Logix.Module.ActionOf<Logix.AnyModuleShape>): string | undefined => {
   const value = action as any
   if (typeof value?._tag === 'string') {
     return value._tag

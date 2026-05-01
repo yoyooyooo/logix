@@ -1,6 +1,6 @@
 # Research: 062 logix-galaxy-api（PostgreSQL 开发环境样例）
 
-**Feature**: `specs/062-galaxy-api-postgres/spec.md`  
+**Feature**: `specs/062-galaxy-api-postgres/spec.md`
 **Date**: 2025-12-30
 
 ## Decision 1：端口与环境口径

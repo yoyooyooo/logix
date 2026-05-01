@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
@@ -10,7 +11,7 @@ import { makeTickScheduler } from '../../../src/internal/runtime/core/TickSchedu
 describe('TickScheduler (diagnostics gate)', () => {
   it.effect('diagnostics=off should not emit trace:tick', () =>
     Effect.gen(function* () {
-      Logix.Debug.clearDevtoolsEvents()
+      CoreDebug.clearDevtoolsEvents()
 
       const store = makeRuntimeStore()
       const queue = makeJobQueue()
@@ -33,12 +34,12 @@ describe('TickScheduler (diagnostics gate)', () => {
       })
       queue.markTopicDirty(key, 'normal')
 
-      yield* Effect.provideService(scheduler.flushNow, Logix.Debug.internal.currentDiagnosticsLevel as any, 'off').pipe(
-        Effect.provide(Logix.Debug.devtoolsHubLayer({ bufferSize: 64 })),
+      yield* Effect.provideService(scheduler.flushNow, CoreDebug.internal.currentDiagnosticsLevel as any, 'off').pipe(
+        Effect.provide(CoreDebug.devtoolsHubLayer({ bufferSize: 64 })),
       )
 
       expect(store.getTickSeq()).toBe(1)
-      expect(Logix.Debug.getDevtoolsSnapshot().events.filter((e) => e.label === 'trace:tick')).toHaveLength(0)
+      expect(CoreDebug.getDevtoolsSnapshot().events.filter((e) => e.label === 'trace:tick')).toHaveLength(0)
     }),
   )
 })

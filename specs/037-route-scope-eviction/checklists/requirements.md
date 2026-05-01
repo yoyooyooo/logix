@@ -1,7 +1,7 @@
 # Specification Quality Checklist: 限定 scope 的全局（路由 Host(imports) 弹框 keepalive + ModuleScope）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-26  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-26
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality

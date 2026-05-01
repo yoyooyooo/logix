@@ -1,7 +1,8 @@
 import * as Logix from '@logixjs/core'
 import { Duration, Effect, Fiber, ServiceMap } from 'effect'
-import type { QuerySourceConfig, QueryTrigger } from '../../Traits.js'
+import type { QuerySourceConfig, QueryTrigger } from '../query-declarations.js'
 import { Engine } from '../../Engine.js'
+import * as Resource from '../resource.js'
 
 const defaultTriggers = ['onMount', 'onKeyChange'] as const
 
@@ -34,11 +35,11 @@ export interface AutoTriggerLogicConfig<TParams, TUI> {
  * - manual-only: when triggers=["manual"], disable onMount/onKeyChange auto triggering.
  */
 export const autoTrigger = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
-  module: Logix.ModuleTagType<any, Sh>,
+  module: Logix.Module.ModuleTag<any, Sh>,
   config: AutoTriggerLogicConfig<TParams, TUI>,
 ): Logix.ModuleLogic<Sh, any, never> =>
-  module.logic(($) => {
-    type _State = Logix.StateOf<Sh> & { readonly queries: Record<string, unknown> }
+  module.logic('query-auto-trigger', ($) => {
+    type _State = Logix.Module.StateOf<Sh> & { readonly queries: Record<string, unknown> }
     type QueryName = Extract<keyof typeof config.queries, string>
 
     const pending = new Map<string, Fiber.Fiber<void, any>>()
@@ -56,19 +57,23 @@ export const autoTrigger = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
         const engine = engineOpt.value
         if (!engine.peekFresh) return false
 
-        const dataOpt = yield* engine.peekFresh({
+        const dataOpt = yield* (engine.peekFresh({
           resourceId: q.resource.id,
           keyHash,
-        })
+        }) as Effect.Effect<any, never, any>)
         if (dataOpt._tag === 'None') return false
 
-        const snapshot = Logix.Resource.Snapshot.success({
+        const snapshot = Resource.Snapshot.success({
           keyHash,
           data: dataOpt.value,
         })
-        yield* $.state.mutate((draft) => {
-          ;(draft as Logix.Logic.Draft<_State>).queries[name] = snapshot
-        })
+        yield* $.state.update((prev: _State) => ({
+          ...prev,
+          queries: {
+            ...prev.queries,
+            [name]: snapshot,
+          },
+        }))
 
         return true
       })
@@ -84,18 +89,18 @@ export const autoTrigger = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
     const sourcePathOf = (name: QueryName): string => `queries.${name}`
 
     const refresh = (name: QueryName, options?: { readonly force?: boolean }): Effect.Effect<void, never, any> =>
-      $.traits.source.refresh(sourcePathOf(name) as any, options as any) as Effect.Effect<void, never, any>
+      $.fields.source.refresh(sourcePathOf(name) as any, options as any) as Effect.Effect<void, never, any>
 
     const scheduleDebounced = (name: QueryName, ms: number): Effect.Effect<void, never, any> =>
       Effect.gen(function* () {
         yield* cancelPending(name)
-          const fiber = yield* Effect.forkScoped(
-            Effect.sleep(Duration.millis(ms)).pipe(
-              Effect.flatMap(() => refresh(name)),
-              Effect.ensuring(Effect.sync(() => pending.delete(name))),
-              Effect.catchCause(() => Effect.void),
-            ),
-          )
+        const fiber = yield* Effect.forkScoped(
+          Effect.sleep(Duration.millis(ms)).pipe(
+            Effect.flatMap(() => refresh(name)),
+            Effect.ensuring(Effect.sync(() => pending.delete(name))),
+            Effect.catchCause(() => Effect.void),
+          ),
+        )
         pending.set(name, fiber)
       })
 
@@ -115,7 +120,7 @@ export const autoTrigger = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
         const args = (q.deps as ReadonlyArray<string>).map((dep) => getAtPath(keyState, dep))
         const key = (q.key as any)(...args)
         if (key === undefined) return undefined
-        return Logix.Resource.keyHash(key)
+        return Resource.keyHash(key)
       } catch {
         return undefined
       }
@@ -192,11 +197,10 @@ export const autoTrigger = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
         cancelPending(name).pipe(Effect.flatMap(() => refresh(name as QueryName, options))),
       ).pipe(Effect.asVoid)
 
-    const setup = $.lifecycle.onStart(maybeAutoRefresh('mount'))
-
-    const run = Effect.suspend(() =>
+    return Effect.suspend(() =>
       Effect.all(
         [
+          maybeAutoRefresh('mount'),
           // params/ui changes: handled by Query's default logic, avoiding scattered UI-side useEffect triggers.
           // Keep params/ui-driven auto refresh aligned with action stream order.
           // `source.refresh` already forks IO internally, so the watcher itself can stay ordered.
@@ -231,6 +235,4 @@ export const autoTrigger = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
         { concurrency: 'unbounded' },
       ).pipe(Effect.asVoid),
     )
-
-    return { setup, run }
   }) as Logix.ModuleLogic<Sh, any, never>

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://intent-flow.local/specs/010-form-api-perf-boundaries/schemas/scoped-validate-request.schema.json",
+  "$id": "https://logix.local/specs/010-form-api-perf-boundaries/schemas/scoped-validate-request.schema.json",
   "title": "ScopedValidateRequest",
   "type": "object",
   "additionalProperties": false,

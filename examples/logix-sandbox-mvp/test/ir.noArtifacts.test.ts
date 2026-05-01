@@ -2,6 +2,7 @@ import { describe } from 'vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
+import { trialRunModule } from '../../../packages/logix-core/src/internal/observability/trialRunModule.js'
 
 describe('/ir: no artifacts', () => {
   it.effect('keeps artifacts undefined for non-kit modules', () =>
@@ -12,9 +13,9 @@ describe('/ir: no artifacts', () => {
         reducers: { noop: (s) => s },
       })
 
-      const AppRoot = M.implement({ initial: { ok: true }, logics: [] })
+      const AppRoot = Logix.Program.make(M, { initial: { ok: true }, logics: [] })
 
-      const report = yield* Logix.Observability.trialRunModule(AppRoot, {
+      const report = yield* trialRunModule(AppRoot as any, {
         diagnosticsLevel: 'off',
         maxEvents: 0,
         trialRunTimeoutMs: 1000,

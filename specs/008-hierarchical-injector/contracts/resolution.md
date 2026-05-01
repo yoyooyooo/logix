@@ -23,7 +23,7 @@
 下列入口在 strict/global 上必须同构（只允许差异在“包装层/返回句柄”）：
 
 - Logic：`yield* $.use(ModuleTag)`（strict）
-- Logic：跨模块协作使用 `Link.make`（显式跨模块/IR 承载）
+- Logic：跨模块协作使用 `orchestration link alias`（显式跨模块/IR 承载）
 - Logic：显式 root/global 使用 `Root.resolve(Tag)`（单例语义；支持 ServiceTag/ModuleTag）
 - React：`useImportedModule(host, ModuleTag)`（strict）
 - React：`host.imports.get(ModuleTag)`（strict）
@@ -38,7 +38,7 @@
 | `host.imports.get(ModuleTag)` / `useImportedModule` | UI 访问子模块              | host 实例 scope（strict 默认）    | strict-only；缺失报错                        |
 | `useModule(ModuleTag)`                              | UI 读取当前运行环境单例    | 当前 React 运行环境               | 受 `RuntimeProvider.layer` 影响（最近 wins） |
 | `Root.resolve(Tag)`                                 | root 单例（忽略 override） | root scope                        | React 侧通过 `runtime.run*` 执行             |
-| `Link.make`                                         | 显式跨模块胶水逻辑         | 被 fork 时所在 scope              | process 形式；显式列出 modules               |
+| `orchestration link alias`                                         | 显式跨模块胶水逻辑         | 被 fork 时所在 scope              | process 形式；显式列出 modules               |
 
 ## 3. 行为约束（可测试）
 

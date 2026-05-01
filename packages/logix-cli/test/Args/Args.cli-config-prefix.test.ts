@@ -9,7 +9,7 @@ import { parseCliInvocation } from '../../src/internal/args.js'
 import { resolveCliConfigArgvPrefix, resolveCliConfigArgvPrefixResolution } from '../../src/internal/cliConfig.js'
 
 describe('args: logix.cli.json argv prefix', () => {
-  it('should merge defaults + profile and allow argv overrides (last-wins)', async () => {
+  it('should merge defaults + profile and allow argv overrides (last-wins) for trial', async () => {
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'logix-cli-config-prefix-'))
     try {
       const configFile = path.join(tmp, 'logix.cli.json')
@@ -29,7 +29,7 @@ describe('args: logix.cli.json argv prefix', () => {
       )
 
       const argv = [
-        'trialrun',
+        'trial',
         '--runId',
         'r1',
         '--cliConfig',
@@ -53,8 +53,8 @@ describe('args: logix.cli.json argv prefix', () => {
       const parsed = await Effect.runPromise(parseCliInvocation(argv2, { helpText: 'help' }))
       expect(parsed.kind).toBe('command')
       if (parsed.kind !== 'command') throw new Error('expected command')
-      expect(parsed.command).toBe('trialrun')
-      if (parsed.command !== 'trialrun') throw new Error('expected trialrun command')
+      expect(parsed.command).toBe('trial')
+      if (parsed.command !== 'trial') throw new Error('expected trial command')
       expect(parsed.diagnosticsLevel).toBe('full')
       expect(parsed.includeTrace).toBe(true)
     } finally {
@@ -62,8 +62,8 @@ describe('args: logix.cli.json argv prefix', () => {
     }
   })
 
-  it('should treat --host as value-bearing option during argv normalization', async () => {
-    const parsed = await Effect.runPromise(parseCliInvocation([
+  it('should reject archived trialrun as an unknown command during argv normalization', async () => {
+    const exit = await Effect.runPromiseExit(parseCliInvocation([
       '--host',
       'browser-mock',
       'trialrun',
@@ -73,10 +73,8 @@ describe('args: logix.cli.json argv prefix', () => {
       'x.ts#AppRoot',
     ], { helpText: 'help' }))
 
-    expect(parsed.kind).toBe('command')
-    if (parsed.kind !== 'command') throw new Error('expected command')
-    expect(parsed.command).toBe('trialrun')
-    if (parsed.command !== 'trialrun') throw new Error('expected trialrun command')
-    expect(parsed.global.host).toBe('browser-mock')
+    expect(exit._tag).toBe('Failure')
+    if (exit._tag !== 'Failure') throw new Error('expected parse failure')
+    expect(String(exit.cause)).toContain('未知命令：trialrun')
   })
 })

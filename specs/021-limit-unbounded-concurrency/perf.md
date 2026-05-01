@@ -7,7 +7,7 @@
 
 - Date: 2025-12-22 15:22:59 +0800
 - Git branch / commit: `dev` / `c8c182f98a2118cd3c76937baeb41c714ab18abc`（worktree dirty）
-  - Before 采样使用 git worktree：`/Users/yoyo/Documents/code/personal/intent-flow-perf-before`（detached HEAD 同 commit）
+  - Before 采样使用 git worktree：`/Users/yoyo/Documents/code/personal/logix.worktrees/next-api-perf-before`（detached HEAD 同 commit）
 - OS / arch: Darwin 24.6.0 / arm64
 - CPU / Memory: Apple M2 Max / 64GB
 - Node.js: v22.21.1

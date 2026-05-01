@@ -1,9 +1,9 @@
 # Feature Specification: Query 收口到 `@logixjs/query`（与 Form 同形）
 
-**Feature Branch**: `026-unify-query-domain`  
-**Created**: 2025-12-23  
-**Status**: Draft  
-**Input**: User description: "间隔新需求去做，编号 026. 需要收口，希望收口之后，query 相关只在 @logixjs/query 里，他依赖底层的 trait/statetrait 的能力实现，并且和 form 领域保持相同形状"
+**Feature Branch**: `026-unify-query-domain`
+**Created**: 2025-12-23
+**Status**: Draft
+**Input**: User description: "间隔新需求去做，编号 026. 需要收口，希望收口之后，query 相关只在 @logixjs/query 里，他依赖底层的 field/statetrait 的能力实现，并且和 form 领域保持相同形状"
 
 ## User Scenarios & Testing _(mandatory)_
 
@@ -24,23 +24,23 @@
 
 ### User Story 2 - Query 与 Form 的领域形状一致 (Priority: P2)
 
-作为已经熟悉 `@logixjs/form` 的开发者，我希望 `@logixjs/query` 采用与 Form 一致的“领域包形状”，让我能用相同的心智完成模块建模、trait 挂载与控制器调用。
+作为已经熟悉 `@logixjs/form` 的开发者，我希望 `@logixjs/query` 采用与 Form 一致的“领域包形状”，让我能用相同的心智完成模块建模、field 挂载与控制器调用。
 
-**Why this priority**: Query 与 Form 是同一套 Trait 系统的对照领域；形状一致能显著降低跨领域迁移成本，并利于脚手架与团队规范统一。
+**Why this priority**: Query 与 Form 是同一套 Field 系统的对照领域；形状一致能显著降低跨领域迁移成本，并利于脚手架与团队规范统一。
 
 > 说明：这里的“同形”只约束 **对外入口与组织方式**（namespace import、module factory、handle.controller 扩展与 building blocks 的组织），不强求 Query 的 authoring DSL 细节去类比 Form 的 `from/$.rules/derived`（两者的问题域不同，强行同形会引入无谓概念）。
 
-**Independent Test**: 只实现“Query 领域 API 形状对齐 + 对照文档/示例”即可验收，不要求改动任何底层 Trait 语义。
+**Independent Test**: 只实现“Query 领域 API 形状对齐 + 对照文档/示例”即可验收，不要求改动任何底层 Field 语义。
 
 **Acceptance Scenarios**:
 
-1. **Given** 我已掌握 Form 的核心入口（domain-module 工厂 + controller 句柄扩展；推荐入口 +（高级）traits/building blocks），**When** 我转到 Query 场景，**Then** 我能在 `@logixjs/query` 中找到同构入口，并用相同的方式组织代码与心智模型。
+1. **Given** 我已掌握 Form 的核心入口（domain-module 工厂 + controller 句柄扩展；推荐入口 +（高级）fields/building blocks），**When** 我转到 Query 场景，**Then** 我能在 `@logixjs/query` 中找到同构入口，并用相同的方式组织代码与心智模型。
 
 ---
 
 ### User Story 3 - 收口不牺牲性能与可诊断性 (Priority: P3)
 
-作为运行时维护者，我希望收口后 Query 仍严格依赖底层 trait/stateTrait 能力，且关键查询链路的性能与诊断口径不回退，方便长期演进与定位问题。
+作为运行时维护者，我希望收口后 Query 仍严格依赖底层 field/stateTrait 能力，且关键查询链路的性能与诊断口径不回退，方便长期演进与定位问题。
 
 **Why this priority**: Query 常处于高频交互路径（搜索/筛选/联想），收口必须避免引入额外开销或让“为什么触发/为什么写回”更难解释。
 
@@ -65,17 +65,17 @@
 ### Functional Requirements
 
 - **FR-001**: 系统 MUST 将“Query 领域能力”的对外入口收口为 `@logixjs/query`；仓库内文档/示例/脚手架中不得再出现第二条 Query 领域入口。
-- **FR-002**: 系统 MUST 保证 `@logixjs/query` 仅依赖底层 trait/stateTrait/resource 等基础能力完成领域建模与运行，不对业务暴露并行的第二套状态事实源。
-- **FR-003**: 系统 MUST 让 `@logixjs/query` 与 `@logixjs/form` 保持一致的领域形状：对外暴露同构的 domain-module 工厂 + controller 句柄扩展；对内仍统一降解到 StateTrait/EffectOp 主线（不引入第二套事实源）。
+- **FR-002**: 系统 MUST 保证 `@logixjs/query` 仅依赖底层 field/stateTrait/resource 等基础能力完成领域建模与运行，不对业务暴露并行的第二套状态事实源。
+- **FR-003**: 系统 MUST 让 `@logixjs/query` 与 `@logixjs/form` 保持一致的领域形状：对外暴露同构的 domain-module 工厂 + controller 句柄扩展；对内仍统一降解到 FieldKernel/EffectOp 主线（不引入第二套事实源）。
 - **FR-004**: 系统 MUST 明确并固化“外部查询引擎（可替换）”的注入边界：当启用需要外部引擎的能力时，缺失注入 MUST 以显式配置错误失败，并提供可操作修复提示。
 - **FR-005**: 系统 MUST 提供迁移说明，指导从历史 Query 入口迁移到 `@logixjs/query`（包括 import 路径、运行时注入点与行为差异说明），且不引入兼容层作为长期负担。
-- **FR-006**: 系统 MUST 把“类型尽可能完美”作为一等 DX 约束：`Query.make` 返回 `Logix.Module.Module`（非 Blueprint），并让 `queries` 的 key union 与 `deps` 的路径约束在编译期尽量可校验（例如 `controller.refresh(target?)` 的 target 收窄为 `keyof queries`；`deps` 收窄为 `StateTrait.StateFieldPath<{ params; ui }>`）。
+- **FR-006**: 系统 MUST 把“类型尽可能完美”作为一等 DX 约束：`Query.make` 返回 `Logix.Module.Module`（非 Blueprint），并让 `queries` 的 key union 与 `deps` 的路径约束在编译期尽量可校验（例如 `controller.refresh(target?)` 的 target 收窄为 `keyof queries`；`deps` 收窄为 `FieldKernel.StateFieldPath<{ params; ui }>`）。
   - 约束补充：`queries` 的 key MUST 排除保留关键字（至少 `params` / `ui`），并在运行时对冲突配置显式报错。
 
 ### Assumptions
 
 - 本特性以“统一入口与一致心智”为目标，允许为达标进行破坏性重构；不要求对历史内部 API 向后兼容，但必须提供迁移说明。
-- “Query 相关”范围包含：Query 领域入口、Engine 注入（含可选缓存快读）、Query 中间件/触发/失效等领域行为与其文档/示例/脚手架；不包含底层 trait/stateTrait 的通用能力。
+- “Query 相关”范围包含：Query 领域入口、Engine 注入（含可选缓存快读）、Query 中间件/触发/失效等领域行为与其文档/示例/脚手架；不包含底层 field/stateTrait 的通用能力。
 
 ### Out of Scope
 
@@ -89,7 +89,7 @@
 - **NFR-001**: 系统 MUST 为“Query 自动触发/刷新”相关热路径建立可复现基线，并定义预算：收口后 p95 延迟与分配不得超过基线 +5%。
 - **NFR-002**: 系统 MUST 提供结构化、可序列化的诊断信号以解释 Query 刷新因果链；当诊断关闭时，其额外开销不得超过基线 +1%（同一基准口径）。
 - **NFR-003**: 系统 MUST 使用确定性标识（实例/事务/操作序列等）来支撑诊断与回放，不得依赖随机数或时间默认值生成关键标识。
-- **NFR-004**: 系统 MUST 严格遵守同步事务边界：事务窗口内禁止 IO/异步工作；Query 的写回必须通过受控的 trait/stateTrait 通道完成。
+- **NFR-004**: 系统 MUST 严格遵守同步事务边界：事务窗口内禁止 IO/异步工作；Query 的写回必须通过受控的 field/stateTrait 通道完成。
 - **NFR-005**: 若本特性改变了“默认行为/自动策略/成本边界”，系统 MUST 更新面向使用者的文档，提供稳定心智模型（≤5 个关键词）、粗粒度成本模型与可操作的优化阶梯。
 - **NFR-006**: 若本特性引入/依赖跨模块协作钩子或内部协议，系统 MUST 将其封装为显式可注入契约，并支持在单实例/单会话范围内可替换与可 mock。
 
@@ -98,7 +98,7 @@
 - **Query 领域包**: 面向业务的查询能力入口与最佳实践集合，提供与 Form 同形的组织方式。
 - **Query Module**: 由 `Query.make` 产出的模块资产（可直接被 Runtime/React 消费），包含 params/ui/queries 快照 state、默认领域 wiring（触发/失效）与 controller 句柄扩展。
 - **Query Controller**: 面向调用方的控制器句柄（挂在 ModuleHandle 上的扩展），用于读取状态与派发“刷新/失效/参数变更”等意图。
-- **Query Rule**: 一条查询规则的声明（依赖字段、触发策略、并发策略、key 计算等），可降解为底层 trait/stateTrait 能力执行。
+- **Query Rule**: 一条查询规则的声明（依赖字段、触发策略、并发策略、key 计算等），可降解为底层 field/stateTrait 能力执行。
 - **External Query Engine**: 可替换的外部查询引擎实例（缓存/去重/失效等），通过明确注入边界接入。
 
 ## Success Criteria _(mandatory)_
@@ -107,7 +107,7 @@
 
 - **SC-001**: 仓库对外展示材料（文档/示例/脚手架）中 Query 的入口引用收敛为 1 处：统一指向 `@logixjs/query`，且不再出现第二条 Query 入口的推荐用法。
 - **SC-002**: 迁移说明覆盖至少 3 类典型改动点（入口/注入/行为差异），并能支撑把一个现有 Query 示例迁移到新入口且保持等价行为。
-- **SC-003**: `@logixjs/query` 的领域形状与 `@logixjs/form` 对齐：在对照文档中，开发者能以同构心智完成“定义（make）→ 组合/运行（Runtime/React）→ 调用 controller（必要时使用（高级）traits/building blocks）”的全流程。
+- **SC-003**: `@logixjs/query` 的领域形状与 `@logixjs/form` 对齐：在对照文档中，开发者能以同构心智完成“定义（make）→ 组合/运行（Runtime/React）→ 调用 controller（必要时使用（高级）fields/building blocks）”的全流程。
 - **SC-004**: 在既定基线口径下，Query 相关热路径的 p95 延迟与分配不超过基线 +5%（见 NFR-001）。
 - **SC-005**: 对任意一次 Query 刷新，诊断证据链至少包含：触发来源、目标字段、resource 标识、keyHash（或等价稳定键）、并发策略、结果状态；并且该证据链可被序列化存档用于复盘。
 - **SC-006**: 在 TypeScript 下，常见误用能尽量在编译期暴露：

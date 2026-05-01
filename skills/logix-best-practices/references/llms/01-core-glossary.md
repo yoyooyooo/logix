@@ -6,28 +6,17 @@ title: Logix 核心术语（LLM 版）
 
 ## 1) 基本对象
 
-- `ModuleDef`：模块定义，声明 state/actions 形状与逻辑入口。
-- `ModuleImpl`：模块实现，绑定 initial/logics/imports/processes。
+- `Module`：definition-time logic authoring owner，通过 `Module.logic(...)` 进入公开主链。
+- `Program`：assembly-time business unit，通过 `Program.make(Module, config)` 装配。
+- `Runtime`：execution-time container，通过 `Runtime.make(Program)` 运行。
+- `Form object`：`Form.make(...)` 的返回值，直接进入 `Logix.Runtime.make(...)` 与 `useModule(...)`，不经 `Program.make(...)`。
+- `React host law`：把 `Program` 或 `Form object` 投影到 React 实例与 selector read route。
 - `Logic`：模块内部响应动作/状态变化的 Effect 程序。
-- `Process`：跨模块协作逻辑，负责 read/dispatch 协同。
-- `Pattern`：可复用逻辑片段，通常是 `(input) => Effect`。
-- `Runtime`：执行容器，托管模块实例、事务、诊断与生命周期。
 
 ## 2) 关键语义
 
-- `setup/run` 两阶段：
-  - `setup` 只做声明/注册。
-  - `run` 才做 watcher、flow、service 调用。
+- `Module.logic(id, build)` 的 builder 根部只做同步声明。
+- builder 的返回值是唯一 run effect。
+- 不允许生成 `{ setup, run }`、public phase object 或 public phase carrier 作为公开 API。
 - 事务窗口：同步写入阶段，禁止 IO、禁止嵌套 dispatch、禁止 `run*Task`。
 - 稳定锚点：`instanceId/txnSeq/opSeq/tickSeq`，用于可解释与回放。
-
-## 3) 协作语义
-
-- `linkDeclarative`：白盒协作，适合可静态表达的 read->dispatch。
-- `link`：黑盒桥接，适合 async/external bridge，默认 best-effort。
-
-## 4) 单一事实源
-
-- `Static IR`：可审阅、可对比的静态结构。
-- `Dynamic Trace`：运行期证据事件链。
-- 约束：两者分层存在，禁止并行真相源。

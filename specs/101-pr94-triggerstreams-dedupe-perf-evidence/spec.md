@@ -1,8 +1,8 @@
 # Feature Specification: PR94 triggerStreams dedupe 性能证据回填
 
-**Feature Branch**: `spec/101-pr94-triggerstreams-dedupe-perf-evidence`  
-**Created**: 2026-02-25  
-**Status**: Backfill（已交付实现的规格补录）  
+**Feature Branch**: `spec/101-pr94-triggerstreams-dedupe-perf-evidence`
+**Created**: 2026-02-25
+**Status**: Backfill（已交付实现的规格补录）
 **PR Reference**: [#94](https://github.com/yoyooyooo/logix/pull/94)
 
 ## 背景

@@ -1,10 +1,12 @@
 # Quickstart: Lifecycle 全面升级
 
-**Feature**: [spec.md](./spec.md)  
-**Plan**: [plan.md](./plan.md)  
-**Created**: 2025-12-16  
+**Feature**: [spec.md](./spec.md)
+**Plan**: [plan.md](./plan.md)
+**Created**: 2025-12-16
 
 本快速指南用于帮助模块作者与平台/适配层作者理解升级后的生命周期语义，并提供迁移落点。
+
+> Supersession: public `$.lifecycle.*` authoring 已由 `../170-runtime-lifecycle-authoring-surface/spec.md` 移除。当前 readiness 只写 `$.readyAfter(effect, { id?: string })`，启动后长任务走 returned run effect，动态资源释放走 Effect Scope，错误观察走 Runtime / Provider / diagnostics。
 
 > 说明：本页关键语义有可运行对照场景：`examples/logix/src/scenarios/lifecycle-gate.ts`。
 > 若你发现文档与实现不一致，以本特性 `tasks.md` 中的测试为准，并在本特性目录内记录差异与修复点。
@@ -17,19 +19,19 @@ pnpm -C examples/logix exec tsx src/scenarios/lifecycle-gate.ts
 
 ## 1. 你将得到什么
 
-- **声明式生命周期**：在模块内部声明初始化/销毁/错误兜底/平台信号处理，不依赖 UI hooks。
+- **声明式 readiness**：在模块内部声明 readiness gate，不依赖 UI hooks。
 - **初始化门禁一致**：必需初始化完成前，实例不会对外呈现为可用；支持“可等待获取”。
 - **销毁顺序直觉**：销毁任务按“后声明先执行”（LIFO），更符合资源释放习惯。
 - **可诊断、可解释**：生命周期阶段与错误上下文具备稳定锚点与可序列化事件。
 - **稳定标识**：实例/事务/操作采用稳定序列，避免随机/时间默认 id。
 
-## 2. 模块作者：如何声明生命周期
+## 2. 模块作者：当前 public authoring
 
-> 关键规则：`$.lifecycle.*` 只能在 setup 阶段做“声明/注册”。推荐写法是在 `Module.logic(($) => { ... })` 的同步部分直接调用（不要 `yield*`）；需要依赖 Env 的初始化逻辑，放到注册进去的 Effect 里即可。
+> 关键规则：public authoring 不再使用 `$.lifecycle.*`。readiness 只在 `Module.logic(($) => { ... })` 的同步部分调用 `$.readyAfter(...)`；需要依赖 Env 的初始化逻辑，放到注册进去的 Effect 里即可。
 
-### 2.1 先声明错误兜底（强烈建议）
+### 2.1 当前写法
 
-在模块逻辑中尽早声明统一的错误兜底，以保证初始化/后台/销毁/平台信号的失败都能被收敛并上报。
+在模块逻辑中声明 readiness gate，把启动后行为放在 returned run effect 中，把资源释放交给 Scope finalizer。错误观察由 Runtime 或 React Provider 统一接入。
 
 ```ts
 import * as Logix from "@logixjs/core"
@@ -43,55 +45,51 @@ export const Demo = Logix.Module.make("Demo", {
 })
 
 export const DemoLogic = Demo.logic(($) => {
-  // 模块级：最后上报（不用于恢复业务流程）
-  $.lifecycle.onError((cause, ctx) =>
-    Effect.logError("[Demo] lifecycle error", { cause, ctx })
-  )
+  $.readyAfter(Effect.log("[Demo] readyAfter"), { id: "ready" })
 
-  // 必需初始化（可选）：决定实例可用性
-  $.lifecycle.onInitRequired(Effect.log("[Demo] initRequired"))
-
-  // 启动任务（可选）：不阻塞可用性（例如轮询/订阅）
-  $.lifecycle.onStart(Effect.log("[Demo] start"))
-
-  // 销毁：释放资源（LIFO）
-  $.lifecycle.onDestroy(Effect.log("[Demo] destroy"))
-
-  // ...其余逻辑（watcher / flow / task 等）
   return Effect.gen(function* () {
+    yield* Effect.acquireRelease(
+      Effect.log("[Demo] acquire"),
+      () => Effect.log("[Demo] release"),
+    ).pipe(Effect.scoped)
+
     yield* $.onAction("boot").run(
       $.state.update((s) => ({ ...s, ready: true })),
     )
   })
 })
 
-export const DemoImpl = Demo.implement({
+export const DemoProgram = Logix.Program.make(Demo, {
   initial: { ready: false },
   logics: [DemoLogic],
+})
+
+export const runtime = Logix.Runtime.make(DemoProgram, {
+  onError: (cause) => Effect.logError("[Demo] runtime error", cause),
 })
 ```
 
 分层速记（本特性的目标语义）：
 
 - **局部（单个流程/任务）**：用 `Effect.catchAll / catchAllCause` 把“预期错误”转成状态/返回值，不进入未处理错误链路。
-- **模块（单个实例）**：用 `$.lifecycle.onError` 兜底未处理失败（初始化/后台/销毁/平台信号），用于最后上报，不用于恢复业务流程。
+- **模块（单个实例）**：readiness 只贡献 `$.readyAfter(...)`；未处理失败观察交给 Runtime / Provider / diagnostics，用于最后上报，不用于恢复业务流程。
 - **全局（整棵 Runtime）**：用 `Runtime.make({ onError })` / React `RuntimeProvider onError` 统一接入监控；仅观测与上报，不改变模块错误语义。
 - **取消/中断**：不应当当作错误上报（默认会被过滤）。
 
-### 2.2 声明“必需初始化”（决定实例可用性，`onInitRequired/onInit`）
+### 2.2 声明 readiness（决定实例可用性）
 
 用于加载配置、准备依赖、或任何“未完成前实例不可用”的工作。
 
 - 必需初始化任务按声明顺序串行执行
 - 任一失败将导致该次初始化失败（对消费方可观测）
 
-### 2.3 声明“启动任务”（不阻塞可用性）
+### 2.3 启动后任务（不阻塞可用性）
 
-用于轮询、订阅、心跳等后台行为；不应阻塞实例进入可用状态，但失败必须被上报（默认不致命，可按策略配置为致命）。
+用于轮询、订阅、心跳等后台行为；放在 returned run effect 中。不应阻塞实例进入可用状态，未处理失败由 Runtime / Provider / diagnostics 观察。
 
-### 2.4 声明销毁任务（LIFO）
+### 2.4 动态资源释放
 
-用于释放资源、取消订阅等。销毁任务在实例终止时执行一次且仅一次，并按 LIFO 顺序执行。
+用于释放资源、取消订阅等。当前 public authoring 使用 `Effect.acquireRelease` 或 Scope finalizer。
 
 ## 3. 消费方：同步获取 vs 可等待获取
 
@@ -141,7 +139,7 @@ import { DemoImpl, Demo } from "./demo-module.js"
 
 const runtime = Logix.Runtime.make(DemoImpl, {
   layer: Layer.mergeAll(
-    Logix.Debug.layer(), // 仅示例：可按需替换为自定义 DebugLayer
+    CoreDebug.layer(), // 仅示例：可按需替换为自定义 DebugLayer
   ),
   onError: (cause, ctx) =>
     Effect.logError("[App] unhandled", { cause, ctx }),

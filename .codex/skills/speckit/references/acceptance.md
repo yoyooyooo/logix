@@ -74,6 +74,7 @@ For each `FEATURE_DIR`, if `FEATURE_DIR/checklists/` exists:
 
 - **REQUIRED (per spec)**: `spec.md`, `plan.md`, `tasks.md`
 - **REQUIRED**: `.specify/memory/constitution.md` (for MUST/SHOULD validation)
+- **IF EXISTS (per spec)**: `discussion.md` as residual open-questions / reopen-evidence artifact only. `Must Close Before Implementation` must be empty after implementation.
 - **IF EXISTS (per spec)**: `research.md`, `data-model.md`, `contracts/`, `quickstart.md`
 
 From `spec.md`, load the minimum needed to extract and interpret coded points:
@@ -154,6 +155,7 @@ Status must be one of:
 ### 8) Cross-Cutting Checks
 
 - **Plan alignment**: major architecture choices, dependencies, and project structure still match the codebase.
+- **Discussion hygiene**: if a decision is already implemented and validated, it should be represented in `spec.md` / `plan.md`, not left only in `discussion.md`. If no residual open question or reopen evidence remains, `discussion.md` should not exist.
 - **NFR coverage**: performance budgets/baselines and diagnosability requirements are reflected in code/tests/docs.
 - **Constitution alignment**: only flag what’s actually applicable, but treat MUST violations as CRITICAL.
 - **Cross-spec conflicts (multi-spec mode)**: highlight any contradictory requirements/plans, shared-file contention, or API/contract drift between the target specs.

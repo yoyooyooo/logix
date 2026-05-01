@@ -1,7 +1,7 @@
 # Contract: Parallelization Protocol（最小摩擦协作协议）
 
-**Branch**: `030-packages-public-submodules`  
-**Date**: 2025-12-25  
+**Branch**: `030-packages-public-submodules`
+**Date**: 2025-12-25
 **Spec**: `specs/030-packages-public-submodules/spec.md`
 
 > 目标：在“一个人能做 10× 事”的前提下，把多人并行的摩擦降到最低——减少冲突面、减少口头对齐成本、把边界变成可验证规则。

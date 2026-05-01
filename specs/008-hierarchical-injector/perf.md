@@ -1,6 +1,6 @@
 # Perf: 008 层级 Injector（resolveModuleRuntime）
 
-> 目标：为 008 的核心热路径改动提供“可复现的基线证据”，并在实现完成后补齐对比数据。  
+> 目标：为 008 的核心热路径改动提供“可复现的基线证据”，并在实现完成后补齐对比数据。
 > 运行脚本：`pnpm perf bench:008:resolve-module-runtime`
 
 ## 运行方式
@@ -81,7 +81,7 @@
     },
     "$.use(ModuleTag) (no provider)": {
       "ok": false,
-      "error": "MissingModuleRuntimeError: [MissingModuleRuntimeError] Cannot resolve ModuleRuntime for ModuleTag.\n\ntokenId: PerfTarget\nentrypoint: logic.$.use\nmode: strict\nfrom: <unknown module id>\nstartScope: moduleId=<unknown>, instanceId=i1\n\nfix:\n- Provide the child implementation in the same scope (imports).\n  Example: ParentModule.implement({ imports: [PerfTarget.impl], ... })\n- If you intentionally want a root singleton, provide it at app root (Runtime.make(...,{ layer }) / root imports),\n  and use Root.resolve(ModuleTag) (instead of $.use) at the callsite.\n    at <anonymous> (/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-core/src/internal/runtime/BoundApiRuntime.ts:378:19)"
+      "error": "MissingModuleRuntimeError: [MissingModuleRuntimeError] Cannot resolve ModuleRuntime for ModuleTag.\n\ntokenId: PerfTarget\nentrypoint: logic.$.use\nmode: strict\nfrom: <unknown module id>\nstartScope: moduleId=<unknown>, instanceId=i1\n\nfix:\n- Provide the child implementation in the same scope (imports).\n  Example: ParentModule.implement({ imports: [PerfTarget.impl], ... })\n- If you intentionally want a root singleton, provide it at app root (Runtime.make(...,{ layer }) / root imports),\n  and use Root.resolve(ModuleTag) (instead of $.use) at the callsite.\n    at <anonymous> (/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/packages/logix-core/src/internal/runtime/BoundApiRuntime.ts:378:19)"
     }
   }
 }

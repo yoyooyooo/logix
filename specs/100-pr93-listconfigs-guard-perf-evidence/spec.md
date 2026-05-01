@@ -1,8 +1,8 @@
 # Feature Specification: PR93 listConfigs guard 性能证据回填
 
-**Feature Branch**: `spec/100-pr93-listconfigs-guard-perf-evidence`  
-**Created**: 2026-02-25  
-**Status**: Backfill（已交付实现的规格补录）  
+**Feature Branch**: `spec/100-pr93-listconfigs-guard-perf-evidence`
+**Created**: 2026-02-25
+**Status**: Backfill（已交付实现的规格补录）
 **PR Reference**: [#93](https://github.com/yoyooyooo/logix/pull/93)
 
 ## 背景

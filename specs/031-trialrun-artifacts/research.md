@@ -1,22 +1,22 @@
 # Research: TrialRun Artifacts（031：artifacts 槽位 + RulesManifest）
 
-**Date**: 2025-12-26  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/031-trialrun-artifacts/spec.md`  
-**Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/031-trialrun-artifacts/plan.md`
+**Date**: 2025-12-26
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/031-trialrun-artifacts/spec.md`
+**Plan**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/031-trialrun-artifacts/plan.md`
 
-> 本文件只固化“关键裁决/权衡”，详细实现链路外链到 runtime SSoT：  
-> `docs/ssot/runtime/logix-core/api/06-reflection-and-trial-run.md`  
+> 本文件只固化“关键裁决/权衡”，详细实现链路外链到 runtime SSoT：
+> `docs/ssot/runtime/logix-core/api/06-reflection-and-trial-run.md`
 > `docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md`
 
 ## Decision 1：artifacts 必须是“概念域命名”，不绑定实现包
 
-**Decision**：`artifactKey` 是协议命名空间（契约域），不得使用实现包名前缀（如 `core/sandbox/react`）。  
-**Rationale**：避免“实现迁移导致 key 漂移”，让 Workbench/CI/Agent 只认稳定契约。  
+**Decision**：`artifactKey` 是协议命名空间（契约域），不得使用实现包名前缀（如 `core/sandbox/react`）。
+**Rationale**：避免“实现迁移导致 key 漂移”，让 Workbench/CI/Agent 只认稳定契约。
 **Example**：`@logixjs/form.rulesManifest@v1`、`@logixjs/module.portSpec@v1`。
 
 ## Decision 2：artifacts 采用 Envelope，显式表达 ok/error/truncation
 
-**Decision**：`TrialRunReport.artifacts` 采用 `Record<ArtifactKey, ArtifactEnvelope>`，而不是裸 `JsonValue`。  
+**Decision**：`TrialRunReport.artifacts` 采用 `Record<ArtifactKey, ArtifactEnvelope>`，而不是裸 `JsonValue`。
 **Rationale**：
 
 - 031 的核心约束之一是“单项失败不阻塞”与“预算/截断可解释”；裸值很难表达这些状态。
@@ -24,7 +24,7 @@
 
 ## Decision 3：RulesManifest 的 schema 复用 028（单一事实源）
 
-**Decision**：`@logixjs/form.rulesManifest@v1` 的 `manifest` 字段直接 `$ref` 到 028 的 RulesManifest schema。  
+**Decision**：`@logixjs/form.rulesManifest@v1` 的 `manifest` 字段直接 `$ref` 到 028 的 RulesManifest schema。
 **Rationale**：避免在 031 重复定义 rules 的静态 IR 口径，保持 rules-first 体系单一事实源。
 
 **Link**：`specs/028-form-api-dx/contracts/schemas/rules-manifest.schema.json`

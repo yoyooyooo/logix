@@ -1,7 +1,7 @@
 # Tasks: ExternalStore + TickScheduler（跨外部源/跨模块强一致，无 tearing）
 
-**Input**: Design documents from `specs/073-logix-external-store-tick/`  
-**Prerequisites**: `spec.md`, `plan.md`, `research.md`, `data-model.md`, `contracts/*`, `quickstart.md`  
+**Input**: Design documents from `specs/073-logix-external-store-tick/`
+**Prerequisites**: `spec.md`, `plan.md`, `research.md`, `data-model.md`, `contracts/*`, `quickstart.md`
 **Tests**: REQUIRED（`spec.md` 的 SC-001/SC-004 要求自动化语义测试 + perf evidence）
 
 ## Format: `[ID] [P?] [Story] Description with file path`
@@ -15,7 +15,7 @@
 - **M1（Reference Frame Cutover）**：完成 Phase 3 + Phase 4 + Phase 6，使 `RuntimeStore + tickSeq` 成为 React 唯一订阅真相源，并具备 `trace:tick` 证据闭环与 perf gate（此里程碑完成后，后续所有 Flow/Action 能力都默认以 tick 为参考系）。
 - **M2（IR Strong Consistency）**：完成 Phase 5，为跨模块强一致补齐“可识别依赖 IR”（DeclarativeLinkIR/Module-as-Source），并把强一致边界（declarative vs blackbox）写入测试与诊断证据。
 - **M3（HostScheduler + act-like TestKit）**：收敛宿主调度入口（microtask/macrotask/raf/timeout）到可注入 Runtime Service，并提供统一 flush 口径（类似 React `act` 但以 `tickSeq` 为锚点），用于反饥饿治理、可诊断证据与稳定测试。
-- **Out-of-scope（拆到后续 spec）**：自由工作流（多步协议/时间算子）与 source 自动触发内核化不在 073 主干里强塞，避免把“自由度”误塞进 trait meta；相关工作以新 spec 单独推进。
+- **Out-of-scope（拆到后续 spec）**：自由工作流（多步协议/时间算子）与 source 自动触发内核化不在 073 主干里强塞，避免把“自由度”误塞进 field meta；相关工作以新 spec 单独推进。
 
 ---
 
@@ -23,30 +23,30 @@
 
 - [x] T001 Create perf evidence folder `specs/073-logix-external-store-tick/perf/` (per `plan.md#Perf Evidence Plan`)
 - [x] T002 [P] Sync Runtime SSoT entry points (if public API changes): `docs/ssot/runtime/logix-core/api/*` + `docs/ssot/runtime/logix-react/*`
-- [x] T003 [P] Write user docs (减少 useEffect 数据胶水) for ExternalStore + StateTrait.externalStore + Module-as-Source in `apps/docs/content/docs/guide/recipes/external-store.md` and add it to `apps/docs/content/docs/guide/recipes/meta.json` (user-doc style; avoid内部术语；include “何时用 ReadQuery vs fromModule vs externalStore vs link” decision guide)
-- [x] T004 [P] Add API doc page for ExternalStore in `apps/docs/content/docs/api/core/external-store.md` and update `apps/docs/content/docs/api/core/meta.json` (focus on usage + constraints: sync getSnapshot, Signal Dirty, SSR getServerSnapshot, fromStream fail-fast, fromModule IR-recognizable)
+- [x] T003 [P] Write user docs (减少 useEffect 数据胶水) for ExternalStore + FieldKernel.externalStore + Module-as-Source in `apps/docs 当前 guide/runtime 口径文档` and add it to `apps/docs/content/docs/guide/recipes/meta.json` (user-doc style; avoid内部术语；include “何时用 ReadQuery vs fromModule vs externalStore vs link” decision guide)
+- [x] T004 [P] Add API doc page for ExternalStore in `apps/docs 当前 core/guide 口径文档` and update `apps/docs/content/docs/api/core/meta.json` (focus on usage + constraints: sync getSnapshot, Signal Dirty, SSR getServerSnapshot, fromStream fail-fast, fromModule IR-recognizable)
 - [x] T005 [P] Decompose `packages/logix-core/src/internal/runtime/core/ModuleRuntime.ts` (1500+ LOC) into mutually-exclusive `ModuleRuntime.*.ts` flat modules per `plan.md#Large File Decomposition` (no behavior change; keep public surface stable)
 - [x] T006 [P] Decompose `packages/logix-core/src/internal/runtime/core/DebugSink.ts` (1600+ LOC) into mutually-exclusive `DebugSink.*.ts` flat modules per `plan.md#Large File Decomposition` (no behavior change; keep event shapes stable)
 - [x] T007 [P] Decompose `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.ts` (1300+ LOC) into mutually-exclusive `ProcessRuntime.*.ts` flat modules per `plan.md#Large File Decomposition` (no behavior change; keep ProcessProtocol stable)
-- [x] T008 [P] Decompose `packages/logix-core/src/internal/state-trait/{source,converge-in-transaction,validate}.ts` (1000+ LOC) into mutually-exclusive `*.ts` flat modules per `plan.md#Large File Decomposition` (no behavior change; preserve exports)
+- [x] T008 [P] Decompose `packages/logix-core/src/internal/state-field/{source,converge-in-transaction,validate}.ts` (1000+ LOC) into mutually-exclusive `*.ts` flat modules per `plan.md#Large File Decomposition` (no behavior change; preserve exports)
 
 ---
 
-## Phase 2: Level 1（ExternalStore + StateTrait.externalStore）
+## Phase 2: Level 1（ExternalStore + FieldKernel.externalStore）
 
-**Goal**：把外部输入从“订阅胶水”升级为 declarative trait，保证初始化无竞态，并且写回进入事务窗口。
+**Goal**：把外部输入从“订阅胶水”升级为 declarative field，保证初始化无竞态，并且写回进入事务窗口。
 
-- [x] T009 [US2] Harden StateTrait deps contract: change `StateTrait.source({ key })` from `key(state)` to **deps-as-args** `key(...depsValues)` (DSL lowers into internal `key(state)`); migrate all callsites + `@logixjs/query` trait lowering + runtime SSoT docs under `docs/ssot/runtime/logix-core/**` (align with computed; reduces deps mismatch risk and makes Static IR dependency story tighter)
+- [x] T009 [US2] Harden FieldKernel deps contract: change `FieldKernel.source({ key })` from `key(state)` to **deps-as-args** `key(...depsValues)` (DSL lowers into internal `key(state)`); migrate all callsites + `@logixjs/query` field lowering + runtime SSoT docs under `docs/ssot/runtime/logix-core/**` (align with computed; reduces deps mismatch risk and makes Static IR dependency story tighter)
 - [x] T010 [US2] Define `ExternalStore<T>` public contract in `packages/logix-core/src/ExternalStore.ts` (`getSnapshot/subscribe` + optional `getServerSnapshot` for SSR) (FR-001)
-- [x] T011 [P] Implement ExternalStore sugars in `packages/logix-core/src/ExternalStore.ts` (`fromService` / `fromSubscriptionRef` / `fromStream` / `fromModule`) (FR-002; `fromStream` missing `initial/current` must Runtime Error fail-fast; `fromSubscriptionRef` assumes pure read; all sugars must carry an internal **descriptor** for trait build/IR export; `fromModule` descriptor MUST include resolvable moduleId + `ReadQueryStaticIr` so Module-as-Source is IR-recognizable (no blackbox subscribe): moduleId must resolve, selectorId must be stable (deny `unstableSelectorId`), otherwise fail-fast; include stale-start + purity + module-as-source warnings in docstring + quickstart)
+- [x] T011 [P] Implement ExternalStore sugars in `packages/logix-core/src/ExternalStore.ts` (`fromService` / `fromSubscriptionRef` / `fromStream` / `fromModule`) (FR-002; `fromStream` missing `initial/current` must Runtime Error fail-fast; `fromSubscriptionRef` assumes pure read; all sugars must carry an internal **descriptor** for field build/IR export; `fromModule` descriptor MUST include resolvable moduleId + `ReadQueryStaticIr` so Module-as-Source is IR-recognizable (no blackbox subscribe): moduleId must resolve, selectorId must be stable (deny `unstableSelectorId`), otherwise fail-fast; include stale-start + purity + module-as-source warnings in docstring + quickstart)
 - [x] T012 [P] Export `ExternalStore` as a public submodule in `packages/logix-core/src/index.ts` and satisfy `scripts/public-submodules/verify.ts` (plan.md#Project Structure)
-- [x] T013 [US2] Add `StateTrait.externalStore` DSL in `packages/logix-core/src/StateTrait.ts` (include `lane/ownership/source` policy hooks; IR-exportable; must support `priority: "nonUrgent"` as an explicit lane downgrade entry) (FR-003 / FR-011)
-- [x] T014 [US2] Implement externalStore trait runtime/install in `packages/logix-core/src/internal/state-trait/external-store.ts` (FR-003/FR-005; listener must be Signal Dirty + tick scheduling dedup, no payload task queue storm)
-- [x] T015 [US2] Wire trait registry/build pipeline to recognize `kind: "externalStore"` in `packages/logix-core/src/internal/state-trait/model.ts` + `packages/logix-core/src/internal/state-trait/build.ts` (emit first-class plan step, e.g. `external-store-sync`) and export `source/ownership/lane` policy into `packages/logix-core/src/internal/state-trait/ir.ts` (Static IR digest must reflect structural changes)
-- [x] T016 [US2] Implement atomic init semantics (no missed updates between `getSnapshot` and `subscribe`) in `packages/logix-core/src/internal/state-trait/external-store.ts` (FR-004)
-- [x] T019 [P] [US2] Enforce external-owned field ownership: build/install-time conflict detection + runtime fail-fast on non-trait writes to the same fieldPath (no eslint/type-level static write analysis). build-time governance MUST cover “single writer per fieldPath” across computed/link/source/externalStore and must also protect root reset/patch paths. Implement in `packages/logix-core/src/internal/state-trait/external-store.ts` + build pipeline + runtime dirty-set guard, with tests in `packages/logix-core/test/internal/StateTrait/StateTrait.ExternalStoreTrait.Ownership.test.ts` (FR-003)
-- [x] T017 [P] Add tests for init atomicity + equals/select gating + Signal Dirty dedup (e.g. 100 emits in same microtask does not enqueue 100 writes) + `getSnapshot()` throw → trait fuse + `fromStream` missing `initial/current` → Runtime Error + Static IR export contains ExternalStoreTrait node/policy (source/priority/ownership) in `packages/logix-core/test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts` (FR-001 / FR-002 / FR-004)
-- [x] T018 [P] Add tests proving writeback happens inside txn and never performs IO in txn-window (best-effort runtime guard) in `packages/logix-core/test/internal/StateTrait/StateTrait.ExternalStoreTrait.TxnWindow.test.ts` (FR-005 / NFR-004)
+- [x] T013 [US2] Add `FieldKernel.externalStore` DSL in `packages/logix-core/src/FieldKernel.ts` (include `lane/ownership/source` policy hooks; IR-exportable; must support `priority: "nonUrgent"` as an explicit lane downgrade entry) (FR-003 / FR-011)
+- [x] T014 [US2] Implement externalStore field runtime/install in `packages/logix-core/src/internal/state-field/external-store.ts` (FR-003/FR-005; listener must be Signal Dirty + tick scheduling dedup, no payload task queue storm)
+- [x] T015 [US2] Wire field registry/build pipeline to recognize `kind: "externalStore"` in `packages/logix-core/src/internal/state-field/model.ts` + `packages/logix-core/src/internal/state-field/build.ts` (emit first-class plan step, e.g. `external-store-sync`) and export `source/ownership/lane` policy into `packages/logix-core/src/internal/state-field/ir.ts` (Static IR digest must reflect structural changes)
+- [x] T016 [US2] Implement atomic init semantics (no missed updates between `getSnapshot` and `subscribe`) in `packages/logix-core/src/internal/state-field/external-store.ts` (FR-004)
+- [x] T019 [P] [US2] Enforce external-owned field ownership: build/install-time conflict detection + runtime fail-fast on non-field writes to the same fieldPath (no eslint/type-level static write analysis). build-time governance MUST cover “single writer per fieldPath” across computed/link/source/externalStore and must also protect root reset/patch paths. Implement in `packages/logix-core/src/internal/state-field/external-store.ts` + build pipeline + runtime dirty-set guard, with tests in `packages/logix-core/test/internal/FieldKernel/FieldKernel.ExternalStoreTrait.Ownership.test.ts` (FR-003)
+- [x] T017 [P] Add tests for init atomicity + equals/select gating + Signal Dirty dedup (e.g. 100 emits in same microtask does not enqueue 100 writes) + `getSnapshot()` throw → field fuse + `fromStream` missing `initial/current` → Runtime Error + Static IR export contains ExternalStoreTrait node/policy (source/priority/ownership) in `packages/logix-core/test/internal/FieldKernel/FieldKernel.ExternalStoreTrait.Runtime.test.ts` (FR-001 / FR-002 / FR-004)
+- [x] T018 [P] Add tests proving writeback happens inside txn and never performs IO in txn-window (best-effort runtime guard) in `packages/logix-core/test/internal/FieldKernel/FieldKernel.ExternalStoreTrait.TxnWindow.test.ts` (FR-005 / NFR-004)
 
 **Checkpoint**：不用手写 `$.on(external).mutate(...)` 也能把外部输入写回 state，并可稳定触发 computed/link/source（模块内无 tearing）。
 
@@ -89,13 +89,13 @@
 
 ## Phase 5: DeclarativeLinkIR（跨模块强一致可识别依赖）
 
-**Goal**：为“多外部源 → 下游 source/query → UI”链路提供可识别 IR，使 TickScheduler 能稳定化并可解释；黑盒 `Process.link` 保持降级语义。
+**Goal**：为“多外部源 → 下游 source/query → UI”链路提供可识别 IR，使 TickScheduler 能稳定化并可解释；黑盒 `orchestration process link surface` 保持降级语义。
 
 - [x] T040 [US1] Define Static IR shape for ExternalStoreTrait + DeclarativeLinkIR (dispatch-only; no direct state writes). DeclarativeLinkIR read nodes MUST reuse `ReadQueryStaticIr` (no parallel selector-like IR) in `packages/logix-core/src/internal/runtime/core/DeclarativeLinkIR.ts` (and connect export via `ConvergeStaticIrCollector.ts` as needed) (FR-009)
 - [x] T041 [US1] Implement minimal DeclarativeLink execution path (readQuery/static deps → write) in `packages/logix-core/src/internal/runtime/core/*` without IO in txn-window (FR-009 / NFR-004)
 - [x] T042 [P] [US1] Add tests proving strong consistency only applies to declarative IR; blackbox links remain “best-effort” and are flagged in diagnostics in `packages/logix-core/test/internal/runtime/DeclarativeLinkIR.boundary.test.ts` (FR-009)
-- [x] T043 [US1] Define and export Static IR encoding for Module-as-Source (ExternalStoreTrait `source.kind=\"module\"`: moduleId/instanceKey/selectorId/readsDigest) and make TickScheduler treat it as a cross-module dependency edge (module readQuery → trait writeback) so it can be stabilized within the same tick (FR-012 / SC-005; add recognizability gate: moduleId must resolve + selectorId must be stable; deny `unstableSelectorId`; non-static selectors may fall back to module-topic edge but must not become blackbox subscribe; update IR export path per `contracts/ir.md`)
-- [x] T044 [P] [US1] Add tests for Module-as-Source semantics: B uses `StateTrait.externalStore({ store: ExternalStore.fromModule(A, selector) })`, A updates multiple times in one tick, B's committed value and downstream derived (e.g. source keyHash) settle in the same observable flush with the same tickSeq (no A-new/B-old tearing) in `packages/logix-core/test/internal/runtime/ModuleAsSource.tick.test.ts` (SC-005)
+- [x] T043 [US1] Define and export Static IR encoding for Module-as-Source (ExternalStoreTrait `source.kind=\"module\"`: moduleId/instanceKey/selectorId/readsDigest) and make TickScheduler treat it as a cross-module dependency edge (module readQuery → field writeback) so it can be stabilized within the same tick (FR-012 / SC-005; add recognizability gate: moduleId must resolve + selectorId must be stable; deny `unstableSelectorId`; non-static selectors may fall back to module-topic edge but must not become blackbox subscribe; update IR export path per `contracts/ir.md`)
+- [x] T044 [P] [US1] Add tests for Module-as-Source semantics: B uses `FieldKernel.externalStore({ store: ExternalStore.fromModule(A, selector) })`, A updates multiple times in one tick, B's committed value and downstream derived (e.g. source keyHash) settle in the same observable flush with the same tickSeq (no A-new/B-old tearing) in `packages/logix-core/test/internal/runtime/ModuleAsSource.tick.test.ts` (SC-005)
 - [x] T045 [P] [US1] Add tests for Module-as-Source recognizability gate: (1) module handle without resolvable moduleId fails-fast at install/build, (2) selector with `fallbackReason=unstableSelectorId` fails-fast, (3) selector without `readsDigest` routes via module-topic edge (still IR-recognizable, no blackbox subscribe) and emits a diagnostic in dev/diagnostics=on in `packages/logix-core/test/internal/runtime/ModuleAsSource.recognizability.test.ts` (FR-012)
 
 **Checkpoint**：强一致边界清晰：可识别 IR 无 tearing、可解释、可预算；黑盒 link 不承诺但不会破坏系统稳定性（至少可观测到降级原因）。
@@ -117,7 +117,7 @@
 - 大文件拆分（T005–T008）是 “触及同一文件的后续任务” 的软前置：在实现 `T014/T019/T024/T025` 等改动之前先完成拆分，避免在 >1000 LOC 单体文件上继续堆叠语义。
 - Gate（Tick Core）：在进入 Phase 4 之前必须完成并通过 `T025/T026/T029`（`trace:tick` 证据口径 + fixpoint/降级语义 + tickSeq 关联锚点），否则核心语义容易漂移。
 - React cutover（尤其 `T032` 删除 per-module stores）必须被 `T024/T035/T033/T036` 阻断：先把语义护栏跑绿，再删除旧真相源；否则容易走回“双真相源/tearing 回归”。
-- Trait 下沉（Static governance + IR 导出）必须先到位：`T011（descriptor）→ T015（plan step + IR policy）→ T019（external-owned/单 writer 治理）` 是 Module-as-Source 与后续 TickScheduler/RuntimeStore 消费 IR 的硬前置。
+- Field 下沉（Static governance + IR 导出）必须先到位：`T011（descriptor）→ T015（plan step + IR policy）→ T019（external-owned/单 writer 治理）` 是 Module-as-Source 与后续 TickScheduler/RuntimeStore 消费 IR 的硬前置。
 - US2（declarative 外部输入）是 Level1 的主体。
 - US3（超预算/循环软降级 + 可解释）主要落在 Phase 3（尤其 `T025/T026`），并作为 React 切换前的语义护栏（必须能解释“为何降级/推迟了什么/何时追赶”）。
 - US1（ABCD 链路 + 无 tearing）需要 Level2 + React 切换完成后才能用最小 demo 验证；Phase 5 的 IR 工作把“跨模块强一致”从黑盒提升为可识别依赖。
@@ -126,8 +126,8 @@
 
 ## Phase 7: Post-Acceptance Fixes（补齐 coded points 全 PASS）
 
-- [x] T054 [P] Emit diagnostics on externalStore fuse (getSnapshot throw) in `packages/logix-core/src/internal/state-trait/external-store.ts` and assert via Debug ring buffer sink in `packages/logix-core/test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts` (FR-001)
-- [x] T055 Wire `StateTrait.externalStore({ priority: "nonUrgent" })` to runtime commit priority (low) in `packages/logix-core/src/internal/state-trait/external-store.ts` + `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts` and add regression test in `packages/logix-core/test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts` (FR-011)
+- [x] T054 [P] Emit diagnostics on externalStore fuse (getSnapshot throw) in `packages/logix-core/src/internal/state-field/external-store.ts` and assert via Debug ring buffer sink in `packages/logix-core/test/internal/FieldKernel/FieldKernel.ExternalStoreTrait.Runtime.test.ts` (FR-001)
+- [x] T055 Wire `FieldKernel.externalStore({ priority: "nonUrgent" })` to runtime commit priority (low) in `packages/logix-core/src/internal/state-field/external-store.ts` + `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts` and add regression test in `packages/logix-core/test/internal/FieldKernel/FieldKernel.ExternalStoreTrait.Runtime.test.ts` (FR-011)
 - [x] T056 Add externalStore ingest perf boundary suite + retained heap gate in `packages/logix-react/test/browser/perf-boundaries/external-store-ingest.test.tsx` (NFR-001 / NFR-008)
 - [x] T057 Collect and diff perf reports for the new suite and update `specs/073-logix-external-store-tick/perf/*` + `specs/073-logix-external-store-tick/plan.md#Perf Evidence Plan` (NFR-001 / NFR-008 / SC-004)
 - [x] T058 Record updated acceptance matrix + gaps and rerun workspace gates in `specs/073-logix-external-store-tick/notes/sessions/2026-01-06.md` (Quality gate)
@@ -137,7 +137,7 @@
 ## Phase 8: Scheduler Hardening（单一调度闭环：Signal→Queue→Tick→Yield→Snapshot→Notify→Evidence/Test）
 
 - [x] T059 [P] Add scheduler contract and wire it into plan/docs: `specs/073-logix-external-store-tick/contracts/scheduler.md` + update `specs/073-logix-external-store-tick/contracts/diagnostics.md` + update `specs/073-logix-external-store-tick/plan.md` + update `specs/073-logix-external-store-tick/research.md` + update `specs/073-logix-external-store-tick/quickstart.md`
-- [x] T060 [P] Introduce internal Runtime Service `HostScheduler` (Tag + default Node/Browser impl) and route all core-path scheduling through it (ban direct `queueMicrotask/setTimeout/requestAnimationFrame` in TickScheduler/RuntimeStore/ExternalStore/DevtoolsHub/state-trait) (see `contracts/scheduler.md`)
+- [x] T060 [P] Introduce internal Runtime Service `HostScheduler` (Tag + default Node/Browser impl) and route all core-path scheduling through it (ban direct `queueMicrotask/setTimeout/requestAnimationFrame` in TickScheduler/RuntimeStore/ExternalStore/DevtoolsHub/state-field) (see `contracts/scheduler.md`)
 - [x] T061 [P] Make TickScheduler queue explicit (JobQueue): Signal Dirty only enqueues/dedups, tick flush pulls latest snapshots and drives fixpoint; record `coalescedCount`/backlog summaries for diagnostics (align with `plan.md#调度抽象与反饥饿`)
 - [x] T062 [P] Implement yield-to-host (anti-starvation) for TickScheduler: when `budgetExceeded/cycle_detected/microtaskChainDepth` triggers, continue backlog via macrotask and emit Slim evidence (`trace:tick.schedule` + `warn:microtask-starvation`); `microtaskChainDepth` must be maintained internally (reset on macrotask boundary) (see `contracts/scheduler.md` + `contracts/diagnostics.md`)
 - [x] T063 [P] Provide act-like TestKit API (flushAll/advanceTicks) backed by deterministic HostScheduler; migrate new tests away from ad-hoc `flushMicrotasks/sleep` (align with React `act`, but anchor on `tickSeq`); add at least 1 React integration regression test for yield-to-host (React can insert higher-priority updates; no-tearing anchored on `tickSeq`)

@@ -15,7 +15,7 @@ import * as TestProgram from './TestProgram.js'
  */
 export const itProgram = <Sh extends Logix.AnyModuleShape>(
   name: string,
-  program: Logix.ModuleImpl<any, Sh, any> | Logix.AnyModule,
+  program: Logix.Module.AnyProgram,
   body: (api: TestApi<Sh>) => Effect.Effect<void, any, any>,
   options?: TestProgram.TestProgramOptions,
 ): void => {
@@ -33,7 +33,7 @@ export const itProgram = <Sh extends Logix.AnyModuleShape>(
  */
 export const itProgramResult = <Sh extends Logix.AnyModuleShape>(
   name: string,
-  program: Logix.ModuleImpl<any, Sh, any> | Logix.AnyModule,
+  program: Logix.Module.AnyProgram,
   body: (api: TestApi<Sh>) => Effect.Effect<void, any, any>,
   assert: (result: Execution.ExecutionResult<Sh>) => void,
   options?: TestProgram.TestProgramOptions,

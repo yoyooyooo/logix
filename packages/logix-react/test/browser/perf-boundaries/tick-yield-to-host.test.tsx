@@ -1,3 +1,5 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 import { test } from 'vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
@@ -44,7 +46,7 @@ test(
           },
         }),
       )
-      const moduleImpls = moduleDefs.map((m) => m.implement({ initial: { value: 0 } }).impl)
+      const modulePrograms = moduleDefs.map((m) => Logix.Program.make(m, { initial: { value: 0 } }))
 
       const Root = Logix.Module.make('PerfTickYieldToHost.Root', {
         state: Schema.Void,
@@ -80,7 +82,7 @@ test(
         if (cached) return cached
 
         const instrumentation = args.diagnosticsLevel === 'full' ? 'full' : 'light'
-        const debugLayer = Logix.Debug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
+        const debugLayer = CoreDebug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
           diagnosticsLevel: args.diagnosticsLevel,
         }) as Layer.Layer<any, never, never>
 
@@ -90,7 +92,7 @@ test(
           forcedMacrotaskTicks: 0,
         }
 
-        const tickSchedulerLayer = Logix.InternalContracts.tickSchedulerTestLayer({
+        const tickSchedulerLayer = RuntimeContracts.tickSchedulerTestLayer({
           maxSteps: args.budgetMaxSteps,
           telemetry: {
             sampleRate: 1,
@@ -102,11 +104,15 @@ test(
           },
         }) as Layer.Layer<any, never, never>
 
+        const rootProgram = Logix.Program.make(Root, {
+          initial: undefined,
+          capabilities: {
+            imports: modulePrograms,
+          },
+        })
+
         const runtime = Logix.Runtime.make(
-          Root.implement({
-            initial: undefined,
-            imports: moduleImpls,
-          }),
+          rootProgram,
           {
             stateTransaction: { instrumentation },
             layer: Layer.mergeAll(debugLayer, perfKernelLayer, tickSchedulerLayer) as Layer.Layer<any, never, never>,

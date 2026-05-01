@@ -123,7 +123,7 @@ const resolveServicePort = (
         }
 
         const internals = getRuntimeInternals(runtime)
-        const handler = internals.traits.getSourceRefreshHandler(fieldPath)
+        const handler = internals.fields.getSourceRefreshHandler(fieldPath)
 
         // If no refresh handler is registered, treat it as a no-op (aligns with BoundApiRuntime behavior).
         if (!handler) {
@@ -1122,7 +1122,7 @@ export const installOne = (args: {
   return plan
 }
 
-// test-only probe: whether a watcher has started (for single-subscription gates).
+// test-only inspection hook: whether a watcher has started (for single-subscription gates).
 export const __unsafeGetWatcherStartCount = (runtime: unknown): number => {
   if (!runtime || typeof runtime !== 'object') return 0
   const reg = getRegistry(runtime)

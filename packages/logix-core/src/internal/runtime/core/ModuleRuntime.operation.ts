@@ -3,8 +3,8 @@ import type { StateTxnContext } from './StateTransaction.js'
 import * as Debug from './DebugSink.js'
 import * as EffectOpCore from './EffectOpCore.js'
 import * as EffectOp from '../../effect-op.js'
-import type { RunSession } from '../../observability/runSession.js'
-import { RunSessionTag } from '../../observability/runSession.js'
+import type { RunSession } from '../../verification/runSession.js'
+import { RunSessionTag } from '../../verification/runSession.js'
 import { EffectOpMiddlewareTag } from './EffectOpCore.js'
 
 export interface OperationRuntimeServices {

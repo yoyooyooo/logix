@@ -1,34 +1,33 @@
 ---
 title: useDispatch
-description: Get a typed dispatch function with batch and lowPriority helpers.
+description: Get a typed dispatch function for a module handle.
 ---
 
-`useDispatch` returns a typed dispatch function for a module, plus helpers for common scheduling patterns.
+`useDispatch` returns a typed dispatch function for a module handle.
 
-## Basic usage
+## Usage
 
 ```tsx
-import { useDispatch, useModule, useSelector } from '@logixjs/react'
-import { CounterDef } from './modules/counter'
+import { useDispatch, useModule, useSelector } from "@logixjs/react"
+import { Counter } from "./modules/counter"
 
-function Counter() {
-  const counter = useModule(CounterDef)
+function CounterView() {
+  const counter = useModule(Counter.tag)
   const count = useSelector(counter, (s) => s.count)
   const dispatch = useDispatch(counter)
 
-  return <button onClick={() => dispatch({ _tag: 'increment' })}>{count}</button>
+  return <button onClick={() => dispatch({ _tag: "increment" })}>{count}</button>
 }
 ```
 
-## API
+## Helpers
 
-`useDispatch(handle)` returns a function object:
+The returned function also exposes:
 
-- `dispatch(action)`
 - `dispatch.batch(actions)`
-- `dispatch.lowPriority(action)` (more gentle UI notification merging; does not change correctness)
+- `dispatch.lowPriority(action)`
 
 ## See also
 
-- [API: useModule](./use-module)
-- [Guide: Tick / Flush](../../guide/essentials/tick-and-flush)
+- [useModule](./use-module)
+- [useSelector](./use-selector)

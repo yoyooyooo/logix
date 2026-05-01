@@ -10,15 +10,14 @@ const CounterAllActionMap = {
   dec: Schema.Void,
 }
 
-export const CounterAllDef = Logix.Module.make('CounterAllModule', {
+export const CounterAll = Logix.Module.make('CounterAllModule', {
   state: CounterAllStateSchema,
   actions: CounterAllActionMap,
 })
 
 // 使用 Effect.all + 并发选项挂两条监听，作为 run 模式的对照示例。
-export const CounterAllLogic = CounterAllDef.logic(($) => ({
-  setup: Effect.void,
-  run: Effect.gen(function* () {
+export const CounterAllLogic = CounterAll.logic('counter-all-logic', ($) =>
+  Effect.gen(function* () {
     yield* Effect.all(
       [
         $.onAction('inc').run(
@@ -37,11 +36,9 @@ export const CounterAllLogic = CounterAllDef.logic(($) => ({
       { concurrency: 'unbounded' },
     )
   }),
-}))
+)
 
-export const CounterAllModule = CounterAllDef.implement({
+export const CounterAllProgram = Logix.Program.make(CounterAll, {
   initial: { value: 0 },
   logics: [CounterAllLogic],
 })
-
-export const CounterAllImpl = CounterAllModule.impl

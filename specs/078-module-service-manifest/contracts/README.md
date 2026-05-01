@@ -2,7 +2,7 @@
 
 本目录固化 078 的对外可消费口径（平台/CI/Devtools）：
 
-- 单一真相源：源码锚点（`Module.make({ services })`）→ `Reflection.extractManifest` → `ModuleManifest.servicePorts`
+- 单一真相源：源码锚点（`Module.make({ services })`）→ `CoreReflection.extractManifest` → `ModuleManifest.servicePorts`
 - `TrialRun` / `Spy` 仅作为 evidence（证据）与校验输入，不得形成并行权威
 
 ## 文档（人读）

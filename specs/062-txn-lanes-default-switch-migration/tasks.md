@@ -1,6 +1,6 @@
 # Tasks: 062 Txn Lanes 默认开启（迁移与回退口径）
 
-**Input**: `specs/062-txn-lanes-default-switch-migration/*`（`spec.md`/`plan.md`/`tasks.md`/`quickstart.md`/`contracts/*`）  
+**Input**: `specs/062-txn-lanes-default-switch-migration/*`（`spec.md`/`plan.md`/`tasks.md`/`quickstart.md`/`contracts/*`）
 **Prerequisites**: `060`（Txn Lanes 已实现且可证据化）+ `052`（diagnostics=off gate 已达标）
 
 ## Phase 1: Setup（Shared）

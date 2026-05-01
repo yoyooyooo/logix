@@ -24,7 +24,7 @@
 **Implications**（面向实现阶段）：
 
 - `@logixjs/core-ng` 不直接替换 `@logixjs/core` 的公共 API；它通过 Layer/Tag 注入方式提供某些 runtime service 的实现（并由 `@logixjs/core` 在构造期选择）。
-- 若未来 core-ng 需要替换更深的循环（例如 trait converge 内核/执行 VM），应通过“进一步拆分 serviceId”或“在 transaction service 内部替换子引擎”实现；但 045 本身只先固化契约与装配点，不强行预设全部切分粒度。
+- 若未来 core-ng 需要替换更深的循环（例如 field converge 内核/执行 VM），应通过“进一步拆分 serviceId”或“在 transaction service 内部替换子引擎”实现；但 045 本身只先固化契约与装配点，不强行预设全部切分粒度。
 
 ## Decision 1：包名与依赖拓扑（core / core-ng / react）
 
@@ -47,7 +47,7 @@
 
 **Alternatives considered**：
 
-- `@logixjs/core-ng` 做成 `@logixjs/core` 的平级克隆（同形 API、二选一 import）  
+- `@logixjs/core-ng` 做成 `@logixjs/core` 的平级克隆（同形 API、二选一 import）
   Reject：会导致生态分裂（两套类型/入口），并把迁移成本扩散到所有上层包与示例。
 
 ## Decision 2：多内核“共存”的边界（避免额外浪费）

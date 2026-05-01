@@ -3,31 +3,16 @@ title: Error handling
 description: Error-handling strategy in Logix.
 ---
 
-In Logix, a good default is to handle failures in layers:
+Use a three-level error model in Logix:
 
 - **Local**: expected, recoverable errors stay in Effect’s error channel `E`; catch them close to where they happen and convert them into state/return values.
 - **Module**: unhandled defects go through `$.lifecycle.onError` as a “last report” (logging/monitoring/fallback cleanup).
 - **Global (App/React)**: in React integration, use `RuntimeProvider.onError` as the single entry into your reporting system, instead of implementing one per module.
 
-Two other points are critical:
+Two additional rules are worth keeping explicit:
 
 - **Wiring failures** (missing provider/imports) are configuration errors; fix the wiring per the error message instead of swallowing them in business logic.
 - **Cancellation/interrupt** is not an error; it should not enter error fallback chains or alerting systems.
-
-### Who is this for?
-
-- You already use Logix in a project and want a systematic “expected business errors vs system defects” strategy.
-- You have basic understanding of Effect’s error channel (`E`) and React Error Boundaries, and want a unified approach.
-
-### Prerequisites
-
-- You’ve read [Effect basics](../essentials/effect-basics) or have a basic intuition for `Effect.gen`.
-- You know `$.lifecycle.onError` is used to report “unhandled failures” as a fallback.
-
-### What you’ll get
-
-- A practical layered scheme for “expected errors” vs “defects”.
-- Examples of coordinating error handling across Module, Runtime, and UI layers in Logix+React.
 
 ## 1. Expected errors
 
@@ -57,21 +42,20 @@ Defects are code bugs or unrecoverable system failures. Logix catches defects in
 
 ### The `onError` hook
 
-You can handle unhandled errors uniformly via `$.lifecycle.onError` (**setup-only registration**):
+You can handle unhandled errors uniformly via `$.lifecycle.onError` (declaration-only registration):
 
 ```ts
-const AppLogic = AppModule.logic(($) => ({
-  setup: Effect.sync(() => {
-    $.lifecycle.onError((cause, context) =>
-      Effect.logError({
-        message: "Unhandled module error",
-        cause,
-        context, // includes moduleId/instanceId/phase/hook, etc.
-      }),
-    )
-  }),
-  run: Effect.void,
-}))
+const AppLogic = AppModule.logic(($) => {
+  $.lifecycle.onError((cause, context) =>
+    Effect.logError({
+      message: "Unhandled module error",
+      cause,
+      context, // includes moduleId/instanceId/phase/hook, etc.
+    }),
+  )
+
+  return Effect.void
+})
 ```
 
 ## 3. Global reporting in React (`RuntimeProvider.onError`)
@@ -128,8 +112,7 @@ yield*
   )
 ```
 
-## Next
+## See also
 
-- Debugging module behavior: [Debugging and Devtools](./debugging-and-devtools)
 - Testing your modules: [Testing](./testing)
 - Common patterns and best practices: [Common patterns](../recipes/common-patterns)

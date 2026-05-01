@@ -1,6 +1,6 @@
 # Implementation Plan: StateSchema + Field Ops（069 · pre-codegen）
 
-**Branch**: `069-schema-first-codegen-action-surface` | **Date**: 2026-01-04 | **Spec**: [spec.md](./spec.md)  
+**Branch**: `069-schema-first-codegen-action-surface` | **Date**: 2026-01-04 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `specs/069-schema-first-codegen-action-surface/spec.md`
 
 ## Summary
@@ -13,15 +13,15 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: `effect` v3.19.13、`@logixjs/core`（`packages/logix-core`）  
-**Storage**: N/A  
-**Testing**: Vitest + `@effect/vitest`（Effect-heavy 用例优先）  
-**Target Platform**: Node.js 20+ / modern browsers（Logix Runtime）  
-**Project Type**: pnpm workspace（packages + examples + apps）  
+**Language/Version**: TypeScript 5.9.x（ESM）
+**Primary Dependencies**: `effect` v3.19.13、`@logixjs/core`（`packages/logix-core`）
+**Storage**: N/A
+**Testing**: Vitest + `@effect/vitest`（Effect-heavy 用例优先）
+**Target Platform**: Node.js 20+ / modern browsers（Logix Runtime）
+**Project Type**: pnpm workspace（packages + examples + apps）
 **Performance Goals**:
 - dispatch/txn 热路径：不引入额外解释开销（蓝图仅在 Module.make 冷路径编译）
-- Module.make 冷路径：O(fields + ops) 线性扫描 + 轻量校验；失败 fast 且证据清晰  
+- Module.make 冷路径：O(fields + ops) 线性扫描 + 轻量校验；失败 fast 且证据清晰
 **Constraints**:
 - 事务窗口禁止 IO/async；autoReducer 生成的 reducer 必须纯同步
 - 蓝图必须 Slim 且可序列化（禁止函数/类实例/不可 diff 对象）

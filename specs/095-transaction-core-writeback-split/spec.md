@@ -1,8 +1,8 @@
 # Feature Specification: Transaction Core Writeback Split（O-002）
 
-**Feature Branch**: `095-transaction-core-writeback-split`  
-**Created**: 2026-02-25  
-**Status**: Phase 1 Complete  
+**Feature Branch**: `095-transaction-core-writeback-split`
+**Created**: 2026-02-25
+**Status**: Phase 1 Complete
 **Input**: O-002 第一阶段：在不改公共 API 的前提下，拆解事务巨石，把 commit 后 side effects 切成显式 post-commit 阶段函数，保持语义与顺序不变。
 
 ## User Scenarios & Testing _(mandatory)_
@@ -17,7 +17,7 @@
 
 **Acceptance Scenarios**:
 
-1. **Given** 事务提交成功，**When** 进入后处理，**Then** 所有 side effects 通过统一 `runPostCommitPhases(...)` 入口执行。  
+1. **Given** 事务提交成功，**When** 进入后处理，**Then** 所有 side effects 通过统一 `runPostCommitPhases(...)` 入口执行。
 2. **Given** 需要排查事件顺序，**When** 阅读 post-commit 代码，**Then** 能明确看到各阶段顺序与条件分支。
 
 ---
@@ -32,7 +32,7 @@
 
 **Acceptance Scenarios**:
 
-1. **Given** diagnostics=`off`，**When** 事务提交，**Then** `onCommit` 的执行时机与现状一致。  
+1. **Given** diagnostics=`off`，**When** 事务提交，**Then** `onCommit` 的执行时机与现状一致。
 2. **Given** diagnostics!=`off`，**When** 事务提交，**Then** `state:update` 记录与 `onCommit` 相对顺序保持一致。
 
 ---
@@ -47,14 +47,14 @@
 
 **Acceptance Scenarios**:
 
-1. **Given** 核心路径改动，**When** 执行最小验证命令，**Then** 可复现并稳定通过。  
+1. **Given** 核心路径改动，**When** 执行最小验证命令，**Then** 可复现并稳定通过。
 2. **Given** 诊断关闭，**When** 执行事务路径，**Then** 不引入新的高成本诊断依赖。
 
 ### Edge Cases
 
-- `dirtyAll` fallback 场景下，阶段切分后仍要保留原告警语义。  
-- commitHub 无订阅者时，发布路径必须保持短路策略。  
-- rowId reconcile 与 txn history 写入顺序不可互换。  
+- `dirtyAll` fallback 场景下，阶段切分后仍要保留原告警语义。
+- commitHub 无订阅者时，发布路径必须保持短路策略。
+- rowId reconcile 与 txn history 写入顺序不可互换。
 - `onCommit` 的 diagnostics 分支时机（off vs non-off）必须保持一致。
 
 ## Requirements _(mandatory)_
@@ -77,15 +77,15 @@
 
 ### Key Entities
 
-- **TransactionSyncCore**: 事务同步窗口内的核心执行逻辑。  
-- **PostCommitPhases**: commit 后副作用阶段集合（结构化入口）。  
+- **TransactionSyncCore**: 事务同步窗口内的核心执行逻辑。
+- **PostCommitPhases**: commit 后副作用阶段集合（结构化入口）。
 - **CommitOrderingEvidence**: 用于证明事件顺序与标识稳定性的测试证据。
 
 ## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 
-- **SC-001**: `specs/095-transaction-core-writeback-split/spec.md`、`plan.md`、`tasks.md` 三件套完整存在且无模板占位符。  
-- **SC-002**: `ModuleRuntime.transaction.ts` 完成 post-commit 阶段入口抽取，且行为测试不回归。  
-- **SC-003**: 事务顺序与 `txnId/txnSeq` 稳定性相关测试在 Phase 2 通过（追踪：[#98](https://github.com/yoyooyooo/logix/issues/98)）。  
+- **SC-001**: `specs/095-transaction-core-writeback-split/spec.md`、`plan.md`、`tasks.md` 三件套完整存在且无模板占位符。
+- **SC-002**: `ModuleRuntime.transaction.ts` 完成 post-commit 阶段入口抽取，且行为测试不回归。
+- **SC-003**: 事务顺序与 `txnId/txnSeq` 稳定性相关测试在 Phase 2 通过（追踪：[#98](https://github.com/yoyooyooo/logix/issues/98)）。
 - **SC-004**: 最小验证命令可复现，结果可留档。

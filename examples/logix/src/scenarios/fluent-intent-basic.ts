@@ -10,6 +10,7 @@
 import { Effect, Schema, Stream } from 'effect'
 import { fileURLToPath } from 'node:url'
 import * as Logix from '@logixjs/core'
+import { programLayer } from '../runtime/programLayer.js'
 
 // ---------------------------------------------------------------------------
 // Schema → Shape：计数器带派生字段
@@ -25,13 +26,13 @@ const CounterActionMap = {
   dec: Schema.Void,
 }
 
-type CounterShape = Logix.Shape<typeof CounterStateSchema, typeof CounterActionMap>
+type CounterShape = Logix.Module.Shape<typeof CounterStateSchema, typeof CounterActionMap>
 
 // ---------------------------------------------------------------------------
 // Module：使用 Logix.Module 定义模块身份与契约
 // ---------------------------------------------------------------------------
 
-export const CounterDef = Logix.Module.make('CounterModule', {
+export const Counter = Logix.Module.make('CounterModule', {
   state: CounterStateSchema,
   actions: CounterActionMap,
 })
@@ -40,7 +41,7 @@ export const CounterDef = Logix.Module.make('CounterModule', {
 // Logic：使用 $.onAction 编排逻辑（通过 Module.logic 注入 $）
 // ---------------------------------------------------------------------------
 
-export const CounterLogic = CounterDef.logic(($) =>
+export const CounterLogic = Counter.logic('counter-logic', ($) =>
   Effect.gen(function* () {
     // 1. 监听 inc / dec Action，更新 count
     yield* $.onAction('inc').run(
@@ -68,10 +69,10 @@ export const CounterLogic = CounterDef.logic(($) =>
 )
 
 // ---------------------------------------------------------------------------
-// Impl / Live：组合 State 与 Logic，生成运行时实现
+// Program / Layer：组合 State 与 Logic，生成运行时实现
 // ---------------------------------------------------------------------------
 
-export const CounterFluentModule = CounterDef.implement({
+export const CounterFluentProgram = Logix.Program.make(Counter, {
   initial: {
     count: 0,
     hasValue: false,
@@ -79,7 +80,7 @@ export const CounterFluentModule = CounterDef.implement({
   logics: [CounterLogic],
 })
 
-export const CounterLiveFluent = CounterFluentModule.impl.layer
+export const CounterFluentLayer = programLayer(CounterFluentProgram)
 
 // ---------------------------------------------------------------------------
 // Demo: Simulation
@@ -87,7 +88,7 @@ export const CounterLiveFluent = CounterFluentModule.impl.layer
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const program = Effect.gen(function* () {
-    const runtime = yield* Effect.service(CounterDef.tag).pipe(Effect.orDie)
+    const runtime = yield* Effect.service(Counter.tag).pipe(Effect.orDie)
 
     // Log state changes
     yield* Effect.forkChild(runtime
@@ -115,5 +116,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     yield* Effect.log('--- End ---')
   })
 
-  void Effect.runPromise(program.pipe(Effect.provide(CounterLiveFluent)) as Effect.Effect<void, never, never>)
+  void Effect.runPromise(program.pipe(Effect.provide(CounterFluentLayer)) as Effect.Effect<void, never, never>)
 }

@@ -1,8 +1,8 @@
 # Feature Specification: DevServer 安全硬化（101）
 
-**Feature Branch**: `101-devserver-safety-hardening`  
-**Created**: 2026-01-28  
-**Status**: Done  
+**Feature Branch**: `101-devserver-safety-hardening`
+**Created**: 2026-01-28
+**Status**: Done
 **Input**: DevServer 作为常驻桥接进程，虽然已禁止破坏性 git 操作（094/SSoT），但仍缺少更细粒度的“可控写回”与“权限面”治理：例如 readOnly 模式、对 `dev.run` 的 allowlist、state file 的权限与泄漏面、以及写回门槛（显式授权/能力位）。
 
 协议 SSoT（现状基线）：`docs/ssot/platform/contracts/04-devserver-protocol.md`

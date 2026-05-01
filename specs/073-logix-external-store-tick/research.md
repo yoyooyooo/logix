@@ -13,12 +13,12 @@
   - 每个模块独立调度 notify（microtask/raf/timeout）
   - React 可能观察到 “模块 A 已更新而模块 B 仍是旧值” 的组合（跨模块 tearing）
 
-### 0.2 Core 侧：事务闭包与 Trait 收敛已经具备“同窗派生”的基础
+### 0.2 Core 侧：事务闭包与 Field 收敛已经具备“同窗派生”的基础
 
 - `ModuleRuntime` 的事务闭包在提交前做 converge/validate/source-idle 同步（避免 tearing）：
   - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.ts`
-  - `packages/logix-core/src/internal/state-trait/source.ts`：`syncIdleInTransaction`（key 变空必须同步回 idle）
-- `StateTrait.source` 已实现 keyHash gate/并发语义/两阶段写回（loading → async writeback），且严格避免在事务窗口内执行 IO。
+  - `packages/logix-core/src/internal/state-field/source.ts`：`syncIdleInTransaction`（key 变空必须同步回 idle）
+- `FieldKernel.source` 已实现 keyHash gate/并发语义/两阶段写回（loading → async writeback），且严格避免在事务窗口内执行 IO。
 
 ### 0.3 DevtoolsHub 的 token 不变量（可复用的 tearing 防线）
 
@@ -75,7 +75,7 @@
 
 ### D4：强一致只对 declarative IR 生效；黑盒 link 保留但降级
 
-**Decision**：TickScheduler 只保证对“可识别 IR”无 tearing（ExternalStoreTrait + StateTraitProgram + DeclarativeLinkIR）。现有 `Process.link`/任意 Effect 黑盒仍允许存在，但不承诺进入强一致稳定化。
+**Decision**：TickScheduler 只保证对“可识别 IR”无 tearing（ExternalStoreTrait + FieldProgram + DeclarativeLinkIR）。现有 `orchestration process link surface`/任意 Effect 黑盒仍允许存在，但不承诺进入强一致稳定化。
 
 **Rationale**：
 
@@ -86,7 +86,7 @@
 
 ### D5：Module-as-Source 进入同一套声明式图谱（模块组合）
 
-**Decision**：支持把模块 A 的 selector 结果作为模块 B 的 ExternalStore 来源（对外心智：`ExternalStore.fromModule(...) + StateTrait.externalStore(...)`），并要求该依赖进入统一最小 IR，使 TickScheduler 能在同 tick 内稳定化它（避免 “订阅胶水升级版” 变成不可解释黑盒）。
+**Decision**：支持把模块 A 的 selector 结果作为模块 B 的 ExternalStore 来源（对外心智：`ExternalStore.fromModule(...) + FieldKernel.externalStore(...)`），并要求该依赖进入统一最小 IR，使 TickScheduler 能在同 tick 内稳定化它（避免 “订阅胶水升级版” 变成不可解释黑盒）。
 
 **Rationale**：
 
@@ -97,7 +97,7 @@
 
 ### D6：fromModule 不做值拷贝（按引用共享）
 
-**Decision**：`ExternalStore.fromModule` 的 selector 返回值不会被 Runtime 自动 clone；下游 `StateTrait.externalStore` 写回按引用存储 selector 返回值本身。该能力用于“必要输入纳入收敛图谱”，禁止用它做全量 state 镜像；selector 应保持小、稳定、可解释。
+**Decision**：`ExternalStore.fromModule` 的 selector 返回值不会被 Runtime 自动 clone；下游 `FieldKernel.externalStore` 写回按引用存储 selector 返回值本身。该能力用于“必要输入纳入收敛图谱”，禁止用它做全量 state 镜像；selector 应保持小、稳定、可解释。
 
 **Rationale**：
 
@@ -110,19 +110,19 @@
 
 ---
 
-### D7：Trait 下沉边界（Static governance + IR 单一事实源）
+### D7：Field 下沉边界（Static governance + IR 单一事实源）
 
-**Decision**：ExternalStoreTrait 必须作为 `StateTrait` 的一等 kind 进入 `StateTraitProgram.graph/plan` 并参与 Static IR 导出；traits 只负责“模块内字段能力 + 静态治理 + IR 导出”，Runtime（TickScheduler/RuntimeStore）只消费 IR 做调度与快照一致性。禁止把 tick/React 订阅逻辑塞进 traits，也禁止 Runtime 通过 subscribe 黑盒“猜”Module-as-Source。
+**Decision**：ExternalStoreTrait 必须作为 `FieldKernel` 的一等 kind 进入 `FieldProgram.graph/plan` 并参与 Static IR 导出；fields 只负责“模块内字段能力 + 静态治理 + IR 导出”，Runtime（TickScheduler/RuntimeStore）只消费 IR 做调度与快照一致性。禁止把 tick/React 订阅逻辑塞进 fields，也禁止 Runtime 通过 subscribe 黑盒“猜”Module-as-Source。
 
 **Rationale**：
 
-- 避免双真相源：若 React/Runtime 自己推导“哪些外部源来自 module/selector”，最终一定会与 trait 声明漂移（诊断与回放失真）。
+- 避免双真相源：若 React/Runtime 自己推导“哪些外部源来自 module/selector”，最终一定会与 field 声明漂移（诊断与回放失真）。
 - 静态治理前置：external-owned/单 writer/可识别性门禁必须在 build/install 阶段 fail-fast，否则错误会在热路径被放大成 tearing/回归。
 - 便于跨内核复现：core-ng 只要遵循同一组 Runtime Services 合同并消费同一 Static IR，即可复现语义；不依赖“闭包内容”这种不可移植信息。
 
 **Alternatives considered**：
 
-- 把 ExternalStoreTrait 作为 runtime 层胶水（不进 StateTraitProgram/IR）：实现短期快，但长期必然产生不可解释黑盒与难以 gate 的回归（尤其 T035/Topic routing 与 Module-as-Source）。
+- 把 ExternalStoreTrait 作为 runtime 层胶水（不进 FieldProgram/IR）：实现短期快，但长期必然产生不可解释黑盒与难以 gate 的回归（尤其 T035/Topic routing 与 Module-as-Source）。
 
 ---
 

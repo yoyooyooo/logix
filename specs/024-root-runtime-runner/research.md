@@ -1,7 +1,7 @@
 # Research: Root Runtime Runner（根模块运行入口）
 
-**Date**: 2025-12-23  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/024-root-runtime-runner/spec.md`
+**Date**: 2025-12-23
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/024-root-runtime-runner/spec.md`
 
 ## 背景与问题
 
@@ -19,7 +19,7 @@
 
 ## Decision 1：root runner 属于 `@logixjs/core`
 
-**Decision**: 提供标准化 root runner 作为 `@logixjs/core` 的公共能力。  
+**Decision**: 提供标准化 root runner 作为 `@logixjs/core` 的公共能力。
 **Rationale**:
 
 - 这是生产场景能力（脚本/CLI/demo/平台试运行）而非测试专属；不应要求业务侧依赖 `@logixjs/test`。
@@ -62,7 +62,7 @@
 
 ## Decision 4：boot 语义 = “触碰 root tag 一次”
 
-**Decision**: root runner 在进入主流程前应保证 root 已完成实例化启动（至少触碰一次 root tag）。  
+**Decision**: root runner 在进入主流程前应保证 root 已完成实例化启动（至少触碰一次 root tag）。
 **Rationale**:
 
 - 仓库现状中，模块逻辑与 processes 的启动与 ModuleRuntime 构造绑定；不触碰 root tag 可能导致“看似 run 了 program，但后台逻辑未启动”。
@@ -73,7 +73,7 @@
 
 ## Decision 5：退出策略不自动推断（显式表达）
 
-**Decision**: runner 负责启动/释放；退出策略由调用方显式表达（主流程结束/外部信号/观测条件）。  
+**Decision**: runner 负责启动/释放；退出策略由调用方显式表达（主流程结束/外部信号/观测条件）。
 **Rationale**:
 
 - 常驻逻辑（监听 actions/state/平台信号）不会自然结束，自动推断退出会引入不可解释的隐式规则与 bug。
@@ -84,7 +84,7 @@
 
 ## Decision 6：以新视角审视并对齐 `@logixjs/test`
 
-**Decision**: `@logixjs/test` 的 runner 语义以本特性的 root runner 为基线对齐；若早期设定冲突，允许推翻并迁移。  
+**Decision**: `@logixjs/test` 的 runner 语义以本特性的 root runner 为基线对齐；若早期设定冲突，允许推翻并迁移。
 **Rationale**:
 
 - 测试与 demo 若在启动/释放/作用域上语义不一致，会制造长期误判与维护成本。

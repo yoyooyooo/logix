@@ -1,7 +1,7 @@
 # Specification Quality Checklist: diagnostics=off 近零成本 Gate（回归防线）
 
-**Purpose**: 在进入规划（plan/tasks）之前，校验规格是否可验收、无明显歧义  
-**Created**: 2025-12-29  
+**Purpose**: 在进入规划（plan/tasks）之前，校验规格是否可验收、无明显歧义
+**Created**: 2025-12-29
 **Feature**: `specs/052-core-ng-diagnostics-off-gate/spec.md`
 
 ## Content Quality

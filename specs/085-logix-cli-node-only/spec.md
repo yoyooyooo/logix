@@ -1,15 +1,19 @@
 # Feature Specification: Logix CLI（Node-only 工具箱与集成验证跑道）
 
-**Feature Branch**: `085-logix-cli-node-only`  
-**Created**: 2026-01-09  
-**Status**: Done  
-**Input**: 在平台产品落地前，提供一个 Node-only 的 `logix` CLI：把“IR 导出 / 受控试跑 / Anchor 索引 / 保守回写 / Gate（validate/diff）/ 可选 Transform（batch ops）”串成一条可复现跑道，作为开发者、Agent 与 CI 的验证入口；输出必须确定性、可序列化、可 diff。
+> Superseded background only. This document records the old Node-only toolbox plan and must not be used as current CLI authority.
+> Current CLI authority is [../160-cli-agent-first-control-plane-cutover/spec.md](../160-cli-agent-first-control-plane-cutover/spec.md) and [../../docs/ssot/runtime/15-cli-agent-first-control-plane.md](../../docs/ssot/runtime/15-cli-agent-first-control-plane.md).
+> `ir export / ir validate / ir diff`, `contract-suite run`, `transform module`, `trialrun`, public `describe`, global `--mode report|write`, `ControlSurfaceManifest`, and `controlProgramSurface` are negative-only legacy references for `160`.
+
+**Feature Branch**: `085-logix-cli-node-only`
+**Created**: 2026-01-09
+**Status**: Done
+**Input**: 在平台产品落地前，提供一个 Node-only 的 `logix` CLI：把“IR 导出 / 受控试跑 / Gate（validate/diff）/ Contract Suite / 可选 Transform（batch ops）”串成一条可复现跑道，作为开发者、Agent 与 CI 的验证入口；输出必须确定性、可序列化、可 diff。
 
 ## Context
 
 全双工前置（`080`）的基础能力在早期需要一个“可运行、可验收、可自动化”的载体：
 
-- 平台 UI/Dev Server 还未成形时，仍需能在 Node 侧验证：Manifest/StaticIR/TrialRunReport、AnchorIndex、AutofillReport/Write-Back。
+- 平台 UI/Dev Server 还未成形时，仍需能在 Node 侧验证：Manifest/StaticIR/TrialRunReport、ContractSuiteVerdict、ContractSuiteContextPack 与受限 Transform report。
 - 这些能力既要服务 CI 门禁，也要服务开发者本地“快速验证/定位问题”。
 - 若缺少统一入口，能力会散落在脚本/示例/内部 API 中，难以形成可回放、可诊断的单一事实源链路。
 
@@ -22,7 +26,7 @@
 同时，本 CLI 需要面向 Agent 的工作方式做裁决：
 
 - **默认路径**：Agent 直接出码/大改动 → 用 CLI 导出工件（Oracle）→ 用 CLI 门禁与对比（Gate）；
-- **可选加速器**：当变更属于 Platform-Grade 子集内的“机械且高风险小改动”时，提供 batch transform，一次表达多项 ops，默认 report-only，满足门槛再写回（对齐 082）。
+- **可选加速器**：当变更属于 Platform-Grade 子集内的“机械且高风险小改动”时，提供 batch transform，一次表达多项 ops，默认 report-only，满足门槛再写回。
 
 ## Clarifications
 
@@ -30,12 +34,12 @@
 
 - AUTO: Q: stdout JSON 输出是否统一？→ A: 默认统一输出 `CommandResult@v1` envelope（无时间戳/随机；工件通过 `artifacts[]` 引用）。
 - AUTO: Q: Exit Code 规范？→ A: `0=SUCCESS`、`2=USER_ERROR`（参数/用法/输入不合法/门禁失败）、`1=INTERNAL`（运行失败/异常/defect）。
-- AUTO: Q: TS 入口加载与解析器依赖如何组织？→ A: 入口加载用 `tsx`；Parser/Rewriter 用 `ts-morph`（子命令内 lazy-load）；`packages/logix-core` 禁止引入 `ts-morph/swc`。
+- AUTO: Q: TS 入口加载如何组织？→ A: 入口加载用 `tsx`；`packages/logix-core` 禁止引入 CLI 专用解析依赖。
 
 ### Session 2026-01-21
 
 - AUTO: Q: 是否把 `ir validate/ir diff` 作为一等公民？→ A: 是；它们是 Gate（可门禁、可 diff）的核心，产出结构化报告与 reason codes。
-- AUTO: Q: 是否提供 `transform module --ops delta.json`？→ A: 是，但 v1 只覆盖 Platform-Grade 子集内的保守改写；默认 report-only，写回必须遵守 082 的幂等与竞态防护。
+- AUTO: Q: 是否提供 `transform module --ops delta.json`？→ A: 是，但 v1 只覆盖 Platform-Grade 子集内的保守改写；默认 report-only，写回必须保证幂等与竞态防护。
 
 ### Session 2026-02-26（多视角收敛）
 
@@ -47,15 +51,14 @@
 
 ### In Scope
 
-- 提供一个 Node-only 的 CLI 工具箱，覆盖至少六类能力：
+- 提供一个 Node-only 的 CLI 工具箱，覆盖以下能力：
   1. 导出 IR 工件（Manifest/StaticIR/Artifacts 等）
   2. 执行受控试跑并导出 TrialRunReport
-  3. 扫描仓库构建 AnchorIndex（Platform-Grade 子集索引）
-  4. 生成 AutofillReport，并可选择写回源码（宁可漏不乱补）
-  5. 对导出工件做门禁与对比：`ir validate` / `ir diff`（可门禁、可 diff、可行动 reason codes）
-  6. 可选 Transform：`transform module --ops <delta.json>`（batch ops；默认 report-only；满足门槛才写回）
-  7. 集成验收入口：`contract-suite run`（036；trialrun + verdict/context pack；可选 `--includeAnchorAutofill` 在同一条命令里带上 079/082 的 report-only 缺口报告）
-- CLI 的 IR 导出与试跑输出必须对齐控制面 Root IR：当 `workflowSurface`（Π slice）可用时，CLI 必须能导出并在输出中引用 `manifest.modules[*].workflowSurface.digest`（避免出现“Program IR”并行命名）。
+  3. 对导出工件做门禁与对比：`ir validate` / `ir diff`（可门禁、可 diff、可行动 reason codes）
+  4. 集成验收入口：`contract-suite run`（trialrun + verdict/context pack）
+  5. 可选 Transform：`transform module --ops <delta.json>`（batch ops；默认 report-only；满足门槛才写回）
+  6. 机器可读命令描述：`describe --json`
+- CLI 的 IR 导出与试跑输出必须对齐控制面 Root IR：当 `controlProgramSurface`（Π slice）可用时，CLI 必须能导出并在输出中引用 `manifest.modules[*].controlProgramSurface.digest`（避免出现“Program IR”并行命名）。
 - 输出必须可 JSON 序列化、确定性、可 diff，并包含必要的 reason codes（失败/跳过/降级原因）。
 - CLI 作为 Node-only 能力的集成测试跑道：命令本身可在 CI 直接跑通并对比输出工件。
 - CLI 必须提供机器可读命令描述能力（`describe --json` 等价能力），供外部 Agent 稳定编排（而非解析人类文档）。
@@ -86,19 +89,19 @@
 
 ---
 
-### User Story 2 - 开发者用 CLI 构建 AnchorIndex，并在安全边界内执行保守回写 (Priority: P1)
+### User Story 2 - 开发者用 CLI 执行受限 batch transform (Priority: P1)
 
-作为开发者，我希望能对仓库构建 AnchorIndex（Platform-Grade 子集索引），并在确认后对“未声明且高置信度”的锚点缺口执行写回；任何不确定情况都必须跳过并可解释（宁可漏不乱补）。
+作为开发者，我希望能对 Platform-Grade 子集内的 Module 执行受限 batch transform，并在确认后显式写回；任何不确定情况都必须跳过并可解释（宁可漏不乱补）。
 
-**Why this priority**: 没有一个稳定入口，Parser/Rewriter/Autofill 很难形成可重复验证的闭环。
+**Why this priority**: 这是 CLI 中唯一保留的源码改写入口，必须保持 report-only 优先、最小改动、可审阅与幂等。
 
-**Independent Test**: 对同一仓库重复构建 AnchorIndex 输出一致；对缺失锚点的模块先 report-only，再 write-back，第二次执行幂等无差异。
+**Independent Test**: 对同一 delta 先 report-only，再 write-back，第二次执行幂等无差异；子集外形态不写回并给出 reason codes。
 
 **Acceptance Scenarios**:
 
-1. **Given** 一个仓库，**When** 运行 `anchor index`，**Then** 得到可序列化的 AnchorIndex 与降级原因摘要。
-2. **Given** 一个模块缺失锚点声明，**When** 运行 `anchor autofill --mode report`，**Then** 输出拟修改清单与跳过原因（reason codes），不写回源码。
-3. **Given** 同一输入，**When** 运行 `anchor autofill --mode write`，**Then** 只写回缺失字段，重复执行幂等，且对不确定项不写回并可解释。
+1. **Given** 一个受支持的 Module delta，**When** 运行 `transform module --mode report`，**Then** 得到稳定 PatchPlan 与 TransformReport，不写回源码。
+2. **Given** 同一 delta，**When** 运行 `transform module --mode write`，**Then** 只写回受支持改动，重复执行幂等。
+3. **Given** 子集外输入，**When** 运行 `transform module`，**Then** 拒绝写回并输出稳定 reason codes。
 
 ---
 
@@ -126,8 +129,8 @@
 
 ### User Story 5 - 对既有 Module 批量增加 state/action（batch transform，可选） (Priority: P1)
 
-Given：页面已存在 Platform-Grade Module 定义。  
-When：需要增加状态（State）或 Action，并补齐必要锚点。  
+Given：页面已存在 Platform-Grade Module 定义。
+When：需要增加状态（State）或 Action，并补齐必要锚点。
 Then：一次 `transform module --ops delta.json` 产出最小 PatchPlan（report-only），可选 `mode=write` 幂等写回。
 
 **Independent Test**: 同一输入产生相同 PatchPlan；写回后再次运行 0 diff；子集外形态不写回并给出 reason codes。
@@ -144,15 +147,15 @@ Then：一次 `transform module --ops delta.json` 产出最小 PatchPlan（repor
 
 ### Functional Requirements
 
-- **FR-001**: 系统 MUST 提供 Node-only CLI 作为基础能力入口，支持：IR 导出、受控试跑、AnchorIndex 构建、保守 autofill（report/write）。
+- **FR-001**: 系统 MUST 提供 Node-only CLI 作为基础能力入口，支持：IR 导出、受控试跑、Gate、Contract Suite、受限 Transform 与机器可读命令描述。
 - **FR-002**: CLI 输出 MUST 可 JSON 序列化、确定性、可 diff，并包含必要的版本信息与 reason codes；stdout 默认 MUST 统一输出 `CommandResult@v1` envelope（避免各子命令格式漂移）。
-- **FR-003**: CLI MUST 支持 report-only 与 write-back 两种模式，并保证 write-back 的幂等性与最小改动面。
+- **FR-003**: CLI 的写回类命令 MUST 支持 report-only 与 write-back 两种模式，并保证 write-back 的幂等性与最小改动面。
 - **FR-004**: CLI MUST 支持将输出工件落盘（稳定路径/稳定命名），以便 CI/平台/Devtools 消费与对比。
-- **FR-005**: CLI MUST 明确“单一真相源”：任何写回只能写入源码显式锚点字段；运行证据与 Spy 证据不得成为长期权威。
+- **FR-005**: CLI MUST 明确“单一真相源”：任何写回只能写入源码显式声明面；运行证据与 Spy 证据不得成为长期权威。
 - **FR-006**: CLI MUST 提供可门禁化的 Exit Code 规范：`0=SUCCESS`、`2=USER_ERROR`（含 `@effect/cli` ValidationError、输入不合法与门禁失败）、`1=INTERNAL`。
 - **FR-007**: CLI MUST 提供 Gate 命令：`ir validate` 与 `ir diff`，其输出必须是结构化工件（可门禁、可行动 reason codes）。
-- **FR-008**: CLI MAY 提供 `transform module --ops <delta.json>`（batch ops）：默认 report-only；写回必须显式开启并遵守 082 的幂等与竞态防护。
-- **FR-009**: CLI MUST 提供 `contract-suite run`（036）作为“一键验收 + 最小事实包”入口：trialrun + `ContractSuiteVerdict@v1`，并按门禁需要输出 `ContractSuiteContextPack@v1`；可选 `--includeAnchorAutofill`（report-only）注入 `PatchPlan/AutofillReport` 以缩短 Agent 链路。
+- **FR-008**: CLI MAY 提供 `transform module --ops <delta.json>`（batch ops）：默认 report-only；写回必须显式开启并遵守幂等与竞态防护。
+- **FR-009**: CLI MUST 提供 `contract-suite run` 作为“一键验收 + 最小事实包”入口：trialrun + `ContractSuiteVerdict@v1`，并按门禁需要输出 `ContractSuiteContextPack@v1`。
 - **FR-010**: CLI MUST 提供机器可读命令契约发现能力（`describe --json` 或等价能力），至少覆盖：命令清单、参数、默认值、必填约束、退出码语义、schema 引用。
 - **FR-011**: CLI MUST 提供可观测的配置解析结果（defaults/profile/CLI 显式参数覆盖链），以避免外部 Agent 因隐式配置产生误判。
 - **FR-012**: CLI MUST 强制 write 路径的显式授权与可审计链路：默认 `mode=report`，`mode=write` 必须产出风险提示、确认信息与结构化诊断事件。
@@ -171,14 +174,14 @@ Then：一次 `transform module --ops delta.json` 产出最小 PatchPlan（repor
 
 ### Key Entities _(include if feature involves data)_
 
-- **CLI Output Artifacts**: 由 CLI 导出的版本化 JSON 工件（ControlSurfaceManifest + workflowSurface/Artifacts/TrialRunReport/AnchorIndex/PatchPlan/WriteBackResult/AutofillReport…）。
+- **CLI Output Artifacts**: 由 CLI 导出的版本化 JSON 工件（ControlSurfaceManifest + controlProgramSurface/Artifacts/TrialRunReport/PatchPlan/TransformReport/WriteBackResult…）。
 - **Reason Codes**: 失败/跳过/降级原因枚举，用于门禁化与解释链路。
 - **Write-Back Patch**: 可审阅的最小源码补丁（或等价写回结果摘要）。
 
 ## Success Criteria _(mandatory)_
 
 - **SC-001**: CLI 能在本仓库对代表性模块入口跑通 IR 导出与试跑，并输出可序列化、确定性工件。
-- **SC-002**: CLI 能构建 AnchorIndex，并在 report-only 与 write-back 两种模式下输出可解释结果；write-back 幂等且最小 diff。
+- **SC-002**: CLI 能对受限 transform 在 report-only 与 write-back 两种模式下输出可解释结果；write-back 幂等且最小 diff。
 - **SC-003**: CLI 可在 CI 中用于门禁：工件可稳定 diff，且失败原因可行动。
 - **SC-004**: CLI 能产出 `ir.validate.report.json` 与 `ir.diff.report.json`，并以 exit code=2 门禁化差异/违规。
 - **SC-005**: `transform module` 在 Platform-Grade 子集内可对 state/action 做 batch 变更：report-only 输出 PatchPlan；`mode=write` 幂等写回；不确定项全部跳过并可解释。

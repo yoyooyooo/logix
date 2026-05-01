@@ -3,9 +3,11 @@ import React from 'react'
 import { render } from 'vitest-browser-react'
 import { Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 import matrix from '@logixjs/perf-evidence/assets/matrix.json'
 import { RuntimeProvider, type RuntimeProviderPolicyMode, type YieldStrategy } from '../../../src/RuntimeProvider.js'
-import { useModule } from '../../../src/Hooks.js'
+import { useModule, useSelector } from '../../../src/Hooks.js'
+import { useProgramRuntimeBlueprint } from '../../../src/internal/hooks/useProgramRuntimeBlueprint.js'
 import { emitPerfReport, type PerfReport } from './protocol.js'
 import { waitForBodyText } from './react-boot-resolve.wait.js'
 import {
@@ -31,22 +33,24 @@ const TEST_TIMEOUT_MS = Math.max(30_000, timeoutMs * pointCount)
 const State = Schema.Struct({ count: Schema.Number })
 const Actions = { inc: Schema.Void }
 
-const ImplModule = Logix.Module.make('PerfReactBootResolve.Impl', { state: State, actions: Actions })
+const ProgramModule = Logix.Module.make('PerfReactBootResolve.Program', { state: State, actions: Actions })
 const TagModule = Logix.Module.make('PerfReactBootResolve.Tag', { state: State, actions: Actions })
 
-const ImplModuleImpl = ImplModule.implement({ initial: { count: 0 }, logics: [] }).impl
-const TagModuleImpl = TagModule.implement({ initial: { count: 0 }, logics: [] }).impl
+const LocalProgram = Logix.Program.make(ProgramModule, { initial: { count: 0 }, logics: [] })
+const LocalBlueprint = RuntimeContracts.getProgramRuntimeBlueprint(LocalProgram)
+const TagModuleProgram = Logix.Program.make(TagModule, { initial: { count: 0 }, logics: [] })
 
 const App: React.FC<{ readonly keyMode: 'auto' | 'explicit' }> = ({ keyMode }) => {
-  const impl = keyMode === 'explicit' ? useModule(ImplModuleImpl, { key: 'shared' }) : useModule(ImplModuleImpl)
-  const implCount = useModule(impl, (s) => (s as { count: number }).count)
+  const local =
+    keyMode === 'explicit' ? useProgramRuntimeBlueprint(LocalBlueprint, { key: 'shared' }) : useProgramRuntimeBlueprint(LocalBlueprint)
+  const programCount = useSelector(local, (s) => (s as { count: number }).count)
 
   const tag = useModule(TagModule.tag)
-  const tagCount = useModule(tag, (s) => (s as { count: number }).count)
+  const tagCount = useSelector(tag, (s) => (s as { count: number }).count)
 
   return (
     <div>
-      <p>Impl: {implCount}</p>
+      <p>Program: {programCount}</p>
       <p>Tag: {tagCount}</p>
     </div>
   )
@@ -66,7 +70,7 @@ test(
           const yieldStrategy = params.yieldStrategy as YieldStrategy
           const keyMode = params.keyMode as 'auto' | 'explicit'
 
-          const runtime = Logix.Runtime.make(TagModuleImpl, {
+          const runtime = Logix.Runtime.make(TagModuleProgram, {
             layer: Layer.mergeAll(silentDebugLayer, perfKernelLayer) as Layer.Layer<any, never, never>,
             label: `perf:reactBootResolve:${policyMode}:${yieldStrategy}:${keyMode}`,
           })
@@ -89,15 +93,15 @@ test(
           try {
             const perRunWaitMs = 3_000
 
-            await waitForBodyText('Impl: 0', perRunWaitMs)
-            const implReadyAt = performance.now()
+            await waitForBodyText('Program: 0', perRunWaitMs)
+            const programReadyAt = performance.now()
 
             await waitForBodyText('Tag: 0', perRunWaitMs)
             const tagReadyAt = performance.now()
 
             return {
               metrics: {
-                'e2e.bootToModuleImplReadyMs': implReadyAt - start,
+                'e2e.bootToProgramReadyMs': programReadyAt - start,
                 'e2e.bootToModuleTagReadyMs': tagReadyAt - start,
               },
             }
@@ -105,7 +109,7 @@ test(
             const reason = error instanceof Error ? error.message : 'unknown'
             return {
               metrics: {
-                'e2e.bootToModuleImplReadyMs': { unavailableReason: reason },
+                'e2e.bootToProgramReadyMs': { unavailableReason: reason },
                 'e2e.bootToModuleTagReadyMs': { unavailableReason: reason },
               },
             }
@@ -151,7 +155,7 @@ test(
             budgets: suite.budgets,
             requiredEvidence: suite.requiredEvidence,
             metricCategories: {
-              'e2e.bootToModuleImplReadyMs': 'e2e',
+              'e2e.bootToProgramReadyMs': 'e2e',
               'e2e.bootToModuleTagReadyMs': 'e2e',
             },
             points,

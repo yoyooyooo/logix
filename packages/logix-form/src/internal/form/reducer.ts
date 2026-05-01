@@ -1,7 +1,14 @@
 import { getAtPath, setAtPath, unsetAtPath, updateArrayAtPath } from './path.js'
 import { toManualErrorsPath, toSchemaErrorsPath } from '../../Path.js'
-import { countErrorLeaves, readErrorCount, writeErrorCount } from './errors.js'
-import { isAuxRootPath, syncAuxArrays, type AnyState } from './arrays.js'
+import { countErrorLeaves, makeInitialSubmitAttemptSnapshot, readErrorCount, writeErrorCount } from './errors.js'
+import {
+  cleanupReceiptPath,
+  cleanupReceiptReasonSlotId,
+  isAuxRootPath,
+  syncAuxArrays,
+  type AnyState,
+} from './arrays.js'
+import { makeCleanupSubjectRef } from './rowid.js'
 
 type PatchSink = ((path: string) => void) | undefined
 
@@ -36,11 +43,20 @@ const setUiMeta = (state: unknown, path: string, patch: FieldUiMeta): unknown =>
   return setAtPath(state, `ui.${path}`, mergeUiMeta(prev, patch))
 }
 
+const cleanupReceipt = (path: string, cause: 'remove' | 'replace') => ({
+  kind: 'cleanup' as const,
+  cause,
+  reasonSlotId: cleanupReceiptReasonSlotId(path),
+  sourceRef: cleanupReceiptPath(path),
+  subjectRef: makeCleanupSubjectRef(path),
+})
+
 const initialMeta = (): AnyState => ({
   submitCount: 0,
   isSubmitting: false,
   isDirty: false,
   errorCount: 0,
+  submitAttempt: makeInitialSubmitAttemptSnapshot(),
 })
 
 export const makeFormReducers = <TValues extends object>(params: { readonly initialValues: TValues }): any => {
@@ -52,6 +68,9 @@ export const makeFormReducers = <TValues extends object>(params: { readonly init
       // errors.* write-back (e.g. schema/root validate): keep errorCount incrementally consistent.
       if (path === 'errors' || path.startsWith('errors.')) {
         mark(sink, path)
+        if (path === 'errors.$schema' || path.startsWith('errors.$schema.')) {
+          return setAtPath(state, path, action.payload.value) as AnyState
+        }
         const prev = getAtPath(state, path)
         const nextValue = action.payload.value
         const delta = countErrorLeaves(nextValue) - countErrorLeaves(prev)
@@ -66,9 +85,12 @@ export const makeFormReducers = <TValues extends object>(params: { readonly init
       if (isAuxRootPath(path)) return next
 
       markMany(sink, [`ui.${path}`, '$form.isDirty'])
+      if (getAtPath(next, cleanupReceiptPath(path)) !== undefined) {
+        mark(sink, cleanupReceiptPath(path))
+      }
 
       const nextMeta = setAtPath(next, '$form.isDirty', true) as AnyState
-      let nextUi = setUiMeta(nextMeta, path, { dirty: true }) as AnyState
+      let nextUi = unsetAtPath(setUiMeta(nextMeta, path, { dirty: true }), cleanupReceiptPath(path)) as AnyState
       let nextCount = prevErrorCount
 
       const manualPath = toManualErrorsPath(path)
@@ -83,7 +105,6 @@ export const makeFormReducers = <TValues extends object>(params: { readonly init
       const prevSchema = getAtPath(nextUi, schemaPath)
       if (prevSchema !== undefined) {
         mark(sink, schemaPath)
-        nextCount -= countErrorLeaves(prevSchema)
         nextUi = unsetAtPath(nextUi, schemaPath) as AnyState
       }
 
@@ -111,6 +132,10 @@ export const makeFormReducers = <TValues extends object>(params: { readonly init
     setSubmitting: (state: AnyState, action: any, sink: PatchSink) => {
       mark(sink, '$form.isSubmitting')
       return setAtPath(state, '$form.isSubmitting', action.payload) as AnyState
+    },
+    setSubmitAttempt: (state: AnyState, action: any, sink: PatchSink) => {
+      mark(sink, '$form.submitAttempt')
+      return setAtPath(state, '$form.submitAttempt', action.payload) as AnyState
     },
     reset: (_state: AnyState, action: any, sink: PatchSink) => {
       const values =
@@ -191,6 +216,9 @@ export const makeFormReducers = <TValues extends object>(params: { readonly init
       const current = getAtPath(state, path)
       const currentItems = Array.isArray(current) ? current : []
       markMany(sink, [path, `ui.${path}`, `errors.${path}.rows`, '$form.isDirty'])
+      if (getAtPath(state, cleanupReceiptPath(path)) !== undefined) {
+        mark(sink, cleanupReceiptPath(path))
+      }
       if (getAtPath(state, `errors.$manual.${path}.rows`) !== undefined) {
         mark(sink, `errors.$manual.${path}.rows`)
       }
@@ -201,14 +229,14 @@ export const makeFormReducers = <TValues extends object>(params: { readonly init
       const nextSync = syncAuxArrays(nextState, path, currentItems.length, (items) => [...items, undefined]) as AnyState
       const schemaRootPath = toSchemaErrorsPath(path)
       const prevErrorCount = readErrorCount(nextSync)
-      const prevSchema = getAtPath(nextSync, schemaRootPath)
       mark(sink, schemaRootPath)
       const clearedSchema = unsetAtPath(nextSync, schemaRootPath) as AnyState
-      const delta = -countErrorLeaves(prevSchema)
+      const delta = 0
       const nextWithCount =
         delta === 0 ? clearedSchema : (writeErrorCount(clearedSchema, prevErrorCount + delta) as AnyState)
       if (delta !== 0) mark(sink, '$form.errorCount')
-      return isAuxRootPath(path) ? nextWithCount : (setAtPath(nextWithCount, '$form.isDirty', true) as AnyState)
+      const clearedCleanup = unsetAtPath(nextWithCount, cleanupReceiptPath(path)) as AnyState
+      return isAuxRootPath(path) ? clearedCleanup : (setAtPath(clearedCleanup, '$form.isDirty', true) as AnyState)
     },
     arrayPrepend: (state: AnyState, action: any, sink: PatchSink) => {
       const path = action.payload.path as string
@@ -216,6 +244,9 @@ export const makeFormReducers = <TValues extends object>(params: { readonly init
       const current = getAtPath(state, path)
       const currentItems = Array.isArray(current) ? current : []
       markMany(sink, [path, `ui.${path}`, `errors.${path}.rows`, '$form.isDirty'])
+      if (getAtPath(state, cleanupReceiptPath(path)) !== undefined) {
+        mark(sink, cleanupReceiptPath(path))
+      }
       if (getAtPath(state, `errors.$manual.${path}.rows`) !== undefined) {
         mark(sink, `errors.$manual.${path}.rows`)
       }
@@ -226,14 +257,128 @@ export const makeFormReducers = <TValues extends object>(params: { readonly init
       const nextSync = syncAuxArrays(nextState, path, currentItems.length, (items) => [undefined, ...items]) as AnyState
       const schemaRootPath = toSchemaErrorsPath(path)
       const prevErrorCount = readErrorCount(nextSync)
-      const prevSchema = getAtPath(nextSync, schemaRootPath)
       mark(sink, schemaRootPath)
       const clearedSchema = unsetAtPath(nextSync, schemaRootPath) as AnyState
-      const delta = -countErrorLeaves(prevSchema)
+      const delta = 0
       const nextWithCount =
         delta === 0 ? clearedSchema : (writeErrorCount(clearedSchema, prevErrorCount + delta) as AnyState)
       if (delta !== 0) mark(sink, '$form.errorCount')
-      return isAuxRootPath(path) ? nextWithCount : (setAtPath(nextWithCount, '$form.isDirty', true) as AnyState)
+      const clearedCleanup = unsetAtPath(nextWithCount, cleanupReceiptPath(path)) as AnyState
+      return isAuxRootPath(path) ? clearedCleanup : (setAtPath(clearedCleanup, '$form.isDirty', true) as AnyState)
+    },
+    arrayInsert: (state: AnyState, action: any, sink: PatchSink) => {
+      const path = action.payload.path as string
+      const index = action.payload.index as number
+      const value = action.payload.value
+      const current = getAtPath(state, path)
+      const currentItems = Array.isArray(current) ? current : []
+      markMany(sink, [path, `ui.${path}`, `errors.${path}.rows`, '$form.isDirty'])
+      if (getAtPath(state, cleanupReceiptPath(path)) !== undefined) {
+        mark(sink, cleanupReceiptPath(path))
+      }
+      if (getAtPath(state, `errors.$manual.${path}.rows`) !== undefined) {
+        mark(sink, `errors.$manual.${path}.rows`)
+      }
+      if (getAtPath(state, `errors.$schema.${path}.rows`) !== undefined) {
+        mark(sink, `errors.$schema.${path}.rows`)
+      }
+
+      const insert = <T>(items: ReadonlyArray<T>): ReadonlyArray<T | undefined> => {
+        const next = items.slice()
+        const safeIndex = Math.max(0, Math.min(index, next.length))
+        next.splice(safeIndex, 0, value as T)
+        return next
+      }
+      const insertAux = (items: ReadonlyArray<unknown | undefined>): ReadonlyArray<unknown | undefined> => {
+        const next = items.slice()
+        const safeIndex = Math.max(0, Math.min(index, next.length))
+        next.splice(safeIndex, 0, undefined)
+        return next
+      }
+
+      const nextState = updateArrayAtPath(state, path, insert as any) as AnyState
+      const nextSync = syncAuxArrays(nextState, path, currentItems.length, insertAux) as AnyState
+      const schemaRootPath = toSchemaErrorsPath(path)
+      const prevErrorCount = readErrorCount(nextSync)
+      mark(sink, schemaRootPath)
+      const clearedSchema = unsetAtPath(nextSync, schemaRootPath) as AnyState
+      const delta = 0
+      const nextWithCount =
+        delta === 0 ? clearedSchema : (writeErrorCount(clearedSchema, prevErrorCount + delta) as AnyState)
+      if (delta !== 0) mark(sink, '$form.errorCount')
+      const clearedCleanup = unsetAtPath(nextWithCount, cleanupReceiptPath(path)) as AnyState
+      return isAuxRootPath(path) ? clearedCleanup : (setAtPath(clearedCleanup, '$form.isDirty', true) as AnyState)
+    },
+    arrayUpdate: (state: AnyState, action: any, sink: PatchSink) => {
+      const path = action.payload.path as string
+      const index = action.payload.index as number
+      const value = action.payload.value
+      const current = getAtPath(state, path)
+      const currentItems = Array.isArray(current) ? current : []
+      markMany(sink, [path, `ui.${path}`, `errors.${path}.rows`, '$form.isDirty'])
+      if (getAtPath(state, cleanupReceiptPath(path)) !== undefined) {
+        mark(sink, cleanupReceiptPath(path))
+      }
+      const prevErrorCount = readErrorCount(state)
+      const prevRuleRow = getAtPath(state, `errors.${path}.rows.${index}`)
+      const prevManualRow = getAtPath(state, `errors.$manual.${path}.rows.${index}`)
+      if (getAtPath(state, `errors.$manual.${path}.rows`) !== undefined) {
+        mark(sink, `errors.$manual.${path}.rows`)
+      }
+      if (getAtPath(state, `errors.$schema.${path}.rows`) !== undefined) {
+        mark(sink, `errors.$schema.${path}.rows`)
+      }
+
+      const nextState = updateArrayAtPath(state, path, (items) => {
+        const next = items.slice()
+        if (index >= 0 && index < next.length) next[index] = value
+        return next
+      }) as AnyState
+
+      let next: AnyState = nextState
+      next = unsetAtPath(next, `errors.${path}.rows.${index}`) as AnyState
+      next = unsetAtPath(next, `errors.$manual.${path}.rows.${index}`) as AnyState
+      next = unsetAtPath(next, `errors.$schema.${path}.rows.${index}`) as AnyState
+
+      let nextCount = prevErrorCount
+      nextCount -= countErrorLeaves(prevRuleRow)
+      nextCount -= countErrorLeaves(prevManualRow)
+      if (nextCount !== prevErrorCount) mark(sink, '$form.errorCount')
+      const nextWithCount =
+        nextCount === prevErrorCount ? next : (writeErrorCount(next, nextCount) as AnyState)
+      const clearedCleanup = unsetAtPath(nextWithCount, cleanupReceiptPath(path)) as AnyState
+      return isAuxRootPath(path) ? clearedCleanup : (setAtPath(clearedCleanup, '$form.isDirty', true) as AnyState)
+    },
+    arrayReplace: (state: AnyState, action: any, sink: PatchSink) => {
+      const path = action.payload.path as string
+      const items = Array.isArray(action.payload.items) ? action.payload.items : []
+      const prevErrorCount = readErrorCount(state)
+      const prevRuleRows = getAtPath(state, `errors.${path}.rows`)
+      const prevManualRows = getAtPath(state, `errors.$manual.${path}.rows`)
+      markMany(sink, [path, `ui.${path}`, `errors.${path}.rows`, '$form.isDirty'])
+      if (getAtPath(state, cleanupReceiptPath(path)) !== undefined) {
+        mark(sink, cleanupReceiptPath(path))
+      }
+      mark(sink, `errors.$manual.${path}.rows`)
+      mark(sink, `errors.$schema.${path}`)
+
+      let next = setAtPath(state, path, items) as AnyState
+      next = setAtPath(next, `ui.${path}`, items.map(() => undefined)) as AnyState
+      next = setAtPath(next, `errors.${path}.rows`, items.map(() => undefined)) as AnyState
+      next = setAtPath(next, `errors.$manual.${path}.rows`, items.map(() => undefined)) as AnyState
+      next = unsetAtPath(next, toSchemaErrorsPath(path)) as AnyState
+
+      let nextCount = prevErrorCount
+      nextCount -= countErrorLeaves(prevRuleRows)
+      nextCount -= countErrorLeaves(prevManualRows)
+      if (nextCount !== prevErrorCount) mark(sink, '$form.errorCount')
+      const nextWithCount =
+        nextCount === prevErrorCount ? next : (writeErrorCount(next, nextCount) as AnyState)
+      const nextWithCleanup = setAtPath(nextWithCount, cleanupReceiptPath(path), {
+        ...cleanupReceipt(path, 'replace'),
+      }) as AnyState
+      mark(sink, cleanupReceiptPath(path))
+      return isAuxRootPath(path) ? nextWithCleanup : (setAtPath(nextWithCleanup, '$form.isDirty', true) as AnyState)
     },
     arrayRemove: (state: AnyState, action: any, sink: PatchSink) => {
       const path = action.payload.path as string
@@ -244,8 +389,6 @@ export const makeFormReducers = <TValues extends object>(params: { readonly init
       const prevRuleRow = getAtPath(state, `errors.${path}.rows.${index}`)
       const prevManualRow = getAtPath(state, `errors.$manual.${path}.rows.${index}`)
       const schemaRootPath = toSchemaErrorsPath(path)
-      const prevSchemaRoot = getAtPath(state, schemaRootPath)
-
       markMany(sink, [path, `ui.${path}`, `errors.${path}.rows`, schemaRootPath, '$form.isDirty'])
       if (getAtPath(state, `errors.$manual.${path}.rows`) !== undefined) {
         mark(sink, `errors.$manual.${path}.rows`)
@@ -263,13 +406,15 @@ export const makeFormReducers = <TValues extends object>(params: { readonly init
       let nextCount = prevErrorCount
       nextCount -= countErrorLeaves(prevRuleRow)
       nextCount -= countErrorLeaves(prevManualRow)
-      nextCount -= countErrorLeaves(prevSchemaRoot)
-
       const clearedSchema = unsetAtPath(nextSync, schemaRootPath) as AnyState
       const nextWithCount =
         nextCount === prevErrorCount ? clearedSchema : (writeErrorCount(clearedSchema, nextCount) as AnyState)
       if (nextCount !== prevErrorCount) mark(sink, '$form.errorCount')
-      return isAuxRootPath(path) ? nextWithCount : (setAtPath(nextWithCount, '$form.isDirty', true) as AnyState)
+      const nextWithCleanup = setAtPath(nextWithCount, cleanupReceiptPath(path), {
+        ...cleanupReceipt(path, 'remove'),
+      }) as AnyState
+      mark(sink, cleanupReceiptPath(path))
+      return isAuxRootPath(path) ? nextWithCleanup : (setAtPath(nextWithCleanup, '$form.isDirty', true) as AnyState)
     },
     arraySwap: (state: AnyState, action: any, sink: PatchSink) => {
       const path = action.payload.path as string
@@ -279,6 +424,9 @@ export const makeFormReducers = <TValues extends object>(params: { readonly init
       const currentItems = Array.isArray(current) ? current : []
       const schemaRootPath = toSchemaErrorsPath(path)
       markMany(sink, [path, `ui.${path}`, `errors.${path}.rows`, schemaRootPath, '$form.isDirty'])
+      if (getAtPath(state, cleanupReceiptPath(path)) !== undefined) {
+        mark(sink, cleanupReceiptPath(path))
+      }
       if (getAtPath(state, `errors.$manual.${path}.rows`) !== undefined) {
         mark(sink, `errors.$manual.${path}.rows`)
       }
@@ -299,13 +447,13 @@ export const makeFormReducers = <TValues extends object>(params: { readonly init
       const nextState = updateArrayAtPath(state, path, swap) as AnyState
       const nextSync = syncAuxArrays(nextState, path, currentItems.length, swap) as AnyState
       const prevErrorCount = readErrorCount(nextSync)
-      const prevSchema = getAtPath(nextSync, schemaRootPath)
       const clearedSchema = unsetAtPath(nextSync, schemaRootPath) as AnyState
-      const delta = -countErrorLeaves(prevSchema)
+      const delta = 0
       const nextWithCount =
         delta === 0 ? clearedSchema : (writeErrorCount(clearedSchema, prevErrorCount + delta) as AnyState)
       if (delta !== 0) mark(sink, '$form.errorCount')
-      return isAuxRootPath(path) ? nextWithCount : (setAtPath(nextWithCount, '$form.isDirty', true) as AnyState)
+      const clearedCleanup = unsetAtPath(nextWithCount, cleanupReceiptPath(path)) as AnyState
+      return isAuxRootPath(path) ? clearedCleanup : (setAtPath(clearedCleanup, '$form.isDirty', true) as AnyState)
     },
     arrayMove: (state: AnyState, action: any, sink: PatchSink) => {
       const path = action.payload.path as string
@@ -315,6 +463,9 @@ export const makeFormReducers = <TValues extends object>(params: { readonly init
       const currentItems = Array.isArray(current) ? current : []
       const schemaRootPath = toSchemaErrorsPath(path)
       markMany(sink, [path, `ui.${path}`, `errors.${path}.rows`, schemaRootPath, '$form.isDirty'])
+      if (getAtPath(state, cleanupReceiptPath(path)) !== undefined) {
+        mark(sink, cleanupReceiptPath(path))
+      }
       if (getAtPath(state, `errors.$manual.${path}.rows`) !== undefined) {
         mark(sink, `errors.$manual.${path}.rows`)
       }
@@ -335,13 +486,13 @@ export const makeFormReducers = <TValues extends object>(params: { readonly init
       const nextState = updateArrayAtPath(state, path, move) as AnyState
       const nextSync = syncAuxArrays(nextState, path, currentItems.length, move) as AnyState
       const prevErrorCount = readErrorCount(nextSync)
-      const prevSchema = getAtPath(nextSync, schemaRootPath)
       const clearedSchema = unsetAtPath(nextSync, schemaRootPath) as AnyState
-      const delta = -countErrorLeaves(prevSchema)
+      const delta = 0
       const nextWithCount =
         delta === 0 ? clearedSchema : (writeErrorCount(clearedSchema, prevErrorCount + delta) as AnyState)
       if (delta !== 0) mark(sink, '$form.errorCount')
-      return isAuxRootPath(path) ? nextWithCount : (setAtPath(nextWithCount, '$form.isDirty', true) as AnyState)
+      const clearedCleanup = unsetAtPath(nextWithCount, cleanupReceiptPath(path)) as AnyState
+      return isAuxRootPath(path) ? clearedCleanup : (setAtPath(clearedCleanup, '$form.isDirty', true) as AnyState)
     },
   }
 

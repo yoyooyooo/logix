@@ -57,7 +57,7 @@
 - `txnId?: string`：关联的 `StateTransaction`（Operation Window）标识（可选；确定性派生；推荐 `${instanceId}::t${txnSeq}`）。
 - `linkId?: string`：可选链路锚点（用于把跨边界的一组相关事件串成因果链）。
 - `timestamp: number`
-- `kind: string`：粗粒度类别（如 `action/state/service/trait-*/react-render/diagnostic/devtools`）。
+- `kind: string`：粗粒度类别（如 `action/state/service/field-*/react-render/diagnostic/devtools`）。
 - `label: string`：用于 UI 展示的短标签。
 - `meta?: JsonValue`：可选结构化信息（必须可 JSON 序列化；例如 patchCount/originKind/originName/diagnostic 字段等）。
 - `errorSummary?: SerializableErrorSummary`：可选错误摘要（用于 error/diagnostic 事件）。
@@ -72,7 +72,7 @@
 - `instanceId: string`
 - `startedAt: number`
 - `endedAt: number`
-- `outcome?: "Converged" | "Noop" | "Degraded"`：可选，来自 trait 收敛摘要。
+- `outcome?: "Converged" | "Noop" | "Degraded"`：可选，来自 field 收敛摘要。
 - `degradedReason?: string`：可选，来自降级原因（如 budget_exceeded/runtime_error）。
 
 约束：

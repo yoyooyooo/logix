@@ -3,23 +3,7 @@ title: Testing
 description: How to test Logix modules with @effect/vitest.
 ---
 
-Logix is designed to be test-friendly. Since Logic is pure Effect, you can use the official Effect test runner `@effect/vitest` for both unit tests and integration tests.
-
-### Who is this for?
-
-- Engineers who want to write unit/integration tests for Modules and Logic.
-- You have Vitest experience but are not sure how to build a Runtime / provide Layers in tests.
-
-### Prerequisites
-
-- Basic understanding of ModuleImpl (`Module.make`) and Runtime.
-- Basic intuition for Effect (you can write flows with `Effect.gen`).
-
-### What you’ll get
-
-- Use `it.effect` / `it.scoped` from `@effect/vitest` to test Logic.
-- Inject/replace Services via Layer to build controllable test doubles (Mock/Stub/Fake).
-- Use `TestClock` to control time-related tests.
+Logix modules are plain Effect programs. The default testing stack is `@effect/vitest` for runtime and logic behavior, plus `@testing-library/react` when the React binding is part of the assertion surface.
 
 ## 1. Install @effect/vitest
 
@@ -116,44 +100,6 @@ it.scoped('should fetch user with mock', () =>
 )
 ```
 
-## 5. Collect Debug events
-
-When testing Logic behavior, you can inject a custom DebugSink to collect events:
-
-```ts
-import * as Logix from '@logixjs/core'
-
-it.scoped('should emit debug events', () =>
-  Effect.gen(function* () {
-    const events: Logix.Debug.Event[] = []
-
-    const debugLayer = Logix.Debug.replace([
-      {
-        record: (event: Logix.Debug.Event) =>
-          Effect.sync(() => {
-            events.push(event)
-          }),
-      },
-    ])
-
-    // Merge debugLayer into the test Layer
-    const layer = Layer.mergeAll(
-      Counter.live({ count: 0 }, CounterLogic),
-      debugLayer,
-    )
-
-    const runtime = yield* Effect.provide(Counter, layer)
-    yield* runtime.dispatch({ _tag: 'inc', payload: undefined })
-
-    // Advance clock to let Logic run
-    yield* TestClock.adjust('10 millis')
-
-    // Assert events are recorded
-    const actionEvents = events.filter((e) => e.type === 'action:dispatch')
-    expect(actionEvents.length).toBeGreaterThan(0)
-  }),
-)
-```
 
 ## 6. Integration tests (React)
 
@@ -172,9 +118,7 @@ it('renders counter', () => {
 })
 ```
 
-## Next
-
-Congrats — you’ve finished the Advanced section. Next:
+## See also
 
 - Full React integration guide: [React integration](../recipes/react-integration)
 - More patterns and best practices: [Common patterns](../recipes/common-patterns)

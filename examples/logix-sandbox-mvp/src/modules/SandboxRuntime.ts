@@ -1,4 +1,4 @@
-import type { ActionOf, StateOf } from '@logixjs/core'
+import type { ActionOf, StateOf } from '@logixjs/core/Module'
 import type { ModuleRef } from '@logixjs/react'
 
 type SandboxShape = (typeof import('./SandboxModule').SandboxDef)['shape']

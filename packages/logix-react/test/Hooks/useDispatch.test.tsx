@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 // @vitest-environment happy-dom
 import { renderHook, act, waitFor } from '@testing-library/react'
 import * as Logix from '@logixjs/core'
 import { Effect, Schema, ManagedRuntime, Layer } from 'effect'
-import { useModule } from '../../src/Hooks.js'
+import { useModule, useSelector } from '../../src/Hooks.js'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
 import React from 'react'
 
@@ -16,7 +17,7 @@ const Counter = Logix.Module.make('Counter', {
 
 describe('useDispatch', () => {
   it('should dispatch actions and update state', async () => {
-    const CounterLogic = Counter.logic<never>((api) =>
+    const CounterLogic = Counter.logic<never>('counter-logic', (api) =>
       Effect.gen(function* () {
         // Mount watchers in the run phase to avoid triggering the Phase Guard during setup.
         yield* api.onAction('increment').run(() => api.state.update((s) => ({ count: s.count + 1 })))
@@ -24,7 +25,7 @@ describe('useDispatch', () => {
     )
 
     const layer = Counter.live({ count: 0 }, CounterLogic)
-    const tickServicesLayer = Logix.InternalContracts.tickServicesLayer as Layer.Layer<any, never, never>
+    const tickServicesLayer = RuntimeContracts.tickServicesLayer as Layer.Layer<any, never, never>
     const runtimeLayer = Layer.mergeAll(
       tickServicesLayer,
       Layer.provide(layer as unknown as Layer.Layer<any, any, any>, tickServicesLayer),
@@ -37,7 +38,7 @@ describe('useDispatch', () => {
 
     const useTest = () => {
       const counter = useModule(Counter.tag)
-      const count = useModule(Counter.tag, (s: Logix.StateOf<typeof Counter.shape>) => s.count)
+      const count = useSelector(Counter.tag, (s: Logix.Module.StateOf<typeof Counter.shape>) => s.count)
       return { counter, count }
     }
 

@@ -20,7 +20,7 @@ title: 测试策略手册（分层 + 命令闭环）
 - L4：provider/scope/imports 边界明确，不串实例。
 - L5：核心改动具备 before/after 证据与可复现命令。
 
-## 3) 命令闭环（目标项目）
+## 3) 命令闭环
 
 1. `pnpm typecheck`
 2. `pnpm lint`
@@ -56,4 +56,3 @@ title: 测试策略手册（分层 + 命令闭环）
 - `references/llms/07-testing-basics.md`
 - `references/llms/04-runtime-transaction-rules.md`
 - `references/llms/06-diagnostics-perf-basics.md`
-- `references/llms/99-project-anchor-template.md`（可选）

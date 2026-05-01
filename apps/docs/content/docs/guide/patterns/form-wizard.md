@@ -147,7 +147,7 @@ yield*
 
 ```tsx
 function Wizard() {
-  const wizard = useModule(WizardModule)
+  const wizard = useModule(WizardDef.tag)
   const { currentStep, steps, isSubmitting } = useSelector(wizard, (s) => s)
   const dispatch = useDispatch(wizard)
 
@@ -193,8 +193,10 @@ const Step1Form = Form.make({
 })
 
 // Compose in Wizard
-const WizardModule = WizardDef.implement({
-  imports: [Step1Form, Step2Form, Step3Form],
+const WizardProgram = Logix.Program.make(WizardDef, {
+  capabilities: {
+    imports: [Step1Form, Step2Form, Step3Form],
+  },
   // ...
 })
 ```
@@ -204,9 +206,7 @@ const WizardModule = WizardDef.implement({
 - [Validation and errors](../../form/validation)
 - [Pagination loading](./pagination)
 
-## Runnable examples
+## Example code
 
-- Index: [Runnable examples](../recipes/runnable-examples)
-- Closest form-heavy demos:
-  - `examples/logix-react/src/modules/trait-form.ts`
-  - `examples/logix-react/src/modules/complex-trait-form.ts`
+- `examples/logix-react/src/modules/field-form.ts`
+- `examples/logix-react/src/modules/complex-field-form.ts`

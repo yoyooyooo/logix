@@ -1,9 +1,9 @@
 # Tasks: O-006 Runtime Assembly Graph
 
-**Input**: Design documents from `specs/099-runtime-assembly-graph/`  
+**Input**: Design documents from `specs/099-runtime-assembly-graph/`
 **Prerequisites**: `spec.md`, `plan.md`
 
-**Tests**: 本特性触及 runtime 核心路径，测试与性能证据为必选项。  
+**Tests**: 本特性触及 runtime 核心路径，测试与性能证据为必选项。
 **Organization**: 按 User Story 分组，保证可独立实现与验收。
 
 ## Phase 1: Setup (Shared Infrastructure)
@@ -25,7 +25,7 @@
 
 ## Phase 3: User Story 1 - 冷启动链路可解释化 (Priority: P1) 🎯 MVP
 
-**Goal**: 装配路径显式化，boot 失败可直接定位。  
+**Goal**: 装配路径显式化，boot 失败可直接定位。
 **Independent Test**: 成功/失败两类冷启动都能输出可解释装配路径和失败锚点。
 
 - [x] T008 [P] [US1] 新增装配图成功路径测试 `packages/logix-core/test/internal/Runtime/AppRuntime.AssemblyGraph.test.ts`
@@ -39,7 +39,7 @@
 
 ## Phase 4: User Story 2 - 启动稳定性与可回归验证 (Priority: P2)
 
-**Goal**: 标识稳定可复现，诊断成本可预算。  
+**Goal**: 标识稳定可复现，诊断成本可预算。
 **Independent Test**: 同配置多次冷启动结果结构一致，且性能/诊断预算可复测。
 
 - [x] T014 [P] [US2] 新增稳定标识回归测试 `packages/logix-core/test/internal/Runtime/AppRuntime.AssemblyIdentity.test.ts`
@@ -52,7 +52,7 @@
 
 ## Phase 5: User Story 3 - 迁移与对外行为稳定 (Priority: P3)
 
-**Goal**: 对外入口保持稳定，破坏性变化有迁移说明。  
+**Goal**: 对外入口保持稳定，破坏性变化有迁移说明。
 **Independent Test**: 业务使用路径不改即可运行；若破坏则可按迁移文档完成升级。
 
 - [x] T019 [P] [US3] 新增 Runtime 入口兼容性回归测试 `packages/logix-core/test/internal/Runtime/AppRuntime.Compatibility.test.ts`

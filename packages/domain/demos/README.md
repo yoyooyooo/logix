@@ -1,6 +1,6 @@
 # @logixjs/domain · demos
 
-## CRUDModule（业务侧最小 demo）
+## Crud 子路径 / Crud.make（业务侧最小 demo）
 
 运行：
 

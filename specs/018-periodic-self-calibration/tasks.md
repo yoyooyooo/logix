@@ -15,7 +15,7 @@
 
 **Purpose**: 让 018 的代码入口/产物落点可发现、可复跑
 
-- [ ] T001 Add 018 perf scripts to `.codex/skills/logix-perf-evidence/package.json`（例如 `calibration:audit`、`calibration:validate`）
+- [ ] T001 Add 018 perf scripts to `packages/logix-perf-evidence/package.json`（例如 `calibration:audit`、`calibration:validate`）
 - [ ] T002 [P] Define 018 artifact naming & output dirs in `specs/014-browser-perf-boundaries/perf/tuning/README.md`
 
 ---
@@ -91,7 +91,7 @@
 
 ## Phase N: Polish & Cross-Cutting Concerns
 
-- [ ] T028 [P] Add/refresh internal docs entrypoints for opt-in calibration in `.codex/skills/logix-perf-evidence/references/*`
+- [ ] T028 [P] Add/refresh internal docs entrypoints for opt-in calibration in `packages/logix-perf-evidence/references/*`
 - [ ] T029 Run `specs/018-periodic-self-calibration/quickstart.md` validation and update any mismatched steps in `specs/018-periodic-self-calibration/quickstart.md`
 
 ---

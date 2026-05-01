@@ -7,44 +7,29 @@
     "directory": "packages/logix-cli"
   },
   "license": "Apache-2.0",
-  "description": "Node-only Logix CLI toolbox (IR export / trialrun / gates)",
+  "description": "Node-only Logix runtime control-plane CLI",
   "type": "module",
   "bin": {
-    "logix": "dist/bin/logix.js",
-    "logix-devserver": "dist/bin/logix-devserver.js"
+    "logix": "dist/logix.js"
   },
   "files": [
     "dist/**"
   ],
   "exports": {
     "./package.json": "./package.json",
-    ".": "./src/index.ts",
-    "./Commands": "./src/Commands.ts",
+    "./schema/commands.v1.json": "./dist/schema/commands.v1.json",
     "./internal/*": null
   },
   "publishConfig": {
     "access": "public",
     "bin": {
-      "logix": "dist/bin/logix.js",
-      "logix-devserver": "dist/bin/logix-devserver.js"
+      "logix": "dist/logix.js"
     },
     "exports": {
       "./package.json": "./package.json",
-      ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js",
-        "require": "./dist/index.cjs"
-      },
-      "./Commands": {
-        "types": "./dist/Commands.d.ts",
-        "import": "./dist/Commands.js",
-        "require": "./dist/Commands.cjs"
-      },
+      "./schema/commands.v1.json": "./dist/schema/commands.v1.json",
       "./internal/*": null
-    },
-    "main": "./dist/index.cjs",
-    "module": "./dist/index.js",
-    "types": "./dist/index.d.ts"
+    }
   },
   "scripts": {
     "build": "tsup",
@@ -61,7 +46,6 @@
     "@logixjs/core": "workspace:*",
     "effect": "4.0.0-beta.28",
     "happy-dom": "^20.0.11",
-    "ts-morph": "^25.0.0",
     "tsx": "^4.20.6",
     "ws": "^8.0.0"
   },

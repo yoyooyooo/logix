@@ -1,4 +1,4 @@
-import { useDispatch, useModule } from '@logixjs/react'
+import { useDispatch, useModule, useSelector } from '@logixjs/react'
 import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { ProjectGroupsDef } from '../galaxy/project-groups.module'
@@ -10,22 +10,22 @@ export function ProjectPage() {
   const params = useParams()
   const projectId = typeof params.projectId === 'string' ? Number(params.projectId) : NaN
 
-  const project = useModule(ProjectsDef, (s) => s.selectedProject) as any as { readonly projectId: number; readonly name: string } | null
-  const access = useModule(ProjectsDef, (s) => s.access) as any as
+  const project = useSelector(ProjectsDef.tag, (s) => s.selectedProject) as any as { readonly projectId: number; readonly name: string } | null
+  const access = useSelector(ProjectsDef.tag, (s) => s.access) as any as
     | { readonly effectivePermissionKeys: ReadonlyArray<any>; readonly effectiveRoleKeys: ReadonlyArray<any>; readonly directRole: string }
     | null
 
-  const members = useModule(ProjectMembersDef, (s) => s.members) as any as ReadonlyArray<any>
-  const membersLoading = useModule(ProjectMembersDef, (s) => s.loading)
-  const membersError = useModule(ProjectMembersDef, (s) => s.error)
+  const members = useSelector(ProjectMembersDef.tag, (s) => s.members) as any as ReadonlyArray<any>
+  const membersLoading = useSelector(ProjectMembersDef.tag, (s) => s.loading)
+  const membersError = useSelector(ProjectMembersDef.tag, (s) => s.error)
 
-  const groups = useModule(ProjectGroupsDef, (s) => s.groups) as any as ReadonlyArray<any>
-  const groupsLoading = useModule(ProjectGroupsDef, (s) => s.groupsLoading)
-  const groupsError = useModule(ProjectGroupsDef, (s) => s.groupsError)
-  const selectedGroupId = useModule(ProjectGroupsDef, (s) => s.selectedGroupId) as any as number | null
-  const groupMembers = useModule(ProjectGroupsDef, (s) => s.selectedGroupMembers) as any as ReadonlyArray<any>
-  const groupMembersLoading = useModule(ProjectGroupsDef, (s) => s.membersLoading)
-  const groupMembersError = useModule(ProjectGroupsDef, (s) => s.membersError)
+  const groups = useSelector(ProjectGroupsDef.tag, (s) => s.groups) as any as ReadonlyArray<any>
+  const groupsLoading = useSelector(ProjectGroupsDef.tag, (s) => s.groupsLoading)
+  const groupsError = useSelector(ProjectGroupsDef.tag, (s) => s.groupsError)
+  const selectedGroupId = useSelector(ProjectGroupsDef.tag, (s) => s.selectedGroupId) as any as number | null
+  const groupMembers = useSelector(ProjectGroupsDef.tag, (s) => s.selectedGroupMembers) as any as ReadonlyArray<any>
+  const groupMembersLoading = useSelector(ProjectGroupsDef.tag, (s) => s.membersLoading)
+  const groupMembersError = useSelector(ProjectGroupsDef.tag, (s) => s.membersError)
 
   const dispatchMembers = useDispatch(ProjectMembersDef.tag)
   const dispatchGroups = useDispatch(ProjectGroupsDef.tag)

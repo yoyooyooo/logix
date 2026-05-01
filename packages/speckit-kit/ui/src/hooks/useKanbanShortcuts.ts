@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import type * as Logix from '@logixjs/core'
 import type { KanbanShape } from '../features/kanban'
 
-type KanbanAction = Logix.ActionOf<KanbanShape>
+type KanbanAction = Logix.Module.ActionOf<KanbanShape>
 
 export function useKanbanShortcuts({
   specDetailOpen,

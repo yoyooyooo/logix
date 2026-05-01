@@ -9,15 +9,13 @@ const CounterActionMap = {
   increment: Schema.Void,
 }
 
-export const CounterMultiDef = Logix.Module.make('CounterMultiModule', {
+export const CounterMulti = Logix.Module.make('CounterMultiModule', {
   state: CounterStateSchema,
   actions: CounterActionMap,
 })
 
-export const CounterMultiLogic = CounterMultiDef.logic(($) => ({
-  setup: Effect.void,
-  run: Effect.gen(function* () {
-    // 在 run 段挂载 watcher，避免触发 Phase Guard
+export const CounterMultiLogic = CounterMulti.logic('counter-multi-logic', ($) =>
+  Effect.gen(function* () {
     yield* $.onAction('increment').run(
       $.state.update((prev) => ({
         ...prev,
@@ -25,11 +23,9 @@ export const CounterMultiLogic = CounterMultiDef.logic(($) => ({
       })),
     )
   }),
-}))
+)
 
-export const CounterMultiModule = CounterMultiDef.implement({
+export const CounterMultiProgram = Logix.Program.make(CounterMulti, {
   initial: { count: 0 },
   logics: [CounterMultiLogic],
 })
-
-export const CounterMultiImpl = CounterMultiModule.impl

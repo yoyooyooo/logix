@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 2,
+  "group": "150-form-semantic-closure-group",
+  "statusByKind": {
+    "member": ["idea", "planned", "draft", "implementing", "done", "frozen", "stopped"],
+    "predecessor": ["frozen"],
+    "external": ["living", "proposed"]
+  },
+  "entries": [
+    {
+      "id": "02",
+      "dir": "docs/ssot/form/02-gap-map-and-target-direction.md",
+      "kind": "external",
+      "role": "authority",
+      "status": "living",
+      "dependsOn": []
+    },
+    {
+      "id": "p0-next",
+      "dir": "docs/next/form-p0-semantic-closure-wave-plan.md",
+      "kind": "external",
+      "role": "routing",
+      "status": "proposed",
+      "dependsOn": ["02"]
+    },
+    {
+      "id": "06",
+      "dir": "docs/ssot/form/06-capability-scenario-api-support-map.md",
+      "kind": "external",
+      "role": "witness",
+      "status": "living",
+      "dependsOn": ["02"]
+    },
+    {
+      "id": "155",
+      "dir": "specs/155-form-api-shape",
+      "kind": "external",
+      "role": "proposal",
+      "status": "proposed",
+      "dependsOn": ["149", "151", "152", "153", "154"]
+    },
+    {
+      "id": "143",
+      "dir": "specs/143-form-canonical-error-carrier-cutover",
+      "kind": "predecessor",
+      "role": "imported",
+      "status": "frozen",
+      "dependsOn": []
+    },
+    {
+      "id": "144",
+      "dir": "specs/144-form-settlement-submit-cutover",
+      "kind": "predecessor",
+      "role": "imported",
+      "status": "frozen",
+      "dependsOn": ["143"]
+    },
+    {
+      "id": "145",
+      "dir": "specs/145-form-active-shape-locality-cutover",
+      "kind": "predecessor",
+      "role": "imported",
+      "status": "frozen",
+      "dependsOn": ["143"]
+    },
+    {
+      "id": "149",
+      "dir": "specs/149-list-row-identity-public-projection",
+      "kind": "member",
+      "role": "theorem-gate",
+      "status": "stopped",
+      "dependsOn": []
+    },
+    {
+      "id": "151",
+      "dir": "specs/151-form-active-set-cleanup",
+      "kind": "member",
+      "role": "semantic-closure",
+      "status": "stopped",
+      "dependsOn": ["149", "154"]
+    },
+    {
+      "id": "154",
+      "dir": "specs/154-form-resource-source-boundary",
+      "kind": "member",
+      "role": "shared-boundary",
+      "status": "stopped",
+      "dependsOn": []
+    },
+    {
+      "id": "152",
+      "dir": "specs/152-form-settlement-contributor",
+      "kind": "member",
+      "role": "semantic-closure",
+      "status": "stopped",
+      "dependsOn": ["151", "154"]
+    },
+    {
+      "id": "153",
+      "dir": "specs/153-form-reason-projection",
+      "kind": "member",
+      "role": "semantic-closure",
+      "status": "stopped",
+      "dependsOn": ["151", "152", "154"]
+    }
+  ]
+}

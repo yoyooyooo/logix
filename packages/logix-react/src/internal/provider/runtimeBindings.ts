@@ -1,8 +1,13 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { useEffect, useRef, useState } from 'react'
 import { Cause, Effect, Exit, Layer, LogLevel, Logger, ManagedRuntime, References, Scope, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
 import { isDevEnv } from './env.js'
 import type { RuntimeProviderProps } from './RuntimeProvider.js'
+import {
+  registerRuntimeHostBindingDisposer,
+  unregisterRuntimeHostBindingDisposer,
+} from './runtimeHotLifecycle.js'
 
 type LoggerSet = ReadonlySet<Logger.Logger<unknown, any>>
 
@@ -12,7 +17,7 @@ const toErrorString = (error: unknown): string =>
 const debugScopeCloseFailure = (error: unknown): void => {
   if (!isDevEnv()) return
   // eslint-disable-next-line no-console
-  console.debug('[RuntimeProvider] Scope.close failed', toErrorString(error))
+  console.debug('[ReactHostAdapter] Scope.close failed', toErrorString(error))
 }
 
 interface LayerBinding {
@@ -23,7 +28,37 @@ interface LayerBinding {
   readonly enabled: boolean
   readonly loggers: LoggerSet
   readonly logLevel: LogLevel.LogLevel
-  readonly debugSinks: ReadonlyArray<Logix.Debug.Sink>
+  readonly debugSinks: ReadonlyArray<CoreDebug.Sink>
+  readonly bindingId: string
+}
+
+let nextLayerBindingSeq = 0
+const closedLayerBindingIds = new Set<string>()
+
+const nextLayerBindingId = (): string => {
+  nextLayerBindingSeq += 1
+  return `provider-layer-overlay:${nextLayerBindingSeq}`
+}
+
+const closeLayerBindingScope = (
+  runtime: ManagedRuntime.ManagedRuntime<any, any>,
+  binding: Pick<LayerBinding, 'scope' | 'bindingId'>,
+): void => {
+  if (closedLayerBindingIds.has(binding.bindingId)) {
+    unregisterRuntimeHostBindingDisposer(runtime as unknown as object, binding.bindingId)
+    return
+  }
+  closedLayerBindingIds.add(binding.bindingId)
+  unregisterRuntimeHostBindingDisposer(runtime as unknown as object, binding.bindingId)
+  void runtime.runPromise(Scope.close(binding.scope, Exit.void)).catch(debugScopeCloseFailure)
+}
+
+const closeUnboundLayerScope = (
+  runtime: ManagedRuntime.ManagedRuntime<any, any>,
+  bindingId: string,
+  scope: Scope.Closeable,
+): void => {
+  closeLayerBindingScope(runtime, { bindingId, scope })
 }
 
 export const useLayerBinding = (
@@ -53,7 +88,7 @@ export const useLayerBinding = (
       const current = activeBindingRef.current
       if (current) {
         activeBindingRef.current = null
-        void runtime.runPromise(Scope.close(current.scope, Exit.void)).catch(debugScopeCloseFailure)
+        closeLayerBindingScope(current.runtime, current)
       }
       setState((prev) => {
         // In the default path without a layer, avoid a meaningless setState that would cause an extra first render.
@@ -91,14 +126,14 @@ export const useLayerBinding = (
     if (isDevEnv() && previousBinding && previousBinding.layer !== layer && enabled && layer) {
       // eslint-disable-next-line no-console
       console.warn(
-        '[RuntimeProvider] Rebuilding layer due to a new layer reference. Memoize the Layer in the caller to avoid repeated rebuilds and resource churn.',
+        '[ReactHostAdapter] Rebuilding subtree layer due to a new layer reference. Memoize the Layer in the caller to avoid repeated rebuilds and resource churn.',
         )
     }
 
     // When deps change, close the old scope and rebuild.
     if (current) {
       activeBindingRef.current = null
-      void runtime.runPromise(Scope.close(current.scope, Exit.void)).catch(debugScopeCloseFailure)
+      closeLayerBindingScope(current.runtime, current)
     }
 
     let cancelled = false
@@ -111,11 +146,12 @@ export const useLayerBinding = (
       enabled,
     })
 
-    // Create an independent Scope for this RuntimeProvider layer:
+    // Create an independent Scope for this subtree layer:
     // - Does not depend on Runtime Env.
     // - Uses the global default Runtime to create Scope, avoiding triggering AsyncFiberException via ManagedRuntime.runSync
     //   when Runtime.layer contains async Layers (e.g. Debug.layer/traceLayer).
     const newScope = Effect.runSync(Scope.make()) as Scope.Closeable
+    const bindingId = nextLayerBindingId()
     const buildEffect = Effect.gen(function* () {
       const context = (yield* Layer.buildWithScope(layer, newScope)) as ServiceMap.ServiceMap<any>
       const applyEnv = <A, E>(effect: Effect.Effect<A, E, any>) =>
@@ -123,8 +159,8 @@ export const useLayerBinding = (
 
       const loggers: LoggerSet = yield* applyEnv(Effect.service(Logger.CurrentLoggers)).pipe(Effect.orDie)
       const logLevel: LogLevel.LogLevel = yield* applyEnv(Effect.service(References.MinimumLogLevel)).pipe(Effect.orDie)
-      const debugSinks: ReadonlyArray<Logix.Debug.Sink> = yield* applyEnv(
-        Effect.service(Logix.Debug.internal.currentDebugSinks).pipe(Effect.orDie),
+      const debugSinks: ReadonlyArray<CoreDebug.Sink> = yield* applyEnv(
+        Effect.service(CoreDebug.internal.currentDebugSinks).pipe(Effect.orDie),
       )
       return { context, loggers, logLevel, debugSinks }
     })
@@ -133,10 +169,11 @@ export const useLayerBinding = (
       context: ServiceMap.ServiceMap<any>
       loggers: LoggerSet
       logLevel: LogLevel.LogLevel
-      debugSinks: ReadonlyArray<Logix.Debug.Sink>
+      debugSinks: ReadonlyArray<CoreDebug.Sink>
     }) => {
       if (cancelled) {
-        return runtime.runPromise(Scope.close(newScope, Exit.void)).catch(debugScopeCloseFailure)
+        closeUnboundLayerScope(runtime, bindingId, newScope)
+        return Promise.resolve()
       }
 
       const previous = activeBindingRef.current
@@ -149,8 +186,13 @@ export const useLayerBinding = (
         runtime,
         layer,
         enabled,
+        bindingId,
       }
       activeBindingRef.current = newBinding
+      registerRuntimeHostBindingDisposer(runtime as unknown as object, bindingId, () => {
+        activeBindingRef.current = activeBindingRef.current === newBinding ? null : activeBindingRef.current
+        closeUnboundLayerScope(runtime, bindingId, newScope)
+      })
 
       setState({
         binding: newBinding,
@@ -161,7 +203,8 @@ export const useLayerBinding = (
       })
 
       if (previous) {
-        return runtime.runPromise(Scope.close(previous.scope, Exit.void)).catch(debugScopeCloseFailure)
+        closeLayerBindingScope(previous.runtime, previous)
+        return Promise.resolve()
       }
       return Promise.resolve()
     }
@@ -189,10 +232,10 @@ export const useLayerBinding = (
             )
           }
           // Close the new scope and clear binding on build failure.
-          void runtime.runPromise(Scope.close(newScope, Exit.void)).catch(debugScopeCloseFailure)
+          closeUnboundLayerScope(runtime, bindingId, newScope)
           if (!cancelled) {
             // eslint-disable-next-line no-console
-            console.error('[RuntimeProvider] Failed to build layer', error)
+            console.error('[ReactHostAdapter] Failed to build subtree layer', error)
             setState({
               binding: null,
               isLoading: false,
@@ -209,11 +252,11 @@ export const useLayerBinding = (
       const current2 = activeBindingRef.current
       if (current2) {
         activeBindingRef.current = null
-        void runtime.runPromise(Scope.close(current2.scope, Exit.void)).catch(debugScopeCloseFailure)
+        closeLayerBindingScope(current2.runtime, current2)
         return
       }
       // Clean up the pre-created scope when binding never succeeded.
-      void runtime.runPromise(Scope.close(newScope, Exit.void)).catch(debugScopeCloseFailure)
+      closeUnboundLayerScope(runtime, bindingId, newScope)
     }
   }, [runtime, layer, enabled, onError])
 
@@ -238,7 +281,7 @@ export const createRuntimeAdapter = (
   scopes: ReadonlyArray<Scope.Scope>,
   loggerSets: ReadonlyArray<LoggerSet>,
   logLevels: ReadonlyArray<LogLevel.LogLevel>,
-  debugSinks: ReadonlyArray<ReadonlyArray<Logix.Debug.Sink>>,
+  debugSinks: ReadonlyArray<ReadonlyArray<CoreDebug.Sink>>,
 ): ManagedRuntime.ManagedRuntime<any, any> => {
   if (
     contexts.length === 0 &&
@@ -275,7 +318,7 @@ export const createRuntimeAdapter = (
     // For Providers that only inject Env/Theme and don't care about Debug (sinks.length === 0),
     // keep the outer Runtime/Provider's DebugSink unchanged to avoid accidentally disabling Devtools observability.
     if (sinks && sinks.length > 0) {
-      result = Effect.provideService(result, Logix.Debug.internal.currentDebugSinks, sinks)
+      result = Effect.provideService(result, CoreDebug.internal.currentDebugSinks, sinks)
     }
     return result as Effect.Effect<A, E, R>
   }

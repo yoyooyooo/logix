@@ -1,7 +1,12 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { type SandboxStatus, type LogEntry, type TraceSpan, type UiIntentPacket } from '@logixjs/sandbox'
 import { ThemeToggle } from '../../components/ThemeToggle'
+import type { SandboxState } from '../../modules/SandboxRuntime'
+import type { UiIntentPacket } from '../../sandbox-contract'
+
+type SandboxStatus = SandboxState['status']
+type LogEntry = SandboxState['logs'][number]
+type TraceSpan = SandboxState['traces'][number]
 
 const shouldShowFlickerDiagnostics = (): boolean => {
   if (!import.meta.env.DEV) return false

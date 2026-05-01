@@ -1,8 +1,8 @@
 # Feature Specification: Watcher 纯赚性能优化（全量交付，不拆短/中长期）
 
-**Feature Branch**: `068-watcher-pure-wins`  
-**Created**: 2025-12-31  
-**Status**: Draft  
+**Feature Branch**: `068-watcher-pure-wins`
+**Created**: 2025-12-31
+**Status**: Draft
 **Input**: User description: "那新建个需求吧，先把短期纯赚、中长期纯赚都写进去"
 
 ## Background

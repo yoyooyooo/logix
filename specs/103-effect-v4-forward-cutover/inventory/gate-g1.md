@@ -50,50 +50,50 @@ pnpm perf collect -- --profile quick --out specs/103-effect-v4-forward-cutover/p
 pnpm perf validate -- --report specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.rs-es.tune.json
 pnpm perf diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.rs-es.tune.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.rs-es.tune.json
 pnpm -C packages/logix-core typecheck:test
-pnpm -C packages/logix-core exec vitest run test/internal/Runtime/RuntimeStore.listenerSnapshot.test.ts test/internal/StateTrait/StateTrait.TraitCheckEvent.DiagnosticsLevels.test.ts test/Debug/Debug.RuntimeDebugEventRef.Serialization.test.ts
+pnpm -C packages/logix-core exec vitest run test/internal/Runtime/RuntimeStore.listenerSnapshot.test.ts test/internal/FieldKernel/FieldKernel.TraitCheckEvent.DiagnosticsLevels.test.ts test/Debug/Debug.RuntimeDebugEventRef.Serialization.test.ts
 pnpm -C packages/logix-react exec vitest run test/internal/RuntimeExternalStore.lowPriority.test.ts
 pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/external-store-ingest.test.tsx test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx test/browser/perf-boundaries/form-list-scope-check.test.tsx
-pnpm -C .codex/skills/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw2.json
-pnpm -C .codex/skills/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw2.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw2.json
-pnpm -C .codex/skills/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw2b.json
-pnpm -C .codex/skills/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw2b.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw2b.json
-pnpm -C .codex/skills/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw3.json
-pnpm -C .codex/skills/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw3.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw3.json
-pnpm -C .codex/skills/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw3b.json
-pnpm -C .codex/skills/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw3b.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw3b.json
-pnpm -C .codex/skills/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw3c.json
-pnpm -C .codex/skills/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw3c.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw3c.json
-pnpm -C .codex/skills/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw4.json
-pnpm -C .codex/skills/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw4.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw4.json
-pnpm -C .codex/skills/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw4b.json
-pnpm -C .codex/skills/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw4b.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw4b.json
-pnpm -C packages/logix-core exec vitest run test/StateTrait/StateTrait.ConvergeAuto.DiagnosticsLevels.test.ts test/StateTrait/StateTrait.ConvergeAuto.CorrectnessInvariants.test.ts test/StateTrait/StateTrait.ConvergeAuto.PlanCacheProtection.test.ts test/internal/StateTrait/StateTrait.TraitCheckEvent.DiagnosticsLevels.test.ts
+pnpm -C packages/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw2.json
+pnpm -C packages/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw2.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw2.json
+pnpm -C packages/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw2b.json
+pnpm -C packages/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw2b.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw2b.json
+pnpm -C packages/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw3.json
+pnpm -C packages/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw3.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw3.json
+pnpm -C packages/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw3b.json
+pnpm -C packages/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw3b.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw3b.json
+pnpm -C packages/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw3c.json
+pnpm -C packages/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw3c.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw3c.json
+pnpm -C packages/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw4.json
+pnpm -C packages/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw4.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw4.json
+pnpm -C packages/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw4b.json
+pnpm -C packages/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw4b.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw4b.json
+pnpm -C packages/logix-core exec vitest run test/FieldKernel/FieldKernel.ConvergeAuto.DiagnosticsLevels.test.ts test/FieldKernel/FieldKernel.ConvergeAuto.CorrectnessInvariants.test.ts test/FieldKernel/FieldKernel.ConvergeAuto.PlanCacheProtection.test.ts test/internal/FieldKernel/FieldKernel.TraitCheckEvent.DiagnosticsLevels.test.ts
 pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/form-list-scope-check.test.tsx
-pnpm -C .codex/skills/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw5.json
-pnpm -C .codex/skills/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw5.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw5.json
-pnpm -C .codex/skills/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw5b.json
-pnpm -C .codex/skills/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw5b.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw5b.json
-pnpm -C .codex/skills/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw5c.json
-pnpm -C .codex/skills/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw5c.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw5c.json
-pnpm -C packages/logix-core exec vitest run test/internal/StateTrait/StateTrait.EffectOpIntegration.test.ts test/StateTrait/StateTrait.ConvergeAuto.DeterministicIds.test.ts test/StateTrait/StateTrait.ConvergeAuto.DiagnosticsLevels.test.ts test/StateTrait/StateTrait.ConvergeAuto.CorrectnessInvariants.test.ts test/StateTrait/StateTrait.ConvergeAuto.PlanCacheProtection.test.ts test/internal/StateTrait/StateTrait.TraitCheckEvent.DiagnosticsLevels.test.ts
+pnpm -C packages/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw5.json
+pnpm -C packages/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw5.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw5.json
+pnpm -C packages/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw5b.json
+pnpm -C packages/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw5b.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw5b.json
+pnpm -C packages/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw5c.json
+pnpm -C packages/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw5c.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw5c.json
+pnpm -C packages/logix-core exec vitest run test/internal/FieldKernel/FieldKernel.EffectOpIntegration.test.ts test/FieldKernel/FieldKernel.ConvergeAuto.DeterministicIds.test.ts test/FieldKernel/FieldKernel.ConvergeAuto.DiagnosticsLevels.test.ts test/FieldKernel/FieldKernel.ConvergeAuto.CorrectnessInvariants.test.ts test/FieldKernel/FieldKernel.ConvergeAuto.PlanCacheProtection.test.ts test/internal/FieldKernel/FieldKernel.TraitCheckEvent.DiagnosticsLevels.test.ts
 pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/form-list-scope-check.test.tsx test/browser/perf-boundaries/external-store-ingest.test.tsx test/browser/perf-boundaries/runtime-store-no-tearing.test.tsx
 pnpm -C packages/logix-react test -- --project browser test/browser/watcher-browser-perf.test.tsx
-pnpm -C .codex/skills/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw6.json
-pnpm -C .codex/skills/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw6.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw6.json
-pnpm -C .codex/skills/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw6b.json
-pnpm -C .codex/skills/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw6b.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw6b.json
-pnpm -C .codex/skills/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw6c.json
-pnpm -C .codex/skills/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw6c.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw6c.json
-pnpm -C packages/logix-core exec vitest run test/StateTrait/StateTrait.ConvergeAuto.DecisionBudget.SmallSteps.test.ts test/StateTrait/StateTrait.ConvergeAuto.DecisionBudget.test.ts test/StateTrait/StateTrait.ConvergeAuto.CorrectnessInvariants.test.ts test/internal/StateTrait/StateTrait.EffectOpIntegration.test.ts
+pnpm -C packages/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw6.json
+pnpm -C packages/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw6.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw6.json
+pnpm -C packages/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw6b.json
+pnpm -C packages/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw6b.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw6b.json
+pnpm -C packages/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw6c.json
+pnpm -C packages/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw6c.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw6c.json
+pnpm -C packages/logix-core exec vitest run test/FieldKernel/FieldKernel.ConvergeAuto.DecisionBudget.SmallSteps.test.ts test/FieldKernel/FieldKernel.ConvergeAuto.DecisionBudget.test.ts test/FieldKernel/FieldKernel.ConvergeAuto.CorrectnessInvariants.test.ts test/internal/FieldKernel/FieldKernel.EffectOpIntegration.test.ts
 pnpm -C packages/logix-react test -- --project browser test/browser/perf-boundaries/form-list-scope-check.test.tsx
-pnpm -C .codex/skills/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw7.json
-pnpm -C .codex/skills/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw7.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw7.json
-pnpm -C .codex/skills/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw8.json
-pnpm -C .codex/skills/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw8.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw8.json
-pnpm -C .codex/skills/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw8b.json
-pnpm -C .codex/skills/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw8b.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw8b.json
-pnpm -C .codex/skills/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw8c.json
-pnpm -C .codex/skills/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw8c.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw8c.json
+pnpm -C packages/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw7.json
+pnpm -C packages/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw7.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw7.json
+pnpm -C packages/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw8.json
+pnpm -C packages/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw8.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw8.json
+pnpm -C packages/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw8b.json
+pnpm -C packages/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw8b.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw8b.json
+pnpm -C packages/logix-perf-evidence collect:quick -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw8c.json
+pnpm -C packages/logix-perf-evidence diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw8c.json --out specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw8c.json
 ```
 
 ## evidenceRefs
@@ -104,15 +104,15 @@ pnpm -C .codex/skills/logix-perf-evidence diff -- --before specs/103-effect-v4-f
 - `packages/logix-core/src/internal/runtime/core/WorkflowRuntime.ts`
 - `packages/logix-core/src/internal/runtime/core/process/triggerStreams.ts`
 - `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`
-- `packages/logix-core/src/internal/state-trait/external-store.ts`
+- `packages/logix-core/src/internal/state-field/external-store.ts`
 - `packages/logix-core/src/internal/runtime/core/TaskRunner.ts`
 - `packages/logix-core/src/internal/runtime/core/runner/ProgramRunner.ts`
 - `packages/logix-core/src/internal/runtime/core/DebugSink.record.ts`
 - `packages/logix-core/src/internal/runtime/core/TickScheduler.ts`
-- `packages/logix-core/src/internal/state-trait/validate.impl.ts`
-- `packages/logix-core/src/internal/state-trait/converge-in-transaction.impl.ts`
-- `packages/logix-core/src/internal/state-trait/converge-step.ts`
-- `packages/logix-core/src/internal/state-trait/reverse-closure.ts`
+- `packages/logix-core/src/internal/state-field/validate.impl.ts`
+- `packages/logix-core/src/internal/state-field/converge-in-transaction.impl.ts`
+- `packages/logix-core/src/internal/state-field/converge-step.ts`
+- `packages/logix-core/src/internal/state-field/reverse-closure.ts`
 - `packages/logix-react/src/internal/store/RuntimeExternalStore.ts`
 - `packages/logix-react/test/browser/perf-boundaries/form-list-scope-check.test.tsx`
 - `packages/logix-react/test/browser/watcher-browser-perf.test.tsx`

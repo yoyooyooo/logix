@@ -1,3 +1,4 @@
+import * as CoreKernel from '@logixjs/core/repo-internal/kernel-api'
 import { describe, it, expect } from 'vitest'
 import { Effect, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
@@ -10,7 +11,7 @@ describe('Runtime (048): default kernel', () => {
       reducers: { noop: (s: any) => s },
     })
 
-    const program = Root.implement({
+    const program = Logix.Program.make(Root, {
       initial: { count: 0 },
       logics: [],
     })
@@ -20,8 +21,8 @@ describe('Runtime (048): default kernel', () => {
     const readEvidence = Effect.gen(function* () {
       const moduleRuntime = yield* Effect.service(Root.tag).pipe(Effect.orDie)
       return {
-        kernel: Logix.Kernel.getKernelImplementationRef(moduleRuntime),
-        evidence: Logix.Kernel.getRuntimeServicesEvidence(moduleRuntime),
+        kernel: CoreKernel.getKernelImplementationRef(moduleRuntime),
+        evidence: CoreKernel.getRuntimeServicesEvidence(moduleRuntime),
       } as const
     })
 
@@ -31,7 +32,7 @@ describe('Runtime (048): default kernel', () => {
       expect(kernel.kernelId).toBe('core')
       expect(evidence.overridesApplied).toEqual([])
 
-      const gate = Logix.Kernel.evaluateFullCutoverGate({
+      const gate = CoreKernel.evaluateFullCutoverGate({
         mode: 'fullCutover',
         requestedKernelId: 'core',
         runtimeServicesEvidence: evidence,

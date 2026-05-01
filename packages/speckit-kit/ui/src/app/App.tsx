@@ -17,7 +17,7 @@ function specPath(specId: string): string {
 }
 
 export default function App() {
-  const kanban = useModule(KanbanAppDef)
+  const kanban = useModule(KanbanAppDef.tag)
   const dispatch = useDispatch(kanban)
   const navigate = useNavigate()
 

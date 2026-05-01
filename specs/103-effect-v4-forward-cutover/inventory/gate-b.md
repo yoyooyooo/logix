@@ -20,7 +20,7 @@ rg -n "enterSyncTransaction\(|exitSyncTransaction\(|isInSyncTransaction\(" packa
 pnpm check:forbidden-patterns -- --base HEAD
 pnpm -C packages/logix-core typecheck
 pnpm -C packages/logix-core typecheck:test
-pnpm -C packages/logix-core exec vitest run test/internal/ExternalStore/ExternalStore.Sugars.test.ts test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts test/internal/StateTrait/StateTrait.ExternalStoreTrait.TxnWindow.test.ts test/Runtime/Runtime.runProgram.transactionGuard.test.ts test/internal/Runtime/Process/TriggerStreams.RuntimeSchemaCache.test.ts
+pnpm -C packages/logix-core exec vitest run test/internal/ExternalStore/ExternalStore.Sugars.test.ts test/internal/FieldKernel/FieldKernel.ExternalStoreTrait.Runtime.test.ts test/internal/FieldKernel/FieldKernel.ExternalStoreTrait.TxnWindow.test.ts test/Runtime/Runtime.runProgram.transactionGuard.test.ts test/internal/Runtime/Process/TriggerStreams.RuntimeSchemaCache.test.ts
 pnpm -C packages/logix-core test
 pnpm perf collect -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.before.local.quick.json
 pnpm perf collect -- --profile quick --out specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.json
@@ -50,7 +50,7 @@ pnpm perf diff -- --before specs/103-effect-v4-forward-cutover/perf/s2.node.befo
 - `specs/103-effect-v4-forward-cutover/plan.md`
 - `packages/logix-core/src/internal/runtime/core/process/triggerStreams.ts`
 - `packages/logix-core/src/internal/runtime/core/process/ProcessRuntime.make.ts`
-- `packages/logix-core/src/internal/state-trait/external-store.ts`
+- `packages/logix-core/src/internal/state-field/external-store.ts`
 - `packages/logix-core/src/internal/runtime/core/TaskRunner.ts`
 - `packages/logix-core/src/internal/runtime/core/runner/ProgramRunner.ts`
 - `scripts/checks/forbidden-patterns.ts`

@@ -1,8 +1,8 @@
 # Feature Specification: Adaptive Auto-Converge Controller
 
-**Feature Branch**: `111-adaptive-auto-converge-controller`  
-**Created**: 2026-03-27  
-**Status**: Active  
+**Feature Branch**: `111-adaptive-auto-converge-controller`
+**Created**: 2026-03-27
+**Status**: Active
 **Input**: 用户明确提出：当前 `converge-in-transaction.impl.ts` 中的静态阈值长期维护成本很高，随着 runtime、graph 规模、browser 相位和代码演进会不断漂移，因此需要把 “adaptive auto-converge controller” 单独作为一个长期需求展开分析规划。
 
 ## Background
@@ -31,7 +31,7 @@
 
 - `110-main-first-perf-decomposition-and-v4-replay` 是当前 perf 主线唯一总控。`111` 只能消费 `110` 的 latest ledger、residual latest 与 current best candidate anchors。
 - `111` 的 rollout 词汇直接继承 `110`：`accepted_with_evidence | provisional | discarded`、`replayReadiness`、`residualCategory`。
-- `013-auto-converge-planner` 与现有 `trace:trait:converge` / `TraitConvergeDecisionSummary` 是当前 controller 证据契约 baseline。`111` 只能在其基础上增量扩展。
+- `013-auto-converge-planner` 与现有 `trace:field:converge` / `TraitConvergeDecisionSummary` 是当前 controller 证据契约 baseline。`111` 只能在其基础上增量扩展。
 - `111` 的 planning、shadow、PoC 都先挂在 `main` 控制线，`v4-perf` 只承接 replay 与 residual attribution。
 
 ## Current Contract Baseline _(mandatory)_
@@ -42,7 +42,7 @@
   - `getNearFullRootRatioThreshold(stepCount)`
   - `AUTO_FLOOR_RATIO`
   - `MAX_CACHEABLE_ROOT_RATIO`
-- 当前 `trace:trait:converge` / `TraitConvergeDecisionSummary` 已稳定输出：
+- 当前 `trace:field:converge` / `TraitConvergeDecisionSummary` 已稳定输出：
   - `requestedMode` / `executedMode`
   - `reasons`
   - `stepStats.totalSteps / affectedSteps`
@@ -121,7 +121,7 @@
 ## Replay & Docs Sync Gate _(mandatory)_
 
 - `111` 只有在 `main` 线上形成 live candidate 且被 `110` 记为 `accepted_with_evidence` 之后，才允许讨论 replay 到 `v4-perf`。
-- 若 adaptive 字段触达现有 `trait:converge` 契约，必须先同步：
+- 若 adaptive 字段触达现有 `field:converge` 契约，必须先同步：
   - `specs/013-auto-converge-planner/contracts/schemas/*`
   - `docs/ssot/runtime/logix-core/observability/09-debugging.md`
   - `docs/ssot/runtime/logix-core/runtime/05-runtime-implementation.01-module-runtime-make.md`
@@ -181,7 +181,7 @@
 
 ## Non-Goals
 
-- 不新起一套平行的 `trait:converge` 事件或第二 diagnostics 真相源。
+- 不新起一套平行的 `field:converge` 事件或第二 diagnostics 真相源。
 - 不在 shadow 证据未稳定前直接替换 live auto decision。
 - 不把 CI 当第一步信号源。
 
@@ -192,7 +192,7 @@
 - **FR-001**: 系统 MUST 定义独立的 adaptive auto-converge controller 抽象。
 - **FR-002**: controller MUST 以 `fullCostEstimate` 与 `dirtyCostEstimate` 的比较为核心。
 - **FR-003**: controller MUST 支持 per-module、per-step-band、per-dirty-band 的历史统计。
-- **FR-004**: controller MUST 复用现有 `TraitConvergeDecisionSummary` / `trace:trait:converge` 作为最小 telemetry baseline，并稳定输出 `stepStats.totalSteps/affectedSteps`、`dirty.rootCount`、`cache.hit/missReason/disableReason`、`generation`、`requestedMode`、`executedMode`、`executionDurationMs`、`decisionDurationMs`、`configScope`、`reasons`。
+- **FR-004**: controller MUST 复用现有 `TraitConvergeDecisionSummary` / `trace:field:converge` 作为最小 telemetry baseline，并稳定输出 `stepStats.totalSteps/affectedSteps`、`dirty.rootCount`、`cache.hit/missReason/disableReason`、`generation`、`requestedMode`、`executedMode`、`executionDurationMs`、`decisionDurationMs`、`configScope`、`reasons`。
 - **FR-005**: controller MUST 保留 deterministic hard rules，例如 `cold_start`、`dirty_all`、`unknown_write`、budget cutoff。
 - **FR-006**: controller MUST 支持低频探索机制。
 - **FR-007**: controller MUST 输出可解释 summary，并能被 diagnostics / perf evidence 消费。
@@ -212,7 +212,7 @@
 - **NFR-003**: controller 内部状态与诊断输出必须使用稳定标识。
 - **NFR-004**: controller 的在线学习与探索必须有严格上限。
 - **NFR-005**: controller 的 evidence 字段必须能被 benchmark、dated readings 和文档共同消费。
-- **NFR-006**: controller 的 adaptive evidence 必须优先复用既有 `trace:trait:converge` 消费链，避免对 Devtools、PerfDiff、dated readings 引入第二套解析路径。
+- **NFR-006**: controller 的 adaptive evidence 必须优先复用既有 `trace:field:converge` 消费链，避免对 Devtools、PerfDiff、dated readings 引入第二套解析路径。
 - **NFR-007**: exploration 的样本与 shadow 结果必须与 accepted evidence 隔离，不能直接充当 replay 或 CI 的收益依据。
 
 ### Key Entities

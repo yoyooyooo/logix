@@ -7,7 +7,7 @@
     "directory": "packages/logix-form"
   },
   "license": "Apache-2.0",
-  "description": "Form domain package for Logix v3 Trait system",
+  "description": "Form domain package for the current Logix runtime",
   "files": [
     "dist/**"
   ],
@@ -18,8 +18,7 @@
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
-    "./react": "./src/react/index.ts",
-    "./*": "./src/*.ts",
+    "./locales": "./src/locales/index.ts",
     "./internal/*": null
   },
   "publishConfig": {
@@ -31,15 +30,10 @@
         "import": "./dist/index.js",
         "require": "./dist/index.cjs"
       },
-      "./react": {
-        "types": "./dist/react/index.d.ts",
-        "import": "./dist/react/index.js",
-        "require": "./dist/react/index.cjs"
-      },
-      "./*": {
-        "types": "./dist/*.d.ts",
-        "import": "./dist/*.js",
-        "require": "./dist/*.cjs"
+      "./locales": {
+        "types": "./dist/locales/index.d.ts",
+        "import": "./dist/locales/index.js",
+        "require": "./dist/locales/index.cjs"
       },
       "./internal/*": null
     },
@@ -59,20 +53,17 @@
   },
   "dependencies": {
     "@logixjs/core": "workspace:*",
-    "@logixjs/react": "workspace:*",
+    "@logixjs/i18n": "workspace:*",
     "effect": "4.0.0-beta.28"
   },
   "devDependencies": {
     "@effect/vitest": "4.0.0-beta.28",
-    "@types/react": "^19.2.2",
-    "react": "^19.2.0",
     "tsup": "^8.0.0",
     "typescript": "^5.8.2",
     "vitest": "^4.0.15"
   },
   "peerDependencies": {
     "@logixjs/core": "workspace:*",
-    "effect": "4.0.0-beta.28",
-    "react": ">=18.0.0"
+    "effect": "4.0.0-beta.28"
   }
 }

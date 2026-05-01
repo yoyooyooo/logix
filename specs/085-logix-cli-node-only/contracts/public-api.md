@@ -1,5 +1,9 @@
 # Public API: Logix CLI（085 · Node-only 工具箱）
 
+> Superseded background only. This file is not current CLI public API.
+> Current CLI authority is [../../160-cli-agent-first-control-plane-cutover/spec.md](../../160-cli-agent-first-control-plane-cutover/spec.md) and [../../../docs/ssot/runtime/15-cli-agent-first-control-plane.md](../../../docs/ssot/runtime/15-cli-agent-first-control-plane.md).
+> The commands and flags below are negative-only legacy references for `160` when they mention old toolbox routes, public discovery, writeback, or global `--mode report|write`.
+
 > 本文件裁决“命令表与参数语义”（实现阶段可微调命令名，但语义必须保持稳定）。
 > 输出协议统一为 `CommandResult@v1`：`specs/085-logix-cli-node-only/contracts/schemas/cli-command-result.schema.json`。
 
@@ -35,20 +39,12 @@
 
 ### `logix ir export`
 
-语义：导出 ControlSurfaceManifest（Root IR）以及可选 slices（例如 workflowSurface）。
+语义：导出 ControlSurfaceManifest（Root IR）以及可选 slices（例如 controlProgramSurface）。
 
 输出 artifacts（建议）：
 
 - `control-surface.manifest.json`（file）
-- `workflow.surface.json`（file，可选）
-
-### `logix anchor index`
-
-语义：构建 Platform-Grade AnchorIndex（081），对子集外形态显式 Raw Mode + reason codes。
-
-输出 artifacts（建议）：
-
-- `anchor.index.json`（file）
+- `control-program.surface.json`（file，可选）
 
 ## 命令：Validate / Diff（Gate）
 
@@ -100,23 +96,11 @@ Exit Code：同上（有差异 → 2）。
 - `trialrun.report.json`（file）
 - （可选）`trace.slim.json`（file）
 
-## 命令：Write-Back（保守回写：补缺失锚点）
-
-### `logix anchor autofill --mode report|write`
-
-语义：输出 PatchPlan/WriteBackResult/AutofillReport（079/082），并在 `mode=write` 时执行写回（宁可漏不乱补）。
-
-输出 artifacts（建议）：
-
-- `patch.plan.json`（file；优先复用 082 PatchPlan@v1）
-- `writeback.result.json`（file；mode=write 时）
-- `autofill.report.json`（file 或 inline）
-
-## 命令：Transform（可选加速器：batch ops）
+## 命令：Transform（受限写回加速器：batch ops）
 
 ### `logix transform module --ops <delta.json> --mode report|write`
 
-语义：对 Platform-Grade 子集内的 Module 执行 batch ops（新增 state/action/补 stepKey 等），默认 `mode=report`。
+语义：对 Platform-Grade 子集内的 Module 执行 batch ops（新增 state/action/补 stepKey 等），默认 `mode=report`，只有 `mode=write` 可写回。
 
 输入：
 
@@ -124,7 +108,7 @@ Exit Code：同上（有差异 → 2）。
 
 输出 artifacts：
 
-- `patch.plan.json`（inline 或 file；优先复用 082 PatchPlan@v1）
+- `patch.plan.json`（inline 或 file）
 - `transform.report.json`（inline 或 file）
 - （`mode=write`）`writeback.result.json`（file）
 
@@ -132,4 +116,3 @@ Exit Code：
 
 - report-only：存在 `failed`/`skipped` 不一定是错误；按门禁策略决定是否 `VIOLATION`。
 - write：任何写回失败必须 `ERROR` 或 `VIOLATION`（由 reason code 与可恢复性裁决）。
-

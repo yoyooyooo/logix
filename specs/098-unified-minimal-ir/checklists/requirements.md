@@ -1,7 +1,7 @@
 # Specification Quality Checklist: O-005 单一最小 IR 收敛（Static IR + Dynamic Trace）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2026-02-25  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2026-02-25
 **Feature**: `specs/098-unified-minimal-ir/spec.md`
 
 ## Content Quality

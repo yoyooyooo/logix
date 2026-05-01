@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {Effect, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '../../../src/index.js'
+import * as Root from '../../../src/internal/root.js'
 
 describe('HierarchicalInjector root provider', () => {
   it('Root.resolve(ServiceTag) ignores local overrides', async () => {
@@ -15,15 +16,15 @@ describe('HierarchicalInjector root provider', () => {
       actions: { noop: Schema.Void },
     })
 
-    const RootImpl = RootModule.implement({ initial: { ok: true } })
+    const RootProgram = Logix.Program.make(RootModule, { initial: { ok: true } })
 
-    const runtime = Logix.Runtime.make(RootImpl, {
+    const runtime = Logix.Runtime.make(RootProgram, {
       layer: Layer.succeed(TestServiceTag, { value: 'root' }),
     })
 
     try {
       const value = runtime.runSync(
-        Logix.Root.resolve(TestServiceTag).pipe(Effect.provideService(TestServiceTag, { value: 'override' })),
+        Root.resolve(TestServiceTag).pipe(Effect.provideService(TestServiceTag, { value: 'override' })),
       )
       expect(value.value).toBe('root')
     } finally {
@@ -37,16 +38,16 @@ describe('HierarchicalInjector root provider', () => {
       actions: { noop: Schema.Void },
     })
 
-    const Impl = M.implement({ initial: { ok: true } })
-    const rootRuntime = Logix.Runtime.make(Impl)
-    const otherTree = Logix.Runtime.make(Impl)
+    const Program = Logix.Program.make(M, { initial: { ok: true } })
+    const rootRuntime = Logix.Runtime.make(Program)
+    const otherTree = Logix.Runtime.make(Program)
 
     try {
       const rootSingleton = rootRuntime.runSync(Effect.service(M.tag).pipe(Effect.orDie)) as Logix.ModuleRuntime<any, any>
       const otherSingleton = otherTree.runSync(Effect.service(M.tag).pipe(Effect.orDie)) as Logix.ModuleRuntime<any, any>
 
       const resolved = rootRuntime.runSync(
-        Logix.Root.resolve(M.tag).pipe(Effect.provideService(M.tag, otherSingleton as any)),
+        Root.resolve(M.tag).pipe(Effect.provideService(M.tag, otherSingleton as any)),
       ) as Logix.ModuleRuntime<any, any>
 
       expect(resolved).toBe(rootSingleton)

@@ -2,7 +2,7 @@
 
 本目录用于归档可对比的 `PerfReport` / `PerfDiff`（before/after/diff），作为 075 的性能预算与回归门禁证据落点。
 
-> 口径：`.codex/skills/logix-perf-evidence/references/perf-evidence.md`
+> 口径：`packages/logix-perf-evidence/references/perf-evidence.md`
 
 ## Baseline 语义（MUST）
 

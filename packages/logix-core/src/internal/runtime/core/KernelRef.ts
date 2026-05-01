@@ -5,9 +5,9 @@ import { isDevEnv } from './env.js'
  * Stable identifier for a kernel variant (requested kernel family).
  *
  * - Recommended: `[a-z0-9-]+` (lower-kebab).
- * - Recommended reserved names: `core` (builtin semantics), `core-ng` (history/comparison).
+ * - Recommended reserved name: `core` (builtin semantics).
  */
-export type KernelId = 'core' | 'core-ng' | (string & {})
+export type KernelId = 'core' | (string & {})
 
 const isKernelId = (value: unknown): value is KernelId =>
   typeof value === 'string' && value.length > 0 && /^[a-z0-9-]+$/.test(value)
@@ -87,7 +87,7 @@ export const normalizeKernelImplementationRef = (
 class KernelImplementationRefTagImpl extends ServiceMap.Service<
   KernelImplementationRefTagImpl,
   KernelImplementationRef
->()('@logixjs/core/KernelImplementationRef') {}
+>()('@logixjs/core/repo-internal/kernel-apiImplementationRef') {}
 
 export const KernelImplementationRefTag = KernelImplementationRefTagImpl
 

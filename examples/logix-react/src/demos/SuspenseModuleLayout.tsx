@@ -1,7 +1,8 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import React, { Suspense } from 'react'
 import { Effect, Layer, ManagedRuntime, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
-import { RuntimeProvider, useModule } from '@logixjs/react'
+import { RuntimeProvider, fieldValue, useModule, useSelector } from '@logixjs/react'
 
 // 1. 定义一个需要“重型初始化”的服务
 interface HeavyService {
@@ -23,8 +24,8 @@ const HeavyServiceLive = Layer.effect(
   }),
 )
 
-// 3. 定义一个依赖该服务的 Module
-const SuspenseDef = Logix.Module.make('SuspenseModule', {
+// 3. 定义一个依赖该服务的 Program 图纸
+const SuspenseModule = Logix.Module.make('SuspenseModule', {
   state: Schema.Struct({
     count: Schema.Number,
   }),
@@ -33,9 +34,9 @@ const SuspenseDef = Logix.Module.make('SuspenseModule', {
   },
 })
 
-const SuspenseLogic = SuspenseDef.logic<HeavyService>(($) =>
+const SuspenseLogic = SuspenseModule.logic<HeavyService>('suspense-logic', ($) =>
   Effect.gen(function* () {
-    // 注入依赖：虽然 Logic 内部没用到，但 ModuleImpl 声明了依赖，
+    // 注入依赖：虽然 Logic 内部没用到，但 Program 声明了依赖，
     // 所以 Runtime 构建时必须等待 Layer 就绪。
     yield* Effect.service(HeavyService).pipe(Effect.orDie)
 
@@ -47,27 +48,25 @@ const SuspenseLogic = SuspenseDef.logic<HeavyService>(($) =>
   }),
 )
 
-// 4. 构造 Module：将 HeavyServiceLive 注入
-// 关键点：withLayer(HeavyServiceLive) 使得该 Module 的 `.impl.layer` 变成了异步 Layer
-const SuspenseModule = SuspenseDef.implement({
+// 4. 构造 Program：将 HeavyServiceLive 注入
+// 关键点：withLayer(HeavyServiceLive) 使得该 Program 的运行时 blueprint layer 变成了异步 Layer
+const SuspenseProgram = Logix.Program.make(SuspenseModule, {
   initial: { count: 0 },
   logics: [SuspenseLogic],
 }).withLayer(HeavyServiceLive)
 
-const SuspenseImpl = SuspenseModule.impl
-
 // 5. 演示组件
 const SuspenseCounter: React.FC = () => {
   // 使用 suspend: true
-  // 由于 SuspenseImpl 依赖了异步 Layer，useModule 会抛出 Promise，
+  // 由于 SuspenseProgram 依赖了异步 Layer，useModule 会抛出 Promise，
   // 直到 HeavyServiceLive 初始化完成（2秒后）。
-  const runtime = useModule(SuspenseImpl, {
+  const runtime = useModule(SuspenseProgram, {
     key: 'suspense-demo',
     suspend: true,
     gcTime: 5000, // 必须 > 初始化耗时 (2000ms)，否则会在 pending 期间被 GC
   })
 
-  const count = useModule(runtime, (s) => s.count)
+  const count = useSelector(runtime, fieldValue('count'))
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 flex flex-col gap-4">
@@ -98,7 +97,7 @@ const SuspenseCounter: React.FC = () => {
 
 // 6. 页面布局
 const suspenseRuntime = ManagedRuntime.make(
-  Layer.mergeAll(Logix.Debug.runtimeLabel('SuspenseModuleDemo'), Logix.Debug.devtoolsHubLayer(), Layer.empty),
+  Layer.mergeAll(CoreDebug.runtimeLabel('SuspenseModuleDemo'), CoreDebug.devtoolsHubLayer()),
 )
 
 export const SuspenseModuleLayout: React.FC = () => {
@@ -119,7 +118,7 @@ export const SuspenseModuleLayout: React.FC = () => {
               定义了一个 <code>HeavyServiceLive</code>，在 Layer 构建阶段 <code>Effect.sleep(2000)</code>；
             </li>
             <li>
-              ModuleImpl 通过 <code>withLayer</code> 注入该服务，导致 ModuleRuntime 的构建被阻塞；
+              Program 通过 <code>withLayer</code> 注入该服务，导致 ModuleRuntime 的构建被阻塞；
             </li>
             <li>点击下方按钮挂载组件时，你会看到 2 秒钟的 Loading 状态。</li>
           </ul>

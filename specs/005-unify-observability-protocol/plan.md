@@ -1,6 +1,6 @@
 # Implementation Plan: 统一观测协议与聚合引擎（组件优先；扩展 P1=离线导入；P2=实时连接）
 
-**Branch**: `005-unify-observability-protocol` | **Date**: 2025-12-31 | **Spec**: `specs/005-unify-observability-protocol/spec.md`  
+**Branch**: `005-unify-observability-protocol` | **Date**: 2025-12-31 | **Spec**: `specs/005-unify-observability-protocol/spec.md`
 **Input**: `specs/005-unify-observability-protocol/spec.md`
 
 ## Summary
@@ -17,7 +17,7 @@
 - 先完成 `specs/016-serializable-diagnostics-and-identity` 的 core hardening（单锚点 + 可序列化诊断 + setup-only）再推进 Devtools 交付面。
 - 当前优先级：以 US1/US4 为 P1 主线；US3（扩展实时连接）明确为 P2。
 
-达标路径采用 Worker-first：聚合/索引/裁剪/布局在 Worker 执行，主线程只做轻量归一化、批量投递与渲染交互；Timeline 的顶层 Span 以 `StateTransaction/txnId` 为窗口，deep 模式按需展开 trace/trait steps（对标 Chrome DevTools 的交互标准，但不强行套其语义）。
+达标路径采用 Worker-first：聚合/索引/裁剪/布局在 Worker 执行，主线程只做轻量归一化、批量投递与渲染交互；Timeline 的顶层 Span 以 `StateTransaction/txnId` 为窗口，deep 模式按需展开 trace/field steps（对标 Chrome DevTools 的交互标准，但不强行套其语义）。
 
 ## Deepening Notes
 
@@ -32,14 +32,14 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript（pnpm workspace / monorepo）  
-**Primary Dependencies**: `effect` v3、`@logixjs/core` / `@logixjs/react` / `@logixjs/devtools-react`、React、Vite（示例/工具链）、Chrome Extension (Manifest V3)  
-**Storage**: N/A（证据包导出/导入以文件或剪贴板为主；运行中以内存 ring buffer / 聚合快照为主）  
-**Testing**: Vitest（含 `@effect/vitest` 约定）、TypeScript typecheck、ESLint  
-**Target Platform**: 浏览器（Chrome 及兼容环境），包含页面主线程与 Web Worker；扩展需要 MV3  
-**Project Type**: Monorepo packages + examples  
-**Performance Goals**: 参照 `spec.md` 的 SC-001/SC-003：被测页面关键交互延迟增幅 ≤10%，面板常用操作 200ms 内可见结果；10k 事件证据包导入后 5s 内可筛选/查看；并满足 FR-012：≥10k events/s 下主线程阻塞 ≤10ms  
-**Constraints**: Devtools UI 状态与副作用以 Logix Runtime 管理（避免巨型 React store）；高频事件需背压/降级且对用户可见；聚合/索引/裁剪/布局默认在 Worker 执行；禁止 watch 模式测试  
+**Language/Version**: TypeScript（pnpm workspace / monorepo）
+**Primary Dependencies**: `effect` v3、`@logixjs/core` / `@logixjs/react` / `@logixjs/devtools-react`、React、Vite（示例/工具链）、Chrome Extension (Manifest V3)
+**Storage**: N/A（证据包导出/导入以文件或剪贴板为主；运行中以内存 ring buffer / 聚合快照为主）
+**Testing**: Vitest（含 `@effect/vitest` 约定）、TypeScript typecheck、ESLint
+**Target Platform**: 浏览器（Chrome 及兼容环境），包含页面主线程与 Web Worker；扩展需要 MV3
+**Project Type**: Monorepo packages + examples
+**Performance Goals**: 参照 `spec.md` 的 SC-001/SC-003：被测页面关键交互延迟增幅 ≤10%，面板常用操作 200ms 内可见结果；10k 事件证据包导入后 5s 内可筛选/查看；并满足 FR-012：≥10k events/s 下主线程阻塞 ≤10ms
+**Constraints**: Devtools UI 状态与副作用以 Logix Runtime 管理（避免巨型 React store）；高频事件需背压/降级且对用户可见；聚合/索引/裁剪/布局默认在 Worker 执行；禁止 watch 模式测试
 **Scale/Scope**:
 - P1：US1/US4（组件形态 + 证据包导出/导入 + 录制窗口语义 + Worker-first 聚合/渲染）；扩展形态仅做离线 EvidencePackage 导入与一致视图。
 - P2：US3（扩展实时连接：TransportMessage v1 + 背压 + CONTROL/ACK 命令回路）。
@@ -70,7 +70,7 @@ _GATE: Phase 0 研究前必须通过；Phase 1 设计后再次复查。_
 
 ## Perf Evidence Plan（MUST）
 
-> 详细口径见：`.codex/skills/logix-perf-evidence/references/perf-evidence.md`
+> 详细口径见：`packages/logix-perf-evidence/references/perf-evidence.md`
 
 - Baseline 语义：代码前后（before=改动前 commit；after=当前工作区 local），并补一组策略 A/B（devtools off vs on）量化观测开销。
 - envId：`<os-arch.cpu.chrome-version.headless>`（同机同浏览器版本/同 headless，锁死可比性）。

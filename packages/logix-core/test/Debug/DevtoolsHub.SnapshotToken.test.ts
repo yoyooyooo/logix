@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer } from 'effect'
@@ -9,51 +10,51 @@ const flushMicrotask = (): Effect.Effect<void> =>
 describe('DevtoolsHub (SnapshotToken)', () => {
   it.effect('snapshotToken should update synchronously and match getter', () =>
     Effect.gen(function* () {
-      Logix.Debug.clearDevtoolsEvents()
-      const before = Logix.Debug.getDevtoolsSnapshotToken()
+      CoreDebug.clearDevtoolsEvents()
+      const before = CoreDebug.getDevtoolsSnapshotToken()
 
-      const layer = Logix.Debug.devtoolsHubLayer({
+      const layer = CoreDebug.devtoolsHubLayer({
         bufferSize: 5,
         diagnosticsLevel: 'light',
       }) as Layer.Layer<any, never, never>
 
-      yield* Logix.Debug.record({
+      yield* CoreDebug.record({
         type: 'trace:test',
         moduleId: 'A',
         instanceId: 'i-1',
         runtimeLabel: 'R',
       } as any).pipe(Effect.provide(layer))
 
-      const after = Logix.Debug.getDevtoolsSnapshotToken()
+      const after = CoreDebug.getDevtoolsSnapshotToken()
       expect(after).toBeGreaterThan(before)
-      expect(Logix.Debug.getDevtoolsSnapshot().snapshotToken).toBe(after)
+      expect(CoreDebug.getDevtoolsSnapshot().snapshotToken).toBe(after)
     }),
   )
 
   it.effect('snapshotToken should bump for instances/latest*/exportBudget even when events window disabled', () =>
     Effect.gen(function* () {
-      Logix.Debug.clearDevtoolsEvents()
+      CoreDebug.clearDevtoolsEvents()
 
-      const layer = Logix.Debug.devtoolsHubLayer({
+      const layer = CoreDebug.devtoolsHubLayer({
         bufferSize: 0,
         diagnosticsLevel: 'full',
       }) as Layer.Layer<any, never, never>
 
-      const base = Logix.Debug.getDevtoolsSnapshotToken()
+      const base = CoreDebug.getDevtoolsSnapshotToken()
 
-      yield* Logix.Debug.record({
+      yield* CoreDebug.record({
         type: 'module:init',
         moduleId: 'M',
         instanceId: 'i-1',
         runtimeLabel: 'R',
       } as any).pipe(Effect.provide(layer))
 
-      const t1 = Logix.Debug.getDevtoolsSnapshotToken()
+      const t1 = CoreDebug.getDevtoolsSnapshotToken()
       expect(t1).toBeGreaterThan(base)
-      expect(Logix.Debug.getDevtoolsSnapshot().events.length).toBe(0)
-      expect(Logix.Debug.getDevtoolsSnapshot().instances.get('R::M') ?? 0).toBeGreaterThan(0)
+      expect(CoreDebug.getDevtoolsSnapshot().events.length).toBe(0)
+      expect(CoreDebug.getDevtoolsSnapshot().instances.get('R::M') ?? 0).toBeGreaterThan(0)
 
-      yield* Logix.Debug.record({
+      yield* CoreDebug.record({
         type: 'state:update',
         moduleId: 'M',
         instanceId: 'i-1',
@@ -61,16 +62,16 @@ describe('DevtoolsHub (SnapshotToken)', () => {
         txnSeq: 1,
         txnId: 'i-1::t1',
         state: { count: 1 },
-        traitSummary: { t: 1 },
+        fieldSummary: { t: 1 },
       } as any).pipe(Effect.provide(layer))
 
-      const t2 = Logix.Debug.getDevtoolsSnapshotToken()
+      const t2 = CoreDebug.getDevtoolsSnapshotToken()
       expect(t2).toBeGreaterThan(t1)
-      expect(Logix.Debug.getDevtoolsSnapshot().events.length).toBe(0)
-      expect(Logix.Debug.getDevtoolsSnapshot().latestStates.get('R::M::i-1')).toEqual({ count: 1 })
-      expect(Logix.Debug.getDevtoolsSnapshot().latestTraitSummaries.get('R::M::i-1')).toEqual({ t: 1 })
+      expect(CoreDebug.getDevtoolsSnapshot().events.length).toBe(0)
+      expect(CoreDebug.getDevtoolsSnapshot().latestStates.get('R::M::i-1')).toEqual({ count: 1 })
+      expect(CoreDebug.getDevtoolsSnapshot().latestFieldSummaries.get('R::M::i-1')).toEqual({ t: 1 })
 
-      yield* Logix.Debug.record({
+      yield* CoreDebug.record({
         type: 'action:dispatch',
         moduleId: 'M',
         instanceId: 'i-1',
@@ -80,36 +81,36 @@ describe('DevtoolsHub (SnapshotToken)', () => {
         action: { _tag: 'HugeAction', payload: 'x'.repeat(20_000) },
       } as any).pipe(Effect.provide(layer))
 
-      const t3 = Logix.Debug.getDevtoolsSnapshotToken()
+      const t3 = CoreDebug.getDevtoolsSnapshotToken()
       expect(t3).toBeGreaterThan(t2)
-      expect(Logix.Debug.getDevtoolsSnapshot().events.length).toBe(0)
-      expect(Logix.Debug.getDevtoolsSnapshot().exportBudget.oversized).toBeGreaterThan(0)
+      expect(CoreDebug.getDevtoolsSnapshot().events.length).toBe(0)
+      expect(CoreDebug.getDevtoolsSnapshot().exportBudget.oversized).toBeGreaterThan(0)
     }),
   )
 
   it.effect('subscribeDevtoolsSnapshot should batch notifications but never miss the latest token', () =>
     Effect.gen(function* () {
-      Logix.Debug.clearDevtoolsEvents()
-      const start = Logix.Debug.getDevtoolsSnapshotToken()
+      CoreDebug.clearDevtoolsEvents()
+      const start = CoreDebug.getDevtoolsSnapshotToken()
 
       let calls = 0
-      let seen: Logix.Debug.SnapshotToken | undefined
+      let seen: CoreDebug.SnapshotToken | undefined
 
-      const unsubscribe = Logix.Debug.subscribeDevtoolsSnapshot(() => {
+      const unsubscribe = CoreDebug.subscribeDevtoolsSnapshot(() => {
         calls += 1
-        seen = Logix.Debug.getDevtoolsSnapshotToken()
+        seen = CoreDebug.getDevtoolsSnapshotToken()
       })
 
       yield* Effect.sync(() => {
-        Logix.Debug.setDevtoolsRunId('run-a')
-        Logix.Debug.setDevtoolsRunId('run-b')
-        Logix.Debug.clearDevtoolsEvents()
+        CoreDebug.setDevtoolsRunId('run-a')
+        CoreDebug.setDevtoolsRunId('run-b')
+        CoreDebug.clearDevtoolsEvents()
       })
 
       yield* flushMicrotask()
 
       expect(calls).toBe(1)
-      expect(seen).toBe(Logix.Debug.getDevtoolsSnapshotToken())
+      expect(seen).toBe(CoreDebug.getDevtoolsSnapshotToken())
       expect(seen!).toBeGreaterThan(start)
 
       unsubscribe()

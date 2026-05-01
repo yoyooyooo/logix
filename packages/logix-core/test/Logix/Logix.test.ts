@@ -16,14 +16,21 @@ const TestModule = Logix.Module.make('LogixTestModule', {
   actions: Actions,
 })
 
+const TestLogic = TestModule.logic('inc', ($) =>
+  Effect.gen(function* () {
+    yield* $.onAction('inc').run(() => $.state.update((s) => ({ ...s, count: s.count + 1 })))
+  }),
+)
+
 describe('Logix public barrel', () => {
-  it.effect('should construct a runtime from ModuleImpl via Runtime.make', () =>
+  it.effect('should run the MPR-3 mainline formula via Module.logic -> Program.make -> Runtime.make', () =>
     Effect.gen(function* () {
-      const impl = TestModule.implement({
+      const programModule = Logix.Program.make(TestModule, {
         initial: { count: 0 },
+        logics: [TestLogic],
       })
 
-      const runtime = Logix.Runtime.make(impl, {
+      const runtime = Logix.Runtime.make(programModule, {
         layer: Layer.empty as Layer.Layer<any, never, never>,
       })
 
@@ -31,19 +38,12 @@ describe('Logix public barrel', () => {
         const test = yield* Effect.service(TestModule.tag).pipe(Effect.orDie)
         expect(test).toBeDefined()
         expect(yield* test.getState).toEqual({ count: 0 })
+        yield* test.dispatch({ _tag: 'inc', payload: undefined })
+        expect(yield* test.getState).toEqual({ count: 1 })
       })
 
       yield* Effect.promise(() => runtime.runPromise(program as Effect.Effect<void, never, any>))
     }),
   )
 
-  it('should expose Link.make as Effect factory', () => {
-    const link = Logix.Link.make(
-      {
-        modules: [TestModule] as const,
-      },
-      () => Effect.void,
-    )
-    expect(Effect.isEffect(link)).toBe(true)
-  })
 })

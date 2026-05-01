@@ -8,7 +8,7 @@
     - 保持默认 `trial`：拒绝，违背 spec 对默认策略的裁决。
     - 仅在文档声明默认严格，不改代码默认值：拒绝，无法形成行为保证。
 
-- Decision: 保留显式 `trial` 能力，仅通过配置触发（`Logix.Kernel.fullCutoverGateModeLayer('trial')`）。
+- Decision: 保留显式 `trial` 能力，仅通过配置触发（`CoreKernel.fullCutoverGateModeLayer('trial')`）。
   - Rationale: 保留实验/对照能力，同时避免默认路径退化。
   - Alternatives considered:
     - 移除 `trial`：拒绝，会损失回归对照场景。

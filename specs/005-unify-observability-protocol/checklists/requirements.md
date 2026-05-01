@@ -1,7 +1,7 @@
 # Specification Quality Checklist: 统一观测协议与聚合引擎（平台协议层优先）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-13  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-13
 **Feature**: [Link to spec.md](../spec.md)
 
 ## Content Quality

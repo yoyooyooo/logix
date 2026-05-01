@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://intent-flow.local/specs/028-form-api-dx/schemas/list-identity-policy.schema.json",
+  "$id": "https://logix.local/specs/028-form-api-dx/schemas/list-identity-policy.schema.json",
   "title": "ListIdentityPolicy",
   "description": "Explicit row identity policy for a list field. trackBy is recommended; store and index are explicit fallbacks.",
   "oneOf": [

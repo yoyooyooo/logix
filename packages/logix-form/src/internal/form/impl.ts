@@ -1,17 +1,48 @@
 import * as Logix from '@logixjs/core'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
+import * as CoreEvidence from '@logixjs/core/repo-internal/evidence-api'
 import { Effect, Schema } from 'effect'
-import { mergeTraitSpecs, normalizeDerived, normalizeValidateOn, wrapTraitsForValidateOn } from './traits.js'
+import * as SchemaAST from 'effect/SchemaAST'
+import {
+  collectSourceOwnershipFromFieldSpec,
+  collectSourceSubmitImpactFromFieldSpec,
+  mergeFieldSpecs,
+  normalizeValidateOn,
+  wrapFieldsForValidateOn,
+} from './fields.js'
 import { makeFormReducers } from './reducer.js'
-import { makeFormController } from './controller.js'
+import {
+  makeFormHandle,
+  type EffectfulFieldRule,
+  type EffectfulListRule,
+  type EffectfulListItemRule,
+  type FormHandle,
+  type SubmitVerdict,
+} from './commands.js'
+import { buildRulesManifest, compileRulesToFieldSpec, rulesManifestWarningsBase } from './rules.js'
 import type { RuleDescriptor, RuleScope, RulesManifest } from './rules.js'
-import type { RulesSpec } from '../dsl/rules.js'
-import { traits as traitsDsl } from '../dsl/traits.js'
 import { install as installLogic } from './install.js'
-import { makeFormRulesManifestArtifactExporter } from './artifacts.js'
+import {
+  makeFormEvidenceContractArtifactExporter,
+  makeFormRulesManifestArtifactExporter,
+  type FormCompanionOwnershipContract,
+} from './artifacts.js'
 import * as Rule from '../../Rule.js'
-import type { DerivedSpec } from '../../Trait.js'
+import type {
+  CanonicalDepValue,
+  CanonicalListItem,
+  CanonicalListPath,
+  CanonicalPath,
+  CanonicalValue,
+} from './types.js'
+import { rules as makeRulesDsl } from '../dsl/rules.js'
+import type { RulesSpec } from '../dsl/rules.js'
+import type { FormSubmitAttemptSnapshot } from './errors.js'
+import { makeInitialSubmitAttemptSnapshot } from './errors.js'
+import { getAtPath } from './path.js'
 
 export type { RuleDescriptor, RuleScope, RulesManifest } from './rules.js'
+export type { FormHandle, SubmitVerdict } from './commands.js'
 
 export type FormErrors = unknown
 export type FormUiState = unknown
@@ -20,12 +51,8 @@ export type FormMeta = {
   readonly submitCount: number
   readonly isSubmitting: boolean
   readonly isDirty: boolean
-  /**
-   * errorCount：
-   * - Used for O(1) reads in `FormView.isValid/canSubmit`.
-   * - Semantics: the number of ErrorValue leaf nodes in the errors tree (including `$manual/$schema`).
-   */
   readonly errorCount: number
+  readonly submitAttempt: FormSubmitAttemptSnapshot
 }
 
 export type FormState<TValues extends object> = TValues & {
@@ -42,11 +69,15 @@ const FormActions = {
   validatePaths: Schema.Array(Schema.String),
   submitAttempt: Schema.Void,
   setSubmitting: Schema.Boolean,
+  setSubmitAttempt: Schema.Unknown,
   reset: Schema.UndefinedOr(Schema.Unknown),
   setError: Schema.Struct({ path: Schema.String, error: Schema.Unknown }),
   clearErrors: Schema.UndefinedOr(Schema.Array(Schema.String)),
   arrayAppend: Schema.Struct({ path: Schema.String, value: Schema.Unknown }),
   arrayPrepend: Schema.Struct({ path: Schema.String, value: Schema.Unknown }),
+  arrayInsert: Schema.Struct({ path: Schema.String, index: Schema.Number, value: Schema.Unknown }),
+  arrayUpdate: Schema.Struct({ path: Schema.String, index: Schema.Number, value: Schema.Unknown }),
+  arrayReplace: Schema.Struct({ path: Schema.String, items: Schema.Array(Schema.Unknown) }),
   arrayRemove: Schema.Struct({ path: Schema.String, index: Schema.Number }),
   arraySwap: Schema.Struct({
     path: Schema.String,
@@ -61,9 +92,11 @@ const FormActions = {
 } as const
 
 type FormShapeForActions = FormShape<Record<string, never>>
-export type FormAction = Logix.ActionOf<FormShapeForActions>
+type FormRulesDecl = any
+type FormRulesInput = FormRulesDecl | ReadonlyArray<FormRulesDecl>
 
-export type FormShape<TValues extends object> = Logix.Shape<Schema.Schema<FormState<TValues>>, typeof FormActions>
+export type FormAction = Logix.Module.ActionOf<FormShapeForActions>
+export type FormShape<TValues extends object> = Logix.Module.Shape<Schema.Schema<FormState<TValues>>, typeof FormActions>
 
 export interface FormMakeConfig<TValues extends object> {
   readonly values: Schema.Schema<TValues>
@@ -71,89 +104,650 @@ export interface FormMakeConfig<TValues extends object> {
   readonly validateOn?: ReadonlyArray<'onSubmit' | 'onChange' | 'onBlur'>
   readonly reValidateOn?: ReadonlyArray<'onSubmit' | 'onChange' | 'onBlur'>
   readonly debounceMs?: number
-  /**
-   * rules：
-   * - Recommended: express validations using rules only (field/list/root rules).
-   * - The result will be compiled into an equivalent StateTraitSpec (does not introduce a second runtime).
-   */
-  readonly rules?: RulesSpec<TValues>
-  readonly traits?: Logix.StateTrait.StateTraitSpec<TValues>
-  /**
-   * derived：
-   * - The entry point for domain-level linkage/derivation (by default, only writes back to values/ui are allowed).
-   * - The result must be fully reducible to StateTraitSpec/IR (computed/link/source).
-   */
-  readonly derived?: DerivedSpec<TValues>
 }
 
-export type FormExtendDef<TValues extends object> = Omit<
-  Logix.Module.MakeExtendDef<Schema.Schema<FormState<TValues>>, typeof FormActions, {}>,
-  'actions'
-> & { readonly actions?: never }
+export type SourceReceipt<Data = unknown, Err = unknown> = Readonly<{
+  readonly status: 'idle' | 'loading' | 'success' | 'error'
+  readonly keyHash?: string
+  readonly data?: Data
+  readonly error?: Err
+}>
 
-export interface FormController<TValues extends object> {
-  readonly runtime: Logix.ModuleRuntime<FormState<TValues>, FormAction>
-  readonly getState: Effect.Effect<FormState<TValues>>
-  readonly dispatch: (action: FormAction) => Effect.Effect<void>
-  readonly submit: () => Effect.Effect<void>
+type SourceReceiptFromValue<Value> =
+  Extract<Value, SourceReceipt<any, any>> extends never
+    ? SourceReceipt<unknown, unknown>
+    : Extract<Value, SourceReceipt<any, any>>
 
-  readonly controller: {
-    readonly validate: () => Effect.Effect<void, never, any>
-    readonly validatePaths: (paths: ReadonlyArray<string> | string) => Effect.Effect<void, never, any>
-    readonly reset: (values?: TValues) => Effect.Effect<void>
-    readonly setError: (path: string, error: unknown) => Effect.Effect<void>
-    readonly clearErrors: (paths?: ReadonlyArray<string> | string) => Effect.Effect<void>
-    readonly handleSubmit: (handlers: {
-      readonly onValid: (values: TValues) => Effect.Effect<void, any, any>
-      readonly onInvalid?: (errors: unknown) => Effect.Effect<void, any, any>
-    }) => Effect.Effect<void, any, any>
+export type AvailabilityKind = 'interactive' | 'hidden' | 'disabled'
+
+export type AvailabilityFact<Extra extends object = Record<string, unknown>> = Readonly<
+  {
+    readonly kind: AvailabilityKind
+  } & Extra
+>
+
+export type CandidateProjection = Readonly<{
+  readonly value: string
+  readonly label: string
+}>
+
+export type CandidateSet<Item = unknown, Extra extends object = Record<string, unknown>> = Readonly<
+  {
+    readonly items: ReadonlyArray<Item>
+    readonly keepCurrent?: boolean
+    readonly project?: CandidateProjection
+  } & Extra
+>
+
+export type CompanionBundle<
+  Availability extends AvailabilityFact = AvailabilityFact,
+  Candidates extends CandidateSet = CandidateSet,
+> = Readonly<{
+  readonly availability?: Availability
+  readonly candidates?: Candidates
+}>
+
+export type CompanionDepsMap<
+  TValues extends object,
+  Deps extends ReadonlyArray<CanonicalPath<TValues>>,
+> = Readonly<{
+  readonly [Path in Deps[number]]: CanonicalDepValue<TValues, Path>
+}>
+
+export type CompanionLowerContext<
+  TValues extends object,
+  P extends CanonicalPath<TValues>,
+  Deps extends ReadonlyArray<CanonicalPath<TValues>>,
+  Source = SourceReceiptFromValue<CanonicalValue<TValues, P>>,
+> = Readonly<{
+  readonly value: CanonicalValue<TValues, P>
+  readonly deps: CompanionDepsMap<TValues, Deps>
+  readonly source?: Source
+}>
+
+export type FormCompanionMetadataMap = Readonly<Record<string, unknown>>
+
+export type FormProgramCompanionMetadataCarrier<
+  TCompanionMetadata extends FormCompanionMetadataMap = {},
+> = Readonly<{
+  readonly __logixFormCompanionMetadata?: TCompanionMetadata
+}>
+
+type UnionToIntersection<U> = (U extends unknown ? (value: U) => void : never) extends (value: infer I) => void
+  ? I
+  : never
+
+type CompanionMetadataFromDefineReturn<T> = T extends FormProgramCompanionMetadataCarrier<infer Metadata>
+  ? Metadata
+  : T extends ReadonlyArray<infer Item>
+    ? UnionToIntersection<CompanionMetadataFromDefineReturn<Item>>
+    : {}
+
+/**
+ * semantic-owner boundary:
+ * - define(form) remains the declaration and semantic owner.
+ * - internal lowering may refine admitted enablers, but cannot mint a second authoring route.
+ */
+export interface FormDefineApi<TValues extends object, TDecoded = TValues> {
+  readonly rules: (...decls: ReadonlyArray<unknown>) => void
+  readonly dsl: unknown
+  readonly field: <P extends CanonicalPath<TValues>, Ctx = unknown>(
+    path: P,
+  ) => {
+    readonly rule: (
+      rule: Rule.RuleInput<CanonicalValue<TValues, P>, Ctx>,
+      options?: { readonly errorTarget?: Rule.ErrorTarget },
+    ) => void
+    readonly source: (config: {
+      readonly resource: { readonly id: string }
+      readonly deps: ReadonlyArray<CanonicalPath<TValues>>
+      readonly key: (...depsValues: ReadonlyArray<unknown>) => unknown | undefined
+      readonly triggers?: ReadonlyArray<'onMount' | 'onKeyChange'>
+      readonly debounceMs?: number
+      readonly concurrency?: 'switch' | 'exhaust-trailing'
+      readonly submitImpact?: 'block' | 'observe'
+    }) => void
+    readonly companion: <
+      const Deps extends ReadonlyArray<CanonicalPath<TValues>>,
+      LowerResult extends CompanionBundle | undefined,
+    >(config: {
+      readonly deps: Deps
+      readonly lower: (ctx: CompanionLowerContext<TValues, P, Deps>) => LowerResult
+    }) => FormProgramCompanionMetadataCarrier<Readonly<Record<P, LowerResult>>>
   }
-
-  readonly field: (path: string) => {
-    readonly get: Effect.Effect<unknown>
-    readonly set: (value: unknown) => Effect.Effect<void>
-    readonly blur: () => Effect.Effect<void>
-  }
-
-  readonly fieldArray: (path: string) => {
-    readonly get: Effect.Effect<ReadonlyArray<unknown>>
-    readonly append: (value: unknown) => Effect.Effect<void>
-    readonly prepend: (value: unknown) => Effect.Effect<void>
-    readonly remove: (index: number) => Effect.Effect<void>
-    readonly swap: (indexA: number, indexB: number) => Effect.Effect<void>
-    readonly move: (from: number, to: number) => Effect.Effect<void>
-  }
+  readonly root: <Ctx = unknown>(rule: Rule.RuleInput<TValues, Ctx>) => void
+  readonly list: <P extends CanonicalListPath<TValues>, Ctx = unknown>(
+    path: P,
+    spec: {
+      readonly identity: Rule.ListIdentityPolicy
+      readonly item?: Rule.RuleInput<CanonicalListItem<TValues, P>, Ctx>
+      readonly list?: Rule.RuleInput<ReadonlyArray<CanonicalListItem<TValues, P>>, Ctx>
+      readonly minItems?: Rule.MinItemsDecl
+      readonly maxItems?: Rule.MaxItemsDecl
+    },
+  ) => void
+  readonly submit: (config?: {
+    readonly decode?: Schema.Schema<TDecoded>
+  }) => void
 }
 
-export type FormHandleExt<TValues extends object> = {
-  readonly controller: FormController<TValues>['controller']
-  readonly rulesManifest: () => RulesManifest
-  readonly rulesManifestWarnings: () => ReadonlyArray<string>
-}
-
-export type FormModule<Id extends string, TValues extends object> = Logix.Module.Module<
+export type FormProgram<
+  Id extends string,
+  TValues extends object,
+  TDecoded = TValues,
+  TCompanionMetadata extends FormCompanionMetadataMap = {},
+> = Logix.Program.Program<
   Id,
   FormShape<TValues>,
-  FormHandleExt<TValues>,
+  FormHandle<TValues, TDecoded> & FormProgramCompanionMetadataCarrier<TCompanionMetadata>,
   any
-> & {
-  readonly controller: {
-    readonly make: (runtime: Logix.ModuleRuntime<FormState<TValues>, FormAction>) => FormController<TValues>
-  }
-}
+>
 
 const initialMeta = (): FormMeta => ({
   submitCount: 0,
   isSubmitting: false,
   isDirty: false,
   errorCount: 0,
+  submitAttempt: makeInitialSubmitAttemptSnapshot(),
 })
 
-export const make = <Id extends string, TValues extends object>(
+const toRulesSpec = <TValues extends object>(
+  decls: ReadonlyArray<FormRulesDecl>,
+  fieldFragments?: Record<string, unknown>,
+): RulesSpec<TValues> => ({
+  _tag: 'FormRulesSpec',
+  decls,
+  ...(fieldFragments !== undefined ? { fieldFragments } : {}),
+}) as RulesSpec<TValues>
+
+const readResourceId = (resource: unknown): string => {
+  const id =
+    resource && typeof resource === 'object' && !Array.isArray(resource) ? (resource as { readonly id?: unknown }).id : undefined
+  if (typeof id !== 'string' || id.trim().length === 0) {
+    throw new Error(`[Form.make] field(...).source({ resource }) expects a Query-owned resource with a non-empty string id`)
+  }
+  return id.trim()
+}
+
+const collectEffectfulFieldRulesFromFieldSpec = (
+  spec: Record<string, unknown> | undefined,
+): ReadonlyArray<EffectfulFieldRule> => {
+  const out: Array<EffectfulFieldRule> = []
+  if (!spec) return out
+
+  const collectCheckEntry = (path: string, entry: unknown): void => {
+    if (!entry || typeof entry !== 'object') return
+    if ((entry as any).kind !== 'check') return
+    const rules = (entry as any).meta?.rules
+    if (!rules || typeof rules !== 'object' || Array.isArray(rules)) return
+
+    for (const [name, rule] of Object.entries(rules as Record<string, any>)) {
+      const validate = Rule.getEffectfulValidate(rule?.validate)
+      if (!validate) continue
+      out.push({
+        path,
+        ...(path === '$root' ? { inputPath: '$root', errorPath: 'errors.$root' } : null),
+        ruleId: `${path}#${name}`,
+        validate,
+      })
+    }
+  }
+
+  const collectNode = (path: string, node: unknown): void => {
+    if (!node || typeof node !== 'object') return
+    if ((node as any)._tag !== 'FieldNode') return
+    const check = (node as any).check
+    if (!check || typeof check !== 'object' || Array.isArray(check)) return
+    collectCheckEntry(path, {
+      kind: 'check',
+      meta: { rules: check },
+    })
+  }
+
+  for (const [path, value] of Object.entries(spec)) {
+    if (!value || typeof value !== 'object') continue
+    if ((value as any).kind === 'check') {
+      collectCheckEntry(path, value)
+      continue
+    }
+    if ((value as any)._tag === 'FieldNode') {
+      collectNode(path, value)
+    }
+  }
+
+  return out
+}
+
+const collectEffectfulListItemRulesFromFieldSpec = (
+  spec: Record<string, unknown> | undefined,
+): ReadonlyArray<EffectfulListItemRule> => {
+  const out: Array<EffectfulListItemRule> = []
+  if (!spec) return out
+
+  for (const [path, value] of Object.entries(spec)) {
+    if (!value || typeof value !== 'object') continue
+    if ((value as any)._tag !== 'FieldList') continue
+    const item = (value as any).item
+    if (!item || typeof item !== 'object' || item._tag !== 'FieldNode') continue
+    const check = item.check
+    if (!check || typeof check !== 'object' || Array.isArray(check)) continue
+    for (const [name, rule] of Object.entries(check as Record<string, any>)) {
+      const validate = Rule.getEffectfulValidate(rule?.validate)
+      if (!validate) continue
+      out.push({
+        listPath: path,
+        ruleId: `${path}#item.${name}`,
+        validate,
+      })
+    }
+  }
+
+  return out
+}
+
+const collectEffectfulListRulesFromFieldSpec = (
+  spec: Record<string, unknown> | undefined,
+): ReadonlyArray<EffectfulListRule> => {
+  const out: Array<EffectfulListRule> = []
+  if (!spec) return out
+
+  for (const [path, value] of Object.entries(spec)) {
+    if (!value || typeof value !== 'object') continue
+    if ((value as any)._tag !== 'FieldList') continue
+    const list = (value as any).list
+    if (!list || typeof list !== 'object' || list._tag !== 'FieldNode') continue
+    const check = list.check
+    if (!check || typeof check !== 'object' || Array.isArray(check)) continue
+    for (const [name, rule] of Object.entries(check as Record<string, any>)) {
+      const validate = Rule.getEffectfulValidate(rule?.validate)
+      if (!validate) continue
+      out.push({
+        listPath: path,
+        ruleId: `${path}#list.${name}`,
+        validate,
+      })
+    }
+  }
+
+  return out
+}
+
+const canonicalPathSegments = (path: string): ReadonlyArray<string> =>
+  String(path ?? '')
+    .split('.')
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+
+const toCompanionBundlePath = (patternPath: string): string => `ui.${patternPath}.$companion`
+
+const uniqueStrings = (values: ReadonlyArray<string>): ReadonlyArray<string> => {
+  const out: Array<string> = []
+  const seen = new Set<string>()
+  for (const value of values) {
+    if (!value || seen.has(value)) continue
+    seen.add(value)
+    out.push(value)
+  }
+  return out
+}
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const deepEqual = (left: unknown, right: unknown): boolean => {
+  if (Object.is(left, right)) return true
+  if (Array.isArray(left) && Array.isArray(right)) {
+    if (left.length !== right.length) return false
+    for (let index = 0; index < left.length; index += 1) {
+      if (!deepEqual(left[index], right[index])) return false
+    }
+    return true
+  }
+  if (isPlainObject(left) && isPlainObject(right)) {
+    const leftKeys = Object.keys(left)
+    const rightKeys = Object.keys(right)
+    if (leftKeys.length !== rightKeys.length) return false
+    for (const key of leftKeys) {
+      if (!(key in right)) return false
+      if (!deepEqual(left[key], right[key])) return false
+    }
+    return true
+  }
+  return false
+}
+
+const readCanonicalPathValue = (state: unknown, canonicalPath: string): unknown => {
+  const segments = canonicalPathSegments(canonicalPath)
+  const read = (current: unknown, index: number): unknown => {
+    if (index >= segments.length) return current
+    if (current == null) return undefined
+
+    if (Array.isArray(current)) {
+      return current.map((item) => read(item, index))
+    }
+
+    if (!isPlainObject(current)) return undefined
+    return read(current[segments[index]!], index + 1)
+  }
+
+  return read(state, 0)
+}
+
+type CompanionRowScopeMeta = {
+  readonly _depsAbsolute: true
+  readonly _formCompanion: true
+  readonly _companionValuePatternPath: string
+  readonly _companionDeriveAtPath: (
+    rootState: unknown,
+    valuePath: string,
+    sourcePath: string,
+    rowIndices: ReadonlyArray<number>,
+  ) => unknown
+}
+
+type ComputedMetaLike = {
+  readonly deps: ReadonlyArray<string>
+  readonly derive: (state: unknown) => unknown
+  readonly equals?: (prev: unknown, next: unknown) => boolean
+  readonly scheduling?: unknown
+}
+
+const buildCompanionEntry = <TValues extends object>(
+  params: {
+    readonly patternFieldPath: string
+    readonly deps: ReadonlyArray<{
+      readonly canonical: string
+      readonly pattern: string
+    }>
+    readonly rowScope: ReturnType<typeof RowScopeInfo.fromPatternPath>
+    readonly lower: (ctx: {
+      readonly value: unknown
+      readonly deps: Readonly<Record<string, unknown>>
+      readonly source?: unknown
+      }) => Readonly<{ readonly availability?: unknown; readonly candidates?: unknown }> | undefined
+  },
+): FieldContracts.FieldEntry<any, string> => {
+  const companionDeps = uniqueStrings([params.patternFieldPath, ...params.deps.map((dep) => dep.pattern)])
+
+  if (params.rowScope) {
+    const rowScope = params.rowScope
+    const meta: ComputedMetaLike & CompanionRowScopeMeta = {
+      deps: companionDeps as ReadonlyArray<any>,
+      derive: () => undefined,
+      equals: deepEqual,
+      _depsAbsolute: true,
+      _formCompanion: true,
+      _companionValuePatternPath: params.patternFieldPath,
+      _companionDeriveAtPath: (
+        rootState: unknown,
+        valuePath: string,
+        sourcePath: string,
+        _rowIndices: ReadonlyArray<number>,
+      ) =>
+        params.lower({
+          value: getAtPath(rootState, valuePath),
+          deps: Object.freeze(
+            Object.fromEntries(
+              params.deps.map((dep) => [dep.canonical, readCanonicalPathValue(rootState, dep.canonical)]),
+            ),
+          ),
+          source: getAtPath(rootState, sourcePath),
+        }),
+    }
+
+    return {
+      fieldPath: undefined as never,
+      kind: 'computed',
+      meta,
+    } as FieldContracts.FieldEntry<any, string>
+  }
+
+  const concretePatternPath = params.patternFieldPath.split('[]').join('')
+  const meta: ComputedMetaLike & { readonly _depsAbsolute: true; readonly _formCompanion: true } = {
+    deps: companionDeps as ReadonlyArray<any>,
+    equals: deepEqual,
+    _depsAbsolute: true,
+    _formCompanion: true,
+    derive: (state: unknown) =>
+      params.lower({
+        value: getAtPath(state, concretePatternPath),
+        deps: Object.freeze(
+          Object.fromEntries(params.deps.map((dep) => [dep.canonical, readCanonicalPathValue(state, dep.canonical)])),
+        ),
+        source: getAtPath(state, concretePatternPath),
+      }),
+  }
+
+  return {
+    fieldPath: undefined as never,
+    kind: 'computed',
+    meta,
+  } as FieldContracts.FieldEntry<any, string>
+}
+
+const RowScopeInfo = {
+  fromPatternPath: (patternFieldPath: string) => {
+    const parts = patternFieldPath.split('.')
+    const scopes: Array<{
+      readonly listPath: string
+      readonly itemValuePath: string
+    }> = []
+
+    for (let index = 0; index < parts.length; index += 1) {
+      if (!parts[index]!.endsWith('[]')) continue
+      const listPath = parts
+        .slice(0, index + 1)
+        .map((segment) => (segment.endsWith('[]') ? segment.slice(0, -2) : segment))
+        .join('.')
+      const nextArrayIndex = (() => {
+        for (let cursor = index + 1; cursor < parts.length; cursor += 1) {
+          if (parts[cursor]!.endsWith('[]')) return cursor
+        }
+        return parts.length
+      })()
+      const itemValuePath = parts
+        .slice(index + 1, nextArrayIndex)
+        .map((segment) => (segment.endsWith('[]') ? segment.slice(0, -2) : segment))
+        .join('.')
+      scopes.push({
+        listPath,
+        itemValuePath,
+      })
+    }
+
+    if (scopes.length === 0) return undefined
+    return {
+      scopes,
+    }
+  },
+} as const
+
+const getArrayElementAst = (ast: SchemaAST.AST): SchemaAST.AST | undefined => {
+  if (!SchemaAST.isArrays(ast)) return undefined
+  return ast.elements[0] ?? ast.rest[0]
+}
+
+const canonicalPathToPatternPath = <TValues extends object>(schema: Schema.Schema<TValues>, path: string): string => {
+  const segments = canonicalPathSegments(path)
+  if (segments.length === 0) return path
+
+  let current: SchemaAST.AST = SchemaAST.toType(schema.ast)
+  const seen = new Set<SchemaAST.AST>()
+  const out: Array<string> = []
+
+  const unwrap = (): boolean => {
+    while (true) {
+      current = SchemaAST.toType(current)
+
+      while (SchemaAST.isSuspend(current)) {
+        if (seen.has(current)) return false
+        seen.add(current)
+        current = SchemaAST.toType(current.thunk())
+      }
+
+      if (SchemaAST.isUnion(current)) {
+        const next = current.types[0]
+        if (!next) return false
+        current = SchemaAST.toType(next)
+        continue
+      }
+
+      if (SchemaAST.isArrays(current)) {
+        if (out.length === 0) return false
+        const last = out[out.length - 1]!
+        if (!last.endsWith('[]')) out[out.length - 1] = `${last}[]`
+        const item = getArrayElementAst(current)
+        if (!item) return false
+        current = SchemaAST.toType(item)
+        continue
+      }
+
+      return true
+    }
+  }
+
+  for (const segment of segments) {
+    if (!unwrap()) return path
+    if (!SchemaAST.isObjects(current)) return path
+    const property = current.propertySignatures.find((ps) => String(ps.name) === segment)
+    if (!property) return path
+    out.push(segment)
+    current = SchemaAST.toType(property.type)
+  }
+
+  return out.join('.')
+}
+
+const rowScopedPrefixInfo = (canonicalPath: string, patternPath: string): ReadonlyArray<string> | undefined => {
+  const patternSegments = canonicalPathSegments(patternPath)
+  let lastArrayIndex = -1
+  for (let i = 0; i < patternSegments.length; i++) {
+    if (patternSegments[i]!.endsWith('[]')) lastArrayIndex = i
+  }
+  if (lastArrayIndex < 0) return undefined
+  const canonicalSegments = canonicalPathSegments(canonicalPath)
+  return canonicalSegments.slice(0, lastArrayIndex + 1)
+}
+
+const buildDefineApi = <TValues extends object, TDecoded>(
+  valuesSchema: Schema.Schema<TValues>,
+  pushRules: (decls: ReadonlyArray<unknown>) => void,
+  setSubmit: (config?: { readonly decode?: Schema.Schema<TDecoded> }) => void,
+  registerSourceSubmitImpact: (path: string, impact: 'block' | 'observe') => void,
+  registerCompanionOwnership: (contract: FormCompanionOwnershipContract) => void,
+): FormDefineApi<TValues, TDecoded> => ({
+  dsl: makeRulesDsl(valuesSchema),
+  rules: (...decls) => {
+    pushRules(decls)
+  },
+  field: (path) => ({
+    rule: (rule, options) => {
+      pushRules([Rule.field(path, rule, options)])
+    },
+    source: (config) => {
+      const resourceId = readResourceId(config.resource)
+      const patternPath = canonicalPathToPatternPath(valuesSchema, String(path))
+      const rowScopedPrefix = rowScopedPrefixInfo(String(path), patternPath)
+      const depsInfo = config.deps.map((dep) => {
+        const depCanonical = String(dep)
+        const depPattern = canonicalPathToPatternPath(valuesSchema, depCanonical)
+        if (!rowScopedPrefix) {
+          return {
+            depPattern,
+            keyPath: depCanonical,
+          }
+        }
+
+        const depSegments = canonicalPathSegments(depCanonical)
+        const isSameRowScope =
+          depSegments.length > rowScopedPrefix.length && rowScopedPrefix.every((segment, index) => depSegments[index] === segment)
+
+        if (!isSameRowScope) {
+          throw new Error(
+            `[Form.make] row-scoped field(...).source(...) currently requires deps to stay within the same list item (field="${String(path)}", dep="${depCanonical}")`,
+          )
+        }
+
+        return {
+          depPattern,
+          keyPath: depSegments.slice(rowScopedPrefix.length).join('.'),
+        }
+      })
+      pushRules([
+        toRulesSpec([], {
+          [patternPath]: FieldContracts.fieldNode({
+            source: {
+              fieldPath: undefined as never,
+              kind: 'source',
+              meta: {
+                resource: resourceId,
+                deps: depsInfo.map((entry) => entry.depPattern),
+                _depsAbsolute: true,
+                key: (state: Readonly<TValues>) => {
+                  const args = depsInfo.map((entry) => getAtPath(state, entry.keyPath))
+                  return config.key(...args)
+                },
+                ...(config.submitImpact !== undefined ? { submitImpact: config.submitImpact } : {}),
+                ...(config.triggers !== undefined ? { triggers: config.triggers } : {}),
+                ...(config.debounceMs !== undefined ? { debounceMs: config.debounceMs } : {}),
+                ...(config.concurrency !== undefined ? { concurrency: config.concurrency } : {}),
+              },
+            } as any,
+          } as any),
+        }),
+      ])
+      registerSourceSubmitImpact(patternPath, config.submitImpact ?? 'block')
+    },
+    companion: (config) => {
+      const patternPath = canonicalPathToPatternPath(valuesSchema, String(path))
+      const companionDeps = config.deps.map((dep) => ({
+        canonical: String(dep),
+        pattern: canonicalPathToPatternPath(valuesSchema, String(dep)),
+      }))
+      const bundlePatchPath = toCompanionBundlePath(patternPath)
+      const rowScope = RowScopeInfo.fromPatternPath(patternPath)
+
+      pushRules([
+        toRulesSpec([], {
+          [bundlePatchPath]: buildCompanionEntry({
+            patternFieldPath: patternPath,
+            deps: companionDeps,
+            rowScope,
+            lower: config.lower as any,
+          }),
+        }),
+      ])
+
+      registerCompanionOwnership({
+        fieldPath: patternPath,
+        deps: uniqueStrings([String(path), ...config.deps.map((dep) => String(dep))]),
+        companionRef: `companion:${patternPath}`,
+        sourceRef: String(path),
+      })
+      return undefined as any
+    },
+  }),
+  root: (rule) => {
+    pushRules([Rule.root(rule)])
+  },
+  list: (path, spec) => {
+    pushRules([Rule.list(path, spec)])
+  },
+  submit: (config) => {
+    setSubmit(config)
+  },
+})
+
+export const make = <
+  Id extends string,
+  TValues extends object,
+  TDecoded = TValues,
+  TDefineReturn = void,
+>(
   id: Id,
   config: FormMakeConfig<TValues>,
-  extend?: FormExtendDef<TValues>,
-): FormModule<Id, TValues> => {
+  define?: (form: FormDefineApi<TValues, TDecoded>) => TDefineReturn,
+): FormProgram<Id, TValues, TDecoded, CompanionMetadataFromDefineReturn<TDefineReturn>> => {
   const ErrorsSchema = Schema.Unknown
   const UiSchema = Schema.Unknown
   const MetaSchema = Schema.Struct({
@@ -161,6 +755,7 @@ export const make = <Id extends string, TValues extends object>(
     isSubmitting: Schema.Boolean,
     isDirty: Schema.Boolean,
     errorCount: Schema.Number,
+    submitAttempt: Schema.Unknown,
   })
 
   const StateSchema = Schema.Struct({
@@ -170,557 +765,108 @@ export const make = <Id extends string, TValues extends object>(
     $form: MetaSchema,
   }) as unknown as Schema.Schema<FormState<TValues>>
 
-  const Actions = FormActions
-
   type State = Schema.Schema.Type<typeof StateSchema>
-  type Reducers = Logix.ReducersFromMap<typeof StateSchema, typeof Actions>
+  type Reducers = Logix.ReducersFromMap<typeof StateSchema, typeof FormActions>
+
+  const collectedDecls: Array<FormRulesDecl> = []
+  let collectedFieldFragments: Record<string, unknown> | undefined
+  let submitConfig: { readonly decode?: Schema.Schema<TDecoded> } | undefined
+  const sourceSubmitImpactByPath = new Map<string, 'block' | 'observe'>()
+  const companionOwnership: Array<FormCompanionOwnershipContract> = []
+
+  const pushRulesInputs = (inputs: ReadonlyArray<unknown>): void => {
+    for (const item of inputs) {
+      if (Array.isArray(item)) {
+        pushRulesInputs(item)
+        continue
+      }
+      if (item && typeof item === 'object' && (item as any)._tag === 'FormRulesSpec') {
+        const spec = item as { readonly decls?: ReadonlyArray<FormRulesDecl>; readonly fieldFragments?: Record<string, unknown> }
+        if (Array.isArray(spec.decls)) {
+          collectedDecls.push(...spec.decls)
+        }
+        if (spec.fieldFragments && typeof spec.fieldFragments === 'object') {
+          collectedFieldFragments = mergeFieldSpecs(
+            collectedFieldFragments,
+            spec.fieldFragments,
+            'define.rules',
+            'define.rules',
+          ) as Record<string, unknown> | undefined
+        }
+        continue
+      }
+      collectedDecls.push(item as FormRulesDecl)
+    }
+  }
+
+  const setSubmit = (next?: { readonly decode?: Schema.Schema<TDecoded> }): void => {
+    if (submitConfig !== undefined) {
+      throw new Error(`[Form.make] submit(...) can only be declared once`)
+    }
+    submitConfig = next
+  }
+
+  if (typeof define === 'function') {
+    define(
+      buildDefineApi(
+        config.values,
+        (decls) => pushRulesInputs(decls),
+        setSubmit,
+        (path, impact) => {
+          sourceSubmitImpactByPath.set(path, impact)
+        },
+        (contract) => {
+          companionOwnership.push(contract)
+        },
+      ),
+    )
+  }
+
+  const authoringRules =
+    collectedDecls.length > 0 || collectedFieldFragments !== undefined
+      ? toRulesSpec(collectedDecls, collectedFieldFragments)
+      : undefined
+  const rulesSpec = authoringRules ? compileRulesToFieldSpec(authoringRules) : undefined
+  const validateOn = normalizeValidateOn(config.validateOn, ['onSubmit'])
+  const reValidateOn = normalizeValidateOn(config.reValidateOn, ['onChange'])
+  const fieldsWrapped = rulesSpec
+    ? wrapFieldsForValidateOn(rulesSpec as any, { validateOn, reValidateOn })
+    : undefined
+  const fields = mergeFieldSpecs(
+    fieldsWrapped?.fields as Record<string, unknown> | undefined,
+    collectedFieldFragments,
+    'Form rules',
+    'Form field behaviors',
+  ) as unknown as FieldContracts.FieldSpec<TValues> | undefined
+  const sourceOwnership = collectSourceOwnershipFromFieldSpec(fields as Record<string, unknown> | undefined)
+  const sourceSubmitImpactResolved = collectSourceSubmitImpactFromFieldSpec(fields as Record<string, unknown> | undefined)
+  const effectfulFieldRules = collectEffectfulFieldRulesFromFieldSpec(fields as Record<string, unknown> | undefined)
+  const effectfulListItemRules = collectEffectfulListItemRulesFromFieldSpec(fields as Record<string, unknown> | undefined)
+  const effectfulListRules = collectEffectfulListRulesFromFieldSpec(fields as Record<string, unknown> | undefined)
+  const rulesValidateOn = fieldsWrapped?.rulesValidateOn ?? []
   const reducers = makeFormReducers<TValues>({
     initialValues: config.initialValues,
   }) as unknown as Reducers
 
-  const validateOn = normalizeValidateOn(config.validateOn, ['onSubmit'])
-  const reValidateOn = normalizeValidateOn(config.reValidateOn, ['onChange'])
-  const assertCanonicalValuePath = (label: string, path: string): void => {
-    const p = String(path ?? '').trim()
-    if (!p) throw new Error(`[Form.make] ${label} must be a non-empty path`)
-    if (p === '$root') return
-    if (p.includes('[]') || p.includes('[') || p.includes(']')) {
-      throw new Error(`[Form.make] ${label} "${p}" must not use bracket syntax`)
-    }
-    const segments = p
-      .split('.')
-      .map((s) => s.trim())
-      .filter(Boolean)
-    if (segments.length === 0) {
-      throw new Error(`[Form.make] ${label} "${p}" must be a non-empty path`)
-    }
-    for (const seg of segments) {
-      if (/^[0-9]+$/.test(seg)) {
-        throw new Error(`[Form.make] ${label} "${p}" must not contain numeric segments`)
-      }
-    }
-  }
-
-  const assertValidListIdentity = (identity: Rule.ListIdentityPolicy, listPath: string): void => {
-    if (!identity || typeof identity !== 'object') {
-      throw new Error(`[Form.make] Missing list identity for "${listPath}"`)
-    }
-    const mode = (identity as any).mode
-    if (mode === 'trackBy') {
-      const trackBy = (identity as any).trackBy
-      if (typeof trackBy !== 'string' || trackBy.trim().length === 0) {
-        throw new Error(`[Form.make] identity.trackBy for "${listPath}" must be a non-empty string`)
-      }
-      if (trackBy.includes('[') || trackBy.includes(']')) {
-        throw new Error(`[Form.make] identity.trackBy for "${listPath}" must not contain brackets (got "${trackBy}")`)
-      }
-      return
-    }
-    if (mode === 'store' || mode === 'index') return
-    throw new Error(`[Form.make] Invalid identity.mode for "${listPath}" (got "${String(mode)}")`)
-  }
-
-  const isRelativeRuleDep = (dep: string, options?: { readonly allowNumericRelativeDep?: boolean }): boolean => {
-    const allowNumericRelativeDep = options?.allowNumericRelativeDep ?? true
-    if (dep === '$root') return false
-    if (dep.includes('[') || dep.includes(']') || dep.includes('.')) return false
-    if (!allowNumericRelativeDep && /^[0-9]+$/.test(dep)) return false
-    return true
-  }
-
-  const prefixRuleDeps = (
-    deps: unknown,
-    prefix: string,
-    options?: { readonly allowNumericRelativeDep?: boolean },
-  ): ReadonlyArray<string> | undefined => {
-    if (!Array.isArray(deps)) return undefined
-    const out: Array<string> = []
-    for (const raw of deps) {
-      if (typeof raw !== 'string') continue
-      const dep = raw.trim()
-      if (!dep) continue
-      out.push(isRelativeRuleDep(dep, options) && prefix ? `${prefix}.${dep}` : dep)
-    }
-    return out
-  }
-
-  const prefixRuleInputDeps = (
-    input: Rule.RuleInput<any, any>,
-    prefix: string,
-    options?: { readonly allowNumericRelativeDep?: boolean },
-  ): Rule.RuleInput<any, any> => {
-    if (!input || typeof input !== 'object') return input
-    if (Array.isArray(input)) return input
-
-    const anyInput = input as any
-    const deps = prefixRuleDeps(anyInput.deps, prefix, options)
-    const validate = anyInput.validate
-
-    if (typeof validate === 'function') {
-      return deps !== undefined ? { ...anyInput, deps } : input
-    }
-
-    if (validate && typeof validate === 'object' && !Array.isArray(validate)) {
-      const nextValidate: Record<string, unknown> = { ...(validate as any) }
-      for (const [name, raw] of Object.entries(validate as any)) {
-        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) continue
-        const entryDeps = prefixRuleDeps((raw as any).deps, prefix, options)
-        if (entryDeps !== undefined) {
-          nextValidate[name] = { ...(raw as any), deps: entryDeps }
-        }
-      }
-      return {
-        ...anyInput,
-        ...(deps !== undefined ? { deps } : {}),
-        validate: nextValidate,
-      }
-    }
-
-    return deps !== undefined ? { ...anyInput, deps } : input
-  }
-
-  const compileRulesToTraitSpec = (rulesSpec: RulesSpec<TValues>): Logix.StateTrait.StateTraitSpec<TValues> => {
-    if (!rulesSpec || (rulesSpec as any)._tag !== 'FormRulesSpec') {
-      throw new Error(`[Form.make] "rules" must be a FormRulesSpec (from Form.rules(...)/rules.schema(...))`)
-    }
-
-    const dirnamePath = (path: string): string => {
-      const p = String(path ?? '').trim()
-      if (!p) return ''
-      const idx = p.lastIndexOf('.')
-      return idx >= 0 ? p.slice(0, idx) : ''
-    }
-
-    const decls = Array.isArray((rulesSpec as any).decls) ? (rulesSpec as any).decls : []
-
-    const spec: Record<string, unknown> = {}
-    const declared = new Set<string>()
-
-    const withDefaultDeps = (ruleSet: Record<string, any>, defaultDep: string): Record<string, any> => {
-      const out: Record<string, any> = {}
-      for (const name of Object.keys(ruleSet)) {
-        const r = ruleSet[name]
-        if (!r || typeof r !== 'object' || Array.isArray(r)) {
-          out[name] = r
-          continue
-        }
-        const deps = Array.isArray(r.deps) ? r.deps : []
-        out[name] = deps.length > 0 ? r : { ...r, deps: [defaultDep] }
-      }
-      return out
-    }
-
-    const reserve = (kind: string, path: string): void => {
-      const k = `${kind}:${path}`
-      if (declared.has(k)) {
-        throw new Error(`[Form.make] Duplicate rules declaration for ${kind} "${path}"`)
-      }
-      declared.add(k)
-    }
-
-    for (const decl of decls as ReadonlyArray<Rule.RulesDecl<TValues>>) {
-      if (!decl || typeof decl !== 'object') continue
-
-      if ((decl as any).kind === 'field') {
-        const valuePath = String((decl as any).valuePath ?? '').trim()
-        assertCanonicalValuePath('field path', valuePath)
-        if (valuePath === '$root') {
-          throw new Error(`[Form.make] field path "$root" is not allowed (use Form.Rule.root(...))`)
-        }
-
-        reserve('field', valuePath)
-
-        const errorTarget = (decl as any).errorTarget as Rule.ErrorTarget | undefined
-        if (errorTarget !== undefined && errorTarget !== '$value' && errorTarget !== '$self') {
-          throw new Error(`[Form.make] Invalid errorTarget for field "${valuePath}"`)
-        }
-
-        const depsPrefix = errorTarget === '$self' ? valuePath : dirnamePath(valuePath)
-        const ruleInput = prefixRuleInputDeps((decl as any).rule as any, depsPrefix)
-        const rules = withDefaultDeps(Rule.make(ruleInput as any) as Record<string, any>, valuePath)
-        const writebackPath = errorTarget === '$self' ? `errors.${valuePath}.$self` : undefined
-
-        spec[valuePath] = {
-          fieldPath: valuePath,
-          kind: 'check',
-          meta: {
-            rules,
-            writeback: {
-              kind: 'errors',
-              ...(writebackPath ? { path: writebackPath } : {}),
-            },
-          },
-        } satisfies Logix.StateTrait.StateTraitEntry<any, any>
-
-        continue
-      }
-
-      if ((decl as any).kind === 'root') {
-        reserve('root', '$root')
-        const ruleInput = prefixRuleInputDeps((decl as any).rule as any, '')
-        const rules = Rule.make(ruleInput as any) as Record<string, any>
-        spec.$root = {
-          fieldPath: '$root',
-          kind: 'check',
-          meta: {
-            rules,
-            writeback: { kind: 'errors' },
-          },
-        } satisfies Logix.StateTrait.StateTraitEntry<any, any>
-        continue
-      }
-
-      if ((decl as any).kind === 'list') {
-        const listPath = String((decl as any).listPath ?? '').trim()
-        assertCanonicalValuePath('list path', listPath)
-        if (listPath === '$root') {
-          throw new Error(`[Form.make] list path "$root" is not allowed`)
-        }
-
-        reserve('list', listPath)
-
-        const identity = (decl as any).identity as Rule.ListIdentityPolicy
-        assertValidListIdentity(identity, listPath)
-
-        const itemInput = (decl as any).item as Rule.RuleInput<any, any> | undefined
-        const listInput = (decl as any).list as Rule.RuleInput<any, any> | undefined
-
-        const itemRules = itemInput ? (Rule.make(itemInput as any) as any) : undefined
-        const listRules = listInput ? (Rule.make(listInput as any) as any) : undefined
-
-        spec[listPath] = Logix.StateTrait.list({
-          identityHint:
-            (identity as any).mode === 'trackBy' ? { trackBy: String((identity as any).trackBy) } : undefined,
-          item: itemRules ? Logix.StateTrait.node({ check: itemRules }) : undefined,
-          list: listRules ? Logix.StateTrait.node<ReadonlyArray<any>>({ check: listRules }) : undefined,
-        })
-
-        continue
-      }
-
-      const kind = String((decl as any).kind ?? '')
-      throw new Error(`[Form.make] Unknown rules declaration kind "${kind}"`)
-    }
-
-    return spec as any
-  }
-
-  const toFieldPathSegments = (label: string, valuePath: string): ReadonlyArray<string> => {
-    assertCanonicalValuePath(label, valuePath)
-    if (valuePath === '$root') return ['$root']
-    return valuePath
-      .split('.')
-      .map((s) => s.trim())
-      .filter(Boolean)
-  }
-
-  const normalizeAutoValidateOn = (input: unknown): ReadonlyArray<Rule.AutoValidateOn> | undefined => {
-    if (!Array.isArray(input)) return undefined
-    const out: Array<Rule.AutoValidateOn> = []
-    for (const x of input) {
-      if (x === 'onChange' || x === 'onBlur') out.push(x)
-    }
-    if (out.length === 0) return undefined
-    return Array.from(new Set(out)).sort((a, b) => a.localeCompare(b))
-  }
-
-  const normalizeRuleDeps = (deps: unknown): ReadonlyArray<string> => {
-    if (!Array.isArray(deps)) return []
-    const out: Array<string> = []
-    for (const x of deps) {
-      if (typeof x !== 'string') continue
-      const v = x.trim()
-      if (!v) continue
-      out.push(v)
-    }
-    return Array.from(new Set(out)).sort((a, b) => a.localeCompare(b))
-  }
-
-  const rulesManifestWarningsBase = (): ReadonlyArray<string> => {
-    const warnings: Array<string> = []
-    if (config.rules && config.traits) {
-      warnings.push(
-        `[Form.make] 同时传入了 "rules" 与 "traits"：推荐将校验迁移到 rules；traits 仅保留 computed/source/link 或必要的高级声明（便于性能/诊断对照）。`,
-      )
-    }
-    return warnings
-  }
-
-  const buildRulesManifest = (): RulesManifest => {
-    type JsonValue = null | boolean | number | string | ReadonlyArray<JsonValue> | { readonly [key: string]: JsonValue }
-
-    type Source = 'rules' | 'traits' | 'schema-bridge'
-
-    const listsByPath = new Map<string, { path: ReadonlyArray<string>; identity: Rule.ListIdentityPolicy }>()
-    const rulesById = new Map<string, RuleDescriptor>()
-
-    const addList = (path: string, identity: Rule.ListIdentityPolicy): void => {
-      const segments = toFieldPathSegments('list path', path)
-      const key = segments.join('.')
-      if (listsByPath.has(key)) return
-      listsByPath.set(key, { path: segments, identity })
-    }
-
-    const addRule = (rule: RuleDescriptor): void => {
-      if (rulesById.has(rule.ruleId)) return
-      rulesById.set(rule.ruleId, rule)
-    }
-
-    const ruleMeta = (source: Source): JsonValue => ({ source })
-
-    const emitRuleSet = (params: {
-      readonly source: Source
-      readonly scope: RuleScope
-      readonly ruleId: (name: string) => string
-      readonly rules: Rule.RuleSet<any, any>
-    }): void => {
-      const names = Object.keys(params.rules).sort((a, b) => a.localeCompare(b))
-      for (const name of names) {
-        const r = (params.rules as any)[name] as any
-        if (!r || typeof r !== 'object') continue
-        const deps = normalizeRuleDeps(r.deps)
-        const validateOn = normalizeAutoValidateOn(r.validateOn)
-        addRule({
-          ruleId: params.ruleId(name),
-          scope: params.scope,
-          deps,
-          ...(validateOn !== undefined ? { validateOn } : {}),
-          meta: ruleMeta(params.source),
-        })
-      }
-    }
-
-    // 1) rulesSpec（decl list）→ lists + rules
-    if (config.rules && (config.rules as any)._tag === 'FormRulesSpec') {
-      const decls = Array.isArray((config.rules as any).decls) ? (config.rules as any).decls : []
-      for (const decl of decls as ReadonlyArray<Rule.RulesDecl<TValues>>) {
-        if (!decl || typeof decl !== 'object') continue
-
-        if ((decl as any).kind === 'field') {
-          const valuePath = String((decl as any).valuePath ?? '').trim()
-          assertCanonicalValuePath('field path', valuePath)
-          if (valuePath === '$root') continue
-
-          const errorTarget = (decl as any).errorTarget as Rule.ErrorTarget | undefined
-          const scope: RuleScope = {
-            kind: 'field',
-            fieldPath: toFieldPathSegments('field path', valuePath),
-            ...(errorTarget !== undefined ? { errorTarget } : {}),
-          }
-
-          const depsPrefix =
-            errorTarget === '$self'
-              ? valuePath
-              : (() => {
-                  const idx = valuePath.lastIndexOf('.')
-                  return idx >= 0 ? valuePath.slice(0, idx) : ''
-                })()
-
-          const ruleInput = prefixRuleInputDeps((decl as any).rule as any, depsPrefix, {
-            allowNumericRelativeDep: false,
-          })
-          const rules = Rule.make(ruleInput as any)
-
-          emitRuleSet({
-            source: 'rules',
-            scope,
-            ruleId: (name) => `${valuePath}#${name}`,
-            rules,
-          })
-          continue
-        }
-
-        if ((decl as any).kind === 'root') {
-          const ruleInput = (decl as any).rule as Rule.RuleInput<any, any>
-          const rules = Rule.make(ruleInput as any)
-          emitRuleSet({
-            source: 'rules',
-            scope: { kind: 'root', fieldPath: ['$root'] },
-            ruleId: (name) => `$root#${name}`,
-            rules,
-          })
-          continue
-        }
-
-        if ((decl as any).kind === 'list') {
-          const listPath = String((decl as any).listPath ?? '').trim()
-          assertCanonicalValuePath('list path', listPath)
-          if (listPath === '$root') continue
-
-          const identity = (decl as any).identity as Rule.ListIdentityPolicy
-          assertValidListIdentity(identity, listPath)
-          addList(listPath, identity)
-
-          const listFieldPath = toFieldPathSegments('list path', listPath)
-
-          const itemInput = (decl as any).item as Rule.RuleInput<any, any> | undefined
-          const listInput = (decl as any).list as Rule.RuleInput<any, any> | undefined
-
-          if (itemInput) {
-            const itemRules = Rule.make(itemInput as any)
-            emitRuleSet({
-              source: 'rules',
-              scope: { kind: 'item', fieldPath: listFieldPath },
-              ruleId: (name) => `${listPath}#item.${name}`,
-              rules: itemRules,
-            })
-          }
-
-          if (listInput) {
-            const listRules = Rule.make(listInput as any)
-            emitRuleSet({
-              source: 'rules',
-              scope: { kind: 'list', fieldPath: listFieldPath },
-              ruleId: (name) => `${listPath}#list.${name}`,
-              rules: listRules,
-            })
-          }
-
-          continue
-        }
-      }
-    }
-
-    // 2) traitsBase（normalized）→ lists + rules（best-effort）
-    const traitsSpec = config.traits ? (traitsDsl(config.values)(config.traits) as any) : undefined
-    if (traitsSpec && typeof traitsSpec === 'object') {
-      for (const [rawPath, value] of Object.entries(traitsSpec as any)) {
-        const path = String(rawPath ?? '').trim()
-        if (!path) continue
-
-        const addFieldRuleSet = (fieldPath: string, rules: Record<string, unknown>, errorTarget?: Rule.ErrorTarget) => {
-          const scope: RuleScope = {
-            kind: fieldPath === '$root' ? 'root' : 'field',
-            fieldPath: fieldPath === '$root' ? ['$root'] : toFieldPathSegments('field path', fieldPath),
-            ...(errorTarget !== undefined ? { errorTarget } : {}),
-          }
-
-          const names = Object.keys(rules).sort((a, b) => a.localeCompare(b))
-          for (const name of names) {
-            const r = (rules as any)[name] as any
-            if (!r || typeof r !== 'object') continue
-            const deps = normalizeRuleDeps(r.deps)
-            const validateOn = normalizeAutoValidateOn(r.validateOn)
-            const ruleId = `${fieldPath}#${name}`
-            addRule({
-              ruleId,
-              scope,
-              deps,
-              ...(validateOn !== undefined ? { validateOn } : {}),
-              meta: ruleMeta('traits'),
-            })
-          }
-        }
-
-        if (value && typeof value === 'object' && (value as any)._tag === 'StateTraitList') {
-          const listPath = path
-          assertCanonicalValuePath('list path', listPath)
-          if (listPath !== '$root') {
-            const trackBy =
-              (value as any).identityHint && typeof (value as any).identityHint === 'object'
-                ? (value as any).identityHint.trackBy
-                : undefined
-
-            addList(
-              listPath,
-              typeof trackBy === 'string' && trackBy.length > 0
-                ? { mode: 'trackBy', trackBy: String(trackBy) }
-                : { mode: 'store' },
-            )
-          }
-
-          const listFieldPath = toFieldPathSegments('list path', listPath)
-
-          const item = (value as any).item
-          const list = (value as any).list
-
-          const emitNodeRules = (node: unknown, kind: 'item' | 'list') => {
-            if (!node || typeof node !== 'object') return
-            if ((node as any)._tag !== 'StateTraitNode') return
-            const check = (node as any).check
-            if (!check || typeof check !== 'object' || Array.isArray(check)) return
-
-            const names = Object.keys(check as any).sort((a, b) => a.localeCompare(b))
-            for (const name of names) {
-              const r = (check as any)[name] as any
-              if (!r || typeof r !== 'object') continue
-              const deps = normalizeRuleDeps(r.deps)
-              const validateOn = normalizeAutoValidateOn(r.validateOn)
-              addRule({
-                ruleId: `${listPath}#${kind}.${name}`,
-                scope: { kind, fieldPath: listFieldPath },
-                deps,
-                ...(validateOn !== undefined ? { validateOn } : {}),
-                meta: ruleMeta('traits'),
-              })
-            }
-          }
-
-          emitNodeRules(item, 'item')
-          emitNodeRules(list, 'list')
-          continue
-        }
-
-        if (value && typeof value === 'object' && (value as any)._tag === 'StateTraitNode') {
-          const check = (value as any).check
-          if (check && typeof check === 'object' && !Array.isArray(check)) {
-            addFieldRuleSet(path, check as any)
-          }
-          continue
-        }
-
-        if (value && typeof value === 'object' && (value as any).kind === 'check') {
-          const meta = (value as any).meta
-          const rules = meta && typeof meta === 'object' ? (meta as any).rules : undefined
-          if (rules && typeof rules === 'object' && !Array.isArray(rules)) {
-            const writebackPath =
-              meta && typeof meta === 'object' && (meta as any).writeback && typeof (meta as any).writeback === 'object'
-                ? (meta as any).writeback.path
-                : undefined
-
-            const errorTarget =
-              typeof writebackPath === 'string' && writebackPath.endsWith('.$self') ? '$self' : undefined
-
-            addFieldRuleSet(path, rules as any, errorTarget)
-          }
-        }
-      }
-    }
-
-    const lists = Array.from(listsByPath.values()).sort((a, b) => a.path.join('.').localeCompare(b.path.join('.')))
-    const rules = Array.from(rulesById.values()).sort((a, b) => a.ruleId.localeCompare(b.ruleId))
-
-    return {
-      moduleId: id,
-      lists,
-      rules,
-    }
-  }
-
-  const traitsBase = config.traits ? (traitsDsl(config.values)(config.traits) as any) : undefined
-  const derivedSpec = normalizeDerived(config.derived)
-  const rulesSpec = config.rules ? compileRulesToTraitSpec(config.rules) : undefined
-  const mergedSpec1 = mergeTraitSpecs(traitsBase, derivedSpec, 'traits', 'derived')
-  const mergedSpec = mergeTraitSpecs(mergedSpec1 as any, rulesSpec as any, 'traits/derived', 'rules')
-  const traitsWrapped = mergedSpec
-    ? wrapTraitsForValidateOn(mergedSpec as any, { validateOn, reValidateOn })
-    : undefined
-  const traits = traitsWrapped?.traits as unknown as Logix.StateTrait.StateTraitSpec<TValues> | undefined
-  const rulesValidateOn = traitsWrapped?.rulesValidateOn ?? []
-
   const def = {
     state: StateSchema,
-    actions: Actions,
+    actions: FormActions,
     reducers,
-    traits,
     schemas: { values: config.values },
   }
 
-  const module = extend
-    ? Logix.Module.make<Id, typeof StateSchema, typeof Actions, FormHandleExt<TValues>>(id, def, extend)
-    : Logix.Module.make<Id, typeof StateSchema, typeof Actions, FormHandleExt<TValues>>(id, def)
+  const module = Logix.Module.make<Id, typeof StateSchema, typeof FormActions, FormHandle<TValues, TDecoded>>(id, def)
+
+  const fieldsLogic =
+    fields === undefined
+      ? undefined
+      : module.logic('__form_internal:fields', ($) => {
+          $.fields(fields as any)
+          return Effect.void
+        })
 
   const logics: ReadonlyArray<Logix.ModuleLogic<any, any, any>> = [
+    ...(fieldsLogic ? [fieldsLogic] : []),
     installLogic(module.tag, {
       validateOn,
       reValidateOn,
@@ -737,55 +883,59 @@ export const make = <Id extends string, TValues extends object>(
       $form: initialMeta(),
     }) as FormState<TValues>
 
-  const controller = {
-    make: (runtime: Logix.ModuleRuntime<FormState<TValues>, FormAction>): FormController<TValues> => {
-      return makeFormController<TValues>({
-        runtime,
-        shape: module.shape,
-        valuesSchema: config.values,
-      }) as FormController<TValues>
-    },
-  }
+  const submitSchema = (submitConfig?.decode ?? (config.values as unknown as Schema.Schema<TDecoded>)) as Schema.Schema<TDecoded>
 
-  ;(module as any).controller = controller
-
-  Logix.Observability.registerTrialRunArtifactExporter(
+  CoreEvidence.registerTrialRunArtifactExporter(
     module.tag as any,
     makeFormRulesManifestArtifactExporter({
-      getManifest: buildRulesManifest,
-      getWarnings: rulesManifestWarningsBase,
+      getManifest: () =>
+        buildRulesManifest({
+          moduleId: id,
+          valuesSchema: config.values,
+          rules: authoringRules,
+        }),
+      getWarnings: () => rulesManifestWarningsBase({ rules: authoringRules }),
+    }),
+  )
+  CoreEvidence.registerTrialRunArtifactExporter(
+    module.tag as any,
+    makeFormEvidenceContractArtifactExporter({
+      getSourceOwnership: () => sourceOwnership,
+      getCompanionOwnership: () => companionOwnership,
     }),
   )
 
-  // Make `$.use(form)` / `$.self` return values carry default controller actions on top of ModuleHandle (React/Logic aligned).
   const EXTEND_HANDLE = Symbol.for('logix.module.handle.extend')
-  let manifestMemo: RulesManifest | undefined
-  let manifestWarningsMemo: ReadonlyArray<string> | undefined
   ;(module.tag as any)[EXTEND_HANDLE] = (
     runtime: Logix.ModuleRuntime<FormState<TValues>, FormAction>,
     base: Logix.ModuleHandle<any>,
   ) => {
-    const form = controller.make(runtime)
+    const bound = FieldContracts.makeBound(module.shape as any, runtime as any)
+    const sourceWiring = FieldContracts.makeFieldSourceWiring(bound as any, module.tag)
+
     return {
       ...base,
-      controller: form.controller,
-      rulesManifest: () => {
-        if (!manifestMemo) {
-          manifestMemo = buildRulesManifest()
-        }
-        return manifestMemo
-      },
-      rulesManifestWarnings: () => {
-        if (!manifestWarningsMemo) {
-          manifestWarningsMemo = rulesManifestWarningsBase()
-        }
-        return manifestWarningsMemo
-      },
+      ...makeFormHandle<TValues, TDecoded>({
+        runtime,
+        shape: module.shape,
+        valuesSchema: config.values,
+        submitSchema,
+        sourceSubmitImpactByPath: sourceSubmitImpactResolved.size > 0 ? sourceSubmitImpactResolved : sourceSubmitImpactByPath,
+        flushSubmitSources: sourceWiring.flushForSubmit,
+        effectfulFieldRules,
+        effectfulListItemRules,
+        effectfulListRules,
+      }),
     }
   }
 
-  return module.implement({
+  return Logix.Program.make<
+    Id,
+    FormShape<TValues>,
+    FormHandle<TValues, TDecoded> & FormProgramCompanionMetadataCarrier<CompanionMetadataFromDefineReturn<TDefineReturn>>,
+    any
+  >(module, {
     initial: initial(),
     logics: [...logics],
-  }) as unknown as FormModule<Id, TValues>
+  }) as unknown as FormProgram<Id, TValues, TDecoded, CompanionMetadataFromDefineReturn<TDefineReturn>>
 }

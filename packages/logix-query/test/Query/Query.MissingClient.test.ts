@@ -9,7 +9,7 @@ describe('Query.MissingClient', () => {
       const KeySchema = Schema.Struct({ q: Schema.String })
       type Key = Schema.Schema.Type<typeof KeySchema>
 
-      const spec = Logix.Resource.make<Key, { readonly q: string }, never, never>({
+      const spec = Query.Engine.Resource.make<Key, { readonly q: string }, never, never>({
         id: 'demo/query-missing-client',
         keySchema: KeySchema,
         load: (key) => Effect.succeed({ q: key.q }),
@@ -31,8 +31,8 @@ describe('Query.MissingClient', () => {
         }),
       })
 
-      const runtime = Logix.Runtime.make(module.impl, {
-        layer: Logix.Resource.layer([spec]) as Layer.Layer<any, never, never>,
+      const runtime = Logix.Runtime.make(module, {
+        layer: Query.Engine.Resource.layer([spec]) as Layer.Layer<any, never, never>,
         middleware: [Query.Engine.middleware()],
       })
 
@@ -51,9 +51,9 @@ describe('Query.MissingClient', () => {
 
       const program = Effect.gen(function* () {
           const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
-        const controller = module.controller.make(rt)
+        const commands = module.commands.make(rt)
 
-        const state = yield* waitUntil(controller.getState as any, (s: any) => s.queries.search.status === 'error')
+        const state = yield* waitUntil(commands.getState as any, (s: any) => s.queries.search.status === 'error')
         const snapshot = state.queries.search
 
         expect(snapshot.status).toBe('error')

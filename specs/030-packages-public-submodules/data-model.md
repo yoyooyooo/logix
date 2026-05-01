@@ -1,7 +1,7 @@
 # Data Model: Packages 对外子模块裁决与结构治理
 
-**Branch**: `030-packages-public-submodules`  
-**Date**: 2025-12-24  
+**Branch**: `030-packages-public-submodules`
+**Date**: 2025-12-24
 **Spec**: `specs/030-packages-public-submodules/spec.md`
 
 > 本特性为“工程治理/对外边界收口”，此处的数据模型用于描述裁决产物自身（清单/例外/迁移），不对应任何线上持久化存储。

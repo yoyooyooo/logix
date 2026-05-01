@@ -1,8 +1,8 @@
 # Feature Specification: Schema Layout Accessors（offset/typed view）
 
-**Feature Branch**: `056-core-ng-schema-layout-accessors`  
-**Created**: 2025-12-31  
-**Status**: Done  
+**Feature Branch**: `056-core-ng-schema-layout-accessors`
+**Created**: 2025-12-31
+**Status**: Done
 **Input**: 046 registry 条目 `056`（`specs/046-core-ng-roadmap/spec-registry.json`）
 
 ## Summary
@@ -36,4 +36,4 @@
 
 - 046 总控：`specs/046-core-ng-roadmap/`
 - Exec VM：`specs/049-core-ng-linear-exec-vm/`
-- Guardrails：`specs/039-trait-converge-int-exec-evidence/`
+- Guardrails：`specs/039-field-converge-int-exec-evidence/`

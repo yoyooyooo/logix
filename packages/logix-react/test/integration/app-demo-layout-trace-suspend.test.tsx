@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 // @vitest-environment happy-dom
 
 import React from 'react'
@@ -6,13 +7,13 @@ import { render, fireEvent, waitFor } from '@testing-library/react'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
-import { useModule } from '../../src/Hooks.js'
+import { useModule, useSelector } from '../../src/Hooks.js'
 
 describe('AppDemoLayout-style runtime + Debug.traceLayer + Suspense', () => {
   //
   // This test largely mirrors examples/logix-react/src/demos/AppDemoLayout.tsx and verifies:
   // - Runtime.make + Debug.layer({ mode: 'dev' }) + Debug.traceLayer does not trigger AsyncFiberException;
-  // - Under React.StrictMode + Suspense, useModule(Impl, { suspend: true, key }) initializes correctly and responds to clicks.
+  // - Under React.StrictMode + Suspense, useProgramRuntimeBlueprint(..., { suspend: true, key }) initializes correctly and responds to clicks.
   //
 
   const AppCounterModule = Logix.Module.make('AppCounterDemoTest', {
@@ -31,44 +32,41 @@ describe('AppDemoLayout-style runtime + Debug.traceLayer + Suspense', () => {
     },
   })
 
-  const AppCounterLogic = AppCounterModule.logic(($) => {
-    // setup-only: register a global fallback error handler.
-    $.lifecycle.onError((cause) => Effect.logError('AppCounterLogic (test) error', cause))
-
-    return Effect.gen(function* () {
+  const AppCounterLogic = AppCounterModule.logic('app-counter-logic', ($) =>
+    Effect.gen(function* () {
       yield* Effect.log('AppCounterLogic (test) setup')
 
       // On each increment, emit one business log + one trace:* Debug event.
       yield* $.onAction('increment').run(() =>
         Effect.gen(function* () {
           yield* Effect.log('increment dispatched from AppCounterLogic (test)')
-          yield* Logix.Debug.record({
+          yield* CoreDebug.record({
             type: 'trace:increment',
             moduleId: AppCounterModule.id,
             data: { source: 'app-demo-layout-trace-suspend.test' },
           })
         }),
       )
-    })
-  })
+    }),
+  )
 
-  const AppCounterImpl = AppCounterModule.implement({
+  const AppCounterProgram = Logix.Program.make(AppCounterModule, {
     initial: { count: 0 },
     logics: [AppCounterLogic],
   })
 
   // App-level Runtime: same as AppDemoLayout, with Debug.layer + Debug.traceLayer.
-  const appRuntime = Logix.Runtime.make(AppCounterImpl, {
-    layer: Logix.Debug.traceLayer(Logix.Debug.layer({ mode: 'dev' })) as Layer.Layer<any, never, never>,
+  const appRuntime = Logix.Runtime.make(AppCounterProgram, {
+    layer: CoreDebug.traceLayer(CoreDebug.layer({ mode: 'dev' })) as Layer.Layer<any, never, never>,
   })
 
   const AppCounterView: React.FC = () => {
-    const counter = useModule(AppCounterImpl, {
+    const counter = useModule(AppCounterProgram, {
       suspend: true,
       key: 'app-runtime-demo-test',
       initTimeoutMs: 5_000,
     })
-    const count = useModule(counter, (s) => (s as { count: number }).count)
+    const count = useSelector(counter, (s) => (s as { count: number }).count)
 
     return (
       <div>

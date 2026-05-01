@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
+import * as RuntimeContracts from '../../src/internal/runtime-contracts.js'
 import { Cause, Effect, Fiber, Stream } from 'effect'
-import * as Debug from '../../src/Debug.js'
-import * as ModuleRuntime from '../../src/internal/runtime/ModuleRuntime.js'
+import * as Debug from '../../src/internal/debug-api.js'
+import * as ModuleRuntime from '../../src/internal/runtime/core/ModuleRuntime.js'
 import * as Logix from '../../src/index.js'
 
 const waitForStartup = () =>
@@ -24,7 +25,7 @@ describe('ReadQuery.strictGate', () => {
       )
 
       const selector = (s: { count: number }) => (s.count > 0 ? s.count : 0)
-      const graded = Logix.ReadQuery.gradeReadQueryAtBuild({
+      const graded = RuntimeContracts.Selector.gradeReadQueryAtBuild({
         moduleId: 'M',
         input: selector,
         strictGate: { mode: 'error' },
@@ -83,7 +84,7 @@ describe('ReadQuery.strictGate', () => {
       )
 
       const selector = (s: { count: number }) => (s.count > 0 ? s.count : 0)
-      const graded = Logix.ReadQuery.gradeReadQueryAtBuild({
+      const graded = RuntimeContracts.Selector.gradeReadQueryAtBuild({
         moduleId: 'M',
         input: selector,
         strictGate: { mode: 'warn' },

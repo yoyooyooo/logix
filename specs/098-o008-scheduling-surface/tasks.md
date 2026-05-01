@@ -1,9 +1,9 @@
 # Tasks: 098 O-008 调度平面统一（Scheduling Surface）
 
-**Input**: Design documents from `specs/098-o008-scheduling-surface/`  
+**Input**: Design documents from `specs/098-o008-scheduling-surface/`
 **Prerequisites**: `plan.md`, `spec.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md`
 
-**Tests**: 本任务触及 runtime 核心路径，测试与性能证据为强制项。  
+**Tests**: 本任务触及 runtime 核心路径，测试与性能证据为强制项。
 **Organization**: 按 User Story 分组，确保可独立验证。
 
 ## Phase 1: Setup (Shared Infrastructure)
@@ -28,8 +28,8 @@
 
 ## Phase 3: User Story 1 - 单一调度策略面（Priority: P1）
 
-**Goal**: queue/tick/concurrency 在同一窗口使用同一策略快照。  
-**Traceability**: NS-9, KF-5  
+**Goal**: queue/tick/concurrency 在同一窗口使用同一策略快照。
+**Traceability**: NS-9, KF-5
 **Independent Test**: 统一策略一致性测试通过。
 
 ### Tests for User Story 1
@@ -47,8 +47,8 @@
 
 ## Phase 4: User Story 2 - backlog/degrade 语义与行为对齐（Priority: P1）
 
-**Goal**: backlog/degrade/recover 事件与真实调度行为一一对应。  
-**Traceability**: NS-10, KF-8  
+**Goal**: backlog/degrade/recover 事件与真实调度行为一一对应。
+**Traceability**: NS-10, KF-8
 **Independent Test**: 压力场景下事件-行为对齐测试全部通过。
 
 ### Tests for User Story 2
@@ -67,8 +67,8 @@
 
 ## Phase 5: User Story 3 - 调优与迁移可交接（Priority: P2）
 
-**Goal**: 提供统一配置心智模型、迁移说明与性能证据闭环。  
-**Traceability**: NS-9, NS-10, KF-5, KF-8  
+**Goal**: 提供统一配置心智模型、迁移说明与性能证据闭环。
+**Traceability**: NS-9, NS-10, KF-5, KF-8
 **Independent Test**: 按 quickstart 能复现迁移与诊断调优。
 
 ### Tests for User Story 3
@@ -78,7 +78,7 @@
 
 ### Implementation for User Story 3
 
-- [x] T022 [US3] 更新中文用户文档于 `apps/docs/content/docs/guide/advanced/concurrency-control-plane.cn.md` 说明统一 scheduling surface 与迁移路径
+- [x] T022 [US3] 更新中文用户文档于 `apps/docs/content/docs/guide/advanced/concurrency-policy.cn.md` 说明统一 scheduling surface 与迁移路径
 - [x] T023 [US3] 更新 runtime 诊断文档于 `docs/ssot/runtime/logix-core/observability/09-debugging.md` 对齐 backlog/degrade 事件语义
 - [x] T024 [US3] 补齐 PR migration note（无兼容层）并同步 `specs/098-o008-scheduling-surface/quickstart.md`
 - [x] T029 [US3] 固化 runtime 实现备忘到 `docs/ssot/runtime/logix-core/impl/README.md`（记录 scheduling surface 最终约束与易漂移细节）

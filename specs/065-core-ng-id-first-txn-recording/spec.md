@@ -1,8 +1,8 @@
 # Feature Specification: core-ng 整型化 Phase 2（事务/录制 id-first）
 
-**Feature Branch**: `065-core-ng-id-first-txn-recording`  
-**Created**: 2025-12-31  
-**Status**: Draft  
+**Feature Branch**: `065-core-ng-id-first-txn-recording`
+**Created**: 2025-12-31
+**Status**: Draft
 **Input**: User description: "补齐 core-ng 整型化第二阶段：在不改变对外语义的前提下，把整型化从 converge 热路径扩展到 txn dirty-set/patch recording/diagnostic anchors，实现 id-first（FieldPathId/StepId），字符串仅在序列化/显示边界 materialize；同时建立 Node+Browser perf evidence（matrix SSoT）与 hard gates，防止 split/join 回归；在证据触发前不启动 AOT/Wasm。"
 
 ## Clarifications
@@ -13,7 +13,7 @@
 - AUTO: Q: StepId 在本 spec 中指的是什么？ → A: `StepId` 指 `ConvergeStepId`（converge steps table 的整数下标）；非 converge 来源的 patch 不填 StepId（避免混用不同 id 空间）。
 - AUTO: Q: dirty-set 在对外证据中以什么形态表达 roots？ → A: `dirtyAll=false` 时以 `rootIds: FieldPathId[]` 表达（可对齐、可 diff）；可读 `rootPaths` 只允许在显示/序列化边界基于 Static IR 反解（热路径禁止 materialize）。
 - AUTO: Q: rootIds 的 canonicalization 规则是什么？ → A: `rootIds` 必须去重、prefix-free（按 FieldPath 前缀去冗余）、最终按 `FieldPathId` 升序稳定排序，并同时输出 `rootCount/keyHash/keySize` 作为 diff 锚点。
-- AUTO: Q: PatchReason / DirtyAllReason 是否必须稳定枚举？ → A: 必须；`DirtyAllReason` 固定为 `unknownWrite|customMutation|nonTrackablePatch|fallbackPolicy`，`PatchReason` 收敛为稳定枚举（`reducer|trait-computed|trait-link|source-refresh|devtools|perf|unknown`）。
+- AUTO: Q: PatchReason / DirtyAllReason 是否必须稳定枚举？ → A: 必须；`DirtyAllReason` 固定为 `unknownWrite|customMutation|nonTrackablePatch|fallbackPolicy`，`PatchReason` 收敛为稳定枚举（`reducer|field-computed|field-link|source-refresh|devtools|perf|unknown`）。
 - AUTO: Q: diagnostics=light/sampled/full 的默认 bounded 策略是什么？ → A: 对外事件中 `rootIds` 默认只输出 TopK（light=3，sampled/full=32），并以 `rootIdsTruncated` 标记裁剪；sampled/full 下的 patch records 必须有界（默认最多 256 条，超限必须裁剪并给出可解释标记/原因码）。
 - AUTO: Q: 本 spec 的 hard gates 覆盖哪些关键 suites？ → A: Browser matrix：`converge.txnCommit`（P1）、`form.listScopeCheck`（P2）；Node：`bench:027:devtools-txn`、`bench:009:txn-dirtyset`。
 - AUTO: Q: Gate 的判定标准是什么？ → A: Browser diff 必须 `comparable=true && regressions==0 && budgetViolations==0`；Node `bench:027:devtools-txn` 必须 `gate.ok=true`；Node `bench:009:txn-dirtyset` 相对 before 的回归不得超过 15%（median 与 p95 同时满足）。

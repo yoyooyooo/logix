@@ -1,6 +1,6 @@
 # Tasks: PR93 listConfigs guard 性能证据回填
 
-**Input**: `specs/100-pr93-listconfigs-guard-perf-evidence/spec.md`, `plan.md`  
+**Input**: `specs/100-pr93-listconfigs-guard-perf-evidence/spec.md`, `plan.md`
 **PR Reference**: [#93](https://github.com/yoyooyooo/logix/pull/93)
 
 ## Phase 1: Spec Backfill

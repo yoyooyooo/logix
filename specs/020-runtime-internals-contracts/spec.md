@@ -1,8 +1,8 @@
 # Feature Specification: Runtime Internals Contracts（运行时内部契约化：Kernel/Runtime Services + TrialRun/Reflection）
 
-**Feature Branch**: `[020-runtime-internals-contracts]`  
-**Created**: 2025-12-21  
-**Status**: Draft  
+**Feature Branch**: `[020-runtime-internals-contracts]`
+**Created**: 2025-12-21
+**Status**: Draft
 **Input**: User description: "我们创建个新 spec 去做这个改造"
 
 ## User Scenarios & Testing *(mandatory)*
@@ -11,7 +11,7 @@
   IMPORTANT: User stories should be PRIORITIZED as user journeys ordered by importance.
   Each user story/journey must be INDEPENDENTLY TESTABLE - meaning if you implement just ONE of them,
   you should still have a viable MVP (Minimum Viable Product) that delivers value.
-  
+
   Assign priorities (P1, P2, P3, etc.) to each story, where P1 is the most critical.
   Think of each story as a standalone slice of functionality that can be:
   - Developed independently
@@ -77,7 +77,7 @@
 
 1. **Given** 一个模块实例启用受控覆写/Mock，**When** 执行一次试运行并导出证据，**Then** 证据中包含稳定的实例锚点（如 instanceId）与可序列化的子系统绑定摘要，且在可用时包含关键 IR 摘要。
 2. **Given** 同一进程内并行执行两个试运行会话，**When** 两者分别导出证据，**Then** 证据不互相污染（绑定来源/事件序列/IR 摘要不串扰），且可被稳定地对比与回放解释。
-3. **Given** 一个模块由“构建脚本/Builder（可能依赖配置/环境）”动态生成 traits/topology，**When** 平台在受控构建环境中运行一次构建并导出静态 IR，**Then** 可以在不执行真实业务依赖的前提下获得可比较的结构化 IR（例如 traits 图/依赖/资源元信息）。
+3. **Given** 一个模块由“构建脚本/Builder（可能依赖配置/环境）”动态生成 fields/topology，**When** 平台在受控构建环境中运行一次构建并导出静态 IR，**Then** 可以在不执行真实业务依赖的前提下获得可比较的结构化 IR（例如 fields 图/依赖/资源元信息）。
 
 ---
 
@@ -85,7 +85,7 @@
 
 - 当某个内部子系统依赖缺失/配置无效时，应快速失败并提供可定位的结构化诊断（而不是静默降级到不可解释状态）。
 - 当启用“局部覆写”时，覆写不得泄漏到其他模块实例；实例销毁后不得残留全局引用导致内存泄漏。
-- 当诊断关闭时，不得因重构引入新的默认开销；该开销必须满足 NFR-001/NFR-002 的预算门槛，并不得引入与 state/traits/graph 规模成比例的隐式扫描/序列化（预算口径详见 `specs/020-runtime-internals-contracts/plan.md` 的 Performance Goals）。诊断开启时应提供足够证据解释“当前策略为何生效”。
+- 当诊断关闭时，不得因重构引入新的默认开销；该开销必须满足 NFR-001/NFR-002 的预算门槛，并不得引入与 state/fields/graph 规模成比例的隐式扫描/序列化（预算口径详见 `specs/020-runtime-internals-contracts/plan.md` 的 Performance Goals）。诊断开启时应提供足够证据解释“当前策略为何生效”。
 - 当存在“试运行会话”并行或高频创建/销毁时，应保证会话级别与实例级别隔离清晰，避免跨会话串扰与长期引用悬挂。
 - 当同一进程内存在多个 ManagedRuntime / 多个 Root Provider 并存时，内部子系统绑定、证据导出与调试能力不得互相污染或产生隐式全局兜底依赖。
 
@@ -102,12 +102,12 @@
 - **FR-007**: 系统 MUST 提供清晰的内部迁移说明：从旧的“隐式耦合/参数传递”模式迁移到新的“统一注入/可替换子系统”模式，避免贡献者在改造期间迷失。
 - **FR-008**: 系统 MUST 将“内部 hooks/内部协作协议”封装为明确的内部契约与访问入口，避免仓库内集成方依赖隐式的 magic 字段或散落的私有约定。
 - **FR-009**: 系统 MUST 支持平台侧的“受控试运行”能力：允许在会话/实例范围内注入 Mock/覆写并导出可机器处理的证据与关键 IR 摘要，用于对比、回放与自动化校验。
-- **FR-010**: 系统 MUST 覆盖运行时全链路的内部契约化改造范围：Runtime 组装（Runtime.make/AppRuntime）、模块实例构建（ModuleFactory）、Bound API 与 Traits/生命周期等内部消费方，都应通过同一套可注入契约获取所需能力，避免形成“只改 ModuleRuntime 但其他链路仍靠 magic 字段”的半吊子结构。
+- **FR-010**: 系统 MUST 覆盖运行时全链路的内部契约化改造范围：Runtime 组装（Runtime.make/AppRuntime）、模块实例构建（ModuleFactory）、Bound API 与 Fields/生命周期等内部消费方，都应通过同一套可注入契约获取所需能力，避免形成“只改 ModuleRuntime 但其他链路仍靠 magic 字段”的半吊子结构。
 - **FR-011**: 系统 MUST 将“证据导出/IR 摘要采集”从 Devtools 全局单例中解耦出来，支持按 RunSession/Scope 注入证据采集器，并保证并行试运行时证据隔离；DevtoolsHub 仅作为可选 consumer，不得成为试运行导出的必要依赖。
-- **FR-012**: 系统 MUST 将仓库内对 internal hooks 的访问收敛到统一入口（例如 internal accessor/RuntimeInternals），并逐步迁移 `@logixjs/react` 的 imports 解析、trait-lifecycle、state-trait 等内部模块，避免在多个包里散落对 `runtime.__*` / `bound.__*` 的直接读取。
-- **FR-013**: 系统 MUST 支持“构建态反射（Reflection）”：在受控构建环境中运行一次 Builder，导出静态 IR（如 traits 结构/依赖/资源元信息与模块拓扑摘要），用于平台侧的可逆工程与漂移检测底座。
+- **FR-012**: 系统 MUST 将仓库内对 internal hooks 的访问收敛到统一入口（例如 internal accessor/RuntimeInternals），并逐步迁移 `@logixjs/react` 的 imports 解析、field-lifecycle、state-field 等内部模块，避免在多个包里散落对 `runtime.__*` / `bound.__*` 的直接读取。
+- **FR-013**: 系统 MUST 支持“构建态反射（Reflection）”：在受控构建环境中运行一次 Builder，导出静态 IR（如 fields 结构/依赖/资源元信息与模块拓扑摘要），用于平台侧的可逆工程与漂移检测底座。
 - **FR-014**: 系统 MUST 定义并强制“构建态依赖约束”：构建阶段只能依赖少量可 Mock 的基础能力（例如配置/平台信息/文件系统），禁止在构建阶段隐式依赖任意业务 Service；若违反必须快速失败并给出可行动诊断。
-- **FR-015**: 系统 MUST 在导出的 Static IR / Evidence Summary 中携带并保留可扩展的“语义锚点/注解”（例如 trait meta 的 label/description/tags/docsUrl 等），用于支撑未来的 Phantom Source、语义压缩与漂移检测；该锚点/注解必须 Slim、可序列化且可裁剪。
+- **FR-015**: 系统 MUST 在导出的 Static IR / Evidence Summary 中携带并保留可扩展的“语义锚点/注解”（例如 field meta 的 label/description/tags/docsUrl 等），用于支撑未来的 Phantom Source、语义压缩与漂移检测；该锚点/注解必须 Slim、可序列化且可裁剪。
 - **FR-016**: 系统 MUST 保证试运行（Trial Run）与反射构建（Reflection）的导出产物可复现、可对比：任何会影响导出内容的去重/once/序列号分配/缓存状态不得是进程级全局（避免跨会话污染导致“证据缺失/序列漂移/不可解释差异”）。
 
 ### Non-Functional Requirements (Performance & Diagnosability)
@@ -124,7 +124,7 @@
 - **NFR-003**: 系统 MUST 使用确定性标识（实例/事务/操作等）用于诊断与回放面；不得默认使用随机数或时间戳作为隐式标识来源。
 - **NFR-004**: 系统 MUST 严格维护同步事务窗口边界：事务窗口内禁止 IO/异步边界；不得提供可绕过该边界的隐式写逃逸。
 - **NFR-005**: 若本改造引入新的默认策略或改变性能边界/优化阶梯，系统 MUST 同步更新用户文档与诊断术语，确保心智模型与证据字段一致且可操作。
-- **NFR-006**: “受控试运行” MUST 是显式 opt-in 能力：在默认运行（非试跑且 diagnostics=off）下不得引入与 state/traits/graph 规模成比例的隐式扫描/序列化；其热路径额外开销必须满足 NFR-001 的预算门槛（默认 p95 延迟/分配/内存 ≤ 5% 回归）。证据/IR 导出应可裁剪、可序列化、且在并行会话场景下保持隔离与可解释性。
+- **NFR-006**: “受控试运行” MUST 是显式 opt-in 能力：在默认运行（非试跑且 diagnostics=off）下不得引入与 state/fields/graph 规模成比例的隐式扫描/序列化；其热路径额外开销必须满足 NFR-001 的预算门槛（默认 p95 延迟/分配/内存 ≤ 5% 回归）。证据/IR 导出应可裁剪、可序列化、且在并行会话场景下保持隔离与可解释性。
 - **NFR-007**: 系统 MUST 避免把进程/页面级全局单例作为运行正确性或平台试跑的必需依赖；如存在全局聚合器（例如 DevtoolsHub），其影响域与生命周期必须显式、可隔离，并提供等价的 per-session 采集路径。
 - **NFR-008**: 反射构建（Reflection）与试运行（Trial Run） MUST 支持在同一进程内重复/并行执行且结果可对比；不得因全局缓存/全局注册表/进程级 once 去重/序列号分配器导致“跨会话污染”或非确定性漂移。
 

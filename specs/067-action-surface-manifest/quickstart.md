@@ -4,7 +4,7 @@
 
 ## 1) 提取模块 Module Manifest（免 AST）
 
-- 输入：用户导出的 `Module` / `ModuleImpl`
+- 输入：用户导出的 `Module` 或 `Program.make(...)` 产物
 - 输出：可序列化 JSON（`ModuleManifest`；deterministic，可 diff）
 
 示例（概念性）：
@@ -12,7 +12,7 @@
 ```ts
 import * as Logix from '@logixjs/core'
 
-const manifest = Logix.Reflection.extractManifest(MyModule, {
+const manifest = CoreReflection.extractManifest(MyModule, {
   budgets: { maxBytes: 64 * 1024 },
 })
 ```
@@ -111,7 +111,7 @@ yield* $.onAction(CounterActions.add).run((payload) => {
 
 ### 3.5 reducer（payload-first）
 
-`Reducer.mutate(mutator)` 的 **mutator 回调**为 payload-first：`(draft, payload)`（避免 `action.payload` 样板）。  
+`Reducer.mutate(mutator)` 的 **mutator 回调**为 payload-first：`(draft, payload)`（避免 `action.payload` 样板）。
 但 `mutate` 返回的 reducer 仍然以 `(state, action, sink?) => state` 的形态运行：运行时会从 action 上提取 payload，并在需要时通过 `sink` 记录 patchPaths（保持事务窗口纯同步与 patchPaths 机制不变）。
 
 ### 3.6 effects（副作用注册面）

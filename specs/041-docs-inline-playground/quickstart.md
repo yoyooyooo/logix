@@ -1,6 +1,6 @@
 # Quickstart: 文档内联教学 Playground
 
-**Date**: 2025-12-26  
+**Date**: 2025-12-26
 **Feature**: [041-docs-inline-playground](./plan.md)
 
 ## 目标
@@ -38,6 +38,6 @@ export const AppRoot = ...
 
 ## 推荐实践（作者侧）
 
-- 观察点保持 1–3 条，直接指向“运行后应该看哪里/如何判断是否符合预期”。  
-- 普通教程默认 `level="basic"`，不要暴露 Trace/时间线；高级/Debug 页面才用 `level="debug"`。  
+- 观察点保持 1–3 条，直接指向“运行后应该看哪里/如何判断是否符合预期”。
+- 普通教程默认 `level="basic"`，不要暴露 Trace/时间线；高级/Debug 页面才用 `level="debug"`。
 - 运行示例尽量避免依赖外部网络与不可控环境，以提高可复现性与学习体验稳定性。

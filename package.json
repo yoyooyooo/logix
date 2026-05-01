@@ -1,5 +1,5 @@
 {
-  "name": "intent-flow",
+  "name": "logix",
   "version": "0.0.0",
   "private": true,
   "license": "Apache-2.0",
@@ -11,7 +11,7 @@
     "release:beta": "node scripts/release-beta.mjs",
     "release:check": "changeset status --verbose",
     "ci:release:beta": "pnpm check:effect-v4-matrix && pnpm build:pkg && pnpm typecheck && pnpm typecheck:test && pnpm test:turbo",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm -r --workspace-concurrency=1 typecheck",
     "typecheck:test": "pnpm -r typecheck:test",
     "verify": "pnpm verify:public-submodules",
     "check:forbidden-patterns": "tsx scripts/checks/forbidden-patterns.ts",
@@ -42,7 +42,7 @@
     "api-reference:build": "pnpm -C apps/api-reference docgen",
     "api-reference:serve": "pnpm -C apps/api-reference serve",
     "api-reference:dev": "pnpm -C apps/api-reference docgen && pnpm -C apps/api-reference serve",
-    "check:schema-v4-legacy": "tsx scripts/checks/schema-v4-legacy.ts"
+    "check:schema-v4-outdated": "tsx scripts/checks/schema-v4-outdated.ts"
   },
   "devDependencies": {
     "@changesets/cli": "2.30.0",
@@ -50,7 +50,6 @@
     "@effect/language-service": "^0.56.0",
     "@eslint/js": "^9.39.1",
     "@logixjs/core": "workspace:*",
-    "@logixjs/core-ng": "workspace:*",
     "@types/prompts": "^2.4.9",
     "@vitest/browser": "^4.0.15",
     "@vitest/browser-playwright": "^4.0.15",

@@ -3,23 +3,7 @@ title: 常见问题排查
 description: Logix 诊断代码解释与常见错误修复指南。
 ---
 
-本页收集 Logix Runtime 在运行时可能发出的诊断代码、常见错误场景及修复方法。
-
-### 适合谁
-
-- 遇到 Logix 相关报错或警告，想快速定位原因；
-- 在 DevTools 中看到 `diagnostic` 事件，想了解具体含义。
-
-### 前置知识
-
-- 已阅读「Modules & State」和「Flows & Effects」，了解 Module / Logic 的基本结构。
-
-### 读完你将获得
-
-- 能够根据诊断代码快速定位问题根因；
-- 知道如何修复最常见的 setup/run 阶段错误。
-
----
+当 Logix 发出 warning 或 error 时，诊断代码就是最直接的定位入口。下表先汇总最常见代码的运行时含义与最短修复路径。
 
 ## 诊断代码速查表
 
@@ -33,10 +17,28 @@ description: Logix 诊断代码解释与常见错误修复指南。
 | `state_transaction::async_escape` | error | 同步事务窗口内出现异步逃逸 | 不要在同步写入体内 `await/sleep/IO`；改用 `run*Task` 或拆成多次入口写回 |
 | `state_transaction::enqueue_in_transaction` | error | 同步事务窗口内 dispatch/setState | 不要在同步写入体内触发 dispatch；拆成多次入口或移到事务外 |
 | `logic::invalid_usage`         | error    | 同步事务内调用 `run*Task` | 不要在 reducer/`IntentBuilder.update/mutate` 的同步 body 内调用 `run*Task` |
+| `runtime.hot-lifecycle`        | evidence | 开发期 runtime reset/dispose 已发生 | 检查 owner id、previous/next runtime id、cleanup status 与 residual active count |
 
 ---
 
 ## 常见错误场景
+
+### 0. 源码编辑后 active demo 停止响应
+
+**症状**：timer、task runner、watcher 或 form demo 在开发期 HMR 后停止响应，完整刷新后恢复。
+
+**证据事件**：`runtime.hot-lifecycle`
+
+**原因**：runtime 没有挂到单一 hot lifecycle owner，或旧 runtime-owned resources 在模块替换后残留。
+
+**修复方向**：
+
+- 在 app/example 边界创建 runtime，并让该边界持有 replacement；
+- 在宿主边界单点开启 Vite 的 `logixReactDevLifecycle()` 或测试 setup 的 `installLogixDevLifecycleForVitest()`；
+- 有 successor runtime 时由 owner 执行 `reset`；
+- 没有 successor 时由 owner 执行 `dispose`；
+- `RuntimeProvider` 保持 projection-only；
+- 避免在组件里散落 HMR cleanup snippet。
 
 ### 1. LogicPhaseError: `$.lifecycle.*` 在 run 段调用
 
@@ -48,7 +50,7 @@ description: Logix 诊断代码解释与常见错误修复指南。
 
 **诊断代码**：`logic::invalid_phase`
 
-**原因**：`$.lifecycle.onInit`、`$.lifecycle.onDestroy` 等生命周期注册 API 是 **setup-only**，只能在 Logic 的 setup 段（`return` 之前）调用，不能在 `Effect.gen` 内部调用。
+**原因**：`$.lifecycle.onInit`、`$.lifecycle.onDestroy` 等生命周期注册 API 是 declaration-only，只能在 Logic builder 的同步声明区（`return` 之前）调用，不能在 `Effect.gen` 内部调用。
 
 **错误写法**：
 
@@ -56,7 +58,7 @@ description: Logix 诊断代码解释与常见错误修复指南。
 const Logic = Module.logic(($) =>
   Effect.gen(function* () {
     // ❌ 这里是 run 段，不能注册生命周期
-    $.lifecycle.onInit(Effect.log('init'))
+    $.lifecycle.onInitRequired(Effect.log('init'))
 
     yield* $.onAction('foo').run(/* ... */)
   }),
@@ -67,8 +69,8 @@ const Logic = Module.logic(($) =>
 
 ```ts
 const Logic = Module.logic(($) => {
-  // ✅ setup 段：return 之前
-  $.lifecycle.onInit(Effect.log('init'))
+  // ✅ 声明区：return 之前
+  $.lifecycle.onInitRequired(Effect.log('init'))
 
   return Effect.gen(function* () {
     // run 段：正常写 watcher
@@ -126,12 +128,12 @@ const Logic = Module.logic(($) =>
 MissingModuleRuntimeError: Module 'Child' is not available in imports.
 ```
 
-**原因**：在 Logic 中通过 `$.use(ChildModule)` 访问子模块，但 `implement` 时未在 `imports` 中提供该模块。
+**原因**：Logic 通过 `$.imports.get(Child.tag)` 访问 child Program，但这个 child Program 没有通过 `Program.make(..., { capabilities: { imports } })` 提供。
 
 **错误写法**：
 
 ```ts
-const HostModule = HostDef.implement({
+const HostProgram = Logix.Program.make(HostDef, {
   initial: {
     /* ... */
   },
@@ -143,13 +145,25 @@ const HostModule = HostDef.implement({
 **正确写法**：
 
 ```ts
-const HostModule = HostDef.implement({
+const HostProgram = Logix.Program.make(HostDef, {
   initial: {
     /* ... */
   },
   logics: [HostLogic],
-  imports: [ChildImpl], // ✅ 提供子模块实现
+  capabilities: {
+    imports: [ChildProgram], // ✅ 提供子 program
+  },
 })
+```
+
+```ts
+const HostLogic = HostDef.logic(($) =>
+  Effect.gen(function* () {
+    const child = yield* $.imports.get(Child.tag)
+    const value = yield* child.read((s) => s.value)
+    // ...
+  }),
+)
 ```
 
 ---
@@ -193,30 +207,29 @@ const Logic = Module.logic(($) => {
 
 ---
 
-### 5. Traits 在 run 段声明
+### 5. fields 在 run 段声明
 
 **症状**：
 
 ```
-[LogicPhaseError] $.traits.declare is not allowed in run phase (kind=traits_declare_in_run).
+[LogicPhaseError] $.fields.declare is not allowed in run phase (kind=fields_declare_in_run).
 ```
 
 **诊断代码**：`logic::invalid_phase`
 
-**原因**：`$.traits.declare(...)` 是 setup-only API，traits 在 setup 结束后会被冻结。
+**原因**：`$.fields(...)` 是 declaration-only API，字段声明在声明区结束后会被冻结。
 
 **正确写法**：
 
 ```ts
-const Logic = Module.logic(($) => ({
-  setup: Effect.sync(() => {
-    // ✅ setup 段声明 traits
-    $.traits.declare({
-      /* ... */
-    })
-  }),
-  run: Effect.void,
-}))
+const Logic = Module.logic(($) => {
+  // ✅ 在同步声明区声明 fields
+  $.fields({
+    /* ... */
+  })
+
+  return Effect.void
+})
 ```
 
 ---
@@ -293,7 +306,7 @@ yield* $.onAction('save').update((prev) =>
   code: 'logic::invalid_phase',
   severity: 'error',
   message: '$.lifecycle.onInit is not allowed in run phase.',
-  hint: 'run 段禁止注册 $.lifecycle.*（setup-only）。请将生命周期注册移动到 Module.logic builder 的同步部分（return 之前）。',
+  hint: 'run 段禁止注册 $.lifecycle.*。请将生命周期注册移动到 Module.logic builder 的同步声明区（return 之前）。',
   kind: 'lifecycle_in_run'
 }
 ```
@@ -304,8 +317,7 @@ yield* $.onAction('save').update((prev) =>
 
 ---
 
-## 下一步
+## 延伸阅读
 
-- 学习如何使用 DevTools 观察模块行为：[调试与 DevTools](./debugging-and-devtools)
 - 了解错误处理策略：[错误处理](./error-handling)
 - 查看测试相关指南：[测试](./testing)

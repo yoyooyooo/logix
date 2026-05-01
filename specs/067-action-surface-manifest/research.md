@@ -1,7 +1,7 @@
 # Research: Action Surface（actions/dispatchers/reducers/effects）与 Manifest
 
-**Feature**: `specs/067-action-surface-manifest/spec.md`  
-**Created**: 2026-01-01  
+**Feature**: `specs/067-action-surface-manifest/spec.md`
+**Created**: 2026-01-01
 **Updated**: 2026-01-02
 
 > 目标：把本特性的关键裁决固化为可复用结论，避免“实现先跑偏、文档后补”的漂移。
@@ -188,4 +188,4 @@ canonical 入口同时保留：
 **Alternatives considered**:
 
 - 继续用散落的 `onAction(...).runFork(...)`：能跑但不利于治理（去重/来源/诊断/统计/Explainability）且易产生重复副作用。
-- 强制同 tag 只允许一个 effect：会把多个副作用揉进一个 handler，SRP 崩溃且不利于 OCP/traits 扩展。
+- 强制同 tag 只允许一个 effect：会把多个副作用揉进一个 handler，SRP 崩溃且不利于 OCP/fields 扩展。

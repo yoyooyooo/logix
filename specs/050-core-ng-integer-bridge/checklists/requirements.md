@@ -1,7 +1,7 @@
 # Specification Quality Checklist: core-ng 整型桥（Integer Bridge）
 
-**Purpose**: 在进入规划（plan/tasks）之前，校验规格是否可验收、无明显歧义  
-**Created**: 2025-12-27  
+**Purpose**: 在进入规划（plan/tasks）之前，校验规格是否可验收、无明显歧义
+**Created**: 2025-12-27
 **Feature**: `specs/050-core-ng-integer-bridge/spec.md`
 
 ## Content Quality

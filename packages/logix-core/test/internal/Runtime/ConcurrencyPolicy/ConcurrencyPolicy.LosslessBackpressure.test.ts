@@ -1,9 +1,9 @@
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Fiber, Ref, Stream } from 'effect'
-import * as ModuleRuntime from '../../../../src/internal/runtime/ModuleRuntime.js'
-import { ConcurrencyPolicyTag } from '../../../../src/internal/runtime/core/env.js'
-import * as Debug from '../../../../src/Debug.js'
+import * as ModuleRuntime from '../../../../src/internal/runtime/core/ModuleRuntime.js'
+import { SchedulingPolicySurfaceTag } from '../../../../src/internal/runtime/core/env.js'
+import * as Debug from '../../../../src/internal/debug-api.js'
 
 const waitForStartup = Effect.promise(
   () =>
@@ -51,7 +51,7 @@ describe('ConcurrencyPolicy (US1): lossless backpressure', () => {
 
         return dispatchElapsedMs
       }).pipe(
-        Effect.provideService(ConcurrencyPolicyTag, {
+        Effect.provideService(SchedulingPolicySurfaceTag, {
           losslessBackpressureCapacity: 4,
         }),
       ),

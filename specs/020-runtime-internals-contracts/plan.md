@@ -5,25 +5,25 @@
 
 ## Summary
 
-本特性在**对外 API/行为完全不变**的前提下，把运行时内部从“跨文件长参数列表接线”升级为“Effect‑Native 的 Service/Layer 图”，并趁这波顺手梳理当前内部全链路（Runtime.make → AppRuntime → ModuleRuntime → BoundApi/Logic → Txn/Traits → Debug/Devtools）里最值得一起改的耦合点。
+本特性在**对外 API/行为完全不变**的前提下，把运行时内部从“跨文件长参数列表接线”升级为“Effect‑Native 的 Service/Layer 图”，并趁这波顺手梳理当前内部全链路（Runtime.make → AppRuntime → ModuleRuntime → BoundApi/Logic → Txn/Fields → Debug/Devtools）里最值得一起改的耦合点。
 
 按 RIO 顺序（收益/影响/落地成本）交付：
 
 1. **统一依赖注入内核（RuntimeKernel）**：把 ModuleRuntime/BoundApiRuntime/事务/诊断等共享依赖收敛成单一装配点与可注入服务，消除参数爆炸。
-2. **子系统可替换（Runtime Services）**：把调度/事务执行/dispatch/traits/诊断等拆成最小可替换契约，支持“按模块实例”覆写（默认 strict、零泄漏）。
+2. **子系统可替换（Runtime Services）**：把调度/事务执行/dispatch/fields/诊断等拆成最小可替换契约，支持“按模块实例”覆写（默认 strict、零泄漏）。
 3. **内部 hooks 规范化（RuntimeInternals Runtime Service）**：将 runtime 上的隐式 `__*` 协作协议收敛为明确的内部契约与访问入口；仓库内集成方不再依赖散落的 magic 字段（必要时保留薄 shim 过渡）。
 4. **平台试运行底座（可 Mock、一次跑出证据/IR）**：支撑平台侧在浏览器/Node 环境做“受控试运行”，按会话/实例注入 Mock/覆写并导出可机器处理证据与关键 IR 摘要，且同进程并行不串扰。
-5. **全链路迁移与去耦（高 ROI）**：将 BoundApiRuntime、trait-lifecycle、state-trait、`@logixjs/react` strict imports 解析等内部消费方统一迁移到内部契约入口，避免“只改 ModuleRuntime 但周边仍靠 magic 字段”的半吊子结构。
+5. **全链路迁移与去耦（高 ROI）**：将 BoundApiRuntime、field-lifecycle、state-field、`@logixjs/react` strict imports 解析等内部消费方统一迁移到内部契约入口，避免“只改 ModuleRuntime 但周边仍靠 magic 字段”的半吊子结构。
 6. **性能与诊断门槛固化**：复用现有 perf runner（014/017/019），并为“服务化重构”补齐可解释的配置来源/生效策略证据（contracts‑first），确保 off 近零成本且不回退。
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.8.2（ESM）  
-**Primary Dependencies**: `effect` v3（^3.19.8）、pnpm workspace（`@logixjs/*`）、Vitest  
-**Storage**: N/A（内存态：`SubscriptionRef`/`PubSub`/`Queue`/`FiberRef`）  
-**Testing**: Vitest（`vitest run`）；Effect-heavy 用例优先 `@effect/vitest`  
-**Target Platform**: Node.js 20+（脚本/测试/基线；当前本地 v22.21.1）+ 现代浏览器（React/Devtools）  
-**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）  
+**Language/Version**: TypeScript 5.8.2（ESM）
+**Primary Dependencies**: `effect` v3（^3.19.8）、pnpm workspace（`@logixjs/*`）、Vitest
+**Storage**: N/A（内存态：`SubscriptionRef`/`PubSub`/`Queue`/`FiberRef`）
+**Testing**: Vitest（`vitest run`）；Effect-heavy 用例优先 `@effect/vitest`
+**Target Platform**: Node.js 20+（脚本/测试/基线；当前本地 v22.21.1）+ 现代浏览器（React/Devtools）
+**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）
 **Performance Goals**:
 - 目标：**重构不回退**（默认配置下 hot path 的 p95 延迟/分配/内存不出现显著退化）
 - 门槛：p95 延迟退化 ≤ 5%，分配/内存退化 ≤ 5%，吞吐 ≥ 95% 基线（基线以 014/019 的 quick profile 为主口径）
@@ -36,7 +36,7 @@
 - 仓库内“内部 hooks/内部协作协议”必须可被封装、可替换、可 Mock，并在并行试运行场景下保持隔离（避免全局单例/全局可变污染试跑结果）
 - RunSession 隔离必须覆盖 once 去重/序列号分配器等内部可变状态，避免跨会话污染导致证据缺失或不可解释差异
 - 资源释放机制必须显式：实例级资源统一绑定到 Effect `Scope`，通过 `Layer.scoped` / `Effect.acquireRelease` 注册 finalizer；实例销毁时必须自动释放队列/注册表/缓存并注销索引，避免跨实例泄漏
-**Scale/Scope**: 触及 runtime 核心热路径与装配路径；主要落点在 `packages/logix-core/src/internal/runtime/**` 与其直接依赖（traits/debug/effectop/task-runner），并按需联动 `@logixjs/react` 的消费侧语义（仅当保持对外行为需要）
+**Scale/Scope**: 触及 runtime 核心热路径与装配路径；主要落点在 `packages/logix-core/src/internal/runtime/**` 与其直接依赖（fields/debug/effectop/task-runner），并按需联动 `@logixjs/react` 的消费侧语义（仅当保持对外行为需要）
 
 ## Constitution Check
 
@@ -53,7 +53,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - IR & anchors：不引入第二套真相源；contracts 仅用于约束“诊断证据/配置来源”字段，不改变 unified minimal IR 的原则。
 - Deterministic identity：保持现有 instance/txn 的确定性模型；新增的子系统/覆写证据必须复用稳定锚点（不得引入随机 id）。
 - Transaction boundary：任何服务化/解耦不得引入事务内 IO；事务入口必须仍能被 guard 与诊断。
-- Performance budget：触及热路径（`ModuleRuntime.dispatch/transaction/txnQueue/runOperation`、`BoundApiRuntime` 写入桥、traits converge/validate、DebugSink 事件采集）。必须在 Phase 1 明确基线与预算，并在实现阶段用同口径数据证明“不回退”。
+- Performance budget：触及热路径（`ModuleRuntime.dispatch/transaction/txnQueue/runOperation`、`BoundApiRuntime` 写入桥、fields converge/validate、DebugSink 事件采集）。必须在 Phase 1 明确基线与预算，并在实现阶段用同口径数据证明“不回退”。
 - Diagnosability & explainability：新增“配置来源/覆写生效”的结构化证据（Slim/可序列化），并保证 diagnostics=off 时不引入默认分配/扫描。
 - 对外性能心智模型：本特性默认不改变对外性能边界/自动策略；若为了可替换能力暴露新的用户可配置旋钮，必须同步补齐 ≤5 关键词 + 成本模型 + 优化梯子，并与基线/事件字段一致。
 - Breaking changes：不允许改变 public API/行为；内部结构可破坏式重排，但必须提供贡献者迁移说明（以迁移文档替代兼容层）。
@@ -82,7 +82,7 @@ specs/020-runtime-internals-contracts/
 
 ```text
 packages/logix-core/src/Runtime.ts
-packages/logix-core/src/Debug.ts
+packages/logix-core/src/internal/debug-api.ts
 packages/logix-core/src/internal/runtime/AppRuntime.ts
 packages/logix-core/src/internal/runtime/ModuleFactory.ts
 
@@ -93,8 +93,8 @@ packages/logix-core/src/internal/runtime/core/*
 packages/logix-core/src/internal/runtime/BoundApiRuntime.ts
 packages/logix-core/src/internal/runtime/EffectOpCore.ts
 
-packages/logix-core/src/internal/trait-lifecycle/*
-packages/logix-core/src/internal/state-trait/*
+packages/logix-core/src/internal/field-lifecycle/*
+packages/logix-core/src/internal/state-field/*
 packages/logix-core/src/internal/field-path.ts
 packages/logix-core/src/internal/observability/evidence.ts
 packages/logix-react/src/internal/resolveImportedModuleRef.ts
@@ -127,21 +127,21 @@ packages/logix-react/src/internal/resolveImportedModuleRef.ts
 - `installInternalHooks({...一堆入参})` → `ModuleRuntime.internalHooks` 只负责写入 legacy shim；真实能力从 RuntimeInternals Runtime Service 获取。
 - 进程级 once/去重/序列号分配器 → 迁到 `RunSessionLocalState`（按会话/实例隔离），支持并行试跑与稳定对比。
 - “Converge Static IR 注册”从 DevtoolsHub 全局单例 → 可注入 `ConvergeStaticIrCollector`（默认不采集；需要时由 devtools layer / trialRun 显式追加 collector）。
-- “平台试跑/证据导出”不再依赖 DevtoolsHub → 统一使用 `Logix.Observability.trialRun` 组装 RunSession + EvidenceCollector，并导出 EvidencePackage（可 schema 校验）。
+- “平台试跑/证据导出”不再依赖 DevtoolsHub → 统一使用 `Logix.Runtime.trial` 组装 RunSession + EvidenceCollector，并导出 EvidencePackage（可 schema 校验）。
 - “构建态反射（Reflection）” → 使用标准 Build Env（ConfigProvider + RuntimeHost），通过 `ConstructionGuard` 在缺失 Service 时给出可行动诊断。
-- “StateTrait.source 刷新注册/触发” → 禁止新增/继续使用 `bound.__registerSourceRefresh` / `runtime.__sourceRefreshRegistry`；改为通过 `RuntimeInternals.traits.registerSourceRefresh/getSourceRefreshHandler` 在实例作用域内维护刷新注册表。
+- “FieldKernel.source 刷新注册/触发” → 禁止新增/继续使用 `bound.__registerSourceRefresh` / `runtime.__sourceRefreshRegistry`；改为通过 `RuntimeInternals.fields.registerSourceRefresh/getSourceRefreshHandler` 在实例作用域内维护刷新注册表。
 
 ### 推荐迁移顺序（与 tasks 对齐）
 
 1. 先落地 Foundation：T004~T010（统一入口 + shim 迁移策略 + RunSession/EvidenceCollector 底座）。
-2. 再推进全链路消费方迁移：BoundApiRuntime → trait-lifecycle/state-trait → `@logixjs/react`（每段迁移必须带回归用例）。
+2. 再推进全链路消费方迁移：BoundApiRuntime → field-lifecycle/state-field → `@logixjs/react`（每段迁移必须带回归用例）。
 3. 尽早启用门禁：T026（禁止新增 `__*` 直读，白名单仅覆盖 shim 文件）。
 4. 收尾清理：T043（收窄白名单与遗留 `__*` 字段，仅保留被证明仍必要的 debug-only 能力）。
 5. 平台侧接入：T027~T038（TrialRun + Reflection + contracts/schema 校验 + 并行会话隔离）。
 
 ### 常见坑（迁移期高频踩雷）
 
-- **把业务 Service 放进构建态**：Builder 里 `yield* SomeBusinessService` 会在 Reflection/BuildEnv 下失败；正确做法是把业务 Service 访问下沉到运行态（Trait handler / Logic run 段），构建态只依赖 Config/RuntimeHost 等基础能力。
+- **把业务 Service 放进构建态**：Builder 里 `yield* SomeBusinessService` 会在 Reflection/BuildEnv 下失败；正确做法是把业务 Service 访问下沉到运行态（Field handler / Logic run 段），构建态只依赖 Config/RuntimeHost 等基础能力。
 - **把证据采集做成全局单例**：会导致并行试跑/反射互相串扰（证据缺失或不可解释差异）；正确做法是使用 RunSession + per-session collector，并确保诊断事件 Slim & 可序列化。
 - **在非 shim 文件新增 `.__*` 直读**：会导致内部契约扩散且难以治理；正确做法是扩展 `RuntimeInternals` 或新增 Runtime Service，并通过 accessor 统一访问（同时遵守 `scripts/checks/no-internal-magic-fields.ts` 的门禁约束）。
 

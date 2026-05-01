@@ -1,14 +1,14 @@
 # Feature Specification: UI Projection Contract（语义编排与 UI 投影解耦）
 
-**Feature Branch**: `[032-ui-projection-contract]`  
-**Created**: 2025-12-25  
-**Status**: Draft  
+**Feature Branch**: `[032-ui-projection-contract]`
+**Created**: 2025-12-25
+**Status**: Draft
 **Input**: 将“展示态/路由/弹框栈”等 presentation state 明确建模为语义层（Scenario/Module）的状态与事件流；定义 Scenario Canvas 与未来 UI/Layout Editor 的对接契约：UI 只从绑定模块读取状态，并仅通过派发事件/动作触发语义层变化，做到彻底解耦与可多 UI 投影。
 
 ## Assumptions
 
 - 不保证向后兼容：允许对平台侧蓝图与运行入口做破坏式调整，但必须提供迁移说明与示例更新。
-- 以“Module 舞台”为主视角：Form 是一种特化 Module（kit），但平台能力必须能覆盖任意 Module/traits 的编排与投影。
+- 以“Module 舞台”为主视角：Form 是一种特化 Module（kit），但平台能力必须能覆盖任意 Module/fields 的编排与投影。
 - “代码是真相源”：编辑期以可执行表达式为主，但保存时必须同时固化一份可序列化、可 diff 的规范化表示与显式依赖。
 
 ## Motivation / Background

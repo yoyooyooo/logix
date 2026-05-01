@@ -1,10 +1,10 @@
 # Phase 0 Research: 设计 Module DSL 接入 `@logixjs/data`，让 `@logixjs/core` 可消费字段能力（隶属已归档 spec，仅供参考）
 
-**Branch**: `002-logix-data-core-dsl`  
-**Date**: 2025-12-09  
+**Branch**: `002-logix-data-core-dsl`
+**Date**: 2025-12-09
 **Source Spec**: `specs/002-logix-data-core-dsl/spec.md`
 
-> 提示：本文件隶属于已归档的 `specs/002-logix-data-core-dsl` 特性，记录的是早期「Module DSL ↔ `@logixjs/data` ↔ `@logixjs/core`」的决策草图。当前主线已改为 StateTrait / `@logixjs/core`，此处内容仅作为历史思路参考。
+> 提示：本文件隶属于已归档的 `specs/002-logix-data-core-dsl` 特性，记录的是早期「Module DSL ↔ `@logixjs/data` ↔ `@logixjs/core`」的决策草图。当前主线已改为 FieldKernel / `@logixjs/core`，此处内容仅作为历史思路参考。
 
 本文件汇总本特性在进入设计与 contracts 之前的关键技术决策与备选方案，对应 plan.md 中的 Technical Context 与后续 Phase 1 设计。
 
@@ -28,9 +28,9 @@
 
 ### Alternatives considered
 
-1. **替换 Module API**：设计全新的 `Logix.Module.withData(...)` 或完全不同的 Module 定义方法。  
+1. **替换 Module API**：设计全新的 `Logix.Module.withData(...)` 或完全不同的 Module 定义方法。
    - 缺点：对现有文档与示例的破坏性过大，需要维护两套 Module 入口。
-2. **完全在 `@logixjs/data` 内部提供独立 DSL**，再通过适配层注入 core。  
+2. **完全在 `@logixjs/data` 内部提供独立 DSL**，再通过适配层注入 core。
    - 缺点：模块作者需要同时理解两套 DSL，且 core 侧类型推导会更绕。
 
 ---
@@ -51,9 +51,9 @@
 
 ### Alternatives considered
 
-1. **双向依赖**：在 `@logixjs/data` 中直接引用 core 的 Module 类型以获取更强类型推导。  
+1. **双向依赖**：在 `@logixjs/data` 中直接引用 core 的 Module 类型以获取更强类型推导。
    - 缺点：形成深耦合，未来迁移或拆包时代价高。
-2. **完全解耦（core 不依赖 data）**：只在 Devtools 层使用 data。  
+2. **完全解耦（core 不依赖 data）**：只在 Devtools 层使用 data。
    - 缺点：无法实现“声明驱动 Runtime”的目标，字段能力难以影响实际执行行为。
 
 ---
@@ -75,7 +75,7 @@
 
 ### Alternatives considered
 
-1. **按需手动挂载**：要求模块作者或平台方在单独文件中手动将 FieldCapability 映射到 Flow。  
+1. **按需手动挂载**：要求模块作者或平台方在单独文件中手动将 FieldCapability 映射到 Flow。
    - 缺点：与「声明即配置」理念相悖，增加维护成本。
-2. **在 Devtools 中反向推导 Runtime 行为**：不在 Runtime 中统一挂载，仅通过 Devtools 分析现有逻辑。  
+2. **在 Devtools 中反向推导 Runtime 行为**：不在 Runtime 中统一挂载，仅通过 Devtools 分析现有逻辑。
    - 缺点：难以保证能力声明与实际行为一致，也无法驱动运行时逻辑。

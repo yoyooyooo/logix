@@ -1,6 +1,6 @@
 # Tasks: O-005 单一最小 IR 收敛（Static IR + Dynamic Trace）
 
-**Input**: `specs/098-unified-minimal-ir/spec.md`, `specs/098-unified-minimal-ir/plan.md`  
+**Input**: `specs/098-unified-minimal-ir/spec.md`, `specs/098-unified-minimal-ir/plan.md`
 **Prerequisites**: spec.md, plan.md
 
 ## Phase 1: Setup
@@ -44,7 +44,7 @@
 - [x] T018 [P] [US2] 增加 replay 锚点对齐测试 `packages/logix-core/test/internal/Replay/UnifiedIrReplay.098.test.ts`
 - [x] T019 [US2] 统一 Debug 事件导出字段 `packages/logix-core/src/internal/runtime/core/DebugSink.ts`
 - [x] T020 [US2] 统一 Devtools 快照消费口径 `packages/logix-core/src/internal/runtime/core/DevtoolsHub.ts`
-- [x] T021 [US2] 对齐公开 Debug API 导出语义 `packages/logix-core/src/Debug.ts`
+- [x] T021 [US2] 对齐公开 Debug API 导出语义 `packages/logix-core/src/internal/debug-api.ts`
 
 ---
 

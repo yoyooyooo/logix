@@ -2,6 +2,8 @@ import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
+import * as RuntimeContracts from '../../src/internal/runtime-contracts.js'
+import type { Draft } from '../../src/Logic.js'
 
 describe('Module.Manage.make (factory) forwards extend def', () => {
   it.effect('custom factory can extend actions + override reducers', () => {
@@ -20,7 +22,7 @@ describe('Module.Manage.make (factory) forwards extend def', () => {
     } as const
 
     const baseReducers = {
-      clearError: Logix.Module.Reducer.mutate((draft: Logix.Logic.Draft<S>) => {
+      clearError: Logix.Module.Reducer.mutate((draft: Draft<S>) => {
         draft.error = 'base'
       }),
     } satisfies Logix.ReducersFromMap<typeof State, typeof BaseActions>
@@ -43,7 +45,7 @@ describe('Module.Manage.make (factory) forwards extend def', () => {
 
         const module = Logix.Module.make(id, def, extend)
 
-        return module.implement({
+        return Logix.Program.make(module, {
           initial: { total: spec.initialTotal, error: 'init' },
         })
       },
@@ -52,10 +54,10 @@ describe('Module.Manage.make (factory) forwards extend def', () => {
     const M = Factory.make('Module.Manage.extend.custom', { initialTotal: 0 }, {
       actions: ExtActions,
       reducers: {
-        setTotal: Logix.Module.Reducer.mutate((draft: Logix.Logic.Draft<S>, total) => {
+        setTotal: Logix.Module.Reducer.mutate((draft: Draft<S>, total) => {
           draft.total = total
         }),
-        clearError: Logix.Module.Reducer.mutate((draft: Logix.Logic.Draft<S>) => {
+        clearError: Logix.Module.Reducer.mutate((draft: Draft<S>) => {
           draft.error = 'cleared'
         }),
       },
@@ -63,7 +65,7 @@ describe('Module.Manage.make (factory) forwards extend def', () => {
 
     return Effect.gen(function* () {
       expect(Logix.Module.is(M)).toBe(true)
-      expect(Logix.Module.hasImpl(M)).toBe(true)
+      expect(RuntimeContracts.hasProgramRuntimeBlueprint(M)).toBe(true)
 
       const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
       const desc = Logix.Module.descriptor(M as any, rt as any)
@@ -76,6 +78,6 @@ describe('Module.Manage.make (factory) forwards extend def', () => {
       yield* rt.dispatch({ _tag: 'clearError', payload: undefined } as any)
       const s2: any = yield* rt.getState
       expect(s2.error).toBe('cleared')
-    }).pipe(Effect.provide(M.impl.layer))
+    }).pipe(Effect.provide(RuntimeContracts.getProgramRuntimeBlueprint(M).layer))
   })
 })

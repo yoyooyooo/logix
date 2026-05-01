@@ -12,15 +12,20 @@ import {
   SubscriptionRef,
 } from 'effect'
 
-import type { I18nMessageToken, I18nTokenOptionsInput } from '../token/token.js'
-import { token } from '../token/token.js'
+import type { I18nMessageToken, I18nTokenParamsInput } from '../token/token.js'
 
-export type { I18nTokenOptionsInput } from '../token/token.js'
+export type { I18nTokenParamsInput } from '../token/token.js'
 
+/**
+ * Low-level driver contract.
+ *
+ * Package-level canonical consumption remains service-first:
+ * callers should read `services.i18n` or `I18nTag`, rather than coupling to driver lifecycle details directly.
+ */
 export type I18nDriver = {
   readonly language: string
   readonly isInitialized?: boolean
-  readonly t: (key: string, options?: unknown) => string
+  readonly t: (key: string, input?: unknown) => string
   readonly changeLanguage: (language: string) => Promise<unknown> | unknown
   readonly on: (event: 'initialized' | 'languageChanged', handler: (...args: any[]) => void) => unknown
   readonly off: (event: 'initialized' | 'languageChanged', handler: (...args: any[]) => void) => unknown
@@ -40,15 +45,17 @@ export const I18nSnapshotSchema = Schema.Struct({
   seq: Schema.Number,
 })
 
+export type I18nRenderHints = {
+  readonly fallback?: string
+}
+
 export type I18nService = {
-  readonly instance: I18nDriver
   readonly snapshot: SubscriptionRef.SubscriptionRef<I18nSnapshot>
-  readonly token: (key: string, options?: I18nTokenOptionsInput) => I18nMessageToken
   readonly changeLanguage: (language: string) => Effect.Effect<void, never, never>
-  readonly t: (key: string, options?: I18nTokenOptionsInput) => string
-  readonly tReady: (
-    key: string,
-    options?: I18nTokenOptionsInput,
+  readonly render: (token: I18nMessageToken, hints?: I18nRenderHints) => string
+  readonly renderReady: (
+    token: I18nMessageToken,
+    hints?: I18nRenderHints,
     timeoutMs?: number,
   ) => Effect.Effect<string, never, never>
 }
@@ -114,6 +121,11 @@ const makeI18nService = (driver: I18nDriver): Effect.Effect<I18nService, never, 
       }),
     )
 
+    /**
+     * Canonical runtime-facing lifecycle wiring:
+     * - driver events update the shared snapshot
+     * - consumers stay on the service contract (`render`, `renderReady`, `snapshot`)
+     */
     const changeLanguage = (language: string): Effect.Effect<void, never, never> =>
       Effect.gen(function* () {
         yield* update({ language, init: 'pending' })
@@ -130,30 +142,29 @@ const makeI18nService = (driver: I18nDriver): Effect.Effect<I18nService, never, 
         }
       })
 
-    const fallback = (key: string, options?: I18nTokenOptionsInput): string =>
-      typeof options?.defaultValue === 'string' ? options.defaultValue : key
+    const fallback = (message: I18nMessageToken, hints?: I18nRenderHints): string => hints?.fallback ?? message.key
 
-    const t = (key: string, options?: I18nTokenOptionsInput): string => {
+    const render = (message: I18nMessageToken, hints?: I18nRenderHints): string => {
       if (currentSnapshot.init !== 'ready') {
-        return fallback(key, options)
+        return fallback(message, hints)
       }
       try {
-        return driver.t(key, options)
+        return driver.t(message.key, message.params as I18nTokenParamsInput | undefined)
       } catch {
-        return fallback(key, options)
+        return fallback(message, hints)
       }
     }
 
-    const tReady = (
-      key: string,
-      options?: I18nTokenOptionsInput,
+    const renderReady = (
+      message: I18nMessageToken,
+      hints?: I18nRenderHints,
       timeoutMs?: number,
     ): Effect.Effect<string, never, never> =>
       Effect.gen(function* () {
         const cap = timeoutMs ?? 5000
         const snap0 = yield* SubscriptionRef.get(snapshotRef)
-        if (snap0.init === 'ready') return t(key, options)
-        if (snap0.init === 'failed') return fallback(key, options)
+        if (snap0.init === 'ready') return render(message, hints)
+        if (snap0.init === 'failed') return fallback(message, hints)
 
         const wait = Stream.filter(SubscriptionRef.changes(snapshotRef), (s) => s.init !== 'pending').pipe(
           Stream.runHead,
@@ -166,23 +177,21 @@ const makeI18nService = (driver: I18nDriver): Effect.Effect<I18nService, never, 
         const snap1 = yield* SubscriptionRef.get(snapshotRef)
         if (snap1.init !== 'pending') {
           yield* Fiber.interrupt(fiber)
-          return snap1.init === 'ready' ? t(key, options) : fallback(key, options)
+          return snap1.init === 'ready' ? render(message, hints) : fallback(message, hints)
         }
 
         const outcome = yield* Fiber.join(fiber)
         return Option.match(outcome, {
-          onNone: () => fallback(key, options),
-          onSome: (snap) => (snap.init === 'ready' ? t(key, options) : fallback(key, options)),
+          onNone: () => fallback(message, hints),
+          onSome: (snap) => (snap.init === 'ready' ? render(message, hints) : fallback(message, hints)),
         })
       })
 
     return {
-      instance: driver,
       snapshot: snapshotRef,
-      token,
       changeLanguage,
-      t,
-      tReady,
+      render,
+      renderReady,
     } as const
   })
 

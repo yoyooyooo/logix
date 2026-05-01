@@ -20,10 +20,6 @@ const assertNoAsync = (source: string, label: string) => {
 describe('Module NoAsyncGuard', () => {
   it('Module unwrap/descriptor paths stay sync-only (no Promise/Effect.async/Effect.promise/Effect.tryPromise)', () => {
     assertNoAsync(readText(new URL('../../../src/Module.ts', import.meta.url)), 'Module.ts')
-
-    assertNoAsync(
-      readText(new URL('../../../src/internal/runtime/BoundApiRuntime.ts', import.meta.url)),
-      'BoundApiRuntime.ts',
-    )
+    assertNoAsync(readText(new URL('../../../src/Bound.ts', import.meta.url)), 'Bound.ts')
   })
 })

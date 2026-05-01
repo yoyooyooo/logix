@@ -1,7 +1,7 @@
 # Research: StateSchema + Field Ops（069 · pre-codegen）
 
-**Feature**: `specs/069-schema-first-codegen-action-surface/spec.md`  
-**Created**: 2026-01-04  
+**Feature**: `specs/069-schema-first-codegen-action-surface/spec.md`
+**Created**: 2026-01-04
 **Status**: Draft
 
 > 说明：本 research 聚焦 069 的“前半段”——把 state schema 上的 `Schema.annotations`（由 StateSchema 写入）作为单一事实源，在运行时冷路径编译出 actions + reducers；codegen 仅作为后半段的 materialize 手段，不在本阶段强行交付。
@@ -85,11 +85,11 @@
 
 ## Alternatives Considered
 
-1) **action-first（`"logix/action"` 贴在 payload schema 上）**  
+1) **action-first（`"logix/action"` 贴在 payload schema 上）**
 优点是与 067 的手写 actions 形态一致；但对日常业务而言收益偏小（reducer 样板短、但 action map 与 tag 维护仍在），且 “一个字段多 op” 的组织性较弱。
 
-2) **codegen-only（运行时不做派生）**  
+2) **codegen-only（运行时不做派生）**
 DX 强依赖工具链；且容易把“语义”复制进生成器，形成并行真相源。
 
-3) **把 reducer 函数直接塞进 annotations**  
+3) **把 reducer 函数直接塞进 annotations**
 违反“蓝图必须可序列化/可 diff”的约束；也会导致 manifests/诊断难以保持 Slim。

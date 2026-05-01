@@ -1,6 +1,6 @@
 # Tasks: Platform Visualization Lab（086 · examples/logix-react 的独立可视化 POC）
 
-**Input**: `specs/086-platform-visualization-lab/spec.md`、`specs/086-platform-visualization-lab/plan.md`  
+**Input**: `specs/086-platform-visualization-lab/spec.md`、`specs/086-platform-visualization-lab/plan.md`
 **Prerequisites**: `specs/086-platform-visualization-lab/plan.md`（required）、`specs/086-platform-visualization-lab/spec.md`（required）
 
 **Tests**: 本特性仅落点在 `examples/logix-react`；以 `pnpm -C examples/logix-react typecheck` 作为最小质量门。
@@ -24,7 +24,7 @@
 
 ## User Story 1 - Manifest Inspector（单模块 IR 可解释） (Priority: P1)
 
-- [ ] T020 新增 `ManifestInspector` 页面：可选择一个 module-like 对象，并调用 `Logix.Reflection.extractManifest`（Refs: FR-002, SC-001, SC-002）
+- [ ] T020 新增 `ManifestInspector` 页面：可选择一个 module-like 对象，并调用 `CoreReflection.extractManifest`（Refs: FR-002, SC-001, SC-002）
 - [ ] T021 展示摘要视图（moduleId/digest/计数）+ Raw JSON（pretty JSON + 一键复制 + 可滚动）（Refs: FR-002, NFR-002）
 - [ ] T022 缺失可选字段时显式提示（例如 `servicePorts` pending 078），不得崩溃（Refs: FR-004）
 - [ ] T023 提供 budgets 演示入口（`maxBytes`/`includeStaticIr`），并对裁剪标记做可解释提示（Refs: NFR-002, FR-004）

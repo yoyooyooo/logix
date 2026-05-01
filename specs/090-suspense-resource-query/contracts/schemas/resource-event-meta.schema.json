@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "intent-flow://specs/090-suspense-resource-query/contracts/schemas/resource-event-meta.schema.json",
+  "$id": "logix://specs/090-suspense-resource-query/contracts/schemas/resource-event-meta.schema.json",
   "title": "ResourceEventMeta",
   "type": "object",
   "additionalProperties": false,

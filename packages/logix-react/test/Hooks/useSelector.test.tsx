@@ -4,7 +4,8 @@ import { renderHook, waitFor, act } from '@testing-library/react'
 import * as Logix from '@logixjs/core'
 import { Schema, Effect } from 'effect'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
-import { useModule } from '../../src/Hooks.js'
+import { useModule, useSelector } from '../../src/Hooks.js'
+import { fieldValue } from '../../src/FormProjection.js'
 import React from 'react'
 
 const Counter = Logix.Module.make('Counter', {
@@ -16,14 +17,14 @@ const Counter = Logix.Module.make('Counter', {
 
 describe('useSelector', () => {
   it('should select state slice and update on change', async () => {
-    const CounterLogic = Counter.logic<never>((api) =>
+    const CounterLogic = Counter.logic<never>('counter-logic', (api) =>
       Effect.gen(function* () {
         yield* api.onAction('increment').run(() => api.state.update((s) => ({ count: s.count + 1 })))
       }),
     )
 
     const runtime = Logix.Runtime.make(
-      Counter.implement({
+      Logix.Program.make(Counter, {
         initial: { count: 10 },
         logics: [CounterLogic],
       }),
@@ -36,13 +37,15 @@ describe('useSelector', () => {
     // Helper hook to trigger update
     const useTest = () => {
       const counter = useModule(Counter.tag)
-      const count = useModule(Counter.tag, (s: Logix.StateOf<typeof Counter.shape>) => s.count)
-      return { counter, count }
+      const countFromField = useSelector(counter, fieldValue('count'))
+      const count = useSelector(counter, (s: Logix.Module.StateOf<typeof Counter.shape>) => s.count)
+      return { counter, countFromField, count }
     }
 
     const { result } = renderHook(() => useTest(), { wrapper })
 
     await waitFor(() => {
+      expect(result.current.countFromField).toBe(10)
       expect(result.current.count).toBe(10)
     })
 
@@ -51,19 +54,20 @@ describe('useSelector', () => {
     })
 
     await waitFor(() => {
+      expect(result.current.countFromField).toBe(11)
       expect(result.current.count).toBe(11)
     })
   })
 
   it('should invoke equalityFn when provided', async () => {
-    const CounterLogic = Counter.logic<never>((api) =>
+    const CounterLogic = Counter.logic<never>('counter-logic-2', (api) =>
       Effect.gen(function* () {
         yield* api.onAction('increment').run(() => api.state.update((s) => ({ count: s.count + 1 })))
       }),
     )
 
     const runtime = Logix.Runtime.make(
-      Counter.implement({
+      Logix.Program.make(Counter, {
         initial: { count: 0 },
         logics: [CounterLogic],
       }),
@@ -77,9 +81,9 @@ describe('useSelector', () => {
 
     const useTest = () => {
       const counter = useModule(Counter.tag)
-      const count = useModule(
-        Counter.tag,
-        (s: Logix.StateOf<typeof Counter.shape>) => s.count,
+      const count = useSelector(
+        counter,
+        (s: Logix.Module.StateOf<typeof Counter.shape>) => s.count,
         (prev, next) => {
           equalityCallCount++
           return Object.is(prev, next)

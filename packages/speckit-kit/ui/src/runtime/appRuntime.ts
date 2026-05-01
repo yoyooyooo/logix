@@ -1,10 +1,9 @@
 import * as Logix from '@logixjs/core'
 
 import { SpeckitRuntimeLayer } from './layer'
-import { SpeckitRootModule } from './root.impl'
+import { SpeckitRootProgram } from './root.program'
 
-export const appRuntime = Logix.Runtime.make(SpeckitRootModule, {
+export const appRuntime = Logix.Runtime.make(SpeckitRootProgram, {
   label: 'SpeckitKanban',
   layer: SpeckitRuntimeLayer,
 })
-

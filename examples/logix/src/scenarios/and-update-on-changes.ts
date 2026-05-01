@@ -10,6 +10,7 @@
 import { Effect, Schema, Stream } from 'effect'
 import { fileURLToPath } from 'node:url'
 import * as Logix from '@logixjs/core'
+import { programLayer } from '../runtime/programLayer.js'
 
 // ---------------------------------------------------------------------------
 // Schema → Shape：包含派生标记的简单 State
@@ -25,15 +26,15 @@ const DerivedActionMap = {
   noop: Schema.Void,
 }
 
-export type DerivedShape = Logix.Shape<typeof DerivedStateSchema, typeof DerivedActionMap>
-export type DerivedState = Logix.StateOf<DerivedShape>
-export type DerivedAction = Logix.ActionOf<DerivedShape>
+export type DerivedShape = Logix.Module.Shape<typeof DerivedStateSchema, typeof DerivedActionMap>
+export type DerivedState = Logix.Module.StateOf<DerivedShape>
+export type DerivedAction = Logix.Module.ActionOf<DerivedShape>
 
 // ---------------------------------------------------------------------------
 // Module：使用 Logix.Module 定义派生场景模块
 // ---------------------------------------------------------------------------
 
-export const CounterDef = Logix.Module.make('CounterModule', {
+export const Counter = Logix.Module.make('CounterModule', {
   state: DerivedStateSchema,
   actions: DerivedActionMap,
 })
@@ -42,7 +43,7 @@ export const CounterDef = Logix.Module.make('CounterModule', {
 // Logic：使用 Fluent DSL 维护派生字段（通过 Module.logic 注入 $）
 // ---------------------------------------------------------------------------
 
-export const CounterLogic = CounterDef.logic(($) =>
+export const CounterLogic = Counter.logic('counter-logic', ($) =>
   Effect.gen(function* () {
     // 监听 results.length 变化，并维护 hasResults
     yield* $.onState((s) => s.results.length).run(
@@ -55,10 +56,10 @@ export const CounterLogic = CounterDef.logic(($) =>
 )
 
 // ---------------------------------------------------------------------------
-// Impl / Live：组合初始 State 与 Logic
+// Program / Layer：组合初始 State 与 Logic
 // ---------------------------------------------------------------------------
 
-export const DerivedModule = CounterDef.implement({
+export const DerivedProgram = Logix.Program.make(Counter, {
   initial: {
     results: [],
     hasResults: false,
@@ -66,7 +67,7 @@ export const DerivedModule = CounterDef.implement({
   logics: [CounterLogic],
 })
 
-export const DerivedLive = DerivedModule.impl.layer
+export const DerivedLayer = programLayer(DerivedProgram)
 
 // ---------------------------------------------------------------------------
 // Demo: Simulation
@@ -74,7 +75,7 @@ export const DerivedLive = DerivedModule.impl.layer
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const program = Effect.gen(function* () {
-    const runtime = yield* Effect.service(CounterDef.tag).pipe(Effect.orDie)
+    const runtime = yield* Effect.service(Counter.tag).pipe(Effect.orDie)
 
     // Log state changes
     yield* Effect.forkChild(runtime
@@ -108,5 +109,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     yield* Effect.log('--- End ---')
   })
 
-  void Effect.runPromise(program.pipe(Effect.provide(DerivedLive)) as Effect.Effect<void, never, never>)
+  void Effect.runPromise(program.pipe(Effect.provide(DerivedLayer)) as Effect.Effect<void, never, never>)
 }

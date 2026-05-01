@@ -9,18 +9,18 @@
 
 落点：
 
-- `packages/logix-core/src/Debug.ts`
+- `packages/logix-core/src/internal/debug-api.ts`
 - `packages/logix-core/src/internal/runtime/core/DebugSink.ts`
 
-### 2) Trait converge 在 diagnostics=off 下仍可能构造 decision/dirtySummary
+### 2) Field converge 在 diagnostics=off 下仍可能构造 decision/dirtySummary
 
 - `convergeInTransaction` 里 `shouldCollectDecision` 当前基于 `Debug.currentDebugSinks.length > 0`。
 - 生产默认 sinks=1（errorOnly），因此即使 `diagnosticsLevel=off`，仍可能构造 `dirtySummary`、decision 结构等纯观测 payload。
-- 这些 payload 进一步影响 `ModuleRuntime.transaction.ts` 的 `traitSummary = outcome.decision ? { converge: outcome.decision } : undefined`，变成默认档的额外分配与对象图挂载。
+- 这些 payload 进一步影响 `ModuleRuntime.transaction.ts` 的 `fieldSummary = outcome.decision ? { converge: outcome.decision } : undefined`，变成默认档的额外分配与对象图挂载。
 
 落点：
 
-- `packages/logix-core/src/internal/state-trait/converge-in-transaction.ts`
+- `packages/logix-core/src/internal/state-field/converge-in-transaction.ts`
 - `packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`
 
 ### 3) kernelId / FullCutoverGate 的成本边界已基本正确（装配期）
@@ -49,7 +49,7 @@
 
 这能把默认档的 Debug.record 成本从 “FiberRef+分支+调用链” 降为 “常数级早退”。
 
-### Decision 2：Trait converge 的 decision/dirtySummary 只在可能被消费时生成；重字段再要求可导出
+### Decision 2：Field converge 的 decision/dirtySummary 只在可能被消费时生成；重字段再要求可导出
 
 将 `shouldCollectDecision` 从 “sinks.length>0” 收紧为：
 
@@ -59,7 +59,7 @@
 
 - `diagnosticsLevel != off` 且 sinks 非 errorOnly-only。
 
-这样可直接避免默认档（diagnostics=off + errorOnly-only）构造 decision/dirtySummary/topK/hotspots 等纯观测 payload，并同时避免 `traitSummary` 的对象分配。
+这样可直接避免默认档（diagnostics=off + errorOnly-only）构造 decision/dirtySummary/topK/hotspots 等纯观测 payload，并同时避免 `fieldSummary` 的对象分配。
 
 ### Decision 3：不把 Exec VM mode 当作默认纯赚点
 
@@ -73,12 +73,12 @@
 
 ### A) 只在 DebugSink.record 内做 early-return（最小改动）
 
-优点：实现简单、改动面小；对所有 call sites 自动生效。  
+优点：实现简单、改动面小；对所有 call sites 自动生效。
 缺点：call site 仍会构造事件对象并调用 `Debug.record`（虽然会早退），对极端高频 `state:update` 仍可能留下少量可优化空间。
 
 ### B) 额外在 `state:update` commit 点做“构造前门控”（更接近 spec 的 FR-001）
 
-优点：能避免 event 对象构造与 `Debug.record` 调用本身；更接近“不会被消费就不付费”。  
+优点：能避免 event 对象构造与 `Debug.record` 调用本身；更接近“不会被消费就不付费”。
 缺点：需要在 commit 点读取 sinks 并维持 conservative 策略（未知 sink 视为可能消费），以免误丢事件。
 
 本 feature 的 plan 倾向：A 必做（纯赚），B 可选但推荐（更完美）。

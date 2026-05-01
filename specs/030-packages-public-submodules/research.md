@@ -1,7 +1,7 @@
 # Research: Packages 对外子模块裁决与结构治理
 
-**Branch**: `030-packages-public-submodules`  
-**Date**: 2025-12-24  
+**Branch**: `030-packages-public-submodules`
+**Date**: 2025-12-24
 **Spec**: `specs/030-packages-public-submodules/spec.md`
 
 ## 结论摘要

@@ -1,7 +1,7 @@
 # Data Model: Devtools Session‑First（会话/锚点/处方）
 
-**Feature**: `specs/038-devtools-session-ui/spec.md`  
-**Contracts**: `specs/038-devtools-session-ui/contracts/*`  
+**Feature**: `specs/038-devtools-session-ui/spec.md`
+**Contracts**: `specs/038-devtools-session-ui/contracts/*`
 **Created**: 2025-12-27
 
 > 目标：为“因果锚点驱动的会话聚合、树状导航、Advisor 处方与离线确定性”提供统一数据模型（不含实现细节）。
@@ -17,7 +17,7 @@
 - `txnSeq?: number`：instance 内单调递增事务序列（辅助排序/对齐）。
 - `eventId: string`：事件锚点（例如 `${instanceId}::e${eventSeq}`）。
 - `eventSeq: number`：instance 内单调递增事件序列（排序/去重，不依赖时间戳）。
-- `opSeq?: number`：边界操作序列（若可用；用于把 service/source/trait 等步骤归并为子作用域）。
+- `opSeq?: number`：边界操作序列（若可用；用于把 service/source/field 等步骤归并为子作用域）。
 
 **Invariants**
 
@@ -55,7 +55,7 @@
 **Fields**
 
 - `nodeId: string`：确定性派生 id（例如 `${sessionId}::txn:${txnId}`）。
-- `kind: "session" | "txn" | "effectop" | "trait" | "react" | "diagnostic" | "custom"`：节点类别。
+- `kind: "session" | "txn" | "effectop" | "field" | "react" | "diagnostic" | "custom"`：节点类别。
 - `label: string`：人类可读标签（例如 txn origin / effectop name / component label）。
 - `primaryParentId?: string`：主父节点（用于树）。
 - `relatedNodeIds?: ReadonlyArray<string>`：非树边关联（用于 DAG 保真）。

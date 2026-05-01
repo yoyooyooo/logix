@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import type React from 'react'
 import * as Logix from '@logixjs/core'
 import { Cause, Effect, Exit, Fiber, ManagedRuntime, Option, Scope } from 'effect'
@@ -8,7 +9,7 @@ import { YieldBudgetMemory } from './perfWorkloads.js'
 
 type ResourceKey = string
 
-type ModuleRuntimeLike = { readonly instanceId?: string }
+type ModuleRuntimeLike = { readonly instanceId?: string; readonly moduleId?: string }
 
 export type ModuleCacheFactory<A extends ModuleRuntimeLike = ModuleRuntimeLike> = (
   scope: Scope.Scope,
@@ -41,7 +42,7 @@ interface ResourceEntry {
   gcTimeout?: ReturnType<typeof setTimeout>
   /**
    * Declarative "owner" identifier for key ownership checks in dev/test:
-   * - Typically the ModuleImpl's module.id.
+   * - Typically the Program's module id.
    * - Only warns/errors when ownerId exists and changes.
    */
   ownerId?: string
@@ -95,6 +96,9 @@ const causeToUnknown = (cause: Cause.Cause<unknown>): unknown => {
   if (defect !== undefined) return defect
   return cause
 }
+
+const resolveDebugModuleId = (value: ModuleRuntimeLike | undefined, ownerId: string | undefined): string | undefined =>
+  typeof value?.moduleId === 'string' && value.moduleId.length > 0 ? value.moduleId : ownerId
 
 const yieldEffect = (strategy: YieldStrategy): Effect.Effect<void> => {
   switch (strategy) {
@@ -191,13 +195,14 @@ export class ModuleCache {
       // DevTools trace: record the GC event for a React Module instance.
       void this.runtime
         .runPromise(
-          Logix.Debug.record({
+          CoreDebug.record({
             type: 'trace:react.module-instance',
-            moduleId: current.ownerId,
+            moduleId: resolveDebugModuleId(current.value, current.ownerId),
             instanceId: current.value?.instanceId,
             data: {
               event: 'gc',
               key,
+              ownerId: current.ownerId,
             },
           }) as unknown as Effect.Effect<void, never, never>,
         )
@@ -245,8 +250,8 @@ export class ModuleCache {
         throw new Error(
           `[ModuleCache.read] resource key "${key}" has already been claimed by module "${existing.ownerId}", ` +
             `but is now requested by module "${ownerId}". ` +
-            'Within the same ManagedRuntime, a given key must not be shared across different ModuleImpl definitions. ' +
-            'Please ensure each ModuleImpl uses a distinct key when sharing ModuleRuntime instances.',
+            'Within the same ManagedRuntime, a given key must not be shared across different Program definitions. ' +
+            'Please ensure each Program uses a distinct key when sharing ModuleRuntime instances.',
         )
       }
 
@@ -294,12 +299,12 @@ export class ModuleCache {
         this.scheduleGC(key, entry)
         this.entries.set(key, entry)
 
-        if (isDevEnv() || Logix.Debug.isDevtoolsEnabled()) {
+        if (isDevEnv() || CoreDebug.isDevtoolsEnabled()) {
           void this.runtime
             .runPromise(
-              Logix.Debug.record({
+              CoreDebug.record({
                 type: 'trace:react.module.init',
-                moduleId: ownerId,
+                moduleId: resolveDebugModuleId(value, ownerId),
                 instanceId: value.instanceId,
                 data: {
                   mode: 'suspend',
@@ -307,6 +312,7 @@ export class ModuleCache {
                   durationMs: Math.round(durationMs * 100) / 100,
                   yieldStrategy: 'none',
                   fastPath: 'sync',
+                  ownerId,
                 },
               }) as unknown as Effect.Effect<void, never, never>,
             )
@@ -316,9 +322,9 @@ export class ModuleCache {
 
           void this.runtime
             .runPromise(
-              Logix.Debug.record({
+              CoreDebug.record({
                 type: 'trace:react.module-instance',
-                moduleId: ownerId,
+                moduleId: resolveDebugModuleId(value, ownerId),
                 instanceId: value.instanceId,
                 data: {
                   event: 'attach',
@@ -326,6 +332,7 @@ export class ModuleCache {
                   mode: 'suspend',
                   gcTime: entry.gcTime,
                   fastPath: 'sync',
+                  ownerId,
                 },
               }) as unknown as Effect.Effect<void, never, never>,
             )
@@ -379,12 +386,12 @@ export class ModuleCache {
         YieldBudgetMemory.record({ runtime: this.runtime as unknown as object, workloadKey, durationMs })
 
         // DevTools trace: record ModuleRuntime <-> React key binding under Suspense mode.
-        if (isDevEnv() || Logix.Debug.isDevtoolsEnabled()) {
+        if (isDevEnv() || CoreDebug.isDevtoolsEnabled()) {
           void this.runtime
             .runPromise(
-              Logix.Debug.record({
+              CoreDebug.record({
                 type: 'trace:react.module.init',
-                moduleId: ownerId,
+                moduleId: resolveDebugModuleId(value, ownerId),
                 instanceId: value.instanceId,
                 data: {
                   mode: 'suspend',
@@ -393,6 +400,7 @@ export class ModuleCache {
                   yieldStrategy: yieldDecision.strategy,
                   yieldReason: yieldDecision.reason,
                   yieldP95Ms: yieldDecision.p95Ms,
+                  ownerId,
                 },
               }) as unknown as Effect.Effect<void, never, never>,
             )
@@ -402,15 +410,16 @@ export class ModuleCache {
 
           void this.runtime
             .runPromise(
-              Logix.Debug.record({
+              CoreDebug.record({
                 type: 'trace:react.module-instance',
-                moduleId: ownerId,
+                moduleId: resolveDebugModuleId(value, ownerId),
                 instanceId: value.instanceId,
                 data: {
                   event: 'attach',
                   key,
                   mode: 'suspend',
                   gcTime: entry.gcTime,
+                  ownerId,
                 },
               }) as unknown as Effect.Effect<void, never, never>,
             )
@@ -491,8 +500,8 @@ export class ModuleCache {
         throw new Error(
           `[ModuleCache.readSync] resource key "${key}" has already been claimed by module "${existing.ownerId}", ` +
             `but is now requested by module "${ownerId}". ` +
-            'Within the same ManagedRuntime, a given key must not be shared across different ModuleImpl definitions. ' +
-            'Please ensure each ModuleImpl uses a distinct key when sharing ModuleRuntime instances.',
+            'Within the same ManagedRuntime, a given key must not be shared across different Program definitions. ' +
+            'Please ensure each Program uses a distinct key when sharing ModuleRuntime instances.',
         )
       }
 
@@ -552,7 +561,7 @@ export class ModuleCache {
                 : 'Fix: 建议切换到 policy.mode="suspend"（默认），并提供 RuntimeProvider.fallback；必要时启用 yield 策略。'
             const example =
               options?.policyMode === 'defer'
-                ? 'Example: <RuntimeProvider policy={{ mode: "defer", preload: [MyImpl] }} fallback={<Loading />}>…</RuntimeProvider>'
+                ? 'Example: <RuntimeProvider policy={{ mode: "defer", preload: [MyProgram] }} fallback={<Loading />}>…</RuntimeProvider>'
                 : 'Example: <RuntimeProvider policy={{ mode: "suspend" }} fallback={<Loading />}>…</RuntimeProvider>'
             const docs = 'Docs: apps/docs/content/docs/guide/essentials/react-integration.md'
             // eslint-disable-next-line no-console
@@ -576,18 +585,19 @@ export class ModuleCache {
         }
       }
 
-      if (isDevEnv() || Logix.Debug.isDevtoolsEnabled()) {
+      if (isDevEnv() || CoreDebug.isDevtoolsEnabled()) {
         void this.runtime
           .runPromise(
-            Logix.Debug.record({
+            CoreDebug.record({
               type: 'trace:react.module.init',
-              moduleId: ownerId,
+              moduleId: resolveDebugModuleId(value, ownerId),
               instanceId: value.instanceId,
               data: {
                 mode: 'sync',
                 key,
                 durationMs: Math.round(durationMs * 100) / 100,
                 yieldStrategy: 'none',
+                ownerId,
               },
             }) as unknown as Effect.Effect<void, never, never>,
           )
@@ -597,15 +607,16 @@ export class ModuleCache {
 
         void this.runtime
           .runPromise(
-            Logix.Debug.record({
+            CoreDebug.record({
               type: 'trace:react.module-instance',
-              moduleId: ownerId,
+              moduleId: resolveDebugModuleId(value, ownerId),
               instanceId: value.instanceId,
               data: {
                 event: 'attach',
                 key,
                 mode: 'sync',
                 gcTime: entry.gcTime,
+                ownerId,
               },
             }) as unknown as Effect.Effect<void, never, never>,
           )

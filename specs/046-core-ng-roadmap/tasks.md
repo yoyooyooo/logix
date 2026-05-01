@@ -45,7 +45,7 @@
 
 - [x] T012 当 045 达标（M0）时：把 “M1=039” 标记为 Next Action（达标判定以 045 quickstart 跑通 + perf evidence（Node+Browser）落盘 + contract harness 可用为准；然后在 046 路线图/registry 手工回写状态与证据入口）`specs/046-core-ng-roadmap/roadmap.md`、`specs/046-core-ng-roadmap/spec-registry.md`
 - [x] T013 在 045 quickstart 增加 “Next: 046/M1（039）” 的入口链接（完成 045 后不迷路）`specs/045-dual-kernel-contract/quickstart.md`
-- [x] T014 在 039 quickstart 标注其在 046 路线中的位置（M1），并指向 046 的证据回写任务（T041）`specs/039-trait-converge-int-exec-evidence/quickstart.md`
+- [x] T014 在 039 quickstart 标注其在 046 路线中的位置（M1），并指向 046 的证据回写任务（T041）`specs/039-field-converge-int-exec-evidence/quickstart.md`
 
 ---
 

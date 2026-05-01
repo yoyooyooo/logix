@@ -1,32 +1,62 @@
 ---
-title: Schema 校验与错误映射
-description: 提交时的 Schema.decode、errors.$schema 写回与路径映射。
+title: Schema
+description: Form 在两处使用 schema：可编辑 values 和 submit decode；decode issue 最终仍回到同一套错误模型。
 ---
 
-## 1) Schema 错误写到哪里
+Form 在两个位置使用 schema：
 
-Form 会把“Schema 解码/校验错误”写到 `errors.$schema` 分支中，和规则错误（`errors.*`）与手动错误（`errors.$manual.*`）区分开。
+- `values`，定义可编辑状态形状
+- `submit.decode`，定义可以越过表单边界的 payload
 
-在 UI 侧，`useField` 会按优先级读取错误：
-
-1. `errors.$manual.<path>`
-2. `errors.<path>`（规则错误）
-3. `errors.$schema.<path>`（Schema 错误）
-
-## 2) 手动映射 Schema 错误（可选）
-
-当你在某些场景需要“自己 decode 并写回错误”，可以用 `Form.SchemaErrorMapping`：
+## Values schema
 
 ```ts
-const writes = Form.SchemaErrorMapping.toSchemaErrorWrites(schemaError, {
-  // 可选：当 schema 的字段名与表单字段名不一致时做 rename
-  rename: { amount: "amountText" },
-  toLeaf: () => "字段不合法",
-})
-
-for (const w of writes) {
-  dispatch({ _tag: "setValue", payload: { path: w.errorPath, value: w.error } })
-}
+Form.make(
+  "InvoiceForm",
+  {
+    values: InvoiceDraft,
+    initialValues,
+  },
+  (form) => {
+    // ...
+  },
+)
 ```
 
-这会生成符合 `$list/rows[]` 口径的错误路径（例如数组 index 会映射为 `rows`）。
+`values` 应与 UI 正在编辑的状态形状一致。
+
+## Submit decode
+
+```ts
+Form.make(
+  "InvoiceForm",
+  {
+    values: InvoiceDraft,
+    initialValues,
+  },
+  (form) => {
+    form.submit({
+      decode: InvoicePayload,
+    })
+  },
+)
+```
+
+`submit.decode` 应与表单边界之外接受的 payload 形状一致。
+
+## decode issue 映射
+
+当 decode issue 需要稳定落点时，继续在仓内 glue 层使用更低层的 schema bridge helper。
+
+这些 helper 用来决定：
+
+- 哪个 value path 接收 decode issue
+- 应写入哪个 canonical error leaf
+
+如果某个 decode issue 无法映射到字段路径，它会回落到 submit slot，而不会停留在未映射的 schema payload 中。
+
+## 延伸阅读
+
+- [Quick start](/cn/docs/form/quick-start)
+- [Validation](/cn/docs/form/validation)
+- [Rules](/cn/docs/form/rules)

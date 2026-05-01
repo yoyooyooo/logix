@@ -1,8 +1,8 @@
 # Data Model: Module Reference Space（035：PortSpec/TypeIR + CodeAsset）
 
-**Date**: 2025-12-26  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/035-module-reference-space/spec.md`  
-**Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/035-module-reference-space/plan.md`
+**Date**: 2025-12-26
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/035-module-reference-space/spec.md`
+**Plan**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/035-module-reference-space/plan.md`
 
 > 本文件固化 035 的协议层数据模型；实现细节以 runtime 代码与后续 tasks 为准。
 
@@ -94,7 +94,7 @@ Canonical schema：`specs/035-module-reference-space/contracts/schemas/code-asse
 当模块的 state/actions/events 等“类型事实”来自 `effect/Schema` 时：
 
 - 可从 `schema.ast`（SchemaAST）做投影生成 `TypeIR@v1`（注意：**不要**直接序列化 SchemaAST）。
-- 递归/brand/transform/union 等节点需要显式降级策略（避免无限递归与误报）；可参考 `packages/logix-core/src/internal/state-trait/converge.ts` 的 `schemaHasPath` 处理方式。
+- 递归/brand/transform/union 等节点需要显式降级策略（避免无限递归与误报）；可参考 `packages/logix-core/src/internal/state-field/converge.ts` 的 `schemaHasPath` 处理方式。
 
 ## Cross-Spec References
 

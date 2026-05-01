@@ -1,6 +1,6 @@
 # Quickstart: 008 层级 Injector（strict 默认 + 显式 root/global）
 
-> 本 quickstart 只演示“如何在正确 scope 下拿到正确实例”，不讨论业务逻辑。  
+> 本 quickstart 只演示“如何在正确 scope 下拿到正确实例”，不讨论业务逻辑。
 > 说明：示例代码以“目标语义”为准；最终以 `@logixjs/core` / `@logixjs/react` 实现为准。
 
 ## 0. 你需要记住的三句话
@@ -16,12 +16,12 @@ import React from "react"
 import * as Logix from "@logixjs/core"
 import { useImportedModule, useModule, useSelector } from "@logixjs/react"
 
-// Host.impl 必须在 implement 时 imports Child.impl
+// HostProgram 必须在 Program.make 时通过 capabilities.imports 引入 ChildProgram
 export function Panel() {
-  const host = useModule(QuerySearchDemoHost.impl, { key: "demo" })
+  const host = useModule(QuerySearchDemoHostProgram, { key: "demo" })
 
   // strict 默认：从 host 的 imports-scope 解析 child
-  const query = useImportedModule(host, QuerySearchDemo.module)
+  const query = useImportedModule(host, QuerySearchDemo.tag)
 
   const page = useSelector(query, (s) => s.params.page)
   return (
@@ -34,10 +34,10 @@ export function Panel() {
 
 要点：
 
-- `useModule(Host.impl)` 永远走“局部实例”语义，不会隐式复用 root 单例；要拿 root 单例请显式 `useModule(Host.module)` / `useModule(Host.impl.module)`。
+- `useModule(HostProgram)` 永远走“局部实例”语义，不会隐式复用 root 单例；要拿 root 单例请显式 `useModule(Host.tag)`。
 - `key` 是“实例标识”，用于在多个组件/多处调用之间复用同一份局部实例：同 key（+同 deps）复用、异 key 隔离；未提供 `key` 时会按组件生成临时 key（每组件独立实例）。
-- root 也是一种模块实例：如果你把 Host 作为 root 单例使用（`useModule(Host.module)`），strict 的 `imports.get` / `useImportedModule` 仍应可解析其 imports（只依赖该 host 实例的 imports-scope injector / `ImportsScope`）。
-- `useImportedModule(host, Child.module)` 与 `host.imports.get(Child.module)` 等价；二者都遵循 strict/global 规则（默认 strict）。
+- root 也是一种模块实例：如果你把 Host 作为 root 单例使用（`useModule(Host.tag)`），strict 的 `imports.get` / `useImportedModule` 仍应可解析其 imports（只依赖该 host 实例的 imports-scope injector / `ImportsScope`）。
+- `useImportedModule(host, Child.tag)` 与 `host.imports.get(Child.tag)` 等价；二者都遵循 strict/global 规则（默认 strict）。
 
 ## 2. React：显式 root/global（单例语义）
 
@@ -79,7 +79,7 @@ const Logic = Host.logic(($) =>
 )
 ```
 
-如果没有在 `Host.impl.implement({ imports: [QuerySearchDemo.impl] })` 中提供 child 的实现：
+如果没有在 `Program.make(Host, { capabilities: { imports: [QuerySearchDemoProgram] } })` 中提供 child 的实现：
 
 - strict 语义必须失败，并给出修复建议（补 imports / 改用 global / 透传实例句柄）。
 
@@ -97,16 +97,16 @@ const Logic = Host.logic(($) =>
 
 要点：
 
-- 不需要把 `GlobalAuth.impl` 加进 `Host.impl.implement({ imports })`：它不是“Host 的子模块实例”，而是 root provider 的单例。
+- 不需要把 `GlobalAuthProgram` 加进 `HostProgram` 的 imports：它不是“Host 的子模块实例”，而是 root provider 的单例。
 - 若你需要“某个局部实例”的语义，不应该用 `Root.resolve(ModuleTag)`；应在边界 resolve 该实例句柄并透传（或把该模块提升为 Host 的直接 imports）。
 
-## 3.2 Logic：跨模块协作（替代 `$.useRemote`）——使用 `Link.make`
+## 3.2 Logic：跨模块协作（替代 `$.useRemote`）——使用 `orchestration link alias`
 
-> `Link.make` 是“显式跨模块胶水逻辑”，通常挂到 **root 模块** 的 `processes` 中由 Runtime 统一 fork。  
+> `orchestration link alias` 是“显式跨模块胶水逻辑”，通常挂到 **root 模块** 的 `processes` 中由 Runtime 统一 fork。
 > 它不会引入任何 “Tag+key 全局查找” 魔法：若需要特定实例，必须传递明确实例句柄（`ModuleRuntime/ModuleRef`）。
 
 ```ts
-const Cross = Logix.Link.make(
+const Cross = OrchestrationLinkApi.make(
   { modules: [A.module, B.module] as const },
   ($) =>
     Effect.gen(function* () {
@@ -115,11 +115,12 @@ const Cross = Logix.Link.make(
     }),
 )
 
-const RootImpl = Root.implement({
+const RootProgram = Logix.Program.make(Root, {
   initial: ...,
   logics: [...],
-  imports: [...],
-  processes: [Cross],
+  capabilities: {
+    imports: [...],
+  },
 })
 ```
 

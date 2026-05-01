@@ -1,6 +1,6 @@
 # Implementation Plan: 099 O-009 ReadQuery 严格门禁前移到构建期
 
-**Branch**: `099-o009-readquery-build-gate` | **Date**: 2026-02-25 | **Spec**: `specs/099-o009-readquery-build-gate/spec.md`  
+**Branch**: `099-o009-readquery-build-gate` | **Date**: 2026-02-25 | **Spec**: `specs/099-o009-readquery-build-gate/spec.md`
 **Input**: Feature specification from `specs/099-o009-readquery-build-gate/spec.md`
 
 ## Summary
@@ -26,14 +26,14 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: `effect` v3、`@logixjs/core`、pnpm workspace  
-**Storage**: N/A（构建期报告落盘到 `specs/099-o009-readquery-build-gate/`）  
-**Testing**: Vitest + `@effect/vitest`（runtime 测试）  
-**Target Platform**: Node.js 20+（核心）+ modern browsers（回归）  
-**Project Type**: pnpm workspace（`packages/*` + `docs/*` + `specs/*`）  
-**Performance Goals**: 在“已定级 selector”路径去除重复 strict gate 分支，默认档位无回归；见 SC-005 与 Perf Evidence Plan。  
-**Constraints**: 统一最小 IR、稳定标识、事务窗口禁 IO、诊断事件 Slim 可序列化、forward-only 无兼容层。  
+**Language/Version**: TypeScript 5.9.x（ESM）
+**Primary Dependencies**: `effect` v3、`@logixjs/core`、pnpm workspace
+**Storage**: N/A（构建期报告落盘到 `specs/099-o009-readquery-build-gate/`）
+**Testing**: Vitest + `@effect/vitest`（runtime 测试）
+**Target Platform**: Node.js 20+（核心）+ modern browsers（回归）
+**Project Type**: pnpm workspace（`packages/*` + `docs/*` + `specs/*`）
+**Performance Goals**: 在“已定级 selector”路径去除重复 strict gate 分支，默认档位无回归；见 SC-005 与 Perf Evidence Plan。
+**Constraints**: 统一最小 IR、稳定标识、事务窗口禁 IO、诊断事件 Slim 可序列化、forward-only 无兼容层。
 **Scale/Scope**: 仅聚焦 `ReadQuery` 编译与 `ModuleRuntime` 订阅消费路径，不重写 SelectorGraph 核心算法。
 
 ## Constitution Check

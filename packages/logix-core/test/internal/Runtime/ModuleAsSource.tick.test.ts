@@ -1,7 +1,9 @@
 import { describe } from '@effect/vitest'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../../src/index.js'
+import * as RuntimeContracts from '../../../src/internal/runtime-contracts.js'
 import { RuntimeStoreTag, TickSchedulerTag } from '../../../src/internal/runtime/core/env.js'
 import { enterRuntimeBatch, exitRuntimeBatch } from '../../../src/internal/runtime/core/TickScheduler.js'
 import { advanceTicks, flushAllHostScheduler, makeTestHostScheduler, testHostSchedulerLayer } from '../testkit/hostSchedulerTestKit.js'
@@ -24,7 +26,7 @@ describe('Module-as-Source (tick semantics)', () => {
         keyHash: Schema.String,
       })
 
-      const SourceValueRead = Logix.ReadQuery.make({
+      const SourceValueRead = RuntimeContracts.Selector.make({
         selectorId: 'rq_module_as_source_value',
         debugKey: 'ModuleAsSourceSource.value',
         reads: ['value'],
@@ -32,36 +34,39 @@ describe('Module-as-Source (tick semantics)', () => {
         equalsKind: 'objectIs',
       })
 
-      const Target = Logix.Module.make('ModuleAsSourceTarget', {
-        state: TargetState,
-        actions: {},
-        traits: Logix.StateTrait.from(TargetState)({
-          fromSource: Logix.StateTrait.externalStore({
-            store: Logix.ExternalStore.fromModule(Source, SourceValueRead),
+      const Target = FieldContracts.withModuleFieldDeclarations(Logix.Module.make('ModuleAsSourceTarget', {
+  state: TargetState,
+  actions: {}
+}), FieldContracts.fieldFrom(TargetState)({
+          fromSource: FieldContracts.fieldExternalStore({
+            store: RuntimeContracts.ExternalInput.fromModule(Source, SourceValueRead),
           }),
-          keyHash: Logix.StateTrait.computed({
+          keyHash: FieldContracts.fieldComputed({
             deps: ['fromSource'],
             get: (fromSource) => `h:${fromSource}`,
           }),
-        }),
-      })
+        }))
 
-      const TargetImpl = Target.implement({
+      const targetProgram = Logix.Program.make(Target, {
         initial: {
           fromSource: 0,
           keyHash: 'h:0',
         },
-        imports: [Source.implement({ initial: { value: 0 } }).impl],
+        capabilities: {
+          imports: [Logix.Program.make(Source, { initial: { value: 0 } })],
+        },
       })
 
       const Root = Logix.Module.make('ModuleAsSourceRoot', { state: Schema.Void, actions: {} })
-      const RootImpl = Root.implement({
+      const rootProgram = Logix.Program.make(Root, {
         initial: undefined,
-        imports: [TargetImpl.impl],
+        capabilities: {
+          imports: [targetProgram],
+        },
       })
 
       const hostScheduler = makeTestHostScheduler()
-      const runtime = Logix.Runtime.make(RootImpl, {
+      const runtime = Logix.Runtime.make(rootProgram, {
         layer: Layer.mergeAll(testHostSchedulerLayer(hostScheduler), Layer.empty) as Layer.Layer<any, never, never>,
       })
 
@@ -126,7 +131,7 @@ describe('Module-as-Source (tick semantics)', () => {
         keyHash: Schema.String,
       })
 
-      const SourceValueRead = Logix.ReadQuery.make({
+      const SourceValueRead = RuntimeContracts.Selector.make({
         selectorId: 'rq_module_as_source_scheduled_value',
         debugKey: 'ModuleAsSourceScheduledSource.value',
         reads: ['value'],
@@ -134,36 +139,39 @@ describe('Module-as-Source (tick semantics)', () => {
         equalsKind: 'objectIs',
       })
 
-      const Target = Logix.Module.make('ModuleAsSourceScheduledTarget', {
-        state: TargetState,
-        actions: {},
-        traits: Logix.StateTrait.from(TargetState)({
-          fromSource: Logix.StateTrait.externalStore({
-            store: Logix.ExternalStore.fromModule(Source, SourceValueRead),
+      const Target = FieldContracts.withModuleFieldDeclarations(Logix.Module.make('ModuleAsSourceScheduledTarget', {
+  state: TargetState,
+  actions: {}
+}), FieldContracts.fieldFrom(TargetState)({
+          fromSource: FieldContracts.fieldExternalStore({
+            store: RuntimeContracts.ExternalInput.fromModule(Source, SourceValueRead),
           }),
-          keyHash: Logix.StateTrait.computed({
+          keyHash: FieldContracts.fieldComputed({
             deps: ['fromSource'],
             get: (fromSource) => `h:${fromSource}`,
           }),
-        }),
-      })
+        }))
 
-      const TargetImpl = Target.implement({
+      const targetProgram = Logix.Program.make(Target, {
         initial: {
           fromSource: 0,
           keyHash: 'h:0',
         },
-        imports: [Source.implement({ initial: { value: 0 } }).impl],
+        capabilities: {
+          imports: [Logix.Program.make(Source, { initial: { value: 0 } })],
+        },
       })
 
       const Root = Logix.Module.make('ModuleAsSourceScheduledRoot', { state: Schema.Void, actions: {} })
-      const RootImpl = Root.implement({
+      const rootProgram = Logix.Program.make(Root, {
         initial: undefined,
-        imports: [TargetImpl.impl],
+        capabilities: {
+          imports: [targetProgram],
+        },
       })
 
       const hostScheduler = makeTestHostScheduler()
-      const runtime = Logix.Runtime.make(RootImpl, {
+      const runtime = Logix.Runtime.make(rootProgram, {
         layer: Layer.mergeAll(testHostSchedulerLayer(hostScheduler), Layer.empty) as Layer.Layer<any, never, never>,
       })
 

@@ -1,10 +1,10 @@
 # Quickstart: TrialRun Artifacts（031：统一 artifacts 槽位）
 
-**Date**: 2025-12-26  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/031-trialrun-artifacts/spec.md`  
-**Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/031-trialrun-artifacts/plan.md`
+**Date**: 2025-12-26
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/031-trialrun-artifacts/spec.md`
+**Plan**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/031-trialrun-artifacts/plan.md`
 
-> 本 quickstart 只描述“你会得到什么，以及最小消费者怎么用”。  
+> 本 quickstart 只描述“你会得到什么，以及最小消费者怎么用”。
 > IR/trial-run 的实现链路与字段语义外链到：`docs/ssot/runtime/logix-core/api/07-ir-pipeline-from-irpage.md`
 
 ## 0) 你会得到什么
@@ -23,7 +23,7 @@
 
 当前最小消费者是 `examples/logix-sandbox-mvp/src/ir/IrPage.tsx`：
 
-- 页面把用户 moduleCode 包成 wrapper，在 sandbox 里调用 `Logix.Observability.trialRunModule(...)`；
+- 页面把用户 moduleCode 包成 wrapper，在 sandbox 里调用 `Logix.Runtime.trial(...)`；
 - 从 `TrialRunReport.artifacts` 读取版本化工件，用通用 JSON viewer 展示/复制/下载；
 - 不关心具体 kit 的实现细节，只按 `artifactKey@vN` 做分组与验收入口。
 
@@ -39,7 +39,7 @@ kit 想新增补充静态 IR（Supplemental Static IR）时：
 
 注册方式（kit 侧，示意）：
 
-- 在 kit 的 `make(...)`/factory 内拿到 `module.tag` 后调用：`Logix.Observability.registerTrialRunArtifactExporter(module.tag, exporter)`
+- 在 kit 的 `make(...)`/factory 内拿到 `module.tag` 后调用：`CoreEvidence.registerTrialRunArtifactExporter(module.tag, exporter)`
 - exporter 约束：
   - `artifactKey`: `@scope/name@vN`
   - `exporterId`: 用于冲突/失败时可行动定位

@@ -1,8 +1,10 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { describe, it, expect } from '@effect/vitest'
 import { Duration, Effect, Layer, Schema } from 'effect'
 import { QueryClient } from '@tanstack/query-core'
 import * as Logix from '@logixjs/core'
 import * as Query from '../../src/index.js'
+import { engine as tanstackEngine } from '../../src/internal/engine/tanstack.js'
 
 describe('Query.CachePeekSkipLoading', () => {
   it.effect('should hydrate from fresh cache and skip loading on key change', () =>
@@ -23,7 +25,7 @@ describe('Query.CachePeekSkipLoading', () => {
       const KeySchema = Schema.Struct({ q: Schema.String })
 
       let loadCalls = 0
-      const spec = Logix.Resource.make({
+      const spec = Query.Engine.Resource.make({
         id: 'demo/query-cache-peek-skip-loading',
         keySchema: KeySchema,
         load: (key: { readonly q: string }) =>
@@ -57,20 +59,20 @@ describe('Query.CachePeekSkipLoading', () => {
         },
       })
 
-      const debugEvents: Logix.Debug.Event[] = []
-      const debugLayer = Logix.Debug.replace([
+      const debugEvents: CoreDebug.Event[] = []
+      const debugLayer = CoreDebug.replace([
         {
-          record: (event: Logix.Debug.Event) =>
+          record: (event: CoreDebug.Event) =>
             Effect.sync(() => {
               debugEvents.push(event)
             }),
         },
       ]) as Layer.Layer<any, never, never>
 
-      const runtime = Logix.Runtime.make(module.impl, {
+      const runtime = Logix.Runtime.make(module, {
         layer: Layer.mergeAll(
-          Logix.Resource.layer([spec]),
-          Query.Engine.layer(Query.TanStack.engine(queryClient)),
+          Query.Engine.Resource.layer([spec]),
+          Query.Engine.layer(tanstackEngine(queryClient)),
           debugLayer,
         ),
         middleware: [Query.Engine.middleware()],
@@ -78,21 +80,21 @@ describe('Query.CachePeekSkipLoading', () => {
 
       const program = Effect.gen(function* () {
           const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
-        const controller = module.controller.make(rt)
+        const commands = module.commands.make(rt)
 
         // onMount: q=a
-        yield* waitUntil(controller.getState as any, (s: any) => s.queries.search.status === 'success')
+        yield* waitUntil(commands.getState as any, (s: any) => s.queries.search.status === 'success')
 
         // change to q=b (will load once)
-        yield* controller.controller.setParams({ q: 'b' } as any)
-        const stateB = yield* waitUntil(controller.getState as any, (s: any) => s.queries.search?.data?.q === 'b')
+        yield* commands.setParams({ q: 'b' } as any)
+        const stateB = yield* waitUntil(commands.getState as any, (s: any) => s.queries.search?.data?.q === 'b')
         expect(stateB.queries.search.data).toEqual({ q: 'b' })
 
         // clear event window, then go back to q=a (should hydrate from cache without loading)
         const eventStartIndex = debugEvents.length
-        yield* controller.controller.setParams({ q: 'a' } as any)
+        yield* commands.setParams({ q: 'a' } as any)
         const stateA = yield* waitUntil(
-          controller.getState as any,
+          commands.getState as any,
           (s: any) => s.queries.search?.status === 'success' && s.queries.search?.data?.q === 'a',
         )
 
@@ -102,8 +104,8 @@ describe('Query.CachePeekSkipLoading', () => {
         // no loading snapshot commit in this window
         const refs = debugEvents
           .slice(eventStartIndex)
-          .map((event) => Logix.Debug.internal.toRuntimeDebugEventRef(event))
-          .filter((ref): ref is Logix.Debug.RuntimeDebugEventRef => ref != null && ref.kind === 'state')
+          .map((event) => CoreDebug.internal.toRuntimeDebugEventRef(event))
+          .filter((ref): ref is CoreDebug.RuntimeDebugEventRef => ref != null && ref.kind === 'state')
 
         expect(
           refs.some((ref) => {

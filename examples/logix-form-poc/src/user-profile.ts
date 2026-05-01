@@ -31,7 +31,7 @@ export namespace UserProfileForm {
 
   export type Shape = FormCore.FormShape<Values, ActionMap>
 
-  export type ModuleTag = LogixCore.ModuleTagType<'UserProfileForm', Shape>
+  export type ModuleTag = LogixCore.Module.ModuleTag<'UserProfileForm', Shape>
 }
 
 export declare const UserProfileFormModule: UserProfileForm.ModuleTag

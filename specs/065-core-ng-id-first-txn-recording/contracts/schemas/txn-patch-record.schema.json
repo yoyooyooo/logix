@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://intent-flow.local/specs/065-core-ng-id-first-txn-recording/schemas/txn-patch-record.schema.json",
+  "$id": "https://logix.local/specs/065-core-ng-id-first-txn-recording/schemas/txn-patch-record.schema.json",
   "title": "TxnPatchRecord",
   "type": "object",
   "additionalProperties": false,
@@ -10,7 +10,7 @@
     "pathId": { "type": "integer", "minimum": 0, "description": "FieldPathId (index in fieldPaths table)." },
     "reason": {
       "type": "string",
-      "enum": ["reducer", "trait-computed", "trait-link", "source-refresh", "devtools", "perf", "unknown"]
+      "enum": ["reducer", "field-computed", "field-link", "source-refresh", "devtools", "perf", "unknown"]
     },
     "stepId": { "type": "integer", "minimum": 0, "description": "ConvergeStepId (index in stepsById table)." },
     "traitNodeId": { "type": "string", "minLength": 1 },

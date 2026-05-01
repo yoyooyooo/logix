@@ -1,0 +1,132 @@
+import type { PatchReason } from '../runtime/core/StateTransaction.js'
+import type {
+  DowngradeReason as ErrorDowngradeReason,
+  SerializableErrorSummary,
+} from '../runtime/core/errorSummary.js'
+import type { DirtyAllReason, FieldPath, FieldPathId } from '../field-path.js'
+import type {
+  FieldConvergeConfigScope,
+  FieldConvergeDecisionSummary,
+  FieldConvergeGenerationEvidence,
+  FieldConvergePlanCacheEvidence,
+  FieldConvergeReason,
+  FieldConvergeRequestedMode,
+} from './model.js'
+import type { ConvergePlanCache } from './plan-cache.js'
+
+export class FieldKernelConfigError extends Error {
+  readonly _tag = 'FieldKernelConfigError'
+
+  constructor(
+    readonly code: 'CYCLE_DETECTED' | 'MULTIPLE_WRITERS',
+    message: string,
+    readonly fields: ReadonlyArray<string> = [],
+  ) {
+    super(message)
+    this.name = 'FieldKernelConfigError'
+  }
+}
+
+export type ConvergeDegradeReason = 'budget_exceeded' | 'runtime_error'
+
+export type ConvergeMode = 'full' | 'dirty'
+
+export interface ConvergeStepSummary {
+  readonly stepId: string
+  readonly kind: 'computed' | 'link'
+  readonly fieldPath: string
+  readonly durationMs: number
+  readonly changed: boolean
+}
+
+export interface ConvergeSummary {
+  readonly mode: ConvergeMode
+  readonly budgetMs: number
+  readonly totalDurationMs: number
+  readonly totalSteps: number
+  readonly executedSteps: number
+  readonly skippedSteps: number
+  readonly changedSteps: number
+  readonly top3: ReadonlyArray<ConvergeStepSummary>
+}
+
+export type ConvergeOutcome =
+  | {
+      readonly _tag: 'Converged'
+      readonly patchCount: number
+      readonly summary?: ConvergeSummary
+      readonly decision?: FieldConvergeDecisionSummary
+    }
+  | {
+      readonly _tag: 'Noop'
+      readonly summary?: ConvergeSummary
+      readonly decision?: FieldConvergeDecisionSummary
+    }
+  | {
+      readonly _tag: 'Degraded'
+      readonly reason: ConvergeDegradeReason
+      readonly errorSummary?: SerializableErrorSummary
+      readonly errorDowngrade?: ErrorDowngradeReason
+      readonly summary?: ConvergeSummary
+      readonly decision?: FieldConvergeDecisionSummary
+    }
+
+export interface ConvergeContext<S> {
+  readonly moduleId?: string
+  readonly instanceId: string
+  readonly txnSeq?: number
+  readonly txnId?: string
+  readonly configScope?: FieldConvergeConfigScope
+  readonly generation?: FieldConvergeGenerationEvidence
+  readonly cacheMissReasonHint?: FieldConvergePlanCacheEvidence['missReason']
+  /**
+   * How many times cacheMissReasonHint has been updated since the last txn window.
+   * Used to detect "generation thrash" (multiple bumps before any txn executes).
+   */
+  readonly cacheMissReasonHintCount?: number
+  readonly now: () => number
+  readonly budgetMs: number
+  readonly decisionBudgetMs?: number
+  readonly requestedMode?: FieldConvergeRequestedMode
+  /**
+   * 043: select the execution scope for this converge (default: all).
+   * - all: keep current default behavior
+   * - immediate: run only computed/link with scheduling=immediate
+   * - deferred: run only computed/link with scheduling=deferred
+   */
+  readonly schedulingScope?: 'all' | 'immediate' | 'deferred'
+  /**
+   * 060: explicitly specify stepIds for this converge (used to slice the deferred scope).
+   *
+   * - If not provided, select the corresponding topoOrder by schedulingScope.
+   * - If provided, it must be monotonic increasing in topo order (caller guarantees).
+   */
+  readonly schedulingScopeStepIds?: Int32Array
+  /**
+   * dirtyAllReason: when a non-trackable/non-mappable write happens within the transaction window,
+   * it must explicitly degrade to dirtyAll and provide a stable reason code (for diagnostics & gating).
+   */
+  readonly dirtyAllReason?: DirtyAllReason
+  /**
+   * dirtyPathsKeyHash / dirtyPathsKeySize:
+   * - Optional incremental key for dirtyPaths when it is a Set of FieldPathIds.
+   * - Used by ultra-hot converge paths (inline_dirty micro-cache) to avoid scanning the Set on cache hits.
+   * - Hash must match FNV-1a (32-bit) over unique ids in Set insertion order.
+   */
+  readonly dirtyPathsKeyHash?: number
+  readonly dirtyPathsKeySize?: number
+  readonly dirtyPaths?: ReadonlySet<string | FieldPath | FieldPathId> | ReadonlyArray<string | FieldPath | FieldPathId>
+  readonly allowInPlaceDraft?: boolean
+  readonly planCache?: ConvergePlanCache
+  readonly getBaseState?: () => S
+  readonly getDraft: () => S
+  readonly setDraft: (next: S) => void
+  readonly recordPatch: (
+    path: string | FieldPath | FieldPathId | undefined,
+    reason: PatchReason,
+    from?: unknown,
+    to?: unknown,
+    fieldNodeId?: string,
+    stepId?: number,
+  ) => void
+}

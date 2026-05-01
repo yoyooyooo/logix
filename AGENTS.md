@@ -1,272 +1,179 @@
-当前仓库仍处于 forward-only 演进阶段，没有历史兼容负担。可以不计成本地重构与试验，不需要考虑向历史版本兼容。
-任何一个地方都可以为了追求完美而推翻：本仓库采用「向前兼容（forward-only evolution）」策略，拒绝向后兼容。
-当一个新的规划和已有实现产生交集甚至冲突时，需要寻求新的完美点，而不是坚持向后兼容。
-性能与可诊断性优先：任何触及 Logix Runtime 核心路径的改动，都必须给出可复现的性能基线/测量，
-并同步完善诊断事件与 Devtools 可解释链路；破坏性变更用迁移说明替代兼容层（无兼容层/无弃用期）。
-同时强制：统一最小 IR（Static IR + Dynamic Trace）、标识去随机化（稳定 instanceId/txnSeq/opSeq）、
-事务窗口禁止 IO、业务不可写 SubscriptionRef、诊断事件必须 Slim 且可序列化。
+始终用中文回复用户。
 
-## 零存量用户（大胆破坏式改造）
+永远不要出现“不是…，而是”的句式。不要出现破折号。拒绝吹捧，取消情绪价值开场白，言简意赅。分歧时坚持逻辑和事实。
 
-当明确“当前没有任何存量用户/生产依赖/外部集成”时，本仓库进入 **零存量用户模式**：
+凡是涉及“统一口径”“系统性文档更新”或“相关文档一并调整”的任务，默认必须完成所有受影响文档的实际落盘、交叉引用回写和核对后再汇报；仅当存在明确且无法合理假设的决策阻塞、继续落盘会引入口径错误时，才允许部分落盘，并且必须同时列出已完成文件、待完成文件、阻塞原因与下一步需要用户确认的点。
 
-- 可以直接重做对外 API/协议/默认行为，以追求更好的性能、可诊断性与一致性（尤其是运行时核心路径）。
-- 不写兼容层/弃用期；用迁移说明 + 决策日志替代（`plan.md` 的 Constitution Check / `specs/*` / `docs/perf/*`）。
-- 允许推倒重来：重排模块边界、合并/删掉历史分支、统一旋钮；只要最终 API 设计不比旧的差（更小、更一致、更可推导、更易被 LLM 生成与验证）。
-- 仍需满足本文件开头的不变量：统一最小 IR、稳定标识、事务窗口禁 IO、诊断事件 Slim 且可序列化，并提供可复现的性能证据。
-- “零存量用户”是显式假设：所有破坏式改动应在对应 spec/plan 写清楚该假设；一旦出现存量用户或外部依赖，需要先更新假设再重新裁决方案。
+## Subagent 使用策略
 
-## 并行开发安全（强约束）
+- 默认由主 agent 直接执行任务，不强制启用 subagent。
+- 仅当用户在当前请求中明确要求使用 subagent，或明确点名相关 skill 时，才启用 subagent 路径。
+- 启用后由主 agent 负责消化输入、下发可执行 prompt、监控进度、做质量门和结果汇总。
+- 当存在依赖关系时，可串行或并行编排；未显式触发时继续由主 agent 直连执行。
+- 若用户已显式要求但平台能力限制导致无法调用 subagent，主 agent 需显式说明原因并回退直接执行。
+
+## 当前主旋律
+
+- AI Native first。
+- 本仓当前核心目标，是把 Logix 打造成 React 的逻辑层补充，支撑 Agent 更稳定地生成、理解、组合、调试和验证逻辑。
+- 平台化不是当前硬目标。若“平台存在感”与 API 清晰度、Agent 可用性、运行时性能、可诊断性冲突，优先后者。
+- 静态化要做，但只做必要部分。只为类型边界、稳定诊断、最小 IR、可复现验证去静态化。
+- 拒绝为了平台叙事、表面完备度或未来假设去做过度静态化、过多锚点、额外壳层和第二模型。
+- 公开 API 与内部结构优先追求：更小、更一致、更可推导、更易被 LLM 生成和校验。
+
+## 当前阶段
+
+- 当前正处于下一轮激进改造期，重点已经从“提案讨论”进入“按新 SSoT 继续压缩公开面、清理旧壳层、准备推实现”的阶段。
+- 当前默认以面向未来的最优解为目标，在当下认知范围内追求极致收口；已有实现、既有口径、已写 spec、当前北极星，都可被修订、替换或删除。
+- docs cutover 已完成，旧文档冻结在 `docs/archive/`，新裁决已经开始收口到 `docs/ssot/`、`docs/adr/`、`docs/standards/`。
+- 当前允许文档领先代码。若旧实现、旧注释、旧目录结构与新 SSoT 冲突，优先以新事实源为准，不为迁就现状代码回退口径。
+- 北极星、charter、standards、spec 与命名 bucket，都只是当前裁决载体；一旦阻碍更小、更一致、更可推导、更高性能、更可诊断的方案，先改事实源，再继续推进实现。
+- 当前默认继续清理旧命名、旧 facade、旧锚点化心智、旧“平台优先”残留；只保留能直接改善 Agent authoring、runtime clarity、performance 或 diagnostics 的部分。
+- 任何妨碍公开面压缩、相位收口、runtime clarity、performance 或 diagnostics 的残留，默认直接腰斩、删除或重做。
+- 若需要在实现与文档之间做裁决，默认优先推进更激进、更小、更一致、更终局的方案，再补验证。
+
+## Forward-only 与零存量用户
+
+- 当前仓库处于 forward-only 演进阶段，没有历史兼容负担。
+- 任何地方都可以为了更优设计被推翻，不需要向历史版本兼容。
+- 当前按零存量用户前提推进：可以直接重做对外 API、协议与默认行为。
+- forward-only 的对象也包括北极星、治理文本与阶段性路线图；它们一旦滞后于更优设计，先修订事实源，再继续推进实现。
+- 不写兼容层，不设弃用期，用迁移说明和决策日志替代。
+- 若未来出现真实存量用户或外部依赖，需要先更新这个前提，再重新裁决方案。
+
+## 终局优先执行原则
+
+- 在零存量用户前提下，默认直接追求终局解，不主动设计中间态、过渡态、桥接层、双写期或兼容壳层。
+- agent 禁止因为“以后可能有用户”“以后可能要平滑迁移”“现在先稳一点”这类假想前提，自行保留旧入口、旧命名、旧语义或额外缓冲层。
+- 若两个方案都可落地，默认选择更接近最终形态、更小、更一致、更少对象、更少入口的方案。
+- 若一个设计还能继续下沉、继续内聚、继续删壳层、继续减少公开概念，默认继续推进，除非有明确证据表明再收会伤害 runtime clarity、performance 或 diagnostics。
+- 允许一次性做大 cutover。拆波次只服务执行组织、测试收敛与风险隔离，不服务兼容。
+- 规划和实现时，默认把自己当作终局架构师，不把自己当作迁移工程师。
+
+## 运行时硬约束
+
+- 性能与可诊断性优先。任何触及 Logix Runtime 核心路径的改动，都必须给出可复现的性能基线或测量。
+- 诊断链路必须可解释，诊断事件必须 slim、可序列化、可稳定比较。
+- 保留最小 IR 与动态 trace，用于运行时解释、诊断、回放与证据对齐；不要把它扩张成平台优先的第二真相源。
+- 标识去随机化。涉及实例、事务、操作链路时，优先保持稳定的 `instanceId / txnSeq / opSeq`。
+- 事务窗口禁止 IO。
+- 业务层不可直接写 `SubscriptionRef`。
+- 不允许再长 `advanced`、`internal` 一类黑盒兜底槽位。任何新能力都应按职责落在明确模块里。
+
+## 验证控制面
+
+- 自我验证统一收敛到 `runtime control plane`。
+- 第一版主干固定为 `runtime.check / runtime.trial / runtime.compare`。
+- `runtime.check` 只做静态快检，不隐式代跑试运行。
+- 默认门禁只允许跑到 `runtime.check + runtime.trial(mode="startup")`。
+- `trial.scenario` 只服务验证，不进入公开 authoring surface，不沉淀为正式业务逻辑资产。
+- 场景级验证的主入口固定为 `fixtures/env + steps + expect`。
+- raw evidence / raw trace 只作下钻材料，不作为第一版默认比较面。
+- `replay` 与宿主级深验证属于后续升级能力。
+
+## 最终资产卫生与开源可读性
+
+- 生产代码命名必须面向最终运行时语义。`src/**` 中禁止把 `Probe`、`Witness`、`Pressure`、`CAP-PRESS`、`TASK` 等过程性规划名作为模块、类型、函数或长期变量命名。
+- 生产代码允许少量注释引用 SSoT、CAP、PF、TASK 或 pressure packet 编号，用于说明边界来源或证明依据；编号不能成为运行时概念、分支语义或公开 API 心智。
+- 测试文件名必须优先按最终行为、边界或合同命名，例如 `*.contract.test.ts`、`*.boundary.test.ts`、`*.guard.test.ts`。不要用中间资产编号或临时 probe 名作为正式测试文件名。
+- 测试体、`describe` 文案、注释或 metadata 可以保留 `covers: CAP-* / PF-* / SC-* / TASK-*` 关联，方便矩阵扩大后的追踪和回归定位。
+- `fixtures`、`support`、`harness` 路径必须清楚表达测试支撑身份。临时 probe 只能留在测试支撑区，并且必须有 lifecycle、cleanup trigger 和不进入 public surface 的说明。
+- 若临时 probe、witness 或 pressure 测试已经成为正式证明，应改名为行为优先的 contract、boundary 或 guard 测试，并同步更新文档、proof command 和控制面引用。
+- 开源贡献者应能先按最终概念阅读生产代码和测试文件名，再通过注释或文档链接追溯规划历史；过程性编号体系不能主导主阅读路径。
+- 任何新规划都必须包含“最终读者路径”检查：文件名、目录名、测试名、变量名、错误文案、trace 名、metric 名、docs 示例，都应优先表达最终运行时语义。
+- 规划名、迁移名、probe/witness/pressure/task 编号不得进入生产代码、公开 API、正式测试文件名、公开文档主叙事。只允许作为注释或 metadata 追溯来源。
+- 临时迁移验证测试默认不保留。若确需新增，必须写明 lifecycle、cleanup trigger 和删除条件；完成 cutover 后必须删除或改名为行为导向的 contract/boundary/guard 测试。
+- active spec / plan / quickstart / contracts 也属于开源阅读资产。禁止在这些文件里用旧 API 当示例；负向示例必须明确标为 forbidden shape 或 removal witness。
+- 禁止用字符串拼接、别名、兼容字段、隐藏 helper 绕过命名 sweep。若某个旧概念需要保留，必须明确定性为 internal-only、history-only、negative-only 或 archived。
+- `.impl`、`internal`、`blueprint` 等实现身份只能出现在内部实现文件、repo-internal helper、禁止性说明或历史证据里，不能成为 public authoring、imports、runtime root、React host 的阅读路径。
+- 每个规划的验收必须包含文本 sweep：旧概念 family 零命中、迁移辅助文件不存在、公开示例不含旧写法、剩余命中逐项分类。
+- 若文档、示例、测试和代码之间出现新旧口径冲突，必须同步回写事实源和 active spec，不能只修代码。
+
+## 并行开发安全
 
 - 默认假设工作区存在其他并行任务的未提交改动。
-- 禁止为了“让 diff 干净/只留下本任务文件”而丢弃改动：禁止任何形式的 `git restore`、`git checkout -- <path>`、`git reset`、`git clean`、`git stash`。
-- 禁止自动执行 `git add` / `git commit` / `git push` / `git rebase` / `git merge` / `git cherry-pick`，除非用户明确要求。
-- 禁止删除/覆盖与本任务无关的文件；如确需删除/大范围移动，必须先征得用户明确同意。
-- 如需查看差异，只使用只读命令（`git status`、`git diff` 等）。
-
-### 物理级防护（可选）
-
-- 建议在本机启用 `git` wrapper 或 shell preexec 拦截，对上述危险子命令直接失败退出；或使用 `git worktree` 将每个并行任务隔离到独立目录。
+- 禁止为了“让 diff 干净”而丢弃改动：禁止任何形式的 `git restore`、`git checkout -- <path>`、`git reset`、`git clean`、`git stash`。
+- 禁止自动执行 `git add`、`git commit`、`git push`、`git rebase`、`git merge`、`git cherry-pick`，除非用户明确要求。
+- 禁止删除或覆盖与本任务无关的文件；如确需删除或大范围移动，必须先征得用户明确同意。
+- 如需查看差异，只使用只读命令，如 `git status`、`git diff`。
 
 ## Workflow
 
-1. 每个新会话在第一次回答用户前，先用 shell 读取并通读 .codex/skills/project-guide/SKILL.md（除非用户明确声明不需要或已加载 $project-guide）；任何和项目相关的任务优先通过它了解项目情况，并根据项目指南执行后续操作。
-2. 当做完一个特性时，需要跑通测试用例和所有类型检测；文档同步按 `project-guide` 的 spec→ 产物落点执行。
-3. 若改动触及核心路径 / 诊断协议 / 对外 API，必须在 plan.md 的 Constitution Check 中补齐性能预算、
-   诊断代价、IR/锚点漂移点、稳定标识与迁移说明，并同步更新对应 SSoT 与用户文档 （开发阶段只考虑中文文档，忽略 .en.md）。
+1. 每个新会话在第一次回答用户前，先用 shell 读取并通读 `.codex/skills/project-guide/SKILL.md`，除非用户明确声明不需要或已加载 `$project-guide`。
+2. 与项目相关的任务，优先通过 `project-guide` 获取 docs 路由、代码落点与质量门。
+3. 完成一个特性后，至少跑通相关类型检查与测试。
+4. 若改动触及核心路径、诊断协议或对外 API，必须同步更新对应 SSoT、ADR、standards 和必要的用户文档。
+5. 若改动会改变核心判断，必须主动回写新的事实源，避免并行真相源漂移。
+6. 涉及用户文档新增、重写、统一口径或系统性改写时，默认遵循 `docs/standards/user-docs-writing-standard.md`。
 
-## 规划对齐（简版）
+## Docs 路由
 
-- SSoT 是“当前裁决的基线”，不是永恒不变的最高准则；当宪法/北极星/最新规划产生新裁决时，必须主动回写更新对应 SSoT 文档，避免并行真相源漂移。
-- 双 SSoT（两大阵营，统一字面标题）：Authoring SSoT / Platform SSoT；定义与权威入口见 `docs/ssot/README.md`（按需下钻：`docs/ssot/platform/foundation/glossary/04-platform-terms.md`、`docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.11-workflow-and-control-surface.md`）。
-- 目录地图、spec 分类、SSoT/落点导航：以 `project-guide` skill 为准。
+- `docs/README.md` 是新 docs 根入口。
+- `docs/ssot/` 放当前事实源。
+- `docs/adr/` 放重大裁决。
+- `docs/standards/` 放跨主题规范。
+- `docs/next/` 放待升格文档。
+- `docs/archive/` 是冻结历史文档库，只查阅、引用，不继续增量维护。
 
-### Spec-Driven & Playground 对齐（给 Agent 的简版）
+当前与 logix-api-next 直接相关的高优先级事实源：
 
-- SDD 映射与顶层方法论：`docs/ssot/platform/appendix/concepts/00-sdd-mapping.md`，明确「SPECIFY/PLAN/TASKS/IMPLEMENT ↔ L0–L3/Intent/Logix/Runtime Alignment Lab」的关系。
-- Playground / Sandbox / Alignment Lab 术语与职责：统一以 `docs/ssot/platform/foundation/02-glossary.md` 中的定义为准（含 Universal Spy / Semantic UI Mock 的全称与简称）。
-- 当改动 `@logixjs/sandbox` 或 `docs/specs/drafts/topics/sandbox-runtime/*` 时，默认把它视为 **Playground/Runtime Alignment Lab 的基础设施**，同时参考 `65-playground-as-executable-spec.md`，避免只做“代码 Runner”而丢掉 Spec/Intent 对齐视角。
+- `docs/adr/2026-04-12-field-kernel-declaration-cutover.md`
+- `docs/adr/2026-04-05-ai-native-runtime-first-charter.md`
+- `docs/adr/2026-04-04-logix-api-next-charter.md`
+- `docs/standards/logix-api-next-guardrails.md`
+- `docs/standards/user-docs-writing-standard.md`
+- `docs/standards/effect-v4-baseline.md`
+- `docs/ssot/runtime/01-public-api-spine.md`
+- `docs/ssot/runtime/02-hot-path-direction.md`
+- `docs/ssot/runtime/03-canonical-authoring.md`
+- `docs/ssot/runtime/09-verification-control-plane.md`
+- `docs/ssot/runtime/08-domain-packages.md`
 
-## 仓库愿景与决策原则（当前）
+当前若出现“旧代码长这样”和“新文档要求不一样”的冲突，先看上面这些新事实源，再决定实现如何继续收敛。
 
-- **北极星**：已收敛为单一事实源（平台 SSoT 的北极星文档），此处不再重复定义。
-- **性能与可诊断性优先**：性能与可诊断性都是产品能力本身；核心路径改动必须有可复现的性能证据，
-  诊断能力必须可解释且默认零成本或接近零成本。
-- **统一最小 IR**：所有高层抽象必须可完全降解到统一 IR，并显式区分 Static IR 与 Dynamic Trace；
-  平台/Devtools/Sandbox 只认 IR，不接受“并行真相源”。
-- **Logix-as-React**：公共 API/DSL 偏向声明式与可推导，运行时内部可自动优化，并可将执行与状态变更
-  映射回声明式输入以支持解释与回放。
-- **LLM 一等公民**：DSL / Schema / Flow / 配置的设计优先考虑“LLM 易生成、易校验、易对比”，假定主要维护者是 LLM + 工具链，人类只做审阅与少量 override。
-- **引擎优先**：先把 Intent/Flow/Logix/Effect 的契约和幂等出码引擎打磨稳定，再考虑 Studio/画布等交互体验；遇到冲突，一律保证引擎正确、可回放、可追踪。
-- **Effect 作为统一运行时**：默认使用 `effect`（effect-ts v3 系列）承载行为与流程执行，出码后的业务流程应以 `.flow.ts` + Effect/Logix 程序为落点；其他运行时只作为 PoC，而不是第二套正式栈。
-- **Logix dogfooding（简称 Logix fooding）**：本仓所有上层应用（如 `examples/*`、`packages/logix-devtools-react` 等）在可行范围内，一律以 Logix Runtime（Flow/Effect/Logix）作为主要运行时与状态管理方式，不再引入第二套 ad-hoc 状态机或流程引擎，以便在真实场景中持续“吃自己狗粮”、验证和打磨 Logix 本身。
-- **文档先行**：任何会影响 Intent 模型、Flow DSL、Logix/Effect 契约的决定，应优先在 `docs/ssot/platform` 与 `docs/ssot/runtime` 中拍板，再在子包中实现，避免“代码先跑偏、文档跟不上的事实源漂移”。
-  - 对于已经确定、但实现细节容易跑偏的技术决策（例如 Store.Spec / Universal Bound API / Fluent DSL / Parser 约束），**需要同时在实现备忘中固化**：
-    - 平台侧：`docs/specs/sdd-platform/impl/README.md`；
-    - runtime 侧：`docs/ssot/runtime/logix-core/impl/README.md`。
-  - 后续在实现阶段若遇到取舍冲突，优先回看上述两个 impl/README 中的约束说明，再决定是否调整规范或实现。
+## 当前工程定位
 
-### logix-core 目录结构铁律（给 Agent 的简版）
+- `packages/logix-core` 是运行时主线。
+- `packages/logix-react` 是 React 集成与宿主语义落点。
+- `packages/logix-sandbox` 是运行时验证与对齐实验场。
+- `examples/logix` 是核心场景 dogfooding。
+
+当前默认把本仓视为 AI Native 运行时实验场，而不是平台化前置工程。
+
+## logix-core 目录铁律
 
 在 `packages/logix-core/src` 内改动时，默认遵守：
 
-- `src/*.ts` 直系文件是子模块（Module / Logic / Bound / Flow / Runtime / Link / Platform / Debug / MatchBuilder 等），**必须有实际实现代码**，不能只是纯 re-export。
-- 子模块之间的共享实现（类型内核、Runtime 内核、MatchBuilder/Flow/Platform/Debug 等）统一放到 `src/internal/**`，再由子模块引入；**禁止**从 `src/internal/**` 反向 import 任意 `src/*.ts`。
-- `src/internal/**` 内部再按「浅 → 深」分层：
-  - 核心实现下沉到 `src/internal/runtime/core/**`（module / LogicMiddleware / FlowRuntime / Lifecycle / Platform / DebugSink / MatchBuilder 等）；
-  - `src/internal/*.ts`、`src/internal/runtime/*.ts` 只通过 re-export 或薄适配依赖这些 core 文件，形成「浅层 API → 深层实现」的单向拓扑。
-  - 日常自检：`rg "../" src/internal/runtime` 应为空（core 目录内除外），确保 deep internal 不回头依赖浅层。
+- `src/*.ts` 直系文件是子模块，必须有实际实现代码，不能只是纯 re-export。
+- 子模块共享实现统一放在 `src/internal/**`，禁止从 `src/internal/**` 反向 import 任意 `src/*.ts`。
+- 核心实现继续下沉到 `src/internal/runtime/core/**`。
+- `src/internal/*.ts` 与 `src/internal/runtime/*.ts` 只做 re-export 或薄适配，保持浅层 API 到深层实现的单向拓扑。
 
-# Agent Context for `intent-flow`
+## Effect 与测试小抄
 
-- 仓库定位：意图驱动 + Effect 运行时 PoC 实验场，用于在平台化之前把 **Intent 模型 / Flow DSL / effect 运行时 / ToB 典型场景** 练透。
-- 上游依赖（可选，私有/只读）：
-  - IMD 组件库：`<path-to-imd-repo>`（UI/Pro Pattern 与 registry）；
-  - best-practice 仓库：`<path-to-best-practice-repo>`（文件/状态/服务层规范与代码片段）。
-- 本仓库结构：
-  - `docs/ssot/platform`：平台/意图模型与协议（SSoT）；
-  - `docs/ssot/platform/governance/decisions/history-and-lessons.md`：历史提炼（从早期探索吸纳的结论与反模式）；
-  - `packages/logix-core` / `packages/logix-react` / `packages/logix-sandbox`：Logix Runtime 主线实现；
-  - `examples/logix`：可运行的 PoC 场景与 Pattern（用于验证与沉淀写法）。
+- 主分支已经切到 Effect V4。当前 workspace override 固定为 `effect@4.0.0-beta.28`、`@effect/vitest@4.0.0-beta.28`、`@effect/platform-node@4.0.0-beta.28`。
+- 所有新代码、新测试、新文档默认按 Effect V4 写，禁止按 V3 心智新增实现。
+- 仓库里若仍出现 `v3`、旧 API 写法、旧包描述或旧迁移备注，默认视为历史残留，不构成当前实现依据。
+- `Effect.Effect<A, E, R>` 的泛型顺序固定为 成功值 / 业务错误 / 依赖环境。
+- 统一使用 Tag class：`class X extends Context.Tag("X")<X, Service>() {}`。
+- Promise 若需要进入业务错误通道，使用 `Effect.tryPromise`，不要直接假设 reject 会进入 `E`。
+- 若固有认知与当前类型错误、TS 提示、本地 d.ts 冲突，一律以本地类型定义和编译器为准。
+- 运行时与 Layer 重度相关的测试，优先使用 `@effect/vitest`。
+- Agent 禁止调用 watch 模式测试。优先使用一次性命令。
+- 若对 Effect API 有疑问，优先使用 context7 查询最新写法。
 
-## Effect-TS 使用与纠错模块（给模型/开发者的小抄）
+## 常用验证
 
-> 本节专门收集 effect-ts 相关的“易错点与本仓约定”，方便人和 LLM 在写 Flow/Runtime 时快速对齐。
-> 详细设计与最新约定以代码里的 d.ts / TS 提示为准，如有冲突一律以本地类型定义为主。
+- `pnpm check:effect-v4-matrix`
+- `pnpm typecheck`
+- `pnpm lint`
+- `pnpm test:turbo`
+- 若需要全量对照，再跑 `pnpm test`
 
-- **知识源与冲突处理**
-  - 当固有认知与当前项目的类型错误 / TS 提示冲突时，一律以本地 `effect` d.ts 和编译器为准。
-  - 如遇“看起来对但 TS 报错”的写法，优先查官方源码/文档，必要时把结论沉淀回本节。
-  - 在本仓库内执行测试时，**禁止使用 watch 模式**（例如 `pnpm test -- <pattern>` 这种会退化为交互模式的调用）；优先使用包内的 `vitest run <pattern>` 或一次性 `pnpm test`（已配置为非 watch 模式），避免阻塞用户终端。
+## 额外判断原则
 
-- **核心签名与别名**
-  - 固定认知：`Effect.Effect<A, E = never, R = never>` 三个泛型依次是 **成功值 / 业务错误类型 / 依赖环境**，不得调换。
-  - 自定义别名可以用调用方顺序：`type Fx<R, E, A> = Effect.Effect<A, E, R>`，但底层永远是 `Effect.Effect<A, E, R>`。
-  - 设计公共 Flow 时，推荐签名 `<R>() => Effect.Effect<A, E, R>`，由调用方通过 Layer 扩展环境。
-
-- **环境 `R` 与 Tag 模式**
-  - 把 `R` 理解为“按需注入的服务集合”，在类型上是逆变位：依赖更少的 Effect 可以赋给依赖更多的地方，反之不行。
-  - 本仓统一用 Tag class：`class X extends Context.Tag("X")<X, Service>() {}`，不要新写 `Context.GenericTag`。
-  - Tag 本身就是 `Effect.Effect<Service, never, Id>`，可在 `Effect.gen` 中 `const svc = yield* ServiceTag` 取实现，实现通过 `Layer.succeed(ServiceTag, impl)` 或 `Effect.provideService` 提供。
-
-- **Context / Env 使用边界**
-  - 运行时内核 / 中间件层（约束管道、调试工具）可以用 `Effect.context<R>()` 操作上下文。
-  - 业务 Flow / Service 层避免显式构造/传递 `Context.Context`，“胖 Env 对象”一律用 Tag 方式按需取服务：`yield* LoggerTag`、`yield* RegionService`。
-
-- **超时与重试 API（以 v3 签名为准）**
-  - 使用对象参数 + `pipe`：`effect.pipe(Effect.timeoutFail({ duration, onTimeout }))`，不要再用旧版三参数形式。
-  - `Effect.retry` 接收配置对象（如 `{ times: 3 }`），不会改变环境类型 `R`，优先在通用约束层包装重试，而不是散落在每个 Flow 内。
-
-- **Promise 集成与错误语义**
-  - `Effect.promise(evaluate)` 的错误通道类型为 `never`，Promise reject 被视为 defect；需要业务错误通道时使用 `Effect.tryPromise` 并在 `catch` 中构造领域错误。
-  - Flow 层的 `E` 应尽量是语义化错误（领域/校验/可透出给上层），不要直接冒泡 `unknown` 或裸 `Error`。
-
-- **运行入口与 Layer 组合**
-  - 默认假设：`Effect.runPromise` 等 run API 期望环境为 `never`；带依赖的 Flow 必须先通过 `Effect.provide` / `Effect.provideService` 注入完整 Layer，再运行。
-  - Layer 组合：用 `Layer.succeed(Tag, impl)` 提供实现，`Layer.mergeAll(...)` / `pipe(layer, Layer.provide(...))` 组合，最终聚合为 `RuntimeLayer` 提供给运行时。
-  - `ManagedRuntime.make` 签名：`make<R, E>(layer: Layer.Layer<R, E, never>)`，第三个泛型必须是 `never`，不要把仍带依赖的 Layer 直接交给它。
-
-- **Cache / 环境泛型解读**
-  - `Cache.make<Key, Value, Error = never, Environment = never>` 里的 `Environment` 表示 lookup 过程中额外需要的环境；通过闭包捕获 Service 时应保持为 `never`，不要写成 `typeof SomeService`。
-  - 若 `Value` 的错误类型是领域错误（如 `ApiError`），而对外希望暴露“永不失败”的流，可在边界用 `Effect.catchAll(() => Effect.succeed(default))` 收敛错误，再对外暴露 `Stream<_, never, _>`。
-
-- **SubscriptionRef v3 用法**
-  - 认知为“可订阅 Ref”：读写都用模块函数，而不是实例方法。
-  - 写入：`yield* SubscriptionRef.set(ref, value)` / `SubscriptionRef.update(ref, f)`；订阅变化：`ref.changes`，不要假设有 `ref.set` / `ref.get`。
-
-- **Effect.gen 推荐写法**
-  - 在业务 Flow 中统一用 Tag 形式 `yield*`：`Effect.gen(function* () { const svc = yield* ServiceTag; ... })`。
-  - 不再使用 `_` 适配器等 `yield* _(Tag)` 风格，以获得更干净的 `R` 推导，避免不必要的 `unknown` / `never`。
-
-- **Schema / Config / HTTP 解码**
-  - Schema 一律从 `effect` 导入：`import { Schema } from "effect"`，搭配 `@effect/platform` 的 Schema API 使用。
-  - 领域模型推荐：`const RegionSchema = Schema.Struct({ ... })`，类型通过 `Schema.Schema.Type<typeof RegionSchema>` 或 `typeof RegionSchema.Type` 推导。
-  - Config 读取：`Config.xxx("KEY").pipe(Config.withDefault(...))`，在 `Effect.gen` 中 `const value = yield* Config.xxx(...)`，不要使用旧的 `Effect.config(...)`。
-  - HTTP 解码时优先用 `HttpClientResponse.schemaBodyJson(effect/Schema)`；`Schema.Array(RegionSchema)` 返回 `ReadonlyArray`，如需 `Array<T>` 要显式 `Array.from`；Service Tag 方法签名与实现必须严格一致（含数组可变性）。
-
-- **常见错误模式（本仓视为禁止）**
-  - 把 `Effect.Effect` 泛型顺序写成 `Effect.Effect<R, E, A>`，或据此设计别名。
-  - 在业务层直接操作 `Context.Context` 构造“胖 Env 对象”。
-  - 使用旧版 API 形式（如 `Effect.timeoutFail(effect, ...)`、`Effect.config(...)`），或假定 Promise reject 会自动走业务错误通道。
-  - 在 `@effect/platform` HTTP 解码场景中混用 `@effect/schema` 与 `effect/Schema`，或直接把 `ReadonlyArray` 赋给 `Array`。
-  - 定义 Service Tag 时，契约和实现返回结构（尤其数组可变性、错误类型、环境类型）不一致。
-- **API 命名约定 (v3)**
-  - 全面拥抱 `*.make` 风格，强调运行时构造语义，废弃 `*.define`。
-  - 标准范式：
-    - `Store.make("id", { ... })`
-    - `Pattern.make("id", { ... }, ($) => ...)`
-- 关键设计原则：
-  - Intent 只表达业务/交互/信息结构的 **What**，不写组件/API/文件级 **How**；
-  - Flow/Effect 层负责“步骤链 + 服务调用 + 质量约束”，领域算法细节保留在自定义服务实现里；
-  - 平台 UI/CLI/Studio 是未来消费者，本仓库优先保证运行时契约与典型场景写法清晰可用。
-
-- 常用脚本与质量基线：
-  - 根目录脚本：
-    - `pnpm build`：递归调用各子包的 `build` 脚本，用于构建运行时 / React 包等。
-    - `pnpm typecheck`：递归执行 `typecheck`，以 TypeScript 类型检查为准做第一道防线。
-    - `pnpm typecheck:test`：递归执行 `typecheck:test`，对各包的 src + test 进行完整类型检查，作为回归测试前的类型兜底。
-    - `pnpm lint`：运行 ESLint（基于 `eslint.config.mjs`），集成 `@eslint/js`、`typescript-eslint` 与 `@effect/eslint-plugin`，覆盖 Effect import 规范等。
-    - `pnpm lint:fix` / `pnpm format`：在 `lint` 基础上尝试自动修复（含格式与部分 Effect/TS 规则）。
-    - `pnpm test`：使用 Vitest 一次性运行（`vitest run`），**不会进入 watch 模式**。
-    - `pnpm test:turbo`：**默认优先使用**；通过 Turborepo 命中缓存直接跳过未变更包，并强制排除 `browser` 项目（只跑单元/集成测试）。
-  - 子包脚本（关键包）：
-    - `packages/logix-core`：
-      - `pnpm test`：等价于 `vitest run`，用于一次性跑完 core 的测试；
-      - `pnpm test:watch`：进入 Vitest watch 模式，仅供人工本地调试使用，**Agent 禁止调用**。
-      - `pnpm typecheck:test`：使用 `tsconfig.test.json` 对 src+test 做完整类型检查。
-    - `packages/logix-react`：
-      - `pnpm test`：等价于 `vitest run`，一次性跑 React 适配层测试；
-      - `pnpm test -- --project browser`：只运行 Vitest browser 模式下的浏览器集成测试（匹配 `test/browser/**`），依赖 Playwright + `@vitest/browser-playwright`；
-      - `pnpm test:watch`：仅本地人工调试使用，Agent 不得调用；
-      - `pnpm typecheck:test`：检测 React 包的 src+test 类型。
-  - 约定流程：每次进行「大模块改造」（如重构 Flow/Env、重排 React feature 目录、引入新运行时能力）后，至少需要：
-    - 先跑 `pnpm typecheck`，确认类型层面无红线；
-    - 再跑 `pnpm lint`，确认 ESLint（含 Effect 规则）无新告警或告警在可接受范围内，再交接到后续任务。
-    - 测试优先跑 `pnpm test:turbo`；如遇缓存/过滤导致的疑难排错，再回退跑一遍 `pnpm test` 作为对照。
-
-## Lint / Format 约束
-
-### 格式化（oxfmt）
-
-- 统一用 `oxfmt` 格式化（入口：`pnpm format`，只覆盖 `apps` 与 `packages`）。
-- 风格以 `.oxfmtrc.json` 为准（例如：`semi: false`、`singleQuote: true`、`trailingComma: all`、`printWidth: 120`）。
-
-### 静态检查（oxlint / oxc）
-
-- `pnpm lint` 会先跑 `oxlint -c .oxlintrc.json --deny-warnings apps packages`：任何 warning 都会导致 CI/本地失败。
-- `.oxlintrc.json` 已固化为仓库规范（更新以文件为准，下面是“可执行摘要”）：
-  - plugins：`["typescript", "oxc"]`
-  - ignorePatterns：
-    - `**/node_modules/**`、`**/dist/**`、`**/build/**`、`**/coverage/**`、`**/.next/**`、`**/.source/**`、`**/.turbo/**`、`**/.vite/**`
-    - `**/public/**`、`**/.agent/**`、`docs/**`、`packages/logix-sandbox/scripts/**`
-    - `**/test/**`、`**/tests/**`、`**/__tests__/**`、`**/*.test.*`、`**/*.spec.*`
-  - rules（在当前仓库存量下为了降噪，显式关闭）：
-    - `no-unused-vars: off`（大量占位参数/类型别名暂未清理）
-    - `require-yield: off`（Effect.gen / generator 场景里允许“暂不 yield”）
-    - `no-extra-boolean-cast: off`（短期允许 `Boolean(x)` 等写法）
-
-## 测试栈与 @effect/vitest 约定（logix-\*）
-
-- 总体原则：
-  - Vitest 仍作为统一的测试 runner；在所有 Effect-heavy 场景中，`@effect/vitest` 视为一等公民测试 API。
-  - 能用“自动挡”（`it.effect` / `it.scoped` / `it.layer`）就不用到处手写 `Effect.runPromise` + `Effect.provide`；极端/特殊场景可以退回“手动挡”，但应是少数。
-
-- 分包约定：
-  - `packages/logix-core`：
-    - 默认从 `@effect/vitest` 导入 `describe` / `it` / `expect`。
-    - 涉及 Runtime / Layer / 并发 / 时间语义的测试（如 ModuleRuntime / Runtime.make / FlowRuntime / Lifecycle / Debug 等），优先使用 `it.effect` / `it.scoped` / `it.layer` 管理环境与 Scope，禁止在这类用例里散落手写 `Effect.runPromise(...)`。
-    - 纯同步、纯数据结构或简单 helper（如部分 internal 工具）的测试，可以继续写成普通 Vitest 风格（测试体返回 `void`/`Promise`，必要时局部使用 `Effect.runPromise`），不强制包上一层 `it.effect`。
-  - `packages/logix-test`：
-    - 测试与示例一律按“测试即 Effect”写法组织，默认 runner 是 `@effect/vitest` 的 `it.effect` / `it.scoped`，`runTest` 仅在非 Vitest 环境或过渡脚本中使用。
-    - 保持拓扑：`@logixjs/test` 可以依赖 `@logixjs/core`，但 core/runtime 自身测试不得反向依赖 `@logixjs/test`（避免循环依赖），与 `docs/ssot/runtime/logix-test/01-test-kit-design.md` 的说明保持一致。
-  - `packages/logix-sandbox`：
-    - 视为 Runtime Alignment Lab 基础设施的一部分，内部大量使用 Effect / Layer / Stream，新增或重构测试时优先迁向 `@effect/vitest` 风格。
-    - 推荐模式：用 `it.effect` + `it.layer(SandboxClientLayer)`/专用测试 Layer，代替在每个用例中手动 `Effect.runPromise(program.pipe(Effect.provide(layer)))`。
-  - `packages/logix-react`：
-    - React DOM 行为测试（基于 Testing Library、jsdom/happy-dom 的组件交互）可以继续使用 `vitest` 的 `describe` / `it`，在内部通过 Runtime 的 `runPromise` 触发 Effect。
-    - 纯 Runtime / Layer / Config 行为测试（不涉及 DOM）的部分，优先使用 `@effect/vitest`（`it.effect` / `it.scoped` 等），减少样板式的 `ManagedRuntime.make` + `runPromise` 手工编排。
-  - `packages/logix-devtools-react`：
-    - 以 React Devtools UI 行为为主，测试栈以 jsdom + Testing Library + 普通 Vitest 为默认；只有在需要精细控制 Effect 时间线或 Debug Runtime 行为时，才引入 `@effect/vitest` 辅助。
-  - `packages/logix-data`：
-    - 已标记为 Archived PoC，新工作不再投入；如确需补充测试，可按普通 Vitest + 轻量 Effect 用法处理，不再额外演进其 `@effect/vitest` 形态。
-
-- 例外与兜底：
-  - 即使在上述约定下，如果某些“贴近底层实现”的测试（如紧贴 Promise 的错误语义、与第三方库交互的边界）更适合直接写 `Effect.runPromise` 或 `runtime.runPromise`，可以在单个用例中退回“手动挡”；但要保持局部、清晰，避免把 Runner 逻辑散落到整个测试文件。
-  - 当新增涉及 Logix Runtime / Layer / 并发控制 / TestClock 的测试场景时，如不确定如何选型，默认先考虑 `@effect/vitest`，再看是否有必要降级为纯 Vitest。
-
-## 文档编写规范 （apps/docs）
-
-- **渐进式示例展示 (Progressive Examples)**
-  - 在编写场景化教程或示例时，应使用 Fumadocs Tabs 展示不同层次的实现，帮助用户理解本质：
-    1.  **Logic DSL**: 推荐的高层声明式写法 (e.g., `$.onState`)。
-    2.  **Flow API**: 底层流式写法 (e.g., `$.flow.fromState`)。
-    3.  **Raw Effect**: 纯 Effect/Stream 实现 (Mental Model)。
-  - Tab 标题应简洁，如 "Logic DSL", "Flow API", "Raw Effect"。
-
-- **文档定位与分层 (SSoT vs User Docs)**
-  - **内部规范 (SSoT)** -> `docs/specs/`:
-    - 面向：架构师、核心贡献者、Agent。
-    - 内容：架构决策、核心逻辑、设计约束、Drafts。
-    - 风格：严谨、技术深度、包含 "v3/PoC" 等内部术语。
-  - **用户文档 (User Docs)** -> `apps/docs/`:
-    - 面向：最终产品用户、业务开发者。
-    - 内容：使用指南、API 文档、教程、最佳实践。
-    - 风格：易读、产品视角、**禁止**出现 "v3/PoC/内部实现" 等术语。
-
-- **草稿体系 (Drafts System)**
-  - 所有未定稿的方案、调研、灵感应存放在 `docs/specs/drafts`。
-  - 遵循 `drafts-tiered-system` skill 管理 L1-L9 分级。
-  - 成熟后分别归档到 `docs/specs` (规范) 或 `apps/docs` (文档)。
-
-## 工具调用
-
-1. 当你对 Effect-ts 的 api 有疑问时，优先考虑使用 context7 查询最新使用方式
-
-## Active Technologies
-
-- TypeScript 5.9.x（ESM；示例项目 `typescript@~5.9.3`） + pnpm workspace、`effect` v3（override 3.19.13）、`@logixjs/core`、`@logixjs/react`、`@logixjs/sandbox`、Vite、React 19、Monaco Editor (061-playground-editor-intellisense)
-- N/A（类型 bundle 作为前端构建产物；不引入持久化） (061-playground-editor-intellisense)
-
-## Recent Changes
-
-- 061-playground-editor-intellisense: Added TypeScript 5.9.x（ESM；示例项目 `typescript@~5.9.3`） + pnpm workspace、`effect` v3（override 3.19.13）、`@logixjs/core`、`@logixjs/react`、`@logixjs/sandbox`、Vite、React 19、Monaco Editor
+- 若某个设计只是为了补齐“未来可能存在的平台叙事”，但当前不能直接改善 Agent authoring、runtime clarity、performance 或 diagnostics，默认先不做。
+- 若某个静态对象、锚点或 profile 不能显著减少分叉、提升验证质量或换来稳定诊断收益，默认先删掉或后置。
+- 若某个能力会长出第二套 runtime、第二套事务语义、第二套调试事实源，默认拒绝。
+- 若某个保守措施只是为了替假想迁移兜底，默认删除。
+- 若某个公开能力只能作为专家逃生口存在，但又会明显稀释主链心智，默认继续下沉到内部实现或领域 DSL，不在公开 surface 保留独立家族。

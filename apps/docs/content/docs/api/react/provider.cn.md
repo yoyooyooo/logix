@@ -1,68 +1,74 @@
 ---
 title: RuntimeProvider
-description: 在 React 中提供 Logix Runtime 上下文
+description: 向 React 子树提供 Logix runtime。
 ---
 
-`RuntimeProvider` 是 React 侧唯一的“能力注入点”：把 Logix `ManagedRuntime` 注入到 React Context，让下层 hooks 能解析模块、订阅状态、派发动作。
+`RuntimeProvider` 用来向 React 子树提供 Logix runtime。
 
-## 先记住这张能力地图
+它是当前 canonical React host API 的前提：
 
-- 解析句柄：`useModule` / `useLocalModule`
-- 订阅渲染：`useSelector`
-- 派发动作：`useDispatch`（以及 `handle.dispatch`）
-- imports scope：`handle.imports.get` / `useImportedModule`
-- 逃生口：`useRuntime`（需要直接跑 Effect/调试时）
+- `useModule(...)`
+- `useImportedModule(...)`
+- `useSelector(...)`
+- `useDispatch(...)`
 
-> 所有 `@logixjs/react` hooks 都必须在 `RuntimeProvider` 子树内调用。
-
-## 最小用法
+## 用法
 
 ```tsx
-	import { RuntimeProvider } from '@logixjs/react'
-	import * as Logix from '@logixjs/core'
-	import { Layer } from 'effect'
-import { RootImpl } from './root-module'
+import { RuntimeProvider } from "@logixjs/react"
+import * as Logix from "@logixjs/core"
+import { Layer } from "effect"
+import { RootProgram } from "./root-program"
 
-// 推荐：使用 Root ModuleImpl + Logix.Runtime.make 构造应用级 Runtime
-const appRuntime = Logix.Runtime.make(RootImpl, {
-  layer: Layer.empty, // 这里也可以合并 HttpClient / Config 等服务 Layer
+const runtime = Logix.Runtime.make(RootProgram, {
+  layer: Layer.empty,
 })
 
-function Root() {
+export function Root() {
   return (
-    <RuntimeProvider runtime={appRuntime}>
+    <RuntimeProvider runtime={runtime}>
       <App />
     </RuntimeProvider>
   )
 }
 ```
 
-## API
+## Props
 
-### `<RuntimeProvider runtime>`
+### `runtime`
 
-- `runtime`: 任意 `ManagedRuntime` 实例（来自 `effect`），在典型的应用/页面场景下，通常是 `Logix.Runtime.make(root, { layer })` 的返回值（`root` 可为 program module 或其 `.impl`）。
-  - 推荐：使用 Root ModuleImpl + `Logix.Runtime.make` 定义应用级 Runtime，再传入 `RuntimeProvider`。
-  - 例外：若你的项目已经在其他地方创建了通用的 `ManagedRuntime`（例如只作为 Effect 宿主，不关心模块树），也可以直接传入。
+必填。
 
-### `<RuntimeProvider layer?>`（可选）
+这里可以传任意 `ManagedRuntime`。
+在常见的应用或页面场景里，它通常来自 `Logix.Runtime.make(...)`。
 
-- `layer`: 额外注入到 React 子树的 Layer（例如额外的 Config/Logger），它必须是“闭合环境”的 Layer（`R = never`），避免在组件树里引入未满足的依赖。
+### `layer`
 
-### `<RuntimeProvider fallback?>`（强烈建议）
+可选。
 
-- `fallback`: Provider gating / Suspense 等待时显示的 fallback。推荐统一只用一个 `fallback`，避免多处 fallback 造成闪烁与心智分裂（详见 [React 集成（启动策略与冷启动优化）](../../guide/essentials/react-integration)）。
+向 React 子树附加一个闭合的 `Layer`。
 
-### `<RuntimeProvider policy?>`（可选）
+### `fallback`
 
-- `policy`: Provider 的启动策略（`suspend` / `sync` / `defer + preload`），建议直接阅读 [React 集成（启动策略与冷启动优化）](../../guide/essentials/react-integration)。
+可选。
 
-## Context
+用于 provider 在等待异步启动路径时显示的 fallback。
 
-`RuntimeProvider` 会通过 React Context 注入：
+### `policy`
 
-- **Runtime**: 全局 Effect 运行时。
-- **Scope**: 根 Scope。
-- **Store**: 全局状态存储。
+可选。
 
-所有下层组件（通过 `useModule` 等）都会自动连接到这个 Runtime。
+控制 provider 的启动行为，例如 `sync`、`suspend` 或 `defer + preload`。
+
+## 说明
+
+- `RuntimeProvider` 定义这棵子树可见的 runtime scope。
+- 它不负责选择 program。
+- 它不定义第二条 control plane。
+- `@logixjs/react` 的 hooks 都必须运行在 `RuntimeProvider` 子树内。
+
+## 相关页面
+
+- [useModule](./use-module)
+- [useSelector](./use-selector)
+- [useDispatch](./use-dispatch)

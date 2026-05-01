@@ -7,10 +7,10 @@
 
 ## 命名矩阵（本特性裁决）
 
-- `ModuleDef`：`Logix.Module.make(...)` 返回；带 `.tag`；可 `.logic(...)` 产出逻辑值；`.implement(...)` 产出 `Module`；不带 `.impl`。
-- `Module`：wrap module（通常由 `ModuleDef.implement(...)` 或领域工厂返回）；带 `.tag` + `.impl`；支持 `withLogic/withLayers`；`.logic(...)` 仍只产出逻辑值。
+- `Module`：`Logix.Module.make(...)` 返回；带 `.tag`；可 `.logic(...)` 产出逻辑值；不带 `.impl`。
+- `Program`：`Logix.Program.make(Module, config)` 返回；支持 `withLogic/withLayers`；作为装配期业务单元进入 Runtime 与 React 局部实例入口。
 - `ModuleTag`：身份锚点（Context.Tag）；用于 Env 注入与“全局实例”解析。
-- `ModuleImpl`：装配蓝图（`layer` + imports/processes 等）；用于创建局部实例。
+- `Program`：装配对象；通过内部 runtime blueprint 承接 layer/imports 等实现细节；用于创建局部实例。
 - `ModuleRuntime`：运行时实例（真正的“实例”语义）。
 - `ModuleHandle`：`yield* $.use(...)` 返回的只读句柄（可含 controller 等扩展）。
 - `ModuleRef`：React `useModule(...)` 返回的 ref（含 state/actions/dispatch + 扩展）。
@@ -48,7 +48,7 @@
 
 ### User Story 3 - 迁移可控且心智模型一致 (Priority: P3)
 
-维护者希望从现有的“领域蓝图（含 `.module/.impl`）+ 手工包装”迁移到 Module（定义对象）时，能够明确知道哪些用法发生变化、如何最小代价迁移，以及迁移后在逻辑/装配/调试层面拥有一致的心智模型。
+维护者希望从现有的“领域蓝图 + 手工包装”迁移到 `Module -> Program -> Runtime` 主链时，能够明确知道哪些用法发生变化、如何最小代价迁移，以及迁移后在逻辑/装配/调试层面拥有一致的心智模型。
 
 **Why this priority**: 本仓允许破坏性演进，但必须可交接；迁移说明是并行开发的安全阀。
 
@@ -71,12 +71,12 @@
 
 ### Functional Requirements
 
-- **FR-001**: 系统 MUST 引入新的 `Module`（定义对象）概念（由当前的领域蓝图形态演进而来），作为领域能力的统一承载：包含 `ModuleTag` 身份锚点、可装配蓝图（ModuleImpl）、以及可选领域扩展（例如 controller/policies/descriptor）。其中 `actions` 语义复用模块 action tags（`ModuleHandle.actions`），不引入第二套同名 actions。
+- **FR-001**: 系统 MUST 引入新的 `Module`（定义对象）概念（由当前的领域蓝图形态演进而来），作为领域能力的统一承载：包含 `ModuleTag` 身份锚点、可装配蓝图（Program）、以及可选领域扩展（例如 controller/policies/descriptor）。其中 `actions` 语义复用模块 action tags（`ModuleHandle.actions`），不引入第二套同名 actions。
 - **FR-002**: `Module` 提供的 `logic` 能力 MUST 保持与旧 `Module.logic` 一致的语义（旧 `Module` 在本特性中更名为 `ModuleTag`）：仅产出可复用的逻辑单元（值），不隐式修改/挂载到蓝图。
 - **FR-003**: `Module` MUST 提供 `withLogic/withLogics` 用于将逻辑单元挂载到该领域模块的“可运行形态”上，并返回新的 `Module`（不可变）。
 - **FR-004**: `Module` MUST 提供 `withLayer/withLayers` 用于注入依赖能力，并返回新的 `Module`（不可变）。
 - **FR-005**: `Module` MUST 可被“逻辑侧 use”直接消费（不要求调用方手动取 `.tag`），并在返回的句柄上保持完整的 `ModuleHandle` 能力（含 `actions`），同时按需附加领域扩展（例如 controller）。同时，在 `Module.logic(build, { id? })` 中传入的 `$` MUST 提供 `$.self` 用于获取当前 Module 的句柄（等价于 `yield* $.use(module)`），以避免在本模块逻辑中反复显式传入自身 module。
-- **FR-006**: `Module` MUST 可被“装配/运行侧入口”直接消费（不要求调用方手动取 `.impl`），从而支持“只创建领域模块对象也能像模块一样玩”的用法。
+- **FR-006**: `Program` MUST 成为装配/运行侧入口的直接消费对象，从而避免调用方读取内部 runtime blueprint。
 - **FR-007**: `Form.make()` MUST 产出 `Module`（Form 领域模块），并确保其 actions（模块 action dispatchers）/controller 在逻辑侧与装配侧具有一致可用性。
 - **FR-008**: 系统 MUST 支持至少一个额外领域工厂（例如 CRUD）以验证“领域工厂返回的也是 `Module`”，并能承载该领域的 action tags（通过 module actionMap）与逻辑挂载能力（可选 controller），从而替代早期 pattern 抽象。
 - **FR-009**: 系统 MUST 提供迁移说明与示例更新，覆盖：旧蓝图形态到 `Module`（定义对象）的映射、常见用法替换、以及不提供兼容层时的破坏性变更说明；对于“Module 语义从 Tag（身份锚点）切换为 wrap（定义对象）”导致的全仓迁移（典型：原先可 `yield* SomeModule` / `Layer.succeed(SomeModule, ...)`，迁移后需 `yield* $.use(SomeModule)` 或显式 `.tag`），MUST 提供 codemod（建议基于 ts-morph）以降低人工迁移出错率。codemod MUST 支持 dry-run/check 模式与变更摘要输出；codemod MUST 有 fixture 级测试用例；迁移完成后允许删除该 codemod（不作为长期兼容层保留）。

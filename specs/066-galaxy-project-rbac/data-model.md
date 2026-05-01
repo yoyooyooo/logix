@@ -1,6 +1,6 @@
 # Data Model: 066 logix-galaxy 项目管理与 RBAC（成员/角色/权限/成员组）
 
-**Feature**: `specs/066-galaxy-project-rbac/spec.md`  
+**Feature**: `specs/066-galaxy-project-rbac/spec.md`
 **Date**: 2025-12-31
 
 ## 1) 范围

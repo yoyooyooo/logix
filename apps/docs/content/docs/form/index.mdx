@@ -1,29 +1,53 @@
 ---
 title: Form
-description: Learn @logixjs/form step by step - model, validation, field arrays, and performance guidance.
+description: Form is the Logix domain package for editable input state, validation, submit gating, and list identity.
 ---
 
-`@logixjs/form` is the “form domain package” in the Logix ecosystem. It hosts a form’s **values / errors / UI / submit state** as a regular module inside the Runtime, so your form and the rest of your application share the same:
+`@logixjs/form` is the Logix domain package for editable input state.
 
-- Runtime lifecycle and transaction semantics (at most one observable commit per interaction)
-- Debugging and replay (DevTools timeline, error tree, state snapshots)
-- Declarative derivation / validation / async resources (Trait / Resource / Effect)
+It defines the semantics of:
 
-## Recommended order (from basics to advanced)
+- editable values
+- validation and error placement
+- submit gating and decode
+- list structure editing and row ownership
 
-1. [Overview: the Form model](/docs/form/introduction)
-2. [Quick Start](/docs/form/quick-start)
-3. [Rules DSL（z）](/docs/form/rules)
-4. [Validation & errors](/docs/form/validation)
-5. [Field arrays](/docs/form/field-arrays)
-6. [Migration guide (traits → rules)](/docs/form/migration)
-7. [Derived and linked fields (derived / Trait)](/docs/form/derived)
-8. [Schema validation & error mapping](/docs/form/schema)
-9. [Performance & optimization](/docs/form/performance)
+React consumption continues to follow the core host law through `RuntimeProvider`, `useModule(...)`, and `useSelector(...)`.
 
-## What you’ll get
+## Contents
 
-- Understand why `Form.make(...)` returns a `Blueprint`, and how to wire it into the Runtime like any other module
-- Learn why the error tree uses the `$list/rows[]` convention, and how to keep errors and UI state stable when rows are added/removed/reordered
-- Use `validateOn / reValidateOn` to design validation strategies for “before submit / after submit”, and trigger precise validation via a controller outside React components
-- In large forms/lists, reduce render and validation cost with selector subscriptions and stable identity
+1. [Introduction](/docs/form/introduction)
+2. [Quick start](/docs/form/quick-start)
+3. [Instances](/docs/form/instances)
+4. [Sources](/docs/form/sources)
+5. [Companion](/docs/form/companion)
+6. [Rules](/docs/form/rules)
+7. [Validation](/docs/form/validation)
+8. [Selectors and support facts](/docs/form/selectors)
+9. [Field arrays](/docs/form/field-arrays)
+10. [Derived](/docs/form/derived)
+11. [Schema](/docs/form/schema)
+12. [Performance](/docs/form/performance)
+13. [When to use](/docs/form/when-to-use)
+
+## Scope
+
+The current public route is intentionally small:
+
+- author with `Form.make(...)`
+- mount through the core React host
+- read with `useSelector(...)`
+- write through the form handle
+
+Selector support facts, field explanations, and row-owned companion reads stay on the same `useSelector(...)` host route.
+Form does not add Form-owned React hooks, public path objects, public row owner tokens, or generic fact namespaces for these reads.
+
+The default narrative order remains:
+
+- quick start
+- instance lifecycle
+- source / remote fact
+- companion / local support fact
+- field arrays / row identity
+
+Additional wrapper families, package-local React helpers, and alternative form-specific hook families are outside the current canonical surface.

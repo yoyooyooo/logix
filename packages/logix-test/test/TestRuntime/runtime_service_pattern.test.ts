@@ -2,15 +2,14 @@ import { describe, it, expect } from 'vitest'
 import { Effect, Schema } from 'effect'
 import { TestClock } from 'effect/testing'
 import * as Logix from '@logixjs/core'
-import { runTest } from '../../src/TestRuntime.js'
-import * as TestProgram from '../../src/TestProgram.js'
+import { TestProgram } from '../../src/index.js'
 
 const Counter = Logix.Module.make('RuntimeAsService.Counter', {
   state: Schema.Struct({ count: Schema.Number }),
   actions: { inc: Schema.Void },
 })
 
-const CounterLogic = Counter.logic(($) =>
+const CounterLogic = Counter.logic('counter-logic', ($) =>
   Effect.gen(function* () {
     const t1 = yield* TestClock.testClockWith((clock) => clock.currentTimeMillis)
     yield* Effect.log(`LOGIC TIME 1: ${t1}`)
@@ -27,13 +26,13 @@ const CounterLogic = Counter.logic(($) =>
 
 describe('Runtime as Service Prototype', () => {
   it('should share TestClock and handle concurrency', async () => {
-    const program = Counter.implement({
+    const program = Logix.Program.make(Counter, {
       initial: { count: 0 },
       logics: [CounterLogic],
     })
 
-    const result = await runTest(
-      TestProgram.runProgram(program.impl, (api) =>
+    const result = await TestProgram.runTest(
+      TestProgram.runProgram(program, (api) =>
         Effect.gen(function* () {
           // Give the logic-side watcher a startup window.
           yield* api.advance('10 millis')

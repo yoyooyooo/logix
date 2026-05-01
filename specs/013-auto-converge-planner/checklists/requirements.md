@@ -1,7 +1,7 @@
 # Specification Quality Checklist: 013 Auto Converge Planner（无视场景的及格线）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-16  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-16
 **Feature**: `specs/013-auto-converge-planner/spec.md`
 
 ## Content Quality

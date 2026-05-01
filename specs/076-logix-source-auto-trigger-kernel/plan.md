@@ -1,32 +1,32 @@
 # Implementation Plan: Source Auto-Trigger Kernel（dirtyPaths + depsIndex）
 
-**Branch**: `076-logix-source-auto-trigger-kernel` | **Date**: 2026-01-05 | **Spec**: [spec.md](./spec.md)  
+**Branch**: `076-logix-source-auto-trigger-kernel` | **Date**: 2026-01-05 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `specs/076-logix-source-auto-trigger-kernel/spec.md`
 
 ## Summary
 
-把 “source 自动刷新” 从 feature 包的 watcher 胶水（监听 action / 反查 trait）下沉到 `@logixjs/core` 内核：
+把 “source 自动刷新” 从 feature 包的 watcher 胶水（监听 action / 反查 field）下沉到 `@logixjs/core` 内核：
 
 - 以 `dirtyPaths + depsIndex` 增量定位受影响 sources（避免线性扫描）；
 - 将 onMount/onDepsChange + debounce 的受限控制律固化为内核语义（可诊断/可回放/可预算，且对齐 tick 参考系）；
 - 迁移 `@logixjs/query`/`@logixjs/form`：删除/收敛默认 auto-trigger 逻辑，只保留显式手动 refresh 作为 escape hatch；
-- 明确边界：复杂工作流（delay/retry/timeout/分支）升级到 075 Workflow（对外 DX 入口 `Workflow`；不强塞进 trait meta）。
+- 明确边界：复杂工作流（delay/retry/timeout/分支）升级到 075 Workflow（对外 DX 入口 `Workflow`；不强塞进 field meta）。
 
 ## 073/075 对齐（防漂移）
 
 - 参考系：以 073 的 `tickSeq` 定义“同时性”；任何自动触发/时间语义必须能归因到 tick 证据链（禁止影子时间线）。
-- 分层：Trait 描述绑定事实（受限几何）；Source Auto-Trigger 是内核提供的 `Π_source`；通用 `Π_general` 由 075 Workflow 提供（权威输入 `WorkflowDef`，DX 入口 `Workflow`）。
+- 分层：Field 描述绑定事实（受限几何）；Source Auto-Trigger 是内核提供的 `Π_source`；通用 `Π_general` 由 075 Workflow 提供（权威输入 `WorkflowDef`，DX 入口 `Workflow`）。
 - 事务：事务窗口禁 IO；auto-trigger 只能 enqueue/dispatch；真正 IO 由 source refresh runtime 在窗口外执行。
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.9.x（ESM；以仓库 `package.json` 为准）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（迁移包）`@logixjs/query`、`@logixjs/form`  
-**Storage**: N/A  
-**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）  
-**Target Platform**: Node.js 20+ + modern browsers（若需要浏览器 perf 证据则复用 073 的矩阵）  
-**Performance Goals**: 每次提交 `O(|dirtyPaths| + |affectedSources|)`；diagnostics=off 近零成本；debounce 不引入无界 fiber 洪峰  
-**Constraints**: 统一最小 IR（Static IR + Dynamic Trace）；稳定标识（tickSeq/instanceId/txnSeq/opSeq）；事务窗口禁 IO；禁止“从静态里推断动态”的反射式胶水  
+**Language/Version**: TypeScript 5.9.x（ESM；以仓库 `package.json` 为准）
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（迁移包）`@logixjs/query`、`@logixjs/form`
+**Storage**: N/A
+**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）
+**Target Platform**: Node.js 20+ + modern browsers（若需要浏览器 perf 证据则复用 073 的矩阵）
+**Performance Goals**: 每次提交 `O(|dirtyPaths| + |affectedSources|)`；diagnostics=off 近零成本；debounce 不引入无界 fiber 洪峰
+**Constraints**: 统一最小 IR（Static IR + Dynamic Trace）；稳定标识（tickSeq/instanceId/txnSeq/opSeq）；事务窗口禁 IO；禁止“从静态里推断动态”的反射式胶水
 
 ## Constitution Check（对齐口径）
 
@@ -41,11 +41,11 @@
 
 ### Phase 1: Contracts & API（先固化语义）
 
-- 定义 `StateTrait.source` 的 auto-trigger policy（替代现有 `triggers/debounceMs` 的反射式解释口径）。
+- 定义 `FieldKernel.source` 的 auto-trigger policy（替代现有 `triggers/debounceMs` 的反射式解释口径）。
 - 统一触发语义与默认值：
   - 默认开启 onMount + onDepsChange；
   - `autoRefresh: false` 表示 manual-only（仍允许显式触发 refresh；Platform-Grade/LLM 出码推荐通过 `callById('logix/kernel/sourceRefresh')` 保持可解释锚点；`call(KernelPorts.sourceRefresh)` 仅作为 TS sugar）。
-- 在 StateTrait Static IR 中补齐 policy 输出（复用 `policy` 字段，不新增平行 IR）。
+- 在 FieldKernel Static IR 中补齐 policy 输出（复用 `policy` 字段，不新增平行 IR）。
 
 ### Phase 2: Core Implementation（depsIndex + kernel）
 
@@ -64,7 +64,7 @@
   - 移除 `auto-trigger` watcher（或退化为纯 manual helper）。
   - source refresh 实现内部吸收“cache peek skip loading”（避免 UI jitter），不再需要外层 hydrate watcher。
 - `@logixjs/form`：
-  - 移除对 `TraitLifecycle.makeSourceWiring` 的依赖（或让其成为 core 内部实现）。
+  - 移除对 `FieldLifecycle.makeSourceWiring` 的依赖（或让其成为 core 内部实现）。
 
 ### Phase 4: Evidence & Gates（收口）
 
@@ -106,17 +106,17 @@ specs/076-logix-source-auto-trigger-kernel/
 ```text
 packages/logix-core/
 ├── src/
-│   ├── StateTrait.ts                          # UPDATE: source policy surface
+│   ├── FieldKernel.ts                          # UPDATE: source policy surface
 │   └── internal/
-│       ├── state-trait/build.ts               # UPDATE: precompute depsIndex
-│       ├── trait-lifecycle/index.ts           # UPDATE/REPLACE: remove reflective makeSourceWiring
+│       ├── state-field/build.ts               # UPDATE: precompute depsIndex
+│       ├── field-lifecycle/index.ts           # UPDATE/REPLACE: remove reflective makeSourceWiring
 │       └── runtime/core/SourceAutoTrigger.ts  # NEW: consume dirtyPaths + schedule refresh (tick-aware)
 ├── test/
 │   └── internal/runtime/SourceAutoTrigger.*.test.ts
 
 packages/logix-query/
 ├── src/
-│   ├── Traits.ts                              # UPDATE: stop lowering triggers/debounce into StateTrait meta
+│   ├── Fields.ts                              # UPDATE: stop lowering triggers/debounce into FieldKernel meta
 │   └── internal/logics/auto-trigger.ts        # DELETE or reduce to manual helper
 └── test/
     └── Query.AutoTriggerKernel.*.test.ts

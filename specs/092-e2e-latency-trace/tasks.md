@@ -1,7 +1,7 @@
 # Tasks: 092 E2E Latency Trace
 
-**Input**: `specs/092-e2e-latency-trace/spec.md`, `specs/092-e2e-latency-trace/plan.md`  
-**Prerequisites**: `specs/088-async-action-coordinator/`、`specs/089-optimistic-protocol/`、`specs/090-suspense-resource-query/`  
+**Input**: `specs/092-e2e-latency-trace/spec.md`, `specs/092-e2e-latency-trace/plan.md`
+**Prerequisites**: `specs/088-async-action-coordinator/`、`specs/089-optimistic-protocol/`、`specs/090-suspense-resource-query/`
 **Tests**: 必须包含 diagnostics off/on 的回归门禁与 browser-level 断言。
 
 ## Phase 1: Setup（文档与展示入口）

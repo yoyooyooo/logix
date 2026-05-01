@@ -36,7 +36,7 @@
   4. **有 `Query.Engine.layer` + 有 `Query.Engine.middleware`**：外部引擎接管 fetch（缓存/去重/失效），推荐默认（TanStack 为默认实现）。
 
 - 当调用方未启用任何“引擎接管点”middleware（见 `Query.Engine.middleware`）时，Query 领域的降解路径 MUST 仍然成立：
-  - Query 规则降解为 `StateTrait.source`；
+  - Query 规则降解为 `FieldKernel.source`；
   - source 的加载通过 `ResourceSpec.load` 执行；
   - 不具备外部引擎的缓存/去重能力，但语义仍可回放与可解释。
 - 当调用方启用了 `Query.Engine.middleware(...)` 时：
@@ -83,7 +83,7 @@ export interface EngineService {
 ### 输入前提
 
 - 仅对满足以下条件的 EffectOp 生效：
-  - `kind = "trait-source" | "service"`（source 运行时是主入口，必须覆盖）
+  - `kind = "field-source" | "service"`（source 运行时是主入口，必须覆盖）
   - `meta.resourceId` 存在
   - `meta.keyHash` 存在（稳定键；写回门控的共同口径）
 

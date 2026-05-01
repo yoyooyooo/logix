@@ -1,7 +1,9 @@
 import * as Logix from '@logixjs/core'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
+import * as CoreEvidence from '@logixjs/core/repo-internal/evidence-api'
 import type { Schema } from 'effect'
 import type { RulesSpec } from '../dsl/rules.js'
-import { traits as traitsDsl } from '../dsl/traits.js'
+import { fields as fieldsDsl } from '../dsl/fields.js'
 import * as Rule from '../../Rule.js'
 
 export type RulesManifest = Readonly<{
@@ -26,7 +28,7 @@ export type RuleDescriptor = Readonly<{
   readonly scope: RuleScope
   readonly deps: ReadonlyArray<string>
   readonly validateOn?: ReadonlyArray<Rule.AutoValidateOn>
-  readonly meta?: Logix.Observability.JsonValue
+  readonly meta?: CoreEvidence.JsonValue
 }>
 
 const assertCanonicalValuePath = (label: string, path: string): void => {
@@ -69,9 +71,9 @@ const assertValidListIdentity = (identity: Rule.ListIdentityPolicy, listPath: st
   throw new Error(`[Form.make] Invalid identity.mode for "${listPath}" (got "${String(mode)}")`)
 }
 
-export const compileRulesToTraitSpec = <TValues extends object>(
+export const compileRulesToFieldSpec = <TValues extends object>(
   rulesSpec: RulesSpec<TValues>,
-): Logix.StateTrait.StateTraitSpec<TValues> => {
+): FieldContracts.FieldSpec<TValues> => {
   if (!rulesSpec || (rulesSpec as any)._tag !== 'FormRulesSpec') {
     throw new Error(`[Form.make] "rules" must be a FormRulesSpec (from Form.rules(...)/rules.schema(...))`)
   }
@@ -155,6 +157,72 @@ export const compileRulesToTraitSpec = <TValues extends object>(
     declared.add(k)
   }
 
+  const withListCardinality = <TItem>(
+    input: Rule.RuleInput<ReadonlyArray<TItem>, any> | undefined,
+    params: {
+      readonly minItems?: Rule.MinItemsDecl
+      readonly maxItems?: Rule.MaxItemsDecl
+    },
+  ): Rule.RuleInput<ReadonlyArray<TItem>, any> | undefined => {
+    if (params.minItems === undefined && params.maxItems === undefined) return input
+
+    const cardinalityValidate: Record<string, Rule.RuleEntry<ReadonlyArray<TItem>, any>> = {}
+
+    if (params.minItems !== undefined) {
+      const validateMinItems = Rule.minLength(params.minItems)
+      cardinalityValidate.minItems = {
+        validate: (value: ReadonlyArray<TItem>) => ({
+          $list: validateMinItems(value),
+        }),
+      }
+    }
+
+    if (params.maxItems !== undefined) {
+      const validateMaxItems = Rule.maxLength(params.maxItems)
+      cardinalityValidate.maxItems = {
+        validate: (value: ReadonlyArray<TItem>) => ({
+          $list: validateMaxItems(value),
+        }),
+      }
+    }
+
+    if (input === undefined) {
+      return { validate: cardinalityValidate } as Rule.RuleInput<ReadonlyArray<TItem>, any>
+    }
+
+    if (typeof input === 'function') {
+      return {
+        validate: {
+          validate: input,
+          ...cardinalityValidate,
+        },
+      } as Rule.RuleInput<ReadonlyArray<TItem>, any>
+    }
+
+    if (input && typeof input === 'object' && !Array.isArray(input)) {
+      const currentValidate = (input as any).validate
+      const nextValidate =
+        typeof currentValidate === 'function'
+          ? {
+              validate: currentValidate,
+              ...cardinalityValidate,
+            }
+          : currentValidate && typeof currentValidate === 'object' && !Array.isArray(currentValidate)
+            ? {
+                ...currentValidate,
+                ...cardinalityValidate,
+              }
+            : cardinalityValidate
+
+      return {
+        ...input,
+        validate: nextValidate,
+      } as Rule.RuleInput<ReadonlyArray<TItem>, any>
+    }
+
+    return input
+  }
+
   for (const decl of decls as ReadonlyArray<Rule.RulesDecl<TValues>>) {
     if (!decl || typeof decl !== 'object') continue
 
@@ -185,7 +253,7 @@ export const compileRulesToTraitSpec = <TValues extends object>(
             ...(writebackPath ? { path: writebackPath } : {}),
           },
         },
-      } satisfies Logix.StateTrait.StateTraitEntry<any, any>
+      } satisfies FieldContracts.FieldEntry<any, any>
 
       continue
     }
@@ -201,7 +269,7 @@ export const compileRulesToTraitSpec = <TValues extends object>(
           rules,
           writeback: { kind: 'errors' },
         },
-      } satisfies Logix.StateTrait.StateTraitEntry<any, any>
+      } satisfies FieldContracts.FieldEntry<any, any>
       continue
     }
 
@@ -218,15 +286,18 @@ export const compileRulesToTraitSpec = <TValues extends object>(
       assertValidListIdentity(identity, listPath)
 
       const itemInput = (decl as any).item as Rule.RuleInput<any, any> | undefined
-      const listInput = (decl as any).list as Rule.RuleInput<any, any> | undefined
+      const listInput = withListCardinality((decl as any).list as Rule.RuleInput<any, any> | undefined, {
+        minItems: (decl as any).minItems as Rule.MinItemsDecl | undefined,
+        maxItems: (decl as any).maxItems as Rule.MaxItemsDecl | undefined,
+      })
 
       const itemRules = itemInput ? (Rule.make(itemInput as any) as any) : undefined
       const listRules = listInput ? (Rule.make(listInput as any) as any) : undefined
 
-      spec[listPath] = Logix.StateTrait.list({
+      spec[listPath] = FieldContracts.fieldList({
         identityHint: (identity as any).mode === 'trackBy' ? { trackBy: String((identity as any).trackBy) } : undefined,
-        item: itemRules ? Logix.StateTrait.node({ check: itemRules }) : undefined,
-        list: listRules ? Logix.StateTrait.node<ReadonlyArray<any>>({ check: listRules }) : undefined,
+        item: itemRules ? FieldContracts.fieldNode({ check: itemRules }) : undefined,
+        list: listRules ? FieldContracts.fieldNode<ReadonlyArray<any>>({ check: listRules }) : undefined,
       })
 
       continue
@@ -272,12 +343,12 @@ const normalizeRuleDeps = (deps: unknown): ReadonlyArray<string> => {
 
 export const rulesManifestWarningsBase = (params: {
   readonly rules?: unknown
-  readonly traits?: unknown
+  readonly fields?: unknown
 }): ReadonlyArray<string> => {
   const warnings: Array<string> = []
-  if (params.rules && params.traits) {
+  if (params.rules && params.fields) {
     warnings.push(
-      `[Form.make] 同时传入了 "rules" 与 "traits"：推荐将校验迁移到 rules；traits 仅保留 computed/source/link 或必要的高级声明（便于性能/诊断对照）。`,
+      `[Form.make] 同时传入了 "rules" 与 "fields"：推荐将校验迁移到 rules；字段声明仅保留 computed/source/link 或必要的高级能力（便于性能/诊断对照）。`,
     )
   }
   return warnings
@@ -287,9 +358,9 @@ export const buildRulesManifest = <TValues extends object>(params: {
   readonly moduleId: string
   readonly valuesSchema: Schema.Schema<TValues>
   readonly rules?: RulesSpec<TValues>
-  readonly traits?: Logix.StateTrait.StateTraitSpec<TValues>
+  readonly fields?: FieldContracts.FieldSpec<TValues>
 }): RulesManifest => {
-  type Source = 'rules' | 'traits' | 'schema-bridge'
+  type Source = 'rules' | 'fields' | 'schema-bridge'
 
   const listsByPath = new Map<string, { path: ReadonlyArray<string>; identity: Rule.ListIdentityPolicy }>()
   const rulesById = new Map<string, RuleDescriptor>()
@@ -306,7 +377,7 @@ export const buildRulesManifest = <TValues extends object>(params: {
     rulesById.set(rule.ruleId, rule)
   }
 
-  const ruleMeta = (source: Source): Logix.Observability.JsonValue => ({ source })
+  const ruleMeta = (source: Source): CoreEvidence.JsonValue => ({ source })
 
   const emitRuleSet = (params2: {
     readonly source: Source
@@ -328,6 +399,72 @@ export const buildRulesManifest = <TValues extends object>(params: {
         meta: ruleMeta(params2.source),
       })
     }
+  }
+
+  const withListCardinality = <TItem>(
+    input: Rule.RuleInput<ReadonlyArray<TItem>, any> | undefined,
+    params2: {
+      readonly minItems?: Rule.MinItemsDecl
+      readonly maxItems?: Rule.MaxItemsDecl
+    },
+  ): Rule.RuleInput<ReadonlyArray<TItem>, any> | undefined => {
+    if (params2.minItems === undefined && params2.maxItems === undefined) return input
+
+    const cardinalityValidate: Record<string, Rule.RuleEntry<ReadonlyArray<TItem>, any>> = {}
+
+    if (params2.minItems !== undefined) {
+      const validateMinItems = Rule.minLength(params2.minItems)
+      cardinalityValidate.minItems = {
+        validate: (value: ReadonlyArray<TItem>) => ({
+          $list: validateMinItems(value),
+        }),
+      }
+    }
+
+    if (params2.maxItems !== undefined) {
+      const validateMaxItems = Rule.maxLength(params2.maxItems)
+      cardinalityValidate.maxItems = {
+        validate: (value: ReadonlyArray<TItem>) => ({
+          $list: validateMaxItems(value),
+        }),
+      }
+    }
+
+    if (input === undefined) {
+      return { validate: cardinalityValidate } as Rule.RuleInput<ReadonlyArray<TItem>, any>
+    }
+
+    if (typeof input === 'function') {
+      return {
+        validate: {
+          validate: input,
+          ...cardinalityValidate,
+        },
+      } as Rule.RuleInput<ReadonlyArray<TItem>, any>
+    }
+
+    if (input && typeof input === 'object' && !Array.isArray(input)) {
+      const currentValidate = (input as any).validate
+      const nextValidate =
+        typeof currentValidate === 'function'
+          ? {
+              validate: currentValidate,
+              ...cardinalityValidate,
+            }
+          : currentValidate && typeof currentValidate === 'object' && !Array.isArray(currentValidate)
+            ? {
+                ...currentValidate,
+                ...cardinalityValidate,
+              }
+            : cardinalityValidate
+
+      return {
+        ...input,
+        validate: nextValidate,
+      } as Rule.RuleInput<ReadonlyArray<TItem>, any>
+    }
+
+    return input
   }
 
   // 1) rulesSpec（decl list）→ lists + rules
@@ -437,7 +574,10 @@ export const buildRulesManifest = <TValues extends object>(params: {
         const listFieldPath = toFieldPathSegments('list path', listPath)
 
         const itemInput = (decl as any).item as Rule.RuleInput<any, any> | undefined
-        const listInput = (decl as any).list as Rule.RuleInput<any, any> | undefined
+        const listInput = withListCardinality((decl as any).list as Rule.RuleInput<any, any> | undefined, {
+          minItems: (decl as any).minItems as Rule.MinItemsDecl | undefined,
+          maxItems: (decl as any).maxItems as Rule.MaxItemsDecl | undefined,
+        })
 
         if (itemInput) {
           const itemRules = Rule.make(itemInput as any)
@@ -464,10 +604,10 @@ export const buildRulesManifest = <TValues extends object>(params: {
     }
   }
 
-  // 2) traitsBase（normalized）→ lists + rules（best-effort）
-  const traitsSpec = params.traits ? (traitsDsl(params.valuesSchema)(params.traits) as any) : undefined
-  if (traitsSpec && typeof traitsSpec === 'object') {
-    for (const [rawPath, value] of Object.entries(traitsSpec as any)) {
+  // 2) field declarations（normalized）→ lists + rules（best-effort）
+  const fieldsSpec = params.fields ? (fieldsDsl(params.valuesSchema)(params.fields) as any) : undefined
+  if (fieldsSpec && typeof fieldsSpec === 'object') {
+    for (const [rawPath, value] of Object.entries(fieldsSpec as any)) {
       const path = String(rawPath ?? '').trim()
       if (!path) continue
 
@@ -490,12 +630,12 @@ export const buildRulesManifest = <TValues extends object>(params: {
             scope,
             deps,
             ...(validateOn !== undefined ? { validateOn } : {}),
-            meta: ruleMeta('traits'),
+            meta: ruleMeta('fields'),
           })
         }
       }
 
-      if (value && typeof value === 'object' && (value as any)._tag === 'StateTraitList') {
+      if (value && typeof value === 'object' && (value as any)._tag === 'FieldList') {
         const listPath = path
         assertCanonicalValuePath('list path', listPath)
         if (listPath !== '$root') {
@@ -519,7 +659,7 @@ export const buildRulesManifest = <TValues extends object>(params: {
 
         const emitNodeRules = (node: unknown, kind: 'item' | 'list') => {
           if (!node || typeof node !== 'object') return
-          if ((node as any)._tag !== 'StateTraitNode') return
+          if ((node as any)._tag !== 'FieldNode') return
           const check = (node as any).check
           if (!check || typeof check !== 'object' || Array.isArray(check)) return
 
@@ -534,7 +674,7 @@ export const buildRulesManifest = <TValues extends object>(params: {
               scope: { kind, fieldPath: listFieldPath },
               deps,
               ...(validateOn !== undefined ? { validateOn } : {}),
-              meta: ruleMeta('traits'),
+              meta: ruleMeta('fields'),
             })
           }
         }
@@ -544,7 +684,7 @@ export const buildRulesManifest = <TValues extends object>(params: {
         continue
       }
 
-      if (value && typeof value === 'object' && (value as any)._tag === 'StateTraitNode') {
+      if (value && typeof value === 'object' && (value as any)._tag === 'FieldNode') {
         const check = (value as any).check
         if (check && typeof check === 'object' && !Array.isArray(check)) {
           addFieldRuleSet(path, check as any)

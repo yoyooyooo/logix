@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://intent-flow.local/specs/013-auto-converge-planner/schemas/converge-requested-mode.schema.json",
+  "$id": "https://logix.local/specs/013-auto-converge-planner/schemas/converge-requested-mode.schema.json",
   "title": "ConvergeRequestedMode",
   "type": "string",
   "enum": ["auto", "full", "dirty"],

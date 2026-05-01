@@ -1,12 +1,12 @@
-import { useDispatch, useModule } from '@logixjs/react'
+import { useDispatch, useModule, useSelector } from '@logixjs/react'
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { AuthDef } from '../galaxy/auth.module'
 
 export function LoginPage() {
-  const phase = useModule(AuthDef, (s) => s.phase)
-  const pending = useModule(AuthDef, (s) => s.pending)
-  const error = useModule(AuthDef, (s) => s.error)
+  const phase = useSelector(AuthDef.tag, (s) => s.phase)
+  const pending = useSelector(AuthDef.tag, (s) => s.pending)
+  const error = useSelector(AuthDef.tag, (s) => s.error)
 
   const dispatchAuth = useDispatch(AuthDef.tag)
 

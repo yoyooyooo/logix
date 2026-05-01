@@ -1,7 +1,7 @@
 # Implementation Plan: Module（定义对象）+ ModuleTag（身份锚点）
 
-**Branch**: `022-module` | **Date**: 2025-12-21 | **Spec**: [spec.md](./spec.md)  
-**Input**: Feature specification from `/Users/yoyo/Documents/code/personal/intent-flow/specs/022-module/spec.md`
+**Branch**: `022-module` | **Date**: 2025-12-21 | **Spec**: [spec.md](./spec.md)
+**Input**: Feature specification from `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/022-module/spec.md`
 
 ## Summary
 
@@ -9,21 +9,21 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.8.2 + Node.js 22.21.1  
-**Primary Dependencies**: effect v3 (`effect@^3.19.8`) + `@logixjs/*` + React（`packages/logix-react`/`packages/logix-form` 相关）  
-**Storage**: N/A（不引入持久化存储）  
-**Testing**: Vitest 4 (`vitest run`) + `@effect/vitest`（Effect-heavy 场景）  
-**Target Platform**: Node.js（测试/脚本） + 现代浏览器（React/Devtools 场景）  
-**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）  
+**Language/Version**: TypeScript 5.8.2 + Node.js 22.21.1
+**Primary Dependencies**: effect v3 (`effect@^3.19.8`) + `@logixjs/*` + React（`packages/logix-react`/`packages/logix-form` 相关）
+**Storage**: N/A（不引入持久化存储）
+**Testing**: Vitest 4 (`vitest run`) + `@effect/vitest`（Effect-heavy 场景）
+**Target Platform**: Node.js（测试/脚本） + 现代浏览器（React/Devtools 场景）
+**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）
 **Performance Goals**:
 - diagnostics off：`$.use(...)` 路径新增的 Module 识别/拆壳分支需保持 O(1) 且无额外分配；对代表性用例无可测回退（预算 ≤ 1%）
-- diagnostics on：新增的 Module 相关诊断（如 composition/descriptor）必须 slim、可序列化，并有上界（不刷屏/不累积无界数组）  
+- diagnostics on：新增的 Module 相关诊断（如 composition/descriptor）必须 slim、可序列化，并有上界（不刷屏/不累积无界数组）
 **Constraints**:
 - 复用稳定 identity（moduleId/instanceId/txnSeq/opSeq），禁止随机/时间默认
 - 严格事务边界：事务窗口内不得 IO/async；Module 只做装配/定义层改动
 - Gate：在修改 `$.use(...)` 热路径实现（如 `packages/logix-core/src/internal/runtime/BoundApiRuntime.ts`）前，必须先跑通 022 micro-bench 并记录 **Before** 性能基线（见 `specs/022-module/perf.md`）
-- 内部协作协议必须显式契约化：避免新增散落 `runtime.__*` magic 字段依赖  
-  - SDD/平台反射字段（`schemas/meta/services/dev.source`）必须保持可选且不进入热路径；序列化/JSON Schema 转换应在平台侧 loader 中完成；`dev.source` 的自动注入（vite/rsbuild/webpack 插件）不在本特性范围，本特性仅保留字段与约定  
+- 内部协作协议必须显式契约化：避免新增散落 `runtime.__*` magic 字段依赖
+  - SDD/平台反射字段（`schemas/meta/services/dev.source`）必须保持可选且不进入热路径；序列化/JSON Schema 转换应在平台侧 loader 中完成；`dev.source` 的自动注入（vite/rsbuild/webpack 插件）不在本特性范围，本特性仅保留字段与约定
 **Scale/Scope**:
 - 覆盖两个领域工厂样本：`Form.make()` 迁移 + 一个 `CRUD.make()`（或等价最小 CRUD）验证统一形状
 - 不在本特性内引入新的持久化/网络协议；以 API/契约与示例迁移为主
@@ -72,11 +72,11 @@ specs/022-module/
 ```text
 packages/logix-core/src/
 ├── Module.ts                                   # Module（定义对象）公共 API（shape/unwrap/withLogic/Manage.make/descriptor/$.self）
-├── ModuleTag.ts                                # ModuleTag/ModuleImpl/Bound API 对外入口（原 Module.ts，完成更名）
+├── ModuleTag.ts                                # ModuleTag/Program/Bound API 对外入口（原 Module.ts，完成更名）
 └── internal/runtime/
    ├── BoundApiRuntime.ts                       # $.use(...) 支持 Module 拆壳 + handle extend
    └── core/
-      └── module.ts                             # ModuleTag/ModuleImpl/Logic 类型（为 withLogic/withLogics 组合提供基础能力）
+      └── module.ts                             # ModuleTag/Program/Logic 类型（为 withLogic/withLogics 组合提供基础能力）
 
 packages/logix-form/src/
 └── form.ts                                     # Form.make 迁移为返回 Module（保持 controller + actions(dispatchers) 语义）

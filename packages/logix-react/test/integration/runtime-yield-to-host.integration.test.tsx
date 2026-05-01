@@ -1,16 +1,55 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import React from 'react'
 import { describe, it, expect } from 'vitest'
 // @vitest-environment happy-dom
 import { render, fireEvent, screen, waitFor } from '@testing-library/react'
 import { Effect, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
-import * as LogixTest from '@logixjs/test'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
-import { useModule } from '../../src/Hooks.js'
+import { useModule, useSelector } from '../../src/Hooks.js'
+import { useProgramRuntimeBlueprint } from '../../src/internal/hooks/useProgramRuntimeBlueprint.js'
+
+const flushAllHostScheduler = (
+  scheduler: RuntimeContracts.DeterministicHostScheduler,
+  options?: { readonly maxTurns?: number; readonly settleYields?: number },
+): Effect.Effect<void> =>
+  Effect.gen(function* () {
+    const maxTurns = options?.maxTurns ?? 1_000
+    const settleYields = options?.settleYields ?? 8
+
+    for (let turn = 0; turn < maxTurns; turn += 1) {
+      yield* Effect.sync(() => {
+        scheduler.flushAll({ maxTurns })
+      })
+
+      yield* Effect.yieldNow
+
+      const { microtasks, macrotasks } = scheduler.getQueueSize()
+      if (microtasks !== 0 || macrotasks !== 0) {
+        continue
+      }
+
+      for (let i = 0; i < settleYields; i += 1) {
+        yield* Effect.yieldNow
+      }
+
+      const after = scheduler.getQueueSize()
+      if (after.microtasks === 0 && after.macrotasks === 0) {
+        return
+      }
+    }
+
+    const { microtasks, macrotasks } = scheduler.getQueueSize()
+    throw new Error(
+      `[runtime-yield-to-host.flushAllHostScheduler] Exceeded maxTurns=${maxTurns} (microtasks=${microtasks}, macrotasks=${macrotasks}).`,
+    )
+  }).pipe(Effect.asVoid)
 
 describe('TickScheduler yield-to-host (React integration)', () => {
   it('should allow React to commit local updates while tick continues on a macrotask boundary; Source->Target remains consistent', async () => {
-    Logix.Debug.clearDevtoolsEvents()
+    CoreDebug.clearDevtoolsEvents()
 
     const TargetState = Schema.Struct({ fromSource: Schema.Number })
 
@@ -24,7 +63,7 @@ describe('TickScheduler yield-to-host (React integration)', () => {
       },
     })
 
-    const SourceValueRead = Logix.ReadQuery.make({
+    const SourceValueRead = RuntimeContracts.Selector.make({
       selectorId: 'rq_yield_to_host_source_value',
       debugKey: 'YieldToHost.Source.value',
       reads: ['value'],
@@ -32,15 +71,14 @@ describe('TickScheduler yield-to-host (React integration)', () => {
       equalsKind: 'objectIs',
     })
 
-    const Target = Logix.Module.make('T063.YieldToHost.Target', {
-      state: TargetState,
-      actions: {},
-      traits: Logix.StateTrait.from(TargetState)({
-        fromSource: Logix.StateTrait.externalStore({
-          store: Logix.ExternalStore.fromModule(Source, SourceValueRead),
+    const Target = FieldContracts.withModuleFieldDeclarations(Logix.Module.make('T063.YieldToHost.Target', {
+  state: TargetState,
+  actions: {}
+}), FieldContracts.fieldFrom(TargetState)({
+        fromSource: FieldContracts.fieldExternalStore({
+          store: RuntimeContracts.ExternalInput.fromModule(Source, SourceValueRead),
         }),
-      }),
-    })
+      }))
 
     const Noise = Logix.Module.make('T063.YieldToHost.Noise', {
       state: Schema.Struct({ n: Schema.Number }),
@@ -52,34 +90,42 @@ describe('TickScheduler yield-to-host (React integration)', () => {
       },
     })
 
-    const TargetImpl = Target.implement({
-      initial: { fromSource: 0 },
-      imports: [Source.implement({ initial: { value: 0 } }).impl],
+    const SourceProgram = Logix.Program.make(Source, {
+      initial: { value: 0 },
     })
-    const NoiseImpl = Noise.implement({ initial: { n: 0 } })
+    const TargetProgram = Logix.Program.make(Target, {
+      initial: { fromSource: 0 },
+      capabilities: {
+        imports: [SourceProgram],
+      },
+    })
+    const NoiseProgram = Logix.Program.make(Noise, { initial: { n: 0 } })
+    const NoiseBlueprint = RuntimeContracts.getProgramRuntimeBlueprint(NoiseProgram)
 
     const Root = Logix.Module.make('T063.YieldToHost.Root', { state: Schema.Void, actions: {} })
-    const RootImpl = Root.implement({
+    const RootProgram = Logix.Program.make(Root, {
       initial: undefined,
-      imports: [TargetImpl.impl],
+      capabilities: {
+        imports: [TargetProgram],
+      },
     })
 
-    const hostScheduler = LogixTest.Act.makeTestHostScheduler()
+    const hostScheduler = RuntimeContracts.makeDeterministicHostScheduler()
 
-    const tickLayer = LogixTest.Act.tickSchedulerTestLayer({
+    const tickLayer = RuntimeContracts.tickSchedulerTestLayer({
       maxSteps: 1,
       urgentStepCap: 64,
       maxDrainRounds: 4,
       microtaskChainDepthLimit: 32,
     })
 
-    const runtime = Logix.Runtime.make(RootImpl, {
+    const runtime = Logix.Runtime.make(RootProgram, {
       hostScheduler,
       devtools: { diagnosticsLevel: 'light' },
       layer: tickLayer,
     })
 
-    const runtimeStore = Logix.InternalContracts.getRuntimeStore(runtime) as unknown as { readonly getTickSeq: () => number }
+    const runtimeStore = RuntimeContracts.getRuntimeStore(runtime) as unknown as { readonly getTickSeq: () => number }
 
     const metrics = {
       source: undefined as any,
@@ -91,8 +137,8 @@ describe('TickScheduler yield-to-host (React integration)', () => {
     const App: React.FC = () => {
       const source = useModule(Source.tag) as any
       const target = useModule(Target.tag) as any
-      const noise1 = useModule(NoiseImpl, { key: 'n1' }) as any
-      const noise2 = useModule(NoiseImpl, { key: 'n2' }) as any
+      const noise1 = useProgramRuntimeBlueprint(NoiseBlueprint, { key: 'n1' }) as any
+      const noise2 = useProgramRuntimeBlueprint(NoiseBlueprint, { key: 'n2' }) as any
 
       const [local, setLocal] = React.useState(0)
 
@@ -102,8 +148,8 @@ describe('TickScheduler yield-to-host (React integration)', () => {
         metrics.noise2 = noise2.runtime
       }, [source, noise1, noise2])
 
-      const sourceValue = useModule(source, (s) => (s as any).value as number)
-      const targetValue = useModule(target, (s) => (s as any).fromSource as number)
+      const sourceValue = useSelector(source, (s) => (s as any).value as number)
+      const targetValue = useSelector(target, (s) => (s as any).fromSource as number)
 
       React.useEffect(() => {
         metrics.history.push({ tickSeq: runtimeStore.getTickSeq(), source: sourceValue, target: targetValue, local })
@@ -164,7 +210,7 @@ describe('TickScheduler yield-to-host (React integration)', () => {
       })
 
       // Drain the rest of the host tasks (including the forced macrotask tick continuation).
-      await runtime.runPromise(LogixTest.Act.flushAllHostScheduler(hostScheduler) as any)
+      await runtime.runPromise(flushAllHostScheduler(hostScheduler) as any)
 
       await waitFor(() => {
         expect(screen.getByText('Source: 1')).toBeTruthy()
@@ -172,7 +218,7 @@ describe('TickScheduler yield-to-host (React integration)', () => {
       })
 
       // Evidence: we should have started at least one tick on a macrotask boundary due to budget deferral.
-      const events = Logix.Debug.getDevtoolsSnapshot().events
+      const events = CoreDebug.getDevtoolsSnapshot().events
       const forced = events
         .filter((e) => e.label === 'trace:tick')
         .map((e) => (e.meta ?? {}) as any)

@@ -1,13 +1,13 @@
 # Implementation Plan: 056 Schema Layout Accessors（offset/typed view）
 
-**Branch**: `056-core-ng-schema-layout-accessors` | **Date**: 2025-12-31 | **Spec**: `specs/056-core-ng-schema-layout-accessors/spec.md`  
+**Branch**: `056-core-ng-schema-layout-accessors` | **Date**: 2025-12-31 | **Spec**: `specs/056-core-ng-schema-layout-accessors/spec.md`
 **Input**: Feature specification from `specs/056-core-ng-schema-layout-accessors/spec.md`
 
 ## Summary
 
 目标：在 FieldPathIdRegistry（schema/静态 fieldPaths）上补齐 **stringPath → pathId 直达映射**，并把 dirtyPaths 的归一化/去冗余（prefix canonicalize）下沉到 **id 级算法**：减少 txn 内 `split('.')`/临时数组分配与重复 trie walk，并为后续更完整的 layout/accessor（offset/typed view）路线提供可对照的 JS baseline。
 
-本 spec 优先以 StateTrait converge 的 dirtyPaths→rootIds 链路作为试点：它同时是 Node 与 Browser 的 P1 跑道共同覆盖点，且直接命中 txn commit 热路径。
+本 spec 优先以 FieldKernel converge 的 dirtyPaths→rootIds 链路作为试点：它同时是 Node 与 Browser 的 P1 跑道共同覆盖点，且直接命中 txn commit 热路径。
 
 ## Deepening Notes
 
@@ -20,9 +20,9 @@
 
 - **核心地基**：
   - FieldPath/FieldPathIdRegistry：`packages/logix-core/src/internal/field-path.ts`
-  - Converge Static/Exec IR：`packages/logix-core/src/internal/state-trait/converge-ir.ts`、`packages/logix-core/src/internal/state-trait/converge-exec-ir.ts`
-  - converge 热路径（plan + get/set）：`packages/logix-core/src/internal/state-trait/converge.ts`
-  - Exec VM 开关：`packages/logix-core/src/internal/state-trait/exec-vm-mode.ts`（core-ng 装配期注入）
+  - Converge Static/Exec IR：`packages/logix-core/src/internal/state-field/converge-ir.ts`、`packages/logix-core/src/internal/state-field/converge-exec-ir.ts`
+  - converge 热路径（plan + get/set）：`packages/logix-core/src/internal/state-field/converge.ts`
+  - Exec VM 开关：`packages/logix-core/src/internal/state-field/exec-vm-mode.ts`（core-ng 装配期注入）
 - **本次交付（JS-first）**：
   - `FieldPathIdRegistry.pathStringToId`：常见 string path 的直达映射（命中时跳过 normalize/split）
   - `dirtyPathsToRootIds`：以 `pathId` 为输入进行 prefix canonicalize（避免中间 FieldPath 分配）
@@ -39,7 +39,7 @@
 
 ## Perf Evidence Plan（MUST）
 
-- Matrix SSoT：`.codex/skills/logix-perf-evidence/assets/matrix.json`（至少覆盖 `priority=P1`）
+- Matrix SSoT：`packages/logix-perf-evidence/assets/matrix.json`（至少覆盖 `priority=P1`）
 - Kernel：`core-ng` + 固定 execVmMode（建议 `on`），避免把开关噪声混入结论
   - Node：`LOGIX_PERF_KERNEL_ID=core-ng LOGIX_CORE_NG_EXEC_VM_MODE=on`
   - Browser：`VITE_LOGIX_PERF_KERNEL_ID=core-ng VITE_LOGIX_CORE_NG_EXEC_VM_MODE=on`
@@ -60,7 +60,7 @@ specs/056-core-ng-schema-layout-accessors/
 ### Source Code (implementation targets)
 
 ```text
-packages/logix-core/src/internal/state-trait/
+packages/logix-core/src/internal/state-field/
 ├── converge.ts              # access hot path（get/set/plan）
 ├── converge-exec-ir.ts      # generation 级 tables（可扩展 accessor tables）
 └── exec-vm-mode.ts          # core-ng 注入开关

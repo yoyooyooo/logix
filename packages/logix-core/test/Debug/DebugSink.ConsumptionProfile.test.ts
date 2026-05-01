@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@effect/vitest'
 import { Effect, Layer } from 'effect'
-import * as Debug from '../../src/Debug.js'
+import * as Debug from '../../src/internal/debug-api.js'
 import * as DebugSink from '../../src/internal/runtime/core/DebugSink.js'
 
 describe('DebugSink consumption profile', () => {

@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Platform-Grade Rewriter MVP（受限子集重写器：最小补丁回写）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2026-01-09  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2026-01-09
 **Feature**: `specs/082-platform-grade-rewriter-mvp/spec.md`
 
 ## Content Quality

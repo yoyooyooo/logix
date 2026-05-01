@@ -32,52 +32,52 @@
 
 ## Phase 2: User Story 1 - 导出 Manifest IR（供 Studio/CI/Agent 消费） (Priority: P1) 🎯 MVP
 
-**Goal**: 提供 `Logix.Reflection.extractManifest(...)`（可选内嵌 StaticIR），输出 deterministic JSON（可 stringify、可 diff）。
+**Goal**: 提供 `CoreReflection.extractManifest(...)`（可选内嵌 StaticIR），输出 deterministic JSON（可 stringify、可 diff）。
 
 **Independent Test**: 同一个 module 输入重复提取，输出一致；当结构变化时（schemaKeys/slots/meta/source 等）能稳定体现差异。
 
 ### Tests for User Story 1（先写测试，确保失败后再实现）
 
-- [x] T010 [P] [US1] `extractManifest`：输出可 stringify 且字段顺序稳定（deterministic）：`packages/logix-core/test/Reflection.extractManifest.deterministic.test.ts` （Refs: FR-001, FR-003, SC-001）
-- [x] T011 [P] [US1] `extractManifest`：预算裁剪生效（maxBytes），超限时降级/标注而非 silent 失败：`packages/logix-core/test/Reflection.extractManifest.budgets.test.ts` （Refs: FR-001, NFR-003）
-- [x] T012 [P] [US1] `extractManifest`：不依赖 AST；工厂/trait 组合生成的最终对象也可提取：`packages/logix-core/test/Reflection.extractManifest.composedModule.test.ts` （Refs: FR-004, SC-001）
-- [x] T013 [P] [US1] `exportStaticIr`：具备 StateTrait 关系时导出稳定 StaticIR；无 traits 时返回空/undefined：`packages/logix-core/test/Reflection.exportStaticIr.basic.test.ts` （Refs: FR-010, SC-006）
-- [x] T014 [P] [US1] `extractManifest({ includeStaticIr: true })`：StaticIR 以可 diff 的摘要方式内嵌（不引入闭包/Schema 对象）：`packages/logix-core/test/Reflection.extractManifest.includeStaticIr.test.ts` （Refs: FR-001, FR-010, SC-006）
+- [x] T010 [P] [US1] `extractManifest`：输出可 stringify 且字段顺序稳定（deterministic）：`packages/logix-core/test/CoreReflection.extractManifest.deterministic.test.ts` （Refs: FR-001, FR-003, SC-001）
+- [x] T011 [P] [US1] `extractManifest`：预算裁剪生效（maxBytes），超限时降级/标注而非 silent 失败：`packages/logix-core/test/CoreReflection.extractManifest.budgets.test.ts` （Refs: FR-001, NFR-003）
+- [x] T012 [P] [US1] `extractManifest`：不依赖 AST；工厂/field 组合生成的最终对象也可提取：`packages/logix-core/test/CoreReflection.extractManifest.composedModule.test.ts` （Refs: FR-004, SC-001）
+- [x] T013 [P] [US1] `exportStaticIr`：具备 FieldKernel 关系时导出稳定 StaticIR；无 fields 时返回空/undefined：`packages/logix-core/test/CoreReflection.exportStaticIr.basic.test.ts` （Refs: FR-010, SC-006）
+- [x] T014 [P] [US1] `extractManifest({ includeStaticIr: true })`：StaticIR 以可 diff 的摘要方式内嵌（不引入闭包/Schema 对象）：`packages/logix-core/test/CoreReflection.extractManifest.includeStaticIr.test.ts` （Refs: FR-001, FR-010, SC-006）
 
 ### Implementation for User Story 1
 
-- [x] T015 [US1] 新增 `Logix.Reflection` 公共入口（导出 extractManifest/exportStaticIr/types）：`packages/logix-core/src/Reflection.ts`、`packages/logix-core/src/index.ts` （Refs: FR-001, FR-010）
+- [x] T015 [US1] 新增 `Logix.Reflection` 公共入口（导出 extractManifest/exportStaticIr/types）：`packages/logix-core/src/internal/reflection-api.ts`、`packages/logix-core/src/index.ts` （Refs: FR-001, FR-010）
 - [x] T016 [US1] 实现 manifest 投影：只输出 schemaKeys/meta/source/slots 摘要与稳定 digest；禁止导出 Schema/闭包/Effect：`packages/logix-core/src/internal/reflection/*` （Refs: FR-001, FR-002, FR-003, NFR-002）
-- [x] T017 [US1] 复用 `StateTrait.exportStaticIr` 作为 canonical StaticIR，并保持 JsonValue 可序列化：`packages/logix-core/src/internal/reflection/*` （Refs: FR-010, NFR-002, SC-006）
+- [x] T017 [US1] 复用 `FieldKernel.exportStaticIr` 作为 canonical StaticIR，并保持 JsonValue 可序列化：`packages/logix-core/src/internal/reflection/*` （Refs: FR-010, NFR-002, SC-006）
 
 ### Contract Guard（CI Diff，属于 US1 的验收场景 2）
 
-- [x] T030 [P] [US1] `diffManifest(a, b)`：结构化输出 + 回归测试（CI 可机器解析）：`packages/logix-core/test/Reflection.diffManifest.test.ts` （Refs: FR-009, SC-002）
-- [x] T031 [US1] 实现 diff（至少覆盖 schemaKeys/slots/meta/source/staticIr.digest 的 breaking 维度）：`packages/logix-core/src/internal/reflection/diff.ts`、`packages/logix-core/src/Reflection.ts` （Refs: FR-009, SC-002）
+- [x] T030 [P] [US1] `diffManifest(a, b)`：结构化输出 + 回归测试（CI 可机器解析）：`packages/logix-core/test/CoreReflection.diffManifest.test.ts` （Refs: FR-009, SC-002）
+- [x] T031 [US1] 实现 diff（至少覆盖 schemaKeys/slots/meta/source/staticIr.digest 的 breaking 维度）：`packages/logix-core/src/internal/reflection/diff.ts`、`packages/logix-core/src/internal/reflection-api.ts` （Refs: FR-009, SC-002）
 
 ---
 
 ## Phase 3: User Story 2 - 受控试运行提取 IR（Environment/Runtime IR，用于合规与编排） (Priority: P2)
 
-**Goal**: 提供 `Logix.Observability.trialRunModule(...)`：在 BuildEnv 中受控试跑模块装配阶段，导出 `TrialRunReport`（含 Environment IR + 控制面证据 + EvidencePackage 子集）。
+**Goal**: 提供 `Logix.Runtime.trial(...)`：在 BuildEnv 中受控试跑模块装配阶段，导出 `TrialRunReport`（含 Environment IR + 控制面证据 + EvidencePackage 子集）。
 
 **Independent Test**: 缺失服务时能给出可行动失败并导出 Environment IR；成功路径能导出 `RuntimeServicesEvidence`（复用 020 schema）；并且 scope 关闭后无悬挂资源。
 
 ### Tests for User Story 2（先写测试，确保失败后再实现）
 
-- [x] T020 [P] [US2] `trialRunModule`：缺失服务时失败并输出 missingServices（ConstructionGuardError）：`packages/logix-core/test/Observability.trialRunModule.missingService.test.ts` （Refs: FR-007, SC-003, SC-004）
-- [x] T021 [P] [US2] `trialRunModule`：runId 显式注入可回放/可对比（不依赖默认 Date.now）：`packages/logix-core/test/Observability.trialRunModule.runId.test.ts` （Refs: FR-005, FR-003, NFR-002）
-- [x] T022 [P] [US2] `trialRunModule`：scope close 生效（可观测 finalizer 被调用；无 dangling fibers）：`packages/logix-core/test/Observability.trialRunModule.scopeDispose.test.ts` （Refs: FR-005, NFR-004）
-- [x] T023 [P] [US2] `trialRunModule`：导出 summary.runtime.services（RuntimeServicesEvidence）且口径与 020 schema 对齐：`packages/logix-core/test/Observability.trialRunModule.runtimeServicesEvidence.test.ts` （Refs: FR-005, FR-006, NFR-005）
+- [x] T020 [P] [US2] `trialRunModule`：缺失服务时失败并输出 missingServices（ConstructionGuardError）：`packages/logix-core/test/Runtime.trial.missingService.test.ts` （Refs: FR-007, SC-003, SC-004）
+- [x] T021 [P] [US2] `trialRunModule`：runId 显式注入可回放/可对比（不依赖默认 Date.now）：`packages/logix-core/test/Runtime.trial.runId.test.ts` （Refs: FR-005, FR-003, NFR-002）
+- [x] T022 [P] [US2] `trialRunModule`：scope close 生效（可观测 finalizer 被调用；无 dangling fibers）：`packages/logix-core/test/Runtime.trial.scopeDispose.test.ts` （Refs: FR-005, NFR-004）
+- [x] T023 [P] [US2] `trialRunModule`：导出 summary.runtime.services（RuntimeServicesEvidence）且口径与 020 schema 对齐：`packages/logix-core/test/Runtime.trial.runtimeServicesEvidence.test.ts` （Refs: FR-005, FR-006, NFR-005）
   - 额外断言：`bindings` 至少包含 `serviceId/scope/overridden`，并在存在覆写时体现 `overridesApplied`（为 P3 控制面解释器提供最小可用信息）。
-- [x] T0231 [P] [US2] `trialRunModule`：缺失 config 时失败并输出 missingConfigKeys（hard fail + 可行动摘要）：`packages/logix-core/test/Observability.trialRunModule.missingConfig.test.ts` （Refs: FR-007, SC-003, SC-004）
-- [x] T0232 [P] [US2] `trialRunModule`：试跑窗口超时分类为 TrialRunTimeout（trialRunTimeoutMs 生效）：`packages/logix-core/test/Observability.trialRunModule.trialRunTimeout.test.ts` （Refs: FR-005, NFR-003）
-- [x] T0233 [P] [US2] `trialRunModule`：释放收束超时分类为 DisposeTimeout（closeScopeTimeout 语义复用 024）：`packages/logix-core/test/Observability.trialRunModule.disposeTimeout.test.ts` （Refs: NFR-003, NFR-004）
-- [x] T0234 [P] [US2] `trialRunModule`：并行 RunSession 隔离（runId/layer/evidence/environment 互不串扰）：`packages/logix-core/test/Observability.trialRunModule.runSessionIsolation.test.ts` （Refs: NFR-002, NFR-005）
+- [x] T0231 [P] [US2] `trialRunModule`：缺失 config 时失败并输出 missingConfigKeys（hard fail + 可行动摘要）：`packages/logix-core/test/Runtime.trial.missingConfig.test.ts` （Refs: FR-007, SC-003, SC-004）
+- [x] T0232 [P] [US2] `trialRunModule`：试跑窗口超时分类为 TrialRunTimeout（trialRunTimeoutMs 生效）：`packages/logix-core/test/Runtime.trial.trialRunTimeout.test.ts` （Refs: FR-005, NFR-003）
+- [x] T0233 [P] [US2] `trialRunModule`：释放收束超时分类为 DisposeTimeout（closeScopeTimeout 语义复用 024）：`packages/logix-core/test/Runtime.trial.disposeTimeout.test.ts` （Refs: NFR-003, NFR-004）
+- [x] T0234 [P] [US2] `trialRunModule`：并行 RunSession 隔离（runId/layer/evidence/environment 互不串扰）：`packages/logix-core/test/Runtime.trial.runSessionIsolation.test.ts` （Refs: NFR-002, NFR-005）
 
 ### Implementation for User Story 2
 
-- [x] T024 [US2] 在 `Logix.Observability` 上新增 `trialRunModule`（对齐 trialRun options + buildEnv/layer/预算）：`packages/logix-core/src/Observability.ts`、`packages/logix-core/src/internal/observability/trialRunModule.ts` （Refs: FR-005）
+- [x] T024 [US2] 在 `Logix.Observability` 上新增 `trialRunModule`（对齐 trialRun options + buildEnv/layer/预算）：`packages/logix-core/src/internal/evidence-api.ts`、`packages/logix-core/src/internal/observability/trialRunModule.ts` （Refs: FR-005）
 - [x] T025 [US2] 试跑窗口 + 资源收束：复用 024 的 closeScopeTimeout 语义；BuildEnv 仅提供 runtimeHost/configProvider；导出 Environment IR（tagIds/configKeys/missingServices/missingConfigKeys）与结构化错误分类（MissingDependency/TrialRunTimeout/DisposeTimeout/RuntimeFailure）：`packages/logix-core/src/internal/observability/trialRunModule.ts`、`packages/logix-core/src/Runtime.ts` （Refs: FR-006, FR-007, NFR-005, SC-003, SC-004）
 - [x] T026 [US2] 复用 EvidenceCollector 写入控制面证据与 converge 静态 IR 摘要（不改协议，只补齐试跑入口编排）：`packages/logix-core/src/internal/observability/evidenceCollector.ts`、`packages/logix-core/src/internal/runtime/ModuleRuntime.ts` （Refs: FR-005, NFR-002, NFR-005）
 
@@ -99,7 +99,7 @@
 **Goal**: 用 `examples/logix-sandbox-mvp` 做第一版 IR 可视化路由/Tab，按 ROI 优先级交付：
 
 - P0: ModuleManifest 结构面板 + 版本 diff/Breaking 检测（CI Contract Guard 直接复用）
-- P1: StaticIR（StateTrait）依赖图可视化（DAG + 冲突/成本提示）
+- P1: StaticIR（FieldKernel）依赖图可视化（DAG + 冲突/成本提示）
 - P2: TrialRunReport 预检报告（missing services/configKeys/违规分类 + 一键重跑）
 - P3: RuntimeServicesEvidence 控制面覆写解释器（解释“为什么选了这个 impl”）
 - P4: Evidence session 时间线（事件裁剪 + staticIrDigest/converge digest 定位）
@@ -164,4 +164,4 @@
 
 > 来自 `$speckit acceptance 024 025` 的漂移/缺口项；用于消除长期漂移风险并恢复质量门。
 
-- [x] T060 [P] [Acceptance] 消除 `Observability.trialRunModule` 的 boot 内核漂移：抽出 024 ProgramRunner 的共享 boot/Scope/identity 内核，并由 025 的 trial run 复用（避免复制装配逻辑导致长期漂移）。Refs: FR-005
+- [x] T060 [P] [Acceptance] 消除 `Runtime.trial` 的 boot 内核漂移：抽出 024 ProgramRunner 的共享 boot/Scope/identity 内核，并由 025 的 trial run 复用（避免复制装配逻辑导致长期漂移）。Refs: FR-005

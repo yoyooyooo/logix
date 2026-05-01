@@ -29,9 +29,9 @@ export const ToggleActionMap = {
   'toggle/resetError': Schema.Void,
 }
 
-export type ToggleShape = Logix.Shape<typeof ToggleStateSchema, typeof ToggleActionMap>
-export type ToggleState = Logix.StateOf<ToggleShape>
-export type ToggleAction = Logix.ActionOf<ToggleShape>
+export type ToggleShape = Logix.Module.Shape<typeof ToggleStateSchema, typeof ToggleActionMap>
+export type ToggleState = Logix.Module.StateOf<ToggleShape>
+export type ToggleAction = Logix.Module.ActionOf<ToggleShape>
 
 // ---------------------------------------------------------------------------
 // 错误与 Service：作为 Pattern 的领域依赖，对外导出供场景复用
@@ -87,7 +87,7 @@ export interface OptimisticToggleLogicPatternConfig {}
  */
 export const makeOptimisticToggleLogicPattern =
   (_config: OptimisticToggleLogicPatternConfig = {}) =>
-  ($Toggle: Logix.BoundApi<ToggleShape, ToggleService>): Logix.ModuleLogic<ToggleShape, ToggleService, never> =>
+  ($Toggle: Logix.Module.BoundApi<ToggleShape, ToggleService>): Logix.ModuleLogic<ToggleShape, ToggleService, never> =>
     Effect.gen(function* () {
       const click$ = $Toggle.flow.fromAction(
         (a): a is { _tag: 'toggle/click'; payload: void } => a._tag === 'toggle/click',
@@ -150,7 +150,7 @@ export const makeOptimisticToggleLogicPattern =
  *
  *   // 1) 在 Logic 层复用 Pattern：
  *   export const ToggleLogicFromPattern =
- *     ToggleModule.logic<ToggleService>(makeOptimisticToggleLogicPattern())
+ *     ToggleModule.logic<ToggleService>('toggle-module-logic', makeOptimisticToggleLogicPattern())
  *
  *   // 2) 在 Module 层装配（示意，与 optimistic-toggle.ts 中类似）：
  *   const ToggleModule = Logix.Module.make('Toggle', { state: ToggleStateSchema, actions: ToggleActionSchema })

@@ -38,32 +38,17 @@ export const DevtoolsModule = Logix.Module.make('LogixDevtoolsModule', {
     selectInstance: Schema.String,
     selectEventIndex: Schema.Number,
     selectFieldPath: Schema.String,
-    setTimelineRange: Schema.Struct({
-      start: Schema.Number,
-      end: Schema.Number,
-    }),
-    clearTimelineRange: Schema.Void,
-    timeTravelBefore: Schema.Struct({
-      moduleId: Schema.String,
-      instanceId: Schema.String,
-      txnId: Schema.String,
-    }),
-    timeTravelAfter: Schema.Struct({
-      moduleId: Schema.String,
-      instanceId: Schema.String,
-      txnId: Schema.String,
-    }),
-    timeTravelLatest: Schema.Struct({
-      moduleId: Schema.String,
-      instanceId: Schema.String,
-    }),
+    selectScope: Schema.String,
+    selectSession: Schema.String,
+    selectFinding: Schema.String,
+    selectArtifact: Schema.String,
+    selectDrilldown: Schema.Any,
     clearEvents: Schema.Void,
     importEvidenceJson: Schema.String,
     clearImportedEvidence: Schema.Void,
     resizeStart: ResizePayload,
     updateLayout: UpdateLayoutPayload,
     setTheme: Schema.Literals(['system', 'light', 'dark']),
-    setMode: Schema.Literals(['basic', 'deep']),
     updateSettings: Schema.Any,
   },
   reducers: {
@@ -76,42 +61,30 @@ export const DevtoolsModule = Logix.Module.make('LogixDevtoolsModule', {
     },
     selectRuntime: (state, action) =>
       (() => {
-        const next = computeDevtoolsState(state, getDevtoolsSnapshot(), {
+        return computeDevtoolsState(state, getDevtoolsSnapshot(), {
           selectedRuntime: (action as any).payload,
           selectedModule: undefined,
           selectedInstance: undefined,
           selectedEventIndex: undefined,
           userSelectedEvent: false,
         })
-        return {
-          ...next,
-          timeTravel: undefined,
-        }
       })(),
     selectModule: (state, action) =>
       (() => {
-        const next = computeDevtoolsState(state, getDevtoolsSnapshot(), {
+        return computeDevtoolsState(state, getDevtoolsSnapshot(), {
           selectedModule: (action as any).payload,
           selectedInstance: undefined,
           selectedEventIndex: undefined,
           userSelectedEvent: false,
         })
-        return {
-          ...next,
-          timeTravel: undefined,
-        }
       })(),
     selectInstance: (state, action) =>
       (() => {
-        const next = computeDevtoolsState(state, getDevtoolsSnapshot(), {
+        return computeDevtoolsState(state, getDevtoolsSnapshot(), {
           selectedInstance: (action as any).payload,
           selectedEventIndex: undefined,
           userSelectedEvent: false,
         })
-        return {
-          ...next,
-          timeTravel: undefined,
-        }
       })(),
     selectFieldPath: (state, action) => {
       const nextFieldPath = (action as any).payload as string
@@ -150,26 +123,37 @@ export const DevtoolsModule = Logix.Module.make('LogixDevtoolsModule', {
         userSelectedEvent: true,
       })
     },
-    setTimelineRange: (state, action) => {
-      const payload = (action as any).payload as { start: number; end: number }
-      const start = Math.max(0, Math.floor(payload.start))
-      const end = Math.max(start, Math.floor(payload.end))
-      const next: DevtoolsState = {
-        ...state,
-        timelineRange: {
-          start,
-          end,
-        },
-      }
-      return next
-    },
-    clearTimelineRange: (state) => {
-      const next: DevtoolsState = {
-        ...state,
-        timelineRange: undefined,
-      }
-      return next
-    },
+    selectScope: (state, action) =>
+      computeDevtoolsState(state, getDevtoolsSnapshot(), {
+        selectedScopeId: (action as any).payload,
+        selectedSessionId: undefined,
+        selectedFindingId: undefined,
+        selectedArtifactKey: undefined,
+        userSelectedEvent: false,
+      }),
+    selectSession: (state, action) =>
+      computeDevtoolsState(state, getDevtoolsSnapshot(), {
+        selectedSessionId: (action as any).payload,
+        selectedFindingId: undefined,
+        selectedArtifactKey: undefined,
+        userSelectedEvent: false,
+      }),
+    selectFinding: (state, action) =>
+      computeDevtoolsState(state, getDevtoolsSnapshot(), {
+        selectedFindingId: (action as any).payload,
+        selectedArtifactKey: undefined,
+        userSelectedEvent: false,
+      }),
+    selectArtifact: (state, action) =>
+      computeDevtoolsState(state, getDevtoolsSnapshot(), {
+        selectedArtifactKey: (action as any).payload,
+        userSelectedEvent: false,
+      }),
+    selectDrilldown: (state, action) =>
+      computeDevtoolsState(state, getDevtoolsSnapshot(), {
+        selectedDrilldown: (action as any).payload,
+        userSelectedEvent: false,
+      }),
     updateLayout: (state, action) => {
       const partial = (action as any).payload as Partial<DevtoolsState['layout']>
       const layout = { ...state.layout, ...partial }
@@ -187,29 +171,6 @@ export const DevtoolsModule = Logix.Module.make('LogixDevtoolsModule', {
         theme: (action as any).payload,
         userSelectedEvent: false,
       }),
-    setMode: (state, action) => {
-      const current = state as DevtoolsState
-      const nextMode = (action as any).payload as DevtoolsSettings['mode']
-      if (current.settings.mode === nextMode) {
-        return current
-      }
-
-      const nextSettings: DevtoolsSettings = {
-        ...current.settings,
-        mode: nextMode,
-        // `basic` hides trait/render events by default; `deep` shows all.
-        showTraitEvents: nextMode === 'deep',
-        showReactRenderEvents: nextMode === 'deep',
-      }
-
-      const next: DevtoolsState = {
-        ...current,
-        settings: nextSettings,
-      }
-
-      persistSettingsToStorage(nextSettings)
-      return next
-    },
     updateSettings: (state, action) => {
       const current = state as DevtoolsState
       const partial = ((action as any).payload ?? {}) as Partial<DevtoolsSettings>
@@ -225,22 +186,6 @@ export const DevtoolsModule = Logix.Module.make('LogixDevtoolsModule', {
           ...current.settings.sampling,
           ...(partial.sampling ?? {}),
         },
-      }
-
-      // When switching `mode`, if `show*` fields are not provided explicitly, backfill using `basic`/`deep` defaults.
-      if (partial.mode && partial.mode !== current.settings.mode) {
-        if (partial.showTraitEvents === undefined) {
-          nextSettings = {
-            ...nextSettings,
-            showTraitEvents: partial.mode === 'deep',
-          }
-        }
-        if (partial.showReactRenderEvents === undefined) {
-          nextSettings = {
-            ...nextSettings,
-            showReactRenderEvents: partial.mode === 'deep',
-          }
-        }
       }
 
       nextSettings = {
@@ -259,55 +204,6 @@ export const DevtoolsModule = Logix.Module.make('LogixDevtoolsModule', {
       }
 
       persistSettingsToStorage(nextSettings)
-      return next
-    },
-    timeTravelBefore: (state, action) => {
-      const current = state as DevtoolsState
-      const payload = (action as any).payload as {
-        moduleId: string
-        instanceId: string
-        txnId: string
-      }
-      const next: DevtoolsState = {
-        ...current,
-        timeTravel: {
-          moduleId: payload.moduleId,
-          instanceId: payload.instanceId,
-          txnId: payload.txnId,
-          mode: 'before',
-        },
-      }
-      return next
-    },
-    timeTravelAfter: (state, action) => {
-      const current = state as DevtoolsState
-      const payload = (action as any).payload as {
-        moduleId: string
-        instanceId: string
-        txnId: string
-      }
-      const next: DevtoolsState = {
-        ...current,
-        timeTravel: {
-          moduleId: payload.moduleId,
-          instanceId: payload.instanceId,
-          txnId: payload.txnId,
-          mode: 'after',
-        },
-      }
-      return next
-    },
-    timeTravelLatest: (state, action) => {
-      const current = state as DevtoolsState
-      const _payload = (action as any).payload as {
-        moduleId: string
-        instanceId: string
-      }
-      // Back to latest state: only clear `timeTravel`; the Logic replays via `Runtime.applyTransactionSnapshot`.
-      const next: DevtoolsState = {
-        ...current,
-        timeTravel: undefined,
-      }
       return next
     },
   },

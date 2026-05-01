@@ -25,7 +25,7 @@ import * as Query from "@logixjs/query"
 - 不提供 Query 引擎注入；
 - 不启用 Query 的外部引擎 middleware。
 
-结果：Query 规则仍可降解为 `StateTrait.source`，并通过 ResourceSpec.load 执行；不具备缓存/去重能力。
+结果：Query 规则仍可降解为 `FieldKernel.source`，并通过 ResourceSpec.load 执行；不具备缓存/去重能力。
 
 ### 仅注入 Engine（不启用 middleware）
 
@@ -54,16 +54,16 @@ import * as Query from "@logixjs/query"
 
 ### B. 语法糖差异
 
-- 历史 `Query.source(...)`（如果存在）只是 `StateTrait.source(...)` 的薄包装；
+- 历史 `Query.source(...)`（如果存在）只是 `FieldKernel.source(...)` 的薄包装；
 - 收口后推荐直接使用：
-  - Query 领域：`Query.make(..., { queries: { ... } })` 或 `Query.traits(...)`
-  - 内核入口：`Logix.StateTrait.source(...)`
+  - Query 领域：`Query.make(..., { queries: { ... } })` 或 `Query.fields(...)`
+  - 内核入口：`Logix.FieldKernel.source(...)`
 
 ### C. Module 作为领域入口（对齐 Form）
 
-- `Query.make(...)` 返回模块资产：可以直接 `Logix.Runtime.make(QueryModule, ...)`；
-- 当你需要把 Query 作为子模块组合进更大的 Runtime 时，才需要使用 `imports: [QueryModule.impl]`。
-- 为了保住 controller 的类型收窄：React 侧优先 `useModule(QueryModule)`、Logic 侧优先 `$.use(QueryModule)`；直接使用 `.impl/.tag` 句柄会在类型层丢失扩展。
+- `Query.make(...)` 返回 Query Program：可以直接 `Logix.Runtime.make(QueryProgram, ...)`；
+- 当你需要把 Query 作为子模块组合进更大的 Runtime 时，使用 `capabilities.imports: [QueryProgram]`。
+- 为了保住 controller 的类型收窄：React 侧优先 `useModule(QueryProgram)`、Logic 侧通过 owner wiring 或 `$.self` 使用扩展；直接使用 `ModuleTag` 句柄只表达 provider lookup。
 
 ### D. 结果快照落点（`queries` 命名空间）
 

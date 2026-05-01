@@ -85,7 +85,7 @@ description: "Data model for 016-serializable-diagnostics-and-identity (export b
 
 - `events: ReadonlyArray<ExportableRuntimeDebugEventRef>`
 - `instances: ReadonlyMap<string, number>`（key 为 `runtimeLabel::moduleId`；value 为活跃实例计数）
-- `latestStates` / `latestTraitSummaries`：若保留，key 必须包含 `instanceId`（例如 `runtimeLabel::moduleId::instanceId`），且 value 必须是 `JsonValue`（或在 `off/light` 下直接省略）
+- `latestStates` / `latestFieldSummaries`：若保留，key 必须包含 `instanceId`（例如 `runtimeLabel::moduleId::instanceId`），且 value 必须是 `JsonValue`（或在 `off/light` 下直接省略）
 
 ## Entity: ObservationEnvelope
 

@@ -1,13 +1,17 @@
-# Contracts: Public API（ReadQuery.createSelector）
+# Contracts: Current Owner API（ReadQuery.createSelector）
 
-## Module
+## Owner
 
-- `@logixjs/core` → `ReadQuery` 子模块
+- `@logixjs/core` → `InternalContracts.ReadQuery` owner
 
 ## API
 
 ```ts
-import type { EqualsKind, ReadQuery, ReadQueryInput } from '@logixjs/core/ReadQuery'
+import type * as Logix from '@logixjs/core'
+
+type EqualsKind = CoreReadContracts.ReadQuery.EqualsKind
+type ReadQuery<S, V> = CoreReadContracts.ReadQuery.ReadQuery<S, V>
+type ReadQueryInput<S, V> = CoreReadContracts.ReadQuery.ReadQueryInput<S, V>
 
 export declare const createSelector: <S, Inputs extends ReadonlyArray<ReadQueryInput<S, any>>, V>(args: {
   readonly debugKey: string
@@ -27,4 +31,3 @@ export declare const createSelector: <S, Inputs extends ReadonlyArray<ReadQueryI
   - `reads = union(inputs.reads)`（归一化去重排序）；
   - `selectorId` 为确定性计算结果；
   - `equalsKind` 默认 `objectIs`，可选 `shallowStruct/custom`（custom 需提供 `equals`）。
-

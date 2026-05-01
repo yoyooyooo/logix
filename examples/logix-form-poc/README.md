@@ -1,6 +1,9 @@
 # Logix Form PoC Package
 
-> 仅用于 `docs/ssot/runtime/logix-form` 相关规范的 PoC；不作为正式运行时代码。
+> historical / quarantine
+>
+> 仅用于旧阶段 `docs/ssot/runtime/logix-form` 相关规范的 PoC；当前不作为 active teaching route，不作为正式运行时代码。
+> 当前 canonical route 统一回 [../../docs/internal/form-api-tutorial.md](../../docs/internal/form-api-tutorial.md) 与 `examples/logix-react/src/demos/form/**`。
 
 目标：
 
@@ -11,7 +14,7 @@
 可以通过：
 
 ```bash
-pnpm --filter @intent-flow/logix-form-poc typecheck
+pnpm --filter @logixjs/form-poc typecheck
 ```
 
 来验证类型是否自洽。

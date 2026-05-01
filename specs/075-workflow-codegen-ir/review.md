@@ -6,7 +6,7 @@
 
 ### 问题
 
-v1 输入映射仅支持 `payload/const/object/merge`，禁止读取 state/traits。当业务需要根据当前 state 决定 service 调用参数时，必须拆成多个 Program 通过 action 串联，可能导致：
+v1 输入映射仅支持 `payload/const/object/merge`，禁止读取 state/fields。当业务需要根据当前 state 决定 service 调用参数时，必须拆成多个 Program 通过 action 串联，可能导致：
 
 - action 数量膨胀（每个"读 state → 计算 → 调用"链路需要额外 action）
 - 业务心智负担增加（需要理解"为什么不能直接读 state"）

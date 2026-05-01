@@ -113,10 +113,8 @@ yield*
 - [Pagination loading](./pagination)
 - [Search + detail linkage](./search-detail)
 
-## Runnable examples
+## Example code
 
-- Index: [Runnable examples](../recipes/runnable-examples)
-- Code:
-  - `examples/logix/src/scenarios/optimistic-toggle.ts`
-  - `examples/logix/src/scenarios/optimistic-toggle-from-pattern.ts`
-  - `examples/logix/src/patterns/optimistic-toggle.ts`
+- `examples/logix/src/scenarios/optimistic-toggle.ts`
+- `examples/logix/src/scenarios/optimistic-toggle-from-pattern.ts`
+- `examples/logix/src/patterns/optimistic-toggle.ts`

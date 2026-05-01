@@ -1,8 +1,8 @@
 # Feature Specification: Module Reference Space（模块引用空间事实源）
 
-**Feature Branch**: `[035-module-reference-space]`  
-**Created**: 2025-12-25  
-**Status**: Draft  
+**Feature Branch**: `[035-module-reference-space]`
+**Created**: 2025-12-25
+**Status**: Draft
 **Input**: 定义平台“模块引用空间事实源”（Module Reference Space）的唯一真相源：同时覆盖 **引用空间导出（PortSpec/TypeIR）** 与 **引用载体协议（CodeAsset/Deps/Digest/Anchor）**。其中：
 
 - 通过 TrialRunReport.artifacts（031）导出模块端口、可引用路径空间与类型 IR（预算/截断/确定性/diff 语义），供 Scenario Canvas、BindingSchema、表达式编辑器与 lint/CI 消费；

@@ -1,26 +1,22 @@
-import { Cause, Effect, Exit, Fiber, Layer, Option } from 'effect'
-import type { AnyModuleShape, ModuleImpl } from '../runtime/core/module.js'
+import { Cause, Effect, Exit, Layer, Option } from 'effect'
+import type { ManagedRuntime } from 'effect'
+import type { AnyModuleShape, ProgramRuntimeBlueprint } from '../runtime/core/module.js'
+import { getProgramRuntimeBlueprint, isProgram, type AnyProgram } from '../program.js'
 import * as BuildEnv from '../platform/BuildEnv.js'
-import type { EvidencePackage, EvidencePackageSource } from './evidence.js'
-import { makeEvidenceCollector, evidenceCollectorLayer } from './evidenceCollector.js'
-import { makeRunSession, runSessionLayer, type RunId } from './runSession.js'
-import {
-  appendSinks,
-  diagnosticsLevel,
-  type DiagnosticsLevel,
-  type Sink as DebugSink,
-} from '../runtime/core/DebugSink.js'
+import type { EvidencePackage, EvidencePackageSource } from '../verification/evidence.js'
+import { withProofKernelContext } from '../verification/proofKernel.js'
+import type { DiagnosticsLevel } from '../runtime/core/DebugSink.js'
+import type { RunId } from '../verification/runSession.js'
 import type { KernelImplementationRef } from '../runtime/core/KernelRef.js'
 import * as KernelRef from '../runtime/core/KernelRef.js'
 import * as RuntimeKernel from '../runtime/core/RuntimeKernel.js'
 import type { ConvergeStaticIrCollector } from '../runtime/core/ConvergeStaticIrCollector.js'
 import { appendConvergeStaticIrCollectors } from '../runtime/core/ConvergeStaticIrCollector.js'
 import type { SerializableErrorSummary } from '../runtime/core/errorSummary.js'
-import { toSerializableErrorSummary } from '../runtime/core/errorSummary.js'
-import { makeProgramRunnerKernel } from '../runtime/ProgramRunner.kernel.js'
+import { makeProgramRunnerKernel } from '../runtime/core/runner/ProgramRunner.kernel.js'
 import { extractManifest, type ModuleManifest } from '../reflection/manifest.js'
 import { exportStaticIr } from '../reflection/staticIr.js'
-import * as Runtime from '../runtime/Runtime.js'
+import * as AppRuntimeImpl from '../runtime/AppRuntime.js'
 import { collectTrialRunArtifacts } from './artifacts/collect.js'
 import type { TrialRunArtifacts } from './artifacts/model.js'
 import { getTrialRunArtifactExporters } from './artifacts/registry.js'
@@ -29,8 +25,19 @@ import {
   reExportTrialRunReport,
   type TrialRunReportBudgets as TrialRunReExportBudgets,
 } from './trialRunReportPipeline.js'
+import {
+  awaitFiberExitWithTimeout,
+  isTimeoutLikeError,
+  toCloseErrorSummary,
+  toErrorSummaryWithCode,
+} from './trialRunErrors.js'
+import {
+  buildEnvironmentIr,
+  parseMissingDependencyFromCause,
+  type EnvironmentIr,
+} from './trialRunEnvironment.js'
 
-type RootLike<Sh extends AnyModuleShape> = ModuleImpl<any, Sh, any> | { readonly impl: ModuleImpl<any, Sh, any> }
+type RootLike<Sh extends AnyModuleShape> = ProgramRuntimeBlueprint<any, Sh, any> | AnyProgram
 
 export interface TrialRunReportBudgets extends TrialRunReExportBudgets {}
 
@@ -45,16 +52,7 @@ export interface TrialRunReport {
   readonly summary?: unknown
   readonly error?: SerializableErrorSummary
 }
-
-export interface EnvironmentIr {
-  readonly tagIds: ReadonlyArray<string>
-  readonly configKeys: ReadonlyArray<string>
-  readonly missingServices: ReadonlyArray<string>
-  readonly missingConfigKeys: ReadonlyArray<string>
-  readonly kernelImplementationRef?: KernelImplementationRef
-  readonly runtimeServicesEvidence?: RuntimeKernel.RuntimeServicesEvidence
-  readonly notes?: unknown
-}
+export type { EnvironmentIr } from './trialRunEnvironment.js'
 
 export interface TrialRunModuleOptions {
   readonly runId?: RunId
@@ -73,221 +71,46 @@ export interface TrialRunModuleOptions {
   readonly budgets?: TrialRunReportBudgets
 }
 
+interface TrialRunModuleExecution {
+  readonly ok: boolean
+  readonly error?: SerializableErrorSummary
+  readonly summary?: unknown
+  readonly environment: EnvironmentIr
+}
+
 const defaultHost = (): string => {
   if (typeof window !== 'undefined' && typeof document !== 'undefined') return 'browser'
   return 'node'
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
+const resolveRootBlueprint = <Sh extends AnyModuleShape>(root: RootLike<Sh>): ProgramRuntimeBlueprint<any, Sh, any> =>
+  (isProgram(root)
+    ? getProgramRuntimeBlueprint<Sh>(root)
+    : (root as any)?._tag === 'ProgramRuntimeBlueprint'
+    ? (root as ProgramRuntimeBlueprint<any, Sh, any>)
+    : (() => {
+        throw new Error('[Logix] runtime.trial expected a Program.')
+      })()) satisfies ProgramRuntimeBlueprint<any, Sh, any>
 
-const resolveRootImpl = <Sh extends AnyModuleShape>(root: RootLike<Sh>): ModuleImpl<any, Sh, any> =>
-  ((root as any)?._tag === 'ModuleImpl'
-    ? (root as ModuleImpl<any, Sh, any>)
-    : ((root as any)?.impl as ModuleImpl<any, Sh, any>)) satisfies ModuleImpl<any, Sh, any>
-
-const parseMissingConfigKeys = (message: string): ReadonlyArray<string> => {
-  const out: string[] = []
-
-  // Effect Config error messages vary; keep parsing conservative and deterministic.
-  const patterns: ReadonlyArray<RegExp> = [
-    /\bMissing (?:data|value) for (?:key|path) "?([A-Z0-9_./:-]+)"?/g,
-    /\bMissing (?:data|value) at ([A-Z0-9_./:-]+)\b/g,
-    /\bMissing configuration:? "?([A-Z0-9_./:-]+)"?/g,
-    /\bConfig\b.*\bmissing\b.*"?([A-Z0-9_./:-]+)"?/gi,
-    /\bat\s*\["([A-Z0-9_./:-]+)"\]/g,
-  ]
-
-  for (const re of patterns) {
-    let match: RegExpExecArray | null
-    while ((match = re.exec(message))) {
-      const key = match[1]
-      if (typeof key === 'string' && key.length > 0) out.push(key)
-    }
-  }
-
-  return Array.from(new Set(out)).sort()
-}
-
-const parseMissingServiceIds = (message: string): ReadonlyArray<string> => {
-  const out: string[] = []
-  const re = /Service not found: ([^\s(]+)/g
-  let match: RegExpExecArray | null
-  while ((match = re.exec(message))) {
-    const id = match[1]?.replace(/[,:.;]+$/, '')
-    if (typeof id === 'string' && id.length > 0) out.push(id)
-  }
-  return Array.from(new Set(out)).sort()
-}
-
-const parseMissingDependencyFromCause = (
-  cause: Cause.Cause<unknown>,
-): {
-  readonly missingServices: ReadonlyArray<string>
-  readonly missingConfigKeys: ReadonlyArray<string>
-} => {
-  const missingServices: string[] = []
-  const missingConfigKeys: string[] = []
-
-  const candidates = cause.reasons
-    .filter((reason) => Cause.isFailReason(reason) || Cause.isDieReason(reason))
-    .map((reason) => (Cause.isFailReason(reason) ? reason.error : reason.defect))
-
-  for (const candidate of candidates) {
-    if (isRecord(candidate) && (candidate as any)._tag === 'ConstructionGuardError') {
-      const missingService = (candidate as any).missingService
-      if (typeof missingService === 'string' && missingService.length > 0) {
-        missingServices.push(missingService)
-      }
-    }
-
-    if (
-      isRecord(candidate) &&
-      (candidate as any)._tag === 'ConfigError' &&
-      (candidate as any)._op === 'MissingData' &&
-      Array.isArray((candidate as any).path) &&
-      (candidate as any).path.every((k: unknown) => typeof k === 'string' && k.length > 0)
-    ) {
-      const key = (candidate as any).path.join('.')
-      if (key.length > 0) missingConfigKeys.push(key)
-    }
-  }
-
-  const messages: string[] = []
-  for (const candidate of candidates) {
-    if (candidate instanceof Error) {
-      messages.push(candidate.message)
-      continue
-    }
-    if (typeof candidate === 'string') {
-      messages.push(candidate)
-      continue
-    }
-    if (isRecord(candidate) && typeof (candidate as any).message === 'string') {
-      messages.push(String((candidate as any).message))
-    }
-  }
-
-  try {
-    messages.push(Cause.pretty(cause))
-  } catch {
-    // ignore
-  }
-
-  const merged = messages.filter((s) => s.length > 0).join('\n')
-
-  if (merged) {
-    missingServices.push(...parseMissingServiceIds(merged))
-    missingConfigKeys.push(...parseMissingConfigKeys(merged))
-  }
-
-  return {
-    missingServices: Array.from(new Set(missingServices)).sort(),
-    missingConfigKeys: Array.from(new Set(missingConfigKeys)).sort(),
-  }
-}
-
-const buildEnvironmentIr = (params: {
-  readonly kernelImplementationRef?: KernelImplementationRef
-  readonly runtimeServicesEvidence?: RuntimeKernel.RuntimeServicesEvidence
-  readonly buildEnvConfig?: Record<string, BuildEnv.BuildEnvConfigValue | undefined>
-  readonly missingServices?: ReadonlyArray<string>
-  readonly missingConfigKeys?: ReadonlyArray<string>
-}): EnvironmentIr => {
-  const providedConfigKeys = Object.keys(params.buildEnvConfig ?? {})
-    .filter((k) => k.length > 0 && (params.buildEnvConfig as any)[k] !== undefined)
-    .sort()
-
-  const missingServices = Array.from(new Set(params.missingServices ?? [])).sort()
-  const missingConfigKeys = Array.from(new Set(params.missingConfigKeys ?? [])).sort()
-
-  const runtimeServiceIds =
-    params.runtimeServicesEvidence?.bindings?.map((b) => b.serviceId).filter((s) => typeof s === 'string') ?? []
-
-  const tagIds = Array.from(new Set([...runtimeServiceIds, ...missingServices])).sort()
-
-  const configKeys = Array.from(new Set([...providedConfigKeys, ...missingConfigKeys])).sort()
-
-  return {
-    tagIds,
-    configKeys,
-    missingServices,
-    missingConfigKeys,
-    kernelImplementationRef: params.kernelImplementationRef,
-    runtimeServicesEvidence: params.runtimeServicesEvidence,
-  }
-}
-
-const toErrorSummaryWithCode = (cause: unknown, code: string, hint?: string): SerializableErrorSummary => {
-  const base = toSerializableErrorSummary(cause).errorSummary
-  return {
-    name: base.name,
-    message: base.message,
-    code,
-    hint: hint ?? base.hint,
-  }
-}
-
-const makeTrialRunTimeoutError = (): Error =>
-  Object.assign(new Error('[Logix] trialRunModule timed out'), {
-    name: 'TrialRunTimeoutError',
+const makeInternalRuntime = <Sh extends AnyModuleShape>(
+  rootBlueprint: ProgramRuntimeBlueprint<any, Sh, any>,
+  layer: Layer.Layer<any, never, never>,
+): ManagedRuntime.ManagedRuntime<any, never> => {
+  const app = AppRuntimeImpl.makeApp({
+    layer,
+    modules: [AppRuntimeImpl.provide(rootBlueprint.module, rootBlueprint.layer as Layer.Layer<any, any, any>)],
+    processes: [],
   })
-
-const awaitFiberExitWithTimeout = <A, E>(
-  fiber: Fiber.Fiber<A, E>,
-  timeoutMs: number | undefined,
-): Effect.Effect<Exit.Exit<A, E | Error>, never, never> =>
-  Effect.gen(function* () {
-    const hasTimeout = typeof timeoutMs === 'number' && Number.isFinite(timeoutMs) && timeoutMs > 0
-    if (!hasTimeout) {
-      return (yield* Fiber.await(fiber)) as Exit.Exit<A, E | Error>
-    }
-
-    const raced = yield* Effect.promise<Exit.Exit<A, E | Error> | { readonly _tag: 'Timeout' }>(() =>
-      new Promise((resolve) => {
-        const timer = setTimeout(() => resolve({ _tag: 'Timeout' as const }), timeoutMs)
-        void Effect.runPromise(Fiber.await(fiber)).then((exit) => {
-          clearTimeout(timer)
-          resolve(exit as Exit.Exit<A, E | Error>)
-        })
-      }),
-    )
-
-    if ((raced as any)._tag !== 'Timeout') {
-      return raced as Exit.Exit<A, E | Error>
-    }
-
-    yield* Fiber.interrupt(fiber).pipe(Effect.asVoid, Effect.forkDetach({ startImmediately: true }))
-    return Exit.fail(makeTrialRunTimeoutError())
-  })
+  return app.makeRuntime()
+}
 
 export const trialRunModule = <Sh extends AnyModuleShape>(
   root: RootLike<Sh>,
   options?: TrialRunModuleOptions,
 ): Effect.Effect<TrialRunReport, never, never> =>
-  Effect.gen(function* () {
-    const rootImpl = resolveRootImpl(root)
-
-    const session = makeRunSession({
-      runId: options?.runId,
-      source: options?.source ?? { host: defaultHost(), label: 'trial-run-module' },
-      startedAt: options?.startedAt,
-    })
-
-    const collector = makeEvidenceCollector(session)
-
-    const convergeCollector: ConvergeStaticIrCollector = {
-      register: (ir) => {
-        collector.registerConvergeStaticIr(ir)
-      },
-    }
-
-    const sinksLayer = appendSinks([collector.debugSink as unknown as DebugSink])
+  (Effect.gen(function* () {
+    const rootBlueprint = resolveRootBlueprint(root)
     const resolvedDiagnosticsLevel = options?.diagnosticsLevel ?? 'light'
-    const diagnosticsLayer = diagnosticsLevel(resolvedDiagnosticsLevel)
-    const convergeLayer = appendConvergeStaticIrCollectors([convergeCollector])
-    const collectorLayer = evidenceCollectorLayer(collector)
-    const sessionLayer = runSessionLayer(session)
 
     const buildEnvConfig = options?.buildEnv?.config
     const buildEnvLayer = BuildEnv.layer({
@@ -296,168 +119,201 @@ export const trialRunModule = <Sh extends AnyModuleShape>(
       configProvider: options?.buildEnv?.configProvider,
     })
 
-    const trialLayer = Layer.mergeAll(
+    const moduleIdFromRoot =
+      typeof (rootBlueprint.module as any)?.id === 'string' && (rootBlueprint.module as any).id.length > 0
+        ? String((rootBlueprint.module as any).id)
+        : undefined
+
+    const proofLayer = Layer.mergeAll(
       buildEnvLayer,
       options?.layer ?? (Layer.empty as unknown as Layer.Layer<any, any, any>),
-      sessionLayer,
-      collectorLayer,
-      diagnosticsLayer,
-      sinksLayer,
-      convergeLayer,
-    ) as Layer.Layer<any, never, never>
+    ) as Layer.Layer<any, any, any>
 
-    const kernel = yield* makeProgramRunnerKernel(
-      (impl) =>
-        Runtime.make(impl, {
-          layer: trialLayer as any,
-          // trial-run does not enable devtools by default; diagnostics is controlled by diagnosticsLevel.
-        } as any),
-      rootImpl,
-    )
+    const proofResult = yield* withProofKernelContext(
+      {
+        runId: options?.runId,
+        source: options?.source ?? { host: defaultHost(), label: 'trial-run-module' },
+        startedAt: options?.startedAt,
+        timeoutMs: options?.trialRunTimeoutMs,
+        diagnosticsLevel: resolvedDiagnosticsLevel,
+        maxEvents: options?.maxEvents,
+        layer: proofLayer,
+      },
+      ({ collector, layer }) =>
+        Effect.gen(function* () {
+          const convergeCollector: ConvergeStaticIrCollector = {
+            register: (ir) => {
+              collector.registerConvergeStaticIr(ir)
+            },
+          }
 
-    const identity = kernel.identity
+          const trialLayer = Layer.mergeAll(
+            layer,
+            appendConvergeStaticIrCollectors([convergeCollector]),
+          ) as Layer.Layer<any, never, any>
 
-    const bootFiber = kernel.runtime.runFork(Effect.service(rootImpl.module as any).pipe(Effect.orDie))
-    const bootExit = yield* awaitFiberExitWithTimeout(bootFiber, options?.trialRunTimeoutMs)
-
-    let kernelImplementationRef: KernelImplementationRef | undefined
-    let runtimeServicesEvidence: RuntimeKernel.RuntimeServicesEvidence | undefined
-    let instanceId: string | undefined
-
-    if (Exit.isSuccess(bootExit)) {
-      const moduleRuntime = bootExit.value as any
-      instanceId =
-        typeof moduleRuntime?.instanceId === 'string' && moduleRuntime.instanceId.length > 0
-          ? moduleRuntime.instanceId
-          : undefined
-      kernel.setInstanceId(instanceId)
-
-      try {
-        kernelImplementationRef = KernelRef.getKernelImplementationRef(moduleRuntime)
-      } catch {
-        kernelImplementationRef = undefined
-      }
-
-      if (resolvedDiagnosticsLevel !== 'off') {
-        try {
-          runtimeServicesEvidence = RuntimeKernel.getRuntimeServicesEvidence(moduleRuntime)
-        } catch {
-          runtimeServicesEvidence = undefined
-        }
-      }
-    } else {
-      const failure = Cause.findErrorOption(bootExit.cause)
-      if (Option.isSome(failure)) {
-        const err: any = failure.value
-        const instanceIdFromErr = typeof err?.instanceId === 'string' ? err.instanceId : undefined
-        if (instanceIdFromErr && instanceIdFromErr.length > 0) {
-          kernel.setInstanceId(instanceIdFromErr)
-        }
-      }
-    }
-
-    const closeExit = yield* Effect.exit(
-      kernel.close({
-        timeoutMs:
-          typeof options?.closeScopeTimeout === 'number' &&
-          Number.isFinite(options.closeScopeTimeout) &&
-          options.closeScopeTimeout > 0
-            ? options.closeScopeTimeout
-            : 1000,
-      }),
-    )
-
-    let ok = Exit.isSuccess(bootExit) && Exit.isSuccess(closeExit)
-    let error: SerializableErrorSummary | undefined
-    let summary: unknown | undefined
-
-    const depsFromBootFailure = Exit.isFailure(bootExit)
-      ? parseMissingDependencyFromCause(bootExit.cause as Cause.Cause<unknown>)
-      : { missingServices: [], missingConfigKeys: [] }
-
-    const missingServices = depsFromBootFailure.missingServices
-    const missingConfigKeys = depsFromBootFailure.missingConfigKeys
-
-    const closeError = Exit.isFailure(closeExit)
-      ? closeExit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)[0]
-      : undefined
-
-    if (!Exit.isSuccess(bootExit)) {
-      const failure = Option.getOrUndefined(Cause.findErrorOption(bootExit.cause))
-      const defect = bootExit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)[0]
-      const base = failure ?? defect ?? bootExit.cause
-
-      if (missingServices.length > 0 || missingConfigKeys.length > 0) {
-        ok = false
-        error = toErrorSummaryWithCode(
-          base,
-          'MissingDependency',
-          missingServices.length > 0
-            ? 'Build-time missing service: provide a Layer mock/implementation via options.layer, or move the dependency access to runtime.'
-            : 'Build-time missing config: provide the missing key(s) in buildEnv.config, or add a default value to Config.',
-        )
-      } else if (
-        isRecord(base) &&
-        ((base as any).name === 'TrialRunTimeoutError' || (base as any)._tag === 'TrialRunTimeout')
-      ) {
-        ok = false
-        error = toErrorSummaryWithCode(
-          base,
-          'TrialRunTimeout',
-          'Trial run timed out: check for Layer/assembly phase blocking (Effect.never / unfinished acquire).',
-        )
-      } else {
-        ok = false
-        error = toErrorSummaryWithCode(base, 'RuntimeFailure')
-      }
-    }
-
-    if (Exit.isFailure(closeExit)) {
-      const died = closeExit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)[0]
-      const failure = Option.getOrUndefined(Cause.findErrorOption(closeExit.cause))
-      const base = died ?? failure ?? closeExit.cause
-
-      const closeErrorSummary = (() => {
-        const tag = isRecord(base) ? (base as any)._tag : undefined
-        if (tag === 'DisposeTimeout') {
-          return toErrorSummaryWithCode(
-            base,
-            'DisposeTimeout',
-            'Dispose timed out: check for unclosed resource handles, fibers not interrupted, or event listeners not unregistered.',
+          const kernel = yield* makeProgramRunnerKernel(
+            (blueprint: ProgramRuntimeBlueprint<any, AnyModuleShape, any>) =>
+              makeInternalRuntime(blueprint, trialLayer as any),
+            rootBlueprint,
           )
+
+          const bootFiber = kernel.runtime.runFork(Effect.service(rootBlueprint.module as any).pipe(Effect.orDie))
+          const bootExit = yield* awaitFiberExitWithTimeout(bootFiber, options?.trialRunTimeoutMs)
+
+          let kernelImplementationRef: KernelImplementationRef | undefined
+          let runtimeServicesEvidence: RuntimeKernel.RuntimeServicesEvidence | undefined
+          let instanceId: string | undefined
+
+          if (Exit.isSuccess(bootExit)) {
+            const moduleRuntime = bootExit.value as any
+            instanceId =
+              typeof moduleRuntime?.instanceId === 'string' && moduleRuntime.instanceId.length > 0
+                ? moduleRuntime.instanceId
+                : undefined
+            kernel.setInstanceId(instanceId)
+
+            try {
+              kernelImplementationRef = KernelRef.getKernelImplementationRef(moduleRuntime)
+            } catch {
+              kernelImplementationRef = undefined
+            }
+
+            if (kernelImplementationRef != null) {
+              collector.setKernelImplementationRef(kernelImplementationRef)
+            }
+
+            if (resolvedDiagnosticsLevel !== 'off') {
+              try {
+                runtimeServicesEvidence = RuntimeKernel.getRuntimeServicesEvidence(moduleRuntime)
+              } catch {
+                runtimeServicesEvidence = undefined
+              }
+            }
+
+            if (runtimeServicesEvidence != null) {
+              collector.setRuntimeServicesEvidence(runtimeServicesEvidence)
+            }
+          } else {
+            const failure = Cause.findErrorOption(bootExit.cause)
+            if (Option.isSome(failure)) {
+              const err: any = failure.value
+              const instanceIdFromErr = typeof err?.instanceId === 'string' ? err.instanceId : undefined
+              if (instanceIdFromErr && instanceIdFromErr.length > 0) {
+                kernel.setInstanceId(instanceIdFromErr)
+              }
+            }
+          }
+
+          const closeExit = yield* Effect.exit(
+            kernel.close({
+              timeoutMs:
+                typeof options?.closeScopeTimeout === 'number' &&
+                Number.isFinite(options.closeScopeTimeout) &&
+                options.closeScopeTimeout > 0
+                  ? options.closeScopeTimeout
+                  : 1000,
+            }),
+          )
+
+          let ok = Exit.isSuccess(bootExit) && Exit.isSuccess(closeExit)
+          let error: SerializableErrorSummary | undefined
+          let summary: unknown | undefined
+
+          const depsFromBootFailure = Exit.isFailure(bootExit)
+            ? parseMissingDependencyFromCause(bootExit.cause as Cause.Cause<unknown>)
+            : { missingServices: [], missingConfigKeys: [], missingProgramImports: [] }
+
+          const missingServices = depsFromBootFailure.missingServices
+          const missingConfigKeys = depsFromBootFailure.missingConfigKeys
+          const missingProgramImports = depsFromBootFailure.missingProgramImports
+
+          if (!Exit.isSuccess(bootExit)) {
+            const failure = Option.getOrUndefined(Cause.findErrorOption(bootExit.cause))
+            const defect = bootExit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)[0]
+            const base = failure ?? defect ?? bootExit.cause
+
+            if (missingServices.length > 0 || missingConfigKeys.length > 0 || missingProgramImports.length > 0) {
+              ok = false
+              error = toErrorSummaryWithCode(
+                base,
+                'MissingDependency',
+                missingProgramImports.length > 0
+                  ? 'Build-time missing Program import: provide the child Program via Program.capabilities.imports.'
+                  : missingServices.length > 0
+                  ? 'Build-time missing service: provide a Layer mock/implementation via options.layer, or move the dependency access to runtime.'
+                  : 'Build-time missing config: provide the missing key(s) in buildEnv.config, or add a default value to Config.',
+              )
+            } else if (isTimeoutLikeError(base)) {
+              ok = false
+              error = toErrorSummaryWithCode(
+                base,
+                'TrialRunTimeout',
+                'Trial run timed out: check for Layer/assembly phase blocking (Effect.never / unfinished acquire).',
+              )
+            } else {
+              ok = false
+              error = toErrorSummaryWithCode(base, 'RuntimeFailure')
+            }
+          }
+
+          if (Exit.isFailure(closeExit)) {
+            const died = closeExit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)[0]
+            const failure = Option.getOrUndefined(Cause.findErrorOption(closeExit.cause))
+            const base = died ?? failure ?? closeExit.cause
+
+            const closeErrorSummary = toCloseErrorSummary(base)
+
+            ok = false
+            if (!error) {
+              error = closeErrorSummary
+            } else {
+              summary = { __logix: { closeError: closeErrorSummary } }
+            }
+          }
+
+          const environment = buildEnvironmentIr({
+            kernelImplementationRef,
+            runtimeServicesEvidence,
+            buildEnvConfig,
+            missingServices,
+            missingConfigKeys,
+            missingProgramImports,
+          })
+
+          return { ok, error, summary, environment } satisfies TrialRunModuleExecution
+        }).pipe(
+          Effect.catchCause((cause: Cause.Cause<unknown>) =>
+            Effect.succeed({
+              ok: false,
+              error: toErrorSummaryWithCode(cause, 'RuntimeFailure'),
+              summary: undefined,
+              environment: buildEnvironmentIr({
+                buildEnvConfig,
+              }),
+            } satisfies TrialRunModuleExecution),
+          ),
+        ),
+    )
+
+    const proofValue: TrialRunModuleExecution = Exit.isSuccess(proofResult.exit)
+      ? proofResult.exit.value
+      : {
+          ok: false,
+          error: isTimeoutLikeError(proofResult.error)
+            ? toErrorSummaryWithCode(
+                proofResult.error ?? new Error('proof kernel failed'),
+                'TrialRunTimeout',
+                'Trial run timed out: check for Layer/assembly phase blocking (Effect.never / unfinished acquire).',
+              )
+            : toErrorSummaryWithCode(proofResult.error ?? new Error('proof kernel failed'), 'RuntimeFailure'),
+          summary: undefined,
+          environment: buildEnvironmentIr({ buildEnvConfig }),
         }
-        return toErrorSummaryWithCode(base, 'RuntimeFailure')
-      })()
-
-      ok = false
-      if (!error) {
-        // If boot succeeded but dispose failed, the close error is the primary failure.
-        error = closeErrorSummary
-      } else {
-        // Preserve the primary boot failure (e.g. TrialRunTimeout) but keep dispose failure evidence.
-        summary = { __logix: { closeError: closeErrorSummary } }
-      }
-    }
-
-    const environment = buildEnvironmentIr({
-      kernelImplementationRef,
-      runtimeServicesEvidence,
-      buildEnvConfig,
-      missingServices,
-      missingConfigKeys,
-    })
-
-    const moduleIdFromRoot =
-      typeof (rootImpl.module as any)?.id === 'string' && (rootImpl.module as any).id.length > 0
-        ? String((rootImpl.module as any).id)
-        : undefined
 
     const reExportCollection = yield* Effect.promise(async () =>
       collectTrialRunReExport({
-        collectEvidence: () =>
-          collector.exportEvidencePackage({
-            maxEvents: options?.maxEvents ?? 1000,
-          }),
+        collectEvidence: () => proofResult.evidence,
         collectManifest: () =>
           extractManifest(root as any, {
             includeStaticIr: true,
@@ -466,12 +322,12 @@ export const trialRunModule = <Sh extends AnyModuleShape>(
         collectStaticIr: () => exportStaticIr(root as any),
         collectArtifacts: ({ manifest, staticIr }) =>
           collectTrialRunArtifacts({
-            exporters: getTrialRunArtifactExporters(rootImpl.module as any),
+            exporters: getTrialRunArtifactExporters(rootBlueprint.module as any),
             ctx: {
               moduleId: moduleIdFromRoot ?? manifest?.moduleId ?? 'unknown',
               manifest,
               staticIr: staticIr as any,
-              environment,
+              environment: proofValue.environment,
             },
           }),
       }),
@@ -479,11 +335,11 @@ export const trialRunModule = <Sh extends AnyModuleShape>(
 
     const report = reExportTrialRunReport({
       base: {
-        runId: session.runId,
-        ok,
-        environment,
-        summary,
-        error,
+        runId: proofResult.session.runId,
+        ok: proofValue.ok,
+        environment: proofValue.environment,
+        summary: proofValue.summary,
+        error: proofValue.error,
       },
       collection: reExportCollection,
       maxEvents: options?.maxEvents ?? 1000,
@@ -491,4 +347,4 @@ export const trialRunModule = <Sh extends AnyModuleShape>(
     })
 
     return report satisfies TrialRunReport
-  })
+  }) as Effect.Effect<TrialRunReport, never, never>)

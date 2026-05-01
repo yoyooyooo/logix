@@ -3,7 +3,10 @@ import type * as Logic from './LogicMiddleware.js'
 import type { StateTransactionInstrumentation, TxnLanesPatch } from './env.js'
 import type { FieldPath } from '../../field-path.js'
 import type * as Action from '../../action.js'
-import type * as ModuleTraits from './ModuleTraits.js'
+import type { StateAtPath, StateFieldPath } from '../../field-kernel/field-path.js'
+import type { FieldEntry } from '../../field-kernel/model.js'
+import type { FieldMeta } from '../../field-kernel/meta.js'
+import type * as ModuleFields from './ModuleFields.js'
 import type { ReadQueryInput } from './ReadQuery.js'
 
 /**
@@ -54,7 +57,11 @@ type ActionCallable<P, Out> = {
   (payload: P): Out
 } & ([P] extends [void] ? { (): Out } : {})
 
-export interface ModuleImplementStateTransactionOptions {
+type DepsArgs<Sh extends AnyModuleShape, Deps extends ReadonlyArray<StateFieldPath<StateOf<Sh>>>> = {
+  readonly [K in keyof Deps]: StateAtPath<StateOf<Sh>, Deps[K]>
+}
+
+export interface ProgramStateTransactionOptions {
   readonly instrumentation?: StateTransactionInstrumentation
   /** 060: Txn Lanes (instance-level opt-in / tuning). */
   readonly txnLanes?: TxnLanesPatch
@@ -146,7 +153,7 @@ export interface ModuleRuntime<S, A> {
    * Subscribe to ReadQuery (SelectorSpec) changes, including commit meta of the current commit.
    *
    * - static lane: driven by SelectorGraph (precise recompute + cache + precise notifications)
-   * - dynamic lane: may fall back to per-commit recompute (legacy)
+   * - dynamic lane: may fall back to per-commit recompute
    */
   readonly changesReadQueryWithMeta: <V>(readQuery: ReadQueryInput<S, V>) => Stream.Stream<StateChangeWithMeta<V>>
 
@@ -160,10 +167,10 @@ export interface ModuleRuntime<S, A> {
 }
 
 /**
- * v3: strongly-typed Module Tag for type-safe constraints in Logic.forShape / collaborative logic.
+ * Strongly-typed Module Tag for collaborative logic and runtime lookup.
  *
  * Notes:
- * - The Id type is not important for this PoC, so we use `any`.
+ * - The Id type is not carried through this service key.
  * - The Service type is fixed to the Runtime for the current Shape.
  */
 export type ModuleRuntimeTag<Sh extends AnyModuleShape> = ServiceMap.Key<any, ModuleRuntimeOfShape<Sh>>
@@ -181,13 +188,13 @@ export type ModuleHandleUnion<Sh extends AnyModuleShape> =
   | ModuleRuntimeTag<Sh>
 
 /**
- * v3: a read-only handle view exposed to Logic for cross-module access.
+ * Read-only handle view exposed to Logic for cross-module access.
  *
  * - read: read a snapshot value via selector.
  * - changes: subscribe to changes of the selector view.
  * - dispatch: dispatch an Action to the module.
  *
- * The runtime may wrap an implementation based on ModuleRuntime, but the type does not expose any direct State write API.
+ * The type does not expose direct State write APIs.
  */
 export interface ModuleHandle<Sh extends AnyModuleShape> {
   readonly read: <V>(selector: (s: StateOf<Sh>) => V) => Effect.Effect<V, never, never>
@@ -223,7 +230,7 @@ export declare const MODULE_EXT: unique symbol
  * - Other reflection fields (schemas/meta/services/dev.source) are not strictly constrained here.
  */
 export interface ModuleLike<Id extends string, Sh extends AnyModuleShape, Ext extends object = {}> {
-  readonly _kind: 'ModuleDef' | 'Module'
+  readonly _kind: 'Module' | 'Program'
   readonly id: Id
   readonly tag: ModuleTag<Id, Sh>
   /**
@@ -238,9 +245,13 @@ type ModuleShapeOf<M> = M extends ModuleLike<any, infer Sh, any> ? Sh : never
 type ModuleExtOf<M> = M extends ModuleLike<any, any, infer Ext> ? Ext : never
 
 /**
- * LogicPlan: an internal two-phase logic abstraction (setup + run).
+ * LogicPlan: an internal normalized logic carrier.
  *
- * - setup: runs during Module instance startup, used to register reducers / lifecycle / Debug and other structural behavior.
+ * Public authoring speaks in declaration semantics plus a returned run effect.
+ * This type is the internal normalized form that still stores them as `setup + run`
+ * for runtime installation.
+ *
+ * - setup: internal declaration-stage carrier gathered during Module instance startup.
  * - run: the main logic program, running as a long-lived fiber after Env is fully ready.
  *
  * Runtime canonicalization rule:
@@ -248,7 +259,15 @@ type ModuleExtOf<M> = M extends ModuleLike<any, any, infer Ext> ? Ext : never
  * - single-phase Logic is equivalent to `setup = Effect.void` and `run = Logic`.
  */
 export interface LogicPlan<Sh extends AnyModuleShape, R = unknown, E = unknown> {
+  /**
+   * Internal compatibility carrier for declaration-stage registrations.
+   * Public authoring should stay on the single builder surface with declaration semantics.
+   */
   readonly setup: DispatchEffect<Sh, R>
+  /**
+   * Internal compatibility carrier.
+   * Public authoring should return the run effect from the logic builder.
+   */
   readonly run: LogicEffect<Sh, R, unknown, E>
 }
 
@@ -263,6 +282,12 @@ export type ActionForTag<Sh extends AnyModuleShape, K extends keyof Sh['actionMa
 
 export type BoundApiRootApi<Sh extends AnyModuleShape, R = never> = {
   readonly resolve: <Svc, Id = unknown>(tag: ServiceMap.Key<Id, Svc>) => LogicEffect<Sh, R, Svc, never>
+}
+
+export type BoundApiImportsApi<Sh extends AnyModuleShape, R = never> = {
+  readonly get: <Id extends string, Sh2 extends AnyModuleShape>(
+    module: ModuleTag<Id, Sh2>,
+  ) => LogicEffect<Sh, R, ModuleHandle<Sh2>, never>
 }
 
 export type BoundApiStateApi<Sh extends AnyModuleShape, R = never> = {
@@ -293,18 +318,10 @@ export type BoundApiDispatchApi<Sh extends AnyModuleShape, R = never> = {
   ): DispatchEffect<Sh, R>
 }
 
-export type BoundApiLifecycleApi<Sh extends AnyModuleShape, R = never> = {
-  readonly onInitRequired: (eff: DispatchEffect<Sh, R>) => DispatchEffect<Sh, R>
-  readonly onStart: (eff: DispatchEffect<Sh, R>) => DispatchEffect<Sh, R>
-  readonly onInit: (eff: DispatchEffect<Sh, R>) => DispatchEffect<Sh, R>
-  readonly onDestroy: (eff: DispatchEffect<Sh, R>) => DispatchEffect<Sh, R>
-  readonly onError: (
-    handler: (cause: import('effect').Cause.Cause<unknown>, context: import('./Lifecycle.js').ErrorContext) => Effect.Effect<void, never, R>,
-  ) => DispatchEffect<Sh, R>
-  readonly onSuspend: (eff: DispatchEffect<Sh, R>) => DispatchEffect<Sh, R>
-  readonly onResume: (eff: DispatchEffect<Sh, R>) => DispatchEffect<Sh, R>
-  readonly onReset: (eff: DispatchEffect<Sh, R>) => DispatchEffect<Sh, R>
-}
+export type BoundApiReadyAfterApi<Sh extends AnyModuleShape, R = never> = (
+  eff: DispatchEffect<Sh, R>,
+  options?: { readonly id?: string },
+) => DispatchEffect<Sh, R>
 
 export type BoundApiUseApi<Sh extends AnyModuleShape, R = never> = {
   <M extends ModuleLike<string, AnyModuleShape, any>>(module: M): LogicEffect<
@@ -317,9 +334,36 @@ export type BoundApiUseApi<Sh extends AnyModuleShape, R = never> = {
   <Svc, Id = unknown>(tag: ServiceMap.Key<Id, Svc>): LogicEffect<Sh, R, Svc, never>
 }
 
-export type BoundApiTraitsApi<Sh extends AnyModuleShape, R = never> = {
-  readonly declare: (traits: ModuleTraits.TraitSpec) => void
-  readonly source: {
+export type BoundApiFieldsApi<Sh extends AnyModuleShape, R = never> = {
+  (fields: ModuleFields.FieldSpec): void
+  readonly computed: <
+    P extends StateFieldPath<StateOf<Sh>>,
+    const Deps extends ReadonlyArray<StateFieldPath<StateOf<Sh>>>,
+  >(input: {
+    readonly deps: Deps
+    readonly get: (...depsValues: DepsArgs<Sh, Deps>) => StateAtPath<StateOf<Sh>, P>
+    readonly equals?: (
+      prev: StateAtPath<StateOf<Sh>, P>,
+      next: StateAtPath<StateOf<Sh>, P>,
+    ) => boolean
+    readonly scheduling?: FieldEntry<StateOf<Sh>, P> extends { readonly meta: infer Meta }
+      ? Meta extends { readonly scheduling?: infer Scheduling }
+        ? Scheduling
+        : never
+      : never
+  }) => FieldEntry<StateOf<Sh>, P>
+  readonly source: (<
+    P extends StateFieldPath<StateOf<Sh>>,
+    const Deps extends ReadonlyArray<StateFieldPath<StateOf<Sh>>>,
+  >(input: {
+    readonly resource: string
+    readonly deps: Deps
+    readonly key: (...depsValues: DepsArgs<Sh, Deps>) => unknown
+    readonly triggers?: ReadonlyArray<'onMount' | 'onKeyChange'>
+    readonly debounceMs?: number
+    readonly concurrency?: 'switch' | 'exhaust-trailing'
+    readonly meta?: FieldMeta
+  }) => FieldEntry<StateOf<Sh>, P>) & {
     readonly refresh: (
       fieldPath: string,
       options?: {
@@ -327,6 +371,17 @@ export type BoundApiTraitsApi<Sh extends AnyModuleShape, R = never> = {
       },
     ) => DispatchEffect<Sh, R>
   }
+  readonly external: <P extends StateFieldPath<StateOf<Sh>>, T = StateAtPath<StateOf<Sh>, P>>(input: {
+    readonly store: any
+    readonly select?: (snapshot: T) => StateAtPath<StateOf<Sh>, P>
+    readonly equals?: (
+      prev: StateAtPath<StateOf<Sh>, P>,
+      next: StateAtPath<StateOf<Sh>, P>,
+    ) => boolean
+    readonly coalesceWindowMs?: number
+    readonly priority?: 'urgent' | 'nonUrgent'
+    readonly meta?: FieldMeta
+  }) => FieldEntry<StateOf<Sh>, P>
 }
 
 export type BoundApiReducerApi<Sh extends AnyModuleShape, R = never> = <K extends keyof Sh['actionMap']>(
@@ -337,11 +392,12 @@ export type BoundApiReducerApi<Sh extends AnyModuleShape, R = never> = <K extend
 /**
  * Bound API: creates pre-bound accessors for a given Store shape + Env.
  *
- * - The runtime implementation lives in internal/runtime/BoundApiRuntime.
+ * - The runtime implementation lives in internal/runtime/core/BoundApiRuntime.
  * - The public Bound.ts exports a same-named type alias to keep the public API consistent.
  */
 export interface BoundApi<Sh extends AnyModuleShape, R = never> {
   readonly root: BoundApiRootApi<Sh, R>
+  readonly imports: BoundApiImportsApi<Sh, R>
   readonly state: BoundApiStateApi<Sh, R>
   readonly actions: Sh['actionMap']
   readonly dispatchers: BoundApiDispatchersApi<Sh, R>
@@ -349,7 +405,7 @@ export interface BoundApi<Sh extends AnyModuleShape, R = never> {
   /**
    * effect：
    * - Register a side-effect handler for a specific Action token.
-   * - Setup registration is the primary path; run-phase dynamic registration is allowed but emits diagnostics and only affects future actions.
+   * - Declaration registration is the primary path; run-phase dynamic registration is allowed but emits diagnostics and only affects future actions.
    *
    * Constraints:
    * - Handlers must run outside the transaction window (FR-012); never perform IO inside reducers/transactions.
@@ -362,7 +418,7 @@ export interface BoundApi<Sh extends AnyModuleShape, R = never> {
   readonly flow: import('./FlowRuntime.js').Api<Sh, R>
   readonly match: <V>(value: V) => Logic.FluentMatch<V>
   readonly matchTag: <V extends { _tag: string }>(value: V) => Logic.FluentMatchTag<V>
-  readonly lifecycle: BoundApiLifecycleApi<Sh, R>
+  readonly readyAfter: BoundApiReadyAfterApi<Sh, R>
   readonly use: BoundApiUseApi<Sh, R>
   readonly onAction: {
     <T extends ActionOf<Sh>>(predicate: (a: ActionOf<Sh>) => a is T): Logic.IntentBuilder<T, Sh, R>
@@ -382,12 +438,13 @@ export interface BoundApi<Sh extends AnyModuleShape, R = never> {
   readonly onState: <V>(selector: (s: StateOf<Sh>) => V) => Logic.IntentBuilder<V, Sh, R>
   readonly on: <V>(source: Stream.Stream<V>) => Logic.IntentBuilder<V, Sh, R>
   /**
-   * traits: runtime entrypoints reserved for features like StateTrait.
+   * fields: declaration-time collector for field-level behavior.
    *
-   * - source.refresh(fieldPath): trigger an explicit refresh of a source field.
-   * - Concrete behavior is mounted at runtime by StateTrait.install.
+   * - `$.fields(spec)`: register field declarations during the sync logic builder phase.
+   * - `$.fields.computed/source/external(...)`: local grammar helpers that build field declaration fragments.
+   * - `$.fields.source.refresh(...)`: trigger an explicit refresh of an installed source field.
    */
-  readonly traits: BoundApiTraitsApi<Sh, R>
+  readonly fields: BoundApiFieldsApi<Sh, R>
   /**
    * Primary reducer definition entrypoint:
    * - Semantics: register a synchronous, pure state transform reducer for an Action tag.
@@ -427,7 +484,17 @@ export interface ModuleTag<Id extends string, Sh extends AnyModuleShape> extends
   readonly reducers?: ReducersFromMap<Sh['stateSchema'], Sh['actionMap']>
 
   readonly logic: <R = never, E = unknown>(
+    id: string,
     build: (api: BoundApi<Sh, R>) => ModuleLogic<Sh, R, E>,
+    options?: {
+      readonly kind?: string
+      readonly name?: string
+      readonly source?: {
+        readonly file: string
+        readonly line: number
+        readonly column: number
+      }
+    },
   ) => ModuleLogic<Sh, R, E>
 
   readonly live: <R = never, E = never>(
@@ -436,35 +503,35 @@ export interface ModuleTag<Id extends string, Sh extends AnyModuleShape> extends
   ) => Layer.Layer<ModuleRuntimeOfShape<Sh>, E, R>
 
   /**
-   * implement: build a ModuleImpl blueprint from Module definition + initial state + a set of logics.
+   * implement: build a ProgramRuntimeBlueprint blueprint from Module definition + initial state + a set of logics.
    *
    * - R represents the Env required by the logics.
-   * - The returned ModuleImpl.layer carries R as its input environment.
+   * - The returned ProgramRuntimeBlueprint.layer carries R as its input environment.
    * - withLayer/withLayers can progressively narrow R to a more concrete Env (even `never`).
    */
   readonly implement: <R = never>(config: {
     initial: StateOf<Sh>
     logics?: Array<ModuleLogic<Sh, R, any>>
-    imports?: ReadonlyArray<Layer.Layer<any, any, any> | ModuleImpl<any, AnyModuleShape, any>>
+    imports?: ReadonlyArray<Layer.Layer<any, any, any> | ProgramRuntimeBlueprint<any, AnyModuleShape, any>>
     processes?: ReadonlyArray<Effect.Effect<void, any, any>>
-    stateTransaction?: ModuleImplementStateTransactionOptions
-  }) => ModuleImpl<Id, Sh, R>
+    stateTransaction?: ProgramStateTransactionOptions
+  }) => ProgramRuntimeBlueprint<Id, Sh, R>
 }
 
 /**
- * ModuleImpl: a concrete Module implementation unit (blueprint + initial state + mounted logics).
+ * ProgramRuntimeBlueprint: a concrete Module implementation unit (blueprint + initial state + mounted logics).
  *
  * - It's a "configured module" that can be consumed directly by React hooks or app composition.
  * - It carries the Env dependency type R required by the implementation.
  */
-export interface ModuleImpl<Id extends string, Sh extends AnyModuleShape, REnv = any> {
-  readonly _tag: 'ModuleImpl'
+export interface ProgramRuntimeBlueprint<Id extends string, Sh extends AnyModuleShape, REnv = any> {
+  readonly _tag: 'ProgramRuntimeBlueprint'
   readonly module: ModuleTag<Id, Sh>
   readonly layer: Layer.Layer<ModuleRuntimeOfShape<Sh>, never, REnv>
   readonly processes?: ReadonlyArray<Effect.Effect<void, any, any>>
-  readonly stateTransaction?: ModuleImplementStateTransactionOptions
-  readonly withLayer: (layer: Layer.Layer<any, never, any>) => ModuleImpl<Id, Sh, REnv>
-  readonly withLayers: (...layers: ReadonlyArray<Layer.Layer<any, never, any>>) => ModuleImpl<Id, Sh, REnv>
+  readonly stateTransaction?: ProgramStateTransactionOptions
+  readonly withLayer: (layer: Layer.Layer<any, never, any>) => ProgramRuntimeBlueprint<Id, Sh, REnv>
+  readonly withLayers: (...layers: ReadonlyArray<Layer.Layer<any, never, any>>) => ProgramRuntimeBlueprint<Id, Sh, REnv>
 }
 
 /**

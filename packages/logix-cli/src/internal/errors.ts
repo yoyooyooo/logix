@@ -16,10 +16,18 @@ const isCliUsageCode = (code: string | undefined): boolean =>
   typeof code === 'string' &&
   (code === 'CLI_INVALID_ARGUMENT' ||
     code === 'CLI_INVALID_COMMAND' ||
+    code === 'CLI_INVALID_EVIDENCE' ||
+    code === 'CLI_INVALID_SELECTION' ||
     code === 'CLI_MISSING_RUNID' ||
     code === 'CLI_INVALID_INPUT' ||
     code === 'CLI_ENTRY_NO_EXPORT' ||
+    code === 'CLI_ENTRY_NOT_PROGRAM' ||
     code === 'CLI_ENTRY_IMPORT_FAILED' ||
+    code === 'CLI_SCENARIO_INPUT_REQUIRED' ||
+    code === 'CLI_SCENARIO_NOT_IMPLEMENTED' ||
+    code === 'COMPARE_ENVIRONMENT_MISMATCH' ||
+    code === 'COMPARE_ENVIRONMENT_FINGERPRINT_MISMATCH' ||
+    code === 'COMPARE_REPORT_MISMATCH' ||
     code === 'CLI_HOST_MISSING_BROWSER_GLOBAL' ||
     code === 'CLI_HOST_MISMATCH')
 

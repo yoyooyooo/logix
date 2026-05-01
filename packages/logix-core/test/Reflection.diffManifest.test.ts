@@ -1,3 +1,4 @@
+import * as CoreReflection from '@logixjs/core/repo-internal/reflection-api'
 import { describe, it, expect } from '@effect/vitest'
 import { Effect, Schema } from 'effect'
 import * as Logix from '../src/index.js'
@@ -19,9 +20,9 @@ describe('Reflection.diffManifest', () => {
       },
     })
 
-    const before = Base.implement({
+    const before = Logix.Program.make(Base, {
       initial: { value: 0 },
-      logics: [Base.logic(() => Effect.void, { id: 'slot-a', kind: 'user', name: 'A' })],
+      logics: [Base.logic('slot-a', () => Effect.void, { kind: 'user', name: 'A' })],
     })
 
     const After = Logix.Module.make('Reflection.DiffManifest', {
@@ -38,16 +39,16 @@ describe('Reflection.diffManifest', () => {
       },
     })
 
-    const after = After.implement({
+    const after = Logix.Program.make(After, {
       initial: { value: 0 },
-      logics: [After.logic(() => Effect.void, { id: 'slot-a', kind: 'user', name: 'A2' })],
+      logics: [After.logic('slot-a', () => Effect.void, { kind: 'user', name: 'A2' })],
     })
 
-    const manifestBefore = Logix.Reflection.extractManifest(before)
-    const manifestAfter = Logix.Reflection.extractManifest(after)
+    const manifestBefore = CoreReflection.extractManifest(before)
+    const manifestAfter = CoreReflection.extractManifest(after)
 
-    const diff1 = Logix.Reflection.diffManifest(manifestBefore, manifestAfter)
-    const diff2 = Logix.Reflection.diffManifest(manifestBefore, manifestAfter)
+    const diff1 = CoreReflection.diffManifest(manifestBefore, manifestAfter)
+    const diff2 = CoreReflection.diffManifest(manifestBefore, manifestAfter)
 
     expect(JSON.stringify(diff1)).toBe(JSON.stringify(diff2))
     expect(diff1.verdict).toBe('FAIL')
@@ -72,19 +73,19 @@ describe('Reflection.diffManifest', () => {
       },
     })
 
-    const before = Root.implement({ initial: { ok: true }, logics: [] })
-    const after = Logix.Module.make('Reflection.DiffManifest.Allowlist', {
+    const before = Logix.Program.make(Root, { initial: { ok: true }, logics: [] })
+    const after = Logix.Program.make(Logix.Module.make('Reflection.DiffManifest.Allowlist', {
       state: Schema.Struct({ ok: Schema.Boolean }),
       actions: { noop: Schema.Void },
       meta: {
         owner: 'team-b',
         docs: 'a',
       },
-    }).implement({ initial: { ok: true }, logics: [] })
+    }), { initial: { ok: true }, logics: [] })
 
-    const diff = Logix.Reflection.diffManifest(
-      Logix.Reflection.extractManifest(before),
-      Logix.Reflection.extractManifest(after),
+    const diff = CoreReflection.diffManifest(
+      CoreReflection.extractManifest(before),
+      CoreReflection.extractManifest(after),
       { metaAllowlist: ['docs'] },
     )
 

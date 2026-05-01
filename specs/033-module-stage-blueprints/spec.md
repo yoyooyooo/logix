@@ -1,9 +1,9 @@
 # Feature Specification: Module Stage Blueprints（Module 舞台语义蓝图）
 
-**Feature Branch**: `[033-module-stage-blueprints]`  
-**Created**: 2025-12-25  
-**Status**: Draft  
-**Input**: 将“场景画布编排语义模型（Module/traits）”落成可长期存储、可 diff、可 codegen 的蓝图体系：语义蓝图（Scenario/Module/Form/Assets）与投影蓝图（UI/Layout）彻底解耦；并固化稳定标识、事件→动作语义边、动态列表 rowRef 回填与试运行验收闭环。
+**Feature Branch**: `[033-module-stage-blueprints]`
+**Created**: 2025-12-25
+**Status**: Draft
+**Input**: 将“场景画布编排语义模型（Module/fields）”落成可长期存储、可 diff、可 codegen 的蓝图体系：语义蓝图（Scenario/Module/Form/Assets）与投影蓝图（UI/Layout）彻底解耦；并固化稳定标识、事件→动作语义边、动态列表 rowRef 回填与试运行验收闭环。
 
 ## Assumptions
 
@@ -103,7 +103,7 @@
 ### Key Entities *(include if feature involves data)*
 
 - **ScenarioBlueprint（语义）**: 一个场景的模块实例图与事件→动作边集合，是行为事实源。
-- **ModuleAsset / ModuleInstance**: 模块能力与其实例化绑定（端口、状态、动作、traits 等）。
+- **ModuleAsset / ModuleInstance**: 模块能力与其实例化绑定（端口、状态、动作、fields 等）。
 - **EdgeMapping**: 事件 payload → 动作 payload/patch 的映射资产（具备显式依赖与稳定 digest）。
 - **IntentRule（语义边）**: 事件→动作连线的版本化数据模型（稳定 ruleId + 端点 + 可选 pipeline + 可解释元信息），作为画布交互与 Trace 映射的共同锚点。
 - **FormBlueprint**: 表单特化模块的字段树、规则清单、列表 identity 与 validator 资产引用。

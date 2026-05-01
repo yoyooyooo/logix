@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Watcher 纯赚性能优化（全量交付，不拆短/中长期）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-31  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-31
 **Feature**: `specs/068-watcher-pure-wins/spec.md`
 
 ## Content Quality

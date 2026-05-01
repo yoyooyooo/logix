@@ -3,7 +3,7 @@
 **Feature Branch**: `[013-auto-converge-planner]`
 **Created**: 2025-12-16
 **Status**: Draft
-**Input**: User description: "在 009 实施完毕的基础上，追求一个更完美的道路：引入更智能的 StateTrait 收敛策略，像并发渲染模式一样，在任何写入分布下都能保证不低于 full 的及格线表现；智能方案允许付出改造成本，但必须配套测试用例与性能脚本兜底，避免负优化场景变多；控制粒度以 Module 级覆盖为主。"
+**Input**: User description: "在 009 实施完毕的基础上，追求一个更完美的道路：引入更智能的 FieldKernel 收敛策略，像并发渲染模式一样，在任何写入分布下都能保证不低于 full 的及格线表现；智能方案允许付出改造成本，但必须配套测试用例与性能脚本兜底，避免负优化场景变多；控制粒度以 Module 级覆盖为主。"
 
 ## Clarifications
 
@@ -24,13 +24,13 @@
 
 - Q: 是否需要 **per-transaction override**（例如 submit/root validate 强制 `requestedMode=full`）？ → A: **暂不支持**。理由：会引入“每笔事务一个开关”的新维度，容易补丁化并扩大协议/证据的长期维护成本；当前 A/B 与复现诉求可通过 Provider/module 覆盖满足。**再评估触发条件**：当 010/014 的代表性矩阵点证明“仅对单次事务强制 full”是必要且 Provider/module 覆盖无法表达时，再引入；若引入，必须同步扩展 evidence 的来源口径（例如将 `configScope` 扩展为包含 `transaction`，并确保可审计、可序列化、可回放）。
 - Q: 本文中的三位数引用（如 005/009/014/016）应如何解释？ → A: 统一指 `specs/<三位数>-*` 下对应 spec（例如 `016 = specs/016-serializable-diagnostics-and-identity`）。
-- Q: 当 `Diagnostics Level=off` 时，013 是否仍需要产出可导出的 `trait:converge` 事件/摘要？ → A: 不需要；off 档位不产出任何可导出的 `trait:converge` 事件/摘要（Devtools/EvidencePackage 不包含 converge 证据）。
+- Q: 当 `Diagnostics Level=off` 时，013 是否仍需要产出可导出的 `field:converge` 事件/摘要？ → A: 不需要；off 档位不产出任何可导出的 `field:converge` 事件/摘要（Devtools/EvidencePackage 不包含 converge 证据）。
 - Q: 013 的硬门槛 `auto <= full * 1.05` 在 `specs/014-browser-perf-boundaries` 的报告/diff 里，应绑定到哪条观测口径（`metricCategories`）？ → A: 绑定 `category=runtime` 作为硬门槛；`category=e2e` 仅记录不作为 gate。
-- Q: 当 `Diagnostics Level=light` 时，`trait:converge` 的 `data.dirty` 应该包含到什么粒度（尤其是 `roots` / `rootIds`）？ → A: `light` 仅输出 `data.dirty.dirtyAll`；不输出 `roots` / `rootIds`（需要具体 pattern 细节时使用 `full`）。
+- Q: 当 `Diagnostics Level=light` 时，`field:converge` 的 `data.dirty` 应该包含到什么粒度（尤其是 `roots` / `rootIds`）？ → A: `light` 仅输出 `data.dirty.dirtyAll`；不输出 `roots` / `rootIds`（需要具体 pattern 细节时使用 `full`）。
 - Q: `013` 的性能门槛 `auto <= full * 1.05` 在 `specs/014-browser-perf-boundaries` 跑道里，默认用哪档 `Diagnostics Level` 作为硬 gate 环境？ → A: 仅在 `Diagnostics Level=off` 做硬 gate；`light|full` 仅记录 overhead（不影响 pass/fail）。
-- Q: 在 EvidencePackage 里，`Converge Static IR` 的导出策略选哪种（用于让 `trait:converge` 事件可离线解释/回放）？ → A: `light` 仅导出 `staticIrDigest`；`full` 导出 `staticIrDigest` + 去重后的 `ConvergeStaticIR`（按 `staticIrDigest` 去重，同一 `instanceId:generation` 只出一次）。
-- Q: 当 `Diagnostics Level=full` 时，`trait:converge.data.dirty` 的 `roots/rootIds` 输出策略选哪种（在保证可解释的同时严格受控 evidence 体积）？ → A: 输出 `rootCount` + `rootIds` 前 K 个（默认 K=3，可配置；硬上界 16）+ `rootIdsTruncated=true|false`。
-- Q: `staticIrDigest` 应如何定义（用于 `trait:converge` 事件引用与 EvidencePackage 内去重导出 `ConvergeStaticIR`）？ → A: `staticIrDigest = instanceId + ":" + generation`。
+- Q: 在 EvidencePackage 里，`Converge Static IR` 的导出策略选哪种（用于让 `field:converge` 事件可离线解释/回放）？ → A: `light` 仅导出 `staticIrDigest`；`full` 导出 `staticIrDigest` + 去重后的 `ConvergeStaticIR`（按 `staticIrDigest` 去重，同一 `instanceId:generation` 只出一次）。
+- Q: 当 `Diagnostics Level=full` 时，`field:converge.data.dirty` 的 `roots/rootIds` 输出策略选哪种（在保证可解释的同时严格受控 evidence 体积）？ → A: 输出 `rootCount` + `rootIds` 前 K 个（默认 K=3，可配置；硬上界 16）+ `rootIdsTruncated=true|false`。
+- Q: `staticIrDigest` 应如何定义（用于 `field:converge` 事件引用与 EvidencePackage 内去重导出 `ConvergeStaticIR`）？ → A: `staticIrDigest = instanceId + ":" + generation`。
 - Q: 在 `ConvergeStaticIR`（`full` 下去重导出）里，`FieldPathId -> FieldPath` 的映射应该用哪种表达？ → A: 直接用 `FieldPath[]`（段数组），复用 `specs/009-txn-patch-dirtyset/contracts/schemas/field-path.schema.json`。
 - Q: 在 `ConvergeStaticIR`（`full` 下去重导出）里，`StepId -> output FieldPathId` 的映射策略选哪种？ → A: 强制 `1 StepId -> 1 output FieldPathId`，导出 `stepOutFieldPathIdByStepId`（紧凑数组/TypedArray 语义）。
 
@@ -112,7 +112,7 @@
 - **终局原则**：字符串 Path 仅存在于 I/O 边界（Schema 定义、Devtools 展示、持久化/导入导出）；核心循环（Transaction/DirtySet/Converge）应以整型 ID 运算，降低 GC/哈希与字符串比较成本。
 - **演进路线（Phase 1–4）**：
   1. **Phase 1（本 spec 013 范围）**：在 Converge 内闭环引入 `FieldPathId`/`StepId`，Planner + Cache 的交换格式以整型为主；对外 dirty-set 若仍是字符串，只允许在边界处“一次性映射”为 ID，随后全程使用 ID（见 FR-017/FR-018）。
-  2. **Phase 2（Post-013）**：ID 分配下沉到 Module build/install；StateTrait 节点注册即获 ID，减少运行期查表与口径漂移风险。
+  2. **Phase 2（Post-013）**：ID 分配下沉到 Module build/install；FieldKernel 节点注册即获 ID，减少运行期查表与口径漂移风险。
   3. **Phase 3（Post-013）**：Transaction/DirtySet 进入混合态（`id + path`），逐步去字符串并建立 BitSet/TypedArray 的落点。
   4. **Phase 4（Post-013）**：Kernel Switch：从 `Runtime.dispatch` 起点转 ID，整个 Transaction Loop（Reducer→Patch→Converge→Commit）全程整型；字符串仅在 Debug/导出时懒加载反查。
 
@@ -148,10 +148,10 @@
 
 - **已识别的漂移面（必须在本特性内收敛）**：
   - **Runtime SSoT（行为语义）**：`docs/ssot/runtime/logix-core/runtime/05-runtime-implementation.md` 当前 converge 策略仅描述 `full|dirty`，需补齐 `auto`（requested vs executed）、下界门槛、决策预算止损、cache 证据与失效/自保护的语义口径。
-  - **Debug 协议 SSoT（证据字段）**：`docs/ssot/runtime/logix-core/observability/09-debugging.md` 的 `traitSummary` 目前是“预留不锁死结构”，本特性需固化最小可用的 converge 证据形态（例如 `trait:converge` 事件/summary schema）并对齐 `off|light|full` 分档裁剪规则。
+  - **Debug 协议 SSoT（证据字段）**：`docs/ssot/runtime/logix-core/observability/09-debugging.md` 的 `fieldSummary` 目前是“预留不锁死结构”，本特性需固化最小可用的 converge 证据形态（例如 `field:converge` 事件/summary schema）并对齐 `off|light|full` 分档裁剪规则。
   - **用户文档（产品视角）**：`apps/docs/content/docs/**` 中涉及 `traitConvergeMode`/converge/Devtools 的章节需更新：默认 `auto`、如何模块级回退 `full|dirty`、以及如何通过证据字段定位回归与调参。
   - **运行时对外 API / 类型裁决**：`packages/logix-core/src/Runtime.ts`、`packages/logix-core/src/internal/runtime/core/env.ts`、`packages/logix-core/src/internal/runtime/ModuleRuntime.ts` 当前 `traitConvergeMode` 仅 `full|dirty` 且默认 `full`，需升级为 `full|dirty|auto` 且默认 `auto`，并新增 `traitConvergeDecisionBudgetMs` 以及模块级覆盖的可配置入口。
-  - **历史 Spec 口径**：`specs/007-unify-trait-system/review.md` 等文档仍以 `traitConvergeMode="full"|"dirty"` 作为默认口径，需明确标注被 013 更新/替代的部分，避免读者误用旧默认与枚举约束。
+  - **历史 Spec 口径**：`specs/007-unify-field-system/review.md` 等文档仍以 `traitConvergeMode="full"|"dirty"` 作为默认口径，需明确标注被 013 更新/替代的部分，避免读者误用旧默认与枚举约束。
 - **迁移口径（不做兼容层，但必须可操作）**：
   - 若业务需要维持旧行为：在 Runtime 或模块级显式设置 `traitConvergeMode="full"`（并在 quickstart + 用户文档给出示例与“何时应回退”的判断口径）。
   - 任何证据字段/事件 schema 的 breaking change 必须同步更新 `contracts/*`、`docs/specs` 与 `apps/docs`，并给出对比口径变更说明。
@@ -194,7 +194,7 @@
 - **FR-022**: `auto` 决策必须收敛在明确的 Policy 边界内：执行器只允许 `full|dirty` 两条路径；Policy 必须输出 `executedMode` 与可序列化的 `Planner Evidence`，且在 `executedMode=dirty` 时输出纯数据 `Execution Plan`（可缓存复用、可 JSON 序列化），不得通过在执行器内新增场景特判来修复负优化。
 - **FR-023**: `FieldPathId`（以及后续 `StepId` 等结构化 ID）必须设计为 **Module 级可复用的注册表/服务**（挂载在 `ModuleRuntime` 或等价可共享位置），不得隐藏为 Planner 私有 Map；必须同时支持 hot 的 `path → id` 与 cold 的 `id → path`（仅用于 debug/导出）双向查表，并为未来 `BitSet/TypedArray` 的集合运算提供接口落点（见 FR-012/FR-017/FR-018 的整型交换格式约束）。
 - **FR-024**: 系统必须定义 converge 配置覆盖的**确定性优先级**与**作用域语义**：`RuntimeProvider` 覆盖 > runtime 的 `moduleId` 覆盖 > runtime 默认 > 内置默认；任意覆盖切换必须在“下一笔事务”生效（禁止半事务切换），且不得污染其他模块/实例/Provider 子树。
-- **FR-025**: 系统必须在 `trait:converge` evidence 中输出“本次生效配置的来源/范围”最小证据（例如 `configScope: provider|runtime_module|runtime_default|builtin`）以支撑审计、回收与后续 Devtools 深挖入口；缺失时消费者必须降级为“来源未知”的显式提示。
+- **FR-025**: 系统必须在 `field:converge` evidence 中输出“本次生效配置的来源/范围”最小证据（例如 `configScope: provider|runtime_module|runtime_default|builtin`）以支撑审计、回收与后续 Devtools 深挖入口；缺失时消费者必须降级为“来源未知”的显式提示。
 
 ### 对外性能心智模型（可预测、可预期、稳定）
 
@@ -225,12 +225,12 @@
 - **NFR-003**: `auto` 的决策开销必须可观测并受控：在事务摘要中输出决策耗时/估算成本字段（可选采样），并确保在大 steps 情况下仍满足“相对 full 不明显放大”的目标。
 - **NFR-004**: 诊断必须 Slim 且可序列化：auto 相关决策信息必须可 JSON.stringify；不得引入不可序列化对象或闭包。
 - **NFR-005**: 系统必须同步更新对外文档，提供稳定、可预测的性能心智模型：关键词（≤5）、粗粒度成本模型、优化梯子（默认→观测→缩小写入→模块级覆盖/调参→拆分），并解释：`auto` 的保底原则（full 下界）、分档下的可见信息差异、以及“如何在模块级回退/调参”。
-- **NFR-012**: 观测协议兼容性：`trait:converge` evidence 必须能作为 `specs/009` Dynamic Trace 的事件 payload 导出，并能被 `specs/005` 的宿主无关观测协议（Envelope + EvidencePackage）承载与回放；字段必须 Slim、可 JSON 序列化，且新增字段不得破坏旧消费者的“忽略未知字段”策略。
+- **NFR-012**: 观测协议兼容性：`field:converge` evidence 必须能作为 `specs/009` Dynamic Trace 的事件 payload 导出，并能被 `specs/005` 的宿主无关观测协议（Envelope + EvidencePackage）承载与回放；字段必须 Slim、可 JSON 序列化，且新增字段不得破坏旧消费者的“忽略未知字段”策略。
   - `Diagnostics Level=light` 仅导出 `staticIrDigest`；`full` 除 `staticIrDigest` 外，还必须在 EvidencePackage 中按 `staticIrDigest` 去重导出 `ConvergeStaticIR`（同一 `instanceId:generation` 只出一次），供离线解释/回放（事件通过 digest 引用）。
   - Devtools converge performance pane（Timeline/Audits）由后续独立 spec 落地：`specs/015-devtools-converge-performance/spec.md`。
-- **NFR-013**: 诊断分档语义必须确定且可验收：当 `Diagnostics Level=off` 时，系统不得产出任何可导出的 `trait:converge` 事件/摘要（且不得触发递归序列化/降级扫描）；当为 `light|full` 时，才允许导出 `trait:converge` 证据（且必须 Slim、可 `JSON.stringify`）。
+- **NFR-013**: 诊断分档语义必须确定且可验收：当 `Diagnostics Level=off` 时，系统不得产出任何可导出的 `field:converge` 事件/摘要（且不得触发递归序列化/降级扫描）；当为 `light|full` 时，才允许导出 `field:converge` 证据（且必须 Slim、可 `JSON.stringify`）。
 - **NFR-014**: 013 的“full 下界”性能 gate 必须与 014 的观测口径对齐：`auto <= full * 1.05` 的硬门槛绑定 `metricCategories.category=runtime`（事务提交/收敛相关 runtime 指标）；`category=e2e` 可记录并展示但不作为 gate（避免把 React/布局等噪声引入“收敛内核下界”判定）。
-- **NFR-015**: `Diagnostics Level=light` 的 converge 证据必须保持轻量：`trait:converge.data.dirty` 在 light 档位仅允许输出 `dirtyAll`（禁止输出 `roots/rootIds` 列表）；pattern 细节仅在 `full`（或显式采样）下输出，并仍需满足 Slim/JsonValue 预算。
+- **NFR-015**: `Diagnostics Level=light` 的 converge 证据必须保持轻量：`field:converge.data.dirty` 在 light 档位仅允许输出 `dirtyAll`（禁止输出 `roots/rootIds` 列表）；pattern 细节仅在 `full`（或显式采样）下输出，并仍需满足 Slim/JsonValue 预算。
   - `Diagnostics Level=full` 下允许输出 `roots/rootIds` 以提升可解释性，但必须严格受控：仅输出 `rootCount` + `rootIds` 前 K 个（默认 K=3，可配置；硬上界 16）+ `rootIdsTruncated=true|false`；禁止默认输出全量 `rootIds` 列表，避免在高基数场景撑爆 evidence。
 - **NFR-016**: 013 的“full 下界”硬门槛默认在 `Diagnostics Level=off` 下验收（避免观测开销污染）；`light|full` 的开销应在 014 报告中作为独立维度记录与对比，但不得影响 `auto <= full * 1.05` 的 pass/fail 结论。
 - **NFR-006**: 系统必须提供一个“决策开销”专项的可复现基准：覆盖 cache miss / cache hit / budget cut-off 三类路径，并能证明决策开销在模块级决策预算（`traitConvergeDecisionBudgetMs`）内被稳定控制（默认 0.5ms，可配置）。
@@ -266,7 +266,7 @@
 - **Execution Plan Cache**: 以 Dirty Pattern 为 key，在 module instance + `Cache Generation` 范围内缓存可复用的 Execution Plan/受影响 steps 结果，并具备可解释的命中/失效信号。
 - **Structural Path Identity**: 用于降低热路径分配与比较成本的结构化标识（建议 build 阶段静态分配整型 ID），可映射回可解释的路径表示。
 - **Converge Static IR**: 在 Module build/加载阶段生成的静态依赖图与调度数据（整型 ID 映射 + 邻接表/拓扑序等紧凑数组），在同一 `Cache Generation` 内复用并在变更时整体失效。
-- **Static IR Digest**: 用于将 `trait:converge` 事件与其对应的 `ConvergeStaticIR`（EvidencePackage 内去重导出）关联起来的引用标识；定义为 `instanceId + ":" + generation`；必须可序列化且在同一 evidence 包内稳定。
+- **Static IR Digest**: 用于将 `field:converge` 事件与其对应的 `ConvergeStaticIR`（EvidencePackage 内去重导出）关联起来的引用标识；定义为 `instanceId + ":" + generation`；必须可序列化且在同一 evidence 包内稳定。
 - **Perf Matrix**: 一组标准化的基准场景定义与统计口径，用于持续验证 “auto 不低于 full 的及格线”。
 - **Cache Budget**: 用于约束缓存资源消耗的上界（容量/逐出/禁用策略），并可被观测与调参。
 - **Cache Generation**: 描述缓存与派生图版本之间关系的“代际/版本”信息，用于正确性失效与排障。

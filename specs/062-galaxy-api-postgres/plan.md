@@ -1,6 +1,6 @@
 # Implementation Plan: 062 logix-galaxy-api（PostgreSQL 开发环境样例）
 
-**Branch**: `062-galaxy-api-postgres` | **Date**: 2025-12-30 | **Spec**: `specs/062-galaxy-api-postgres/spec.md`  
+**Branch**: `062-galaxy-api-postgres` | **Date**: 2025-12-30 | **Spec**: `specs/062-galaxy-api-postgres/spec.md`
 **Input**: Feature specification from `specs/062-galaxy-api-postgres/spec.md`
 
 ## Summary
@@ -30,13 +30,13 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.8.2（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3（workspace override `3.19.13`）、`@effect/platform`、`@effect/platform-node`、`pg`、Vitest  
-**Storage**: PostgreSQL（开发环境可选；通过 `DATABASE_URL` 注入）  
-**Testing**: Vitest（`vitest run`；默认不依赖 PostgreSQL）  
-**Target Platform**: Node.js 20+（建议；按仓库 ESM/tsx 约定）  
-**Project Type**: pnpm workspace（示例 app 位于 `apps/logix-galaxy-api`）  
-**Performance Goals**: N/A（示例服务；不触及 Logix Runtime 核心路径或对外性能边界）  
+**Language/Version**: TypeScript 5.8.2（ESM）
+**Primary Dependencies**: pnpm workspace、`effect` v3（workspace override `3.19.13`）、`@effect/platform`、`@effect/platform-node`、`pg`、Vitest
+**Storage**: PostgreSQL（开发环境可选；通过 `DATABASE_URL` 注入）
+**Testing**: Vitest（`vitest run`；默认不依赖 PostgreSQL）
+**Target Platform**: Node.js 20+（建议；按仓库 ESM/tsx 约定）
+**Project Type**: pnpm workspace（示例 app 位于 `apps/logix-galaxy-api`）
+**Performance Goals**: N/A（示例服务；不触及 Logix Runtime 核心路径或对外性能边界）
 **Constraints**:
 
 - 默认端口为 `7001`（允许 `PORT` 覆盖）；

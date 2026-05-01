@@ -1,7 +1,7 @@
 # Specification Quality Checklist: core 纯赚/近纯赚性能优化（默认零成本诊断与单内核）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-31  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-31
 **Feature**: `specs/070-core-pure-perf-wins/spec.md`
 
 ## Content Quality

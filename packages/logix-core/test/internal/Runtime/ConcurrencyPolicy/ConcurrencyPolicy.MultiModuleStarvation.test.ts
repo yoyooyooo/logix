@@ -1,9 +1,9 @@
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Deferred, Effect, Fiber, PubSub, Queue, Ref } from 'effect'
-import * as Debug from '../../../../src/Debug.js'
-import * as ModuleRuntime from '../../../../src/internal/runtime/ModuleRuntime.js'
-import { ConcurrencyPolicyTag } from '../../../../src/internal/runtime/core/env.js'
+import * as Debug from '../../../../src/internal/debug-api.js'
+import * as ModuleRuntime from '../../../../src/internal/runtime/core/ModuleRuntime.js'
+import { SchedulingPolicySurfaceTag } from '../../../../src/internal/runtime/core/env.js'
 
 const countPressureByModuleId = (events: ReadonlyArray<Debug.Event>, moduleId: string): number =>
   events.filter(
@@ -94,7 +94,7 @@ describe('ConcurrencyPolicy (US1): multi-module starvation', () => {
         expect(countPressureByModuleId(events, 'StarvationA')).toBeGreaterThan(0)
         expect(countPressureByModuleId(events, 'StarvationB')).toBeGreaterThan(0)
       }).pipe(
-        Effect.provideService(ConcurrencyPolicyTag, {
+        Effect.provideService(SchedulingPolicySurfaceTag, {
           losslessBackpressureCapacity: 2,
           pressureWarningThreshold: { backlogCount: 1, backlogDurationMs: 1 },
           warningCooldownMs: 1,

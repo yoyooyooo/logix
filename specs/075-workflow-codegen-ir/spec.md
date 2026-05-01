@@ -1,14 +1,14 @@
 # Feature Specification: Workflow Codegen IR（出码层：Canonical AST + Static IR）
 
-**Feature Branch**: `075-workflow-codegen-ir`  
-**Created**: 2026-01-05  
-**Status**: Draft  
-**Input**: 073 完成后的新视角：tick 是观测参考系；traits 是受限绑定；多步协议/时间算子属于自由编排，必须 IR 化并纳入 tick 证据链。
+**Feature Branch**: `075-workflow-codegen-ir`
+**Created**: 2026-01-05
+**Status**: Draft
+**Input**: 073 完成后的新视角：tick 是观测参考系；fields 是受限绑定；多步协议/时间算子属于自由编排，必须 IR 化并纳入 tick 证据链。
 
 **Model (SSoT)**:
 
 - `docs/ssot/platform/foundation/01-the-one.md`（`Π`/`C_T`/`Δ⊕`/tick 参考系）
-- `docs/ssot/platform/contracts/03-control-surface-manifest.md`（控制面 Root IR：actions/services/traits/workflows/opaque 收口）
+- `docs/ssot/platform/contracts/03-control-surface-manifest.md`（控制面 Root IR：actions/services/fields/workflows/opaque 收口）
 
 ## Context
 
@@ -43,7 +43,7 @@ Logix 当前已经具备强大的“命令式”动态能力（`$.onAction().run
 同时明确“平台最终消费的静态工件”口径：
 
 - 平台/Devtools/Alignment Lab **只消费**控制面 Root IR：`ControlSurfaceManifest`（digest + 最小索引；按需加载 slices），见 `docs/ssot/platform/contracts/03-control-surface-manifest.md`。
-- Workflow 的 Static IR 是 Root IR 的 `workflowSurface` slice（$\Pi$ 的可导出形态）；手写 watcher 允许存在，但必须降级为 `opaque effect`（显式登记，禁止静默黑盒）。
+- Workflow 的 Static IR 是 Root IR 的 `controlProgramSurface` slice（$\Pi$ 的可导出形态）；手写 watcher 允许存在，但必须降级为 `opaque effect`（显式登记，禁止静默黑盒）。
 
 为支撑“从意图逐层解压”的协作与出码，我们采用固定的分层链路（单一真相源）：
 
@@ -71,7 +71,7 @@ Runtime Execution Plan + Slim Trace（tickSeq 参考系锚点）
 > 关键澄清：这里存在两类“单一事实源”，服务不同消费者，避免语义漂移：
 >
 > - **Authoring SSoT**：`WorkflowDef`（可落盘/可编辑/可生成/可校验）。人/LLM/Studio 只应该写它。
-> - **Platform SSoT**：`ControlSurfaceManifest`（Root IR）+ `workflowSurface`（Π slice，包含 `WorkflowStaticIr`）。它们必须从 Authoring SSoT **确定性编译**得到，平台/Devtools/CI 只读消费，禁止手改。
+> - **Platform SSoT**：`ControlSurfaceManifest`（Root IR）+ `controlProgramSurface`（Π slice，包含 `WorkflowStaticIr`）。它们必须从 Authoring SSoT **确定性编译**得到，平台/Devtools/CI 只读消费，禁止手改。
 
 硬约束（避免“IR 固定但表面任意”导致漂移）：
 
@@ -96,8 +96,8 @@ Runtime Execution Plan + Slim Trace（tickSeq 参考系锚点）
 
 - 在本特性内修改 Module 蓝图为“新增 flows 槽位”的最终形态：先提供可被 `Module.withLogic(...)` 挂载的 Program 形态，蓝图槽位作为后续 DX 演进（forward-only）。
 - 把任意黑盒 Effect/Promise 代码自动提升为 IR（不做“自动反编译”）。
-- 承诺黑盒 `Process.link` 的强一致（强一致仍只对可识别 IR 生效）。
-- 完成 Root IR 的 actions/services/traits 收口实现细节（本特性只负责 workflowSurface 的 schema/导出/对齐口径；Root IR 合同在平台 SSoT 固化）。
+- 承诺黑盒 `orchestration process link surface` 的强一致（强一致仍只对可识别 IR 生效）。
+- 完成 Root IR 的 actions/services/fields 收口实现细节（本特性只负责 controlProgramSurface 的 schema/导出/对齐口径；Root IR 合同在平台 SSoT 固化）。
 
 ## User Scenarios & Testing _(mandatory)_
 
@@ -161,13 +161,13 @@ Runtime Execution Plan + Slim Trace（tickSeq 参考系锚点）
 为避免后续实现与出码“口径漂移”，v1 固化如下硬裁决（均为 fail-fast）：
 
 1. **`call`（原 `serviceCall`）不提供结果数据流（v1）**：Workflow 只表达控制流（success/failure、并发/取消/时间）；任何“基于 service 结果计算后续 payload/条件分支”的需求必须下沉到 service（由 service 自己 dispatch/写 state），或拆成多个 Workflow 通过 action 串联。
-2. **输入映射 DSL（v1）**：仅允许引用触发输入（`action.payload`）与纯结构组合（`payload.path/const/object/merge`）；不允许读取 state/traits，不允许条件/循环/算术运算。
+2. **输入映射 DSL（v1）**：仅允许引用触发输入（`action.payload`）与纯结构组合（`payload.path/const/object/merge`）；不允许读取 state/fields，不允许条件/循环/算术运算。
 3. **Canonical AST 强制 `stepKey` 必填**：所有 step 必须具备稳定 `stepKey`；缺失即 `validate/export` 失败；禁止用数组下标/遍历顺序派生（重排不得导致锚点漂移）。
 4. **分支必须显式结构**：success/failure 必须以结构字段表达并编译为显式图边；禁止邻接推断作为真相源（避免重排改变语义）。
 5. **`nodeId` 重构友好（v1）**：`nodeId` 必须主要由 `programId + stepKey (+kind)` 稳定派生（不依赖数组顺序/时间/随机/语义 hash）；可读性通过 `source(stepKey/fragmentId)` 提供；语义变化通过 `digest` 体现。
 6. **诊断分级门控**：`diagnostics=off` 近零成本（不产出 Program 级 trace、不扫全图）；`light/sampled/full` 才逐步附带锚点 meta；运行期事件流严禁携带 IR 全量。
 7. **版本治理严格 fail-fast**：`recipe/ast/ir` 均带版本；遇到未知版本必须拒绝并提示升级/迁移；forward-only 不提供运行时兼容层，迁移靠工具与文档。
-8. **Root IR 收口（v1）**：平台/Devtools/Alignment Lab 只消费 `ControlSurfaceManifest`（digest + 最小索引；按需加载 slices）。Workflow 的 Workflow Static IR 必须作为 `workflowSurface` slice 被 Root IR 引用；禁止把“完整 IR 图”塞进运行期事件流。
+8. **Root IR 收口（v1）**：平台/Devtools/Alignment Lab 只消费 `ControlSurfaceManifest`（digest + 最小索引；按需加载 slices）。Workflow 的 Workflow Static IR 必须作为 `controlProgramSurface` slice 被 Root IR 引用；禁止把“完整 IR 图”塞进运行期事件流。
 9. **digest 算法统一（v1）**：所有 digest 必须使用 `stableStringify` + `fnv1a32`（实现权威：`packages/logix-core/src/internal/digest.ts`），并带 schema/version 前缀以避免碰撞；大对象常量必须受 budgets 约束并 deterministic 裁剪（可复用 `packages/logix-core/src/internal/observability/jsonValue.ts` 的 `oversized` 口径）。
 10. **call 引用入口（v1）**：Platform-Grade/LLM 出码 MUST 使用 `callById('<serviceId>')`（字面量）；允许额外提供 `call(Tag)` 作为 TS sugar（本地 DX），但不得要求 Parser/Autofill 依赖解析 Tag 才能建立 `serviceId` 锚点。Static IR/Trace/Tape 中只存 `serviceId: string`，且派生/校验必须复用 078 的单点 helper（见 `specs/078-module-service-manifest/contracts/service-id.md`）。
 11. **Platform-Grade 字面量锚点（v1）**：为保证 Parser/Autofill/回写的确定性，Platform-Grade/LLM 出码的 identity 字段 MUST 为字符串字面量（至少包含 `workflowLocalId` / `trigger.actionTag` / `steps[*].key` / `dispatch.actionTag` / `callById.serviceId`）。非字面量/经变量中转的写法允许存在，但必须视为 Raw Mode（不参与补全/回写）。
@@ -177,7 +177,7 @@ Runtime Execution Plan + Slim Trace（tickSeq 参考系锚点）
 
 ### Functional Requirements
 
-- **FR-001**: 系统 MUST 提供 Workflow 的声明式 DSL 与可导出的 Workflow Static IR（见 `contracts/ir.md`），并能被 mount 为运行时 watcher（复用既有 FlowRuntime 语义）；同时该 IR 必须能作为 `ControlSurfaceManifest.workflowSurface` slice 被 Root IR 引用（见 `docs/ssot/platform/contracts/03-control-surface-manifest.md`）。
+- **FR-001**: 系统 MUST 提供 Workflow 的声明式 DSL 与可导出的 Workflow Static IR（见 `contracts/ir.md`），并能被 mount 为运行时 watcher（复用既有 FlowRuntime 语义）；同时该 IR 必须能作为 `ControlSurfaceManifest.controlProgramSurface` slice 被 Root IR 引用（见 `docs/ssot/platform/contracts/03-control-surface-manifest.md`）。
 - **FR-002**: Workflow MUST 支持至少两类**显式触发源**：Action（dispatch）、Lifecycle（onStart/onInit 等）。时间触发来自 `delay/timeout/retry` 等时间算子（属于 Workflow 内部调度），且 timer schedule/fire/cancel 必须可归因到 `tickSeq`（参照 073 `trace:tick`）。
 - **FR-003**: Workflow MUST 支持至少三类步骤：`dispatch`、`call`、`delay`；其中：
   - `dispatch` 是默认写侧（可追踪、可诊断、可预算）；
@@ -199,7 +199,7 @@ Runtime Execution Plan + Slim Trace（tickSeq 参考系锚点）
 ### Key Entities _(include if feature involves data)_
 
 - **WorkflowDef**：可落盘的权威输入工件（纯 JSON；触发源 + 步骤 + 策略）。
-- **Workflow Static IR（Π slice）**：编译后的可导出 IR（JSON 可序列化；nodes/edges + InputExpr + digest；作为 Root IR 的 `workflowSurface` slice）。
+- **Workflow Static IR（Π slice）**：编译后的可导出 IR（JSON 可序列化；nodes/edges + InputExpr + digest；作为 Root IR 的 `controlProgramSurface` slice）。
 - **WorkflowRuntime**：运行期 mount 的 watcher 形态（复用 FlowRuntime/EffectOp；可关联 tickSeq）。
 - **ControlSurfaceManifest（Root IR）**：平台消费的控制面静态工件（digest + effectsIndex；按需加载 slices），见 `docs/ssot/platform/contracts/03-control-surface-manifest.md`。
 

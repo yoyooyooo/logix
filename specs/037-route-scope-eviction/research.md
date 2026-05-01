@@ -1,7 +1,7 @@
 # Research: 037 限定 scope 的全局（路由 Host(imports) + ModuleScope）
 
-**Branch**: `037-route-scope-eviction`  
-**Source Spec**: `specs/037-route-scope-eviction/spec.md`  
+**Branch**: `037-route-scope-eviction`
+**Source Spec**: `specs/037-route-scope-eviction/spec.md`
 **Source Plan**: `specs/037-route-scope-eviction/plan.md`
 
 > 目标：把「限定 scope 的全局」收敛成可复制的默认最佳实践与低心智成本工具：路由/页面边界承载 Host(imports)，弹框 keepalive；并为“跨 React 子树复用同一 scope”的高级能力预留清晰扩展点。
@@ -12,14 +12,14 @@
 
 ### 0.1 React useModule/ModuleCache 的模型与关键约束
 
-- 模型：Acquire → Retain → Release → GC  
+- 模型：Acquire → Retain → Release → GC
   - Acquire：Render 阶段 `readSync/read` 命中或创建条目，并为条目创建独立 Effect Scope。
   - Retain：Commit 后 `retain(key)`，`refCount++`，取消 GC 定时器。
   - Release：Cleanup 时 `release(key)`，`refCount--`，归零后进入 Idle 并等待 GC。
   - GC：超过 `gcTime` 后关闭 Scope 并删除条目。
 - 实现落点：`packages/logix-react/src/internal/store/ModuleCache.ts`
 - key 语义：`useModule(Impl)` 的内部 key 为：
-  - `baseKey = options.key ?? impl:${moduleId}:${componentId}`
+  - `baseKey = options.key ?? program:${moduleId}:${componentId}`
   - `key = ${baseKey}:${depsHash}`（depsHash 为 deps 的稳定 hash）
   - `suspend: true` 必须显式 `options.key`（避免并发渲染/重试导致 key 抖动与错绑）
 - GC 语义：
@@ -42,8 +42,7 @@
 
 这块是业务最容易误用的根源：**同样是“拿到一个模块句柄”，不同入口代表完全不同的实例归属**。
 
-- `useModule(ModuleImpl)`：从当前 `RuntimeProvider` 对应的 React ModuleCache 里 acquire/retain 一个“局部实例”；实例的存活取决于组件 retain/release（再受 `gcTime` 影响）。
-- `useModule(Module)`：等价于 `useModule(Module.impl)`（Module 是 `ModuleDef.implement(...)` 返回的对象）。
+- `useModule(Program)`：从当前 `RuntimeProvider` 对应的 React ModuleCache 里 acquire/retain 一个“局部实例”；实例的存活取决于组件 retain/release（再受 `gcTime` 影响）。
 - `useModule(ModuleDef)` / `useModule(ModuleTag)`：语义是“当前最近 RuntimeProvider 环境里的单例”（属于 Provider 级别，不绑定到某个 Host 实例）。
 - `host.imports.get(Child.tag)` / `useImportedModule(host, Child.tag)`：**从 host 这个父实例内部的 imports-scope 映射里解析子模块**；这就是“绑定某个 Host 实例”的含义：子模块实例的归属锚点是 host.runtime 的 scope。
 
@@ -61,7 +60,7 @@
 
 ### 0.5 ScopeRegistry 直接用法（内部参考）
 
-> TL;DR：ScopeRegistry 的主用途是支撑 `ModuleScope.Bridge` 这类“跨 React 子树/独立 root 复用同一 scope”的能力。  
+> TL;DR：ScopeRegistry 的主用途是支撑 `ModuleScope.Bridge` 这类“跨 React 子树/独立 root 复用同一 scope”的能力。
 > 如果只是“路由范围内共享额外资源”，优先把资源放到 Host 的 state / service / imports 里（心智模型更统一，也更容易跟随 scope 销毁）。
 
 但在少数场景下（例如：全局浮层 root 需要按 routeKey 取回“路由级 portal 容器句柄”），你可以在同一个 `scopeId` 下注册/取回额外资源：
@@ -90,7 +89,7 @@ lease.release()
 
 - Host(imports) 承载业务边界（路由/页面 scope）；
 - 子组件只通过 `host.imports.get(Child.tag)` / `useImportedModule(host, Child.tag)` 获取“绑定该 Host 实例”的子模块句柄；
-- 明确反例：在弹框里直接 `useModule(Child.impl)` 或 `useModule(Child.tag)` 都不是“绑定 Host”的语义。
+- 明确反例：在弹框里直接 `useModule(ChildProgram)` 或 `useModule(Child.tag)` 都不表达“绑定 Host”的语义。
 
 **Rationale**：这是最难误用、最符合“限定 scope 的全局”的路径；其成本模型与销毁语义都清晰可解释。
 

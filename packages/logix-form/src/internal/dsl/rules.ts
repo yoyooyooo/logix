@@ -1,16 +1,20 @@
 import { Exit, Schema } from 'effect'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
+import * as Logix from '@logixjs/core'
 import * as Rule from '../../Rule.js'
 import * as Validators from '../validators/index.js'
 import type { CanonicalListItem, CanonicalListPath, CanonicalPath, CanonicalValue } from '../form/types.js'
 
 /**
- * RulesSpec: the input shape of `Form.make({ rules })`.
+ * RulesSpec: internal declaration payload for Form validation / field behavior lowering.
  *
- * - Task 028 compiles `rules` into an equivalent `StateTraitSpec`; `rules` itself does not introduce a second runtime.
+ * - Task 028 compiles `rules` into an equivalent `FieldSpec`; `rules` itself does not introduce a second runtime.
+ * - Current call sites feed it through `Form.make(..., define)` and the advanced `form.dsl` route.
  */
 export type RulesSpec<TValues extends object> = Readonly<{
   readonly _tag: 'FormRulesSpec'
   readonly decls: ReadonlyArray<Rule.RulesDecl<TValues>>
+  readonly fieldFragments?: Readonly<Record<string, unknown>>
 }>
 
 export type RulesFieldNode = Readonly<{
@@ -37,7 +41,19 @@ export type RulesArrayNode = Readonly<{
   readonly superRefine: (rule: Rule.RuleInput<any, any>) => RulesArrayNode
 }>
 
-export type RulesNode = RulesFieldNode | RulesObjectNode | RulesArrayNode
+type FieldRulesEntry = Extract<FieldContracts.FieldEntry<any, any>, { readonly kind: 'computed' | 'source' }>
+
+export type RulesComputedNode = Readonly<{
+  readonly _tag: 'FormRulesNodeComputed'
+  readonly entry: FieldRulesEntry
+}>
+
+export type RulesSourceNode = Readonly<{
+  readonly _tag: 'FormRulesNodeSource'
+  readonly entry: FieldRulesEntry
+}>
+
+export type RulesNode = RulesFieldNode | RulesObjectNode | RulesArrayNode | RulesComputedNode | RulesSourceNode
 
 type TrackByKey<Item> = Item extends object
   ? CanonicalPath<Item> extends never
@@ -60,6 +76,8 @@ export type RulesDsl<TValues extends object> = {
         | Readonly<{ readonly mode: 'index' }>
       readonly item?: Rule.RuleInput<CanonicalListItem<TValues, P>, Ctx>
       readonly list?: Rule.RuleInput<ReadonlyArray<CanonicalListItem<TValues, P>>, Ctx>
+      readonly minItems?: Rule.MinItemsDecl
+      readonly maxItems?: Rule.MaxItemsDecl
     },
   ) => Rule.ListDecl<CanonicalListItem<TValues, P>, Ctx>
   readonly field: {
@@ -73,6 +91,22 @@ export type RulesDsl<TValues extends object> = {
   }
   readonly object: (shape: Readonly<Record<string, RulesNode>>) => RulesObjectNode
   readonly array: (item: RulesNode, options: { readonly identity: Rule.ListIdentityPolicy }) => RulesArrayNode
+  readonly computed: <Output = unknown, const Deps extends ReadonlyArray<string> = ReadonlyArray<string>>(input: {
+    readonly deps: Deps
+    readonly get: (...depsValues: ReadonlyArray<unknown>) => Output
+    readonly equals?: (prev: Output, next: Output) => boolean
+    readonly scheduling?: unknown
+  }) => RulesComputedNode
+  readonly source: <const Deps extends ReadonlyArray<string> = ReadonlyArray<string>>(input: {
+    readonly resource: string
+    readonly deps: Deps
+    readonly key: (...depsValues: ReadonlyArray<unknown>) => unknown
+    readonly triggers?: ReadonlyArray<'onMount' | 'onKeyChange'>
+    readonly debounceMs?: number
+    readonly concurrency?: 'switch' | 'exhaust-trailing'
+    readonly submitImpact?: 'block' | 'observe'
+    readonly meta?: Record<string, unknown>
+  }) => RulesSourceNode
 }
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
@@ -136,6 +170,16 @@ const withPrefix = <TValues extends object>(
 const makeFieldNode = (rule: Rule.RuleInput<any, any>): RulesFieldNode => ({
   _tag: 'FormRulesNodeField',
   rule,
+})
+
+const makeComputedNode = (entry: FieldRulesEntry): RulesComputedNode => ({
+  _tag: 'FormRulesNodeComputed',
+  entry,
+})
+
+const makeSourceNode = (entry: FieldRulesEntry): RulesSourceNode => ({
+  _tag: 'FormRulesNodeSource',
+  entry,
 })
 
 const fieldFromSchema = (schema: Schema.Schema<any>): Rule.RuleInput<any, any> => ({
@@ -289,24 +333,79 @@ const assertDeclListGuardrails = <TValues extends object>(decls: ReadonlyArray<R
   }
 }
 
+type CompiledSchema<TValues extends object> = Readonly<{
+  readonly decls: ReadonlyArray<Rule.RulesDecl<TValues>>
+  readonly fieldFragments?: Readonly<Record<string, unknown>>
+}>
+
+const emptyCompiledSchema = <TValues extends object>(): CompiledSchema<TValues> => ({
+  decls: [],
+})
+
+const mergeCompiledSchema = <TValues extends object>(
+  left: CompiledSchema<TValues>,
+  right: CompiledSchema<TValues>,
+): CompiledSchema<TValues> => {
+  const outFragments: Record<string, unknown> = {
+    ...((left.fieldFragments ?? {}) as Record<string, unknown>),
+  }
+
+  for (const [path, fragment] of Object.entries((right.fieldFragments ?? {}) as Record<string, unknown>)) {
+    if (path in outFragments) {
+      throw new Error(`[Form.rules.schema] Duplicate field behavior declaration for "${path}"`)
+    }
+    outFragments[path] = fragment
+  }
+
+  return {
+    decls: [...left.decls, ...right.decls],
+    ...(Object.keys(outFragments).length > 0 ? { fieldFragments: outFragments } : {}),
+  }
+}
+
+const assertAllowedFieldBehaviorTargetPath = (path: string): void => {
+  assertCanonicalValuePath('field behavior path', path)
+  if (path === '$root') {
+    throw new Error(`[Form.rules.schema] field behavior does not support "$root"`)
+  }
+  if (path === 'errors' || path.startsWith('errors.')) {
+    throw new Error(`[Form.rules.schema] field behavior cannot write to "${path}"`)
+  }
+  if (path === '$form' || path.startsWith('$form.')) {
+    throw new Error(`[Form.rules.schema] field behavior cannot write to "${path}"`)
+  }
+}
+
 const compileSchema = <TValues extends object>(
   node: RulesNode,
   prefix: string,
-): ReadonlyArray<Rule.RulesDecl<TValues>> => {
-  const visit = (n: RulesNode, at: string): ReadonlyArray<Rule.RulesDecl<TValues>> => {
-    if (!n || typeof n !== 'object') return []
+): CompiledSchema<TValues> => {
+  const visit = (n: RulesNode, at: string): CompiledSchema<TValues> => {
+    if (!n || typeof n !== 'object') return emptyCompiledSchema<TValues>()
 
     if ((n as any)._tag === 'FormRulesNodeField') {
       const rule = (n as any).rule as Rule.RuleInput<any, any>
       assertCanonicalValuePath('field path', at)
-      return [Rule.field(at, rule) as any]
+      return {
+        decls: [Rule.field(at, rule) as any],
+      }
+    }
+
+    if ((n as any)._tag === 'FormRulesNodeComputed' || (n as any)._tag === 'FormRulesNodeSource') {
+      assertAllowedFieldBehaviorTargetPath(at)
+      return {
+        decls: [],
+        fieldFragments: {
+          [at]: (n as any).entry,
+        },
+      }
     }
 
     if ((n as any)._tag === 'FormRulesNodeObject') {
       const shape = (n as any).shape as Readonly<Record<string, RulesNode>>
-      const out: Array<Rule.RulesDecl<TValues>> = []
+      let out = emptyCompiledSchema<TValues>()
       for (const key of Object.keys(shape)) {
-        out.push(...visit(shape[key]!, joinPath(at, key)))
+        out = mergeCompiledSchema(out, visit(shape[key]!, joinPath(at, key)))
       }
 
       const refineRule = (n as any).refineRule as Rule.RuleInput<any, any> | undefined
@@ -314,9 +413,15 @@ const compileSchema = <TValues extends object>(
       const selfRule = superRefineRule ?? refineRule
       if (selfRule !== undefined) {
         if (at) {
-          out.push(Rule.field(at, selfRule, { errorTarget: '$self' }) as any)
+          out = {
+            ...out,
+            decls: [...out.decls, Rule.field(at, selfRule, { errorTarget: '$self' }) as any],
+          }
         } else {
-          out.push(Rule.root(selfRule) as any)
+          out = {
+            ...out,
+            decls: [...out.decls, Rule.root(selfRule) as any],
+          }
         }
       }
 
@@ -340,33 +445,48 @@ const compileSchema = <TValues extends object>(
 
       const shape = itemObj.shape as Readonly<Record<string, RulesNode>>
       const validate: Record<string, Rule.RuleEntry<any, any>> = {}
+      const itemComputed: Record<string, unknown> = {}
+      const itemSource: Record<string, unknown> = {}
 
       for (const key of Object.keys(shape)) {
         const child = shape[key] as any
         if (!child || typeof child !== 'object') continue
-        if (child._tag !== 'FormRulesNodeField') {
-          throw new Error(
-            `[Form.rules.schema] array(item) only supports flat field nodes (nested object/array is not supported yet)`,
-          )
+        if (child._tag === 'FormRulesNodeField') {
+          const ruleInput = child.rule as Rule.RuleInput<any, any>
+          const leafRules = Rule.make(ruleInput as any)
+          for (const name of Object.keys(leafRules).sort((a, b) => a.localeCompare(b))) {
+            const leaf = (leafRules as any)[name]
+            const ruleName = `${key}.${name}`
+            const deps = Array.isArray((leaf as any)?.deps) ? (leaf as any).deps : []
+            const depsWithKey = Array.from(new Set([key, ...deps])).sort((a, b) => a.localeCompare(b))
+            validate[ruleName] = {
+              ...leaf,
+              deps: depsWithKey,
+              validate: (row: any, ctx: any) => {
+                const v = row?.[key]
+                const out = (leaf as any).validate(v, ctx)
+                if (out === Symbol.for('logix.field-kernel.validate.skip')) return out
+                return out === undefined ? undefined : { [key]: out }
+              },
+            }
+          }
+          continue
         }
 
-        const ruleInput = child.rule as Rule.RuleInput<any, any>
-        const leafRules = Rule.make(ruleInput as any)
-        for (const name of Object.keys(leafRules).sort((a, b) => a.localeCompare(b))) {
-          const leaf = (leafRules as any)[name]
-          const ruleName = `${key}.${name}`
-          const deps = Array.isArray((leaf as any)?.deps) ? (leaf as any).deps : []
-          const depsWithKey = Array.from(new Set([key, ...deps])).sort((a, b) => a.localeCompare(b))
-          validate[ruleName] = {
-            ...leaf,
-            deps: depsWithKey,
-            validate: (row: any, ctx: any) => {
-              const v = row?.[key]
-              const out = (leaf as any).validate(v, ctx)
-              if (out === Symbol.for('logix.state-trait.validate.skip')) return out
-              return out === undefined ? undefined : { [key]: out }
-            },
-          }
+        if (child._tag === 'FormRulesNodeComputed') {
+          itemComputed[key] = child.entry
+          continue
+        }
+
+        if (child._tag === 'FormRulesNodeSource') {
+          itemSource[key] = child.entry
+          continue
+        }
+
+        if (child._tag !== 'FormRulesNodeField') {
+          throw new Error(
+            `[Form.rules.schema] array(item) only supports flat field behavior nodes (field/computed/source)`,
+          )
         }
       }
 
@@ -377,16 +497,42 @@ const compileSchema = <TValues extends object>(
       const listSuper = (n as any).superRefineRule as Rule.RuleInput<any, any> | undefined
       const listRuleInput = listSuper ?? listRule
 
-      return [
-        Rule.list(at, {
-          identity,
-          ...(itemRule !== undefined ? { item: itemRule } : {}),
-          ...(listRuleInput !== undefined ? { list: listRuleInput } : {}),
-        }) as any,
-      ]
+      const itemFieldNode =
+        Object.keys(itemComputed).length > 0 || Object.keys(itemSource).length > 0
+          ? FieldContracts.fieldNode({
+              ...(Object.keys(itemComputed).length > 0 ? { computed: itemComputed } : {}),
+              ...(Object.keys(itemSource).length > 0 ? { source: itemSource } : {}),
+            } as any)
+          : undefined
+
+      const listFieldFragment =
+        itemFieldNode !== undefined
+          ? FieldContracts.fieldList({
+              identityHint:
+                (identity as any).mode === 'trackBy' ? { trackBy: String((identity as any).trackBy) } : undefined,
+              item: itemFieldNode,
+            })
+          : undefined
+
+      return {
+        decls: [
+          Rule.list(at, {
+            identity,
+            ...(itemRule !== undefined ? { item: itemRule } : {}),
+            ...(listRuleInput !== undefined ? { list: listRuleInput } : {}),
+          }) as any,
+        ],
+        ...(listFieldFragment !== undefined
+          ? {
+              fieldFragments: {
+                [at]: listFieldFragment,
+              },
+            }
+          : {}),
+      }
     }
 
-    return []
+    return emptyCompiledSchema<TValues>()
   }
 
   const rootPrefix = normalizePrefix(prefix)
@@ -417,10 +563,11 @@ export const rules = <TValues extends object>(_valuesSchema: Schema.Schema<TValu
     build.schema = (node: RulesNode) => {
       const p = normalizePrefix(prefix)
       const normalized = compileSchema<TValues>(node, p)
-      assertDeclListGuardrails(normalized)
+      assertDeclListGuardrails(normalized.decls)
       return {
         _tag: 'FormRulesSpec',
-        decls: normalized,
+        decls: normalized.decls,
+        ...(normalized.fieldFragments !== undefined ? { fieldFragments: normalized.fieldFragments } : {}),
       }
     }
 
@@ -446,6 +593,22 @@ function field(schema: Schema.Schema<any>): RulesFieldNode
     build.object = (shape: Readonly<Record<string, RulesNode>>) => makeObjectNode({ shape })
     build.array = (item: RulesNode, options: { readonly identity: Rule.ListIdentityPolicy }) =>
       makeArrayNode({ item, identity: options.identity })
+    build.computed = (input: {
+      readonly deps: ReadonlyArray<string>
+      readonly get: (...depsValues: ReadonlyArray<unknown>) => unknown
+      readonly equals?: (prev: unknown, next: unknown) => boolean
+      readonly scheduling?: unknown
+    }) => makeComputedNode(FieldContracts.fieldComputed(input as any) as FieldRulesEntry)
+    build.source = (input: {
+      readonly resource: string
+      readonly deps: ReadonlyArray<string>
+      readonly key: (...depsValues: ReadonlyArray<unknown>) => unknown
+      readonly triggers?: ReadonlyArray<'onMount' | 'onKeyChange'>
+      readonly debounceMs?: number
+      readonly concurrency?: 'switch' | 'exhaust-trailing'
+      readonly submitImpact?: 'block' | 'observe'
+      readonly meta?: Record<string, unknown>
+    }) => makeSourceNode(FieldContracts.fieldSource(input as any) as FieldRulesEntry)
     build.root = (ruleInput: unknown) => Rule.root(ruleInput as any)
     build.list = (listPath: string, spec: unknown) => Rule.list(listPath, spec as any)
 

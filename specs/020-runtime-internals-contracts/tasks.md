@@ -23,7 +23,7 @@ description: 'Task list for 020-runtime-internals-contracts'
 
 **Purpose**: 先把“内部契约入口 + 证据/IR 导出底座 + shim 迁移策略”搭好，避免迁移期到处改到一半。
 
-- [X] T004 定义内部契约总入口（RuntimeInternals Runtime Service）：`packages/logix-core/src/internal/runtime/core/RuntimeInternals.ts`（定义最小接口：lifecycle/txn/traits/imports/devtools）
+- [X] T004 定义内部契约总入口（RuntimeInternals Runtime Service）：`packages/logix-core/src/internal/runtime/core/RuntimeInternals.ts`（定义最小接口：lifecycle/txn/fields/imports/devtools）
 - [X] T005 定义 InternalHooks 的统一 accessor：`packages/logix-core/src/internal/runtime/core/runtimeInternalsAccessor.ts`（提供 `getRuntimeInternals(runtime)`/`getBoundInternals(bound)`；包含 dev 断言与缺失诊断）
 - [X] T006 将现有 `runtime.__*` 的写入点收敛到单一安装器：`packages/logix-core/src/internal/runtime/ModuleRuntime.internalHooks.ts`（内部先实现 Runtime Service 契约，再用 shim 填充 legacy 字段；禁止新增字段）
 - [X] T007 [P] 为 “internal accessor 缺失/不一致” 增加回归测试：`packages/logix-core/test/Runtime.InternalContracts.Accessor.test.ts`
@@ -39,9 +39,9 @@ description: 'Task list for 020-runtime-internals-contracts'
 
 **Goal**: 在内部契约化与全链路迁移过程中，对外语义与默认行为保持不变，并具备可解释回归证据。
 
-**Independent Test**: 运行代表性 runtime/trait 用例 + 示例场景；同时验证 diagnostics=off 与 on 的行为一致性（仅观测差异）。
+**Independent Test**: 运行代表性 runtime/field 用例 + 示例场景；同时验证 diagnostics=off 与 on 的行为一致性（仅观测差异）。
 
-- [X] T011 [P] [US1] 补齐“对外语义不变”回归用例（覆盖 dispatch/traits/source-refresh/生命周期；并覆盖事务窗口禁止 IO/async 边界的 guard/断言）：`packages/logix-core/test/Runtime.PublicSemantics.NoDrift.test.ts`
+- [X] T011 [P] [US1] 补齐“对外语义不变”回归用例（覆盖 dispatch/fields/source-refresh/生命周期；并覆盖事务窗口禁止 IO/async 边界的 guard/断言）：`packages/logix-core/test/Runtime.PublicSemantics.NoDrift.test.ts`
 - [X] T012 [P] [US1] 补齐 “diagnostics=off 近零成本 + 不改变语义” 的回归断言：`packages/logix-core/test/Debug.OffSemantics.NoDrift.test.ts`
 
 ---
@@ -64,14 +64,14 @@ description: 'Task list for 020-runtime-internals-contracts'
 
 **Goal**: 全链路内部消费方统一迁移到 RuntimeInternals/RuntimeKernel，消灭散落 `__*` 读写与参数爆炸接线点。
 
-**Independent Test**: 在不改对外行为的前提下，迁移 `BoundApiRuntime`/`trait-lifecycle`/`state-trait`/`@logixjs/react` 的内部依赖获取方式，并通过其各自回归用例。
+**Independent Test**: 在不改对外行为的前提下，迁移 `BoundApiRuntime`/`field-lifecycle`/`state-field`/`@logixjs/react` 的内部依赖获取方式，并通过其各自回归用例。
 
 - [X] T018 [US3] 迁移 BoundApiRuntime：用 internal accessor/RuntimeInternals 替代 `runtime.__runWithStateTransaction/__recordStatePatch/...` 直接读取：`packages/logix-core/src/internal/runtime/BoundApiRuntime.ts`
 - [X] T019 [US3] 消灭进程级 `globalLogicPhaseRef` 作为默认行为依赖（改为实例级 phase 或显式注入）：`packages/logix-core/src/internal/runtime/BoundApiRuntime.ts`
-- [X] T020 [US3] 迁移 trait-lifecycle：用 internal accessor 替代 `bound.__enqueueStateTraitValidateRequest/__runWithStateTransaction`：`packages/logix-core/src/internal/trait-lifecycle/index.ts`
-- [X] T021 [US3] 迁移 state-trait.install：用 internal accessor 替代 `bound.__registerStateTraitProgram`：`packages/logix-core/src/internal/state-trait/install.ts`
-- [X] T022 [US3] 迁移 state-trait.source：用 internal accessor 替代 `bound.__recordStatePatch/__recordReplayEvent` 等：`packages/logix-core/src/internal/state-trait/source.ts`
-- [X] T023 [US3] 将 state-trait.source 的进程级 once/dedup 状态迁到 RunSession/实例作用域（避免跨会话污染）：`packages/logix-core/src/internal/state-trait/source.ts` + `packages/logix-core/src/internal/observability/runSession.ts`
+- [X] T020 [US3] 迁移 field-lifecycle：用 internal accessor 替代 `bound.__enqueueFieldKernelValidateRequest/__runWithStateTransaction`：`packages/logix-core/src/internal/field-lifecycle/index.ts`
+- [X] T021 [US3] 迁移 state-field.install：用 internal accessor 替代 `bound.__registerFieldProgram`：`packages/logix-core/src/internal/state-field/install.ts`
+- [X] T022 [US3] 迁移 state-field.source：用 internal accessor 替代 `bound.__recordStatePatch/__recordReplayEvent` 等：`packages/logix-core/src/internal/state-field/source.ts`
+- [X] T023 [US3] 将 state-field.source 的进程级 once/dedup 状态迁到 RunSession/实例作用域（避免跨会话污染）：`packages/logix-core/src/internal/state-field/source.ts` + `packages/logix-core/src/internal/observability/runSession.ts`
 - [X] T024 [US3] 将试跑可观测的 opSeq/eventSeq 分配器从进程级 Map 迁到 RunSession/实例作用域（支持并行会话可对比）：`packages/logix-core/src/EffectOp.ts` + `packages/logix-core/src/internal/runtime/core/DebugSink.ts`
 - [X] T025 [US3] 迁移 `@logixjs/react` strict imports：用 internal accessor 替代 `parentRuntime.__importsScope`：`packages/logix-react/src/internal/resolveImportedModuleRef.ts`
 - [X] T026 [P] [US3] 增加“全链路无 `__*` 直读” lint/回归脚本（只对新增路径强制）：`scripts/checks/no-internal-magic-fields.ts`（仅检查变更文件集/允许白名单 shim；建议 Phase 2 完成后即引入作为 CI 门禁）
@@ -86,7 +86,7 @@ description: 'Task list for 020-runtime-internals-contracts'
 
 - [X] T027 [US4] 提供 TrialRun 入口/编排（RunSession + 覆写注入 + EvidenceCollector 组装 + 导出 EvidencePackage），不依赖 DevtoolsHub 全局单例：`packages/logix-core/src/internal/observability/trialRun.ts`
 - [X] T028 [US4] 将 converge static IR 的注册从 DevtoolsHub 全局 map 解耦为可注入采集路径（DevtoolsHub 仅作为 consumer）：`packages/logix-core/src/internal/runtime/core/DevtoolsHub.ts` + `packages/logix-core/src/internal/runtime/ModuleRuntime.internalHooks.ts`
-- [X] T029 [US4] 提供 Node 侧试跑样例（构造 runtime、注入覆写、导出证据并 schema 校验）：`examples/logix/src/scenarios/trialRunEvidence.ts`
+- [X] T029 [US4] 提供 Node 侧试跑样例（构造 runtime、注入覆写、导出证据并 schema 校验）：`examples/logix/src/scenarios/trial-run-evidence.ts`
 - [X] T030 [US4] 提供浏览器侧最小试跑样例（复用现有 demo 或新增轻量页面）：`examples/logix-react/src/demos/TrialRunEvidenceDemo.tsx`
 - [X] T031 [P] [US4] 增加并行 RunSession 隔离测试：`packages/logix-core/test/Observability.TrialRun.SessionIsolation.test.ts`（含 chaos：并行启动大量会话，验证 once 去重/序列号/IR 去重不串扰）
 
@@ -101,10 +101,10 @@ description: 'Task list for 020-runtime-internals-contracts'
 - [X] T032 [US5] 定义 RuntimeHost/BuildEnv 最小契约（可 Mock）：`packages/logix-core/src/internal/platform/RuntimeHost.ts`
 - [X] T033 [US5] 提供标准 Build Env Layer 工具（Config/RuntimeHost 可注入）：`packages/logix-core/src/internal/platform/BuildEnv.ts`
 - [X] T034 [US5] 增加“构建态依赖越界”诊断与错误类型：`packages/logix-core/src/internal/platform/ConstructionGuard.ts`
-- [X] T035 [US5] 处理构建期全局注册表污染（ModuleTraitsRegistry 等）：`packages/logix-core/src/internal/debug/ModuleTraitsRegistry.ts` + `packages/logix-core/src/Module.ts`（改为按会话/显式 consumer 注册或基于 digest 多版本存储）
-- [X] T036 [P] [US5] 增加 Reflection 导出样例（导出 module topology + traits program/graph 摘要）：`examples/logix/src/scenarios/ir/reflectStaticIr.ts`
+- [X] T035 [US5] 处理构建期全局注册表污染（ModuleFieldsRegistry 等）：`packages/logix-core/src/internal/debug/ModuleFieldsRegistry.ts` + `packages/logix-core/src/Module.ts`（改为按会话/显式 consumer 注册或基于 digest 多版本存储）
+- [X] T036 [P] [US5] 增加 Reflection 导出样例（导出 module topology + fields program/graph 摘要）：`examples/logix/src/scenarios/ir/reflectStaticIr.ts`
 - [X] T037 [P] [US5] 增加 Reflection 回归测试（两套配置对比 + 越界依赖失败诊断）：`packages/logix-core/test/Platform.Reflection.BuildEnv.test.ts`
-- [X] T038 [US5] 扩展 Exported Static IR 的 meta/注解（为 Phantom Source / Drift Detection 留锚点与稳定摘要）：`packages/logix-core/src/internal/state-trait/meta.ts` + `packages/logix-core/src/internal/state-trait/ir.ts`
+- [X] T038 [US5] 扩展 Exported Static IR 的 meta/注解（为 Phantom Source / Drift Detection 留锚点与稳定摘要）：`packages/logix-core/src/internal/state-field/meta.ts` + `packages/logix-core/src/internal/state-field/ir.ts`
 
 ---
 
@@ -117,7 +117,7 @@ description: 'Task list for 020-runtime-internals-contracts'
 - [X] T041 [P] 更新可观测性 SSoT（EvidencePackage.summary 约定、RunSession、Reflection IR 摘要）：`docs/ssot/runtime/logix-core/observability/09-debugging.md`
 - [X] T042 [P] 用户文档补齐“高性能最佳实践：试跑证据/IR 的用法与解释口径”：`apps/docs/content/docs/guide/advanced/performance-and-optimization.md`
 - [X] T043 清理迁移期 shim 的白名单与遗留 `__*` 字段（仅保留被证明仍必要的 debug-only 能力）：`packages/logix-core/src/internal/runtime/ModuleRuntime.internalHooks.ts` + `packages/logix-core/src/internal/runtime/BoundApiRuntime.ts`
-- [X] T044 [P] 更新示例索引（发现性）：在 `examples/logix/README.md` 补充 `trialRunEvidence.ts` / `reflectStaticIr.ts` 场景入口，并在 `examples/logix-react/src/App.tsx`（或等价 demo 路由入口）挂载 `TrialRunEvidenceDemo` 的访问入口
+- [X] T044 [P] 更新示例索引（发现性）：在 `examples/logix/README.md` 补充 `trial-run-evidence.ts` / `reflectStaticIr.ts` 场景入口，并在 `examples/logix-react/src/App.tsx`（或等价 demo 路由入口）挂载 `TrialRunEvidenceDemo` 的访问入口
 - [X] T045 [P] 消化并重写 Effect DI 重构教程（以 Logix 用户视角“先上手 Logix → 再理解 Effect DI”组织叙事，避免先验 Effect 知识假设），并纳入用户文档导航：`specs/020-runtime-internals-contracts/references/tutorial-effect-di-refactoring.md` → `apps/docs/content/docs/guide/learn/escape-hatches/effect-di-refactoring.md` + `apps/docs/content/docs/guide/learn/escape-hatches/meta.json`
 
 ---
@@ -129,9 +129,9 @@ description: 'Task list for 020-runtime-internals-contracts'
 - **020 内部契约入口**：`RuntimeInternals` / `runtimeInternalsAccessor` / `InternalContracts`（用于 runtime 实例级协作协议）
 - **Symbol hidden slot / WeakMap**：用于模块定义侧/纯内部实现侧的标记与元信息（避免把实现细节升级为“运行时契约”）
 
-- [X] T046 收敛 Module traits Program 槽位：用 Symbol hidden slot 替代 `__stateTraitProgram`，并更新 Debug/TraitLifecycle 读取链路：`packages/logix-core/src/internal/runtime/core/runtimeInternalsAccessor.ts` + `packages/logix-core/src/Module.ts` + `packages/logix-core/src/Debug.ts` + `packages/logix-core/src/internal/trait-lifecycle/index.ts`（含相关测试/脚本引用迁移）
+- [X] T046 收敛 Module fields Program 槽位：用 Symbol hidden slot 替代 `__stateTraitProgram`，并更新 Debug/FieldLifecycle 读取链路：`packages/logix-core/src/internal/runtime/core/runtimeInternalsAccessor.ts` + `packages/logix-core/src/Module.ts` + `packages/logix-core/src/internal/debug-api.ts` + `packages/logix-core/src/internal/field-lifecycle/index.ts`（含相关测试/脚本引用迁移）
 - [X] T047 同步 Sandbox kernel bundle：重新打包 `packages/logix-sandbox/public/sandbox/logix-core.js`（避免 Sandbox 仍依赖已移除的 `__stateTraitProgram` 等字段），并在 `packages/logix-sandbox/scripts/bundle-kernel.mjs`/README 中补充生成说明与约束
-- [X] T048 扩展 InternalContracts：为 repo 内集成方提供最小 txn/traits 辅助入口（`applyTransactionSnapshot`/`runWithStateTransaction`/`recordStatePatch`/`getRowIdStore`/`getStateTraitListConfigs`），并迁移以下直读点：`packages/logix-core/src/Runtime.ts` + `packages/logix-form/src/internal/rowid.ts` + `pnpm perf bench:009:txn-dirtyset` + `examples/logix-react/src/demos/PerfTuningLabLayout.tsx`
+- [X] T048 扩展 InternalContracts：为 repo 内集成方提供最小 txn/fields 辅助入口（`applyTransactionSnapshot`/`runWithStateTransaction`/`recordStatePatch`/`getRowIdStore`/`getFieldKernelListConfigs`），并迁移以下直读点：`packages/logix-core/src/Runtime.ts` + `packages/logix-form/src/internal/rowid.ts` + `pnpm perf bench:009:txn-dirtyset` + `examples/logix-react/src/demos/PerfTuningLabLayout.tsx`
 - [X] T049 收敛内部实现 marker：将 `__logicPlan/__phaseRef/__skipRun`、`__dirtyAllSetStateHint` 等内部标记迁到 Symbol hidden slot（或 WeakMap），避免在非 shim 文件继续依赖字符串字段：`packages/logix-core/src/internal/runtime/core/LogicPlanMarker.ts` + `packages/logix-core/src/internal/runtime/ModuleFactory.ts` + `packages/logix-core/src/internal/runtime/ModuleRuntime.logics.ts` + `packages/logix-core/src/internal/runtime/ModuleRuntime.transaction.ts`（并同步更新相关测试）
 - [X] T050 Sandbox Worker 全局桥接 API 收口：将 `self.__logixSandboxUiIntent`/`self.__logixSandboxSpy` 改为显式 bridge（`globalThis.logixSandboxBridge` + `Symbol.for("@logixjs/sandbox/bridge")`），并给出迁移说明：`packages/logix-sandbox/src/worker/sandbox.worker.ts` + `packages/logix-sandbox/test/browser/sandbox-worker-observable.test.ts`
 
