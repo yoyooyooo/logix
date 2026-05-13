@@ -4,9 +4,8 @@
 
 Logix 是一个 **Effect-native 的前端状态与业务逻辑运行时**。
 
-本仓库是 Logix 的孵化用 Monorepo：包含运行时内核、React 适配层、Devtools、浏览器 Sandbox，以及可运行的示例与文档站。
-仓库演进速度快，遵循 **forward-only**（不承诺向后兼容）。当前线就是未来 Logix 主线，不是历史兼容分支。
-本 README 只聚焦 Logix；其它目录可能包含实验内容，随演进被替换或删除。
+本仓库是当前活跃的 Logix Monorepo：包含运行时包、React 绑定、领域包、Devtools、Sandbox / runtime lab、示例和项目规范。
+当前线按 forward-only 演进，并作为未来 Logix 主线推进。
 
 ## 项目状态
 
@@ -14,124 +13,139 @@ Logix 是一个 **Effect-native 的前端状态与业务逻辑运行时**。
 - 新 runtime 工作只面向 Effect v4。本仓当前固定使用 `effect@4.0.0-beta.28` 及相关 Effect 配套包。
 - 在上游 Effect v4 仍处于 beta 依赖期间，npm 包仍按 prerelease 发布。
 - 目标稳定发布线是 `main`。npm `latest` 稳定版应在 release gate 后明确 cutover，而不是把当前 beta lane 直接改名。规则见 [Release Lane Standard](docs/standards/release-lane-standard.md)。
+- 当前设计事实源在 [docs/ssot](docs/ssot/README.md)、[docs/standards](docs/standards/README.md) 和 [logix-best-practices](skills/logix-best-practices/SKILL.md)。
 
-## Logix 用来解决什么？
+## 默认主链
 
-- 用 `effect/Schema` 定义 **强类型模块**（State + Actions）。
-- 用 **Effect 程序**编排异步业务流程，替代散落各处的 `useEffect` 胶水与竞态修补。
-- 用清晰的模块边界组织复杂业务，天然可测试，并为可观测/诊断预留链路。
+```text
+Module.logic(id, build)
+  -> Program.make(Module, config)
+  -> Runtime.make(Program)
+  -> RuntimeProvider + useModule + useSelector
+```
 
-## 核心心智模型
+- `Module` 定义 state 和 action contract。
+- `Module.logic(id, build)` 给模块挂行为。build 阶段同步登记声明，返回值是 run effect。
+- `Program.make(Module, config)` 装配 initial state、logic、services 和 imports。
+- `Runtime.make(Program)` 承接执行容器。
+- React 读侧走 `useSelector(handle, selector, equalityFn?)`，实例解析走 `useModule(...)`。
 
-- **Module**：业务边界单元（身份 + State/Actions 形状）。
-- **Logic**：通过绑定 API `$` 监听 Actions / State 变化的 Effect 程序。
-- **Runtime**：托管 Program 实例，运行 Program 装配的 Logic，并注入依赖 Layer。
+## 最小 core 切片
 
-## 最小示例
-
-```ts
+```ts filename="counter.ts"
 import * as Logix from '@logixjs/core'
 import { Effect, Schema } from 'effect'
 
-export const CounterDef = Logix.Module.make('Counter', {
+export const Counter = Logix.Module.make('Counter', {
   state: Schema.Struct({ count: Schema.Number }),
-  actions: { inc: Schema.Void },
+  actions: {
+    inc: Schema.Void,
+  },
 })
 
-export const CounterLogic = CounterDef.logic(($) =>
+export const CounterLogic = Counter.logic('counter-logic', ($) =>
   Effect.gen(function* () {
-    yield* $.onAction('inc').update((s) => ({ ...s, count: s.count + 1 }))
+    yield* $.onAction('inc').run(
+      $.state.update((state) => ({ count: state.count + 1 })),
+    )
   }),
 )
 
-export const CounterProgram = Logix.Program.make(CounterDef, {
+export const CounterProgram = Logix.Program.make(Counter, {
   initial: { count: 0 },
   logics: [CounterLogic],
 })
 
-export const CounterRuntime = Logix.Runtime.make(CounterProgram)
+export const counterRuntime = Logix.Runtime.make(CounterProgram)
 ```
 
-## 快速开始（从本仓库跑起来）
+## React host 切片
 
-1. 安装依赖：
+```tsx filename="App.tsx"
+import { RuntimeProvider, useModule, useSelector } from '@logixjs/react'
+import { Counter, counterRuntime } from './counter'
+
+function CounterView() {
+  const counter = useModule(Counter.tag)
+  const count = useSelector(counter, (state) => state.count)
+
+  return (
+    <button type="button" onClick={() => counter.dispatchers.inc()}>
+      Count: {count}
+    </button>
+  )
+}
+
+export function App() {
+  return (
+    <RuntimeProvider runtime={counterRuntime}>
+      <CounterView />
+    </RuntimeProvider>
+  )
+}
+```
+
+## Logix 负责什么
+
+- State / action contract 与模块身份。
+- 通过 `Program` 挂载的 Effect 业务逻辑。
+- runtime scope 内的 service wiring 与 child program imports。
+- React host 投影、模块实例解析和 selector 订阅。
+- Form、Query、I18n、Domain pattern kits 等回到同一 runtime law 的领域包。
+- `Runtime.check(...)`、`Runtime.trial(...)` 等验证与诊断控制面入口。
+
+## 运行本仓库
 
 ```bash
 pnpm install
+pnpm check:effect-v4-matrix
+pnpm typecheck
+pnpm test:turbo
 ```
 
-2. 跑 React Demo：
+运行 React 示例：
 
 ```bash
 pnpm -C examples/logix-react dev
 ```
 
-3. 跑一个 Node 场景脚本：
-
-```bash
-pnpm tsx examples/logix/src/scenarios/and-update-on-action.ts
-```
-
-4. 阅读双语文档站：
+运行文档站：
 
 ```bash
 pnpm -C apps/docs dev
-# 打开 http://localhost:3000
 ```
 
 ## 包结构
 
-- `packages/logix-core` → `@logixjs/core`（内核：Module / Logic / Flow / Runtime / `$`）
-- `packages/logix-react` → `@logixjs/react`（React 适配：`RuntimeProvider`、hooks）
-- `packages/logix-devtools-react` → `@logixjs/devtools-react`（Devtools UI）
-- `packages/logix-sandbox` → `@logixjs/sandbox`（浏览器 Worker Sandbox）
-- `packages/logix-test` → `@logixjs/test`（测试工具）
-
-扩展与能力包：`packages/logix-form`、`packages/logix-query`、`packages/i18n`、`packages/domain`。
+- `@logixjs/core`：Module、Program、Runtime、control-plane facade。
+- `@logixjs/react`：React bindings、`RuntimeProvider`、`useModule`、`useSelector` 和 dispatch helpers。
+- `@logixjs/form`：当前 runtime 的 Form 领域包。
+- `@logixjs/query`：当前 runtime 的 Query 领域包。
+- `@logixjs/domain`：Program-first domain pattern kits。
+- `@logixjs/i18n`：I18n 领域包。
+- `@logixjs/cli`：Node-only runtime control-plane CLI。
+- `@logixjs/devtools-react`：React Devtools UI。
+- `@logixjs/playground`：可嵌入 playground components。
+- `@logixjs/sandbox`：浏览器 Worker sandbox runtime。
+- `@logixjs/test`：测试工具。
+- `@logixjs/perf-evidence`：私有 CI / performance evidence 工具。
 
 ## 文档入口
 
-- 入门介绍：`apps/docs/content/docs/guide/get-started/introduction.md`
-- 快速上手：`apps/docs/content/docs/guide/get-started/quick-start.md`
-- 教程（表单）：`apps/docs/content/docs/guide/get-started/tutorial-first-app.md`
-
-## 仓库 Skills
-
-- 仓库级 skill 的 Canonical 目录是 `skills/`。
-- 当前已迁移 skill：`logix-best-practices`（`skills/logix-best-practices`）。
-- Codex 兼容发现路径仍保留：`.codex/skills/logix-best-practices`（软链）。
-
-### 通过 Skillshare 安装
-
-官方仓库：`https://github.com/runkids/skillshare`
-
-```bash
-# 安装 skillshare（任选其一）
-curl -fsSL https://raw.githubusercontent.com/runkids/skillshare/main/install.sh | sh
-# 或：brew install skillshare
-
-# 安装本仓库 skill（project mode）
-skillshare install github.com/yoyooyooo/logix/skills/logix-best-practices -p
-skillshare sync
-```
-
-### 通过 Vercel Skills CLI 安装
-
-官方仓库：`https://github.com/vercel-labs/skills`
-
-```bash
-# 从本仓库安装到 Codex（项目级）
-npx skills add yoyooyooo/logix --skill logix-best-practices -a codex
-
-# 全局安装示例
-npx skills add yoyooyooo/logix --skill logix-best-practices -a codex -g
-```
-
-提示：如果你从自己的 fork 安装，请把 `yoyooyooo/logix` 替换为你的仓库地址。
+- Docs 根入口：[docs/README.md](docs/README.md)
+- Public API spine：[docs/ssot/runtime/01-public-api-spine.md](docs/ssot/runtime/01-public-api-spine.md)
+- Canonical authoring：[docs/ssot/runtime/03-canonical-authoring.md](docs/ssot/runtime/03-canonical-authoring.md)
+- React host boundary：[docs/ssot/runtime/10-react-host-projection-boundary.md](docs/ssot/runtime/10-react-host-projection-boundary.md)
+- API guardrails：[docs/standards/logix-api-next-guardrails.md](docs/standards/logix-api-next-guardrails.md)
+- Performance observability：[docs/standards/kernel-performance-observability-standard.md](docs/standards/kernel-performance-observability-standard.md)
+- Release lane：[docs/standards/release-lane-standard.md](docs/standards/release-lane-standard.md)
+- Agent guidance：[skills/logix-best-practices/SKILL.md](skills/logix-best-practices/SKILL.md)
 
 ## 开发命令
 
-- 构建 packages（部分示例/工具依赖产物）：`pnpm build:pkg`
+- Effect baseline：`pnpm check:effect-v4-matrix`
+- 构建 packages：`pnpm build:pkg`
 - 类型检查：`pnpm typecheck`
 - 代码规范：`pnpm lint`
 - 测试：`pnpm test`（或 `pnpm test:turbo`）
+- Release status：`pnpm release:check`

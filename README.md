@@ -4,134 +4,148 @@
 
 Logix is an **Effect-native runtime for frontend state and business logic**.
 
-This repository is the incubation monorepo for Logix: runtime packages, the React adapter, devtools, a browser sandbox, and runnable examples.
-It evolves quickly and is **forward-only** (no backward compatibility guarantees). The current line is the future Logix line, not a legacy compatibility branch.
-This README intentionally focuses on Logix; other directories may contain experiments and can change or disappear.
+This repository is the active Logix monorepo: runtime packages, React bindings, domain packages, devtools, sandbox/runtime lab, examples, and project standards.
+The current line is forward-only and is treated as the future Logix line.
 
 ## Project status
 
-- Logix is under active development and the public API may still be aggressively simplified.
-- New runtime work targets Effect v4 only. This repository currently pins `effect@4.0.0-beta.28` and related Effect packages.
-- npm packages are still published as prerelease packages while the upstream Effect v4 dependency remains beta.
+- Logix is under active development. Public API shape can still be simplified aggressively.
+- New runtime work targets Effect v4 only. The repo currently pins `effect@4.0.0-beta.28` and related Effect packages.
+- npm packages remain prerelease packages while the upstream Effect v4 dependency remains beta.
 - The intended stable lane is `main`. A stable npm `latest` release should be a deliberate cutover after the release gate, not an automatic rename of the current beta lane. See [Release Lane Standard](docs/standards/release-lane-standard.md).
+- Current design facts live in [docs/ssot](docs/ssot/README.md), [docs/standards](docs/standards/README.md), and [logix-best-practices](skills/logix-best-practices/SKILL.md).
 
-## What is Logix for?
+## Default route
 
-- Build **type-safe Modules** (State + Actions) with `effect/Schema`.
-- Orchestrate async business flows with **Effect programs** instead of ad-hoc `useEffect` chains.
-- Compose large apps from smaller modules with explicit boundaries, testability, and observability hooks.
+```text
+Module.logic(id, build)
+  -> Program.make(Module, config)
+  -> Runtime.make(Program)
+  -> RuntimeProvider + useModule + useSelector
+```
 
-## Core mental model
+- `Module` defines state and action contracts.
+- `Module.logic(id, build)` attaches behavior to that module. The build phase registers declarations synchronously and returns the run effect.
+- `Program.make(Module, config)` assembles initial state, mounted logic, services, and imports.
+- `Runtime.make(Program)` hosts execution.
+- React reads stay on `useSelector(handle, selector, equalityFn?)`; instance resolution stays on `useModule(...)`.
 
-- **Module**: a unit of business boundary (identity + State/Actions shape).
-- **Logic**: an Effect program that reacts to Actions / State changes via the bound API `$`.
-- **Runtime**: hosts Program instances, runs Program-mounted Logic, and wires service Layers.
+## Minimal core slice
 
-## Minimal example
-
-```ts
+```ts filename="counter.ts"
 import * as Logix from '@logixjs/core'
 import { Effect, Schema } from 'effect'
 
-export const CounterDef = Logix.Module.make('Counter', {
+export const Counter = Logix.Module.make('Counter', {
   state: Schema.Struct({ count: Schema.Number }),
-  actions: { inc: Schema.Void },
+  actions: {
+    inc: Schema.Void,
+  },
 })
 
-export const CounterLogic = CounterDef.logic(($) =>
+export const CounterLogic = Counter.logic('counter-logic', ($) =>
   Effect.gen(function* () {
-    yield* $.onAction('inc').update((s) => ({ ...s, count: s.count + 1 }))
+    yield* $.onAction('inc').run(
+      $.state.update((state) => ({ count: state.count + 1 })),
+    )
   }),
 )
 
-export const CounterProgram = Logix.Program.make(CounterDef, {
+export const CounterProgram = Logix.Program.make(Counter, {
   initial: { count: 0 },
   logics: [CounterLogic],
 })
 
-export const CounterRuntime = Logix.Runtime.make(CounterProgram)
+export const counterRuntime = Logix.Runtime.make(CounterProgram)
 ```
 
-## Quick start (from this monorepo)
+## React host slice
 
-1. Install dependencies:
+```tsx filename="App.tsx"
+import { RuntimeProvider, useModule, useSelector } from '@logixjs/react'
+import { Counter, counterRuntime } from './counter'
+
+function CounterView() {
+  const counter = useModule(Counter.tag)
+  const count = useSelector(counter, (state) => state.count)
+
+  return (
+    <button type="button" onClick={() => counter.dispatchers.inc()}>
+      Count: {count}
+    </button>
+  )
+}
+
+export function App() {
+  return (
+    <RuntimeProvider runtime={counterRuntime}>
+      <CounterView />
+    </RuntimeProvider>
+  )
+}
+```
+
+## What Logix owns
+
+- State/action contracts and module identity.
+- Effect-based business logic mounted through `Program`.
+- Runtime-scoped service wiring and child program imports.
+- React host projection, module instance resolution, and selector-based subscriptions.
+- Domain packages such as Form, Query, I18n, and Domain pattern kits when they map back to the same runtime law.
+- Verification and diagnostics control-plane entry points such as `Runtime.check(...)` and `Runtime.trial(...)`.
+
+## Run this repo
 
 ```bash
 pnpm install
+pnpm check:effect-v4-matrix
+pnpm typecheck
+pnpm test:turbo
 ```
 
-2. Run the React demo:
+Run the React example:
 
 ```bash
 pnpm -C examples/logix-react dev
 ```
 
-3. Run a standalone Node scenario:
-
-```bash
-pnpm tsx examples/logix/src/scenarios/and-update-on-action.ts
-```
-
-4. Read the docs (bilingual):
+Run the docs site:
 
 ```bash
 pnpm -C apps/docs dev
-# open http://localhost:3000
 ```
 
 ## Packages
 
-- `packages/logix-core` → `@logixjs/core` (kernel: Module / Logic / Flow / Runtime / `$`)
-- `packages/logix-react` → `@logixjs/react` (React adapter: `RuntimeProvider`, hooks)
-- `packages/logix-devtools-react` → `@logixjs/devtools-react` (devtools UI)
-- `packages/logix-sandbox` → `@logixjs/sandbox` (run Logix/Effect in a browser Worker)
-- `packages/logix-test` → `@logixjs/test` (testing utilities)
-
-Add-ons and feature kits live in `packages/logix-form`, `packages/logix-query`, `packages/i18n`, `packages/domain`.
+- `@logixjs/core`: Module, Program, Runtime, control-plane facade.
+- `@logixjs/react`: React bindings, `RuntimeProvider`, `useModule`, `useSelector`, dispatch helpers.
+- `@logixjs/form`: Form domain package for the current runtime.
+- `@logixjs/query`: Query domain package for the current runtime.
+- `@logixjs/domain`: Program-first domain pattern kits.
+- `@logixjs/i18n`: I18n domain package.
+- `@logixjs/cli`: Node-only runtime control-plane CLI.
+- `@logixjs/devtools-react`: React devtools UI.
+- `@logixjs/playground`: Embeddable playground components.
+- `@logixjs/sandbox`: Browser Worker sandbox runtime.
+- `@logixjs/test`: Testing utilities.
+- `@logixjs/perf-evidence`: private CI/performance evidence tooling.
 
 ## Documentation
 
-- Getting started: `apps/docs/content/docs/guide/get-started/introduction.en.md`
-- Quick start: `apps/docs/content/docs/guide/get-started/quick-start.en.md`
-- Tutorial (form): `apps/docs/content/docs/guide/get-started/tutorial-first-app.en.md`
-
-## Repository Skills
-
-- Canonical skill source lives at `skills/`.
-- Current migrated skill: `logix-best-practices` (`skills/logix-best-practices`).
-- Compatibility discovery path for Codex remains `.codex/skills/logix-best-practices` (symlink).
-
-### Install via Skillshare
-
-Official project: `https://github.com/runkids/skillshare`
-
-```bash
-# Install skillshare (choose one)
-curl -fsSL https://raw.githubusercontent.com/runkids/skillshare/main/install.sh | sh
-# or: brew install skillshare
-
-# Install this repository skill (project mode)
-skillshare install github.com/yoyooyooo/logix/skills/logix-best-practices -p
-skillshare sync
-```
-
-### Install via Vercel Skills CLI
-
-Official project: `https://github.com/vercel-labs/skills`
-
-```bash
-# Install from this repository to Codex (project scope)
-npx skills add yoyooyooo/logix --skill logix-best-practices -a codex
-
-# Global install example
-npx skills add yoyooyooo/logix --skill logix-best-practices -a codex -g
-```
-
-Tip: if you install from your fork, replace `yoyooyooo/logix` with your own repository.
+- Docs root: [docs/README.md](docs/README.md)
+- Public API spine: [docs/ssot/runtime/01-public-api-spine.md](docs/ssot/runtime/01-public-api-spine.md)
+- Canonical authoring: [docs/ssot/runtime/03-canonical-authoring.md](docs/ssot/runtime/03-canonical-authoring.md)
+- React host boundary: [docs/ssot/runtime/10-react-host-projection-boundary.md](docs/ssot/runtime/10-react-host-projection-boundary.md)
+- API guardrails: [docs/standards/logix-api-next-guardrails.md](docs/standards/logix-api-next-guardrails.md)
+- Performance observability: [docs/standards/kernel-performance-observability-standard.md](docs/standards/kernel-performance-observability-standard.md)
+- Release lane: [docs/standards/release-lane-standard.md](docs/standards/release-lane-standard.md)
+- Agent guidance: [skills/logix-best-practices/SKILL.md](skills/logix-best-practices/SKILL.md)
 
 ## Development
 
-- Build packages (needed by some examples/tools): `pnpm build:pkg`
+- Effect baseline: `pnpm check:effect-v4-matrix`
+- Package build: `pnpm build:pkg`
 - Typecheck: `pnpm typecheck`
 - Lint: `pnpm lint`
-- Test: `pnpm test` (or `pnpm test:turbo`)
+- Tests: `pnpm test` or `pnpm test:turbo`
+- Release status: `pnpm release:check`
