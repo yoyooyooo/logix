@@ -81,6 +81,7 @@ const isTsSourceFile = (file: string): boolean => {
   if (!(lower.endsWith(".ts") || lower.endsWith(".tsx"))) return false
   if (lower.includes("/test/") || lower.includes("/tests/") || lower.includes("/__tests__/")) return false
   if (lower.includes(".test.") || lower.includes(".spec.")) return false
+  if (lower.endsWith("/monacotypebundle.generated.ts")) return false
   if (lower.includes("/dist/") || lower.includes("/build/") || lower.includes("/public/")) return false
   return lower.includes("/src/")
 }

@@ -1,7 +1,8 @@
-import { Effect, Stream } from 'effect'
+import { Cause, Effect, Exit, Option, ServiceMap, Stream } from 'effect'
 import * as BoundApiRuntime from '../runtime/core/BoundApiRuntime.js'
 import * as LogicDiagnostics from '../runtime/core/LogicDiagnostics.js'
 import { PublicLogicAuthoringShapeError } from './logicSurface.js'
+import { runSyncExitWithServices } from '../runtime/core/runner/SyncEffectRunner.js'
 import type * as ModuleFields from '../runtime/core/ModuleFields.js'
 import type { RuntimeInternals } from '../runtime/core/RuntimeInternals.js'
 import { setRuntimeInternals } from '../runtime/core/runtimeInternalsAccessor.js'
@@ -128,6 +129,18 @@ const makeCaptureInternals = (
   },
 })
 
+const throwIfCaptureSetupFailed = (exit: Exit.Exit<void, unknown>): void => {
+  if (Exit.isSuccess(exit)) return
+
+  const failure = Option.getOrUndefined(Cause.findErrorOption(exit.cause))
+  if (failure !== undefined) throw failure
+
+  const defect = exit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)[0]
+  if (defect !== undefined) throw defect
+
+  throw new Error(Cause.pretty(exit.cause))
+}
+
 export const attachLogicDeclarationCapture = <L extends object>(logic: L, capture: LogicDeclarationCapture): L => {
   try {
     Object.defineProperty(logic, LOGIC_DECLARATION_CAPTURE, {
@@ -174,7 +187,12 @@ export const captureLogicDeclarations = <Sh extends AnyModuleShape, R = never, E
 
     const built = args.build(api)
     if (isLogicDescriptor<Sh, R, E>(built)) {
-      Effect.runSync(Effect.asVoid((built as any).setup as any) as any)
+      throwIfCaptureSetupFailed(
+        runSyncExitWithServices(
+          Effect.asVoid((built as any).setup as any) as Effect.Effect<void, unknown, never>,
+          ServiceMap.empty() as unknown as ServiceMap.ServiceMap<any>,
+        ),
+      )
     }
   } catch (error) {
     if (error instanceof PublicLogicAuthoringShapeError) {

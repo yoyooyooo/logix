@@ -3,6 +3,15 @@ import { describe, expect, it } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 
+type RuntimeServicesEvidenceEnvironment = {
+  readonly runtimeServicesEvidence?: unknown
+}
+
+const runtimeServicesEvidenceOf = (environment: unknown): unknown =>
+  environment && typeof environment === 'object'
+    ? (environment as RuntimeServicesEvidenceEnvironment).runtimeServicesEvidence
+    : undefined
+
 describe('contracts (045): Kernel activation判定', () => {
   it.effect('should return false when runtime service selection fallback happened', () =>
     Effect.gen(function* () {
@@ -28,7 +37,7 @@ describe('contracts (045): Kernel activation判定', () => {
         layer,
       })
 
-      const evidence = report.environment?.runtimeServicesEvidence as any
+      const evidence = runtimeServicesEvidenceOf(report.environment) as any
       expect(evidence).toBeDefined()
       expect(CoreKernel.isKernelFullyActivated(evidence)).toBe(false)
       expect(
@@ -62,7 +71,7 @@ describe('contracts (045): Kernel activation判定', () => {
         layer,
       })
 
-      const evidence = report.environment?.runtimeServicesEvidence as any
+      const evidence = runtimeServicesEvidenceOf(report.environment) as any
       expect(evidence).toBeDefined()
       expect(CoreKernel.isKernelFullyActivated(evidence)).toBe(true)
       expect(

@@ -161,7 +161,7 @@ describe('CommandResult transport contract', () => {
   it('uses the report-level nextRecommendedStage instead of hint-local scheduling fields', () => {
     const reportWithHintStage = {
       nextRecommendedStage: 'compare',
-      repairHints: [{ nextRecommendedStage: 'trial' }],
+      repairHints: [{ code: 'hint-stage', canAutoRetry: false, upgradeToStage: 'trial', focusRef: null }],
     } as const
 
     expect(getAgentSchedulingStage(reportWithHintStage)).toBe('compare')

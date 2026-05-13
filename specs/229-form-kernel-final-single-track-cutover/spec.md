@@ -114,8 +114,8 @@ Owner lanes:
 | invite code / username uniqueness | remote fact impacts submit via reason; no rule direct fetch; no React sync |
 | row-local sku / quote lookup | source receipt follows row owner across reorder/remove; stale row id retired |
 | hard Query trigger | invalidate/refetch/prefetch/pagination/cross-scope reuse uses Query/control route, not Form source public refresh |
-| `Form.Rule.custom` fetch rejection | final truth cannot fetch directly |
-| React `useEffect` remote-sync rejection | React cannot become remote fact owner |
+| rule direct fetch rejection | final truth cannot fetch directly; `Form.Rule.custom` is not a remote fact route |
+| React useEffect remote sync rejection | React cannot become remote fact owner; React `useEffect` remote-sync is rejected as an owner route |
 | companion async rejection | Promise/Effect/fetch rejected |
 | final-truth contributor matrix | schema/rule/list/root/sourceImpact/manual merge into one reason/error carrier |
 | listScopeCheck focused perf | diagnostics off/light/full measured; incremental route validated |

@@ -1,8 +1,10 @@
 import { Effect, Exit, Layer, Scope } from 'effect'
 import { makeEvidenceCollector, evidenceCollectorLayer } from './evidenceCollector.js'
 import {
+  type ProofKernelContext,
   type ProofKernelContextRunner,
   type ProofKernelErrorSummary,
+  type ProofKernelOptions,
   type ProofKernelResult,
   type ProofKernelRunner,
 } from './proofKernel.types.js'
@@ -37,7 +39,10 @@ const toProofKernelError = (exit: Exit.Exit<unknown, unknown>): ProofKernelError
 export const runProofKernel: ProofKernelRunner = (program, options) =>
   withProofKernelContext(options, () => program)
 
-export const withProofKernelContext: ProofKernelContextRunner = (options, run) =>
+export const withProofKernelContext: ProofKernelContextRunner = <A, E>(
+  options: ProofKernelOptions | undefined,
+  run: (context: ProofKernelContext) => Effect.Effect<A, E, any>,
+) =>
   Effect.gen(function* () {
     const session = makeRunSession({
       runId: options?.runId,
@@ -103,4 +108,4 @@ export const withProofKernelContext: ProofKernelContextRunner = (options, run) =
       ok: Exit.isSuccess(exit),
       ...(error ? { error } : {}),
     } satisfies ProofKernelResult<any, any>
-  })
+  }) as Effect.Effect<ProofKernelResult<A, E>, never, never>

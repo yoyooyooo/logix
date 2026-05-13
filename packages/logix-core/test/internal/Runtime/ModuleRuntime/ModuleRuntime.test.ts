@@ -442,7 +442,7 @@ describe('ModuleRuntime (internal)', () => {
 
         expect(diagnosticEvent).toBeDefined()
         expect(diagnosticEvent?.type === 'diagnostic' ? diagnosticEvent.severity : undefined).toBe('warning')
-        expect(diagnosticEvent?.moduleId).toBe('env-module')
+        expect(diagnosticEvent && 'moduleId' in diagnosticEvent ? diagnosticEvent.moduleId : undefined).toBe('env-module')
       }),
     )
 
@@ -501,7 +501,7 @@ describe('ModuleRuntime (internal)', () => {
 
         expect(diagnosticEvent).toBeDefined()
         expect(diagnosticEvent?.type === 'diagnostic' ? diagnosticEvent.severity : undefined).toBe('error')
-        expect(diagnosticEvent?.moduleId).toBe('module-with-env')
+        expect(diagnosticEvent && 'moduleId' in diagnosticEvent ? diagnosticEvent.moduleId : undefined).toBe('module-with-env')
         expect(String((diagnosticEvent as any)?.hint ?? '')).toContain('declaration phase')
       }),
     )
@@ -1401,7 +1401,10 @@ describe('ModuleRuntime (internal)', () => {
                   .getSnapshot()
                   .filter(
                     (event) =>
-                      event.moduleId === 'TimeTravelModule' && event.type === 'state:update' && (event as any).txnId,
+                      'moduleId' in event &&
+                      event.moduleId === 'TimeTravelModule' &&
+                      event.type === 'state:update' &&
+                      (event as any).txnId,
                   ) as any[]
         
                 expect(events.length).toBeGreaterThanOrEqual(2)
@@ -1512,6 +1515,7 @@ describe('ModuleRuntime (internal)', () => {
                   .getSnapshot()
                   .filter(
                     (event) =>
+                      'moduleId' in event &&
                       event.moduleId === 'TxnDebugModule' &&
                       (event.type === 'action:dispatch' || event.type === 'state:update'),
                   )
@@ -2043,6 +2047,7 @@ describe('ModuleRuntime (internal)', () => {
                   .getSnapshot()
                   .filter(
                     (event) =>
+                      'moduleId' in event &&
                       event.moduleId === 'TimeTravelModuleRuntimeBridge' &&
                       event.type === 'state:update' &&
                       (event as any).txnId,

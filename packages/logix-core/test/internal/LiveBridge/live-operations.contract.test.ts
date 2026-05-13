@@ -12,6 +12,11 @@ import * as Logix from '../../../src/index.js'
 
 const target = makeLiveTargetCoordinate({ runtimeId: 'runtime-1', moduleId: 'module-1', instanceId: 'instance-1' })
 
+type LiveFacetWithArtifactRef = {
+  readonly kind: 'operation.completed' | 'live.capture'
+  readonly artifactRef?: { readonly outputKey: string; readonly kind: string }
+}
+
 const request = (operationKind: LiveOperationRequest['operationKind'], overrides: Partial<LiveOperationRequest> = {}): LiveOperationRequest => ({
   actorId: 'agent',
   operationKind,
@@ -41,7 +46,7 @@ describe('live P1 operations', () => {
     })
 
     expect(result.kind).toBe('operation.completed')
-    expect(result.artifactRef?.outputKey).toBe('live-targets')
+    expect((result as LiveFacetWithArtifactRef).artifactRef?.outputKey).toBe('live-targets')
   })
 
   it('routes event-window capture, snapshot, wait, export and profile as bounded evidence facets', () => {
@@ -89,7 +94,7 @@ describe('live P1 operations', () => {
     const window = ledgerStore.readWindow({ target, eventKinds: ['capture.eventWindow'] })
 
     expect(result.kind).toBe('live.capture')
-    expect(result.artifactRef).toEqual({ outputKey: 'live-capture:event-window', kind: 'LiveCapture' })
+    expect((result as LiveFacetWithArtifactRef).artifactRef).toEqual({ outputKey: 'live-capture:event-window', kind: 'LiveCapture' })
     expect(window.events).toEqual([
       expect.objectContaining({
         eventKind: 'capture.eventWindow',
@@ -114,7 +119,7 @@ describe('live P1 operations', () => {
     )
 
     expect(result.kind).toBe('operation.completed')
-    expect(result.artifactRef?.outputKey).toBe('live-operation:dispatch.declaredAction')
+    expect((result as LiveFacetWithArtifactRef).artifactRef?.outputKey).toBe('live-operation:dispatch.declaredAction')
   })
 
   it('emits failed facets only after admission succeeds', () => {

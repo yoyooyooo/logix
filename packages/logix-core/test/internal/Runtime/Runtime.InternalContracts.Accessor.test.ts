@@ -69,6 +69,7 @@ const makeInternals = (instanceId: string): RuntimeInternals => ({
     rowIdStore: {},
     getListConfigs: () => [],
     registerSourceRefresh: () => {},
+    forkSourceRefresh: () => Effect.void,
     getSourceRefreshHandler: () => undefined,
     registerFieldProgram: () => {},
     enqueueFieldValidateRequest: () => {},

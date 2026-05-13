@@ -9,6 +9,7 @@ import {
   makeLiveStateInspectArtifact,
   makeLiveTargetCoordinate,
   makeLiveTargetDetailInspectArtifact,
+  type RuntimeReflectionManifest,
 } from '../../../src/internal/live-bridge-api.js'
 
 const target = {
@@ -103,7 +104,7 @@ describe('live inspect facet contract', () => {
   })
 
   it('projects actions from a matched owner binding', () => {
-    const manifest = {
+    const manifest: RuntimeReflectionManifest = {
       manifestVersion: 'runtime-reflection-manifest@167B',
       programId: 'inspect-actions.program',
       rootModuleId: 'InspectFixture',

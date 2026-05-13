@@ -79,8 +79,9 @@ describe('live attachment boundary', () => {
     })
 
     expect(denied.kind).toBe('operation.denied')
-    expect(denied.noMutation).toBe(true)
-    expect(denied.reason).toBe('terminal-attachment')
+    const deniedFacet = denied as Extract<typeof denied, { readonly kind: 'operation.denied' }>
+    expect(deniedFacet.noMutation).toBe(true)
+    expect(deniedFacet.reason).toBe('terminal-attachment')
   })
 
   it('records cleanup evidence drainage instead of silently dropping active evidence', () => {

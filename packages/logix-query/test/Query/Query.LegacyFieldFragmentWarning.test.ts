@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { Schema } from 'effect'
-import * as Logix from '@logixjs/core'
 import * as Query from '../../src/index.js'
 
 describe('Query legacy field fragment warning', () => {
@@ -16,9 +14,10 @@ describe('Query legacy field fragment warning', () => {
         params: Params,
         initialParams: { q: 'x' },
         [legacyFieldsKey]: {
-          'queries.manual': FieldContracts.fieldLink({
+          'queries.manual': {
+            kind: 'link',
             from: 'params.q',
-          }),
+          },
         },
       } as any),
     ).toThrow()

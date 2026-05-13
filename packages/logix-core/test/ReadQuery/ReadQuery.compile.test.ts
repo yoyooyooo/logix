@@ -2,6 +2,12 @@ import { describe } from '@effect/vitest'
 import * as RuntimeContracts from '../../src/internal/runtime-contracts.js'
 import { it, expect } from '@effect/vitest'
 import * as Logix from '../../src/index.js'
+import {
+  disableTxnHotPathSentinels,
+  enableTxnHotPathSentinels,
+  readTxnHotPathSentinels,
+  resetTxnHotPathSentinels,
+} from '../../src/internal/runtime/core/txnHotPathSentinels.js'
 
 describe('ReadQuery.compile', () => {
   it('parses simple path selector', () => {
@@ -77,5 +83,25 @@ describe('ReadQuery.compile', () => {
     expect(rq.producer).toBe('dynamic')
     expect(['missingDeps', 'unsupportedSyntax']).toContain(rq.fallbackReason)
     expect(rq.staticIr.fallbackReason).toBe(rq.fallbackReason)
+  })
+
+  it('records JIT template cache misses and hits as hot-path sentinels', () => {
+    const selector = (s: { uniqueSentinel: number }) => s.uniqueSentinel
+
+    enableTxnHotPathSentinels()
+    resetTxnHotPathSentinels()
+
+    try {
+      const first = RuntimeContracts.Selector.compile(selector)
+      const second = RuntimeContracts.Selector.compile(selector)
+      const sentinels = readTxnHotPathSentinels()
+
+      expect(first.selectorId).toBe(second.selectorId)
+      expect(sentinels.readQueryTemplateCacheMissCount).toBe(1)
+      expect(sentinels.readQueryTemplateCacheHitFnCount).toBe(1)
+      expect(sentinels.readQueryTemplateCacheHitSourceCount).toBe(0)
+    } finally {
+      disableTxnHotPathSentinels()
+    }
   })
 })

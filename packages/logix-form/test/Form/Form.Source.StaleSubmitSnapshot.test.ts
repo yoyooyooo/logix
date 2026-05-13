@@ -33,6 +33,22 @@ const waitForTrailingSettled = Effect.promise(
     }),
 )
 
+const waitForState = (
+  readState: Effect.Effect<any, any, any>,
+  predicate: (state: any) => boolean,
+  label: string,
+): Effect.Effect<any, any, any> =>
+  Effect.gen(function* () {
+    let lastState: any
+    for (let attempt = 0; attempt < 20; attempt++) {
+      lastState = yield* readState
+      if (predicate(lastState)) return lastState
+      yield* Effect.sleep('5 millis')
+    }
+
+    return yield* Effect.die(new Error(`Timed out waiting for ${label}`))
+  })
+
 describe('Form source stale submit snapshot', () => {
   it.effect('keeps the blocked submitAttempt snapshot stable after later source success', () =>
     Effect.gen(function* () {
@@ -302,7 +318,14 @@ describe('Form source stale submit snapshot', () => {
 
         yield* handle.field('profileId').set('u2')
 
-        const switchedLoadingState: any = yield* handle.getState
+        const switchedLoadingState: any = yield* waitForState(
+          handle.getState,
+          (state) =>
+            state.profileResource?.status === 'loading' &&
+            typeof state.profileResource?.keyHash === 'string' &&
+            state.profileResource.keyHash !== oldKeyHash,
+          'profileResource loading snapshot for the new source key',
+        )
         const newKeyHash = switchedLoadingState.profileResource?.keyHash
         expect(switchedLoadingState.profileResource?.status).toBe('loading')
         expect(typeof newKeyHash).toBe('string')

@@ -77,6 +77,7 @@ import {
   unregisterRuntime,
   unregisterRuntimeByInstanceKey,
 } from './ModuleRuntime.registry.js'
+import { getModuleFieldsProgram } from './runtimeInternalsAccessor.js'
 import {
   makeEnqueueTransaction,
   type CapturedTxnRuntimeScope,
@@ -1789,6 +1790,11 @@ export const make = <S, A, R = never>(
       },
       registerConvergeStaticIr: registerConvergeStaticIr as any,
     })
+
+    const moduleFieldProgram = options.tag ? getModuleFieldsProgram(options.tag as any) : undefined
+    if (moduleFieldProgram) {
+      registerFieldProgram(moduleFieldProgram as any, { bumpReason: 'logic_installed' as any })
+    }
 
     if (!fieldState.program) {
       yield* installSchemaBackedFieldProgram({

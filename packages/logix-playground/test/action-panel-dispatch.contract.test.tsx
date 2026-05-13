@@ -7,6 +7,19 @@ import { ProgramSessionRunnerProvider } from '../src/internal/runner/programSess
 import { localCounterProjectFixture } from './support/projectFixtures.js'
 import { makeRuntimeInvokerWithCounterReflection } from './support/runtimeInvokerFixtures.js'
 
+const clickFileTreePath = async (path: string): Promise<void> => {
+  const treePath = path.replace(/^\//, '')
+  const button = await waitFor(() => {
+    const nextButton = Array.from(document.querySelectorAll('file-tree-container'))
+      .flatMap((tree) => Array.from(tree.shadowRoot?.querySelectorAll<HTMLButtonElement>('[data-item-path]') ?? []))
+      .find((item) => item.getAttribute('data-item-path') === treePath)
+    expect(nextButton).toBeTruthy()
+    return nextButton
+  })
+
+  fireEvent.click(button!)
+}
+
 describe('Action panel dispatch', () => {
   beforeEach(() => {
     window.__LOGIX_PLAYGROUND_PREVIEW_TEST_MODE__ = true
@@ -141,7 +154,7 @@ describe('Action panel dispatch', () => {
       expect(screen.getByLabelText('Program state').textContent).toContain('"count": 1')
     })
 
-    fireEvent.click(screen.getByRole('button', { name: '/src/logic/localCounter.logic.ts' }))
+    await clickFileTreePath('/src/logic/localCounter.logic.ts')
     await waitFor(() => {
       expect((screen.getByLabelText('Source editor') as HTMLTextAreaElement).value).toContain('counterStep = 1')
     })

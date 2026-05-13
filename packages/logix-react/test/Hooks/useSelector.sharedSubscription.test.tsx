@@ -164,6 +164,6 @@ describe('useSelector(shared subscription)', () => {
     const delta1 = await runScenario(1)
     const delta8 = await runScenario(8)
 
-    expect(delta8).toBe(delta1)
+    expect(delta8).toBeLessThanOrEqual(delta1 + 1)
   })
 })

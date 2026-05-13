@@ -88,7 +88,7 @@ describe('Bound API (public)', () => {
                 ...state,
                 value: upper,
               })),
-            $.onAction((a): a is Logix.ActionOf<typeof CounterModule.shape> => a._tag === 'inc').mutate((draft) => {
+            $.onAction((a): a is Logix.Module.ActionOf<typeof CounterModule.shape> => a._tag === 'inc').mutate((draft) => {
               draft.count += 4
             }),
           ],
@@ -134,7 +134,7 @@ describe('Bound API (public)', () => {
               ...state,
               count: state.count + 1,
             })),
-            $.onAction((a): a is Logix.ActionOf<typeof CounterModule.shape> => a._tag === 'inc').mutate((draft) => {
+            $.onAction((a): a is Logix.Module.ActionOf<typeof CounterModule.shape> => a._tag === 'inc').mutate((draft) => {
               draft.count += 4
             }),
           ],
@@ -560,6 +560,7 @@ describe('Bound API (public)', () => {
         rowIdStore: {},
         getListConfigs: () => [],
         registerSourceRefresh: () => {},
+        forkSourceRefresh: () => Effect.void,
         getSourceRefreshHandler: () => undefined,
         registerFieldProgram: () => {},
         enqueueFieldValidateRequest: () => {},
@@ -664,10 +665,10 @@ describe('Bound API (public)', () => {
 
     const program = Effect.scoped(
       Effect.gen(function* () {
-        type ActionsState = Logix.StateOf<typeof ActionsModule.shape>
-        const actionHub = yield* PubSub.unbounded<Logix.ActionOf<typeof ActionsModule.shape>>()
+        type ActionsState = Logix.Module.StateOf<typeof ActionsModule.shape>
+        const actionHub = yield* PubSub.unbounded<Logix.Module.ActionOf<typeof ActionsModule.shape>>()
 
-        const moduleRuntime = yield* ModuleRuntimeImpl.make<ActionsState, Logix.ActionOf<typeof ActionsModule.shape>>(
+        const moduleRuntime = yield* ModuleRuntimeImpl.make<ActionsState, Logix.Module.ActionOf<typeof ActionsModule.shape>>(
           {
             logs: [] as ReadonlyArray<string>,
           } as ActionsState,

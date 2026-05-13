@@ -431,13 +431,14 @@ export const createLogixDevLifecycleCarrier = (
           runtimeLabel: existing.runtimeLabel,
         }),
       )
-      void Effect.runPromise(
+      Effect.runCallback(
         existing.owner.reset({
           nextRuntimeInstanceId: runtimeInstanceId,
           reason: 'hot-update',
           hostCleanupSummary: existing.runtime ? disposeHostBindingsForRuntime(existing.runtime) : undefined,
         }),
-      ).catch(() => undefined)
+        { onExit: () => undefined },
+      )
     }
 
     return record

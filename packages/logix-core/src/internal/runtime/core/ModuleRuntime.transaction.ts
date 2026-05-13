@@ -137,7 +137,9 @@ export const hasFieldConvergeTimeSlicingBacklog = (
   state.backlogDirtyAllReason != null
 
 const hasConvergeWriters = (fieldProgram: FieldProgram<any> | undefined): boolean => {
-  const steps = fieldProgram?.convergeIr?.stepsById
+  const ir = fieldProgram?.convergeIr
+  if (ir?.configError) return true
+  const steps = ir?.stepsById
   return Array.isArray(steps) && steps.length > 0
 }
 

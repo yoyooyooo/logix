@@ -1,4 +1,4 @@
-import { Effect, ServiceMap } from 'effect'
+import { Cause, Effect, Exit, ServiceMap } from 'effect'
 import {
   type LiveAdmissionDenialReason,
   makeLiveInspectGapArtifact,
@@ -49,7 +49,10 @@ interface LogixLiveBindingSnapshotSource {
   }) => {
     readonly ownerId: string
     readonly runtime: {
-      readonly runPromise: <A>(effect: PromiseLike<A> | any) => Promise<A>
+      readonly runCallback: <A, E>(
+        effect: Effect.Effect<A, E, any>,
+        options: { readonly onExit: (exit: Exit.Exit<A, E>) => void },
+      ) => unknown
     }
     readonly moduleRuntime?: {
       readonly getState: Effect.Effect<unknown, unknown, any>
@@ -222,6 +225,11 @@ const envOptions = (): LogixLiveBrowserAdapterOptions => {
 const getLifecycleCarrier = (): LogixLiveBindingSnapshotSource | undefined => {
   const value = getGlobalStore()[lifecycleCarrierKey]
   return value && typeof value === 'object' ? (value as LogixLiveBindingSnapshotSource) : undefined
+}
+
+const boundedFailureSummary = (cause: Cause.Cause<unknown>, fallback: string): string => {
+  const summary = Cause.pretty(cause)
+  return summary.length > 0 ? summary.slice(0, 200) : fallback
 }
 
 const isTargetCoordinate = (value: unknown): value is {
@@ -731,9 +739,10 @@ export const installLogixLiveBrowserAdapter = (
             Effect.orDie,
             Effect.flatMap((moduleRuntime: any) => moduleRuntime.getState),
           )
-      void resolved.runtime
-        .runPromise(readStateEffect)
-        .then((state) => {
+      resolved.runtime.runCallback(readStateEffect, {
+        onExit: (exit) => {
+          if (Exit.isSuccess(exit)) {
+            const state = exit.value
           sendInspectArtifact(
             makeLiveStateInspectArtifact({
               target: {
@@ -748,8 +757,9 @@ export const installLogixLiveBrowserAdapter = (
                 : null),
             }),
           )
-        })
-        .catch((error) => {
+            return
+          }
+
           sendInspectArtifact(
             makeLiveInspectGapArtifact({
               section,
@@ -761,15 +771,13 @@ export const installLogixLiveBrowserAdapter = (
               sourceAuthority: 'runtime-live',
               producer: '@logixjs/react/dev-live-browser-adapter',
               gapCode: 'live-inspect-state-read-failed',
-              summary:
-                error instanceof Error && error.message.length > 0
-                  ? error.message.slice(0, 200)
-                  : 'Runtime state inspect read failed.',
+              summary: boundedFailureSummary(exit.cause, 'Runtime state inspect read failed.'),
               owner: 'runtime-live',
               reopenBar: 'reopen only if runtime state read semantics change',
             }),
           )
-        })
+        },
+      })
       return
     }
     if (isDispatch) {
@@ -901,9 +909,9 @@ export const installLogixLiveBrowserAdapter = (
           },
         },
       }) as { readonly eventId?: string } | undefined
-      void resolved.runtime
-        .runPromise(dispatchEffect)
-        .then(() => {
+      resolved.runtime.runCallback(dispatchEffect, {
+        onExit: (exit) => {
+          if (Exit.isSuccess(exit)) {
           resolved.recordOperationEvent?.({
             target: dispatchTarget,
             attachmentId: message.payload.attachmentId ?? makeAttachmentId(resolvedOptions),
@@ -950,12 +958,10 @@ export const installLogixLiveBrowserAdapter = (
               },
             }),
           )
-        })
-        .catch((error) => {
-          const boundedCause =
-            error instanceof Error && error.message.length > 0
-              ? error.message.slice(0, 200)
-              : 'dispatch-failed'
+            return
+          }
+
+          const boundedCause = boundedFailureSummary(exit.cause, 'dispatch-failed')
           resolved.recordOperationEvent?.({
             target: dispatchTarget,
             attachmentId: message.payload.attachmentId ?? makeAttachmentId(resolvedOptions),
@@ -1002,7 +1008,8 @@ export const installLogixLiveBrowserAdapter = (
               },
             }),
           )
-        })
+        },
+      })
       return
     }
     if (isProfileSummary) {

@@ -9,6 +9,8 @@ import {
 import { resolveLiveTransportPaths } from './liveTransportPaths.js'
 
 const require = createRequire(import.meta.url)
+const DEFAULT_LIVE_DAEMON_START_TIMEOUT_MS = 5000
+const LIVE_DAEMON_READY_POLL_MS = 50
 
 export interface LiveDaemonLaunchSpec {
   readonly command: string
@@ -38,6 +40,11 @@ const parseExecArgvOverride = (): ReadonlyArray<string> | undefined => {
   } catch {
     return undefined
   }
+}
+
+const resolveStartTimeoutMs = (): number => {
+  const parsed = Number(process.env.LOGIX_INTERNAL_LIVE_DAEMON_START_TIMEOUT_MS)
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : DEFAULT_LIVE_DAEMON_START_TIMEOUT_MS
 }
 
 export const resolveLiveDaemonLaunchSpec = (): LiveDaemonLaunchSpec => {
@@ -79,10 +86,11 @@ export const startLiveDaemonProcess = async (): Promise<{
   })
   child.unref()
 
-  for (let attempt = 0; attempt < 30; attempt += 1) {
+  const deadline = Date.now() + resolveStartTimeoutMs()
+  while (Date.now() < deadline) {
     const snapshot = await readLiveDaemonOperatorSnapshot(paths)
     if (snapshot.state === 'ready') return { started: true, port: snapshot.websocket.port, snapshot }
-    await new Promise((resolve) => setTimeout(resolve, 50))
+    await new Promise((resolve) => setTimeout(resolve, LIVE_DAEMON_READY_POLL_MS))
   }
 
   await cleanupStaleLiveDaemonSnapshot(paths, 'start-timeout')

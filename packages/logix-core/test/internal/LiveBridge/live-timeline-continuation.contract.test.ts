@@ -14,6 +14,11 @@ const target = makeLiveTargetCoordinate({
   instanceId: 'default',
 })
 
+const must = <T>(value: T | undefined): T => {
+  expect(value).toBeDefined()
+  return value!
+}
+
 describe('live timeline continuation contract', () => {
   it('issues opaque cursor.next and continues after the Runtime watermark without duplicates', () => {
     const store = createLiveOperationLedgerStore({ enabled: true })
@@ -105,8 +110,8 @@ describe('live timeline continuation contract', () => {
 
   it('projects continuous runtime head and daemon retained source segment chains', () => {
     const store = createLiveOperationLedgerStore({ enabled: true })
-    const retainedEvent = store.recordOperationEvent({ target, eventKind: 'operation.accepted', label: 'retained', txnSeq: 1, opSeq: 1 })
-    const headEvent = store.recordOperationEvent({ target, eventKind: 'operation.completed', label: 'head', txnSeq: 1, opSeq: 2 })
+    const retainedEvent = must(store.recordOperationEvent({ target, eventKind: 'operation.accepted', label: 'retained', txnSeq: 1, opSeq: 1 }))
+    const headEvent = must(store.recordOperationEvent({ target, eventKind: 'operation.completed', label: 'head', txnSeq: 1, opSeq: 2 }))
     const headWindow = store.readWindow({ target, cursor: retainedEvent.watermark, limit: 1 })
     const artifact = makeLiveTimelineInspectArtifact({
       target: { ...target, attachmentId: 'browser:180', adapterKind: 'test' },
@@ -150,9 +155,9 @@ describe('live timeline continuation contract', () => {
 
   it('marks discontinuous source segment chains partial with safe resume boundary gaps', () => {
     const store = createLiveOperationLedgerStore({ enabled: true })
-    const retainedEvent = store.recordOperationEvent({ target, eventKind: 'operation.accepted', label: 'retained', txnSeq: 1, opSeq: 1 })
+    const retainedEvent = must(store.recordOperationEvent({ target, eventKind: 'operation.accepted', label: 'retained', txnSeq: 1, opSeq: 1 }))
     store.recordOperationEvent({ target, eventKind: 'operation.failed', label: 'gap', txnSeq: 1, opSeq: 2 })
-    const headEvent = store.recordOperationEvent({ target, eventKind: 'operation.completed', label: 'head', txnSeq: 1, opSeq: 3 })
+    const headEvent = must(store.recordOperationEvent({ target, eventKind: 'operation.completed', label: 'head', txnSeq: 1, opSeq: 3 }))
     const headWindow = store.readWindow({ target, cursor: headEvent.watermark, limit: 1 })
     const chainGap = makeLiveTimelineContinuationGap({ code: 'timeline-retention-gap', target })
     const artifact = makeLiveTimelineInspectArtifact({

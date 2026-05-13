@@ -50,7 +50,7 @@ describe('FieldKernel converge row scoped computed incremental', () => {
               },
             } as any,
           } as any,
-        }),
+        } as any),
       )
 
       const programModule = Logix.Program.make(M, {
@@ -152,7 +152,7 @@ describe('FieldKernel converge row scoped computed incremental', () => {
               },
             } as any,
           } as any,
-        }),
+        } as any),
       )
 
       const programModule = Logix.Program.make(M, {

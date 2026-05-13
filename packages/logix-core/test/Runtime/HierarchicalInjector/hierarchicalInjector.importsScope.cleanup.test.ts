@@ -32,7 +32,10 @@ describe('HierarchicalInjector ImportsScope lifecycle', () => {
         let parentRuntime: any
         let importsScope: any
         try {
-          const context = yield* Layer.buildWithScope(RuntimeContracts.getProgramRuntimeBlueprint(ParentProgram).layer, scope)
+          const context = yield* Layer.buildWithScope(
+            RuntimeContracts.getProgramRuntimeBlueprint(ParentProgram).layer as Layer.Layer<any, never, never>,
+            scope,
+          )
 
           parentRuntime = ServiceMap.get(context as ServiceMap.ServiceMap<any>, Parent.tag) as any
           const childRuntime = ServiceMap.get(context as ServiceMap.ServiceMap<any>, Child.tag) as any

@@ -4,7 +4,7 @@ import { Effect, Schema } from 'effect'
 import * as Logix from '../../../src/index.js'
 import * as ModuleRuntimeImpl from '../../../src/internal/runtime/core/ModuleRuntime.js'
 import * as BoundApiRuntime from '../../../src/internal/runtime/core/BoundApiRuntime.js'
-import * as EffectOp from '../../../src/EffectOp.js'
+import * as EffectOp from '../../../src/internal/effect-op.js'
 import * as EffectOpCore from '../../../src/internal/runtime/core/EffectOpCore.js'
 
 describe('FieldKernel.install + EffectOp middleware', () => {

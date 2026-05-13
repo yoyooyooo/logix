@@ -30,14 +30,17 @@ describe('React Runtime transaction integration', () => {
   it('should produce a single state:update for a single user dispatch', async () => {
     const events: CoreDebug.Event[] = []
 
-    const debugLayer = CoreDebug.replace([
-      {
-        record: (event: CoreDebug.Event) =>
-          Effect.sync(() => {
-            events.push(event)
-          }),
-      },
-    ]) as Layer.Layer<any, never, never>
+    const debugLayer = Layer.mergeAll(
+      CoreDebug.replace([
+        {
+          record: (event: CoreDebug.Event) =>
+            Effect.sync(() => {
+              events.push(event)
+            }),
+        },
+      ]) as Layer.Layer<any, never, never>,
+      CoreDebug.diagnosticsLevel('light') as Layer.Layer<any, never, never>,
+    ) as Layer.Layer<any, never, never>
 
     const appRuntime = Logix.Runtime.make(CounterProgram, {
       layer: debugLayer,
@@ -97,14 +100,17 @@ describe('React Runtime transaction integration', () => {
   it('should keep separate user dispatches as separate state:update events', async () => {
     const events: CoreDebug.Event[] = []
 
-    const debugLayer = CoreDebug.replace([
-      {
-        record: (event: CoreDebug.Event) =>
-          Effect.sync(() => {
-            events.push(event)
-          }),
-      },
-    ]) as Layer.Layer<any, never, never>
+    const debugLayer = Layer.mergeAll(
+      CoreDebug.replace([
+        {
+          record: (event: CoreDebug.Event) =>
+            Effect.sync(() => {
+              events.push(event)
+            }),
+        },
+      ]) as Layer.Layer<any, never, never>,
+      CoreDebug.diagnosticsLevel('light') as Layer.Layer<any, never, never>,
+    ) as Layer.Layer<any, never, never>
 
     const appRuntime = Logix.Runtime.make(CounterProgram, {
       layer: debugLayer,

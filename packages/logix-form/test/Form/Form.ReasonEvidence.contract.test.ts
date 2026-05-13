@@ -5,6 +5,7 @@ import * as Form from '../../src/index.js'
 import {
   type FormEvidenceContractArtifactPayload,
   formEvidenceContractArtifactKey,
+  formFinalTruthContributorMatrix,
 } from '../../src/internal/form/artifacts.js'
 import { getTrialRunArtifactExporters } from '../../../logix-core/src/internal/observability/artifacts/registry.js'
 import { materializeExtendedHandle } from '../support/form-harness.js'
@@ -65,6 +66,7 @@ describe('Form reason evidence contract', () => {
         reasonSlotPrefix: 'cleanup:',
         subjectRefKind: 'cleanup',
       },
+      finalTruthContributors: formFinalTruthContributorMatrix,
       companions: [
         {
           fieldPath: 'profileResource',
@@ -87,6 +89,42 @@ describe('Form reason evidence contract', () => {
           bundlePatchPath: 'profileResource',
         },
       ],
+    })
+  })
+
+
+  it('exports the final truth contributor matrix on the same evidence artifact', () => {
+    const ValuesSchema = Schema.Struct({
+      name: Schema.String,
+    })
+
+    const form = Form.make(
+      'Form.ReasonContract.FinalTruthContributorMatrix',
+      {
+        values: ValuesSchema,
+        initialValues: { name: '' },
+      },
+      (form) => {
+        form.field('name').rule({ validate: (value) => (String(value).trim() ? undefined : 'required') })
+        form.submit()
+      },
+    )
+
+    const exporter = getTrialRunArtifactExporters((form as any).tag).find(
+      (candidate) => candidate.artifactKey === formEvidenceContractArtifactKey,
+    )
+
+    const artifact = exporter?.export({ moduleId: 'Form.ReasonContract.FinalTruthContributorMatrix' } as any) as
+      | FormEvidenceContractArtifactPayload
+      | undefined
+
+    expect(artifact?.finalTruthContributors.map((entry) => entry.kind).sort()).toEqual(
+      ['list', 'manual', 'root', 'rule', 'schema', 'sourceImpact'].sort(),
+    )
+    expect(artifact?.finalTruthContributors).toEqual(formFinalTruthContributorMatrix)
+    expect(artifact?.finalTruthContributors.find((entry) => entry.kind === 'sourceImpact')).toMatchObject({
+      writesCanonicalError: false,
+      reasonRef: '$form.submitAttempt',
     })
   })
 

@@ -49,7 +49,7 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
-    "test": "vitest run",
+    "test": "pnpm bundle:kernel && vitest run",
     "test:changed": "vitest run --changed",
     "test:cache": "vitest run --cache",
     "test:browser": "pnpm bundle:kernel && vitest run --project browser",

@@ -21,11 +21,16 @@ const otherTarget = makeLiveTargetCoordinate({
 
 const stringify = (value: unknown): string => JSON.stringify(value)
 
+const must = <T>(value: T | undefined): T => {
+  expect(value).toBeDefined()
+  return value!
+}
+
 describe('live operation ledger contract', () => {
   it('creates a runtime-live envelope with target-local order and watermark', () => {
     const store = createLiveOperationLedgerStore({ enabled: true })
 
-    const event = store.recordOperationEvent({
+    const event = must(store.recordOperationEvent({
       target,
       eventKind: 'operation.accepted',
       label: 'dispatch accepted',
@@ -35,7 +40,7 @@ describe('live operation ledger contract', () => {
       opSeq: 3,
       linkId: 'link-a',
       binding: { manifestDigest: 'manifest:1', actionTag: 'submit', bindingStatus: 'matched' },
-    })
+    }))
 
     expect(event).toMatchObject({
       kind: 'live.ledger.event',
@@ -64,10 +69,12 @@ describe('live operation ledger contract', () => {
         targetKey: 'runtime-ledger/LedgerModule/default',
         ledgerSeq: 1,
         eventId: 'live-ledger:runtime-ledger/LedgerModule/default:1',
+        inlineBytes: event.watermark.inlineBytes,
       },
       budget: {
         retention: defaultLiveLedgerRetentionPolicy,
         request: { maxEvents: 8, maxInlineBytes: 4096 },
+        inlineBytes: event.budget.inlineBytes,
       },
       dropped: [],
       degraded: [],
@@ -78,9 +85,9 @@ describe('live operation ledger contract', () => {
 
   it('compares same-target watermarks and marks cross-target comparison incomparable', () => {
     const store = createLiveOperationLedgerStore({ enabled: true })
-    const first = store.recordOperationEvent({ target, eventKind: 'operation.accepted', label: 'one' })
-    const second = store.recordOperationEvent({ target, eventKind: 'operation.completed', label: 'two' })
-    const other = store.recordOperationEvent({ target: otherTarget, eventKind: 'operation.accepted', label: 'other' })
+    const first = must(store.recordOperationEvent({ target, eventKind: 'operation.accepted', label: 'one' }))
+    const second = must(store.recordOperationEvent({ target, eventKind: 'operation.completed', label: 'two' }))
+    const other = must(store.recordOperationEvent({ target: otherTarget, eventKind: 'operation.accepted', label: 'other' }))
 
     expect(compareLiveLedgerWatermarks(first.watermark, first.watermark)).toBe('same')
     expect(compareLiveLedgerWatermarks(first.watermark, second.watermark)).toBe('before')
@@ -90,22 +97,22 @@ describe('live operation ledger contract', () => {
 
   it('keeps linkId as a join key and not an ordering input', () => {
     const store = createLiveOperationLedgerStore({ enabled: true })
-    const laterLink = store.recordOperationEvent({
+    const laterLink = must(store.recordOperationEvent({
       target,
       eventKind: 'diagnostic',
       label: 'later link',
       txnSeq: 2,
       opSeq: 10,
       linkId: 'z-link',
-    })
-    const earlierLink = store.recordOperationEvent({
+    }))
+    const earlierLink = must(store.recordOperationEvent({
       target,
       eventKind: 'diagnostic',
       label: 'earlier link',
       txnSeq: 2,
       opSeq: 11,
       linkId: 'a-link',
-    })
+    }))
 
     expect(laterLink.order.ledgerSeq).toBe(1)
     expect(earlierLink.order.ledgerSeq).toBe(2)
@@ -208,7 +215,7 @@ describe('live operation ledger contract', () => {
 
   it('preserves degraded and redaction markers during diagnostic normalization', () => {
     const store = createLiveOperationLedgerStore({ enabled: true, diagnosticsEnabled: true })
-    const markerSource = store.recordOperationEvent({ target, eventKind: 'operation.accepted', label: 'marker-source' })
+    const markerSource = must(store.recordOperationEvent({ target, eventKind: 'operation.accepted', label: 'marker-source' }))
     store.addDebugSourceRecord({
       type: 'diagnostic',
       target,

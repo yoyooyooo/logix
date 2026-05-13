@@ -15,7 +15,7 @@ Layer 5: broad/soak validation
 Hard performance claim requires:
 
 ```text
-profile = default or soak
+profile = default | soak | adversarial-default | adversarial-soak
 before/after git dirty=false
 same matrixHash
 same browser/runtime environment or accepted normalized env
@@ -35,7 +35,7 @@ tax migration report clean
 Do not use these for hard claims:
 
 ```text
-quick or smoke profile
+quick, smoke, or adversarial-quick profile
 same-commit A/B only
 single run without diff
 dirty worktree evidence

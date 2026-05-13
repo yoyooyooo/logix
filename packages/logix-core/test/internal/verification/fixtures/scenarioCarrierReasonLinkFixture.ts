@@ -42,6 +42,9 @@ export interface ScenarioFormStateReasonLinkFixtureInput {
 export interface ScenarioFormEvidenceSourceSeed {
   readonly fieldPath: string
   readonly bundlePatchPath: string
+  readonly resourceId?: string
+  readonly deps?: ReadonlyArray<string>
+  readonly submitImpact?: 'block' | 'observe'
   readonly sourceReceiptRef?: string
   readonly sourceRef?: string
   readonly sourceSnapshotPath?: string
@@ -61,6 +64,17 @@ export interface ScenarioFormArtifactReasonLinkFixtureInput {
   readonly rowId: string
   readonly fieldPath: string
   readonly formEvidenceContract: {
+    readonly submitAttempt?: {
+      readonly sourceRef?: string
+      readonly summaryRef?: string
+      readonly compareFeedRef?: string
+    }
+    readonly cleanupReceipts?: {
+      readonly receiptPathPrefix?: string
+      readonly reasonSlotPrefix?: string
+      readonly subjectRefKind?: string
+    }
+    readonly companions?: ReadonlyArray<unknown>
     readonly sources?: ReadonlyArray<ScenarioFormEvidenceSourceSeed>
   }
 }
