@@ -40,7 +40,7 @@ const waitForState = (
 ): Effect.Effect<any, any, any> =>
   Effect.gen(function* () {
     let lastState: any
-    for (let attempt = 0; attempt < 20; attempt++) {
+    for (let attempt = 0; attempt < 100; attempt++) {
       lastState = yield* readState
       if (predicate(lastState)) return lastState
       yield* Effect.sleep('5 millis')
@@ -122,9 +122,11 @@ describe('Form source stale submit snapshot', () => {
         expect(blockedState.$form.submitAttempt.blockingBasis).toBe('pending')
         expect(blockedState.$form.submitAttempt.pendingCount).toBeGreaterThan(0)
 
-        yield* waitForSettled
-
-        const settledState: any = yield* handle.getState
+        const settledState: any = yield* waitForState(
+          handle.getState,
+          (state) => state.profileResource?.status === 'success',
+          'profileResource success snapshot after blocked submit load',
+        )
         expect(settledState.profileResource?.status).toBe('success')
         expect(settledState.profileResource?.data?.name).toBe('resource:u1')
         expect(typeof settledState.profileResource?.keyHash).toBe('string')
@@ -225,9 +227,11 @@ describe('Form source stale submit snapshot', () => {
         expect(invalidCount).toBe(1)
         expect(blockedState.$form.submitAttempt.blockingBasis).toBe('pending')
 
-        yield* waitForSettled
-
-        const erroredState: any = yield* handle.getState
+        const erroredState: any = yield* waitForState(
+          handle.getState,
+          (state) => state.profileResource?.status === 'error',
+          'profileResource error snapshot after blocked submit load',
+        )
         expect(erroredState.profileResource?.status).toBe('error')
         expect(typeof erroredState.profileResource?.keyHash).toBe('string')
         expect(erroredState.errors?.profileResource).toBeUndefined()
@@ -364,9 +368,11 @@ describe('Form source stale submit snapshot', () => {
         expect(afterOldLoadState.$form.submitAttempt.blockingBasis).toBe('pending')
         expect(afterOldLoadState.$form.submitAttempt.pendingCount).toBeGreaterThan(0)
 
-        yield* waitForTrailingSettled
-
-        const settledState: any = yield* handle.getState
+        const settledState: any = yield* waitForState(
+          handle.getState,
+          (state) => state.profileResource?.status === 'success',
+          'profileResource success snapshot for trailing source key',
+        )
         expect(settledState.profileResource?.status).toBe('success')
         expect(settledState.profileResource?.keyHash).toBe(newKeyHash)
         expect(settledState.profileResource?.data).toEqual({
@@ -466,9 +472,11 @@ describe('Form source stale submit snapshot', () => {
         expect(beforeDebounceState.profileResource?.status).toBe('idle')
         expect(calls).toEqual([])
 
-        yield* Effect.sleep('70 millis')
-
-        const settledState: any = yield* handle.getState
+        const settledState: any = yield* waitForState(
+          handle.getState,
+          (state) => state.profileResource?.status === 'success',
+          'profileResource success snapshot after debounce',
+        )
         expect(calls).toEqual(['u4'])
         expect(settledState.profileResource?.status).toBe('success')
         expect(settledState.profileResource?.data).toEqual({
@@ -558,9 +566,11 @@ describe('Form source stale submit snapshot', () => {
         expect(blockedState.$form.submitAttempt.blockingBasis).toBe('pending')
         expect(blockedState.$form.submitAttempt.pendingCount).toBeGreaterThan(0)
 
-        yield* waitForSettled
-
-        const settledState: any = yield* handle.getState
+        const settledState: any = yield* waitForState(
+          handle.getState,
+          (state) => state.profileResource?.status === 'success',
+          'profileResource success snapshot after flushed debounce submit',
+        )
         expect(settledState.profileResource?.status).toBe('success')
         expect(settledState.profileResource?.keyHash).toBe(submittedKeyHash)
         expect(settledState.profileResource?.data).toEqual({

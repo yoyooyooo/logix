@@ -1,0 +1,463 @@
+{
+  "schemaVersion": 1,
+  "kind": "KernelPerformanceConvergenceReport",
+  "generatedAt": "2026-05-12T17:12:41Z",
+  "profile": "adversarial-default",
+  "classification": "blocked",
+  "claimStrength": "none",
+  "gates": [
+    {
+      "id": "diff.comparable",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "comparable=true"
+    },
+    {
+      "id": "profile.hardClaimEligible",
+      "severity": "clue",
+      "status": "pass",
+      "detail": "profile=adversarial-default; hard convergence evidence may be interpreted if hard gates pass."
+    },
+    {
+      "id": "summary.regressions",
+      "severity": "hard",
+      "status": "fail",
+      "detail": "regressions=5"
+    },
+    {
+      "id": "summary.budgetExceeded",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "budgetExceeded=0"
+    },
+    {
+      "id": "summary.timeouts",
+      "severity": "hard",
+      "status": "fail",
+      "detail": "timeouts=2"
+    },
+    {
+      "id": "summary.stabilityWarnings",
+      "severity": "hard",
+      "status": "fail",
+      "detail": "stabilityWarnings=2"
+    },
+    {
+      "id": "summary.missingSuites",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "missingSuites=0"
+    },
+    {
+      "id": "stages.allValidatedOrImplemented",
+      "severity": "hard",
+      "status": "fail",
+      "detail": "Blocked stages: adversarialMatrix, P0, P1"
+    },
+    {
+      "id": "requiredSuites.presentAndPassing",
+      "severity": "hard",
+      "status": "fail",
+      "detail": "Required suite failure/timeout: adversarial.matrix.requiredHotPaths:fail"
+    },
+    {
+      "id": "migration.noUnacceptedCostOrRisk",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "migratedCost=0 and migratedRisk=0"
+    },
+    {
+      "id": "counter:dirtyPlan.unknownWrite",
+      "severity": "hard",
+      "status": "missing",
+      "detail": "dirtyPlan.unknownWrite counter is missing; stage convergence cannot be claimed."
+    },
+    {
+      "id": "counter:dirtyPlan.missingRegistry",
+      "severity": "hard",
+      "status": "missing",
+      "detail": "dirtyPlan.missingRegistry counter is missing; stage convergence cannot be claimed."
+    },
+    {
+      "id": "counter:dirtyPlan.dirtyAll",
+      "severity": "hard",
+      "status": "missing",
+      "detail": "dirtyPlan.dirtyAll counter is missing; stage convergence cannot be claimed."
+    },
+    {
+      "id": "counter:dirtyPlan.nonFieldAuthority",
+      "severity": "hard",
+      "status": "missing",
+      "detail": "dirtyPlan.nonFieldAuthority counter is missing; stage convergence cannot be claimed."
+    },
+    {
+      "id": "counter:dirtyPlan.legacyDirtyInput",
+      "severity": "hard",
+      "status": "missing",
+      "detail": "dirtyPlan.legacyDirtyInput counter is missing; stage convergence cannot be claimed."
+    },
+    {
+      "id": "counter:source.fullFallback",
+      "severity": "hard",
+      "status": "missing",
+      "detail": "source.fullFallback counter is missing; stage convergence cannot be claimed."
+    },
+    {
+      "id": "counter:source.rowFullScan",
+      "severity": "hard",
+      "status": "missing",
+      "detail": "source.rowFullScan counter is missing; stage convergence cannot be claimed."
+    },
+    {
+      "id": "counter:source.keyEval.unrelatedMutation",
+      "severity": "hard",
+      "status": "missing",
+      "detail": "source.keyEval.unrelatedMutation counter is missing; stage convergence cannot be claimed."
+    },
+    {
+      "id": "counter:selector.evaluateAll",
+      "severity": "hard",
+      "status": "missing",
+      "detail": "selector.evaluateAll counter is missing; stage convergence cannot be claimed."
+    },
+    {
+      "id": "counter:selector.dirtyAllFallback",
+      "severity": "hard",
+      "status": "missing",
+      "detail": "selector.dirtyAllFallback counter is missing; stage convergence cannot be claimed."
+    },
+    {
+      "id": "counter:selector.nonFieldAuthorityFallback",
+      "severity": "hard",
+      "status": "missing",
+      "detail": "selector.nonFieldAuthorityFallback counter is missing; stage convergence cannot be claimed."
+    },
+    {
+      "id": "counter:txnQueue.directIdleQueueWaitNonZero",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "txnQueue.directIdleQueueWaitNonZero=0"
+    },
+    {
+      "id": "counter:txnQueue.directIdleBackpressureNonZero",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "txnQueue.directIdleBackpressureNonZero=0"
+    },
+    {
+      "id": "counter:dispatch.noTopicFanoutAlloc",
+      "severity": "hard",
+      "status": "missing",
+      "detail": "dispatch.noTopicFanoutAlloc counter is missing; stage convergence cannot be claimed."
+    },
+    {
+      "id": "counter:runtimeStore.runSyncFallbackAfterBoot",
+      "severity": "hard",
+      "status": "missing",
+      "detail": "runtimeStore.runSyncFallbackAfterBoot counter is missing; stage convergence cannot be claimed."
+    },
+    {
+      "id": "counter:runtimeStore.retainedTopicLeak",
+      "severity": "hard",
+      "status": "missing",
+      "detail": "runtimeStore.retainedTopicLeak counter is missing; stage convergence cannot be claimed."
+    },
+    {
+      "id": "counter:diagnosticsOff.payloadCount",
+      "severity": "hard",
+      "status": "missing",
+      "detail": "diagnosticsOff.payloadCount counter is missing; stage convergence cannot be claimed."
+    },
+    {
+      "id": "counter:listEvidence.stringNormalizeHotPath",
+      "severity": "hard",
+      "status": "missing",
+      "detail": "listEvidence.stringNormalizeHotPath counter is missing; stage convergence cannot be claimed."
+    },
+    {
+      "id": "counter:examples.kernelPlaygroundCostMixed",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "examples.kernelPlaygroundCostMixed=0"
+    },
+    {
+      "id": "counter:examples.publicResidueViolation",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "examples.publicResidueViolation=0"
+    }
+  ],
+  "stages": [
+    {
+      "id": "adversarialMatrix",
+      "status": "blocked",
+      "evidenceRefs": [
+        "specs/231-adversarial-performance-matrix/perf/reports/adversarial.darwin-arm64.chromium-143.headless.default.json",
+        "specs/235-kernel-performance-convergence-final-gate/perf/after.darwin-arm64.chromium-143.headless.default.json",
+        "specs/235-kernel-performance-convergence-final-gate/perf/before.darwin-arm64.chromium-143.headless.default.json",
+        "specs/235-kernel-performance-convergence-final-gate/perf/diff.darwin-arm64.chromium-143.headless.default.json"
+      ]
+    },
+    {
+      "id": "P0",
+      "status": "blocked",
+      "evidenceRefs": [
+        "specs/235-kernel-performance-convergence-final-gate/perf/diff.darwin-arm64.chromium-143.headless.default.json"
+      ]
+    },
+    {
+      "id": "P1",
+      "status": "blocked",
+      "evidenceRefs": [
+        "specs/235-kernel-performance-convergence-final-gate/perf/diff.darwin-arm64.chromium-143.headless.default.json"
+      ]
+    },
+    {
+      "id": "P2",
+      "status": "validated",
+      "evidenceRefs": [
+        "specs/234-p2-examples-playground-perf-isolation/perf/examples-playground.default.input.json",
+        "specs/234-p2-examples-playground-perf-isolation/perf/logs/test-browser-live-real-carrier.default.log",
+        "specs/234-p2-examples-playground-perf-isolation/perf/logs/test-browser-playground.default.log",
+        "specs/234-p2-examples-playground-perf-isolation/perf/reports/examples-playground.default.json"
+      ]
+    }
+  ],
+  "watchedCounters": [
+    {
+      "id": "dirtyPlan.unknownWrite",
+      "passed": false
+    },
+    {
+      "id": "dirtyPlan.missingRegistry",
+      "passed": false
+    },
+    {
+      "id": "dirtyPlan.dirtyAll",
+      "passed": false
+    },
+    {
+      "id": "dirtyPlan.nonFieldAuthority",
+      "passed": false
+    },
+    {
+      "id": "dirtyPlan.legacyDirtyInput",
+      "passed": false
+    },
+    {
+      "id": "source.fullFallback",
+      "passed": false
+    },
+    {
+      "id": "source.rowFullScan",
+      "passed": false
+    },
+    {
+      "id": "source.keyEval.unrelatedMutation",
+      "passed": false
+    },
+    {
+      "id": "selector.evaluateAll",
+      "passed": false
+    },
+    {
+      "id": "selector.dirtyAllFallback",
+      "passed": false
+    },
+    {
+      "id": "selector.nonFieldAuthorityFallback",
+      "passed": false
+    },
+    {
+      "id": "txnQueue.directIdleQueueWaitNonZero",
+      "value": 0,
+      "passed": true
+    },
+    {
+      "id": "txnQueue.directIdleBackpressureNonZero",
+      "value": 0,
+      "passed": true
+    },
+    {
+      "id": "dispatch.noTopicFanoutAlloc",
+      "passed": false
+    },
+    {
+      "id": "runtimeStore.runSyncFallbackAfterBoot",
+      "passed": false
+    },
+    {
+      "id": "runtimeStore.retainedTopicLeak",
+      "passed": false
+    },
+    {
+      "id": "diagnosticsOff.payloadCount",
+      "passed": false
+    },
+    {
+      "id": "listEvidence.stringNormalizeHotPath",
+      "passed": false
+    },
+    {
+      "id": "examples.kernelPlaygroundCostMixed",
+      "value": 0,
+      "passed": true
+    },
+    {
+      "id": "examples.publicResidueViolation",
+      "value": 0,
+      "passed": true
+    }
+  ],
+  "requiredSuites": [
+    {
+      "id": "adversarial.matrix.requiredHotPaths",
+      "status": "fail"
+    },
+    {
+      "id": "negativeBoundaries.dirtyPattern",
+      "status": "pass"
+    },
+    {
+      "id": "converge.txnCommit",
+      "status": "pass"
+    },
+    {
+      "id": "form.listScopeCheck",
+      "status": "pass"
+    },
+    {
+      "id": "externalStore.ingest.tickNotify",
+      "status": "pass"
+    },
+    {
+      "id": "runtimeStore.noTearing.tickNotify",
+      "status": "pass"
+    },
+    {
+      "id": "react.strictSuspenseJitter",
+      "status": "pass"
+    },
+    {
+      "id": "diagnostics.overhead",
+      "status": "pass"
+    },
+    {
+      "id": "txnQueue.directIdle",
+      "status": "pass"
+    },
+    {
+      "id": "dispatchShell.fixedCost",
+      "status": "pass"
+    },
+    {
+      "id": "examples.runtimeWitness",
+      "status": "pass"
+    },
+    {
+      "id": "examples.playgroundNoiseIsolation",
+      "status": "pass"
+    }
+  ],
+  "blockers": [
+    "summary.regressions: regressions=5",
+    "summary.timeouts: timeouts=2",
+    "summary.stabilityWarnings: stabilityWarnings=2",
+    "stages.allValidatedOrImplemented: Blocked stages: adversarialMatrix, P0, P1",
+    "requiredSuites.presentAndPassing: Required suite failure/timeout: adversarial.matrix.requiredHotPaths:fail"
+  ],
+  "missingEvidence": [
+    "counter:dirtyPlan.unknownWrite: dirtyPlan.unknownWrite counter is missing; stage convergence cannot be claimed.",
+    "counter:dirtyPlan.missingRegistry: dirtyPlan.missingRegistry counter is missing; stage convergence cannot be claimed.",
+    "counter:dirtyPlan.dirtyAll: dirtyPlan.dirtyAll counter is missing; stage convergence cannot be claimed.",
+    "counter:dirtyPlan.nonFieldAuthority: dirtyPlan.nonFieldAuthority counter is missing; stage convergence cannot be claimed.",
+    "counter:dirtyPlan.legacyDirtyInput: dirtyPlan.legacyDirtyInput counter is missing; stage convergence cannot be claimed.",
+    "counter:source.fullFallback: source.fullFallback counter is missing; stage convergence cannot be claimed.",
+    "counter:source.rowFullScan: source.rowFullScan counter is missing; stage convergence cannot be claimed.",
+    "counter:source.keyEval.unrelatedMutation: source.keyEval.unrelatedMutation counter is missing; stage convergence cannot be claimed.",
+    "counter:selector.evaluateAll: selector.evaluateAll counter is missing; stage convergence cannot be claimed.",
+    "counter:selector.dirtyAllFallback: selector.dirtyAllFallback counter is missing; stage convergence cannot be claimed.",
+    "counter:selector.nonFieldAuthorityFallback: selector.nonFieldAuthorityFallback counter is missing; stage convergence cannot be claimed.",
+    "counter:dispatch.noTopicFanoutAlloc: dispatch.noTopicFanoutAlloc counter is missing; stage convergence cannot be claimed.",
+    "counter:runtimeStore.runSyncFallbackAfterBoot: runtimeStore.runSyncFallbackAfterBoot counter is missing; stage convergence cannot be claimed.",
+    "counter:runtimeStore.retainedTopicLeak: runtimeStore.retainedTopicLeak counter is missing; stage convergence cannot be claimed.",
+    "counter:diagnosticsOff.payloadCount: diagnosticsOff.payloadCount counter is missing; stage convergence cannot be claimed.",
+    "counter:listEvidence.stringNormalizeHotPath: listEvidence.stringNormalizeHotPath counter is missing; stage convergence cannot be claimed."
+  ],
+  "allowedClaims": [
+    "Kernel P0/P1/P2 convergence is blocked; use blockers to choose the next local fix."
+  ],
+  "forbiddenClaims": [
+    "Global Runtime performance improved.",
+    "No regressions exist globally.",
+    "React performance improved globally.",
+    "FieldKernel is optimal.",
+    "Selector notification path is optimal.",
+    "Source/list row scope is fully optimized.",
+    "Examples prove kernel performance without isolated runtime evidence.",
+    "Quick/smoke evidence proves release-safe performance."
+  ],
+  "riskOrCostMigration": {
+    "migratedCost": 0,
+    "migratedRisk": 0,
+    "acceptedByAuthority": false
+  },
+  "evidenceRefs": [
+    "specs/231-adversarial-performance-matrix/perf/reports/adversarial.darwin-arm64.chromium-143.headless.default.json",
+    "specs/234-p2-examples-playground-perf-isolation/perf/examples-playground.default.input.json",
+    "specs/234-p2-examples-playground-perf-isolation/perf/logs/test-browser-live-dev-only-import.default.log",
+    "specs/234-p2-examples-playground-perf-isolation/perf/logs/test-browser-live-real-carrier.default.log",
+    "specs/234-p2-examples-playground-perf-isolation/perf/logs/test-browser-playground.default.log",
+    "specs/234-p2-examples-playground-perf-isolation/perf/reports/examples-playground.default.json",
+    "specs/235-kernel-performance-convergence-final-gate/perf/after.darwin-arm64.chromium-143.headless.default.json",
+    "specs/235-kernel-performance-convergence-final-gate/perf/before.darwin-arm64.chromium-143.headless.default.json",
+    "specs/235-kernel-performance-convergence-final-gate/perf/diff.darwin-arm64.chromium-143.headless.default.json",
+    "specs/235-kernel-performance-convergence-final-gate/perf/logs/soak-before.collect.blocked.log"
+  ],
+  "localCi": {
+    "commands": [
+      {
+        "command": "rtk pnpm perf collect -- --profile default --out specs/235-kernel-performance-convergence-final-gate/perf/before.darwin-arm64.chromium-143.headless.default.json",
+        "result": "pass",
+        "notes": "Run from /tmp/logix-next-api-before at baseline commit da87bcbdb47c386dd342fec4af940e9dad29b3b5 after applying the selector validation fix."
+      },
+      {
+        "command": "rtk pnpm perf collect -- --profile default --out specs/235-kernel-performance-convergence-final-gate/perf/after.darwin-arm64.chromium-143.headless.default.json",
+        "result": "pass",
+        "notes": "Run from current worktree at ea57e8b1a5a84ba9f34fe0b3a9cad029a3c0d541."
+      },
+      {
+        "command": "rtk pnpm perf diff -- --before specs/235-kernel-performance-convergence-final-gate/perf/before.darwin-arm64.chromium-143.headless.default.json --after specs/235-kernel-performance-convergence-final-gate/perf/after.darwin-arm64.chromium-143.headless.default.json --out specs/235-kernel-performance-convergence-final-gate/perf/diff.darwin-arm64.chromium-143.headless.default.json",
+        "result": "blocked",
+        "notes": "Comparable=true, regressions=5, budgetExceeded=0, timeouts=2, missingSuites=0, stabilityWarnings=2."
+      },
+      {
+        "command": "rtk pnpm perf collect -- --profile soak --out specs/235-kernel-performance-convergence-final-gate/perf/before.darwin-arm64.chromium-143.headless.soak.json",
+        "result": "blocked",
+        "notes": "Run from /tmp/logix-next-api-before; command hung with no active vitest/chromium child and no JSON after ~22 minutes, then was terminated with exit code 143."
+      },
+      {
+        "command": "rtk pnpm -C examples/logix-react test:browser:playground",
+        "result": "pass",
+        "notes": "Log stored at specs/234-p2-examples-playground-perf-isolation/perf/logs/test-browser-playground.default.log."
+      },
+      {
+        "command": "rtk pnpm -C examples/logix-react test:browser:live-real-carrier",
+        "result": "pass",
+        "notes": "Log stored at specs/234-p2-examples-playground-perf-isolation/perf/logs/test-browser-live-real-carrier.default.log."
+      },
+      {
+        "command": "rtk pnpm -C examples/logix-react test:browser:live-dev-only-import",
+        "result": "fail",
+        "notes": "Expected one browser attachment but observed two; log stored at specs/234-p2-examples-playground-perf-isolation/perf/logs/test-browser-live-dev-only-import.default.log."
+      }
+    ]
+  },
+  "cloudLimitations": [
+    "Cloud LLM did not run pnpm install, package tests, browser perf collection, default/soak perf diff, or local CI.",
+    "Cloud LLM generated a staged convergence patch and evidence contract from uploaded source/docs/spec snapshots only.",
+    "Any hard performance or release claim requires local comparable default or soak evidence after applying and implementing the stages.",
+    "Cloud LLM did not run this local default perf collection, browser collection, soak attempt, diff, assembly, or final gate.",
+    "Soak before collection did not produce JSON in this environment; no soak before-after diff exists."
+  ]
+}

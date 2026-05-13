@@ -160,6 +160,7 @@ const FORBIDDEN_CLAIMS = [
   'Source/list row scope is fully optimized.',
   'Examples prove kernel performance without isolated runtime evidence.',
   'Quick/smoke evidence proves release-safe performance.',
+  'LLM advisory or reviewer notes override machine-readable gates.',
 ] as const
 
 const isFiniteNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value)

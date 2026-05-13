@@ -1,0 +1,525 @@
+{
+  "schemaVersion": 1,
+  "kind": "AdversarialPerformanceMatrixReport",
+  "generatedAt": "1970-01-01T00:00:00.000Z",
+  "matrixId": "logix-browser-perf-matrix-v1",
+  "matrixHash": "c8f2c4cb626be089a9fb4636a9d16b70ee6e4d82afc2ad9ce44a3ce3d1a906fc",
+  "matrixHashSource": "artifact",
+  "profile": "adversarial-default",
+  "envId": "darwin.arm64.chromium.143-0-7499-4.headless",
+  "comparable": true,
+  "classification": "blocked",
+  "claimStrength": "none",
+  "summary": {
+    "regressions": 5,
+    "budgetExceeded": 0,
+    "timeouts": 2,
+    "missingSuites": 0,
+    "stabilityWarnings": 2
+  },
+  "requiredHotPaths": [
+    {
+      "hotPath": "fieldKernel.negativeDirtyPattern",
+      "present": true,
+      "pass": 0,
+      "budgetExceeded": 0,
+      "systemic": 1,
+      "tailOnly": 0,
+      "migratedCost": 0,
+      "migratedRisk": 0,
+      "inconclusive": 0,
+      "firstFail": "fieldKernel.negativeDirtyPattern::suite"
+    },
+    {
+      "hotPath": "fieldKernel.convergeTxnCommit",
+      "present": true,
+      "pass": 0,
+      "budgetExceeded": 0,
+      "systemic": 1,
+      "tailOnly": 0,
+      "migratedCost": 0,
+      "migratedRisk": 0,
+      "inconclusive": 0,
+      "firstFail": "fieldKernel.convergeTxnCommit::suite"
+    },
+    {
+      "hotPath": "fieldKernel.formListScopeCheck",
+      "present": true,
+      "pass": 0,
+      "budgetExceeded": 0,
+      "systemic": 1,
+      "tailOnly": 0,
+      "migratedCost": 0,
+      "migratedRisk": 0,
+      "inconclusive": 0,
+      "firstFail": "fieldKernel.formListScopeCheck::suite"
+    },
+    {
+      "hotPath": "fieldKernel.sourceExternalStoreIngest",
+      "present": true,
+      "pass": 1,
+      "budgetExceeded": 0,
+      "systemic": 0,
+      "tailOnly": 0,
+      "migratedCost": 0,
+      "migratedRisk": 0,
+      "inconclusive": 0
+    },
+    {
+      "hotPath": "runtimeStore.noTearingTickNotify",
+      "present": true,
+      "pass": 0,
+      "budgetExceeded": 0,
+      "systemic": 1,
+      "tailOnly": 0,
+      "migratedCost": 0,
+      "migratedRisk": 0,
+      "inconclusive": 0,
+      "firstFail": "runtimeStore.noTearingTickNotify::suite"
+    },
+    {
+      "hotPath": "react.strictSuspenseJitter",
+      "present": true,
+      "pass": 0,
+      "budgetExceeded": 0,
+      "systemic": 1,
+      "tailOnly": 0,
+      "migratedCost": 0,
+      "migratedRisk": 0,
+      "inconclusive": 0,
+      "firstFail": "react.strictSuspenseJitter::suite"
+    },
+    {
+      "hotPath": "diagnostics.overhead",
+      "present": true,
+      "pass": 0,
+      "budgetExceeded": 0,
+      "systemic": 1,
+      "tailOnly": 0,
+      "migratedCost": 0,
+      "migratedRisk": 0,
+      "inconclusive": 0,
+      "firstFail": "diagnostics.overhead::suite"
+    },
+    {
+      "hotPath": "txnQueue.directIdle",
+      "present": true,
+      "pass": 0,
+      "budgetExceeded": 0,
+      "systemic": 1,
+      "tailOnly": 0,
+      "migratedCost": 0,
+      "migratedRisk": 0,
+      "inconclusive": 0,
+      "firstFail": "txnQueue.directIdle::suite"
+    },
+    {
+      "hotPath": "dispatchShell.fixedCost",
+      "present": true,
+      "pass": 0,
+      "budgetExceeded": 0,
+      "systemic": 1,
+      "tailOnly": 0,
+      "migratedCost": 0,
+      "migratedRisk": 0,
+      "inconclusive": 0,
+      "firstFail": "dispatchShell.fixedCost::suite"
+    },
+    {
+      "hotPath": "examples.runtimeWitness",
+      "present": false,
+      "pass": 0,
+      "budgetExceeded": 0,
+      "systemic": 0,
+      "tailOnly": 0,
+      "migratedCost": 0,
+      "migratedRisk": 0,
+      "inconclusive": 0
+    },
+    {
+      "hotPath": "examples.playgroundNoiseIsolation",
+      "present": false,
+      "pass": 0,
+      "budgetExceeded": 0,
+      "systemic": 0,
+      "tailOnly": 0,
+      "migratedCost": 0,
+      "migratedRisk": 0,
+      "inconclusive": 0
+    }
+  ],
+  "cells": [
+    {
+      "cellId": "converge.timeSlicing.txnCommit::suite",
+      "hotPath": "converge.timeSlicing.txnCommit",
+      "status": "systemic",
+      "axes": {},
+      "reasons": [],
+      "phaseDeltas": {},
+      "counterDeltas": {
+        "budget.cutOffCount": 0,
+        "converge.timeSlicing.deferredDirtyPathCount": 0,
+        "converge.timeSlicing.deferredStepCount": 0,
+        "converge.timeSlicing.immediateStepCount": 0,
+        "converge.timeSlicing.scope": 0,
+        "runtime.kernelId": 0
+      }
+    },
+    {
+      "cellId": "fieldKernel.convergeTxnCommit::suite",
+      "hotPath": "fieldKernel.convergeTxnCommit",
+      "status": "systemic",
+      "axes": {},
+      "reasons": [
+        "mostSignificantRegression: auto<=full*1.05 {dirtyRootsRatio=1} (before=2000, after=800)"
+      ],
+      "phaseDeltas": {},
+      "counterDeltas": {
+        "converge.affectedSteps": 0,
+        "converge.decisionDurationMs": 0,
+        "converge.executedMode": 0,
+        "converge.executedSteps": 0,
+        "converge.executionDurationMs": 0,
+        "converge.outcome": 0,
+        "converge.reasons": 0,
+        "converge.requestedMode": 0,
+        "converge.totalSteps": 0,
+        "runtime.kernelId": 0
+      }
+    },
+    {
+      "cellId": "diagnostics.overhead::suite",
+      "hotPath": "diagnostics.overhead",
+      "status": "systemic",
+      "axes": {},
+      "reasons": [],
+      "phaseDeltas": {},
+      "counterDeltas": {
+        "diagnostics.level": 0,
+        "runtime.kernelId": 0
+      }
+    },
+    {
+      "cellId": "dispatchShell.fixedCost::suite",
+      "hotPath": "dispatchShell.fixedCost",
+      "status": "systemic",
+      "axes": {},
+      "reasons": [],
+      "phaseDeltas": {},
+      "counterDeltas": {
+        "module.reducerWriteCount": 0,
+        "module.stateWidth": 0,
+        "module.traitCount": 0,
+        "runtime.dispatchAwaitMsPerDispatch": -0.019999980926513672,
+        "runtime.dispatchesPerSample": 0,
+        "runtime.entrypointMode": 0,
+        "runtime.kernelId": 0,
+        "runtime.resolveScopeMsPerDispatch": 0,
+        "runtime.shellMode": 0,
+        "runtime.shellMode.source": 0,
+        "runtime.txnPhase.asyncEscapeGuardMs": 0,
+        "runtime.txnPhase.bodyShellMs": 0,
+        "runtime.txnPhase.commitOnCommitAfterStateUpdateMs": 0,
+        "runtime.txnPhase.commitOnCommitBeforeStateUpdateMs": 0,
+        "runtime.txnPhase.commitPublishCommitMs": 0,
+        "runtime.txnPhase.commitRowIdSyncMs": 0,
+        "runtime.txnPhase.commitStateUpdateDebugRecordMs": 0,
+        "runtime.txnPhase.commitTotalMs": 0,
+        "runtime.txnPhase.dispatchActionCommitHubMs": 0,
+        "runtime.txnPhase.dispatchActionCount": 0,
+        "runtime.txnPhase.dispatchActionRecordMs": 0,
+        "runtime.txnPhase.fieldConvergeMs": 0,
+        "runtime.txnPhase.queueBackpressureMs": 0,
+        "runtime.txnPhase.queueContextLookupMs": 0,
+        "runtime.txnPhase.queueEnqueueBookkeepingMs": 0,
+        "runtime.txnPhase.queueResolvePolicyMs": 0,
+        "runtime.txnPhase.queueStartHandoffMs": 0,
+        "runtime.txnPhase.queueWaitMs": 0,
+        "runtime.txnPhase.scopedValidateMs": 0,
+        "runtime.txnPhase.sourceSyncMs": 0,
+        "runtime.txnPhase.traceCount": 0,
+        "runtime.txnPhase.txnPreludeMs": 0
+      }
+    },
+    {
+      "cellId": "fieldKernel.sourceExternalStoreIngest::suite",
+      "hotPath": "fieldKernel.sourceExternalStoreIngest",
+      "status": "pass",
+      "axes": {},
+      "reasons": [],
+      "phaseDeltas": {},
+      "counterDeltas": {
+        "budget.cutOffCount": 0,
+        "diagnostics.level": 0,
+        "runtime.kernelId": 0,
+        "workload.externalStores": 0,
+        "workload.modules": 0,
+        "workload.ticksPerRun": 0
+      }
+    },
+    {
+      "cellId": "fieldKernel.formListScopeCheck::suite",
+      "hotPath": "fieldKernel.formListScopeCheck",
+      "status": "systemic",
+      "axes": {},
+      "reasons": [
+        "mostSignificantRegression: auto<=full*1.05 {diagnosticsLevel=full} (before=300, after=10)"
+      ],
+      "phaseDeltas": {},
+      "counterDeltas": {
+        "budget.cutOffCount": 0,
+        "cache.evict": 0,
+        "cache.hit": 0,
+        "cache.invalidate": 0,
+        "cache.miss": 0,
+        "cache.size": 0,
+        "converge.decisionBudgetMs": 0,
+        "converge.decisionDurationMs": 0,
+        "converge.executedMode": 0,
+        "converge.outcome": 0,
+        "converge.reasons": 0,
+        "converge.requestedMode": 0,
+        "diagnostics.level": 0,
+        "runtime.kernelId": 0
+      }
+    },
+    {
+      "cellId": "liveBridge.disabledOverhead.txnCommit::suite",
+      "hotPath": "liveBridge.disabledOverhead.txnCommit",
+      "status": "pass",
+      "axes": {},
+      "reasons": [],
+      "phaseDeltas": {},
+      "counterDeltas": {
+        "budget.cutOffCount": 0,
+        "liveBridge.bridgeMode": 0,
+        "liveBridge.captureBufferAllocations": 0,
+        "liveBridge.operationRequests": 0,
+        "liveBridge.transactionWindowIoCount": 0,
+        "liveBridge.transportAllocations": 0,
+        "module.stateWidth": 0,
+        "runtime.dispatchesPerSample": 0,
+        "runtime.kernelId": 0
+      }
+    },
+    {
+      "cellId": "fieldKernel.negativeDirtyPattern::suite",
+      "hotPath": "fieldKernel.negativeDirtyPattern",
+      "status": "systemic",
+      "axes": {},
+      "reasons": [
+        "mostSignificantRegression: auto<=full*1.05 {dirtyRootsRatio=0.05&patternKind=mostlyStableWithNoise&seed=1337&steps=800} (before=4096, after=8)"
+      ],
+      "phaseDeltas": {},
+      "counterDeltas": {
+        "budget.cutOffCount": 0,
+        "cache.evict": 0,
+        "cache.hit": 0,
+        "cache.invalidate": 0,
+        "cache.miss": 0,
+        "cache.size": 0,
+        "runtime.kernelId": 0
+      }
+    },
+    {
+      "cellId": "react.bootResolve::suite",
+      "hotPath": "react.bootResolve",
+      "status": "systemic",
+      "axes": {},
+      "reasons": [],
+      "phaseDeltas": {},
+      "counterDeltas": {
+        "budget.cutOffCount": 0,
+        "react.module.keyMode": 0,
+        "react.policy.mode": 0,
+        "react.policy.yieldStrategy": 0,
+        "runtime.kernelId": 0
+      }
+    },
+    {
+      "cellId": "react.deferPreload::suite",
+      "hotPath": "react.deferPreload",
+      "status": "pass",
+      "axes": {},
+      "reasons": [],
+      "phaseDeltas": {},
+      "counterDeltas": {
+        "budget.cutOffCount": 0,
+        "react.defer.gatingFallbackRenders": 0,
+        "react.defer.suspenseFallbackRenders": 0,
+        "react.module.keyMode": 0,
+        "react.policy.mode": 0,
+        "react.policy.yieldStrategy": 0,
+        "runtime.kernelId": 0
+      }
+    },
+    {
+      "cellId": "react.strictSuspenseJitter::suite",
+      "hotPath": "react.strictSuspenseJitter",
+      "status": "systemic",
+      "axes": {},
+      "reasons": [],
+      "phaseDeltas": {},
+      "counterDeltas": {
+        "react.suspenseFallbackRenders": 0,
+        "runtime.kernelId": 0
+      }
+    },
+    {
+      "cellId": "runtimeStore.noTearingTickNotify::suite",
+      "hotPath": "runtimeStore.noTearingTickNotify",
+      "status": "systemic",
+      "axes": {},
+      "reasons": [],
+      "phaseDeltas": {},
+      "counterDeltas": {
+        "budget.cutOffCount": 0,
+        "diagnostics.level": 0,
+        "runtime.kernelId": 0,
+        "runtimeStore.adapter": 0,
+        "selectorNotify.broadcastFallbackCount": 0,
+        "selectorNotify.listenerSnapshotCloneCount": 0,
+        "selectorNotify.notifiedTopicCount": 0,
+        "selectorNotify.renderCount": 0,
+        "selectorNotify.retainedTopicCount": 0,
+        "selectorNotify.runSyncFallbackCount": 0,
+        "workload.modules": 0,
+        "workload.ticksPerRun": 0
+      }
+    },
+    {
+      "cellId": "tickScheduler.yieldToHost.backlog::suite",
+      "hotPath": "tickScheduler.yieldToHost.backlog",
+      "status": "systemic",
+      "axes": {},
+      "reasons": [],
+      "phaseDeltas": {},
+      "counterDeltas": {
+        "budget.cutOffCount": 0,
+        "diagnostics.level": 0,
+        "runtime.kernelId": 0,
+        "runtimeStore.adapter": 0,
+        "tickScheduler.degradedTicks": 0,
+        "tickScheduler.forcedMacrotaskTicks": 0,
+        "tickScheduler.maxSteps": 0,
+        "workload.modules": 0,
+        "workload.ticksPerRun": 0
+      }
+    },
+    {
+      "cellId": "txnQueue.directIdle::suite",
+      "hotPath": "txnQueue.directIdle",
+      "status": "systemic",
+      "axes": {},
+      "reasons": [
+        "stabilityWarning: metric=runtime.backlogCatchUpMs {steps=200} baselineP95=59.30ms afterP95=12.00ms diff=47.30ms limit=5.93ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+      ],
+      "phaseDeltas": {},
+      "counterDeltas": {
+        "budget.cutOffCount": 0,
+        "runtime.kernelId": 0,
+        "txnLanes.backlogAnchor": 0,
+        "txnLanes.budgetMs": 0,
+        "txnLanes.domStableWait": 0,
+        "txnLanes.maxLagMs": 0,
+        "txnLanes.mode": 0,
+        "txnLanes.urgentAnchor": 0,
+        "txnLanes.yieldStrategy": 0,
+        "txnQueue.backlog.firstNonUrgent.enqueueOffsetFromBacklogMs": -0.20000004768371582,
+        "txnQueue.backlog.firstNonUrgent.invokeOffsetFromBacklogMs": -1.3999998569488525,
+        "txnQueue.backlog.firstNonUrgent.nativeBubbleOffsetFromBacklogMs": -1.3999998569488525,
+        "txnQueue.backlog.firstNonUrgent.nativeCaptureOffsetFromBacklogMs": -1.3999998569488525,
+        "txnQueue.backlog.firstNonUrgent.startDelayFromBacklogMs": -0.20000004768371582,
+        "txnQueue.backlog.firstNonUrgent.startMode.directHandoff": 0,
+        "txnQueue.backlog.firstNonUrgent.startOffsetFromBacklogMs": -0.20000004768371582,
+        "txnQueue.urgent.diagnosis.lateEnqueue": 0,
+        "txnQueue.urgent.enqueueDelayFromInvokeMs": 0.09999990463256836,
+        "txnQueue.urgent.enqueueDelayFromNativeCaptureMs": 0,
+        "txnQueue.urgent.enqueueDelayFromScheduleMs": 0.20000004768371582,
+        "txnQueue.urgent.enqueueOffsetFromBacklogMs": -0.8999998569488525,
+        "txnQueue.urgent.enqueueVsFirstNonUrgentStartMs": 0.10000014305114746,
+        "txnQueue.urgent.invokeDelayFromScheduleMs": 0.09999990463256836,
+        "txnQueue.urgent.invokeVsFirstNonUrgentStartMs": 0,
+        "txnQueue.urgent.nativeBubbleDelayFromScheduleMs": 0.09999990463256836,
+        "txnQueue.urgent.nativeBubbleVsFirstNonUrgentStartMs": 0,
+        "txnQueue.urgent.nativeCaptureDelayFromScheduleMs": 0.19999980926513672,
+        "txnQueue.urgent.nativeCaptureVsFirstNonUrgentStartMs": 0.09999990463256836,
+        "txnQueue.urgent.previousCompletedLane.nonUrgent": 0,
+        "txnQueue.urgent.startDelayFromInvokeMs": 0.09999990463256836,
+        "txnQueue.urgent.startDelayFromNativeCaptureMs": 0,
+        "txnQueue.urgent.startDelayFromScheduleMs": 0.20000004768371582,
+        "txnQueue.urgent.startMode.directHandoff": 0,
+        "txnQueue.urgent.startOffsetFromBacklogMs": -0.8999998569488525
+      }
+    },
+    {
+      "cellId": "watchers.clickToDomStable::suite",
+      "hotPath": "watchers.clickToDomStable",
+      "status": "systemic",
+      "axes": {},
+      "reasons": [
+        "stabilityWarning: metric=e2e.clickToDomStableMs {reactStrictMode=true&watchers=128} baselineP95=28.30ms afterP95=22.20ms diff=6.10ms limit=5.00ms (possible causes: tab switch, power-saving mode, background load, browser/version drift)"
+      ],
+      "phaseDeltas": {},
+      "counterDeltas": {
+        "runtime.kernelId": 0,
+        "watchers.phase.clickInvokeToNativeCaptureMs": -0.40000009536743164,
+        "watchers.phase.domStableToPaintGapMs": 0.40000009536743164,
+        "watchers.phase.handlerToDomStableMs": -0.20000004768371582
+      }
+    },
+    {
+      "cellId": "watchers.clickToPaint::suite",
+      "hotPath": "watchers.clickToPaint",
+      "status": "systemic",
+      "axes": {},
+      "reasons": [],
+      "phaseDeltas": {},
+      "counterDeltas": {
+        "runtime.kernelId": 0,
+        "watchers.phase.clickInvokeToNativeCaptureMs": 0.20000004768371582,
+        "watchers.phase.domStableToPaintGapMs": 0.7000000476837158,
+        "watchers.phase.handlerToDomStableMs": -0.40000009536743164
+      }
+    }
+  ],
+  "blockers": [
+    "summary.regressions=5",
+    "summary.timeouts=2",
+    "summary.stabilityWarnings=2",
+    "converge.timeSlicing.txnCommit::suite: systemic",
+    "fieldKernel.convergeTxnCommit::suite: systemic",
+    "diagnostics.overhead::suite: systemic",
+    "dispatchShell.fixedCost::suite: systemic",
+    "fieldKernel.formListScopeCheck::suite: systemic",
+    "fieldKernel.negativeDirtyPattern::suite: systemic",
+    "react.bootResolve::suite: systemic",
+    "react.strictSuspenseJitter::suite: systemic",
+    "runtimeStore.noTearingTickNotify::suite: systemic",
+    "tickScheduler.yieldToHost.backlog::suite: systemic",
+    "txnQueue.directIdle::suite: systemic",
+    "watchers.clickToDomStable::suite: systemic",
+    "watchers.clickToPaint::suite: systemic"
+  ],
+  "missingEvidence": [
+    "Missing required hot paths: examples.runtimeWitness, examples.playgroundNoiseIsolation"
+  ],
+  "migratedCost": [],
+  "migratedRisk": [],
+  "allowedClaims": [
+    "Adversarial matrix is blocked by failed hard gates."
+  ],
+  "forbiddenClaims": [
+    "Global Runtime performance improved.",
+    "No regressions exist globally.",
+    "React performance improved globally.",
+    "The selector notification path is optimal.",
+    "The field-kernel converge planner is optimal.",
+    "Quick/adversarial-quick evidence proves release-safe performance."
+  ],
+  "inputs": {
+    "diff": "specs/235-kernel-performance-convergence-final-gate/perf/diff.darwin-arm64.chromium-143.headless.default.json",
+    "before": "specs/235-kernel-performance-convergence-final-gate/perf/before.darwin-arm64.chromium-143.headless.default.json",
+    "after": "specs/235-kernel-performance-convergence-final-gate/perf/after.darwin-arm64.chromium-143.headless.default.json"
+  }
+}

@@ -1,0 +1,282 @@
+name: logix-perf (knob snapshot)
+
+on:
+  pull_request:
+    paths:
+      - ".github/scripts/logix-perf-*.cjs"
+      - ".github/workflows/logix-perf-*.yml"
+      - "examples/logix-react/**"
+      - "packages/logix-core/**"
+      - "packages/logix-perf-evidence/**"
+      - "packages/logix-react/**"
+      - "scripts/perf.ts"
+  push:
+    paths:
+      - ".github/scripts/logix-perf-*.cjs"
+      - ".github/workflows/logix-perf-*.yml"
+      - "examples/logix-react/**"
+      - "packages/logix-core/**"
+      - "packages/logix-perf-evidence/**"
+      - "packages/logix-react/**"
+      - "scripts/perf.ts"
+  workflow_dispatch:
+    inputs:
+      perf_profile:
+        description: "采样 profile（default/quick/smoke；soak 请用 convergence soak）"
+        required: false
+        default: "default"
+      perf_files:
+        description: "采集范围（相对 packages/logix-react；逗号分隔）"
+        required: false
+        default: "test/browser/perf-boundaries"
+      run_browser_p2:
+        description: "是否运行 examples/playground P2 浏览器采集"
+        required: false
+        default: "false"
+      collect_timeout_seconds:
+        description: "单分支 collect timeout 秒数"
+        required: false
+        default: "1800"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: logix-perf-knob-snapshot-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  knob-snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      PERF_PROFILE: default
+      PERF_FILES: test/browser/perf-boundaries
+      PERF_OUT_DIR: perf/snapshot
+      PERF_ARTIFACT_NAME: logix-perf-knob-snapshot-${{ github.run_id }}
+      RUN_BROWSER_P2: "false"
+      PERF_COLLECT_TIMEOUT_SECONDS: "1800"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Compute inputs
+        env:
+          INPUT_PERF_PROFILE: ${{ github.event.inputs.perf_profile }}
+          INPUT_PERF_FILES: ${{ github.event.inputs.perf_files }}
+          INPUT_RUN_BROWSER_P2: ${{ github.event.inputs.run_browser_p2 }}
+          INPUT_COLLECT_TIMEOUT_SECONDS: ${{ github.event.inputs.collect_timeout_seconds }}
+        run: |
+          set -euo pipefail
+          HEAD_SHA="${{ github.event.pull_request.head.sha || github.sha }}"
+          echo "HEAD_SHA=$HEAD_SHA" >> "$GITHUB_ENV"
+          echo "HEAD_SHORT=${HEAD_SHA::8}" >> "$GITHUB_ENV"
+          echo "PERF_ENV_ID=gh-${RUNNER_OS}-${RUNNER_ARCH}" >> "$GITHUB_ENV"
+          if [ -n "${INPUT_PERF_PROFILE:-}" ]; then
+            echo "PERF_PROFILE=$INPUT_PERF_PROFILE" >> "$GITHUB_ENV"
+          fi
+          if [ -n "${INPUT_PERF_FILES:-}" ]; then
+            echo "PERF_FILES=$INPUT_PERF_FILES" >> "$GITHUB_ENV"
+          fi
+          if [ -n "${INPUT_RUN_BROWSER_P2:-}" ]; then
+            echo "RUN_BROWSER_P2=$INPUT_RUN_BROWSER_P2" >> "$GITHUB_ENV"
+          fi
+          if [ -n "${INPUT_COLLECT_TIMEOUT_SECONDS:-}" ]; then
+            echo "PERF_COLLECT_TIMEOUT_SECONDS=$INPUT_COLLECT_TIMEOUT_SECONDS" >> "$GITHUB_ENV"
+          fi
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.9
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          if [ ! -e node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p node_modules/@logixjs
+            ln -s "$PWD/packages/logix-perf-evidence" node_modules/@logixjs/perf-evidence
+          fi
+          if [ -d packages/logix-react/node_modules ] && [ ! -e packages/logix-react/node_modules/@logixjs/perf-evidence ]; then
+            mkdir -p packages/logix-react/node_modules/@logixjs
+            ln -s "$PWD/packages/logix-perf-evidence" packages/logix-react/node_modules/@logixjs/perf-evidence
+          fi
+
+      - name: Perf preflight
+        run: pnpm -C packages/logix-perf-evidence run ci:preflight
+
+      - name: Install Playwright Chromium deps
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Collect snapshot
+        id: collect
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          mkdir -p "$PERF_OUT_DIR/raw" "$PERF_OUT_DIR/logs" "$PERF_OUT_DIR/markers"
+          IFS=',' read -r -a PERF_FILES_ARRAY <<< "${PERF_FILES}"
+          FILE_ARGS=()
+          for f in "${PERF_FILES_ARRAY[@]}"; do
+            f="$(echo "$f" | xargs)"
+            if [ -n "$f" ]; then
+              FILE_ARGS+=(--files "$f")
+            fi
+          done
+          COLLECT_OUT="$PERF_OUT_DIR/raw/snapshot.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          COLLECT_LOG="$PERF_OUT_DIR/logs/collect-snapshot.${PERF_PROFILE}.log"
+          set +e
+          timeout "${PERF_COLLECT_TIMEOUT_SECONDS}s" env VITE_LOGIX_PERF_HARD_GATES=off pnpm perf collect -- --profile "$PERF_PROFILE" \
+            "${FILE_ARGS[@]}" \
+            --out "$COLLECT_OUT" 2>&1 | tee "$COLLECT_LOG"
+          COLLECT_STATUS=${PIPESTATUS[0]}
+          set -e
+          if [ "$COLLECT_STATUS" -ne 0 ]; then
+            REASON="fail"
+            if [ "$COLLECT_STATUS" -eq 124 ]; then
+              REASON="timeout"
+            fi
+            MARKER="$PERF_OUT_DIR/markers/collect-snapshot.${PERF_PROFILE}.${REASON}.json"
+            MARKER="$MARKER" REASON="$REASON" COLLECT_STATUS="$COLLECT_STATUS" COLLECT_LOG="$COLLECT_LOG" node - <<'NODE'
+          const fs = require('node:fs')
+          const marker = process.env.MARKER
+          const payload = {
+            schemaVersion: 1,
+            status: 'blocked',
+            phase: 'collect-snapshot',
+            reason: process.env.REASON,
+            profile: process.env.PERF_PROFILE,
+            headSha: process.env.HEAD_SHA,
+            envId: process.env.PERF_ENV_ID,
+            command: `timeout ${process.env.PERF_COLLECT_TIMEOUT_SECONDS}s pnpm perf collect -- --profile ${process.env.PERF_PROFILE}`,
+            exitCode: Number(process.env.COLLECT_STATUS || '1'),
+            logRef: process.env.COLLECT_LOG,
+            path: marker,
+            generatedAt: new Date().toISOString(),
+          }
+          fs.writeFileSync(marker, `${JSON.stringify(payload, null, 2)}\n`)
+          NODE
+          fi
+
+      - name: Browser P2 evidence
+        if: always() && env.RUN_BROWSER_P2 == 'true'
+        continue-on-error: true
+        run: |
+          set +e
+          mkdir -p "$PERF_OUT_DIR/logs"
+          pnpm -C examples/logix-react test:browser:playground > "$PERF_OUT_DIR/logs/test-browser-playground.${PERF_PROFILE}.log" 2>&1
+          PLAYGROUND_STATUS=$?
+          pnpm -C examples/logix-react test:browser:live-real-carrier > "$PERF_OUT_DIR/logs/test-browser-live-real-carrier.${PERF_PROFILE}.log" 2>&1
+          LIVE_STATUS=$?
+          export PLAYGROUND_STATUS LIVE_STATUS
+          node - <<'NODE'
+          const fs = require('node:fs')
+          const outDir = process.env.PERF_OUT_DIR
+          const profile = process.env.PERF_PROFILE
+          const playgroundStatus = Number(process.env.PLAYGROUND_STATUS || '0')
+          const liveStatus = Number(process.env.LIVE_STATUS || '0')
+          const input = {
+            schemaVersion: 1,
+            generatedAt: new Date().toISOString(),
+            profile,
+            runtime: {
+              status: liveStatus === 0 ? 'pass' : 'fail',
+              kernelOnly: liveStatus === 0,
+              publicResidueViolation: liveStatus === 0 ? 0 : 1,
+              evidenceRef: `${outDir}/logs/test-browser-live-real-carrier.${profile}.log`,
+            },
+            playground: {
+              status: playgroundStatus === 0 ? 'pass' : 'fail',
+              productCostSeparated: playgroundStatus === 0,
+              kernelPlaygroundCostMixed: playgroundStatus === 0 ? 0 : 1,
+              evidenceRef: `${outDir}/logs/test-browser-playground.${profile}.log`,
+            },
+          }
+          fs.writeFileSync(`${outDir}/examples-playground.${profile}.input.json`, `${JSON.stringify(input, null, 2)}\n`)
+          NODE
+          pnpm exec tsx packages/logix-perf-evidence/scripts/ci.examples-playground-isolation-report.ts \
+            --input "$PERF_OUT_DIR/examples-playground.${PERF_PROFILE}.input.json" \
+            --profile "$PERF_PROFILE" \
+            --out "$PERF_OUT_DIR/reports/examples-playground.${PERF_PROFILE}.md" \
+            --json-out "$PERF_OUT_DIR/reports/examples-playground.${PERF_PROFILE}.json" || true
+
+      - name: Browser P2 skipped marker
+        if: always() && env.RUN_BROWSER_P2 != 'true'
+        run: |
+          mkdir -p "$PERF_OUT_DIR/markers" "$PERF_OUT_DIR/reports"
+          MARKER="$PERF_OUT_DIR/markers/browser-p2.${PERF_PROFILE}.skipped.json"
+          cat > "$MARKER" <<EOF
+          {
+            "schemaVersion": 1,
+            "status": "skipped",
+            "phase": "browser-p2",
+            "reason": "run_browser_p2=false",
+            "profile": "${PERF_PROFILE}",
+            "headSha": "${HEAD_SHA}",
+            "envId": "${PERF_ENV_ID}",
+            "path": "${MARKER}",
+            "generatedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+          cat > "$PERF_OUT_DIR/examples-playground.${PERF_PROFILE}.input.json" <<EOF
+          {
+            "schemaVersion": 1,
+            "generatedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "profile": "${PERF_PROFILE}",
+            "runtime": { "status": "missing" },
+            "playground": { "status": "missing" }
+          }
+          EOF
+          pnpm exec tsx packages/logix-perf-evidence/scripts/ci.examples-playground-isolation-report.ts \
+            --input "$PERF_OUT_DIR/examples-playground.${PERF_PROFILE}.input.json" \
+            --profile "$PERF_PROFILE" \
+            --out "$PERF_OUT_DIR/reports/examples-playground.${PERF_PROFILE}.md" \
+            --json-out "$PERF_OUT_DIR/reports/examples-playground.${PERF_PROFILE}.json" || true
+
+      - name: Materialize snapshot artifacts
+        if: always()
+        run: |
+          REPORT="$PERF_OUT_DIR/raw/snapshot.${HEAD_SHORT}.${PERF_ENV_ID}.${PERF_PROFILE}.json"
+          MARKER_ARGS=()
+          for marker in "$PERF_OUT_DIR"/markers/*.json; do
+            if [ -e "$marker" ]; then
+              MARKER_ARGS+=(--marker "$marker")
+            fi
+          done
+          EXAMPLES_ARGS=()
+          if [ -f "$PERF_OUT_DIR/reports/examples-playground.${PERF_PROFILE}.json" ]; then
+            EXAMPLES_ARGS=(--examples-report "$PERF_OUT_DIR/reports/examples-playground.${PERF_PROFILE}.json")
+          fi
+          pnpm -C packages/logix-perf-evidence run ci:kernel-performance-knob-snapshot -- \
+            --report "$REPORT" \
+            --out-dir "$PERF_OUT_DIR" \
+            --profile "$PERF_PROFILE" \
+            --env-id "$PERF_ENV_ID" \
+            --allow-missing-report \
+            "${EXAMPLES_ARGS[@]}" \
+            "${MARKER_ARGS[@]}"
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.PERF_ARTIFACT_NAME }}
+          path: ${{ env.PERF_OUT_DIR }}
+          if-no-files-found: warn

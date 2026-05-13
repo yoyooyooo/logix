@@ -28,6 +28,7 @@ version: 6
 | [Effect V4 Baseline](./effect-v4-baseline.md) | Effect V4 基线与 repo 约束 |
 | [Logix API Next Guardrails](./logix-api-next-guardrails.md) | 公开主链、热路径、诊断等统一护栏 |
 | [Harness And Proof Assets Standard](./harness-and-proof-assets-standard.md) | harness、proof、fixture、support 与 coverage inventory 的资产卫生规则 |
+| [Kernel Performance Observability Standard](./kernel-performance-observability-standard.md) | runtime/kernel 性能观测、CI artifact、pressure knob、counter census 与 claim gate 规则 |
 | [Logix API Next Postponed Naming Items](./logix-api-next-postponed-naming-items.md) | 命名后置桶 |
 
 ## 相关裁决
@@ -44,4 +45,4 @@ version: 6
 
 ## 当前一句话结论
 
-这里承接跨主题规则；docs foundation 的执行协议固定在 [Docs Governance](./docs-governance.md)，用户文档写法固定在 [User Docs Writing Standard](./user-docs-writing-standard.md)，harness/proof 资产卫生固定在 [Harness And Proof Assets Standard](./harness-and-proof-assets-standard.md)。
+这里承接跨主题规则；docs foundation 的执行协议固定在 [Docs Governance](./docs-governance.md)，用户文档写法固定在 [User Docs Writing Standard](./user-docs-writing-standard.md)，harness/proof 资产卫生固定在 [Harness And Proof Assets Standard](./harness-and-proof-assets-standard.md)，runtime/kernel 性能观测规则固定在 [Kernel Performance Observability Standard](./kernel-performance-observability-standard.md)。

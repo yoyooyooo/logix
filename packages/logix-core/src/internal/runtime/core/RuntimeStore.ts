@@ -92,6 +92,7 @@ const EMPTY_LISTENER_SNAPSHOT: ReadonlyArray<() => void> = []
 export interface RuntimeStore {
   // ---- React-facing sync snapshot APIs ----
   readonly getTickSeq: () => number
+  readonly hasModuleState: (moduleInstanceKey: ModuleInstanceKey) => boolean
   readonly getModuleState: (moduleInstanceKey: ModuleInstanceKey) => unknown
   readonly getTopicVersion: (topicKey: TopicKey) => number
   readonly getTopicPriority: (topicKey: TopicKey) => StateCommitPriority
@@ -256,6 +257,7 @@ export const makeRuntimeStore = (): RuntimeStore => {
     }
 
     if (args.onListener) {
+      const onListener = args.onListener
       // First publish all topic version/priority bumps, then notify listeners.
       // This preserves the existing "callbacks observe the committed tick" contract while avoiding
       // temporary listener-array buckets on the direct callback path.
@@ -290,7 +292,7 @@ export const makeRuntimeStore = (): RuntimeStore => {
         countRuntimeStoreDirectListenerCallback(listeners.length)
         for (const listener of listeners) {
           try {
-            args.onListener(listener)
+            onListener(listener)
           } catch {
             // best-effort: never let listener callback break commit tick
           }
@@ -347,6 +349,7 @@ export const makeRuntimeStore = (): RuntimeStore => {
     }
   }
 
+  const hasModuleState = (moduleInstanceKey: ModuleInstanceKey): boolean => moduleStates.has(moduleInstanceKey)
   const getModuleState = (moduleInstanceKey: ModuleInstanceKey): unknown => moduleStates.get(moduleInstanceKey)
 
   const dispose = (): void => {
@@ -359,6 +362,7 @@ export const makeRuntimeStore = (): RuntimeStore => {
 
   return {
     getTickSeq: () => tickSeq,
+    hasModuleState,
     getModuleState,
     getTopicVersion,
     getTopicPriority,

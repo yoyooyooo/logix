@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-05-12T17:12:41Z",
+  "envId": "darwin.arm64.chromium.143-0-7499-4.headless",
+  "profile": "adversarial-default",
+  "reports": [
+    {
+      "kind": "AdversarialPerformanceMatrixReport",
+      "profile": "adversarial-default",
+      "comparable": true,
+      "classification": "blocked",
+      "claimStrength": "none",
+      "summary": {
+        "regressions": 5,
+        "budgetExceeded": 0,
+        "timeouts": 2,
+        "missingSuites": 0,
+        "stabilityWarnings": 2
+      },
+      "requiredHotPaths": [],
+      "migratedCost": [],
+      "migratedRisk": [],
+      "evidenceRefs": [
+        "specs/235-kernel-performance-convergence-final-gate/perf/before.darwin-arm64.chromium-143.headless.default.json",
+        "specs/235-kernel-performance-convergence-final-gate/perf/after.darwin-arm64.chromium-143.headless.default.json",
+        "specs/235-kernel-performance-convergence-final-gate/perf/diff.darwin-arm64.chromium-143.headless.default.json",
+        "specs/231-adversarial-performance-matrix/perf/reports/adversarial.darwin-arm64.chromium-143.headless.default.json"
+      ]
+    },
+    {
+      "kind": "ExamplesPlaygroundIsolationReport",
+      "classification": "isolated",
+      "claimStrength": "hard",
+      "suites": [
+        { "id": "examples.runtimeWitness", "status": "pass" },
+        { "id": "examples.playgroundNoiseIsolation", "status": "pass" }
+      ],
+      "counters": {
+        "examples.kernelPlaygroundCostMixed": 0,
+        "examples.publicResidueViolation": 0
+      },
+      "evidenceRefs": [
+        "specs/234-p2-examples-playground-perf-isolation/perf/examples-playground.default.input.json",
+        "specs/234-p2-examples-playground-perf-isolation/perf/reports/examples-playground.default.json",
+        "specs/234-p2-examples-playground-perf-isolation/perf/logs/test-browser-playground.default.log",
+        "specs/234-p2-examples-playground-perf-isolation/perf/logs/test-browser-live-real-carrier.default.log"
+      ]
+    }
+  ],
+  "stages": [
+    {
+      "id": "P0",
+      "status": "blocked",
+      "evidenceRefs": [
+        "specs/235-kernel-performance-convergence-final-gate/perf/diff.darwin-arm64.chromium-143.headless.default.json"
+      ],
+      "notes": "No local P0 stage report was available; default diff is blocked and required P0 counters remain unproven."
+    },
+    {
+      "id": "P1",
+      "status": "blocked",
+      "evidenceRefs": [
+        "specs/235-kernel-performance-convergence-final-gate/perf/diff.darwin-arm64.chromium-143.headless.default.json"
+      ],
+      "notes": "No local P1 stage report was available; default diff is blocked and required P1 counters remain unproven."
+    }
+  ],
+  "suites": [
+    { "id": "negativeBoundaries.dirtyPattern", "status": "pass" },
+    { "id": "converge.txnCommit", "status": "pass" },
+    { "id": "form.listScopeCheck", "status": "pass" },
+    { "id": "externalStore.ingest.tickNotify", "status": "pass" },
+    { "id": "runtimeStore.noTearing.tickNotify", "status": "pass" },
+    { "id": "react.strictSuspenseJitter", "status": "pass" },
+    { "id": "diagnostics.overhead", "status": "pass" },
+    { "id": "txnQueue.directIdle", "status": "pass" },
+    { "id": "dispatchShell.fixedCost", "status": "pass" }
+  ],
+  "counters": {
+    "txnQueue.directIdleQueueWaitNonZero": 0,
+    "txnQueue.directIdleBackpressureNonZero": 0
+  },
+  "evidenceRefs": [
+    "specs/235-kernel-performance-convergence-final-gate/perf/logs/soak-before.collect.blocked.log",
+    "specs/234-p2-examples-playground-perf-isolation/perf/logs/test-browser-live-dev-only-import.default.log"
+  ],
+  "localCi": {
+    "commands": [
+      {
+        "command": "rtk pnpm perf collect -- --profile default --out specs/235-kernel-performance-convergence-final-gate/perf/before.darwin-arm64.chromium-143.headless.default.json",
+        "result": "pass",
+        "notes": "Run from /tmp/logix-next-api-before at baseline commit da87bcbdb47c386dd342fec4af940e9dad29b3b5 after applying the selector validation fix."
+      },
+      {
+        "command": "rtk pnpm perf collect -- --profile default --out specs/235-kernel-performance-convergence-final-gate/perf/after.darwin-arm64.chromium-143.headless.default.json",
+        "result": "pass",
+        "notes": "Run from current worktree at ea57e8b1a5a84ba9f34fe0b3a9cad029a3c0d541."
+      },
+      {
+        "command": "rtk pnpm perf diff -- --before specs/235-kernel-performance-convergence-final-gate/perf/before.darwin-arm64.chromium-143.headless.default.json --after specs/235-kernel-performance-convergence-final-gate/perf/after.darwin-arm64.chromium-143.headless.default.json --out specs/235-kernel-performance-convergence-final-gate/perf/diff.darwin-arm64.chromium-143.headless.default.json",
+        "result": "blocked",
+        "notes": "Comparable=true, regressions=5, budgetExceeded=0, timeouts=2, missingSuites=0, stabilityWarnings=2."
+      },
+      {
+        "command": "rtk pnpm perf collect -- --profile soak --out specs/235-kernel-performance-convergence-final-gate/perf/before.darwin-arm64.chromium-143.headless.soak.json",
+        "result": "blocked",
+        "notes": "Run from /tmp/logix-next-api-before; command hung with no active vitest/chromium child and no JSON after ~22 minutes, then was terminated with exit code 143."
+      },
+      {
+        "command": "rtk pnpm -C examples/logix-react test:browser:playground",
+        "result": "pass",
+        "notes": "Log stored at specs/234-p2-examples-playground-perf-isolation/perf/logs/test-browser-playground.default.log."
+      },
+      {
+        "command": "rtk pnpm -C examples/logix-react test:browser:live-real-carrier",
+        "result": "pass",
+        "notes": "Log stored at specs/234-p2-examples-playground-perf-isolation/perf/logs/test-browser-live-real-carrier.default.log."
+      },
+      {
+        "command": "rtk pnpm -C examples/logix-react test:browser:live-dev-only-import",
+        "result": "fail",
+        "notes": "Expected one browser attachment but observed two; log stored at specs/234-p2-examples-playground-perf-isolation/perf/logs/test-browser-live-dev-only-import.default.log."
+      }
+    ]
+  },
+  "cloud": {
+    "unableToVerify": [
+      "Cloud LLM did not run this local default perf collection, browser collection, soak attempt, diff, assembly, or final gate.",
+      "Soak before collection did not produce JSON in this environment; no soak before-after diff exists."
+    ]
+  }
+}

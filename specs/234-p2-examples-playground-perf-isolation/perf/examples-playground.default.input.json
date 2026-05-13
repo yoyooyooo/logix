@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-05-12T17:02:13Z",
+  "profile": "default",
+  "runtime": {
+    "status": "pass",
+    "evidenceRef": "specs/234-p2-examples-playground-perf-isolation/perf/logs/test-browser-live-real-carrier.default.log",
+    "kernelOnly": true,
+    "publicResidueViolation": 0,
+    "notes": "Runtime witness uses the live real carrier Playwright contract, separate from playground route/product UI cost."
+  },
+  "playground": {
+    "status": "pass",
+    "evidenceRef": "specs/234-p2-examples-playground-perf-isolation/perf/logs/test-browser-playground.default.log",
+    "productCostSeparated": true,
+    "kernelPlaygroundCostMixed": 0,
+    "notes": "Playground route acceptance is recorded as product/playground evidence and is not used as kernel runtime perf proof."
+  },
+  "cloud": {
+    "unableToVerify": [
+      "Cloud LLM did not run this local examples/playground browser evidence."
+    ]
+  }
+}

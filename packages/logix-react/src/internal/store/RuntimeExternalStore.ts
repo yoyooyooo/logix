@@ -22,6 +22,7 @@ type TopicKey = string
 type ModuleInstanceKey = string
 
 type RuntimeStore = {
+  readonly hasModuleState: (moduleInstanceKey: ModuleInstanceKey) => boolean
   readonly getModuleState: (moduleInstanceKey: ModuleInstanceKey) => unknown
   readonly getTopicVersion: (topicKey: TopicKey) => number
   readonly getTopicPriority: (topicKey: TopicKey) => Logix.StateCommitPriority
@@ -92,22 +93,12 @@ export const readRuntimeExternalStoreConvergenceSentinels = (): RuntimeExternalS
   runSyncFallbackColdCount: runtimeExternalStoreConvergenceCounters.runSyncFallbackColdCount,
   runSyncFallbackAfterBootCount: runtimeExternalStoreConvergenceCounters.runSyncFallbackAfterBootCount,
   moduleRunSyncFallbackAfterBootCount: runtimeExternalStoreConvergenceCounters.moduleRunSyncFallbackAfterBootCount,
-  readQueryRunSyncFallbackAfterBootCount: runtimeExternalStoreConvergenceCounters.readQueryRunSyncFallbackAfterBootCount,
+  readQueryRunSyncFallbackAfterBootCount:
+    runtimeExternalStoreConvergenceCounters.readQueryRunSyncFallbackAfterBootCount,
   readQueryRetainCount: runtimeExternalStoreConvergenceCounters.readQueryRetainCount,
   readQueryReleaseCount: runtimeExternalStoreConvergenceCounters.readQueryReleaseCount,
   activeReadQueryRetainCount: runtimeExternalStoreConvergenceCounters.activeReadQueryRetainCount,
 })
-
-const recordRunSyncFallback = (kind: 'module' | 'readQuery'): void => {
-  if (!runtimeExternalStoreConvergenceSentinelsEnabled) return
-  if (!runtimeExternalStoreConvergenceBootComplete) {
-    runtimeExternalStoreConvergenceCounters.runSyncFallbackColdCount += 1
-    return
-  }
-  runtimeExternalStoreConvergenceCounters.runSyncFallbackAfterBootCount += 1
-  if (kind === 'module') runtimeExternalStoreConvergenceCounters.moduleRunSyncFallbackAfterBootCount += 1
-  else runtimeExternalStoreConvergenceCounters.readQueryRunSyncFallbackAfterBootCount += 1
-}
 
 const recordReadQueryRetain = (): void => {
   if (!runtimeExternalStoreConvergenceSentinelsEnabled) return
@@ -121,6 +112,13 @@ const recordReadQueryRelease = (): void => {
   if (runtimeExternalStoreConvergenceCounters.activeReadQueryRetainCount > 0) {
     runtimeExternalStoreConvergenceCounters.activeReadQueryRetainCount -= 1
   }
+}
+
+const readCommittedModuleState = <S>(runtimeStore: RuntimeStore, moduleInstanceKey: ModuleInstanceKey): S => {
+  if (runtimeStore.hasModuleState(moduleInstanceKey)) {
+    return runtimeStore.getModuleState(moduleInstanceKey) as S
+  }
+  throw new Error(`[Logix][RuntimeExternalStore] Missing committed module state for ${moduleInstanceKey}`)
 }
 
 const storesByRuntime = new WeakMap<object, Map<TopicKey, ExternalStore<any>>>()
@@ -143,6 +141,18 @@ const getRuntimeStore = (runtime: ManagedRuntime.ManagedRuntime<any, any>): Runt
 
 const getHostScheduler = (runtime: ManagedRuntime.ManagedRuntime<any, any>): HostScheduler =>
   RuntimeContracts.getHostScheduler(runtime as any) as HostScheduler
+
+const ensureCommittedModuleSnapshot = <S>(
+  runtime: ManagedRuntime.ManagedRuntime<any, any>,
+  runtimeStore: RuntimeStore,
+  moduleRuntime: Logix.ModuleRuntime<S, any>,
+  moduleInstanceKey: ModuleInstanceKey,
+): void => {
+  if (runtimeStore.hasModuleState(moduleInstanceKey)) {
+    return
+  }
+  RuntimeContracts.ensureRuntimeStoreModuleSnapshot(runtime as any, moduleRuntime)
+}
 
 const getOrCreateStore = <S>(
   runtime: ManagedRuntime.ManagedRuntime<any, any>,
@@ -409,6 +419,7 @@ export const getRuntimeModuleExternalStore = <S>(
 ): ExternalStore<S> => {
   const moduleInstanceKey = makeModuleInstanceKey(moduleRuntime.moduleId, moduleRuntime.instanceId)
   const runtimeStore = getRuntimeStore(runtime)
+  ensureCommittedModuleSnapshot(runtime, runtimeStore, moduleRuntime, moduleInstanceKey)
 
   return getOrCreateStore(runtime, moduleInstanceKey, () =>
     makeTopicExternalStore({
@@ -416,10 +427,7 @@ export const getRuntimeModuleExternalStore = <S>(
       runtimeStore,
       topicKey: moduleInstanceKey,
       readSnapshot: () => {
-        const state = runtimeStore.getModuleState(moduleInstanceKey) as S | undefined
-        if (state !== undefined) return state
-        recordRunSyncFallback('module')
-        return runtime.runSync(moduleRuntime.getState as unknown as Effect.Effect<S, never, any>)
+        return readCommittedModuleState<S>(runtimeStore, moduleInstanceKey)
       },
       options,
     }),
@@ -436,6 +444,7 @@ export const getRuntimeReadQueryExternalStore = <S, V>(
   const moduleInstanceKey = makeModuleInstanceKey(moduleRuntime.moduleId, moduleRuntime.instanceId)
   const topicKey = makeReadQueryTopicKey(moduleInstanceKey, route.selectorFingerprint.value)
   const runtimeStore = getRuntimeStore(runtime)
+  ensureCommittedModuleSnapshot(runtime, runtimeStore, moduleRuntime, moduleInstanceKey)
   let readQueryRetainCancel: Cancel | undefined
 
   return getOrCreateStore(runtime, topicKey, () =>
@@ -444,11 +453,7 @@ export const getRuntimeReadQueryExternalStore = <S, V>(
       runtimeStore,
       topicKey,
       readSnapshot: () => {
-        const state = runtimeStore.getModuleState(moduleInstanceKey) as S | undefined
-        const current = state ?? (() => {
-          recordRunSyncFallback('readQuery')
-          return runtime.runSync(moduleRuntime.getState as unknown as Effect.Effect<S, never, any>)
-        })()
+        const current = readCommittedModuleState<S>(runtimeStore, moduleInstanceKey)
         return selectorReadQuery.select(current)
       },
       options,
@@ -459,7 +464,9 @@ export const getRuntimeReadQueryExternalStore = <S, V>(
         const effect = Effect.scoped(
           Effect.flatMap(retainer.retainReadQueryTopic(selectorReadQuery), () => Effect.never),
         ) as Effect.Effect<void, never, any>
-        readQueryRetainCancel = runtime.runCallback(effect, { onExit: () => undefined })
+        readQueryRetainCancel = runtime.runCallback(effect, {
+          onExit: () => undefined,
+        })
       },
       invalidateSnapshotOnFirstListener: true,
       notifyAfterFirstListenerInvalidation: true,

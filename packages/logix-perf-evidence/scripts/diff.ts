@@ -174,6 +174,10 @@ type MetricDeltaSummary = {
 
 type PerfDiff = {
   readonly schemaVersion: number
+  readonly matrixId?: string
+  readonly matrixHash?: string
+  readonly profile?: string
+  readonly envId?: string
   readonly meta: {
     readonly createdAt: string
     readonly from: { readonly file?: string; readonly commit?: string }
@@ -191,6 +195,10 @@ type PerfDiff = {
     readonly regressions: number
     readonly improvements: number
     readonly budgetViolations: number
+    readonly budgetExceeded?: number
+    readonly timeouts?: number
+    readonly missingSuites?: number
+    readonly stabilityWarnings?: number
     readonly slices?: {
       readonly total: number
       readonly compared: number
@@ -1063,6 +1071,16 @@ const computeStabilityWarning = (
   return undefined
 }
 
+const reportEnvId = (report: PerfReport): string | undefined => {
+  const env = report.meta.env
+  const browser = env?.browser
+  const parts = [env?.os, env?.arch, browser?.name, browser?.version, browser?.headless === undefined ? undefined : browser.headless ? 'headless' : 'headed']
+    .filter((part): part is string => typeof part === 'string' && part.length > 0)
+    .map((part) => part.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''))
+    .filter((part) => part.length > 0)
+  return parts.length > 0 ? parts.join('.') : undefined
+}
+
 const main = async (): Promise<void> => {
   const { before, after, out, matrix, allowConfigDrift, allowEnvDrift } = parseArgs(process.argv.slice(2))
 
@@ -1090,6 +1108,9 @@ const main = async (): Promise<void> => {
 
   let regressions = 0
   let improvements = 0
+  let timeouts = 0
+  let missingSuites = 0
+  let stabilityWarnings = 0
 
   const triageMode = allowConfigDrift || allowEnvDrift
   let slicesTotal = 0
@@ -1107,6 +1128,7 @@ const main = async (): Promise<void> => {
     const afterSuite = afterById.get(suiteId)
 
     if (!spec || !beforeSuite || !afterSuite) {
+      missingSuites += 1
       suiteDiffs.push({
         id: suiteId,
         notes: !spec
@@ -1307,8 +1329,13 @@ const main = async (): Promise<void> => {
     if (stability) {
       const stabilityNote = computeStabilityWarning(spec, beforeSuite, afterSuite, stability)
       if (stabilityNote) {
+        stabilityWarnings += 1
         notes = notes ? `${notes}; ${stabilityNote}` : stabilityNote
       }
+    }
+
+    for (const point of [...beforeSuite.points, ...afterSuite.points]) {
+      if (point.status === 'timeout') timeouts += 1
     }
 
     suiteDiffs.push({
@@ -1323,6 +1350,10 @@ const main = async (): Promise<void> => {
 
   const diff: PerfDiff = {
     schemaVersion: 1,
+    matrixId: beforeReport.meta.matrixId,
+    matrixHash: beforeReport.meta.matrixHash,
+    profile: beforeReport.meta.config?.profile,
+    envId: reportEnvId(beforeReport),
     meta: {
       createdAt: new Date().toISOString(),
       from: {
@@ -1339,6 +1370,10 @@ const main = async (): Promise<void> => {
       regressions,
       improvements,
       budgetViolations: 0,
+      budgetExceeded: 0,
+      timeouts,
+      missingSuites,
+      stabilityWarnings,
       slices: triageMode
         ? {
             total: slicesTotal,

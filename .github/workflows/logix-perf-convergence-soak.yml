@@ -1,0 +1,45 @@
+name: logix-perf (convergence soak)
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_ref:
+        description: "before 基线（branch/tag/sha；留空=默认分支 tip）"
+        required: false
+        default: ""
+      head_ref:
+        description: "after 基线（branch/tag/sha；留空=触发 SHA）"
+        required: false
+        default: ""
+      perf_files:
+        description: "采集范围（相对 packages/logix-react；逗号分隔）"
+        required: false
+        default: "test/browser/perf-boundaries"
+      run_browser_p2:
+        description: "是否运行 examples/playground P2 浏览器采集"
+        required: false
+        default: "true"
+      fail_on_blocked:
+        description: "final gate blocked/incomplete 时是否让 workflow 失败"
+        required: false
+        default: "false"
+  schedule:
+    - cron: "0 2 * * 2,5"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: logix-perf-convergence-soak-${{ github.event_name == 'schedule' && 'scheduled' || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'schedule' }}
+
+jobs:
+  convergence-soak:
+    uses: ./.github/workflows/logix-perf-convergence.yml
+    with:
+      base_ref: ${{ github.event_name == 'schedule' && format('{0}^', github.sha) || github.event.inputs.base_ref || '' }}
+      head_ref: ${{ github.event_name == 'schedule' && github.sha || github.event.inputs.head_ref || '' }}
+      perf_profile: soak
+      perf_files: ${{ github.event.inputs.perf_files || 'test/browser/perf-boundaries' }}
+      run_browser_p2: ${{ github.event.inputs.run_browser_p2 || 'true' }}
+      fail_on_blocked: ${{ github.event.inputs.fail_on_blocked || 'false' }}

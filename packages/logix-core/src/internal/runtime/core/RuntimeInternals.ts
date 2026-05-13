@@ -7,6 +7,7 @@ import type { SchedulingPolicyLimit, StateTransactionInstrumentation } from './e
 import type * as ModuleFields from './ModuleFields.js'
 import type { TxnOriginOverride } from './TxnOriginOverride.js'
 import type { RuntimeHotLifecycleContext } from './hotLifecycle/index.js'
+import type { RuntimeStore } from './RuntimeStore.js'
 
 export type RuntimeInternalsEffects = {
   readonly registerEffect: (args: {
@@ -23,7 +24,9 @@ export type RuntimeInternalsEffects = {
 
 export type ImportsScope = {
   readonly kind: 'imports-scope'
-  readonly get: (module: ServiceMap.Key<any, PublicModuleRuntime<any, any>>) => PublicModuleRuntime<any, any> | undefined
+  readonly get: (
+    module: ServiceMap.Key<any, PublicModuleRuntime<any, any>>,
+  ) => PublicModuleRuntime<any, any> | undefined
 }
 
 export type RuntimeInternalsLifecycle = {
@@ -101,7 +104,10 @@ export type RuntimeInternalsFields = {
   ) => ((state: unknown) => Effect.Effect<void, never, any>) | undefined
   readonly registerFieldProgram: (
     program: unknown,
-    registerOptions?: { readonly bumpReason?: unknown; readonly exportStaticIr?: boolean },
+    registerOptions?: {
+      readonly bumpReason?: unknown
+      readonly exportStaticIr?: boolean
+    },
   ) => void
   readonly enqueueFieldValidateRequest: (request: unknown) => void
   readonly getModuleFieldsSnapshot: () => ModuleFields.ModuleFieldsSnapshot | undefined
@@ -138,6 +144,10 @@ export type RuntimeInternalsTxnLanes = {
   readonly resolveTxnLanePolicy: () => Effect.Effect<ResolvedTxnLanePolicy, never, any>
 }
 
+export type RuntimeInternalsRuntimeStore = {
+  readonly registerSnapshot: (runtimeStore: RuntimeStore) => void
+}
+
 /**
  * RuntimeInternals（Internal Hooks Runtime Service）
  *
@@ -155,6 +165,7 @@ export interface RuntimeInternals {
   readonly txn: RuntimeInternalsTxn
   readonly concurrency: RuntimeInternalsConcurrency
   readonly txnLanes: RuntimeInternalsTxnLanes
+  readonly runtimeStore?: RuntimeInternalsRuntimeStore
   readonly fields: RuntimeInternalsFields
   readonly effects: RuntimeInternalsEffects
   readonly devtools: RuntimeInternalsDevtools

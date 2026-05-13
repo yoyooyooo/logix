@@ -182,9 +182,7 @@ export const make = <S, A, R = never>(
       runtimeLabel,
     })
     const hotLifecycleOwner = yield* HotLifecycle.getCurrentRuntimeHotLifecycleOwner()
-    const hotLifecycle = hotLifecycleOwner
-      ? HotLifecycle.makeRuntimeHotLifecycleContext(hotLifecycleOwner)
-      : undefined
+    const hotLifecycle = hotLifecycleOwner ? HotLifecycle.makeRuntimeHotLifecycleContext(hotLifecycleOwner) : undefined
     if (hotLifecycle) {
       hotLifecycle.register({
         resourceId: `${hotLifecycle.owner.ownerId}::module:${moduleInstanceKey}`,
@@ -204,7 +202,8 @@ export const make = <S, A, R = never>(
         category: 'subscription',
         moduleId,
         moduleInstanceId: instanceId,
-        cleanup: () => PubSub.shutdown(commitHub).pipe(Effect.catchCause(() => Effect.void)) as Effect.Effect<void, never, never>,
+        cleanup: () =>
+          PubSub.shutdown(commitHub).pipe(Effect.catchCause(() => Effect.void)) as Effect.Effect<void, never, never>,
       })
       hotLifecycle.register({
         resourceId: `${hotLifecycle.owner.ownerId}::subscription:${moduleInstanceKey}:action-commit`,
@@ -212,7 +211,11 @@ export const make = <S, A, R = never>(
         moduleId,
         moduleInstanceId: instanceId,
         cleanup: () =>
-          PubSub.shutdown(actionCommitHub).pipe(Effect.catchCause(() => Effect.void)) as Effect.Effect<void, never, never>,
+          PubSub.shutdown(actionCommitHub).pipe(Effect.catchCause(() => Effect.void)) as Effect.Effect<
+            void,
+            never,
+            never
+          >,
       })
     }
     const concurrencyDiagnostics = yield* ConcurrencyDiagnostics.make({
@@ -225,7 +228,10 @@ export const make = <S, A, R = never>(
     // - Otherwise read the default from the Runtime-level StateTransactionConfig service.
     // - Finally fall back to NODE_ENV-based defaults.
     const runtimeConfigOpt = yield* Effect.serviceOption(
-      StateTransactionConfigTag as unknown as ServiceMap.Key<any, { instrumentation?: StateTransactionInstrumentation }>,
+      StateTransactionConfigTag as unknown as ServiceMap.Key<
+        any,
+        { instrumentation?: StateTransactionInstrumentation }
+      >,
     )
     const runtimeInstrumentation: StateTransactionInstrumentation | undefined = Option.isSome(runtimeConfigOpt)
       ? runtimeConfigOpt.value.instrumentation
@@ -265,19 +271,20 @@ export const make = <S, A, R = never>(
         category: 'subscription',
         moduleId,
         moduleInstanceId: instanceId,
-        cleanup: () => PubSub.shutdown(actionHub).pipe(Effect.catchCause(() => Effect.void)) as Effect.Effect<void, never, never>,
+        cleanup: () =>
+          PubSub.shutdown(actionHub).pipe(Effect.catchCause(() => Effect.void)) as Effect.Effect<void, never, never>,
       })
     }
 
     const convergePlanCacheCapacity = DEFAULT_CONVERGE_PLAN_CACHE_CAPACITY
     const fieldState: FieldRuntimeState = makeFieldRuntimeState()
 
-	    // Cached list-path set (derived from listConfigs) for txn index evidence recording.
-	    // - undefined => no list fields; keep recordPatch overhead at ~0 for non-list modules.
-	    let listPathSet: ReadonlySet<string> | undefined = undefined
+    // Cached list-path set (derived from listConfigs) for txn index evidence recording.
+    // - undefined => no list fields; keep recordPatch overhead at ~0 for non-list modules.
+    let listPathSet: ReadonlySet<string> | undefined = undefined
 
-	    let externalOwnedFieldPaths: ReadonlyArray<FieldPath> = []
-	    let externalOwnedFieldPathKeys: ReadonlySet<string> = new Set()
+    let externalOwnedFieldPaths: ReadonlyArray<FieldPath> = []
+    let externalOwnedFieldPathKeys: ReadonlySet<string> = new Set()
 
     const rowIdStore = new RowId.RowIdStore(instanceId)
     const selectorGraph = SelectorGraph.make<S>({
@@ -294,17 +301,17 @@ export const make = <S, A, R = never>(
     // - Maintain a single active transaction per ModuleRuntime;
     // - Aggregate state writes from all entrypoints on this instance (dispatch / field refresh / source-refresh, etc.);
     // - New entrypoints (e.g. service writebacks / devtools operations) must also go through the same context + queue.
-	    const txnContext = StateTransaction.makeContext<S>({
-	      moduleId,
-	      instanceId,
-	      instrumentation,
-	      getFieldPathIdRegistry: () => {
-	        const convergeIr: any = (fieldState.program as any)?.convergeIr
-	        if (!convergeIr || convergeIr.configError) return undefined
-	        return convergeIr.fieldPathIdRegistry
-	      },
-	      getListPathSet: () => listPathSet,
-	    })
+    const txnContext = StateTransaction.makeContext<S>({
+      moduleId,
+      instanceId,
+      instrumentation,
+      getFieldPathIdRegistry: () => {
+        const convergeIr: any = (fieldState.program as any)?.convergeIr
+        if (!convergeIr || convergeIr.configError) return undefined
+        return convergeIr.fieldPathIdRegistry
+      },
+      getListPathSet: () => listPathSet,
+    })
 
     const recordStatePatch: RuntimeInternals['txn']['recordStatePatch'] = (
       path,
@@ -344,7 +351,10 @@ export const make = <S, A, R = never>(
 
         const resolved = toFieldPathOrStar(path)
 
-        const throwViolation = (details: { readonly resolvedPath?: FieldPath | '*'; readonly owned?: FieldPath }): never => {
+        const throwViolation = (details: {
+          readonly resolvedPath?: FieldPath | '*'
+          readonly owned?: FieldPath
+        }): never => {
           const owned = details.owned ?? externalOwnedFieldPaths[0]
           const ownedPath = owned ? owned.join('.') : '<unknown>'
           const resolvedPath =
@@ -511,11 +521,15 @@ export const make = <S, A, R = never>(
       )
 
     const readCurrentOpSeq = (): Effect.Effect<number | undefined> =>
-      Effect.service(Debug.currentOpSeq).pipe(Effect.orDie).pipe(
-        Effect.map((opSeqRaw) =>
-          typeof opSeqRaw === 'number' && Number.isFinite(opSeqRaw) && opSeqRaw >= 0 ? Math.floor(opSeqRaw) : undefined,
-        ),
-      )
+      Effect.service(Debug.currentOpSeq)
+        .pipe(Effect.orDie)
+        .pipe(
+          Effect.map((opSeqRaw) =>
+            typeof opSeqRaw === 'number' && Number.isFinite(opSeqRaw) && opSeqRaw >= 0
+              ? Math.floor(opSeqRaw)
+              : undefined,
+          ),
+        )
 
     const makeTxnQueueBuiltin = makeEnqueueTransaction({
       moduleId: options.moduleId,
@@ -542,7 +556,11 @@ export const make = <S, A, R = never>(
       runtimeServicesOverrides,
     )
 
-    const enqueueTransactionBase = yield* withRuntimeServiceBuiltins('txnQueue', makeTxnQueueBuiltin, enqueueTxnSel.impl.make)
+    const enqueueTransactionBase = yield* withRuntimeServiceBuiltins(
+      'txnQueue',
+      makeTxnQueueBuiltin,
+      enqueueTxnSel.impl.make,
+    )
 
     const makeOperationRunnerBuiltin = Effect.succeed(
       makeRunOperation({
@@ -587,6 +605,7 @@ export const make = <S, A, R = never>(
     // - Helps Devtools show "Current State" even before any business interaction.
     // - Provides frame 0 for the timeline so later events can build time-travel views on top of it.
     const initialSnapshot = yield* SubscriptionRef.get(stateRef)
+    let committedSnapshot = initialSnapshot
     yield* runOperation(
       'state',
       'state:init',
@@ -600,6 +619,16 @@ export const make = <S, A, R = never>(
       }),
     )
 
+    const registerRuntimeStoreSnapshot = (runtimeStore: { registerModuleInstance: (args: unknown) => void }): void => {
+      runtimeStore.registerModuleInstance({
+        moduleId,
+        instanceId,
+        moduleInstanceKey,
+        initialState: committedSnapshot,
+        hotLifecycle,
+      })
+    }
+
     const runtimeStoreOpt = yield* Effect.serviceOption(
       RuntimeStoreTag as unknown as ServiceMap.Key<
         any,
@@ -610,13 +639,7 @@ export const make = <S, A, R = never>(
       >,
     )
     if (Option.isSome(runtimeStoreOpt)) {
-      runtimeStoreOpt.value.registerModuleInstance({
-        moduleId,
-        instanceId,
-        moduleInstanceKey,
-        initialState: initialSnapshot,
-        hotLifecycle,
-      })
+      registerRuntimeStoreSnapshot(runtimeStoreOpt.value)
     }
 
     const rootContextSvcOpt = yield* Effect.serviceOption(RootContextTag as unknown as ServiceMap.Key<any, RootContext>)
@@ -625,14 +648,19 @@ export const make = <S, A, R = never>(
     const tickSchedulerOpt = (yield* Effect.serviceOption(
       TickSchedulerTag as unknown as ServiceMap.Key<any, TickSchedulerService>,
     )) as Option.Option<TickSchedulerService>
-    let tickSchedulerCached: TickSchedulerService | undefined = Option.isSome(tickSchedulerOpt) ? tickSchedulerOpt.value : undefined
+    let tickSchedulerCached: TickSchedulerService | undefined = Option.isSome(tickSchedulerOpt)
+      ? tickSchedulerOpt.value
+      : undefined
 
     const readTickSchedulerFromRootContext = (root: RootContext | undefined): TickSchedulerService | undefined => {
       if (!root?.context) {
         return undefined
       }
 
-      const fromRoot = ServiceMap.getOption(root.context, TickSchedulerTag as any) as Option.Option<TickSchedulerService>
+      const fromRoot = ServiceMap.getOption(
+        root.context,
+        TickSchedulerTag as any,
+      ) as Option.Option<TickSchedulerService>
       return Option.isSome(fromRoot) ? fromRoot.value : undefined
     }
 
@@ -679,6 +707,7 @@ export const make = <S, A, R = never>(
         recordStatePatch,
         onCommit: ({ state, meta, transaction, diagnosticsLevel }) =>
           Effect.gen(function* () {
+            committedSnapshot = state
             let scheduler = tickSchedulerCached
             if (!scheduler) {
               scheduler = yield* refreshTickSchedulerFromEnv()
@@ -715,8 +744,7 @@ export const make = <S, A, R = never>(
                 severity: 'error',
                 message:
                   'TickScheduler service is not visible in ModuleRuntime.onCommit; tickSeq will not advance and RuntimeStore subscribers will not flush.',
-                hint:
-                  'Ensure TickSchedulerTag is available in the fiber Env for logic/task/txnQueue execution (AppRuntime baseLayer + RootContext wiring).',
+                hint: 'Ensure TickSchedulerTag is available in the fiber Env for logic/task/txnQueue execution (AppRuntime baseLayer + RootContext wiring).',
                 kind: 'missing_tick_scheduler',
               })
             }
@@ -743,13 +771,13 @@ export const make = <S, A, R = never>(
 
             if (scheduler) {
               const opSeq = yield* readCurrentOpSeq()
-                let resolvedSchedulingPolicy: RuntimeStoreModuleCommit['schedulingPolicy'] | undefined
-                if (diagnosticsLevel !== 'off') {
-                  const resolved = yield* resolveConcurrencyPolicyFast()
-                  resolvedSchedulingPolicy = {
-                    configScope: resolved.configScope,
-                    concurrencyLimit: resolved.concurrencyLimit,
-                    allowUnbounded: resolved.allowUnbounded,
+              let resolvedSchedulingPolicy: RuntimeStoreModuleCommit['schedulingPolicy'] | undefined
+              if (diagnosticsLevel !== 'off') {
+                const resolved = yield* resolveConcurrencyPolicyFast()
+                resolvedSchedulingPolicy = {
+                  configScope: resolved.configScope,
+                  concurrencyLimit: resolved.concurrencyLimit,
+                  allowUnbounded: resolved.allowUnbounded,
                   losslessBackpressureCapacity: resolved.losslessBackpressureCapacity,
                   pressureWarningThreshold: resolved.pressureWarningThreshold,
                   warningCooldownMs: resolved.warningCooldownMs,
@@ -772,22 +800,22 @@ export const make = <S, A, R = never>(
         runOperation,
         txnContext,
         fieldConvergeTimeSlicing: fieldConvergeTimeSlicingState,
-	        fieldRuntime: {
-	          getProgram: () => fieldState.program,
-	          getConvergeStaticIrDigest: () => fieldState.convergeStaticIrDigest,
-	          getConvergePlanCache: () => fieldState.convergePlanCache,
-	          getConvergeGeneration: () => fieldState.convergeGeneration,
-	          getPendingCacheMissReason: () => fieldState.pendingCacheMissReason,
-	          getPendingCacheMissReasonCount: () => fieldState.pendingCacheMissReasonCount,
-	          setPendingCacheMissReason: (next) => {
-	            fieldState.pendingCacheMissReason = next
-	            if (next == null) {
-	              fieldState.pendingCacheMissReasonCount = 0
-	            }
-	          },
-	          rowIdStore,
-	          getListConfigs: () => fieldState.listConfigs,
-	        },
+        fieldRuntime: {
+          getProgram: () => fieldState.program,
+          getConvergeStaticIrDigest: () => fieldState.convergeStaticIrDigest,
+          getConvergePlanCache: () => fieldState.convergePlanCache,
+          getConvergeGeneration: () => fieldState.convergeGeneration,
+          getPendingCacheMissReason: () => fieldState.pendingCacheMissReason,
+          getPendingCacheMissReasonCount: () => fieldState.pendingCacheMissReasonCount,
+          setPendingCacheMissReason: (next) => {
+            fieldState.pendingCacheMissReason = next
+            if (next == null) {
+              fieldState.pendingCacheMissReasonCount = 0
+            }
+          },
+          rowIdStore,
+          getListConfigs: () => fieldState.listConfigs,
+        },
         resolveFieldConvergeConfig,
         isDevEnv,
         txnHistory,
@@ -820,7 +848,11 @@ export const make = <S, A, R = never>(
       readonly dirtyPathsSnapshot: ReadonlyArray<StateTransaction.StatePatchPath>
       readonly dirtyAllReason?: DirtyAllReason
       readonly lane: 'urgent' | 'nonUrgent'
-      readonly slice?: { readonly start: number; readonly end: number; readonly total: number }
+      readonly slice?: {
+        readonly start: number
+        readonly end: number
+        readonly total: number
+      }
       readonly deferredStepIds?: Int32Array
       readonly captureOpSeq?: boolean
       readonly emitLaneEvidence?: (anchor: {
@@ -828,7 +860,11 @@ export const make = <S, A, R = never>(
         readonly txnId?: string
         readonly opSeq?: number
       }) => Effect.Effect<void, never, never>
-    }): Effect.Effect<{ readonly txnSeq: number; readonly txnId?: string; readonly opSeq?: number }> => {
+    }): Effect.Effect<{
+      readonly txnSeq: number
+      readonly txnId?: string
+      readonly opSeq?: number
+    }> => {
       let capturedTxnSeq = 0
       let capturedTxnId: string | undefined = undefined
       let capturedOpSeq: number | undefined = undefined
@@ -916,8 +952,7 @@ export const make = <S, A, R = never>(
               return
             }
 
-            const hasBacklog =
-              hasFieldConvergeTimeSlicingBacklog(fieldConvergeTimeSlicingState)
+            const hasBacklog = hasFieldConvergeTimeSlicingBacklog(fieldConvergeTimeSlicingState)
             if (!hasBacklog) {
               return
             }
@@ -975,9 +1010,9 @@ export const make = <S, A, R = never>(
           }
 
           const captured = fieldConvergeTimeSlicingState.capturedContext
-          const txnLanePolicy = yield* captured?.overrides
+          const txnLanePolicy = yield* (captured?.overrides
             ? Effect.provideService(resolveTxnLanePolicy(), StateTransactionOverridesTag, captured.overrides)
-            : resolveTxnLanePolicy()
+            : resolveTxnLanePolicy())
 
           const shouldEmitLaneEvidence = captured != null && captured.diagnosticsLevel !== 'off'
           const shouldEmitLaneEvidenceForPolicy =
@@ -1051,8 +1086,7 @@ export const make = <S, A, R = never>(
               }),
             )
 
-            const hasPending =
-              hasFieldConvergeTimeSlicingBacklog(fieldConvergeTimeSlicingState)
+            const hasPending = hasFieldConvergeTimeSlicingBacklog(fieldConvergeTimeSlicingState)
             if (!hasPending) {
               return
             }
@@ -1060,7 +1094,9 @@ export const make = <S, A, R = never>(
           }
 
           const totalSteps =
-            deferredStepIdsSnapshot.length > 0 ? deferredStepIdsSnapshot.length : program.convergeExecIr.topoOrderDeferredInt32.length
+            deferredStepIdsSnapshot.length > 0
+              ? deferredStepIdsSnapshot.length
+              : program.convergeExecIr.topoOrderDeferredInt32.length
 
           let cursor = 0
           const initialChunkSize = txnLanePolicy.budgetMs <= 1 ? 1 : 32
@@ -1097,9 +1133,15 @@ export const make = <S, A, R = never>(
                   dirtyPathsSnapshot,
                   dirtyAllReason: dirtyAllReasonSnapshot,
                   lane: 'nonUrgent',
-                  slice: { start: sliceStart, end: sliceEnd, total: totalSteps },
+                  slice: {
+                    start: sliceStart,
+                    end: sliceEnd,
+                    total: totalSteps,
+                  },
                   ...(deferredStepIdsSnapshot.length > 0
-                    ? { deferredStepIds: deferredStepIdsSnapshot.subarray(sliceStart, sliceEnd) }
+                    ? {
+                        deferredStepIds: deferredStepIdsSnapshot.subarray(sliceStart, sliceEnd),
+                      }
                     : null),
                   captureOpSeq: shouldEmitLaneEvidence,
                 })
@@ -1110,8 +1152,7 @@ export const make = <S, A, R = never>(
 
             cursor = sliceEnd
 
-            const hasPending =
-              hasFieldConvergeTimeSlicingBacklog(fieldConvergeTimeSlicingState)
+            const hasPending = hasFieldConvergeTimeSlicingBacklog(fieldConvergeTimeSlicingState)
             const willCoalesce = txnLanePolicy.allowCoalesce && !lagExceeded && hasPending
 
             const elapsedSinceLastYieldMs = Math.max(0, Date.now() - lastYieldAtMs)
@@ -1237,8 +1278,7 @@ export const make = <S, A, R = never>(
             }
           }
 
-          const hasPending =
-            hasFieldConvergeTimeSlicingBacklog(fieldConvergeTimeSlicingState)
+          const hasPending = hasFieldConvergeTimeSlicingBacklog(fieldConvergeTimeSlicingState)
           if (!hasPending) {
             return
           }
@@ -1281,12 +1321,8 @@ export const make = <S, A, R = never>(
     )
     const actionTagHubsByTag = new Map<string, PubSub.PubSub<A>>()
     if (declaredActionTags && declaredActionTags.size > 0) {
-      const topicHubEntries = yield* Effect.forEach(
-        declaredActionTags,
-        (tag) =>
-          PubSub.bounded<A>(actionTopicHubCapacity).pipe(
-            Effect.map((hub) => [tag, hub] as const),
-          ),
+      const topicHubEntries = yield* Effect.forEach(declaredActionTags, (tag) =>
+        PubSub.bounded<A>(actionTopicHubCapacity).pipe(Effect.map((hub) => [tag, hub] as const)),
       )
       for (const [tag, hub] of topicHubEntries) {
         actionTagHubsByTag.set(tag, hub)
@@ -1418,7 +1454,11 @@ export const make = <S, A, R = never>(
     }
 
     const writeDenied = () =>
-      Effect.die(new Error('[ModuleRuntime.ref] state ref is read-only. Use runtime.setState / $.state.update / $.state.mutate instead.'))
+      Effect.die(
+        new Error(
+          '[ModuleRuntime.ref] state ref is read-only. Use runtime.setState / $.state.update / $.state.mutate instead.',
+        ),
+      )
 
     const denyPublish = (_value: unknown): Effect.Effect<boolean> => writeDenied() as Effect.Effect<boolean>
 
@@ -1507,7 +1547,8 @@ export const make = <S, A, R = never>(
       actions$: actionsStream,
       actionsByTag$: actionsByTagStream,
       actionsWithMeta$: Stream.fromPubSub(actionCommitHub),
-      changes: <V>(selector: (s: S) => V) => Stream.map(SubscriptionRef.changes(stateRef), selector).pipe(Stream.changes),
+      changes: <V>(selector: (s: S) => V) =>
+        Stream.map(SubscriptionRef.changes(stateRef), selector).pipe(Stream.changes),
       changesWithMeta: <V>(selector: (s: S) => V) =>
         Stream.map(fromCommitHub, ({ value, meta }) => ({
           value: selector(value),
@@ -1664,9 +1705,15 @@ export const make = <S, A, R = never>(
 
     // Optional: when RunSession/EvidenceCollector is in scope, write runtime services evidence into the collector.
     // By default (non-trial-run), Env does not contain EvidenceCollectorTag, so this adds no overhead.
-      const collectorOpt = yield* Effect.serviceOption(
-        EvidenceCollectorTag as unknown as ServiceMap.Key<any, { setKernelImplementationRef: (x: unknown) => void; setRuntimeServicesEvidence: (x: unknown) => void }>,
-      )
+    const collectorOpt = yield* Effect.serviceOption(
+      EvidenceCollectorTag as unknown as ServiceMap.Key<
+        any,
+        {
+          setKernelImplementationRef: (x: unknown) => void
+          setRuntimeServicesEvidence: (x: unknown) => void
+        }
+      >,
+    )
     if (Option.isSome(collectorOpt)) {
       collectorOpt.value.setKernelImplementationRef(kernelImplementationRef)
       const level = yield* Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie)
@@ -1698,7 +1745,9 @@ export const make = <S, A, R = never>(
 
     for (const imported of options.imports ?? []) {
       const importedModuleId =
-        imported && (typeof imported === 'object' || typeof imported === 'function') && typeof (imported as any).id === 'string'
+        imported &&
+        (typeof imported === 'object' || typeof imported === 'function') &&
+        typeof (imported as any).id === 'string'
           ? ((imported as any).id as string)
           : undefined
 
@@ -1793,7 +1842,9 @@ export const make = <S, A, R = never>(
 
     const moduleFieldProgram = options.tag ? getModuleFieldsProgram(options.tag as any) : undefined
     if (moduleFieldProgram) {
-      registerFieldProgram(moduleFieldProgram as any, { bumpReason: 'logic_installed' as any })
+      registerFieldProgram(moduleFieldProgram as any, {
+        bumpReason: 'logic_installed' as any,
+      })
     }
 
     if (!fieldState.program) {
@@ -1930,6 +1981,9 @@ export const make = <S, A, R = never>(
       },
       txnLanes: {
         resolveTxnLanePolicy,
+      },
+      runtimeStore: {
+        registerSnapshot: registerRuntimeStoreSnapshot as any,
       },
       fields: {
         rowIdStore,

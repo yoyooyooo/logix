@@ -1,0 +1,82 @@
+name: logix-perf (evidence structure)
+
+on:
+  pull_request:
+    paths:
+      - ".github/scripts/logix-perf-*.cjs"
+      - ".github/workflows/logix-perf-*.yml"
+      - "docs/next/adversarial-performance-matrix.md"
+      - "docs/next/kernel-performance-*.md"
+      - "docs/standards/kernel-performance-observability-standard.md"
+      - "packages/logix-perf-evidence/**"
+      - "specs/231-adversarial-performance-matrix/**"
+      - "specs/232-p0-kernel-precision-fallback-closure/**"
+      - "specs/233-p1-kernel-fixed-cost-and-diagnostics-closure/**"
+      - "specs/234-p2-examples-playground-perf-isolation/**"
+      - "specs/235-kernel-performance-convergence-final-gate/**"
+  push:
+    paths:
+      - ".github/scripts/logix-perf-*.cjs"
+      - ".github/workflows/logix-perf-*.yml"
+      - "docs/next/adversarial-performance-matrix.md"
+      - "docs/next/kernel-performance-*.md"
+      - "docs/standards/kernel-performance-observability-standard.md"
+      - "packages/logix-perf-evidence/**"
+      - "specs/231-adversarial-performance-matrix/**"
+      - "specs/232-p0-kernel-precision-fallback-closure/**"
+      - "specs/233-p1-kernel-fixed-cost-and-diagnostics-closure/**"
+      - "specs/234-p2-examples-playground-perf-isolation/**"
+      - "specs/235-kernel-performance-convergence-final-gate/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: logix-perf-evidence-structure-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evidence-structure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      CI: true
+      TURBO_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.9
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Perf evidence preflight
+        run: pnpm -C packages/logix-perf-evidence run ci:preflight
+
+      - name: Convergence evidence structure tests
+        run: |
+          pnpm -C packages/logix-perf-evidence test \
+            scripts/ci.kernel-performance-convergence-assembly-input.test.ts \
+            scripts/assemble-kernel-performance-convergence-manifest.test.ts \
+            scripts/ci.kernel-performance-convergence-stage-gate.test.ts \
+            scripts/ci.kernel-performance-knob-snapshot.test.ts \
+            scripts/ci.kernel-performance-trend-analyze.test.ts \
+            scripts/ci.examples-playground-isolation-report.test.ts \
+            scripts/ci.adversarial-matrix-report.test.ts \
+            scripts/lib/adversarial-matrix-policy.test.ts
+
+      - name: Perf evidence typecheck
+        run: pnpm -C packages/logix-perf-evidence typecheck

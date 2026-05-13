@@ -21,7 +21,11 @@ import {
   type HostScheduler,
 } from './runtime/core/HostScheduler.js'
 import type { RuntimeStore } from './runtime/core/RuntimeStore.js'
-import { getBoundInternals, getModuleFieldsProgram, getRuntimeInternals } from './runtime/core/runtimeInternalsAccessor.js'
+import {
+  getBoundInternals,
+  getModuleFieldsProgram,
+  getRuntimeInternals,
+} from './runtime/core/runtimeInternalsAccessor.js'
 import { installModuleFieldsExpertPath } from './runtime/core/moduleFieldsExpertPath.js'
 import * as ProcessRuntime from './runtime/core/process/ProcessRuntime.js'
 import * as BoundApiRuntime from './runtime/core/BoundApiRuntime.js'
@@ -150,10 +154,7 @@ export const getOrCreateRuntimeHotLifecycleOwner = (
   return owner
 }
 
-export const bindRuntimeHotLifecycleOwner = (
-  runtime: object,
-  owner: HotLifecycle.RuntimeHotLifecycleOwner,
-): void => {
+export const bindRuntimeHotLifecycleOwner = (runtime: object, owner: HotLifecycle.RuntimeHotLifecycleOwner): void => {
   RUNTIME_HOT_LIFECYCLE_OWNER_CACHE.set(runtime, owner)
 }
 
@@ -176,6 +177,20 @@ export const getRuntimeStore = (runtime: ManagedRuntime.ManagedRuntime<any, any>
   return store
 }
 
+export const ensureRuntimeStoreModuleSnapshot = (
+  runtime: ManagedRuntime.ManagedRuntime<any, any>,
+  moduleRuntime: { readonly moduleId: string; readonly instanceId: string },
+): void => {
+  const store = getRuntimeStore(runtime)
+  const moduleInstanceKey = `${moduleRuntime.moduleId}::${moduleRuntime.instanceId}` as const
+  if (store.hasModuleState(moduleInstanceKey)) {
+    return
+  }
+
+  const internals = getRuntimeInternals(moduleRuntime as any)
+  internals.runtimeStore?.registerSnapshot(store)
+}
+
 const HOST_SCHEDULER_CACHE = new WeakMap<object, HostScheduler>()
 
 export const getHostScheduler = (runtime: ManagedRuntime.ManagedRuntime<any, any>): HostScheduler => {
@@ -196,7 +211,8 @@ export const makeDeterministicHostScheduler = (): DeterministicHostScheduler => 
 export const hostSchedulerTestLayer = (scheduler: HostScheduler): Layer.Layer<any, never, never> =>
   hostSchedulerTestStubLayer(scheduler as any)
 
-export const tickSchedulerTestLayer = (config?: TickSchedulerConfig): Layer.Layer<any, never, never> => tickSchedulerLayer(config)
+export const tickSchedulerTestLayer = (config?: TickSchedulerConfig): Layer.Layer<any, never, never> =>
+  tickSchedulerLayer(config)
 
 export const __unsafeSetGlobalHostScheduler = (next: HostScheduler | undefined): void => {
   __unsafeSetGlobalHostSchedulerForTests(next)
@@ -237,12 +253,19 @@ export const exportFieldStaticIr = (
     readonly version?: string
   },
 ): FieldStaticIr => {
-  if (moduleId === undefined && typeof programOrArgs === 'object' && programOrArgs !== null && 'program' in programOrArgs) {
-    return exportFieldStaticIrInternal(programOrArgs as {
-      readonly program: FieldProgram<any>
-      readonly moduleId: string
-      readonly version?: string
-    })
+  if (
+    moduleId === undefined &&
+    typeof programOrArgs === 'object' &&
+    programOrArgs !== null &&
+    'program' in programOrArgs
+  ) {
+    return exportFieldStaticIrInternal(
+      programOrArgs as {
+        readonly program: FieldProgram<any>
+        readonly moduleId: string
+        readonly version?: string
+      },
+    )
   }
 
   return exportFieldStaticIrInternal({
@@ -259,7 +282,13 @@ export const fieldCleanup = FieldRuntimeInternal.cleanup
 export const makeFieldSourceWiring = FieldRuntimeInternal.makeSourceWiring
 export const makeBound = BoundApiRuntime.make
 
-export const withModuleFieldDeclarations = <M extends { readonly id: string; readonly tag: any; readonly stateSchema: any }>(
+export const withModuleFieldDeclarations = <
+  M extends {
+    readonly id: string
+    readonly tag: any
+    readonly stateSchema: any
+  },
+>(
   module: M,
   fields: unknown,
 ): M => {
@@ -299,17 +328,24 @@ export const recordStatePatch = (
 
 export const runWithStateTransaction = <E, R>(
   runtime: object,
-  origin: { readonly kind: string; readonly name?: string; readonly details?: unknown },
+  origin: {
+    readonly kind: string
+    readonly name?: string
+    readonly details?: unknown
+  },
   body: () => Effect.Effect<void, E, R>,
 ): Effect.Effect<void, E, R> =>
   getRuntimeInternals(runtime).txn.runWithStateTransaction(origin as any, body as any) as any
 
 export const runWithBoundStateTransaction = <E, R>(
   bound: object,
-  origin: { readonly kind: string; readonly name?: string; readonly details?: unknown },
+  origin: {
+    readonly kind: string
+    readonly name?: string
+    readonly details?: unknown
+  },
   body: () => Effect.Effect<void, E, R>,
-): Effect.Effect<void, E, R> =>
-  getBoundInternals(bound).txn.runWithStateTransaction(origin as any, body as any) as any
+): Effect.Effect<void, E, R> => getBoundInternals(bound).txn.runWithStateTransaction(origin as any, body as any) as any
 
 export const registerBoundStart = (
   bound: object,
