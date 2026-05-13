@@ -68,8 +68,8 @@ jobs:
       - name: Verify release lane
         run: pnpm ci:release
 
-      - name: Install Playwright Chromium deps
-        run: pnpm exec playwright install --with-deps chromium
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install chromium
 
       - name: Browser release smoke
         run: pnpm test:browser:release

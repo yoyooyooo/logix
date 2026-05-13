@@ -123,8 +123,8 @@ jobs:
       - name: Perf preflight
         run: pnpm -C packages/logix-perf-evidence run ci:preflight
 
-      - name: Install Playwright Chromium deps
-        run: pnpm exec playwright install --with-deps chromium
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install chromium
 
       - name: Collect snapshot
         id: collect

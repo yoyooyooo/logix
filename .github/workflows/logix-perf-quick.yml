@@ -195,8 +195,8 @@ jobs:
             pnpm -C packages/logix-perf-evidence run ci:preflight
           fi
 
-      - name: Install Playwright Chromium deps
-        run: pnpm exec playwright install --with-deps chromium
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install chromium
 
       - name: Pin perf matrix (for strict comparability)
         run: |
