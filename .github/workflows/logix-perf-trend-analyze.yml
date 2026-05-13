@@ -1,0 +1,133 @@
+name: logix-perf (trend analyze)
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "要分析的分支；留空=当前 ref"
+        required: false
+        default: ""
+      perf_profile:
+        description: "要分析的 snapshot profile"
+        required: false
+        default: "default"
+      max_runs:
+        description: "下载最近 N 个 knob snapshot artifacts"
+        required: false
+        default: "8"
+  schedule:
+    - cron: "30 20 * * *"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: logix-perf-trend-analyze-${{ github.event_name == 'schedule' && github.ref || github.event.inputs.branch || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  trend-analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      PERF_PROFILE: default
+      PERF_OUT_DIR: perf/trend
+      PERF_DOWNLOAD_DIR: perf/trend-inputs
+      PERF_MAX_RUNS: "8"
+      PERF_ARTIFACT_NAME: logix-perf-trend-${{ github.run_id }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Compute inputs
+        env:
+          INPUT_BRANCH: ${{ github.event.inputs.branch }}
+          INPUT_PERF_PROFILE: ${{ github.event.inputs.perf_profile }}
+          INPUT_MAX_RUNS: ${{ github.event.inputs.max_runs }}
+        run: |
+          set -euo pipefail
+          BRANCH="${INPUT_BRANCH:-${GITHUB_REF_NAME}}"
+          echo "PERF_BRANCH=$BRANCH" >> "$GITHUB_ENV"
+          if [ -n "${INPUT_PERF_PROFILE:-}" ]; then
+            echo "PERF_PROFILE=$INPUT_PERF_PROFILE" >> "$GITHUB_ENV"
+          fi
+          if [ -n "${INPUT_MAX_RUNS:-}" ]; then
+            echo "PERF_MAX_RUNS=$INPUT_MAX_RUNS" >> "$GITHUB_ENV"
+          fi
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.9
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download recent knob snapshot artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$PERF_DOWNLOAD_DIR"
+          WORKFLOW_ID="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows" --jq '.workflows[] | select(.path==".github/workflows/logix-perf-knob-snapshot.yml") | .id' | head -n 1 || true)"
+          if [ -z "$WORKFLOW_ID" ]; then
+            echo "::warning::[logix-perf] knob snapshot workflow id not found"
+            exit 0
+          fi
+          RUNS_JSON="$RUNNER_TEMP/logix-perf-knob-snapshot-runs.json"
+          gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/$WORKFLOW_ID/runs" \
+            -f "branch=$PERF_BRANCH" \
+            -f "status=completed" \
+            -f "per_page=50" > "$RUNS_JSON" || {
+            echo "::warning::[logix-perf] cannot list knob snapshot runs"
+            exit 0
+          }
+          node -e '
+            const fs = require("node:fs")
+            const payload = JSON.parse(fs.readFileSync(process.argv[1], "utf8"))
+            const max = Number(process.argv[2] || "8")
+            const runs = Array.isArray(payload.workflow_runs) ? payload.workflow_runs : []
+            for (const run of runs.slice(0, max)) console.log(run.id)
+          ' "$RUNS_JSON" "$PERF_MAX_RUNS" > "$RUNNER_TEMP/logix-perf-knob-snapshot-run-ids.txt"
+          while IFS= read -r RUN_ID; do
+            [ -n "$RUN_ID" ] || continue
+            ARTIFACTS_JSON="$RUNNER_TEMP/logix-perf-artifacts-$RUN_ID.json"
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts" > "$ARTIFACTS_JSON" || continue
+            ARTIFACT_NAME="$(node -e '
+              const fs = require("node:fs")
+              const payload = JSON.parse(fs.readFileSync(process.argv[1], "utf8"))
+              const artifacts = Array.isArray(payload.artifacts) ? payload.artifacts : []
+              const item = artifacts.find((artifact) => !artifact.expired && String(artifact.name || "").startsWith("logix-perf-knob-snapshot-"))
+              if (item) process.stdout.write(String(item.name))
+            ' "$ARTIFACTS_JSON")"
+            [ -n "$ARTIFACT_NAME" ] || continue
+            TARGET="$PERF_DOWNLOAD_DIR/run-$RUN_ID"
+            mkdir -p "$TARGET"
+            gh run download "$RUN_ID" --name "$ARTIFACT_NAME" --dir "$TARGET/unpacked" || continue
+          done < "$RUNNER_TEMP/logix-perf-knob-snapshot-run-ids.txt"
+
+      - name: Analyze trend
+        if: always()
+        run: |
+          pnpm -C packages/logix-perf-evidence run ci:kernel-performance-trend-analyze -- \
+            --input-dir "$PERF_DOWNLOAD_DIR" \
+            --out-dir "$PERF_OUT_DIR" \
+            --branch "$PERF_BRANCH" \
+            --profile "$PERF_PROFILE"
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.PERF_ARTIFACT_NAME }}
+          path: ${{ env.PERF_OUT_DIR }}
+          if-no-files-found: warn

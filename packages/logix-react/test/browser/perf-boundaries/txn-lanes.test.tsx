@@ -8,6 +8,7 @@ import * as Logix from '@logixjs/core'
 import matrix from '@logixjs/perf-evidence/assets/matrix.json'
 import { RuntimeProvider } from '../../../src/RuntimeProvider.js'
 import { useModule, useSelector } from '../../../src/Hooks.js'
+import { fieldValue } from '../../../src/FormProjection.js'
 import { emitPerfReport, type PerfReport } from './protocol.js'
 import {
   getProfileConfig,
@@ -453,7 +454,7 @@ const App: React.FC<{
 }) => {
   const module = useModule(moduleTag) as any
   const b = useSelector(module, (s) => (s as any).b as number)
-  const dLast = useSelector(module, (s) => (s as any)[lastKey] as number)
+  const dLast = useSelector(module, fieldValue(lastKey))
   const setA0Ref = React.useRef<HTMLButtonElement>(null)
   const setA1Ref = React.useRef<HTMLButtonElement>(null)
   const urgentRef = React.useRef<HTMLButtonElement>(null)

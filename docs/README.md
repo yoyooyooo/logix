@@ -59,6 +59,7 @@ version: 17
 - [User Docs Writing Standard](./standards/user-docs-writing-standard.md)
 - [Effect V4 Baseline](./standards/effect-v4-baseline.md)
 - [Harness And Proof Assets Standard](./standards/harness-and-proof-assets-standard.md)
+- [Kernel Performance Observability Standard](./standards/kernel-performance-observability-standard.md)
 
 ## 导航说明
 

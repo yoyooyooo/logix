@@ -16,6 +16,8 @@ which claim the evidence can support
 which claim remains forbidden
 ```
 
+The long-running cell, pressure-knob, counter-census, marker, and CI artifact workflow is governed by [Kernel Performance Observability Standard](../standards/kernel-performance-observability-standard.md). This page defines the 231 matrix role; the standard defines how evidence is collected and compared over time.
+
 ## Matrix Identity
 
 ```text

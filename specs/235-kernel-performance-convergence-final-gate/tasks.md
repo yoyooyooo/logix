@@ -12,7 +12,8 @@
 
 - [ ] T501 Apply the classifier patch.
 - [ ] T502 Run focused classifier tests.
-- [ ] T503 Create `perf/assembly.<profile>.json` from local reports and sentinel snapshots.
+- [ ] T503 Create `perf/assembly.<profile>.json` from local or CI reports and sentinel snapshots.
+- [ ] T503b Prefer `ci.kernel-performance-convergence-assembly-input.ts` over hand-built assembly JSON.
 - [ ] T503a Run `assemble-kernel-performance-convergence-manifest.ts` to produce `perf/convergence.<profile>.manifest.json`.
 - [ ] T504 Run the final gate and save Markdown/JSON reports.
 - [ ] T505 Update handoff with classification and forbidden claims.
@@ -24,6 +25,9 @@
 - [ ] T900 Run focused tests for this stage.
 - [ ] T901 Collect quick evidence only as a diagnostic clue.
 - [ ] T902 Collect default or soak evidence before any hard claim.
+- [ ] T902a Collect current-commit knob snapshot evidence for pressure vector, counter census, suite status, logs, and markers.
+- [ ] T902b Use same-branch trend analyze only for retained snapshot comparison, not as final convergence proof.
+- [ ] T902c Collect final hard-claim before/after evidence through `logix-perf (convergence)` or an equivalent stable runner artifact chain.
 - [ ] T903 Write report artifacts under `specs/235-kernel-performance-convergence-final-gate/perf/`.
 - [ ] T904 Run `ci.kernel-performance-convergence-stage-gate.ts` against `perf/convergence.<profile>.manifest.json` and write reports under `perf/reports/`.
 

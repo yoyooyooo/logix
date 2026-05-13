@@ -1,0 +1,85 @@
+{
+  "skill_name": "logix-perf-observability-loop",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "我准备做一个会影响 RuntimeStore 和 React useSelector 的需求。先别写代码，帮我规划一下性能观测路径：应该看哪些 pressure knob、owner path、counter，以及 CI artifact 怎么收。",
+      "expected_output": "应进入规划模式，把需求映射到 RuntimeStore/React owner path、pressure knobs、required counters、forbidden migration 和 CI artifact gate。",
+      "files": [],
+      "assertions": [
+        {
+          "name": "maps_requirement_to_owner_and_knobs",
+          "description": "输出必须把需求映射到 runtime owner path 和 pressure knobs。"
+        },
+        {
+          "name": "lists_required_counters",
+          "description": "输出必须列出需要 present + value 的 counters，而不是只说跑性能测试。"
+        },
+        {
+          "name": "defines_ci_artifact_gate",
+          "description": "输出必须说明 PR/push default、soak 或 final gate artifact 如何收集和解释。"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "CI 的 convergence.default.json 里 16 个 required counters missing，同时 default diff 有 regressions/timeouts/stabilityWarnings。你先分析下一步，不要直接重构运行时。",
+      "expected_output": "应先分析 artifact 状态，说明 missing counter 是证据不可判定，优先补采集/marker/counter census，再把 regressions/timeouts 映射到 pressure knob 和 owner path。",
+      "files": [],
+      "assertions": [
+        {
+          "name": "does_not_treat_missing_as_zero",
+          "description": "输出必须明确 missing counter 不能当成 0 或 pass。"
+        },
+        {
+          "name": "prioritizes_evidence_fix_before_runtime_optimization",
+          "description": "当 evidence 不完整时，应优先补证据链，而不是直接优化内核。"
+        },
+        {
+          "name": "classifies_blockers_by_artifact_type",
+          "description": "输出应区分 missing counters、regressions、timeouts 和 stabilityWarnings。"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "这次我要小步快跑连续 push，让 CI artifacts 形成 before/after 对比。帮我决定这步应该怎么切，不要一次混太多改动。",
+      "expected_output": "应按 one pressure knob / one runtime owner / one counter claim / one CI artifact set 切分，并说明 push 产物只是 candidate evidence，不是 hard claim。",
+      "files": [],
+      "assertions": [
+        {
+          "name": "enforces_small_step_tuple",
+          "description": "输出必须收敛到一个 pressure knob、一个 owner path、一个 counter/cost claim。"
+        },
+        {
+          "name": "uses_push_artifacts_as_candidate_evidence",
+          "description": "输出必须说明 PR/push default artifact 是 candidate evidence，不是 final hard claim。"
+        },
+        {
+          "name": "separates_schema_collector_runtime_changes",
+          "description": "输出应避免把 schema、collector 和 runtime optimization 混在同一步。"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "如果某个性能优化需要调整公开 API 或 authoring surface，你怎么和我对齐？假设内部补丁收益不够。",
+      "expected_output": "应触发 API change gate，只输出问题、内部修补不足、建议 API 变化、预期性能证据、影响面和回退/拒绝路径，不直接实施。",
+      "files": [],
+      "assertions": [
+        {
+          "name": "respects_api_change_gate",
+          "description": "涉及公开 API 变化时必须先停在提案层。"
+        },
+        {
+          "name": "ties_api_change_to_evidence",
+          "description": "API 变化必须绑定 expected performance evidence，而不是泛泛说会更快。"
+        },
+        {
+          "name": "states_affected_surface",
+          "description": "输出必须说明影响的 authoring/runtime surface。"
+        }
+      ]
+    }
+  ]
+}

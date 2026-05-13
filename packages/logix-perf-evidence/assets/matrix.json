@@ -21,6 +21,37 @@
       "soak": { "runs": 80, "warmupDiscard": 10, "timeoutMs": 30000 }
     }
   },
+  "matrixPolicy": {
+    "mode": "sparse",
+    "expansionRequires": "blocked-marker-or-maintainer-override",
+    "maxCellsByProfile": {
+      "smoke": 20,
+      "quick": 20,
+      "default": 80,
+      "soak": 120
+    },
+    "requiredAnchors": [
+      "default baseline",
+      "diagnostics off",
+      "diagnostics full",
+      "dirty precision pressure",
+      "source external-store pressure",
+      "selector negative-boundary pressure",
+      "txn burst pressure",
+      "runtime store fanout pressure",
+      "list high-cardinality pressure",
+      "react strict/suspense pressure",
+      "examples/playground isolation pressure"
+    ],
+    "selectedPairs": [
+      "dirty precision x selector",
+      "dirty precision x source",
+      "txn burst x runtime store",
+      "diagnostics full x list high-cardinality",
+      "react strict/suspense x store notify",
+      "playground noise x runtime witness"
+    ]
+  },
   "semantics": {
     "refSyntax": "axis=value[&axis=value...]",
     "relativeBudget": {

@@ -1,17 +1,9 @@
-export type {
-  HostScheduler,
-  DeterministicHostScheduler,
-  TickSchedulerConfig,
-} from './InternalContracts.js'
+export type { HostScheduler, DeterministicHostScheduler, TickSchedulerConfig } from './InternalContracts.js'
 
 export * as Selector from './read-query.js'
 export * as ExternalInput from './external-store.js'
 
-export {
-  getProgramBlueprintId,
-  getProgramRuntimeBlueprint,
-  hasProgramRuntimeBlueprint,
-} from './program.js'
+export { getProgramBlueprintId, getProgramRuntimeBlueprint, hasProgramRuntimeBlueprint } from './program.js'
 
 export type { AnyProgram } from './program.js'
 export type { ProgramRuntimeBlueprint } from './runtime/core/module.js'
@@ -19,6 +11,7 @@ export type { ProgramRuntimeBlueprint } from './runtime/core/module.js'
 export {
   getImportsScope,
   getRuntimeStore,
+  ensureRuntimeStoreModuleSnapshot,
   getHostScheduler,
   getOrCreateRuntimeHotLifecycleOwner,
   bindRuntimeHotLifecycleOwner,

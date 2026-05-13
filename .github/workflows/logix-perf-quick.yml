@@ -49,6 +49,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       PERF_FILES: test/browser/perf-boundaries/diagnostics-overhead.test.tsx
       PERF_PROFILE: smoke
       PERF_DIFF_MODE: strict
@@ -60,7 +61,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -155,18 +156,18 @@ jobs:
         run: git checkout --quiet -f "$HEAD_SHA"
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 9.15.9
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
 
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
@@ -317,7 +318,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.PERF_ARTIFACT_NAME }}
           path: ${{ env.PERF_OUT_DIR }}
@@ -325,7 +326,7 @@ jobs:
 
       - name: PR comment (summary)
         if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require("node:fs")

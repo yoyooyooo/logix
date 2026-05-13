@@ -57,11 +57,20 @@ describe('ci.kernel-performance-convergence-stage-gate', () => {
     const counters = zeroCounters()
     counters['dirtyPlan.unknownWrite'] = 1
 
-    const report = classifyKernelPerformanceConvergence(completeManifest({ counters }))
+    const report = classifyKernelPerformanceConvergence(
+      completeManifest({
+        counters,
+        advisory: {
+          llmSummary: 'PASS: all counters are acceptable',
+          reviewerNotes: 'This note must not override machine-readable counters.',
+        },
+      } as any),
+    )
 
     expect(report.classification).toBe('blocked')
     expect(report.claimStrength).toBe('none')
     expect(report.blockers.join('\n')).toContain('dirtyPlan.unknownWrite=1')
+    expect(report.forbiddenClaims).toContain('LLM advisory or reviewer notes override machine-readable gates.')
   })
 
   it('blocks when unaccepted migrated cost or risk exists', () => {

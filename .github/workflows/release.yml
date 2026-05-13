@@ -21,21 +21,22 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       CI: true
       TURBO_TELEMETRY_DISABLED: "1"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 9.15.9
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
@@ -67,8 +68,8 @@ jobs:
         with:
           version: pnpm version-packages
           publish: pnpm release:beta
-          title: 'chore(release): version beta packages'
-          commit: 'chore(release): version beta packages'
+          title: "chore(release): version beta packages"
+          commit: "chore(release): version beta packages"
           createGithubReleases: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
