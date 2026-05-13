@@ -11,8 +11,8 @@ Logix 是一个 **Effect-native 的前端状态与业务逻辑运行时**。
 
 - Logix 正在积极演进，公开 API 仍可能继续激进收口。
 - 新 runtime 工作只面向 Effect v4。本仓当前固定使用 `effect@4.0.0-beta.28` 及相关 Effect 配套包。
-- 在上游 Effect v4 仍处于 beta 依赖期间，npm 包仍按 prerelease 发布。
-- 目标稳定发布线是 `main`。npm `latest` 稳定版应在 release gate 后明确 cutover，而不是把当前 beta lane 直接改名。规则见 [Release Lane Standard](docs/standards/release-lane-standard.md)。
+- 发布由 tag 驱动。推送 `logix-v*` tag 会触发 npm 发布；普通 `main` push 和 PR 合入不发布。
+- 默认发布通道是 stable `latest`；prerelease 通道使用显式 tag，例如 `logix-v1.2.3-beta.1`。规则见 [Release Lane Standard](docs/standards/release-lane-standard.md)。
 - 当前设计事实源在 [docs/ssot](docs/ssot/README.md)、[docs/standards](docs/standards/README.md) 和 [logix-best-practices](skills/logix-best-practices/SKILL.md)。
 
 ## 默认主链
@@ -148,4 +148,8 @@ pnpm -C apps/docs dev
 - 类型检查：`pnpm typecheck`
 - 代码规范：`pnpm lint`
 - 测试：`pnpm test`（或 `pnpm test:turbo`）
-- Release status：`pnpm release:check`
+- Release plan：`pnpm release:check`
+- 创建默认的 stable patch tag：`pnpm release:tag --push`
+- 创建 stable minor tag：`pnpm release:tag minor --push`
+
+如果 `release:tag` 从干净的本地 `main` 执行，会先自动切到 `release/logix-v<semver>` 再创建 tag。`release:check` 只预览计划。

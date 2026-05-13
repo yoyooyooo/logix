@@ -11,8 +11,8 @@ The current line is forward-only and is treated as the future Logix line.
 
 - Logix is under active development. Public API shape can still be simplified aggressively.
 - New runtime work targets Effect v4 only. The repo currently pins `effect@4.0.0-beta.28` and related Effect packages.
-- npm packages remain prerelease packages while the upstream Effect v4 dependency remains beta.
-- The intended stable lane is `main`. A stable npm `latest` release should be a deliberate cutover after the release gate, not an automatic rename of the current beta lane. See [Release Lane Standard](docs/standards/release-lane-standard.md).
+- Releases are tag-driven. Pushing `logix-v*` tags triggers npm publishing; ordinary `main` pushes and PR merges do not publish.
+- The default release channel is stable `latest`; prerelease channels use explicit tags such as `logix-v1.2.3-beta.1`. See [Release Lane Standard](docs/standards/release-lane-standard.md).
 - Current design facts live in [docs/ssot](docs/ssot/README.md), [docs/standards](docs/standards/README.md), and [logix-best-practices](skills/logix-best-practices/SKILL.md).
 
 ## Default route
@@ -148,4 +148,8 @@ pnpm -C apps/docs dev
 - Typecheck: `pnpm typecheck`
 - Lint: `pnpm lint`
 - Tests: `pnpm test` or `pnpm test:turbo`
-- Release status: `pnpm release:check`
+- Release plan: `pnpm release:check`
+- Create the default stable patch tag: `pnpm release:tag --push`
+- Create a stable minor tag: `pnpm release:tag minor --push`
+
+When `release:tag` runs from a clean local `main` checkout, it automatically switches to `release/logix-v<semver>` before creating the tag. `release:check` only previews the plan.
