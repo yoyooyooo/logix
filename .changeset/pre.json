@@ -20,7 +20,6 @@
     "@logixjs/i18n": "1.0.1",
     "@logixjs/cli": "1.0.1",
     "@logixjs/core": "1.0.1",
-    "@logixjs/core-ng": "1.0.1",
     "@logixjs/devtools-react": "1.0.1",
     "@logixjs/form": "1.0.1",
     "@logixjs/query": "1.0.1",

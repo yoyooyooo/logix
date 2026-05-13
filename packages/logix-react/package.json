@@ -6,6 +6,7 @@
     "url": "https://github.com/yoyooyooo/logix",
     "directory": "packages/logix-react"
   },
+  "description": "React bindings for the current Logix runtime",
   "license": "Apache-2.0",
   "files": [
     "dist/**"

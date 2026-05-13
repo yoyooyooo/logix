@@ -1,7 +1,6 @@
 ---
 '@logixjs/cli': patch
 '@logixjs/core': patch
-'@logixjs/core-ng': patch
 '@logixjs/devtools-react': patch
 '@logixjs/domain': patch
 '@logixjs/form': patch

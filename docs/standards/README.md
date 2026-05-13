@@ -26,6 +26,7 @@ version: 6
 | [Docs Governance](./docs-governance.md) | docs 路由、升格、回写协议 |
 | [User Docs Writing Standard](./user-docs-writing-standard.md) | 用户文档写法、术语、结构与验证门 |
 | [Effect V4 Baseline](./effect-v4-baseline.md) | Effect V4 基线与 repo 约束 |
+| [Release Lane Standard](./release-lane-standard.md) | main / prerelease / stable npm cutover 的发布线规则 |
 | [Logix API Next Guardrails](./logix-api-next-guardrails.md) | 公开主链、热路径、诊断等统一护栏 |
 | [Harness And Proof Assets Standard](./harness-and-proof-assets-standard.md) | harness、proof、fixture、support 与 coverage inventory 的资产卫生规则 |
 | [Kernel Performance Observability Standard](./kernel-performance-observability-standard.md) | runtime/kernel 性能观测、CI artifact、pressure knob、counter census 与 claim gate 规则 |

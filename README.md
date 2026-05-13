@@ -5,8 +5,15 @@
 Logix is an **Effect-native runtime for frontend state and business logic**.
 
 This repository is the incubation monorepo for Logix: runtime packages, the React adapter, devtools, a browser sandbox, and runnable examples.
-It evolves quickly and is **forward-only** (no backward compatibility guarantees).
+It evolves quickly and is **forward-only** (no backward compatibility guarantees). The current line is the future Logix line, not a legacy compatibility branch.
 This README intentionally focuses on Logix; other directories may contain experiments and can change or disappear.
+
+## Project status
+
+- Logix is under active development and the public API may still be aggressively simplified.
+- New runtime work targets Effect v4 only. This repository currently pins `effect@4.0.0-beta.28` and related Effect packages.
+- npm packages are still published as prerelease packages while the upstream Effect v4 dependency remains beta.
+- The intended stable lane is `main`. A stable npm `latest` release should be a deliberate cutover after the release gate, not an automatic rename of the current beta lane. See [Release Lane Standard](docs/standards/release-lane-standard.md).
 
 ## What is Logix for?
 

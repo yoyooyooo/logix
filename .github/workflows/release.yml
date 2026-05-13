@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     branches:
-      - effect-v4
+      - main
   workflow_dispatch:
 
 permissions:
@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   release:
-    if: ${{ github.ref_name == 'effect-v4' }}
+    if: ${{ github.ref_name == 'main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
