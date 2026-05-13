@@ -61,7 +61,7 @@ describe('FieldKernel converge budget config', () => {
 
       const runtime = Logix.Runtime.make(programModule, {
         stateTransaction: { fieldConvergeBudgetMs: 123 },
-        layer: Debug.replace([ring.sink]) as Layer.Layer<any, never, never>,
+        layer: Layer.mergeAll(Debug.replace([ring.sink]), Debug.diagnosticsLevel('light')) as Layer.Layer<any, never, never>,
       })
 
       const program = Effect.gen(function* () {

@@ -337,7 +337,20 @@ export const runModuleLogics = <S, A, R>(args: {
           Effect.sync(() => {
             phaseRef.current = 'run'
           }).pipe(
-            Effect.flatMap(() => Effect.forkScoped(runPhase.pipe(Effect.catchCause(handleLogicFailure)))),
+            Effect.flatMap(() =>
+              Effect.gen(function* () {
+                const started = yield* Deferred.make<void>()
+                yield* Effect.forkScoped(
+                  Effect.succeed(undefined).pipe(
+                    Effect.flatMap(() => Deferred.succeed(started, undefined)),
+                    Effect.flatMap(() => runPhase),
+                    Effect.catchCause(handleLogicFailure),
+                  ),
+                )
+                yield* Deferred.await(started)
+                yield* Effect.yieldNow
+              }),
+            ),
             Effect.asVoid,
           ),
         )

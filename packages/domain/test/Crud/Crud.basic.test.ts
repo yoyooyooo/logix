@@ -55,7 +55,6 @@ describe('Crud.basic', () => {
             expect(self.services.api).toBe(Crud.services.api)
             yield* Deferred.succeed(seedDone, undefined)
           }),
-        { id: 'Seed' },
       )
 
       const Live = Crud.withLogic(Seed).withLayers(Layer.succeed(Crud.services.api, api))

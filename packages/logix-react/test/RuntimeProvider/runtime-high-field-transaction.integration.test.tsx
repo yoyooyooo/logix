@@ -207,14 +207,17 @@ describe('React Runtime high-field transaction integration', () => {
   it('should keep single StateTransaction and single state:update per user dispatch under high field density', async () => {
     const events: CoreDebug.Event[] = []
 
-    const debugLayer = CoreDebug.replace([
-      {
-        record: (event: CoreDebug.Event) =>
-          Effect.sync(() => {
-            events.push(event)
-          }),
-      },
-    ]) as Layer.Layer<any, never, never>
+    const debugLayer = Layer.mergeAll(
+      CoreDebug.replace([
+        {
+          record: (event: CoreDebug.Event) =>
+            Effect.sync(() => {
+              events.push(event)
+            }),
+        },
+      ]) as Layer.Layer<any, never, never>,
+      CoreDebug.diagnosticsLevel('light') as Layer.Layer<any, never, never>,
+    ) as Layer.Layer<any, never, never>
 
     const appRuntime = Logix.Runtime.make(HighFieldProgram, {
       layer: debugLayer,

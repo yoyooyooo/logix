@@ -711,15 +711,13 @@ export const resolveAndRecordDirtyPathId = <S>(
   const beforeSize = state.dirtyPathIds.size
   state.dirtyPathIds.add(id)
   const afterSize = state.dirtyPathIds.size
-  if (afterSize !== state.dirtyPathsKeySize) {
+  if (afterSize !== beforeSize) {
     state.dirtyPathIdSnapshot.push(id)
     let h = (state.dirtyPathsKeyHash ?? (2166136261 >>> 0)) >>> 0
     h ^= id >>> 0
     h = Math.imul(h, 16777619)
     state.dirtyPathsKeyHash = h >>> 0
     state.dirtyPathsKeySize = afterSize
-  }
-  if (afterSize !== beforeSize) {
     bumpDirtyVersion(state)
   }
   return id

@@ -13,6 +13,15 @@ export type TxnHotPathSentinelSnapshot = {
   readonly dirtyPlanListIndexInt32MaterializeEntryCount: number
   readonly fieldPathKeyMaterializeCount: number
   readonly fieldPathKeyMaterializeSegmentCount: number
+  readonly selectorDirtySingleRootFastPathCount: number
+  readonly runtimeStoreListenerSnapshotMaterializeCount: number
+  readonly runtimeStoreListenerSnapshotMaterializeEntryCount: number
+  readonly runtimeStoreDirectListenerCallbackCount: number
+  readonly runtimeStoreChangedListenerFlattenCount: number
+  readonly runtimeStoreChangedListenerFlattenEntryCount: number
+  readonly readQueryTemplateCacheHitFnCount: number
+  readonly readQueryTemplateCacheHitSourceCount: number
+  readonly readQueryTemplateCacheMissCount: number
 }
 
 const counters = {
@@ -30,6 +39,15 @@ const counters = {
   dirtyPlanListIndexInt32MaterializeEntryCount: 0,
   fieldPathKeyMaterializeCount: 0,
   fieldPathKeyMaterializeSegmentCount: 0,
+  selectorDirtySingleRootFastPathCount: 0,
+  runtimeStoreListenerSnapshotMaterializeCount: 0,
+  runtimeStoreListenerSnapshotMaterializeEntryCount: 0,
+  runtimeStoreDirectListenerCallbackCount: 0,
+  runtimeStoreChangedListenerFlattenCount: 0,
+  runtimeStoreChangedListenerFlattenEntryCount: 0,
+  readQueryTemplateCacheHitFnCount: 0,
+  readQueryTemplateCacheHitSourceCount: 0,
+  readQueryTemplateCacheMissCount: 0,
 }
 
 let enabled = false
@@ -57,6 +75,15 @@ export const resetTxnHotPathSentinels = (): void => {
   counters.dirtyPlanListIndexInt32MaterializeEntryCount = 0
   counters.fieldPathKeyMaterializeCount = 0
   counters.fieldPathKeyMaterializeSegmentCount = 0
+  counters.selectorDirtySingleRootFastPathCount = 0
+  counters.runtimeStoreListenerSnapshotMaterializeCount = 0
+  counters.runtimeStoreListenerSnapshotMaterializeEntryCount = 0
+  counters.runtimeStoreDirectListenerCallbackCount = 0
+  counters.runtimeStoreChangedListenerFlattenCount = 0
+  counters.runtimeStoreChangedListenerFlattenEntryCount = 0
+  counters.readQueryTemplateCacheHitFnCount = 0
+  counters.readQueryTemplateCacheHitSourceCount = 0
+  counters.readQueryTemplateCacheMissCount = 0
 }
 
 export const readTxnHotPathSentinels = (): TxnHotPathSentinelSnapshot => ({
@@ -74,6 +101,15 @@ export const readTxnHotPathSentinels = (): TxnHotPathSentinelSnapshot => ({
   dirtyPlanListIndexInt32MaterializeEntryCount: counters.dirtyPlanListIndexInt32MaterializeEntryCount,
   fieldPathKeyMaterializeCount: counters.fieldPathKeyMaterializeCount,
   fieldPathKeyMaterializeSegmentCount: counters.fieldPathKeyMaterializeSegmentCount,
+  selectorDirtySingleRootFastPathCount: counters.selectorDirtySingleRootFastPathCount,
+  runtimeStoreListenerSnapshotMaterializeCount: counters.runtimeStoreListenerSnapshotMaterializeCount,
+  runtimeStoreListenerSnapshotMaterializeEntryCount: counters.runtimeStoreListenerSnapshotMaterializeEntryCount,
+  runtimeStoreDirectListenerCallbackCount: counters.runtimeStoreDirectListenerCallbackCount,
+  runtimeStoreChangedListenerFlattenCount: counters.runtimeStoreChangedListenerFlattenCount,
+  runtimeStoreChangedListenerFlattenEntryCount: counters.runtimeStoreChangedListenerFlattenEntryCount,
+  readQueryTemplateCacheHitFnCount: counters.readQueryTemplateCacheHitFnCount,
+  readQueryTemplateCacheHitSourceCount: counters.readQueryTemplateCacheHitSourceCount,
+  readQueryTemplateCacheMissCount: counters.readQueryTemplateCacheMissCount,
 })
 
 export const countDebugEventAllocationAttemptOff = (): void => {
@@ -123,4 +159,37 @@ export const countFieldPathKeyMaterialize = (segments: number): void => {
   if (!enabled) return
   counters.fieldPathKeyMaterializeCount += 1
   counters.fieldPathKeyMaterializeSegmentCount += segments > 0 ? segments : 0
+}
+
+export const countSelectorDirtySingleRootFastPath = (): void => {
+  if (enabled) counters.selectorDirtySingleRootFastPathCount += 1
+}
+
+export const countRuntimeStoreListenerSnapshotMaterialize = (entries: number): void => {
+  if (!enabled) return
+  counters.runtimeStoreListenerSnapshotMaterializeCount += 1
+  counters.runtimeStoreListenerSnapshotMaterializeEntryCount += entries > 0 ? entries : 0
+}
+
+export const countRuntimeStoreDirectListenerCallback = (entries: number): void => {
+  if (!enabled || entries <= 0) return
+  counters.runtimeStoreDirectListenerCallbackCount += entries
+}
+
+export const countRuntimeStoreChangedListenerFlatten = (entries: number): void => {
+  if (!enabled || entries <= 0) return
+  counters.runtimeStoreChangedListenerFlattenCount += 1
+  counters.runtimeStoreChangedListenerFlattenEntryCount += entries
+}
+
+export const countReadQueryTemplateCacheHitFn = (): void => {
+  if (enabled) counters.readQueryTemplateCacheHitFnCount += 1
+}
+
+export const countReadQueryTemplateCacheHitSource = (): void => {
+  if (enabled) counters.readQueryTemplateCacheHitSourceCount += 1
+}
+
+export const countReadQueryTemplateCacheMiss = (): void => {
+  if (enabled) counters.readQueryTemplateCacheMissCount += 1
 }

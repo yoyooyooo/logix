@@ -2,6 +2,21 @@ import { describe, expect, it } from '@effect/vitest'
 
 import { fnv1a32, stableStringify } from '../../../src/internal/digest.js'
 
+type RuntimeInspectCoverageEntry = {
+  readonly factFamily: string
+  readonly owner: string
+  readonly matrixRows: ReadonlyArray<string>
+  readonly cliRoutes: ReadonlyArray<string>
+  readonly artifactSections: ReadonlyArray<string>
+  readonly status: 'owner-backed' | 'deferred' | 'rejected' | 'structured-gap'
+  readonly proofRefs: ReadonlyArray<string>
+}
+
+type RuntimeInspectCoverageInventory = {
+  readonly schemaVersion: 'runtime-inspect-coverage.v1'
+  readonly factFamilies: ReadonlyArray<RuntimeInspectCoverageEntry>
+}
+
 const makeRuntimeInspectCoverageInventory = () => ({
   schemaVersion: 'runtime-inspect-coverage.v1',
   factFamilies: [
@@ -249,9 +264,9 @@ const makeRuntimeInspectCoverageInventory = () => ({
       proofRefs: ['rejected by live safety law'],
     },
   ],
-} as const)
+} as const satisfies RuntimeInspectCoverageInventory)
 
-const runtimeInspectCoverageDigest = (inventory: ReturnType<typeof makeRuntimeInspectCoverageInventory>): string =>
+const runtimeInspectCoverageDigest = (inventory: RuntimeInspectCoverageInventory): string =>
   `runtime-inspect-coverage:${fnv1a32(stableStringify(inventory))}`
 
 const requiredMatrixRows = Array.from({ length: 26 }, (_, index) => `R172-${String(index + 1).padStart(3, '0')}`)
@@ -261,7 +276,7 @@ const gapReasonFromProofRef = (proofRef: string): string | undefined => {
   return match?.groups?.reason
 }
 
-const missingStructuredGapProofRefs = (inventory: ReturnType<typeof makeRuntimeInspectCoverageInventory>) =>
+const missingStructuredGapProofRefs = (inventory: RuntimeInspectCoverageInventory) =>
   inventory.factFamilies
     .filter((entry) => entry.status === 'structured-gap')
     .flatMap((entry) =>
@@ -270,7 +285,7 @@ const missingStructuredGapProofRefs = (inventory: ReturnType<typeof makeRuntimeI
         : [`${entry.factFamily}:${entry.proofRefs.join(',')}`],
     )
 
-const summarizeRuntimeInspectCoverage = (inventory: ReturnType<typeof makeRuntimeInspectCoverageInventory>) => {
+const summarizeRuntimeInspectCoverage = (inventory: RuntimeInspectCoverageInventory) => {
   const coveredRows = new Set(inventory.factFamilies.flatMap((entry) => entry.matrixRows))
   const structuredGapReasons = inventory.factFamilies
     .filter((entry) => entry.status === 'structured-gap')
@@ -293,7 +308,7 @@ const summarizeRuntimeInspectCoverage = (inventory: ReturnType<typeof makeRuntim
 
 describe('runtime inspect coverage harness', () => {
   it('maps every current runtime inspect fact family to a route, artifact section and proof ref', () => {
-    const inventory = makeRuntimeInspectCoverageInventory()
+    const inventory: RuntimeInspectCoverageInventory = makeRuntimeInspectCoverageInventory()
     const summary = summarizeRuntimeInspectCoverage(inventory)
 
     expect(inventory.schemaVersion).toBe('runtime-inspect-coverage.v1')

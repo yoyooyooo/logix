@@ -116,7 +116,7 @@ describe('live evidence facets', () => {
       purpose: 'export-evidence',
       budget: { maxEvents: 16, maxInlineBytes: 4096 },
       redactionPolicy: { policyRef: 'redaction:default' },
-      retentionPolicy: { ttlMs: 30_000, maxBytes: 8192, maxEvents: 16 },
+      retentionPolicy: { ttlMs: 30_000, maxBytes: 8192, maxEvents: 16, workspacePartition: 'workspace-a' },
       consumerIdentity: { actorId: 'agent', kind: 'cli' },
     })
 

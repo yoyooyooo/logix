@@ -1,4 +1,9 @@
 import { fnv1a32, stableStringify } from '../../digest.js'
+import {
+  countReadQueryTemplateCacheHitFn,
+  countReadQueryTemplateCacheHitSource,
+  countReadQueryTemplateCacheMiss,
+} from './txnHotPathSentinels.js'
 import type * as DebugSink from './DebugSink.js'
 
 export type ReadLane = 'static' | 'dynamic'
@@ -358,6 +363,7 @@ export const compile = <S, V>(input: ReadQueryInput<S, V>): ReadQueryCompiled<S,
 
   const cachedByFn = readQueryTemplateByFn.get(selector as unknown as Function)
   if (cachedByFn) {
+    countReadQueryTemplateCacheHitFn()
     const staticIr: ReadQueryStaticIr = {
       selectorId: cachedByFn.selectorId,
       debugKey,
@@ -384,6 +390,7 @@ export const compile = <S, V>(input: ReadQueryInput<S, V>): ReadQueryCompiled<S,
   const srcTrimmed = safeToString(selector as unknown as Function).trim()
   const cachedBySource = srcTrimmed.length > 0 ? lruGet(readQueryTemplateBySource, srcTrimmed) : undefined
   if (cachedBySource) {
+    countReadQueryTemplateCacheHitSource()
     readQueryTemplateByFn.set(selector as unknown as Function, cachedBySource)
     const staticIr: ReadQueryStaticIr = {
       selectorId: cachedBySource.selectorId,
@@ -407,6 +414,8 @@ export const compile = <S, V>(input: ReadQueryInput<S, V>): ReadQueryCompiled<S,
       staticIr,
     }
   }
+
+  countReadQueryTemplateCacheMiss()
 
   const parsed = srcTrimmed.length > 0 ? tryParseSelectorSource(srcTrimmed) : undefined
 

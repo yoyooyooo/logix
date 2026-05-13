@@ -39,7 +39,7 @@ describe('example HMR lifecycle dogfood sweep', () => {
     const vitestConfig = readFileSync(resolve(root, 'vitest.config.ts'), 'utf8')
     const vitestSetup = readFileSync(resolve(root, 'test/setup/logix-dev-lifecycle.ts'), 'utf8')
 
-    expect(viteConfig).toContain('logixReactDevLifecycle()')
+    expect(viteConfig.match(/logixReactDevLifecycle\(/g)).toHaveLength(1)
     expect(vitestConfig).toContain('test/setup/logix-dev-lifecycle.ts')
     expect(vitestSetup).toContain('installLogixDevLifecycleForVitest()')
   })

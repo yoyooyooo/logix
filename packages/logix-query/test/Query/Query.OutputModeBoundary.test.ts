@@ -9,7 +9,7 @@ describe('Query output mode boundary', () => {
     expect(legacyFieldsKey in (Query as any)).toBe(false)
     expect('source' in (Query as any)).toBe(false)
     expect(Query.Engine).toBeDefined()
-    expect(Query.TanStack).toBeUndefined()
+    expect((Query as Record<string, unknown>).TanStack).toBeUndefined()
     expect('querySurface' in (Query as any)).toBe(false)
   })
 })

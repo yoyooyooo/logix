@@ -4,6 +4,10 @@ import * as Logix from '../../src/index.js'
 import * as Form from '../../../logix-form/src/index.js'
 import * as Crud from '../../../domain/src/Crud.js'
 
+type CrudDefaultQueryInput = {
+  readonly pageSize: number
+}
+
 describe('Module common entrypoints', () => {
   it('should consume Form + CRUD via $.imports.get(tag) and Runtime.make(program)', async () => {
     const ValuesSchema = Schema.Struct({
@@ -29,7 +33,7 @@ describe('Module common entrypoints', () => {
       initial: [],
     })
 
-    const crudApi: Crud.CrudApi<Entity, Crud.CrudDefaultQueryInput, string> = {
+    const crudApi: Crud.CrudApi<Entity, CrudDefaultQueryInput, string> = {
       list: (_input) => Effect.succeed({ items: [], total: 0 }),
       save: (entity) => Effect.succeed(entity),
       remove: (_id) => Effect.void,
@@ -55,12 +59,15 @@ describe('Module common entrypoints', () => {
               setTimeout(resolve, 10)
             }),
         )
-        yield* f.setError('name', {
+        yield* f.actions.setError({
+          path: 'name',
+          error: {
           origin: 'manual',
           severity: 'error',
           message: 'oops',
+          },
         })
-        yield* c.commands.save({ id: 'e1', name: 'Alice' } satisfies Entity)
+        yield* c.actions.save({ id: 'e1', name: 'Alice' } satisfies Entity)
 
         for (let i = 0; i < 20; i++) {
           const state = (yield* c.read((s: any) => s)) as any
@@ -70,7 +77,7 @@ describe('Module common entrypoints', () => {
       }).pipe(
         Effect.exit,
         Effect.flatMap((exit) => Deferred.succeed(done, exit)),
-      ),
+      ) as Effect.Effect<void, never, any>,
     )
 
     const host = Logix.Program.make(Host, {

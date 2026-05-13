@@ -7,6 +7,7 @@ import * as Debug from './DebugSink.js'
 import { recordKernelHotPathFallback } from './KernelHotPathAudit.js'
 import { routeReadQuery } from './selectorRoute.precision.js'
 import { classifyDirtyPrecision, type DirtyPrecisionRecord } from './selectorRoute.dirty.js'
+import { countSelectorDirtySingleRootFastPath } from './txnHotPathSentinels.js'
 
 type ReadRootKey = string
 
@@ -644,6 +645,58 @@ export const make = <S>(args: {
         const entry = selectorsById.get(selectorFingerprint)
         if (!entry) continue
         yield* evaluateSubscribedEntry(entry)
+      }
+
+      if (dirtyPlan.rootCount === 1) {
+        countSelectorDirtySingleRootFastPath()
+        const dirtyPathId = dirtyPlan.rootIds[0]
+        const dirtyPath = dirtyPathId == null ? undefined : getDirtyPath(dirtyPathId)
+        if (!dirtyPath) {
+          recordKernelHotPathFallback('selector_dirty_route', 'invalid_root_id')
+          if (emitEvalEvent) {
+            yield* recordDirtyFallbackDiagnostic({
+              moduleId,
+              instanceId,
+              meta,
+              dirtyPlan,
+              record: classifyDirtyPrecision({
+                dirtyAll: false,
+                hasPathAuthority: true,
+                missingDirtyPath: true,
+              }),
+            })
+          }
+          yield* evaluateAllSubscribedSelectors()
+          return
+        }
+
+        const candidates = getIndexedCandidatesForRoot(getReadRootKeyFromPath(dirtyPath))
+        if (candidates.length === 0) {
+          return
+        }
+
+        const hasRootLevelDirty = dirtyPath.length <= 1
+        for (const candidate of candidates) {
+          const { entry, readsForRoot } = candidate
+          if (!hasAnySubscribers(entry) || entry.lastScheduledTxnSeq === meta.txnSeq) continue
+
+          if (hasRootLevelDirty) {
+            yield* evaluateSubscribedEntry(entry)
+            continue
+          }
+
+          let overlapsAnyDirtyRoot = false
+          for (const read of readsForRoot) {
+            if (overlaps(dirtyPath, read)) {
+              overlapsAnyDirtyRoot = true
+              break
+            }
+          }
+          if (!overlapsAnyDirtyRoot) continue
+
+          yield* evaluateSubscribedEntry(entry)
+        }
+        return
       }
 
       const dirtyRootsToProcessByRoot = new Map<ReadRootKey, Array<FieldPath>>()

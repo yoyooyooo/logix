@@ -60,7 +60,7 @@ describe('LogicFields module-level expert warning', () => {
 
       expect(warning).toBeDefined()
       expect(warning?.type === 'diagnostic' ? warning.severity : undefined).toBe('warning')
-      expect(warning?.moduleId).toBe('ModuleLevelFieldsWarning')
+      expect(warning && 'moduleId' in warning ? warning.moduleId : undefined).toBe('ModuleLevelFieldsWarning')
     } finally {
       await runtime.dispose()
     }

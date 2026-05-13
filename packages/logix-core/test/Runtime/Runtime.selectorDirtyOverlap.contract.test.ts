@@ -4,6 +4,12 @@ import * as RuntimeContracts from '../../src/internal/runtime-contracts.js'
 import { makeFieldPathIdRegistry } from '../../src/internal/field-path.js'
 import * as SelectorGraph from '../../src/internal/runtime/core/SelectorGraph.js'
 import type { TxnDirtyPlanSnapshot } from '../../src/internal/runtime/core/StateTransaction.js'
+import {
+  disableTxnHotPathSentinels,
+  enableTxnHotPathSentinels,
+  readTxnHotPathSentinels,
+  resetTxnHotPathSentinels,
+} from '../../src/internal/runtime/core/txnHotPathSentinels.js'
 
 const makeDirtyPlan = (args: {
   readonly registry: ReturnType<typeof makeFieldPathIdRegistry>
@@ -49,6 +55,9 @@ describe('runtime selector dirty overlap contract', () => {
         const otherEntry = yield* graph.ensureEntry(otherQuery as any)
         otherEntry.subscriberCount = 1
 
+        enableTxnHotPathSentinels()
+        resetTxnHotPathSentinels()
+
         const changed: Array<string> = []
         yield* graph.onCommit(
           { count: 1, other: 0 },
@@ -58,7 +67,11 @@ describe('runtime selector dirty overlap contract', () => {
           (selectorFingerprint) => changed.push(selectorFingerprint),
         )
 
+        const sentinels = readTxnHotPathSentinels()
+        disableTxnHotPathSentinels()
+
         expect(changed).toEqual([RuntimeContracts.Selector.route(countQuery).selectorFingerprint.value])
+        expect(sentinels.selectorDirtySingleRootFastPathCount).toBe(1)
       }),
     ),
   )

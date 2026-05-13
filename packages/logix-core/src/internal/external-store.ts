@@ -1,9 +1,10 @@
-import { Effect, Fiber, Layer, ManagedRuntime, Stream, SubscriptionRef } from 'effect'
+import { Effect, Fiber, Stream, SubscriptionRef } from 'effect'
 import type { ServiceMap } from 'effect'
 import * as ReadQuery from './runtime/core/ReadQuery.js'
 import { fnv1a32, stableStringify } from './digest.js'
 import { attachExternalStoreDescriptor, type ExternalStoreDescriptor } from './external-store-descriptor.js'
 import { getGlobalHostScheduler } from './runtime/core/HostScheduler.js'
+import { makeDetachedRuntimeRunner } from './runtime/core/runner/DetachedRuntimeRunner.js'
 import type * as LogixModule from './module.js'
 
 export type ExternalStore<T> = {
@@ -132,37 +133,6 @@ const getOrAssignAnonStoreId = (key: object, prefix: string): string => {
   return storeId
 }
 
-type DetachedRuntime = ManagedRuntime.ManagedRuntime<never, never>
-
-const makeDetachedRuntimeRunner = () => {
-  let runtime: DetachedRuntime | undefined
-
-  const ensureRuntime = (): DetachedRuntime => {
-    if (!runtime) {
-      runtime = ManagedRuntime.make(Layer.empty as Layer.Layer<never, never, never>)
-    }
-    return runtime
-  }
-
-  const runSync = <A>(effect: Effect.Effect<A, never, never>): A => ensureRuntime().runSync(effect)
-
-  const runFork = <A, E>(effect: Effect.Effect<A, E, never>): Fiber.Fiber<A, E> => ensureRuntime().runFork(effect)
-
-  const interruptAndDispose = (fiber: Fiber.Fiber<void, any> | undefined): void => {
-    const current = runtime
-    runtime = undefined
-    if (!current) return
-    const stop = fiber ? Fiber.interrupt(fiber).pipe(Effect.asVoid) : Effect.void
-    void current.runPromise(stop).catch(() => undefined).finally(() => current.dispose())
-  }
-
-  return {
-    runSync,
-    runFork,
-    interruptAndDispose,
-  } as const
-}
-
 /**
  * Create an ExternalStore from a SubscriptionRef.
  *
@@ -190,7 +160,7 @@ export const fromSubscriptionRef = <T>(ref: LogixModule.ReadonlySubscriptionRef<
 
   const ensureSubscription = () => {
     if (fiber) return
-    fiber = runtime.runFork(
+    fiber = runtime.fork(
       Stream.runForEach(changes, (value) =>
         Effect.sync(() => {
           current = value
@@ -204,7 +174,7 @@ export const fromSubscriptionRef = <T>(ref: LogixModule.ReadonlySubscriptionRef<
   const refreshSnapshotIfStale = () => {
     if (!hasSnapshot) return
     try {
-      const latest = runtime.runSync(getEffect) as T
+      const latest = runtime.executeSync(getEffect) as T
       if (!Object.is(current, latest)) {
         current = latest
         scheduleNotify()
@@ -217,7 +187,7 @@ export const fromSubscriptionRef = <T>(ref: LogixModule.ReadonlySubscriptionRef<
   const store: ExternalStore<T> = {
     getSnapshot: () => {
       if (hasSnapshot) return current as T
-      current = runtime.runSync(getEffect) as T
+      current = runtime.executeSync(getEffect) as T
       hasSnapshot = true
       return current
     },
@@ -274,7 +244,7 @@ export const fromStream = <A, E>(
 
   const ensureSubscription = () => {
     if (fiber) return
-    fiber = runtime.runFork(
+    fiber = runtime.fork(
       Stream.runForEach(stream, (value) =>
         Effect.sync(() => {
           current = value

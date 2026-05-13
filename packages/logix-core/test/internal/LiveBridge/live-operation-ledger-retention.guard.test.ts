@@ -11,6 +11,11 @@ const target = makeLiveTargetCoordinate({
   instanceId: 'default',
 })
 
+const must = <T>(value: T | undefined): T => {
+  expect(value).toBeDefined()
+  return value!
+}
+
 describe('live operation ledger retention guard', () => {
   it('keeps the latest retained events and emits dropped markers for evicted sequences', () => {
     const store = createLiveOperationLedgerStore({ enabled: true, retention: { maxEvents: 3 } })
@@ -39,12 +44,12 @@ describe('live operation ledger retention guard', () => {
       retention: { maxPayloadSummaryBytes: 24 },
     })
 
-    const event = store.recordOperationEvent({
+    const event = must(store.recordOperationEvent({
       target,
       eventKind: 'operation.completed',
       label: 'oversized payload',
       payload: { owner: 'runtime-live', summary: { text: 'x'.repeat(128) } },
-    })
+    }))
 
     expect(event.payload).toEqual({
       kind: 'owner-ref',

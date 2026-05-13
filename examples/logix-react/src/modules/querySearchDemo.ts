@@ -132,12 +132,12 @@ export const SearchQuery = Query.make('QuerySearchDemo', {
   queries: ($) => ({
     search: $.source({
       resource: SearchSpec,
-      deps: ['params.q', 'params.page', 'ui.query.autoEnabled'],
+      deps: ['params.q', 'params.page', 'ui'],
       triggers: ['onMount', 'onKeyChange'],
       debounceMs: 200,
       concurrency: 'switch',
-      key: (q, page, autoEnabled) => {
-        if (!autoEnabled) return undefined
+      key: (q, page, ui) => {
+        if (!ui.query.autoEnabled) return undefined
         const keyword = normalizeKeyword(q)
         return { keyword, page }
       },

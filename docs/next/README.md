@@ -38,6 +38,10 @@ version: 11
 - [Runtime Dispatch Shell Tax Ledger](./runtime-dispatch-shell-tax-ledger.md)
 - [Runtime Dispatch Shell Before/After Playbook](./runtime-dispatch-shell-before-after-playbook.md)
 - [Runtime Dispatch Shell Tax Migration Report Template](./runtime-dispatch-shell-tax-migration-report-template.md)
+- [Kernel Performance Evidence Lock](./kernel-performance-evidence-lock.md)
+- [Kernel Performance Convergence P0/P1/P2](./kernel-performance-convergence-p0p1p2.md)
+- [Kernel Performance Convergence Local Agent Handoff](./kernel-performance-convergence-local-agent-handoff.md)
+- [Adversarial Performance Matrix](./adversarial-performance-matrix.md)
 
 ## 当前一句话结论
 

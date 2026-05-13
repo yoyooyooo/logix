@@ -12,6 +12,11 @@ const target = makeLiveTargetCoordinate({
   instanceId: 'default',
 })
 
+const must = <T>(value: T | undefined): T => {
+  expect(value).toBeDefined()
+  return value!
+}
+
 describe('live operation window contract', () => {
   it('returns a target-scoped ordered operation window with start and end watermarks', () => {
     const store = createLiveOperationLedgerStore({ enabled: true })
@@ -44,7 +49,7 @@ describe('live operation window contract', () => {
       enabled: true,
       retention: { maxEvents: 3, maxWindowEvents: 3 },
     })
-    const first = store.recordOperationEvent({ target, eventKind: 'operation.accepted', label: 'one' })
+    const first = must(store.recordOperationEvent({ target, eventKind: 'operation.accepted', label: 'one' }))
     store.recordOperationEvent({ target, eventKind: 'operation.completed', label: 'two' })
     store.recordOperationEvent({ target, eventKind: 'operation.failed', label: 'three' })
     store.recordOperationEvent({ target, eventKind: 'operation.completed', label: 'four' })
@@ -66,7 +71,7 @@ describe('live operation window contract', () => {
 
   it('keeps cursor window reads synchronous to runtime-owned state without carrier queue effects', () => {
     const store = createLiveOperationLedgerStore({ enabled: true })
-    const first = store.recordOperationEvent({ target, eventKind: 'operation.accepted', label: 'one' })
+    const first = must(store.recordOperationEvent({ target, eventKind: 'operation.accepted', label: 'one' }))
     store.recordOperationEvent({ target, eventKind: 'operation.completed', label: 'two' })
     expect(store.getDiagnostics()).toMatchObject({
       ledgerEventAllocations: 2,
@@ -90,13 +95,13 @@ describe('live operation window contract', () => {
 
   it('does not backfill latest current state into older events', () => {
     const store = createLiveOperationLedgerStore({ enabled: true })
-    const first = store.recordOperationEvent({ target, eventKind: 'operation.accepted', label: 'first' })
-    const second = store.recordOperationEvent({
+    const first = must(store.recordOperationEvent({ target, eventKind: 'operation.accepted', label: 'first' }))
+    const second = must(store.recordOperationEvent({
       target,
       eventKind: 'operation.completed',
       label: 'second',
       stateAfter: { sourceKind: 'current-head-exact', boundedSummary: { count: 2 } },
-    })
+    }))
 
     const window = store.readWindow({ target })
     const firstEvent = window.events.find((event) => event.eventId === first.eventId)
@@ -117,12 +122,12 @@ describe('live operation window contract', () => {
 
   it('drops current-head-exact stateAfter once a later event becomes the head', () => {
     const store = createLiveOperationLedgerStore({ enabled: true })
-    const first = store.recordOperationEvent({
+    const first = must(store.recordOperationEvent({
       target,
       eventKind: 'operation.completed',
       label: 'head at ingest',
       stateAfter: { sourceKind: 'current-head-exact', boundedSummary: { count: 1 } },
-    })
+    }))
     store.recordOperationEvent({ target, eventKind: 'operation.completed', label: 'new head' })
 
     const window = store.readWindow({ target })
@@ -139,19 +144,19 @@ describe('live operation window contract', () => {
       enabled: true,
       retention: { maxStateAfterSummaryBytes: 12 },
     })
-    const oversized = store.recordOperationEvent({
+    const oversized = must(store.recordOperationEvent({
       target,
       eventKind: 'operation.completed',
       label: 'oversized',
       stateAfter: { sourceKind: 'recorded-post-event-artifact', boundedSummary: { text: 'x'.repeat(64) } },
-    })
-    const redacted = store.recordOperationEvent({
+    }))
+    const redacted = must(store.recordOperationEvent({
       target,
       eventKind: 'operation.completed',
       label: 'redacted',
       stateAfter: { sourceKind: 'recorded-post-event-artifact', redacted: true },
-    })
-    const mismatched = store.recordOperationEvent({
+    }))
+    const mismatched = must(store.recordOperationEvent({
       target,
       eventKind: 'operation.completed',
       label: 'mismatch',
@@ -160,7 +165,7 @@ describe('live operation window contract', () => {
         sourceWatermark: oversized.watermark,
         boundedSummary: { count: 3 },
       },
-    })
+    }))
 
     expect(oversized.gaps.map((gap) => gap.code)).toContain('state-after-over-budget')
     expect(redacted.gaps.map((gap) => gap.code)).toContain('state-after-redacted')

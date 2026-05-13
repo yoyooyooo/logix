@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-05-12T00:00:00.000Z",
+  "envId": "local:<fill-me>",
+  "profile": "quick",
+  "comparable": true,
+  "regressions": 0,
+  "budgetExceeded": 0,
+  "timeouts": 0,
+  "stabilityWarnings": 0,
+  "missingSuites": 0,
+  "stages": [
+    { "id": "adversarialMatrix", "status": "validated", "evidenceRefs": [] },
+    { "id": "P0", "status": "validated", "evidenceRefs": [] },
+    { "id": "P1", "status": "validated", "evidenceRefs": [] },
+    { "id": "P2", "status": "validated", "evidenceRefs": [] }
+  ],
+  "suites": [
+    { "id": "adversarial.matrix.requiredHotPaths", "status": "pass" },
+    { "id": "negativeBoundaries.dirtyPattern", "status": "pass" },
+    { "id": "converge.txnCommit", "status": "pass" },
+    { "id": "form.listScopeCheck", "status": "pass" },
+    { "id": "externalStore.ingest.tickNotify", "status": "pass" },
+    { "id": "runtimeStore.noTearing.tickNotify", "status": "pass" },
+    { "id": "react.strictSuspenseJitter", "status": "pass" },
+    { "id": "diagnostics.overhead", "status": "pass" },
+    { "id": "txnQueue.directIdle", "status": "pass" },
+    { "id": "dispatchShell.fixedCost", "status": "pass" },
+    { "id": "examples.runtimeWitness", "status": "pass" },
+    { "id": "examples.playgroundNoiseIsolation", "status": "pass" }
+  ],
+  "counters": {
+    "dirtyPlan.unknownWrite": 0,
+    "dirtyPlan.missingRegistry": 0,
+    "dirtyPlan.dirtyAll": 0,
+    "dirtyPlan.nonFieldAuthority": 0,
+    "dirtyPlan.legacyDirtyInput": 0,
+    "source.fullFallback": 0,
+    "source.rowFullScan": 0,
+    "source.keyEval.unrelatedMutation": 0,
+    "selector.evaluateAll": 0,
+    "selector.dirtyAllFallback": 0,
+    "selector.nonFieldAuthorityFallback": 0,
+    "txnQueue.directIdleQueueWaitNonZero": 0,
+    "txnQueue.directIdleBackpressureNonZero": 0,
+    "dispatch.noTopicFanoutAlloc": 0,
+    "runtimeStore.runSyncFallbackAfterBoot": 0,
+    "runtimeStore.retainedTopicLeak": 0,
+    "diagnosticsOff.payloadCount": 0,
+    "listEvidence.stringNormalizeHotPath": 0,
+    "examples.kernelPlaygroundCostMixed": 0,
+    "examples.publicResidueViolation": 0
+  },
+  "migration": {
+    "migratedCost": 0,
+    "migratedRisk": 0,
+    "notes": "Template shape only. Replace with local migration ledger before any hard claim."
+  },
+  "evidenceRefs": [],
+  "localCi": {
+    "commands": []
+  },
+  "cloud": {
+    "unableToVerify": [
+      "Template only. Replace with local evidence after running default/soak collection."
+    ]
+  }
+}

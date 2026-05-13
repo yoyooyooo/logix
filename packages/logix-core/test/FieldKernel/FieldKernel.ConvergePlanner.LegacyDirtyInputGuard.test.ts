@@ -68,7 +68,6 @@ describe('FieldKernel converge planner legacy dirty input guard', () => {
     const result = planConverge({
       execIr,
       dirtyPlan,
-      dirtyAllReason: 'unknownWrite',
       requestedMode: 'dirty',
       schedulingScope: 'all',
       diagnosticsLevel: 'off',

@@ -1,6 +1,11 @@
 import type { StateCommitMeta, StateCommitPriority } from './module.js'
 import { Effect } from 'effect'
 import type { RuntimeHotLifecycleContext } from './hotLifecycle/index.js'
+import {
+  countRuntimeStoreChangedListenerFlatten,
+  countRuntimeStoreDirectListenerCallback,
+  countRuntimeStoreListenerSnapshotMaterialize,
+} from './txnHotPathSentinels.js'
 
 export type ModuleInstanceKey = `${string}::${string}`
 export type TopicKey = string
@@ -140,6 +145,7 @@ export const makeRuntimeStore = (): RuntimeStore => {
 
   const refreshTopicSnapshot = (state: TopicListenersState): void => {
     state.snapshot = Array.from(state.listeners)
+    countRuntimeStoreListenerSnapshotMaterialize(state.snapshot.length)
   }
 
   const subscribeTopic = (topicKey: TopicKey, listener: () => void): (() => void) => {
@@ -250,12 +256,18 @@ export const makeRuntimeStore = (): RuntimeStore => {
     }
 
     if (args.onListener) {
+      // First publish all topic version/priority bumps, then notify listeners.
+      // This preserves the existing "callbacks observe the committed tick" contract while avoiding
+      // temporary listener-array buckets on the direct callback path.
+      for (const [topicKey, priority] of args.accepted.dirtyTopics) {
+        commitTopicBump(topicKey, priority)
+      }
+
       let firstTopicListeners: ReadonlyArray<() => void> | undefined
       let secondTopicListeners: ReadonlyArray<() => void> | undefined
       let restTopicListeners: Array<ReadonlyArray<() => void>> | undefined
 
-      for (const [topicKey, priority] of args.accepted.dirtyTopics) {
-        commitTopicBump(topicKey, priority)
+      for (const [topicKey] of args.accepted.dirtyTopics) {
         const listeners = listenersByTopic.get(topicKey)?.snapshot ?? EMPTY_LISTENER_SNAPSHOT
         if (listeners.length === 0) {
           continue
@@ -274,35 +286,26 @@ export const makeRuntimeStore = (): RuntimeStore => {
         restTopicListeners.push(listeners)
       }
 
+      const notifyListeners = (listeners: ReadonlyArray<() => void>): void => {
+        countRuntimeStoreDirectListenerCallback(listeners.length)
+        for (const listener of listeners) {
+          try {
+            args.onListener(listener)
+          } catch {
+            // best-effort: never let listener callback break commit tick
+          }
+        }
+      }
+
       if (firstTopicListeners) {
-        for (const listener of firstTopicListeners) {
-          try {
-            args.onListener(listener)
-          } catch {
-            // best-effort: never let listener callback break commit tick
-          }
-        }
+        notifyListeners(firstTopicListeners)
       }
-
       if (secondTopicListeners) {
-        for (const listener of secondTopicListeners) {
-          try {
-            args.onListener(listener)
-          } catch {
-            // best-effort: never let listener callback break commit tick
-          }
-        }
+        notifyListeners(secondTopicListeners)
       }
-
       if (restTopicListeners) {
         for (const listeners of restTopicListeners) {
-          for (const listener of listeners) {
-            try {
-              args.onListener(listener)
-            } catch {
-              // best-effort: never let listener callback break commit tick
-            }
-          }
+          notifyListeners(listeners)
         }
       }
 
@@ -321,6 +324,7 @@ export const makeRuntimeStore = (): RuntimeStore => {
         continue
       }
       if (flattenedTopicListeners) {
+        countRuntimeStoreChangedListenerFlatten(listeners.length)
         for (const listener of listeners) {
           flattenedTopicListeners.push(listener)
         }
@@ -331,6 +335,8 @@ export const makeRuntimeStore = (): RuntimeStore => {
         continue
       }
       flattenedTopicListeners = Array.from(singleTopicListeners)
+      countRuntimeStoreChangedListenerFlatten(singleTopicListeners.length)
+      countRuntimeStoreChangedListenerFlatten(listeners.length)
       for (const listener of listeners) {
         flattenedTopicListeners.push(listener)
       }

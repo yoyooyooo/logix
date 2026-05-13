@@ -1,0 +1,398 @@
+{
+  "schemaVersion": 1,
+  "kind": "KernelPerformanceConvergenceReport",
+  "generatedAt": "2026-05-12T00:00:00.000Z",
+  "profile": "quick",
+  "classification": "provisional",
+  "claimStrength": "clue",
+  "gates": [
+    {
+      "id": "diff.comparable",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "comparable=true"
+    },
+    {
+      "id": "profile.hardClaimEligible",
+      "severity": "clue",
+      "status": "fail",
+      "detail": "profile=quick; quick/smoke evidence is a diagnostic clue only."
+    },
+    {
+      "id": "summary.regressions",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "regressions=0"
+    },
+    {
+      "id": "summary.budgetExceeded",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "budgetExceeded=0"
+    },
+    {
+      "id": "summary.timeouts",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "timeouts=0"
+    },
+    {
+      "id": "summary.stabilityWarnings",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "stabilityWarnings=0"
+    },
+    {
+      "id": "summary.missingSuites",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "missingSuites=0"
+    },
+    {
+      "id": "stages.allValidatedOrImplemented",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "All convergence stages are implemented or validated in the manifest."
+    },
+    {
+      "id": "requiredSuites.presentAndPassing",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "All required convergence suites are present and passing in the manifest."
+    },
+    {
+      "id": "migration.noUnacceptedCostOrRisk",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "migratedCost=0 and migratedRisk=0"
+    },
+    {
+      "id": "counter:dirtyPlan.unknownWrite",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "dirtyPlan.unknownWrite=0"
+    },
+    {
+      "id": "counter:dirtyPlan.missingRegistry",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "dirtyPlan.missingRegistry=0"
+    },
+    {
+      "id": "counter:dirtyPlan.dirtyAll",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "dirtyPlan.dirtyAll=0"
+    },
+    {
+      "id": "counter:dirtyPlan.nonFieldAuthority",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "dirtyPlan.nonFieldAuthority=0"
+    },
+    {
+      "id": "counter:dirtyPlan.legacyDirtyInput",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "dirtyPlan.legacyDirtyInput=0"
+    },
+    {
+      "id": "counter:source.fullFallback",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "source.fullFallback=0"
+    },
+    {
+      "id": "counter:source.rowFullScan",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "source.rowFullScan=0"
+    },
+    {
+      "id": "counter:source.keyEval.unrelatedMutation",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "source.keyEval.unrelatedMutation=0"
+    },
+    {
+      "id": "counter:selector.evaluateAll",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "selector.evaluateAll=0"
+    },
+    {
+      "id": "counter:selector.dirtyAllFallback",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "selector.dirtyAllFallback=0"
+    },
+    {
+      "id": "counter:selector.nonFieldAuthorityFallback",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "selector.nonFieldAuthorityFallback=0"
+    },
+    {
+      "id": "counter:txnQueue.directIdleQueueWaitNonZero",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "txnQueue.directIdleQueueWaitNonZero=0"
+    },
+    {
+      "id": "counter:txnQueue.directIdleBackpressureNonZero",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "txnQueue.directIdleBackpressureNonZero=0"
+    },
+    {
+      "id": "counter:dispatch.noTopicFanoutAlloc",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "dispatch.noTopicFanoutAlloc=0"
+    },
+    {
+      "id": "counter:runtimeStore.runSyncFallbackAfterBoot",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "runtimeStore.runSyncFallbackAfterBoot=0"
+    },
+    {
+      "id": "counter:runtimeStore.retainedTopicLeak",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "runtimeStore.retainedTopicLeak=0"
+    },
+    {
+      "id": "counter:diagnosticsOff.payloadCount",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "diagnosticsOff.payloadCount=0"
+    },
+    {
+      "id": "counter:listEvidence.stringNormalizeHotPath",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "listEvidence.stringNormalizeHotPath=0"
+    },
+    {
+      "id": "counter:examples.kernelPlaygroundCostMixed",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "examples.kernelPlaygroundCostMixed=0"
+    },
+    {
+      "id": "counter:examples.publicResidueViolation",
+      "severity": "hard",
+      "status": "pass",
+      "detail": "examples.publicResidueViolation=0"
+    }
+  ],
+  "stages": [
+    {
+      "id": "adversarialMatrix",
+      "status": "validated",
+      "evidenceRefs": []
+    },
+    {
+      "id": "P0",
+      "status": "validated",
+      "evidenceRefs": []
+    },
+    {
+      "id": "P1",
+      "status": "validated",
+      "evidenceRefs": []
+    },
+    {
+      "id": "P2",
+      "status": "validated",
+      "evidenceRefs": []
+    }
+  ],
+  "watchedCounters": [
+    {
+      "id": "dirtyPlan.unknownWrite",
+      "value": 0,
+      "passed": true
+    },
+    {
+      "id": "dirtyPlan.missingRegistry",
+      "value": 0,
+      "passed": true
+    },
+    {
+      "id": "dirtyPlan.dirtyAll",
+      "value": 0,
+      "passed": true
+    },
+    {
+      "id": "dirtyPlan.nonFieldAuthority",
+      "value": 0,
+      "passed": true
+    },
+    {
+      "id": "dirtyPlan.legacyDirtyInput",
+      "value": 0,
+      "passed": true
+    },
+    {
+      "id": "source.fullFallback",
+      "value": 0,
+      "passed": true
+    },
+    {
+      "id": "source.rowFullScan",
+      "value": 0,
+      "passed": true
+    },
+    {
+      "id": "source.keyEval.unrelatedMutation",
+      "value": 0,
+      "passed": true
+    },
+    {
+      "id": "selector.evaluateAll",
+      "value": 0,
+      "passed": true
+    },
+    {
+      "id": "selector.dirtyAllFallback",
+      "value": 0,
+      "passed": true
+    },
+    {
+      "id": "selector.nonFieldAuthorityFallback",
+      "value": 0,
+      "passed": true
+    },
+    {
+      "id": "txnQueue.directIdleQueueWaitNonZero",
+      "value": 0,
+      "passed": true
+    },
+    {
+      "id": "txnQueue.directIdleBackpressureNonZero",
+      "value": 0,
+      "passed": true
+    },
+    {
+      "id": "dispatch.noTopicFanoutAlloc",
+      "value": 0,
+      "passed": true
+    },
+    {
+      "id": "runtimeStore.runSyncFallbackAfterBoot",
+      "value": 0,
+      "passed": true
+    },
+    {
+      "id": "runtimeStore.retainedTopicLeak",
+      "value": 0,
+      "passed": true
+    },
+    {
+      "id": "diagnosticsOff.payloadCount",
+      "value": 0,
+      "passed": true
+    },
+    {
+      "id": "listEvidence.stringNormalizeHotPath",
+      "value": 0,
+      "passed": true
+    },
+    {
+      "id": "examples.kernelPlaygroundCostMixed",
+      "value": 0,
+      "passed": true
+    },
+    {
+      "id": "examples.publicResidueViolation",
+      "value": 0,
+      "passed": true
+    }
+  ],
+  "requiredSuites": [
+    {
+      "id": "adversarial.matrix.requiredHotPaths",
+      "status": "pass"
+    },
+    {
+      "id": "negativeBoundaries.dirtyPattern",
+      "status": "pass"
+    },
+    {
+      "id": "converge.txnCommit",
+      "status": "pass"
+    },
+    {
+      "id": "form.listScopeCheck",
+      "status": "pass"
+    },
+    {
+      "id": "externalStore.ingest.tickNotify",
+      "status": "pass"
+    },
+    {
+      "id": "runtimeStore.noTearing.tickNotify",
+      "status": "pass"
+    },
+    {
+      "id": "react.strictSuspenseJitter",
+      "status": "pass"
+    },
+    {
+      "id": "diagnostics.overhead",
+      "status": "pass"
+    },
+    {
+      "id": "txnQueue.directIdle",
+      "status": "pass"
+    },
+    {
+      "id": "dispatchShell.fixedCost",
+      "status": "pass"
+    },
+    {
+      "id": "examples.runtimeWitness",
+      "status": "pass"
+    },
+    {
+      "id": "examples.playgroundNoiseIsolation",
+      "status": "pass"
+    }
+  ],
+  "blockers": [
+    "profile.hardClaimEligible: profile=quick; quick/smoke evidence is a diagnostic clue only."
+  ],
+  "missingEvidence": [],
+  "allowedClaims": [
+    "Kernel P0/P1/P2 convergence structural gates are clean for the manifest scope.",
+    "Evidence is quick/smoke or otherwise clue-only and cannot support a hard performance success claim."
+  ],
+  "forbiddenClaims": [
+    "Global Runtime performance improved.",
+    "No regressions exist globally.",
+    "React performance improved globally.",
+    "FieldKernel is optimal.",
+    "Selector notification path is optimal.",
+    "Source/list row scope is fully optimized.",
+    "Examples prove kernel performance without isolated runtime evidence.",
+    "Quick/smoke evidence proves release-safe performance."
+  ],
+  "riskOrCostMigration": {
+    "migratedCost": 0,
+    "migratedRisk": 0,
+    "acceptedByAuthority": false,
+    "notes": "Template shape only. Replace with local migration ledger before any hard claim."
+  },
+  "evidenceRefs": [],
+  "localCi": {
+    "commands": []
+  },
+  "cloudLimitations": [
+    "Cloud LLM did not run pnpm install, package tests, browser perf collection, default/soak perf diff, or local CI.",
+    "Cloud LLM generated a staged convergence patch and evidence contract from uploaded source/docs/spec snapshots only.",
+    "Any hard performance or release claim requires local comparable default or soak evidence after applying and implementing the stages.",
+    "Template only. Replace with local evidence after running default/soak collection."
+  ]
+}

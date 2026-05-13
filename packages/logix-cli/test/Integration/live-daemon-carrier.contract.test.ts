@@ -23,6 +23,11 @@ import { createLiveDaemonServer } from '../../src/internal/liveDaemonServer.js'
 
 const require = createRequire(import.meta.url)
 const previousStateDir = process.env.LOGIX_LIVE_STATE_DIR
+
+const must = <T>(value: T | undefined): T => {
+  expect(value).toBeDefined()
+  return value!
+}
 const previousPort = process.env.LOGIX_LIVE_PORT
 const previousLaunchCommand = process.env.LOGIX_INTERNAL_LIVE_DAEMON_COMMAND
 const previousLaunchArgs = process.env.LOGIX_INTERNAL_LIVE_DAEMON_ARGS_JSON
@@ -863,9 +868,9 @@ describe('live daemon carrier client', () => {
           instanceId: 'default',
         })
         const store = createLiveOperationLedgerStore({ enabled: true })
-        const retainedEvent = store.recordOperationEvent({ target, eventKind: 'operation.accepted', label: 'retained', txnSeq: 1, opSeq: 1 })
+        const retainedEvent = must(store.recordOperationEvent({ target, eventKind: 'operation.accepted', label: 'retained', txnSeq: 1, opSeq: 1 }))
         store.recordOperationEvent({ target, eventKind: 'operation.failed', label: 'dropped-middle', txnSeq: 1, opSeq: 2 })
-        const headEvent = store.recordOperationEvent({ target, eventKind: 'operation.completed', label: 'head', txnSeq: 1, opSeq: 3 })
+        const headEvent = must(store.recordOperationEvent({ target, eventKind: 'operation.completed', label: 'head', txnSeq: 1, opSeq: 3 }))
         const ownerWindow = store.readWindow({ target, cursor: headEvent.watermark, limit: 1 })
         const ownerArtifact = makeLiveTimelineInspectArtifact({
           target: { ...target, attachmentId: 'browser:conn-1', adapterKind: 'browser-dev' },

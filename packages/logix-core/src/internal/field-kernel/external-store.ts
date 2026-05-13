@@ -87,21 +87,23 @@ const getOrCreateExternalStoreWritebackCoordinator = (args: {
       flushScheduled = false
     }
 
-    const cancelScheduledFlush = (): void => {
-      cancelScheduledHostTask?.()
-      cancelScheduledHostTask = undefined
-      const fiber = scheduledFiber
-      scheduledFiber = undefined
-      if (fiber) {
-        Effect.runFork(Fiber.interrupt(fiber).pipe(Effect.asVoid))
-      }
-      clearScheduledFlushState()
-    }
+    const cancelScheduledFlush = (): Effect.Effect<void, never, never> =>
+      Effect.gen(function* () {
+        cancelScheduledHostTask?.()
+        cancelScheduledHostTask = undefined
+        const fiber = scheduledFiber
+        scheduledFiber = undefined
+        if (fiber) {
+          yield* Fiber.interrupt(fiber).pipe(Effect.asVoid, Effect.catchCause(() => Effect.void))
+        }
+        clearScheduledFlushState()
+      })
 
-    const invalidateScheduledFlush = (): void => {
-      scheduledGeneration += 1
-      cancelScheduledFlush()
-    }
+    const invalidateScheduledFlush = (): Effect.Effect<void, never, never> =>
+      Effect.gen(function* () {
+        scheduledGeneration += 1
+        yield* cancelScheduledFlush()
+      })
 
     const drainPendingWrites = (): ReadonlyArray<ExternalStoreWritebackRequest> => {
       if (pendingWrites.size === 0) return []
@@ -185,7 +187,7 @@ const getOrCreateExternalStoreWritebackCoordinator = (args: {
         Effect.gen(function* () {
           if (closed) return
           if (policy?.immediate === true) {
-            invalidateScheduledFlush()
+            yield* invalidateScheduledFlush()
             yield* coordinator.flush()
             return
           }
@@ -199,7 +201,7 @@ const getOrCreateExternalStoreWritebackCoordinator = (args: {
               priorityRank(commitPriority) > priorityRank(scheduledPriority) ||
               (typeof scheduledDelayMs === 'number' && delayMs < scheduledDelayMs)
             if (!shouldUpgrade) return
-            invalidateScheduledFlush()
+            yield* invalidateScheduledFlush()
           }
 
           flushScheduled = true
@@ -285,9 +287,9 @@ const getOrCreateExternalStoreWritebackCoordinator = (args: {
     byKey.set(coordinatorKey, coordinator)
 
     yield* Effect.addFinalizer(() =>
-      Effect.sync(() => {
+      Effect.gen(function* () {
         closed = true
-        invalidateScheduledFlush()
+        yield* invalidateScheduledFlush()
         pendingWrites.clear()
         byKey?.delete(coordinatorKey)
       }),

@@ -36,15 +36,15 @@ export interface ProofKernelContext {
 }
 
 export interface ProofKernelRunner {
-  <A, E, R>(
-    program: Effect.Effect<A, E, R>,
+  <A, E>(
+    program: Effect.Effect<A, E, any>,
     options?: ProofKernelOptions,
-  ): Effect.Effect<ProofKernelResult<A, E>, never, R>
+  ): Effect.Effect<ProofKernelResult<A, E>, never, never>
 }
 
 export interface ProofKernelContextRunner {
-  <A, E, R>(
+  <A, E>(
     options: ProofKernelOptions | undefined,
-    run: (context: ProofKernelContext) => Effect.Effect<A, E, R>,
-  ): Effect.Effect<ProofKernelResult<A, E>, never, R>
+    run: (context: ProofKernelContext) => Effect.Effect<A, E, any>,
+  ): Effect.Effect<ProofKernelResult<A, E>, never, never>
 }

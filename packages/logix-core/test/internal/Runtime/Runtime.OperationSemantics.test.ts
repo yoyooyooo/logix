@@ -2,7 +2,7 @@ import { describe, it, expect } from '@effect/vitest'
 import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { Cause, Chunk, Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../../src/index.js'
-import * as EffectOp from '../../../src/EffectOp.js'
+import * as EffectOp from '../../../src/internal/effect-op.js'
 import * as EffectOpCore from '../../../src/internal/runtime/core/EffectOpCore.js'
 
 describe('Runtime + EffectOp bus semantics', () => {

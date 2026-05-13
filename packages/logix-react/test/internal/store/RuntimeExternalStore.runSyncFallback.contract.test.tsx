@@ -3,7 +3,14 @@ import { describe, expect, it } from 'vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
-import { getRuntimeReadQueryExternalStore } from '../../../src/internal/store/RuntimeExternalStore.js'
+import {
+  disableRuntimeExternalStoreConvergenceSentinels,
+  enableRuntimeExternalStoreConvergenceSentinels,
+  getRuntimeReadQueryExternalStore,
+  markRuntimeExternalStoreConvergenceBootComplete,
+  readRuntimeExternalStoreConvergenceSentinels,
+  resetRuntimeExternalStoreConvergenceSentinels,
+} from '../../../src/internal/store/RuntimeExternalStore.js'
 
 const settleRuntime = async (hostScheduler: RuntimeContracts.DeterministicHostScheduler): Promise<void> => {
   for (let i = 0; i < 8; i += 1) {
@@ -103,6 +110,37 @@ describe('RuntimeExternalStore runSync fallback contract', () => {
     } finally {
       unsubscribe()
       await settleRuntime(hostScheduler)
+      await runtime.dispose()
+    }
+  })
+
+  it('exposes afterBoot runSync fallback and retained readQuery topic sentinels', async () => {
+    const { runtime, moduleRuntime, readQuery, route, hostScheduler } = makeCounterRuntime()
+    resetRuntimeExternalStoreConvergenceSentinels()
+    enableRuntimeExternalStoreConvergenceSentinels()
+    markRuntimeExternalStoreConvergenceBootComplete()
+
+    const store = getRuntimeReadQueryExternalStore(runtime as any, moduleRuntime as any, readQuery as any, route as any)
+    const unsubscribe = store.subscribe(() => undefined)
+
+    try {
+      await settleRuntime(hostScheduler)
+      const retained = readRuntimeExternalStoreConvergenceSentinels()
+      expect(retained.readQueryRetainCount).toBe(1)
+      expect(retained.activeReadQueryRetainCount).toBe(1)
+      expect(retained.runSyncFallbackAfterBootCount).toBe(0)
+
+      unsubscribe()
+      await settleRuntime(hostScheduler)
+
+      const released = readRuntimeExternalStoreConvergenceSentinels()
+      expect(released.readQueryReleaseCount).toBe(1)
+      expect(released.activeReadQueryRetainCount).toBe(0)
+    } finally {
+      unsubscribe()
+      await settleRuntime(hostScheduler)
+      disableRuntimeExternalStoreConvergenceSentinels()
+      resetRuntimeExternalStoreConvergenceSentinels()
       await runtime.dispose()
     }
   })

@@ -1,6 +1,6 @@
 import * as Logix from '@logixjs/core'
 import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
-import { Effect, Fiber } from 'effect'
+import { Effect } from 'effect'
 import type { ManagedRuntime } from 'effect'
 import {
   registerRuntimeExternalStoreDisposer,
@@ -40,6 +40,87 @@ type HostScheduler = {
   readonly scheduleMicrotask: (cb: () => void) => void
   readonly scheduleAnimationFrame: (cb: () => void) => Cancel
   readonly scheduleTimeout: (ms: number, cb: () => void) => Cancel
+}
+
+export type RuntimeExternalStoreConvergenceSentinelSnapshot = {
+  readonly runSyncFallbackColdCount: number
+  readonly runSyncFallbackAfterBootCount: number
+  readonly moduleRunSyncFallbackAfterBootCount: number
+  readonly readQueryRunSyncFallbackAfterBootCount: number
+  readonly readQueryRetainCount: number
+  readonly readQueryReleaseCount: number
+  readonly activeReadQueryRetainCount: number
+}
+
+const runtimeExternalStoreConvergenceCounters = {
+  runSyncFallbackColdCount: 0,
+  runSyncFallbackAfterBootCount: 0,
+  moduleRunSyncFallbackAfterBootCount: 0,
+  readQueryRunSyncFallbackAfterBootCount: 0,
+  readQueryRetainCount: 0,
+  readQueryReleaseCount: 0,
+  activeReadQueryRetainCount: 0,
+}
+
+let runtimeExternalStoreConvergenceSentinelsEnabled = false
+let runtimeExternalStoreConvergenceBootComplete = false
+
+export const enableRuntimeExternalStoreConvergenceSentinels = (): void => {
+  runtimeExternalStoreConvergenceSentinelsEnabled = true
+}
+
+export const disableRuntimeExternalStoreConvergenceSentinels = (): void => {
+  runtimeExternalStoreConvergenceSentinelsEnabled = false
+}
+
+export const markRuntimeExternalStoreConvergenceBootComplete = (): void => {
+  runtimeExternalStoreConvergenceBootComplete = true
+}
+
+export const resetRuntimeExternalStoreConvergenceSentinels = (): void => {
+  runtimeExternalStoreConvergenceCounters.runSyncFallbackColdCount = 0
+  runtimeExternalStoreConvergenceCounters.runSyncFallbackAfterBootCount = 0
+  runtimeExternalStoreConvergenceCounters.moduleRunSyncFallbackAfterBootCount = 0
+  runtimeExternalStoreConvergenceCounters.readQueryRunSyncFallbackAfterBootCount = 0
+  runtimeExternalStoreConvergenceCounters.readQueryRetainCount = 0
+  runtimeExternalStoreConvergenceCounters.readQueryReleaseCount = 0
+  runtimeExternalStoreConvergenceCounters.activeReadQueryRetainCount = 0
+  runtimeExternalStoreConvergenceBootComplete = false
+}
+
+export const readRuntimeExternalStoreConvergenceSentinels = (): RuntimeExternalStoreConvergenceSentinelSnapshot => ({
+  runSyncFallbackColdCount: runtimeExternalStoreConvergenceCounters.runSyncFallbackColdCount,
+  runSyncFallbackAfterBootCount: runtimeExternalStoreConvergenceCounters.runSyncFallbackAfterBootCount,
+  moduleRunSyncFallbackAfterBootCount: runtimeExternalStoreConvergenceCounters.moduleRunSyncFallbackAfterBootCount,
+  readQueryRunSyncFallbackAfterBootCount: runtimeExternalStoreConvergenceCounters.readQueryRunSyncFallbackAfterBootCount,
+  readQueryRetainCount: runtimeExternalStoreConvergenceCounters.readQueryRetainCount,
+  readQueryReleaseCount: runtimeExternalStoreConvergenceCounters.readQueryReleaseCount,
+  activeReadQueryRetainCount: runtimeExternalStoreConvergenceCounters.activeReadQueryRetainCount,
+})
+
+const recordRunSyncFallback = (kind: 'module' | 'readQuery'): void => {
+  if (!runtimeExternalStoreConvergenceSentinelsEnabled) return
+  if (!runtimeExternalStoreConvergenceBootComplete) {
+    runtimeExternalStoreConvergenceCounters.runSyncFallbackColdCount += 1
+    return
+  }
+  runtimeExternalStoreConvergenceCounters.runSyncFallbackAfterBootCount += 1
+  if (kind === 'module') runtimeExternalStoreConvergenceCounters.moduleRunSyncFallbackAfterBootCount += 1
+  else runtimeExternalStoreConvergenceCounters.readQueryRunSyncFallbackAfterBootCount += 1
+}
+
+const recordReadQueryRetain = (): void => {
+  if (!runtimeExternalStoreConvergenceSentinelsEnabled) return
+  runtimeExternalStoreConvergenceCounters.readQueryRetainCount += 1
+  runtimeExternalStoreConvergenceCounters.activeReadQueryRetainCount += 1
+}
+
+const recordReadQueryRelease = (): void => {
+  if (!runtimeExternalStoreConvergenceSentinelsEnabled) return
+  runtimeExternalStoreConvergenceCounters.readQueryReleaseCount += 1
+  if (runtimeExternalStoreConvergenceCounters.activeReadQueryRetainCount > 0) {
+    runtimeExternalStoreConvergenceCounters.activeReadQueryRetainCount -= 1
+  }
 }
 
 const storesByRuntime = new WeakMap<object, Map<TopicKey, ExternalStore<any>>>()
@@ -337,6 +418,7 @@ export const getRuntimeModuleExternalStore = <S>(
       readSnapshot: () => {
         const state = runtimeStore.getModuleState(moduleInstanceKey) as S | undefined
         if (state !== undefined) return state
+        recordRunSyncFallback('module')
         return runtime.runSync(moduleRuntime.getState as unknown as Effect.Effect<S, never, any>)
       },
       options,
@@ -354,7 +436,7 @@ export const getRuntimeReadQueryExternalStore = <S, V>(
   const moduleInstanceKey = makeModuleInstanceKey(moduleRuntime.moduleId, moduleRuntime.instanceId)
   const topicKey = makeReadQueryTopicKey(moduleInstanceKey, route.selectorFingerprint.value)
   const runtimeStore = getRuntimeStore(runtime)
-  let readQueryRetainFiber: Fiber.Fiber<void, any> | undefined
+  let readQueryRetainCancel: Cancel | undefined
 
   return getOrCreateStore(runtime, topicKey, () =>
     makeTopicExternalStore({
@@ -363,25 +445,30 @@ export const getRuntimeReadQueryExternalStore = <S, V>(
       topicKey,
       readSnapshot: () => {
         const state = runtimeStore.getModuleState(moduleInstanceKey) as S | undefined
-        const current = state ?? runtime.runSync(moduleRuntime.getState as unknown as Effect.Effect<S, never, any>)
+        const current = state ?? (() => {
+          recordRunSyncFallback('readQuery')
+          return runtime.runSync(moduleRuntime.getState as unknown as Effect.Effect<S, never, any>)
+        })()
         return selectorReadQuery.select(current)
       },
       options,
       onFirstListener: () => {
-        if (readQueryRetainFiber) return
+        if (readQueryRetainCancel) return
+        recordReadQueryRetain()
         const retainer = moduleRuntime as unknown as ReadQueryTopicRetainer<S>
         const effect = Effect.scoped(
           Effect.flatMap(retainer.retainReadQueryTopic(selectorReadQuery), () => Effect.never),
         ) as Effect.Effect<void, never, any>
-        readQueryRetainFiber = runtime.runFork(effect)
+        readQueryRetainCancel = runtime.runCallback(effect, { onExit: () => undefined })
       },
       invalidateSnapshotOnFirstListener: true,
       notifyAfterFirstListenerInvalidation: true,
       onLastListener: () => {
-        const fiber = readQueryRetainFiber
-        if (!fiber) return
-        readQueryRetainFiber = undefined
-        runtime.runFork(Fiber.interrupt(fiber))
+        const cancel = readQueryRetainCancel
+        if (!cancel) return
+        readQueryRetainCancel = undefined
+        recordReadQueryRelease()
+        cancel()
       },
     }),
   )

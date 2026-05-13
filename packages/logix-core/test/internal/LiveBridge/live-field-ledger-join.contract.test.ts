@@ -44,10 +44,15 @@ const snapshot = finalizeFieldContributions({
   ],
 }).snapshot
 
+const must = <T>(value: T | undefined): T => {
+  expect(value).toBeDefined()
+  return value!
+}
+
 describe('live field ledger join contract', () => {
   it('joins field semantic payload with 175 ledger envelope without taking ordering ownership', () => {
     const ledger = createLiveOperationLedgerStore({ enabled: true })
-    const envelope = ledger.recordOperationEvent({
+    const envelope = must(ledger.recordOperationEvent({
       target,
       eventKind: 'diagnostic',
       label: 'field convergence',
@@ -55,7 +60,7 @@ describe('live field ledger join contract', () => {
       opSeq: 2,
       linkId: 'field-link',
       payload: { owner: 'runtime-live', ownerRef: 'diagnostic:field-link' },
-    })
+    }))
     const model = createFieldRuntimeInspectModel({ enabled: true, producer: 'live-field-ledger-join.contract' })
     const payload = model.makeFieldSemanticEventPayload({
       target: descriptor,
@@ -126,14 +131,14 @@ describe('live field ledger join contract', () => {
 
   it('returns join mismatch gaps for target link or watermark mismatches', () => {
     const ledger = createLiveOperationLedgerStore({ enabled: true })
-    const envelope = ledger.recordOperationEvent({
+    const envelope = must(ledger.recordOperationEvent({
       target: otherTarget,
       eventKind: 'diagnostic',
       label: 'other field convergence',
       txnSeq: 6,
       opSeq: 1,
       linkId: 'other-link',
-    })
+    }))
     const model = createFieldRuntimeInspectModel({ enabled: true, producer: 'live-field-ledger-join.contract' })
     const payload = model.makeFieldSemanticEventPayload({
       target: descriptor,
@@ -161,12 +166,12 @@ describe('live field ledger join contract', () => {
 
   it('returns missing field event metadata gaps before touching ledger ownership', () => {
     const ledger = createLiveOperationLedgerStore({ enabled: true })
-    const envelope = ledger.recordOperationEvent({
+    const envelope = must(ledger.recordOperationEvent({
       target,
       eventKind: 'diagnostic',
       label: 'field convergence',
       linkId: 'field-link',
-    })
+    }))
 
     const joined = joinFieldSemanticPayloadWithLedgerEnvelope({
       target,

@@ -47,19 +47,24 @@ export const resolveImportedModuleRef = <Id extends string, Sh extends Logix.Any
   if (childRuntime) {
     const dispatch = Object.assign(
       (action: Logix.Module.ActionOf<Sh>) => {
-        runtime.runFork((childRuntime.dispatch as (a: Logix.Module.ActionOf<Sh>) => Effect.Effect<void, any, any>)(action))
+        runtime.runCallback(
+          (childRuntime.dispatch as (a: Logix.Module.ActionOf<Sh>) => Effect.Effect<void, any, any>)(action),
+          { onExit: () => undefined },
+        )
       },
       {
         batch: (actions: ReadonlyArray<Logix.Module.ActionOf<Sh>>) => {
-          runtime.runFork(
+          runtime.runCallback(
             (childRuntime.dispatchBatch as (a: ReadonlyArray<Logix.Module.ActionOf<Sh>>) => Effect.Effect<void, any, any>)(
               actions,
             ),
+            { onExit: () => undefined },
           )
         },
         lowPriority: (action: Logix.Module.ActionOf<Sh>) => {
-          runtime.runFork(
+          runtime.runCallback(
             (childRuntime.dispatchLowPriority as (a: Logix.Module.ActionOf<Sh>) => Effect.Effect<void, any, any>)(action),
+            { onExit: () => undefined },
           )
         },
       },

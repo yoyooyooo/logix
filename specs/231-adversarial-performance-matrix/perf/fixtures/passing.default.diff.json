@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "matrixId": "logix.adversarial.runtime.v1",
+  "matrixHash": "sha256:fixture",
+  "profile": "adversarial-default",
+  "envId": "fixture",
+  "meta": { "comparability": { "comparable": true } },
+  "summary": { "regressions": 0, "budgetExceeded": 0, "timeouts": 0, "missingSuites": 0, "stabilityWarnings": 0 },
+  "cells": [
+    { "cellId": "fieldKernel.negativeDirtyPattern::fixture", "hotPath": "fieldKernel.negativeDirtyPattern", "status": "pass" },
+    { "cellId": "fieldKernel.convergeTxnCommit::fixture", "hotPath": "fieldKernel.convergeTxnCommit", "status": "pass" },
+    { "cellId": "fieldKernel.formListScopeCheck::fixture", "hotPath": "fieldKernel.formListScopeCheck", "status": "pass" },
+    { "cellId": "fieldKernel.sourceExternalStoreIngest::fixture", "hotPath": "fieldKernel.sourceExternalStoreIngest", "status": "pass" },
+    { "cellId": "runtimeStore.noTearingTickNotify::fixture", "hotPath": "runtimeStore.noTearingTickNotify", "status": "pass" },
+    { "cellId": "react.strictSuspenseJitter::fixture", "hotPath": "react.strictSuspenseJitter", "status": "pass" },
+    { "cellId": "diagnostics.overhead::fixture", "hotPath": "diagnostics.overhead", "status": "pass" }
+  ]
+}

@@ -12,6 +12,13 @@ const waitForStartup = Effect.promise(
     }),
 )
 
+const withDebugSink = <A, E, R>(program: Effect.Effect<A, E, R>, sink: Debug.Sink): Effect.Effect<A, E, R> =>
+  Effect.provideService(
+    Effect.provideService(program, Debug.internal.currentDebugSinks as any, [sink]),
+    Debug.internal.currentDiagnosticsLevel as any,
+    'light',
+  ) as Effect.Effect<A, E, R>
+
 describe('TaskRunner (run*Task)', () => {
   const StateSchema = Schema.Struct({
     logs: Schema.Array(Schema.String),
@@ -76,7 +83,7 @@ describe('TaskRunner (run*Task)', () => {
         }),
       )
 
-      yield* Effect.provideService(Effect.gen(function* () {
+      yield* withDebugSink(Effect.gen(function* () {
         const runtime = yield* ModuleRuntime.make(
           { logs: [], results: [] },
           {
@@ -107,7 +114,7 @@ describe('TaskRunner (run*Task)', () => {
       
         const pendingEvent: any = events[pendingIdx]
         expect(pendingEvent.originName).toBe('start')
-      }), Debug.internal.currentDebugSinks as any, [sink])
+      }), sink)
     }),
   )
 
@@ -158,7 +165,7 @@ describe('TaskRunner (run*Task)', () => {
         }),
       )
 
-      yield* Effect.provideService(Effect.gen(function* () {
+      yield* withDebugSink(Effect.gen(function* () {
         const runtime = yield* ModuleRuntime.make(
           { logs: [], results: [] },
           {
@@ -192,7 +199,7 @@ describe('TaskRunner (run*Task)', () => {
             (e as any).state.logs.some((x: string) => x.startsWith('success:1:')),
         )
         expect(success1).toBe(false)
-      }), Debug.internal.currentDebugSinks as any, [sink])
+      }), sink)
     }),
   )
 
@@ -243,7 +250,7 @@ describe('TaskRunner (run*Task)', () => {
         }),
       )
 
-      yield* Effect.provideService(Effect.gen(function* () {
+      yield* withDebugSink(Effect.gen(function* () {
         const runtime = yield* ModuleRuntime.make(
           { logs: [], results: [] },
           {
@@ -266,7 +273,7 @@ describe('TaskRunner (run*Task)', () => {
 
         const finalState = (yield* runtime.getState) as any
         expect(finalState.results).toEqual([10])
-      }), Debug.internal.currentDebugSinks as any, [sink])
+      }), sink)
     }),
   )
 
@@ -318,7 +325,7 @@ describe('TaskRunner (run*Task)', () => {
         }),
       )
 
-      yield* Effect.provideService(Effect.gen(function* () {
+      yield* withDebugSink(Effect.gen(function* () {
         const runtime = yield* ModuleRuntime.make(
           { logs: [], results: [] },
           {
@@ -350,7 +357,7 @@ describe('TaskRunner (run*Task)', () => {
         expect(allLogs).toContain('success:1:10')
         expect(allLogs).toContain('success:2:20')
         expect(allLogs).toContain('success:3:30')
-      }), Debug.internal.currentDebugSinks as any, [sink])
+      }), sink)
     }),
   )
 })

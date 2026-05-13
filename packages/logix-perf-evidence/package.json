@@ -11,7 +11,7 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run scripts/**/*.test.ts",
+    "test": "vitest run scripts",
     "collect": "pnpm -C ../.. exec tsx packages/logix-perf-evidence/scripts/collect.ts",
     "ci:decision-smoke": "pnpm -C ../.. exec vitest run packages/logix-perf-evidence/scripts/lib/capacity-collect-budget-controller.test.ts packages/logix-perf-evidence/scripts/lib/capacity-collect-decision.test.ts packages/logix-perf-evidence/scripts/lib/steps-grid-guard.test.ts packages/logix-perf-evidence/scripts/lib/steps-grid.test.ts packages/logix-perf-evidence/scripts/lib/capacity-envelope.test.ts",
     "ci:replay": "pnpm -C ../.. exec tsx packages/logix-perf-evidence/scripts/ci.replay-capacity-collect.ts && pnpm -C ../.. exec tsx packages/logix-perf-evidence/scripts/ci.replay-summary.ts",
