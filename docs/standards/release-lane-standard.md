@@ -24,7 +24,7 @@ Only the Release workflow should run for `logix-v*` tag pushes. Normal push work
 - `pnpm release:tag --push` creates and pushes that default stable patch tag.
 - `pnpm release:tag minor --push` creates and pushes the next stable minor tag.
 - `pnpm release:tag beta --bump minor --push` creates and pushes the next beta prerelease for the next minor base.
-- `pnpm release:publish` is the CI publish command. It reads `GITHUB_REF_NAME=logix-v*`, temporarily stages package versions, packs public `@logixjs/*` packages, creates the GitHub Release, and publishes to npm.
+- `pnpm release:publish` is the CI publish command. It reads `GITHUB_REF_NAME=logix-v*`, temporarily stages package versions, packs configured public `@logixjs/*` packages, publishes them to npm, and then creates or updates the GitHub Release.
 - `pnpm ci:release` is the release verification gate.
 
 The default release channel is stable. The default version bump is patch.
@@ -56,7 +56,11 @@ The tag helper stores the generated notes in the annotated tag message. CI uses 
 
 Package `package.json` files may stay on the development version in main. During release, `pnpm release:publish` temporarily rewrites public `@logixjs/*` package versions to the tag semver and rewrites internal `workspace:*` dependencies to the same version before packing.
 
+Packages must enter the release publish set only after their npm package and Trusted Publishing permissions are configured. `@logixjs/playground` is currently built and uploaded through repo artifacts, but is not published to npm until its npm package is configured.
+
 The restore step must run after packing/publishing so CI workspace mutations do not become commits.
+
+GitHub Release creation must happen after npm publish succeeds. This keeps release notes and uploaded tarballs from looking authoritative before the npm side has completed.
 
 Release packing must not rerun package lifecycle scripts after publish manifest staging. Build, typecheck, tests, and browser smoke belong to `pnpm ci:release`; `pnpm release:publish` packs the verified workspace artifacts with release-staged package manifests.
 

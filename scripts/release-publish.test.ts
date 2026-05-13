@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildPublishedManifest, distTagForVersion, npmPackArgs } from './release-publish.mjs'
+import { buildPublishedManifest, distTagForVersion, npmPackArgs, publicPackages } from './release-publish.mjs'
 
 describe('release-publish manifest helpers', () => {
   it('maps versions to npm dist-tags', () => {
@@ -45,5 +45,9 @@ describe('release-publish manifest helpers', () => {
 
   it('packs release tarballs without rerunning package prepack scripts after manifest staging', () => {
     expect(npmPackArgs('/tmp/logix-pack')).toEqual(['pack', '--ignore-scripts', '--pack-destination', '/tmp/logix-pack'])
+  })
+
+  it('does not publish package entries that are not configured on npm yet', () => {
+    expect(publicPackages().map(({ pkg }) => pkg.name)).not.toContain('@logixjs/playground')
   })
 })

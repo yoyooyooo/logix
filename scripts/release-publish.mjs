@@ -7,7 +7,7 @@ import { join } from 'node:path'
 
 const TAG_RE = /^logix-v(\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?)$/
 const PUBLIC_SCOPE = '@logixjs/'
-const IGNORED_PUBLIC_PACKAGES = new Set(['@logixjs/perf-evidence'])
+const IGNORED_PUBLIC_PACKAGES = new Set(['@logixjs/perf-evidence', '@logixjs/playground'])
 
 function git(args) {
   return execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
@@ -266,8 +266,8 @@ function main() {
       return
     }
     packDir = packPackages(packages)
-    createGithubRelease(options.tagName, version, distTag, packDir, releaseNotesFromTag(options.tagName))
     publishTarballs(packDir, distTag, options.otp)
+    createGithubRelease(options.tagName, version, distTag, packDir, releaseNotesFromTag(options.tagName))
   } finally {
     restore()
     if (packDir) rmSync(packDir, { recursive: true, force: true })
