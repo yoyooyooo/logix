@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "group": "120-docs-full-coverage-roadmap",
+  "statusEnum": ["idea", "draft", "planned", "active", "done", "frozen"],
+  "entries": [
+    {
+      "id": "103",
+      "dir": "specs/103-effect-v4-forward-cutover",
+      "status": "done",
+      "dependsOn": [],
+      "scope": "effect-v4 baseline and repo-wide forward cutover"
+    },
+    {
+      "id": "113",
+      "dir": "specs/113-docs-runtime-cutover",
+      "status": "done",
+      "dependsOn": [],
+      "scope": "docs root route, governance, runtime/platform facts first-wave cutover"
+    },
+    {
+      "id": "115",
+      "dir": "specs/115-core-kernel-extraction",
+      "status": "done",
+      "dependsOn": ["103", "113"],
+      "scope": "kernel extraction, shell surface split, core topology first wave"
+    },
+    {
+      "id": "116",
+      "dir": "specs/116-host-runtime-rebootstrap",
+      "status": "done",
+      "dependsOn": ["115"],
+      "scope": "react, sandbox, test, devtools host family first-wave rebootstrap"
+    },
+    {
+      "id": "117",
+      "dir": "specs/117-domain-package-rebootstrap",
+      "status": "done",
+      "dependsOn": ["115"],
+      "scope": "query, form, i18n, domain package first-wave rebootstrap"
+    },
+    {
+      "id": "118",
+      "dir": "specs/118-cli-rebootstrap",
+      "status": "done",
+      "dependsOn": ["103", "115"],
+      "scope": "control-plane CLI first-wave rebootstrap"
+    },
+    {
+      "id": "119",
+      "dir": "specs/119-examples-verification-alignment",
+      "status": "done",
+      "dependsOn": ["116", "117", "118"],
+      "scope": "examples and verification anchors first-wave alignment"
+    },
+    {
+      "id": "121",
+      "dir": "specs/121-docs-foundation-governance-convergence",
+      "status": "done",
+      "dependsOn": ["113"],
+      "scope": "docs foundation routing, governance, promotion lanes, readme mesh"
+    },
+    {
+      "id": "122",
+      "dir": "specs/122-runtime-public-authoring-convergence",
+      "status": "done",
+      "dependsOn": ["103", "115", "116", "117", "121"],
+      "scope": "public api spine, canonical authoring, logic composition, charter-aligned public surface"
+    },
+    {
+      "id": "123",
+      "dir": "specs/123-runtime-kernel-hotpath-convergence",
+      "status": "done",
+      "dependsOn": ["103", "115"],
+      "scope": "kernel hot path, steady-state runtime direction, perf evidence governance"
+    },
+    {
+      "id": "124",
+      "dir": "specs/124-runtime-control-plane-verification-convergence",
+      "status": "done",
+      "dependsOn": ["103", "118", "119", "121"],
+      "scope": "runtime control plane, verification protocol, cli/test/sandbox convergence"
+    },
+    {
+      "id": "125",
+      "dir": "specs/125-form-field-kernel-second-wave",
+      "status": "done",
+      "dependsOn": ["117", "122", "123", "124"],
+      "scope": "form dsl, field-kernel boundary, commands, direct api and naming fallout"
+    },
+    {
+      "id": "126",
+      "dir": "specs/126-host-scenario-patterns-convergence",
+      "status": "done",
+      "dependsOn": ["116", "119", "122", "124", "125"],
+      "scope": "standardized scenario patterns, host projection, examples and verification mapping"
+    },
+    {
+      "id": "127",
+      "dir": "specs/127-domain-packages-second-wave",
+      "status": "done",
+      "dependsOn": ["117", "122", "124"],
+      "scope": "domain package second-wave convergence and future package admission rules"
+    },
+    {
+      "id": "128",
+      "dir": "specs/128-platform-layered-map-convergence",
+      "status": "done",
+      "dependsOn": ["121", "122", "123", "124"],
+      "scope": "layered map structure, layer-to-code ownership, runtime-first platform boundary"
+    },
+    {
+      "id": "129",
+      "dir": "specs/129-anchor-profile-static-governance",
+      "status": "done",
+      "dependsOn": ["121", "122", "128"],
+      "scope": "definition anchors, strict static profile, postponed naming governance"
+    }
+  ]
+}

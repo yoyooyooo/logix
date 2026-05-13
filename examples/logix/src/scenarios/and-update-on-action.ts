@@ -10,6 +10,7 @@
 import { Effect, Schema, Stream } from 'effect'
 import { fileURLToPath } from 'node:url'
 import * as Logix from '@logixjs/core'
+import { programLayer } from '../runtime/programLayer.js'
 
 // ---------------------------------------------------------------------------
 // Schema → Shape：带脏标记的简单表单 State / Action
@@ -25,15 +26,15 @@ const DirtyFormActionMap = {
   'input/reset': Schema.Void,
 }
 
-export type DirtyFormShape = Logix.Shape<typeof DirtyFormStateSchema, typeof DirtyFormActionMap>
-export type DirtyFormState = Logix.StateOf<DirtyFormShape>
-export type DirtyFormAction = Logix.ActionOf<DirtyFormShape>
+export type DirtyFormShape = Logix.Module.Shape<typeof DirtyFormStateSchema, typeof DirtyFormActionMap>
+export type DirtyFormState = Logix.Module.StateOf<DirtyFormShape>
+export type DirtyFormAction = Logix.Module.ActionOf<DirtyFormShape>
 
 // ---------------------------------------------------------------------------
 // Module：使用 Logix.Module 定义表单模块
 // ---------------------------------------------------------------------------
 
-export const FormDef = Logix.Module.make('FormModule', {
+export const Form = Logix.Module.make('FormModule', {
   state: DirtyFormStateSchema,
   actions: DirtyFormActionMap,
 })
@@ -42,7 +43,7 @@ export const FormDef = Logix.Module.make('FormModule', {
 // Logic：使用 Fluent DSL 表达「事件 → 状态更新」意图（通过 Module.logic 注入 $）
 // ---------------------------------------------------------------------------
 
-export const FormLogic = FormDef.logic(($) =>
+export const FormLogic = Form.logic('form-logic', ($) =>
   Effect.gen(function* () {
     // 在 run 段挂载 watcher，避免 setup 阶段触发 Phase Guard
     yield* Effect.all(
@@ -70,10 +71,10 @@ export const FormLogic = FormDef.logic(($) =>
 )
 
 // ---------------------------------------------------------------------------
-// Impl / Live：组合初始 State 与 Logic，生成可注入的运行时实现
+// Program / Layer：组合初始 State 与 Logic，生成 canonical 公开装配对象
 // ---------------------------------------------------------------------------
 
-export const DirtyFormModule = FormDef.implement({
+export const DirtyFormProgram = Logix.Program.make(Form, {
   initial: {
     value: '',
     isDirty: false,
@@ -81,7 +82,7 @@ export const DirtyFormModule = FormDef.implement({
   logics: [FormLogic],
 })
 
-export const DirtyFormLive = DirtyFormModule.impl.layer
+export const DirtyFormLayer = programLayer(DirtyFormProgram)
 
 // ---------------------------------------------------------------------------
 // Demo: Simulation
@@ -89,7 +90,7 @@ export const DirtyFormLive = DirtyFormModule.impl.layer
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const program = Effect.gen(function* () {
-    const runtime = yield* Effect.service(FormDef.tag).pipe(Effect.orDie)
+    const runtime = yield* Effect.service(Form.tag).pipe(Effect.orDie)
 
     // Log state changes
     yield* Effect.forkChild(
@@ -115,5 +116,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     yield* Effect.log('--- End ---')
   })
 
-  void Effect.runPromise(program.pipe(Effect.provide(DirtyFormLive)) as Effect.Effect<void, never, never>)
+  void Effect.runPromise(program.pipe(Effect.provide(DirtyFormLayer)) as Effect.Effect<void, never, never>)
 }

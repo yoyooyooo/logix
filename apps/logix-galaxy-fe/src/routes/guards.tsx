@@ -1,14 +1,14 @@
 import type React from 'react'
 import { useEffect } from 'react'
-import { useDispatch, useModule } from '@logixjs/react'
+import { useDispatch, useModule, useSelector } from '@logixjs/react'
 import { Navigate, useLocation, useParams } from 'react-router-dom'
 import { AuthDef } from '../galaxy/auth.module'
 import { hasPermission, type ProjectPermissionKey } from '../galaxy/permissions'
 import { ProjectsDef } from '../galaxy/projects.module'
 
 export function RequireLogin({ children }: { children: React.ReactNode }) {
-  const phase = useModule(AuthDef, (s) => s.phase)
-  const pending = useModule(AuthDef, (s) => s.pending)
+  const phase = useSelector(AuthDef.tag, (s) => s.phase)
+  const pending = useSelector(AuthDef.tag, (s) => s.pending)
   const location = useLocation()
 
   if (phase === 'booting' || pending) {
@@ -41,12 +41,12 @@ export function RequireProjectPermission({
   const projectIdRaw = params.projectId
   const projectId = typeof projectIdRaw === 'string' ? Number(projectIdRaw) : NaN
 
-  const selectedProjectId = useModule(ProjectsDef, (s) => s.selectedProjectId)
-  const selectedProjectLoading = useModule(ProjectsDef, (s) => s.selectedProjectLoading)
-  const selectedProjectError = useModule(ProjectsDef, (s) => s.selectedProjectError)
-  const access = useModule(ProjectsDef, (s) => s.access)
-  const accessLoading = useModule(ProjectsDef, (s) => s.accessLoading)
-  const accessError = useModule(ProjectsDef, (s) => s.accessError)
+  const selectedProjectId = useSelector(ProjectsDef.tag, (s) => s.selectedProjectId)
+  const selectedProjectLoading = useSelector(ProjectsDef.tag, (s) => s.selectedProjectLoading)
+  const selectedProjectError = useSelector(ProjectsDef.tag, (s) => s.selectedProjectError)
+  const access = useSelector(ProjectsDef.tag, (s) => s.access)
+  const accessLoading = useSelector(ProjectsDef.tag, (s) => s.accessLoading)
+  const accessError = useSelector(ProjectsDef.tag, (s) => s.accessError)
 
   const dispatchProjects = useDispatch(ProjectsDef.tag)
 

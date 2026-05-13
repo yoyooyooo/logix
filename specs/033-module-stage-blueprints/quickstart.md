@@ -1,8 +1,8 @@
 # Quickstart: Module Stage Blueprints（033：画布语义蓝图最小闭环）
 
-**Date**: 2025-12-26  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/033-module-stage-blueprints/spec.md`  
-**Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/033-module-stage-blueprints/plan.md`
+**Date**: 2025-12-26
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/033-module-stage-blueprints/spec.md`
+**Plan**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/033-module-stage-blueprints/plan.md`
 
 ## 0) 目标一句话
 
@@ -17,9 +17,9 @@
 
 ## 2) 验收闭环（IR-first）
 
-1. 将 StageBlueprint 出码为可运行模块集合（生产运行不解释蓝图）。  
-2. 通过 trial-run（031）导出 Manifest/StaticIR/Artifacts/Evidence。  
-3. 由 036 Contract Suite 生成 PASS/WARN/FAIL，并输出可行动原因（缺失工件/越界引用/类型不匹配等）。  
+1. 将 StageBlueprint 出码为可运行模块集合（生产运行不解释蓝图）。
+2. 通过 trial-run（031）导出 Manifest/StaticIR/Artifacts/Evidence。
+3. 由 036 Contract Suite 生成 PASS/WARN/FAIL，并输出可行动原因（缺失工件/越界引用/类型不匹配等）。
 
 ## 3) 平台/Agent 的工作方式（推荐）
 

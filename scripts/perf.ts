@@ -6,8 +6,8 @@ import { fileURLToPath } from "node:url"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, "..")
-const skillDir = path.resolve(repoRoot, ".codex/skills/logix-perf-evidence")
-const skillPackageJson = path.resolve(skillDir, "package.json")
+const packageDir = path.resolve(repoRoot, "packages/logix-perf-evidence")
+const perfPackageJson = path.resolve(packageDir, "package.json")
 
 const usage = (): string => `\
 Usage:
@@ -18,7 +18,7 @@ Examples:
   pnpm perf collect -- --out specs/<id>/perf/after.local.json
   pnpm perf diff -- --before <before.json> --after <after.json> --out <diff.json>
   pnpm perf diff:triage -- --before <before.json> --after <after.json> --out <diff.json>
-  pnpm perf capacity:probe -- --profile default --steps 200,400,800,1200,1600,2000,2400,2800,3200
+  pnpm perf capacity:collect -- --profile default --steps 200,400,800,1200,1600,2000,2400,2800,3200
   pnpm perf validate -- --report <before|after>.json
   pnpm perf tuning:best
 `
@@ -27,9 +27,9 @@ const main = async (): Promise<void> => {
   const argv = process.argv.slice(2)
   const script = argv[0]
 
-  if (!fs.existsSync(skillPackageJson)) {
+  if (!fs.existsSync(perfPackageJson)) {
     throw new Error(
-      `Missing skill package.json at ${skillPackageJson}. Did you delete/move .codex/skills/logix-perf-evidence?`,
+      `Missing perf evidence package.json at ${perfPackageJson}. Did you delete/move packages/logix-perf-evidence?`,
     )
   }
 
@@ -48,7 +48,7 @@ const main = async (): Promise<void> => {
   }
 
   const child = spawn("pnpm", pnpmArgs, {
-    cwd: skillDir,
+    cwd: packageDir,
     stdio: "inherit",
     shell: false,
   })

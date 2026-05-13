@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://intent-flow.local/specs/015-devtools-converge-performance/schemas/converge-action-snippet.schema.json",
+  "$id": "https://logix.local/specs/015-devtools-converge-performance/schemas/converge-action-snippet.schema.json",
   "title": "ConvergeActionSnippet",
   "type": "object",
   "additionalProperties": false,

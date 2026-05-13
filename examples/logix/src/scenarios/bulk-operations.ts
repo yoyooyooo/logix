@@ -11,6 +11,7 @@
 
 import { Effect, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
+import { programLayer } from '../runtime/programLayer.js'
 import {
   BulkOperationPatternError,
   SelectionService,
@@ -34,15 +35,15 @@ const BulkActionMap = {
   'bulk/resetMessage': Schema.Void,
 }
 
-export type BulkShape = Logix.Shape<typeof BulkStateSchema, typeof BulkActionMap>
-export type BulkState = Logix.StateOf<BulkShape>
-export type BulkAction = Logix.ActionOf<BulkShape>
+export type BulkShape = Logix.Module.Shape<typeof BulkStateSchema, typeof BulkActionMap>
+export type BulkState = Logix.Module.StateOf<BulkShape>
+export type BulkAction = Logix.Module.ActionOf<BulkShape>
 
 // ---------------------------------------------------------------------------
 // Module：定义批量操作模块
 // ---------------------------------------------------------------------------
 
-export const BulkDef = Logix.Module.make('BulkModule', {
+export const Bulk = Logix.Module.make('BulkModule', {
   state: BulkStateSchema,
   actions: BulkActionMap,
 })
@@ -51,8 +52,7 @@ export const BulkDef = Logix.Module.make('BulkModule', {
 // Logic：监听 bulk/run，触发 Pattern，并更新本地 State（通过 Module.logic 注入 $）
 // ---------------------------------------------------------------------------
 
-export const BulkLogic = BulkDef.logic<SelectionService | BulkOperationService | NotificationService>(
-  ($: Logix.BoundApi<BulkShape, SelectionService | BulkOperationService | NotificationService>) =>
+export const BulkLogic = Bulk.logic<SelectionService | BulkOperationService | NotificationService>('bulk-logic', ($: Logix.Module.BoundApi<BulkShape, SelectionService | BulkOperationService | NotificationService>) =>
     Effect.gen(function* () {
       const handleRun = Effect.gen(function* () {
         const current = yield* $.state.read
@@ -85,10 +85,10 @@ export const BulkLogic = BulkDef.logic<SelectionService | BulkOperationService |
 )
 
 // ---------------------------------------------------------------------------
-// Impl / Live：组合 State / Action / Logic
+// Program / Layer：组合 State / Action / Logic
 // ---------------------------------------------------------------------------
 
-export const BulkModule = BulkDef.implement<SelectionService | BulkOperationService | NotificationService>({
+export const BulkProgram = Logix.Program.make(Bulk, {
   initial: {
     operation: 'archive',
     lastCount: 0,
@@ -97,5 +97,4 @@ export const BulkModule = BulkDef.implement<SelectionService | BulkOperationServ
   logics: [BulkLogic],
 })
 
-export const BulkImpl = BulkModule.impl
-export const BulkLive = BulkImpl.layer
+export const BulkLayer = programLayer(BulkProgram)

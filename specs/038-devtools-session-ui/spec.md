@@ -1,8 +1,8 @@
 # Feature Specification: Logix Devtools Session-First 界面重设计
 
-**Feature Branch**: `[038-devtools-session-ui]`  
-**Created**: 2025-12-26  
-**Status**: Draft  
+**Feature Branch**: `[038-devtools-session-ui]`
+**Created**: 2025-12-26
+**Status**: Draft
 **Input**: User description: "基于 07/08 的构想，重新设计 Devtools 的界面（Session First + Advisor + 脉冲/收敛）。"
 
 ## User Scenarios & Testing _(mandatory)_

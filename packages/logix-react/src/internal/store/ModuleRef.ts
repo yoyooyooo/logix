@@ -18,8 +18,15 @@ type ActionPayload<A, K> =
     ? P
     : never
 
-type AnyActionToken = Logix.Action.ActionToken<string, any, any>
-type ActionTokenPayload<T> = T extends Logix.Action.ActionToken<any, infer P, any> ? P : never
+type AnyActionToken = ((...args: ReadonlyArray<unknown>) => unknown) & {
+  readonly _kind: 'ActionToken'
+  readonly tag: string
+}
+type ActionTokenPayload<T> = T extends ((...args: any[]) => infer Out)
+  ? Out extends { readonly payload?: infer P }
+    ? P
+    : never
+  : never
 
 export type ModuleDispatchersOfShape<Sh extends Logix.AnyModuleShape> = Sh['actionMap']
 
@@ -29,23 +36,35 @@ export type ModuleRefOfShape<
   Sh extends Logix.AnyModuleShape,
   Def = unknown,
   Dispatchers = ModuleDispatchersOfShape<Sh>,
-> = ModuleRef<Logix.StateOf<Sh>, Logix.ActionOf<Sh>, ModuleActionTagsOfShape<Sh>, Def, Dispatchers>
+> = ModuleRef<Logix.Module.StateOf<Sh>, Logix.Module.ActionOf<Sh>, ModuleActionTagsOfShape<Sh>, Def, Dispatchers>
 
 export type ModuleRefOfTag<Id extends string, Sh extends Logix.AnyModuleShape> = ModuleRefOfShape<
   Sh,
-  Logix.ModuleTagType<Id, Sh>,
+  Logix.Module.ModuleTag<Id, Sh>,
   ModuleDispatchersOfShape<Sh>
 >
 
-export type ModuleRefOfModule<Id extends string, Sh extends Logix.AnyModuleShape, Ext extends object = {}, R = never> =
-  ModuleRefOfShape<Sh, Logix.Module.Module<Id, Sh, Ext, R>, ModuleDispatchersOfShape<Sh>> & Ext
+export type ModuleRefOfProgram<Id extends string, Sh extends Logix.AnyModuleShape, Ext extends object = {}, R = never> =
+  ModuleRefOfShape<Sh, Logix.Program.Program<Id, Sh, Ext, R>, ModuleDispatchersOfShape<Sh>> & Ext
 
-export type ModuleRefOfDef<Id extends string, Sh extends Logix.AnyModuleShape, Ext extends object = {}> = ModuleRefOfShape<
+export type ModuleRefOfModule<
+  Id extends string,
+  Sh extends Logix.AnyModuleShape,
+  Ext extends object = {},
+  R = never,
+> = ModuleRefOfShape<
   Sh,
-  Logix.Module.ModuleDef<Id, Sh, Ext>,
+  Logix.Module.Module<Id, Sh, Ext>,
   ModuleDispatchersOfShape<Sh>
 > &
   Ext
+
+/** @deprecated Use ModuleRefOfModule. */
+export type ModuleRefOfDef<Id extends string, Sh extends Logix.AnyModuleShape, Ext extends object = {}> = ModuleRefOfModule<
+  Id,
+  Sh,
+  Ext
+>
 
 export type ModuleActions<A, Tags extends string = ActionTags<A>> = {
   readonly dispatch: Dispatch<A>
@@ -78,7 +97,7 @@ export type ModuleDispatchers<A, Tags extends string = ActionTags<A>, Def = unkn
 
 export interface ModuleImports {
   readonly get: <Id extends string, Sh extends Logix.AnyModuleShape>(
-    module: Logix.ModuleTagType<Id, Sh>,
+    module: Logix.Module.ModuleTag<Id, Sh>,
   ) => ModuleRefOfTag<Id, Sh>
 }
 

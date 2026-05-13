@@ -1,8 +1,8 @@
 # Spec Group: Logix Control Laws v1（UI→React，Logic→Logix）
 
-**Feature Branch**: `077-logix-control-laws-v1`  
-**Created**: 2026-01-05  
-**Status**: Draft  
+**Feature Branch**: `077-logix-control-laws-v1`
+**Created**: 2026-01-05
+**Status**: Draft
 **Input**: “用一个可迭代的系统方程长期指导演进；UI 交给 React；逻辑交给 Logix；逻辑编排更声明式。”
 
 ## Why: 为什么要有一个 Group Spec
@@ -29,7 +29,7 @@
 ```text
 F: 参考系（tick）
 Π: 控制律（Programs）
-C_T: 约束闭包（Traits）
+C_T: 约束闭包（Fields）
 Ω: 观测/投影（React 读取的快照）
 
 Ops_t  = Π(E_t, S_t, t)
@@ -42,7 +42,7 @@ Obs_t  = Ω_F(S_t)
 裁决（防漂移）：
 
 - `React = Ω_F`：只负责观测/渲染/DOM integration；不再承担“数据胶水同步”。
-- `Logix = Π + Δ + Close_{C_T}`：只负责控制律、事务化应用与约束收敛；禁止“在 trait meta 里塞自由工作流再反射解释”。
+- `Logix = Π + Δ + Close_{C_T}`：只负责控制律、事务化应用与约束收敛；禁止“在 field meta 里塞自由工作流再反射解释”。
 - `tickSeq` 是 simultaneity 的锚点：同一次 render/commit 只能观测到同一 tick 的快照；任何时间算子必须进入同一证据链（禁止影子 setTimeout/Promise 链）。
 
 ## Tape：时间线可控（快进/倒退/分叉）的最低门槛
@@ -63,14 +63,14 @@ Obs_t  = Ω_F(S_t)
 
 ## Members（本 group 调度的 specs）
 
-关系 SSoT：`specs/077-logix-control-laws-v1/spec-registry.json`（机器可读）。  
+关系 SSoT：`specs/077-logix-control-laws-v1/spec-registry.json`（机器可读）。
 人读阐述：`specs/077-logix-control-laws-v1/spec-registry.md`。
 
 - `specs/073-logix-external-store-tick/`：建立参考系 `F`（`RuntimeStore + tickSeq`，no-tearing）
 - `specs/070-core-pure-perf-wins/`：默认档位零诊断税 + 单内核边界（纯赚/近纯赚；热路径门禁）
 - `specs/074-readquery-create-selector/`：静态 selector 组合器（显式 deps；为 topic 分片与 watcher 降税打地基）
 - `specs/068-watcher-pure-wins/`：watcher fan-out 纯赚性能地基（Action/State 传播降到 O(k)）
-- `specs/006-optimize-traits/`：Trait converge 性能上限提升（`Close_{C_T}` 的热路径优化）
+- `specs/006-optimize-fields/`：Field converge 性能上限提升（`Close_{C_T}` 的热路径优化）
 - `specs/075-workflow-codegen-ir/`：建立通用控制律 `Π_general`（WorkflowDef → Π slice：出码层 + 时间算子进入证据链；DX 入口为 Workflow）
 - `specs/076-logix-source-auto-trigger-kernel/`：建立受限控制律 `Π_source`（source 自动触发内核化，消灭 Query/Form watcher 胶水）
 - `specs/018-periodic-self-calibration/`：默认值审计 + 运行时自校准（不影响默认档位；基于工作负载证据）
@@ -90,7 +90,7 @@ Obs_t  = Ω_F(S_t)
 ### 反模式清单（新定位下应降级到 v2/backlog 或直接停掉）
 
 - 把 075 Workflow 当作“人类主写 DSL”去做 DX：大量语法糖/重载、闭包映射、v1 就引入 service 结果数据流、自动派生 stepKey、邻接推断分支等 —— 这些会与“IR 可导出/可回放/性能门槛”硬冲突。
-- 继续投资 trait meta/feature 包里的反射式工作流（把触发/时间/分支塞回 meta 再解释）：会制造并行控制律与影子时间线；应由 076（受限 Π_source）+ 075（通用 Π_general）接管。
+- 继续投资 field meta/feature 包里的反射式工作流（把触发/时间/分支塞回 meta 再解释）：会制造并行控制律与影子时间线；应由 076（受限 Π_source）+ 075（通用 Π_general）接管。
 - 任何导致 watcher 数量随 programs 增长、或 dispatch/commit 需要线性扫描全量的设计：必须回到 068 的 fan-out/topic-index 约束重新设计，而不是事后补丁。
 
 ## User Scenarios & Testing _(mandatory)_
@@ -109,7 +109,7 @@ Obs_t  = Ω_F(S_t)
 
 - React 同时读取多个模块时无 tearing（同 tickSeq 快照）
 - submit 工作流由 Program 声明式表达（而不是 watcher 胶水）
-- source 自动触发不再依赖“监听 action → 反查 trait”
+- source 自动触发不再依赖“监听 action → 反查 field”
 - Devtools 能导出 Static IR + Dynamic Trace 锚点，解释“为何发生这次 refresh/navigate/dispatch”
 
 **Acceptance Scenarios**（集成验收由 member specs 分别落测试，本 group 只定义口径）：
@@ -134,7 +134,7 @@ Obs_t  = Ω_F(S_t)
 
 - **FR-001**: 必须存在一个 group-level 的成员关系 SSoT（`spec-registry.json`），并可生成索引式执行清单（checklists）。
 - **FR-002**: 075/076 的 contracts/术语必须以 `docs/specs/.../97` 的最小系统方程为准（不得自创第二套分层）。
-- **FR-003**: 任何“动态律”能力必须以 Program 形态进入 `Π`（可编译、可导出 IR），不得回退到 trait meta + 反射式解释作为主路径。
+- **FR-003**: 任何“动态律”能力必须以 Program 形态进入 `Π`（可编译、可导出 IR），不得回退到 field meta + 反射式解释作为主路径。
 
 ### Non-Functional Requirements
 
@@ -146,4 +146,4 @@ Obs_t  = Ω_F(S_t)
 
 - **SC-001**: 完成 073 M1 后，React 多模块读取无 tearing（同 tickSeq 快照）。
 - **SC-002**: 完成 075 后，至少 1 条 submit 工作流不再依赖 watcher 胶水，并能导出 Workflow Static IR（Π slice）。
-- **SC-003**: 完成 076 后，Query/Form 的默认自动刷新不再需要 “监听 action → 反查 trait → refresh”。
+- **SC-003**: 完成 076 后，Query/Form 的默认自动刷新不再需要 “监听 action → 反查 field → refresh”。

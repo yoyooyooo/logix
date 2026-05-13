@@ -8,7 +8,7 @@
 - v1 推荐落点：`examples/logix/src/patterns/*`（先验证 API 写法与口径，再决定是否抽成独立 package）。
 - Domain kit 是组合层：不得订阅/不得 fork/不得创建 Scope/不得隐藏 IO。
 - 真相源口径：
-  - 读侧：ExternalStore → `StateTrait.externalStore` 写回状态图（external-owned）。
+  - 读侧：ExternalStore → `FieldKernel.externalStore` 写回状态图（external-owned）。
   - 写侧：显式 command/service port（Effect）在事务外执行，再由读侧写回。
 
 ## 2) 端口契约（唯一身份锚点）

@@ -1,9 +1,11 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import { readConvergeControlPlaneFromEnv } from './converge-runtime.js'
 import { makePerfKernelLayer, silentDebugLayer } from './harness.js'
 
-export type DiagnosticsLevel = Logix.Debug.DiagnosticsLevel
+export type DiagnosticsLevel = CoreDebug.DiagnosticsLevel
 
 export type ConvergeTimeSlicingRuntime = {
   readonly module: any
@@ -48,9 +50,9 @@ export const makeConvergeTimeSlicingRuntime = (
     bump: Schema.Number,
   }
 
-  const traits: Record<string, unknown> = {}
+  const fieldDeclarations: Record<string, unknown> = {}
   for (let i = 0; i < safeSteps; i++) {
-    traits[`d${i}`] = Logix.StateTrait.computed<any, any, any>({
+    fieldDeclarations[`d${i}`] = FieldContracts.fieldComputed<any, any, any>({
       deps: [`b${i}`] as any,
       scheduling: i < safeImmediateSteps ? 'immediate' : 'deferred',
       get: (value: any) =>
@@ -58,11 +60,10 @@ export const makeConvergeTimeSlicingRuntime = (
     }) as any
   }
 
-  const M = Logix.Module.make(`PerfConvergeTimeSlicing${safeSteps}`, {
-    state: State as any,
-    actions: Actions,
-    traits: Logix.StateTrait.from(State as any)(traits as any) as any,
-  })
+  const M = FieldContracts.withModuleFieldDeclarations(Logix.Module.make(`PerfConvergeTimeSlicing${safeSteps}`, {
+  state: State as any,
+  actions: Actions
+}), FieldContracts.fieldFrom(State as any)(fieldDeclarations as any) as any)
 
   const initial: Record<string, number> = {}
   for (let i = 0; i < safeSteps; i++) {
@@ -70,7 +71,7 @@ export const makeConvergeTimeSlicingRuntime = (
     initial[`d${i}`] = i < safeImmediateSteps ? deriveImmediate(0) : deriveDeferred(0, i)
   }
 
-  const impl = M.implement({
+  const program = Logix.Program.make(M, {
     initial: initial as any,
     logics: [],
   })
@@ -88,10 +89,10 @@ export const makeConvergeTimeSlicingRuntime = (
   }
   const getLastConvergeDecision = (): unknown | undefined => lastDecision
 
-  const captureSink: Logix.Debug.Sink = {
-    record: (event: Logix.Debug.Event) => {
+  const captureSink: CoreDebug.Sink = {
+    record: (event: CoreDebug.Event) => {
       if (event.type !== 'state:update') return Effect.void
-      const decision = (event as any)?.traitSummary?.converge
+      const decision = (event as any)?.fieldSummary?.converge
       if (decision != null) {
         lastDecision = decision
       }
@@ -100,20 +101,20 @@ export const makeConvergeTimeSlicingRuntime = (
   }
 
   const debugLayer = options?.captureDecision
-    ? (Logix.Debug.replace([captureSink]) as Layer.Layer<any, never, never>)
+    ? (CoreDebug.replace([captureSink]) as Layer.Layer<any, never, never>)
     : (silentDebugLayer as Layer.Layer<any, never, never>)
 
   const perfKernelLayer = makePerfKernelLayer()
   const controlPlane = readConvergeControlPlaneFromEnv()
 
-  const runtime = Logix.Runtime.make(impl, {
+  const runtime = Logix.Runtime.make(program, {
     stateTransaction: {
-      traitConvergeMode: convergeMode,
-      traitConvergeBudgetMs: controlPlane.traitConvergeBudgetMs,
-      traitConvergeDecisionBudgetMs: controlPlane.traitConvergeDecisionBudgetMs,
+      fieldConvergeMode: convergeMode,
+      fieldConvergeBudgetMs: controlPlane.fieldConvergeBudgetMs,
+      fieldConvergeDecisionBudgetMs: controlPlane.fieldConvergeDecisionBudgetMs,
       ...(timeSlicing === 'on'
         ? {
-            traitConvergeTimeSlicing: {
+            fieldConvergeTimeSlicing: {
               enabled: true,
               debounceMs: options?.timeSlicingDebounceMs ?? 10_000,
               maxLagMs: options?.timeSlicingMaxLagMs ?? 60_000,
@@ -145,7 +146,7 @@ export const runConvergeTimeSlicingTxnCommit = (
 ): Effect.Effect<void, never, any> =>
   Effect.gen(function* () {
     const moduleScope = (yield* Effect.service(rt.module.tag).pipe(Effect.orDie)) as any
-    yield* Logix.InternalContracts.runWithStateTransaction(
+    yield* FieldContracts.runWithStateTransaction(
       moduleScope,
       { kind: 'perf', name: 'converge:txnCommit:timeSlicing' },
       () =>
@@ -155,7 +156,7 @@ export const runConvergeTimeSlicingTxnCommit = (
           yield* moduleScope.setState(next)
 
           for (let i = 0; i < dirtyRoots; i++) {
-            Logix.InternalContracts.recordStatePatch(moduleScope, `b${i}`, 'perf')
+            FieldContracts.recordStatePatch(moduleScope, `b${i}`, 'perf')
           }
         }),
     )
@@ -167,7 +168,7 @@ export const runConvergeTimeSlicingTxnCommitWithDiagnosticsLevel = (
   diagnosticsLevel: DiagnosticsLevel,
 ): Effect.Effect<void, never, any> =>
   runConvergeTimeSlicingTxnCommit(rt, dirtyRoots).pipe(
-    (effect) => Effect.provideService(effect, Logix.Debug.internal.currentDiagnosticsLevel, diagnosticsLevel),
+    (effect) => Effect.provideService(effect, CoreDebug.internal.currentDiagnosticsLevel, diagnosticsLevel),
   )
 
 export const runConvergeTimeSlicingTxnCommitDirtyAll = (
@@ -176,7 +177,7 @@ export const runConvergeTimeSlicingTxnCommitDirtyAll = (
 ): Effect.Effect<void, never, any> =>
   Effect.gen(function* () {
     const moduleScope = (yield* Effect.service(rt.module.tag).pipe(Effect.orDie)) as any
-    yield* Logix.InternalContracts.runWithStateTransaction(
+    yield* FieldContracts.runWithStateTransaction(
       moduleScope,
       { kind: 'perf', name: 'converge:txnCommit:timeSlicing:dirtyAll' },
       () =>
@@ -186,7 +187,7 @@ export const runConvergeTimeSlicingTxnCommitDirtyAll = (
           yield* moduleScope.setState(next)
 
           // Force full scheduling via dirtyAll to compare per-txn converge cost with time-slicing on/off.
-          Logix.InternalContracts.recordStatePatch(moduleScope, '*', 'perf')
+          FieldContracts.recordStatePatch(moduleScope, '*', 'perf')
         }),
     )
   }) as Effect.Effect<void, never, any>
@@ -197,5 +198,5 @@ export const runConvergeTimeSlicingTxnCommitDirtyAllWithDiagnosticsLevel = (
   diagnosticsLevel: DiagnosticsLevel,
 ): Effect.Effect<void, never, any> =>
   runConvergeTimeSlicingTxnCommitDirtyAll(rt, mutateRoots).pipe(
-    (effect) => Effect.provideService(effect, Logix.Debug.internal.currentDiagnosticsLevel, diagnosticsLevel),
+    (effect) => Effect.provideService(effect, CoreDebug.internal.currentDiagnosticsLevel, diagnosticsLevel),
   )

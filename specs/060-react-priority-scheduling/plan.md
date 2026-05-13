@@ -1,6 +1,6 @@
 # Implementation Plan: 060 Txn Lanes（事务后续工作优先级调度 / 可解释调度）
 
-**Branch**: `060-react-priority-scheduling` | **Date**: 2025-12-29 | **Spec**: `specs/060-react-priority-scheduling/spec.md`  
+**Branch**: `060-react-priority-scheduling` | **Date**: 2025-12-29 | **Spec**: `specs/060-react-priority-scheduling/spec.md`
 **Input**: Feature specification from `specs/060-react-priority-scheduling/spec.md`
 
 ## Summary
@@ -26,17 +26,17 @@
 - 事务窗口与 commit meta（commitMode/priority）：`packages/logix-core/src/internal/runtime/core/module.ts`、`packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`
 - 低优先级入口（只写 commit meta）：`packages/logix-core/src/internal/runtime/core/ModuleRuntime.dispatch.ts`（`dispatchLowPriority`）
 - React ExternalStore 低优先级通知调度：`packages/logix-react/src/internal/store/ModuleRuntimeExternalStore.ts`（基于 `meta.priority`）
-- 043 deferred converge time-slicing：`packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`、`packages/logix-core/src/internal/runtime/core/ModuleRuntime.traitConvergeConfig.ts`、`packages/logix-core/src/internal/state-trait/converge.ts`
+- 043 deferred converge time-slicing：`packages/logix-core/src/internal/runtime/core/ModuleRuntime.transaction.ts`、`packages/logix-core/src/internal/runtime/core/ModuleRuntime.traitConvergeConfig.ts`、`packages/logix-core/src/internal/state-field/converge.ts`
 - 并发/批处理解释文档（已有 `dispatchBatch`/`dispatchLowPriority` 心智模型）：`docs/ssot/handbook/reading-room/impl-notes/08-concurrency-and-batching.md`
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.8.x（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3（override 3.19.13）、`@logixjs/core`、`@logixjs/react`  
-**Storage**: N/A（纯内存态；证据落盘到 `specs/060-*/perf/*`）  
-**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`；React 行为/浏览器 perf 用 Vitest browser）  
-**Target Platform**: Node.js 20+ + modern browsers（headless）  
-**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）  
+**Language/Version**: TypeScript 5.8.x（ESM）
+**Primary Dependencies**: pnpm workspace、`effect` v3（override 3.19.13）、`@logixjs/core`、`@logixjs/react`
+**Storage**: N/A（纯内存态；证据落盘到 `specs/060-*/perf/*`）
+**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`；React 行为/浏览器 perf 用 Vitest browser）
+**Target Platform**: Node.js 20+ + modern browsers（headless）
+**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）
 **Performance Goals**:
 
 - 在“高频交互 + 大量非关键补算/通知”的基准场景下，启用 Txn Lanes 后关键交互窗口 p95 ≥ 2× 改善；并且 backlog 存在时关键交互不被明显拖尾（p95/长尾无回归）。
@@ -63,7 +63,7 @@
 
 Baseline 语义：**策略 A/B**（同一份代码下 off vs on）
 
-- Matrix SSoT：`.codex/skills/logix-perf-evidence/assets/matrix.json`（before/after 的 `matrixId/matrixHash` 必须一致）
+- Matrix SSoT：`packages/logix-perf-evidence/assets/matrix.json`（before/after 的 `matrixId/matrixHash` 必须一致）
 - Hard conclusion：交付结论至少 `profile=default`（`quick` 仅线索；必要时 `soak` 复核）
 - 采集隔离：before/after/diff 必须在独立 `git worktree/单独目录` 中采集；混杂工作区结果仅作线索不得用于宣称 Gate PASS
 - PASS 判据：`pnpm perf diff` 输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`
@@ -139,7 +139,7 @@ packages/logix-core/src/internal/runtime/core/
 ├── ModuleRuntime.transaction.ts
 └── ModuleRuntime.txnQueue.ts
 
-packages/logix-core/src/internal/state-trait/
+packages/logix-core/src/internal/state-field/
 └── converge.ts
 
 packages/logix-react/src/internal/store/

@@ -12,10 +12,10 @@
 
 ### 0.1 命名矩阵（最终命名）
 
-- `ModuleDef`：`Logix.Module.make(...)` 返回；带 `.tag`；可 `.logic(...)` 产出逻辑值；`.implement(...)` 产出 `Module`；不带 `.impl`。
-- `Module`：wrap module（通常由 `ModuleDef.implement(...)` 或领域工厂返回）；带 `.tag` + `.impl`；支持 `withLogic/withLayers`；`.logic(...)` 仍只产出逻辑值。
+- `Module`：`Logix.Module.make(...)` 返回；带 `.tag`；可 `.logic(...)` 产出逻辑值；不带 `.impl`。
+- `Program`：`Logix.Program.make(Module, config)` 返回；支持 `withLogic/withLayers`；作为装配期业务单元进入 Runtime 与 React 局部实例入口。
 - `ModuleTag`：身份锚点（Context.Tag）；用于 Env 注入与“全局实例”解析。
-- `ModuleImpl`：装配蓝图（`layer` + imports/processes 等）；用于创建局部实例。
+- `Program`：装配对象；通过内部 runtime blueprint 承接 layer/imports 等实现细节；用于创建局部实例。
 - `ModuleRuntime`：运行时实例（真正的“实例”语义）。
 - `ModuleHandle`：`yield* $.use(...)` 返回的只读句柄（可含 controller 等扩展）。
 - `ModuleRef`：React `useModule(...)` 返回的 ref（含 state/actions/dispatch + 扩展）。
@@ -24,11 +24,10 @@
 
 - Logic：`yield* $.use(module)` 等价 `yield* $.use(module.tag)`（只解析，不创建实例；扩展需通过 handle-extend 合并）。
 - Logic：`yield* module.tag` 直接解析 `ModuleRuntime`（同样从当前 Env/scope 解析；不是“进程级全局”；若需固定 root provider，用 `Logix.Root.resolve(module.tag)`）。
-- Runtime：`Logix.Runtime.make(module)` 等价 `Logix.Runtime.make(module.impl)`（创建新的 Runtime/Scope）。
+- Runtime：`Logix.Runtime.make(program)` 创建新的 Runtime/Scope。
 - React：
-  - `useModule(module)` 默认等价 `useModule(module.impl)`（局部/会话级创建与缓存）。
+  - `useModule(program)` 默认走局部/会话级创建与缓存。
   - `useModule(module.tag)` 取 `RuntimeProvider` 中的全局实例。
-  - `useModule(moduleDef)` 等价 `useModule(moduleDef.tag)`（全局实例；前提是 Runtime 已提供该 `ModuleTag` 的运行时）。
 
 ### 0.3 “实例”语义裁决
 
@@ -59,8 +58,8 @@
 ### 2.1 React：`useModule` 已支持直接吃 wrap module
 
 - 入口：`packages/logix-react/src/hooks/useModule.ts`
-  - 支持传入 `ModuleImpl` / wrap module / `ModuleTag` / `ModuleRuntime` / `ModuleRef` 等句柄。
-  - unwrap 规则：有 `.impl` 时默认走局部；否则默认走 `.tag`（全局）。
+  - 支持传入 `Program` / wrap module / `ModuleTag` / `ModuleRuntime` / `ModuleRef` 等句柄。
+  - unwrap 规则：`Program` 默认走局部；`ModuleTag` 默认走全局。
 - 扩展合并：`packages/logix-react/src/internal/ModuleRef.ts`
   - 复用 handle-extend 协议，把 controller/services 等扩展合并进返回的 `ModuleRef`。
 - `useLocalModule` 同步支持 wrap module：`packages/logix-react/src/hooks/useLocalModule.ts`。
@@ -75,7 +74,7 @@
 ### 2.3 迁移期的“止血式适配”已出现
 
 - 部分包/示例已为适配“wrap module 不再是 Tag”做了局部修正（典型：把原本当 Tag 使用的地方改为显式 `.tag` 或走入口 unwrap）。
-- 命名上存在 `*Impl.impl` 的尴尬点：示例里有 `SandboxImpl.impl.layer` 这种写法，建议在收口时把变量命名改为 `Sandbox` / `SandboxModule`，或额外导出一个真正的 `SandboxImpl: ModuleImpl = Sandbox.impl`（避免二次 `.impl`）。
+- 命名上存在 `*Impl` 的尴尬点：示例里应改为 `SandboxProgram` / `SandboxModule` 这类最终语义命名，避免把实现细节当主阅读路径。
 
 ## 3. 后续（可选）
 

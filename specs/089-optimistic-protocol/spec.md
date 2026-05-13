@@ -1,8 +1,8 @@
 # Feature Specification: Optimistic Protocol（乐观更新：一等公民、可回滚、可解释）
 
-**Feature Branch**: `089-optimistic-protocol`  
-**Created**: 2026-01-10  
-**Status**: Draft  
+**Feature Branch**: `089-optimistic-protocol`
+**Created**: 2026-01-10
+**Status**: Draft
 **Input**: 定义 Optimistic 更新的一等公民协议：支持乐观写入、确认、回滚/撤销、合并与冲突裁决；所有变更必须可回放、可诊断，并与 Logix 事务窗口/统一最小 IR/Trace 稳定锚点（instanceId/txnSeq/opSeq/linkId）对齐，避免零散 setState 造成不可解释中间态。
 
 ## Context

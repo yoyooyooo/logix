@@ -1,0 +1,267 @@
+# 172 Core Risk Closure Review Ledger
+
+## Meta
+
+- target: `specs/172-agent-first-runtime-inspect-data-plane/discussion.md`
+- targets:
+  - `specs/172-agent-first-runtime-inspect-data-plane/discussion.md`
+  - `specs/172-agent-first-runtime-inspect-data-plane/implementation-details/core-implementation-slices.md`
+  - `specs/172-agent-first-runtime-inspect-data-plane/implementation-details/core-pressure-lane.md`
+  - `specs/172-agent-first-runtime-inspect-data-plane/parity-matrix.md`
+  - `specs/172-agent-first-runtime-inspect-data-plane/plan.md`
+  - `specs/172-agent-first-runtime-inspect-data-plane/tasks.md`
+- source_kind: `file-plan`
+- reviewers: A1, A2, A3, A4
+- round_count: 2
+- challenge_scope: `open`
+- consensus_status: `closed`
+
+## Bootstrap
+
+- target_complete: true
+- alignment_gate:
+  - policy: `auto`
+  - status: `inferred`
+  - resolved_points:
+    - User explicitly requested `$plan-optimality-loop`.
+    - Review is limited to the three implementation-risk questions identified after 172 planning closure.
+    - Main agent may directly revise planning artifacts and drain resolved discussion items.
+    - No code implementation is in scope.
+  - open_questions: []
+  - confirmation_basis: User asked to separately polish the selected questions with `plan-optimality-loop`.
+- review_contract:
+  - artifact_kind: `implementation-plan`
+  - review_goal: `implementation-ready`
+  - target_claim: 172 core implementation risks for manifest binding, timeline `stateAfter` truth and field graph minimum DTO should converge into implementation-ready decisions that prevent owner-boundary drift and CLI-private truth.
+  - target_refs:
+    - `specs/172-agent-first-runtime-inspect-data-plane/discussion.md`
+    - `specs/172-agent-first-runtime-inspect-data-plane/implementation-details/core-implementation-slices.md`
+    - `specs/172-agent-first-runtime-inspect-data-plane/implementation-details/core-pressure-lane.md`
+    - `specs/172-agent-first-runtime-inspect-data-plane/parity-matrix.md`
+    - `specs/172-agent-first-runtime-inspect-data-plane/plan.md`
+    - `specs/172-agent-first-runtime-inspect-data-plane/tasks.md`
+  - non_default_overrides:
+    - alignment_policy: `auto`
+    - scope_fence: Only review Q172-013 manifest binding, Q172-014 timeline stateAfter truth, and Q172-015 field graph minimum DTO. Q172-012, Q172-016, React host evidence and profile summary are out of scope except when they directly block these three.
+    - stop_condition: `bounded-rounds-to-consensus`
+    - write_policy: Main agent may revise 172 planning artifacts and ledger. Resolved content should move from `discussion.md` into authority/implementation details; only true unresolved risks remain in `discussion.md`.
+- review_object_manifest:
+  - source_inputs: Existing 172 planning docs and implementation-risk queue.
+  - materialized_targets:
+    - `specs/172-agent-first-runtime-inspect-data-plane/discussion.md`
+    - `specs/172-agent-first-runtime-inspect-data-plane/implementation-details/core-implementation-slices.md`
+  - authority_target: `specs/172-agent-first-runtime-inspect-data-plane/implementation-details/core-implementation-slices.md`
+  - bound_docs:
+    - `specs/172-agent-first-runtime-inspect-data-plane/discussion.md`
+    - `specs/172-agent-first-runtime-inspect-data-plane/implementation-details/core-pressure-lane.md`
+    - `specs/172-agent-first-runtime-inspect-data-plane/parity-matrix.md`
+    - `specs/172-agent-first-runtime-inspect-data-plane/plan.md`
+    - `specs/172-agent-first-runtime-inspect-data-plane/tasks.md`
+  - derived_scope: `doc-family`
+  - allowed_classes:
+    - ambiguity
+    - invalidity
+    - controversy
+    - stronger alternative
+    - discussion drainage
+  - blocker_classes:
+    - CLI private truth
+    - Workbench fact ownership
+    - fake `stateAfter`
+    - raw field graph leak
+    - manifest binding ambiguity
+  - ledger_target: `docs/review-plan/runs/2026-05-03-172-core-risk-closure.md`
+- challenge_scope: `open`
+- reviewer_set:
+  - A1: structure purity
+  - A2: compression / maintenance cost
+  - A3: dominance / consistency
+  - A4: target function challenge
+- active_advisors:
+  - A4
+- activation_reason: The target involves owner-boundary risks that can affect long-term runtime inspect architecture.
+- kernel_council:
+  - Ramanujan
+  - Kolmogorov
+  - Godel
+- dominance_axes:
+  - concept-count
+  - public-surface
+  - compat-budget
+  - migration-cost
+  - proof-strength
+  - future-headroom
+- stop_rule: Consensus requires no unresolved findings, adopted freeze record, stale result exclusion and latest files saved.
+- reopen_bar: Reopen only if a proposal improves proof strength or owner clarity without adding public surface or second truth.
+- ledger_path: `docs/review-plan/runs/2026-05-03-172-core-risk-closure.md`
+- writable: true
+
+## Assumptions
+
+- A172R-001:
+  - summary: Dot path plus `$root` state path is out of current review unless it blocks `stateAfter`.
+  - status: kept
+  - resolution_basis: Scope fence.
+- A172R-002:
+  - summary: Inspect lineage split between core metadata and daemon wrapper is out of current review unless it blocks manifest binding, `stateAfter` or field graph DTO.
+  - status: kept
+  - resolution_basis: Scope fence.
+
+## Rounds
+
+### Round 1 - Challenge
+
+- input_residual: Q172-013, Q172-014 and Q172-015 in the 172 implementation-risk queue.
+- findings:
+  - F172R1-001:
+    - severity: blocker
+    - class: ambiguity
+    - summary: Manifest binding lacked a single internal binding fact, so actions, dispatch and static summary could drift between target coordinate, manifest digest and adapter-local facts.
+    - evidence: Q172-013 allowed fallback to `missing-live-manifest-binding` without freezing owner-side binding shape.
+    - status: closed
+  - F172R1-002:
+    - severity: blocker
+    - class: invalidity
+    - summary: Historical timeline `stateAfter` cannot be filled from latest state unless the current head watermark exactly matches the event item.
+    - evidence: Q172-014 named the risk but had not frozen allowed post-event state sources.
+    - status: closed
+  - F172R1-003:
+    - severity: high
+    - class: ambiguity
+    - summary: Field graph minimum DTO was too close to raw graph shape and did not identify the stable semantic key.
+    - evidence: Q172-015 only said JSON-safe digest-guarded summary, leaving room for generic `nodes/edges/from/to`.
+    - status: closed
+- counter_proposals:
+  - C172R1-001:
+    - summary: Introduce `LiveManifestBindingRef` as the sole internal manifest binding fact.
+    - why_better: It gives actions, dispatch and static-summary one owner-side coordinate while keeping manifest content out of CLI, daemon and browser adapter.
+    - overturns_assumptions: Q172-013 can remain an implementation risk without a frozen binding DTO.
+    - resolves_findings: F172R1-001
+    - supersedes_proposals: ad hoc manifest offer fields or CLI-carried minimum manifests
+    - dominance: dominates
+    - axis_scores:
+      - concept-count: lowers by replacing several implicit coordinates with one ref
+      - public-surface: unchanged; repo-internal only
+      - compat-budget: unchanged under forward-only planning
+      - migration-cost: bounded to core/reflection/live adapters
+      - proof-strength: improves P0 action/dispatch closure
+      - future-headroom: improves static summary and dispatch audit reuse
+    - status: adopted
+  - C172R1-002:
+    - summary: Freeze timeline `stateAfter` as true-post-state only.
+    - why_better: It prevents misleading historical diagnosis while preserving bounded gaps when the owner cannot provide causal post-state.
+    - overturns_assumptions: latest state can be a harmless fallback for history.
+    - resolves_findings: F172R1-002
+    - supersedes_proposals: owner projection may use latest state as historical fill
+    - dominance: dominates
+    - axis_scores:
+      - concept-count: unchanged
+      - public-surface: unchanged
+      - compat-budget: unchanged
+      - migration-cost: may require owner event/source upgrades
+      - proof-strength: strongly improves runtime truthfulness
+      - future-headroom: improves replay/evidence alignment
+    - status: adopted
+  - C172R1-003:
+    - summary: Freeze field graph minimum DTO as fieldPath-keyed semantic adjacency summary.
+    - why_better: It gives agents useful dependency/writer structure without exposing raw runtime graph nodes or inventing temporary graph identities.
+    - overturns_assumptions: generic JSON-safe graph DTO is sufficient.
+    - resolves_findings: F172R1-003
+    - supersedes_proposals: generic `nodes[] / edges[] / from / to` DTO
+    - dominance: dominates
+    - axis_scores:
+      - concept-count: lowers by using field semantics instead of graph internals
+      - public-surface: unchanged; inspect artifact payload only
+      - compat-budget: unchanged under forward-only planning
+      - migration-cost: bounded to field-runtime projection
+      - proof-strength: improves raw leak and identity stability proof
+      - future-headroom: improves future DVTools/CLI shared consumption
+    - status: adopted
+- resolution_delta:
+  - `core-implementation-slices.md` now defines `LiveManifestBindingRef`, true-post-state timeline rules and fieldPath-keyed field graph payload.
+  - `core-pressure-lane.md` now records the corresponding owner laws and forbidden behaviors.
+  - `parity-matrix.md`, `plan.md` and `tasks.md` now reference the frozen decisions.
+  - `discussion.md` no longer lists Q172-013, Q172-014 or Q172-015 as open risks.
+
+### Round 2 - Converge
+
+- input_residual: Verify that the Round 1 adopted freeze record is reflected in the latest docs and that Q172-013, Q172-014 and Q172-015 are drained from `discussion.md`.
+- findings:
+  - F172R2-001:
+    - severity: none
+    - class: ambiguity
+    - summary: A1 returned no unresolved findings.
+    - evidence: Residual review confirms adopted freeze record and drainage.
+    - status: closed
+  - F172R2-002:
+    - severity: none
+    - class: ambiguity
+    - summary: A2 returned no unresolved findings.
+    - evidence: Residual review confirms adopted freeze record and drainage.
+    - status: closed
+  - F172R2-003:
+    - severity: none
+    - class: ambiguity
+    - summary: A3 returned no unresolved findings.
+    - evidence: Residual review confirms adopted freeze record and drainage.
+    - status: closed
+  - F172R2-004:
+    - severity: none
+    - class: ambiguity
+    - summary: A4 returned no unresolved findings.
+    - evidence: Residual review confirms adopted freeze record and drainage.
+    - status: closed
+- counter_proposals: []
+- resolution_delta:
+  - No further plan change required after Round 2.
+  - Residual risks are implementation verification obligations, not planning blockers.
+
+## Adoption
+
+- adopted_candidate:
+  - `LiveManifestBindingRef` as the single internal manifest binding fact.
+  - Recorded-post-event-only `stateAfter` semantics for timeline.
+  - FieldPath-keyed semantic adjacency DTO for field graph/plan.
+- lineage:
+  - Q172-013 -> F172R1-001 -> C172R1-001 -> Slice C / matrix R172-005/006/007/021 / WP-003.
+  - Q172-014 -> F172R1-002 -> C172R1-002 -> Slice D / matrix R172-011 / WP-005.
+  - Q172-015 -> F172R1-003 -> C172R1-003 -> Slice E / matrix R172-017 / WP-006.
+- rejected_alternatives:
+  - CLI, daemon or browser adapter carrying a full `RuntimeReflectionManifest` or minimum action manifest as binding truth.
+  - Using latest state to backfill historical timeline `stateAfter`.
+  - Generic graph DTO with `nodes[]`, `edges[]`, `from` and `to` over runtime internals.
+- rejection_reason:
+  - Each rejected alternative creates a second truth source, weakens proof strength or leaks raw runtime internals.
+- dominance_verdict:
+  - Adopted candidate dominates baseline on proof-strength and owner clarity without adding public surface.
+- freeze_record:
+  - adopted_summary: 172 now closes the three reviewed risks through one owner-side binding ref, true historical post-state semantics and semantic field graph adjacency.
+  - kernel_verdict:
+    - Ramanujan: smaller authority graph; no CLI-private binding or graph identity.
+    - Kolmogorov: removes three open discussion branches and replaces them with implementable DTO/rules.
+    - Godel: avoids second Runtime truth and fake timeline facts.
+  - frozen_decisions:
+    - `LiveManifestBindingRef` is the only 172 manifest binding fact. Actions, dispatch and static summary may reference it; adapters must not carry manifest contents as binding truth.
+    - Timeline `stateAfter` may only come from recorded post-event state, an event-carried state artifact ref, or current head state with an exact watermark match to that item.
+    - Field graph/plan output is a fieldPath-keyed semantic adjacency summary. Missing stable field identity or digest guard degrades or gaps; it must not synthesize temporary graph node/edge ids.
+  - non_goals:
+    - No public `Runtime.inspect`, `Runtime.devtools` or `Logix.Reflection`.
+    - No CLI-side reflection extraction, state roll-forward or field graph reconstruction.
+    - No DevTools UI restart.
+  - allowed_reopen_surface:
+    - Reopen only if implementation discovers owner modules cannot expose the frozen facts without changing fact authority or public surface.
+    - Q172-012 and Q172-016 remain separate discussion items.
+  - proof_obligations:
+    - P0 action/dispatch tests prove `LiveManifestBindingRef` reuse and no-mutation denial for stale/mismatch/missing validator.
+    - Timeline tests prove no latest-state historical backfill and per-item gaps when post-event source is absent.
+    - Field inspect tests prove no raw graph object, no generic `nodes/edges/from/to`, and degraded/gap behavior without stable field identity.
+  - delta_from_previous_round:
+    - The three reviewed items moved from discussion risk queue into authority/implementation documents.
+
+## Consensus
+
+- status: `closed`
+- residual_risk:
+  - Implementation must prove `LiveManifestBindingRef` reuse across actions, dispatch and static summary.
+  - Implementation must prove timeline does not use latest-state historical backfill.
+  - Implementation must prove field graph projection does not synthesize temporary graph ids and degrades or gaps without stable field identity.

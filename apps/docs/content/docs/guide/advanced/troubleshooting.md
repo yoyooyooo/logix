@@ -3,23 +3,7 @@ title: Troubleshooting
 description: Logix diagnostic codes explained, with common failure scenarios and fixes.
 ---
 
-This page collects diagnostic codes emitted by the Logix Runtime, common failure scenarios, and how to fix them.
-
-### Who is this for?
-
-- You hit Logix errors/warnings and want to quickly find the root cause.
-- You see `diagnostic` events in DevTools and want to understand what they mean.
-
-### Prerequisites
-
-- You’ve read “Modules & State” and “Flows & Effects” and understand the basic Module/Logic structure.
-
-### What you’ll get
-
-- Quickly locate root causes based on diagnostic codes.
-- Fix the most common setup/run phase mistakes.
-
----
+Use diagnostic codes as the primary locator when Logix emits a warning or error. The table below maps the most common codes to their runtime meaning and the shortest repair direction.
 
 ## Diagnostic code cheat sheet
 
@@ -33,10 +17,28 @@ This page collects diagnostic codes emitted by the Logix Runtime, common failure
 | `state_transaction::async_escape` | error | async/await escaped txn window | no IO/await inside a synchronous transaction; use `run*Task` or split entries |
 | `state_transaction::enqueue_in_transaction` | error | dispatch/setState inside txn window | move dispatch outside the transaction window; use a multi-entry pattern |
 | `logic::invalid_usage`         | error    | `run*Task` called inside txn window | call `run*Task` from watcher run section, not inside reducers/update/mutate bodies |
+| `runtime.hot-lifecycle`        | evidence | development runtime reset/dispose occurred | inspect owner id, previous/next runtime id, cleanup status, and residual active count |
 
 ---
 
 ## Common failure scenarios
+
+### 0. Active demo stops after a source edit
+
+**Symptom**: a timer, task runner, watcher, or form demo stops responding after development HMR and works again after a full refresh.
+
+**Evidence event**: `runtime.hot-lifecycle`
+
+**Cause**: the runtime was created outside a single hot lifecycle owner, or stale runtime-owned resources survived a module replacement.
+
+**Fix direction**:
+
+- create the runtime at an app/example boundary that owns replacement;
+- enable `logixReactDevLifecycle()` in Vite or `installLogixDevLifecycleForVitest()` in test setup once at the host boundary;
+- let that owner apply `reset` when a successor runtime exists;
+- let that owner apply `dispose` when no successor exists;
+- keep `RuntimeProvider` as projection-only;
+- avoid per-component HMR cleanup snippets.
 
 ### 1. LogicPhaseError: calling `$.lifecycle.*` in run phase
 
@@ -48,7 +50,7 @@ This page collects diagnostic codes emitted by the Logix Runtime, common failure
 
 **Diagnostic code**: `logic::invalid_phase`
 
-**Cause**: lifecycle registration APIs like `$.lifecycle.onInit` / `$.lifecycle.onDestroy` are **setup-only**. They must be called in the setup phase of the Logic builder (before `return`), not inside `Effect.gen`.
+**Cause**: lifecycle registration APIs like `$.lifecycle.onInit` / `$.lifecycle.onDestroy` are declaration-only. They must be called in the synchronous declaration part of the Logic builder (before `return`), not inside `Effect.gen`.
 
 **Incorrect**:
 
@@ -56,7 +58,7 @@ This page collects diagnostic codes emitted by the Logix Runtime, common failure
 const Logic = Module.logic(($) =>
   Effect.gen(function* () {
     // ❌ This is run phase: lifecycle registration is not allowed here
-    $.lifecycle.onInit(Effect.log('init'))
+    $.lifecycle.onInitRequired(Effect.log('init'))
 
     yield* $.onAction('foo').run(/* ... */)
   }),
@@ -67,8 +69,8 @@ const Logic = Module.logic(($) =>
 
 ```ts
 const Logic = Module.logic(($) => {
-  // ✅ Setup phase: before return
-  $.lifecycle.onInit(Effect.log('init'))
+  // ✅ declaration part: before return
+  $.lifecycle.onInitRequired(Effect.log('init'))
 
   return Effect.gen(function* () {
     // Run phase: write watchers as usual
@@ -126,12 +128,12 @@ const Logic = Module.logic(($) =>
 MissingModuleRuntimeError: Module 'Child' is not available in imports.
 ```
 
-**Cause**: Logic tries to access a child module via `$.use(ChildModule)`, but the module was not provided in `imports` when calling `implement`.
+**Cause**: Logic tries to access a child Program via `$.imports.get(Child.tag)`, but the child Program was not provided in `Program.make(..., { capabilities: { imports } })`.
 
 **Incorrect**:
 
 ```ts
-const HostModule = HostDef.implement({
+const HostProgram = Logix.Program.make(HostDef, {
   initial: {
     /* ... */
   },
@@ -143,13 +145,25 @@ const HostModule = HostDef.implement({
 **Correct**:
 
 ```ts
-const HostModule = HostDef.implement({
+const HostProgram = Logix.Program.make(HostDef, {
   initial: {
     /* ... */
   },
   logics: [HostLogic],
-  imports: [ChildImpl], // ✅ Provide the child module implementation
+  capabilities: {
+    imports: [ChildProgram], // ✅ Provide the child program
+  },
 })
+```
+
+```ts
+const HostLogic = HostDef.logic(($) =>
+  Effect.gen(function* () {
+    const child = yield* $.imports.get(Child.tag)
+    const value = yield* child.read((s) => s.value)
+    // ...
+  }),
+)
 ```
 
 ---
@@ -193,30 +207,29 @@ const Logic = Module.logic(($) => {
 
 ---
 
-### 5. Declaring traits in run phase
+### 5. Declaring fields in run phase
 
 **Symptom**:
 
 ```
-[LogicPhaseError] $.traits.declare is not allowed in run phase (kind=traits_declare_in_run).
+[LogicPhaseError] $.fields.declare is not allowed in run phase (kind=fields_declare_in_run).
 ```
 
 **Diagnostic code**: `logic::invalid_phase`
 
-**Cause**: `$.traits.declare(...)` is setup-only. Traits are frozen after setup ends.
+**Cause**: `$.fields(...)` is declaration-only. Field declarations are frozen after the declaration phase.
 
 **Correct**:
 
 ```ts
-const Logic = Module.logic(($) => ({
-  setup: Effect.sync(() => {
-    // ✅ Declare traits in setup phase
-    $.traits.declare({
-      /* ... */
-    })
-  }),
-  run: Effect.void,
-}))
+const Logic = Module.logic(($) => {
+  // ✅ Declare fields in the synchronous declaration part
+  $.fields({
+    /* ... */
+  })
+
+  return Effect.void
+})
 ```
 
 ---
@@ -252,7 +265,7 @@ Typical event shape:
   code: 'logic::invalid_phase',
   severity: 'error',
   message: '$.lifecycle.onInit is not allowed in run phase.',
-  hint: 'Do not register $.lifecycle.* in run phase (setup-only). Move lifecycle registration into the synchronous part of the Module.logic builder (before return).',
+  hint: 'Do not register $.lifecycle.* in run phase. Move lifecycle registration into the synchronous declaration part of the Module.logic builder (before return).',
   kind: 'lifecycle_in_run'
 }
 ```
@@ -263,8 +276,7 @@ Typical event shape:
 
 ---
 
-## Next
+## See also
 
-- Learn to observe module behavior with DevTools: [Debugging and Devtools](./debugging-and-devtools)
 - Error-handling strategy: [Error handling](./error-handling)
 - Testing guide: [Testing](./testing)

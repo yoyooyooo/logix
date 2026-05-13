@@ -1,6 +1,7 @@
 import { create, type Patches } from 'mutative'
 import type { FieldPath } from '../../field-path.js'
 import { isFieldPathSegment, toKey } from '../../field-path.js'
+import { countFieldPathKeyMaterialize } from './txnHotPathSentinels.js'
 
 export type PatchPath = FieldPath
 
@@ -130,6 +131,7 @@ export const mutateWithPatchPaths = <S>(
       continue
     }
 
+    countFieldPathKeyMaterialize(p.length)
     const key = toKey(p)
     if (multiSeg.has(key)) continue
     multiSeg.add(key)

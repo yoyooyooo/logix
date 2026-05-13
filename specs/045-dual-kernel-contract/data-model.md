@@ -23,7 +23,7 @@
 
 用于证据/诊断中引用“**请求的内核族（requested kernel family）**”及其实现来源信息（Slim、可序列化、可裁剪）。
 
-> 重要：`KernelImplementationRef.kernelId` 表示“请求的内核族”，**不是**“已全套生效”的证明。  
+> 重要：`KernelImplementationRef.kernelId` 表示“请求的内核族”，**不是**“已全套生效”的证明。
 > 是否发生 fallback/混用 builtin、是否满足“宣称已切到 core-ng/准备切换默认实现”的全套切换门槛，必须结合 `RuntimeServicesEvidence` 判定（见 `spec.md` Clarifications 与 FR-003/FR-008）。
 
 - `kernelId`: `KernelId`

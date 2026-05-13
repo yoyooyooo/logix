@@ -1,8 +1,8 @@
-# Spec Group Checklist: 046-core-ng-roadmap · 045-dual-kernel-contract + 039-trait-converge-int-exec-evidence + 043-trait-converge-time-slicing + 044-trait-converge-diagnostics-sampling + 047-core-ng-full-cutover-gate + 048-core-ng-default-switch-migration + 049-core-ng-linear-exec-vm + 050-core-ng-integer-bridge + 051-core-ng-txn-zero-alloc + 052-core-ng-diagnostics-off-gate + 056-core-ng-schema-layout-accessors + 057-core-ng-static-deps-without-proxy + 058-sandbox-multi-kernel + 059-core-ng-planner-typed-reachability + 060-react-priority-scheduling + 062-txn-lanes-default-switch-migration
+# Spec Group Checklist: 046-core-ng-roadmap · 045-dual-kernel-contract + 039-field-converge-int-exec-evidence + 043-field-converge-time-slicing + 044-field-converge-diagnostics-sampling + 047-core-ng-full-cutover-gate + 048-core-ng-default-switch-migration + 049-core-ng-linear-exec-vm + 050-core-ng-integer-bridge + 051-core-ng-txn-zero-alloc + 052-core-ng-diagnostics-off-gate + 056-core-ng-schema-layout-accessors + 057-core-ng-static-deps-without-proxy + 058-sandbox-multi-kernel + 059-core-ng-planner-typed-reachability + 060-react-priority-scheduling + 062-txn-lanes-default-switch-migration
 
 **Group**: `specs/046-core-ng-roadmap`
 **Derived From**: `registry`
-**Members**: `specs/045-dual-kernel-contract`, `specs/039-trait-converge-int-exec-evidence`, `specs/043-trait-converge-time-slicing`, `specs/044-trait-converge-diagnostics-sampling`, `specs/047-core-ng-full-cutover-gate`, `specs/048-core-ng-default-switch-migration`, `specs/049-core-ng-linear-exec-vm`, `specs/050-core-ng-integer-bridge`, `specs/051-core-ng-txn-zero-alloc`, `specs/052-core-ng-diagnostics-off-gate`, `specs/056-core-ng-schema-layout-accessors`, `specs/057-core-ng-static-deps-without-proxy`, `specs/058-sandbox-multi-kernel`, `specs/059-core-ng-planner-typed-reachability`, `specs/060-react-priority-scheduling`, `specs/062-txn-lanes-default-switch-migration`
+**Members**: `specs/045-dual-kernel-contract`, `specs/039-field-converge-int-exec-evidence`, `specs/043-field-converge-time-slicing`, `specs/044-field-converge-diagnostics-sampling`, `specs/047-core-ng-full-cutover-gate`, `specs/048-core-ng-default-switch-migration`, `specs/049-core-ng-linear-exec-vm`, `specs/050-core-ng-integer-bridge`, `specs/051-core-ng-txn-zero-alloc`, `specs/052-core-ng-diagnostics-off-gate`, `specs/056-core-ng-schema-layout-accessors`, `specs/057-core-ng-static-deps-without-proxy`, `specs/058-sandbox-multi-kernel`, `specs/059-core-ng-planner-typed-reachability`, `specs/060-react-priority-scheduling`, `specs/062-txn-lanes-default-switch-migration`
 **Created**: 2025-12-29
 
 > 本文件是“执行索引清单”：只做跳转与 gate 归纳，不复制成员 spec 的实现 tasks（避免并行真相源）。
@@ -10,9 +10,9 @@
 ## Members
 
 - [x] `045-dual-kernel-contract` 已按其 tasks/quickstart 达标（入口：`specs/045-dual-kernel-contract/tasks.md`、`specs/045-dual-kernel-contract/quickstart.md`）
-- [x] `039-trait-converge-int-exec-evidence` 已按其 tasks/quickstart 达标（入口：`specs/039-trait-converge-int-exec-evidence/tasks.md`、`specs/039-trait-converge-int-exec-evidence/quickstart.md`）
-- [x] `043-trait-converge-time-slicing` 已按其 tasks/quickstart 达标（入口：`specs/043-trait-converge-time-slicing/tasks.md`、`specs/043-trait-converge-time-slicing/quickstart.md`）
-- [x] `044-trait-converge-diagnostics-sampling` 已按其 tasks/quickstart 达标（入口：`specs/044-trait-converge-diagnostics-sampling/tasks.md`、`specs/044-trait-converge-diagnostics-sampling/quickstart.md`）
+- [x] `039-field-converge-int-exec-evidence` 已按其 tasks/quickstart 达标（入口：`specs/039-field-converge-int-exec-evidence/tasks.md`、`specs/039-field-converge-int-exec-evidence/quickstart.md`）
+- [x] `043-field-converge-time-slicing` 已按其 tasks/quickstart 达标（入口：`specs/043-field-converge-time-slicing/tasks.md`、`specs/043-field-converge-time-slicing/quickstart.md`）
+- [x] `044-field-converge-diagnostics-sampling` 已按其 tasks/quickstart 达标（入口：`specs/044-field-converge-diagnostics-sampling/tasks.md`、`specs/044-field-converge-diagnostics-sampling/quickstart.md`）
 - [x] `047-core-ng-full-cutover-gate` 已按其 tasks/quickstart 达标（入口：`specs/047-core-ng-full-cutover-gate/tasks.md`、`specs/047-core-ng-full-cutover-gate/quickstart.md`）
 - [x] `048-core-ng-default-switch-migration` 已按其 tasks/quickstart 达标（入口：`specs/048-core-ng-default-switch-migration/tasks.md`、`specs/048-core-ng-default-switch-migration/quickstart.md`）
 - [x] `049-core-ng-linear-exec-vm` 已按其 tasks/quickstart 达标（入口：`specs/049-core-ng-linear-exec-vm/tasks.md`、`specs/049-core-ng-linear-exec-vm/quickstart.md`）

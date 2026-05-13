@@ -1,4 +1,5 @@
 import { Schema } from 'effect'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import * as Logix from '../../src/index.js'
 
 export const DEFAULT_ROW_COUNT = 100
@@ -43,11 +44,11 @@ export const makeInitialState = (options?: { readonly rowCount?: number }): List
   errors: {},
 })
 
-export const makeUniqueWarehouseListScopeTraits = (listPath: 'items' = 'items') =>
-  Logix.StateTrait.from(ListScopeStateSchema)({
-    [listPath]: Logix.StateTrait.list<Row>({
+export const makeUniqueWarehouseListScopeFields = (listPath: 'items' = 'items') =>
+  FieldContracts.fieldFrom(ListScopeStateSchema)({
+    [listPath]: FieldContracts.fieldList<Row>({
       identityHint: { trackBy: 'id' },
-      list: Logix.StateTrait.node<ReadonlyArray<Row>>({
+      list: FieldContracts.fieldNode<ReadonlyArray<Row>>({
         check: {
           uniqueWarehouse: {
             deps: ['warehouseId'],

@@ -1,45 +1,51 @@
+import * as CoreKernel from '@logixjs/core/repo-internal/kernel-api'
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
+import { trialRunModule } from '../../src/internal/observability/trialRunModule.js'
 
 describe('Dual trial-run kernel ref', () => {
-  it.effect('should distinguish kernelId in TrialRunReport.environment and EvidencePackage.summary', () =>
+  it.effect('should distinguish experimental capabilities in TrialRunReport.environment and EvidencePackage.summary', () =>
     Effect.gen(function* () {
       const Root = Logix.Module.make('TrialRunReport.DualKernelRef', {
         state: Schema.Void,
         actions: {},
       })
 
-      const program = Root.implement({ initial: undefined, logics: [] })
+      const program = Logix.Program.make(Root, { initial: undefined, logics: [] })
 
-      const reportCore = yield* Logix.Observability.trialRunModule(program, {
+      const reportCore = yield* trialRunModule(program as any, {
         runId: 'run:test:dual-trial-run-kernel-ref-core',
         buildEnv: { hostKind: 'node', config: {} },
         diagnosticsLevel: 'off',
       })
 
-      const reportCoreNg = yield* Logix.Observability.trialRunModule(program, {
-        runId: 'run:test:dual-trial-run-kernel-ref-core-ng',
+      const reportExperimental = yield* trialRunModule(program as any, {
+        runId: 'run:test:dual-trial-run-kernel-ref-experimental',
         buildEnv: { hostKind: 'node', config: {} },
         diagnosticsLevel: 'off',
         layer: Layer.mergeAll(
-          Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logixjs/core-ng' }),
-          Logix.Kernel.fullCutoverGateModeLayer('trial'),
+          CoreKernel.experimentalLayer({
+            capabilities: ['trial:experimental'],
+          }),
+          CoreKernel.fullCutoverGateModeLayer('trial'),
         ) as Layer.Layer<any, never, never>,
       })
 
       expect(reportCore.ok).toBe(true)
-      expect(reportCoreNg.ok).toBe(true)
+      expect(reportExperimental.ok).toBe(true)
 
       expect(reportCore.environment?.kernelImplementationRef?.kernelId).toBe('core')
-      expect(reportCoreNg.environment?.kernelImplementationRef?.kernelId).toBe('core-ng')
+      expect(reportExperimental.environment?.kernelImplementationRef?.kernelId).toBe('core')
+      expect(reportExperimental.environment?.kernelImplementationRef?.capabilities).toContain('trial:experimental')
 
       const coreSummary: any = reportCore.evidence?.summary
-      const coreNgSummary: any = reportCoreNg.evidence?.summary
+      const experimentalSummary: any = reportExperimental.evidence?.summary
 
       expect(coreSummary?.runtime?.kernelImplementationRef?.kernelId).toBe('core')
-      expect(coreNgSummary?.runtime?.kernelImplementationRef?.kernelId).toBe('core-ng')
+      expect(experimentalSummary?.runtime?.kernelImplementationRef?.kernelId).toBe('core')
+      expect(experimentalSummary?.runtime?.kernelImplementationRef?.capabilities).toContain('trial:experimental')
     }),
   )
 })

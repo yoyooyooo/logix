@@ -6,7 +6,7 @@ title: 测试基线（LLM 版）
 
 ## 1) 最小测试矩阵
 
-- 模块语义：setup/run、state/actions。
+- 模块语义：declaration/run semantics、state/actions。
 - 并发协作：latest/exhaust/parallel + 失败分支。
 - 事务语义：enqueue guard、async escape、task 边界。
 - 宿主集成：React/CLI/Worker 入口行为。

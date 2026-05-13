@@ -1,6 +1,7 @@
-import type * as EffectOp from '@logixjs/core/EffectOp'
-import type { JsonValue } from '@logixjs/core/Observability'
+import type * as EffectOp from '@logixjs/core/repo-internal/effect-op'
+import type { JsonValue } from '@logixjs/core/repo-internal/evidence-api'
 import { Effect, Layer, Option, ServiceMap } from 'effect'
+import * as ResourceOwner from './internal/resource.js'
 import { middleware as middlewareImpl, type MiddlewareConfig } from './internal/middleware/middleware.js'
 
 export type InvalidateRequest =
@@ -43,11 +44,24 @@ export interface Engine {
   }) => Effect.Effect<Option.Option<A>, never, any>
 }
 
+export type ResourceSpec<Key, Out, Err, Env> = ResourceOwner.ResourceSpec<Key, Out, Err, Env>
+export type AnyResourceSpec = ResourceOwner.AnyResourceSpec
+export type ResourceStatus = ResourceOwner.ResourceStatus
+export type ResourceSnapshot<Data = unknown, Err = unknown> = ResourceOwner.ResourceSnapshot<Data, Err>
+export type ResourceRegistry = ResourceOwner.ResourceRegistry
+
 class EngineTagImpl extends ServiceMap.Service<EngineTagImpl, Engine>()('@logixjs/query/Engine') {}
 
 export const Engine = Object.assign(EngineTagImpl, {
   layer: (engine: Engine): Layer.Layer<EngineTagImpl, never, never> => Layer.succeed(EngineTagImpl, engine),
   middleware: (config?: MiddlewareConfig): EffectOp.Middleware => middlewareImpl(config),
+  Resource: {
+    make: ResourceOwner.make,
+    layer: ResourceOwner.layer,
+    keyHash: ResourceOwner.keyHash,
+    Snapshot: ResourceOwner.Snapshot,
+    ResourceRegistryTag: ResourceOwner.ResourceRegistryTag,
+  },
 })
 
 export type { MiddlewareConfig }

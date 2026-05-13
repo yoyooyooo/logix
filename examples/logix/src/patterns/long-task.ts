@@ -23,9 +23,9 @@ export const LongTaskActionMap = {
   reset: Schema.Void,
 }
 
-export type LongTaskShape = Logix.Shape<typeof LongTaskStateSchema, typeof LongTaskActionMap>
-export type LongTaskState = Logix.StateOf<LongTaskShape>
-export type LongTaskAction = Logix.ActionOf<LongTaskShape>
+export type LongTaskShape = Logix.Module.Shape<typeof LongTaskStateSchema, typeof LongTaskActionMap>
+export type LongTaskState = Logix.Module.StateOf<LongTaskShape>
+export type LongTaskAction = Logix.Module.ActionOf<LongTaskShape>
 
 // ---------------------------------------------------------------------------
 // 长逻辑封装：启动一个持续更新进度的后台任务

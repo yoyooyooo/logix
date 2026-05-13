@@ -1,6 +1,6 @@
 # Contract: Perf Evidence Matrix（Full Cutover Gate）
 
-本 contract 定义 047 的性能证据门槛口径：suites/budgets 的单一事实源（SSoT）统一为 `.codex/skills/logix-perf-evidence/assets/matrix.json`（以下简称 matrix.json）。
+本 contract 定义 047 的性能证据门槛口径：suites/budgets 的单一事实源（SSoT）统一为 `packages/logix-perf-evidence/assets/matrix.json`（以下简称 matrix.json）。
 
 ## SSoT
 

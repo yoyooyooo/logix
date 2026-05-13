@@ -1,7 +1,7 @@
 # Quickstart: 运行时可观测性加固
 
-**Feature**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/027-runtime-observability-hardening/spec.md`  
-**Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/027-runtime-observability-hardening/plan.md`  
+**Feature**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/027-runtime-observability-hardening/spec.md`
+**Plan**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/027-runtime-observability-hardening/plan.md`
 **Created**: 2025-12-23
 
 本 quickstart 用于实现阶段的快速对齐与验收准备（不包含具体代码实现细节）。
@@ -29,7 +29,7 @@
 ### C. 缓存回收
 
 - 反复创建/销毁大量实例，验证：
-  - `latestStates/latestTraitSummaries` 的条目规模能随活跃实例收敛
+  - `latestStates/latestFieldSummaries` 的条目规模能随活跃实例收敛
   - 不随历史实例数线性增长
 
 ### D. 快照订阅契约
@@ -48,16 +48,16 @@
 
 ## 4) 交付物检查
 
-- `/Users/yoyo/Documents/code/personal/intent-flow/specs/027-runtime-observability-hardening/research.md`：关键决策已固化
-- `/Users/yoyo/Documents/code/personal/intent-flow/specs/027-runtime-observability-hardening/data-model.md`：实体/键/转换清晰
-- `/Users/yoyo/Documents/code/personal/intent-flow/specs/027-runtime-observability-hardening/contracts/devtools-snapshot.graphql`：快照订阅契约已表达
+- `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/027-runtime-observability-hardening/research.md`：关键决策已固化
+- `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/027-runtime-observability-hardening/data-model.md`：实体/键/转换清晰
+- `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/027-runtime-observability-hardening/contracts/devtools-snapshot.graphql`：快照订阅契约已表达
 
 ## 5) 性能基线（Phase 4 / NFR-001）
 
 - 运行基线脚本（推荐开启 GC 以降低噪音）：
   - `NODE_OPTIONS=--expose-gc pnpm perf bench:027:devtools-txn`
 - 产物（默认）：
-  - `/Users/yoyo/Documents/code/personal/intent-flow/specs/027-runtime-observability-hardening/perf/after.worktree.r1.json`
+  - `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/027-runtime-observability-hardening/perf/after.worktree.r1.json`
 - 指标解读（对齐 spec）：
   - `gate.sc002.p50Ratio5000Over500 <= 1.1`：对应 **SC-002**（窗口 500→5000，100k 写入总耗时增长 ≤ 10%）
   - `suites.txnQueue.*`：`enqueueTransaction` 入队→完成的总耗时分位（热路径基线）

@@ -2,7 +2,7 @@
 import React from 'react'
 import { describe, expect, it } from 'vitest'
 import { render, fireEvent, screen, waitFor } from '@testing-library/react'
-import { LogixDevtools } from '../../src/LogixDevtools.js'
+import { LogixDevtools } from '../../src/internal/ui/shell/LogixDevtools.js'
 import { devtoolsRuntime, devtoolsModuleRuntime, type DevtoolsState } from '../../src/internal/state/index.js'
 
 // jsdom does not provide a stable `matchMedia` by default; add a minimal polyfill for tests

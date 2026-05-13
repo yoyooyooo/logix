@@ -3,13 +3,13 @@ title: Effect DI - Move Infrastructure Out of Business Logic
 description: Inject dependencies with Tag + Layer to make Logix Logic reusable and testable.
 ---
 
-A common pain in frontend apps is: **the logic is simple, but to make it work you end up threading API/router/toast/analytics “infrastructure” through every layer**, turning components/hooks into dependency couriers; or you fall back to global singletons, making things harder to test and reuse.
+When API, router, toast, and analytics dependencies leak through props and hooks, business logic becomes host-coupled and hard to test. The default cut in Logix is Tag + Layer + `$.use(...)`.
 
 In Logix, the recommended approach is to abstract these capabilities as **Effect Services (Tags)**, provide implementations via **Layer** at runtime, and fetch them on-demand inside Logic via `$.use(...)`.
 
-## 1. Start from the Logix usage (no need to know Effect first)
+## 1. Service-first cut
 
-### 1.1 Define “capabilities”, not “implementations”
+### 1.1 Define capabilities, not implementations
 
 ```ts
 import { Context, Effect } from "effect"
@@ -27,7 +27,7 @@ class Toast extends Context.Tag("Toast")<Toast, {
 }>() {}
 ```
 
-### 1.2 Use them on-demand inside Logic (no more prop drilling)
+### 1.2 Resolve them on demand inside Logic
 
 ```ts
 import { Effect } from "effect"
@@ -46,12 +46,12 @@ const loginLogic = Auth.logic(($) =>
 )
 ```
 
-At this point you already get two wins:
+This changes two things:
 
 - Logic no longer depends on a specific host (Web / mini-app / Node), only on “capabilities”.
 - Dependencies are no longer passed as parameters; components/hooks stop acting as couriers.
 
-## 2. Understanding Effect DI: Layer is where implementations are provided
+## 2. Provide implementations with Layer
 
 At app startup (or in tests), use Layer to provide implementations for those Tags:
 
@@ -65,7 +65,7 @@ const EnvLayer = Layer.mergeAll(
   Layer.succeed(Toast, { show: (m) => /* ... */ } as any),
 )
 
-const runtime = Logix.Runtime.make(RootImpl, { layer: EnvLayer })
+const runtime = Logix.Runtime.make(RootProgram, { layer: EnvLayer })
 ```
 
 With the same Logic:
@@ -76,7 +76,7 @@ With the same Logic:
 
 your business code doesn’t change.
 
-## 3. Minimal refactor path for testing (smallest closed loop)
+## 3. Testing closure
 
 When you want to unit-test a piece of Logic, all you need is a test Layer:
 

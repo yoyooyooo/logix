@@ -1,0 +1,325 @@
+{
+  "schemaVersion": 1,
+  "suiteIds": [
+    "converge.timeSlicing.txnCommit",
+    "converge.txnCommit",
+    "externalStore.ingest.tickNotify",
+    "form.listScopeCheck"
+  ],
+  "classification": "inconclusive",
+  "claimStrength": "clue",
+  "profile": "smoke",
+  "gates": [
+    {
+      "id": "profile",
+      "passed": false,
+      "severity": "clue",
+      "detail": "profile=smoke; hard claims require default or soak"
+    },
+    {
+      "id": "comparable",
+      "passed": true,
+      "severity": "clue",
+      "detail": "diff.meta.comparability.comparable must be true"
+    },
+    {
+      "id": "suiteEvidence",
+      "passed": true,
+      "severity": "clue",
+      "detail": "one or more field-kernel suites must be present: converge.steps, converge.txnCommit, converge.timeSlicing, converge.timeSlicing.txnCommit, form.listScopeCheck, externalStore.ingest, externalStore.ingest.tickNotify, negativeBoundaries.dirtyPattern"
+    },
+    {
+      "id": "regressions",
+      "passed": false,
+      "severity": "hard",
+      "detail": "summary.regressions=2"
+    },
+    {
+      "id": "budgetViolations",
+      "passed": true,
+      "severity": "hard",
+      "detail": "summary.budgetViolations=0"
+    },
+    {
+      "id": "warnings",
+      "passed": false,
+      "severity": "clue",
+      "detail": "git.dirty.before=true; git.dirty.after=true"
+    },
+    {
+      "id": "pointStatus",
+      "passed": true,
+      "severity": "hard",
+      "detail": "field-kernel before/after points must not timeout or fail"
+    },
+    {
+      "id": "metricEvidence",
+      "passed": true,
+      "severity": "clue",
+      "detail": "field-kernel metric deltas must be present and available"
+    },
+    {
+      "id": "phaseEvidence",
+      "passed": false,
+      "severity": "clue",
+      "detail": "field-kernel watched dirty-work evidence must be present and available"
+    }
+  ],
+  "blockers": [
+    "profile=smoke is clue-only; hard claims require default or soak",
+    "git dirty evidence is clue-only",
+    "summary.regressions must be 0 for a hard claim",
+    "watched field-kernel dirty work evidence is missing or unavailable"
+  ],
+  "totalFindings": [
+    {
+      "suiteId": "converge.timeSlicing.txnCommit",
+      "metric": "runtime.txnCommitMs",
+      "improved": 1,
+      "regressed": 0,
+      "missing": 0,
+      "unavailable": 0,
+      "bestP95DeltaMs": -0.019999980926513672
+    },
+    {
+      "suiteId": "converge.txnCommit",
+      "metric": "runtime.decisionMs",
+      "improved": 0,
+      "regressed": 0,
+      "missing": 306,
+      "unavailable": 51
+    },
+    {
+      "suiteId": "converge.txnCommit",
+      "metric": "runtime.txnCommitMs",
+      "improved": 5,
+      "regressed": 5,
+      "missing": 306,
+      "unavailable": 0,
+      "bestP95DeltaMs": -0.0860000038146973,
+      "worstP95DeltaMs": 0.11400000095367424
+    },
+    {
+      "suiteId": "externalStore.ingest.tickNotify",
+      "metric": "timePerIngestMs",
+      "improved": 5,
+      "regressed": 0,
+      "missing": 0,
+      "unavailable": 0,
+      "bestP95DeltaMs": -0.3000001907348633
+    },
+    {
+      "suiteId": "form.listScopeCheck",
+      "metric": "runtime.decisionMs",
+      "improved": 0,
+      "regressed": 0,
+      "missing": 0,
+      "unavailable": 24
+    },
+    {
+      "suiteId": "form.listScopeCheck",
+      "metric": "runtime.txnCommitMs",
+      "improved": 5,
+      "regressed": 0,
+      "missing": 0,
+      "unavailable": 0,
+      "bestP95DeltaMs": -0.09999990463256836
+    }
+  ],
+  "phaseFindings": [
+    {
+      "suiteId": "converge.timeSlicing.txnCommit",
+      "name": "converge.timeSlicing.deferredDirtyPathCount",
+      "before": 1800,
+      "after": 1800,
+      "delta": 0,
+      "interpretation": "stable"
+    },
+    {
+      "suiteId": "converge.timeSlicing.txnCommit",
+      "name": "converge.timeSlicing.deferredStepCount",
+      "interpretation": "missing"
+    },
+    {
+      "suiteId": "converge.timeSlicing.txnCommit",
+      "name": "converge.timeSlicing.immediateStepCount",
+      "interpretation": "missing"
+    },
+    {
+      "suiteId": "converge.timeSlicing.txnCommit",
+      "name": "converge.timeSlicing.scope",
+      "interpretation": "missing"
+    },
+    {
+      "suiteId": "converge.txnCommit",
+      "name": "converge.affectedSteps",
+      "interpretation": "missing"
+    },
+    {
+      "suiteId": "converge.txnCommit",
+      "name": "converge.decisionDurationMs",
+      "interpretation": "missing"
+    },
+    {
+      "suiteId": "converge.txnCommit",
+      "name": "converge.executedMode",
+      "interpretation": "missing"
+    },
+    {
+      "suiteId": "converge.txnCommit",
+      "name": "converge.executedSteps",
+      "interpretation": "missing"
+    },
+    {
+      "suiteId": "converge.txnCommit",
+      "name": "converge.executionDurationMs",
+      "interpretation": "missing"
+    },
+    {
+      "suiteId": "converge.txnCommit",
+      "name": "converge.outcome",
+      "interpretation": "missing"
+    },
+    {
+      "suiteId": "converge.txnCommit",
+      "name": "converge.reasons",
+      "interpretation": "missing"
+    },
+    {
+      "suiteId": "converge.txnCommit",
+      "name": "converge.requestedMode",
+      "interpretation": "missing"
+    },
+    {
+      "suiteId": "converge.txnCommit",
+      "name": "converge.totalSteps",
+      "interpretation": "missing"
+    },
+    {
+      "suiteId": "externalStore.ingest.tickNotify",
+      "name": "diagnostics.level",
+      "interpretation": "missing"
+    },
+    {
+      "suiteId": "externalStore.ingest.tickNotify",
+      "name": "workload.externalStores",
+      "before": 10,
+      "after": 10,
+      "delta": 0,
+      "interpretation": "stable"
+    },
+    {
+      "suiteId": "externalStore.ingest.tickNotify",
+      "name": "workload.modules",
+      "before": 10,
+      "after": 10,
+      "delta": 0,
+      "interpretation": "stable"
+    },
+    {
+      "suiteId": "externalStore.ingest.tickNotify",
+      "name": "workload.ticksPerRun",
+      "before": 1,
+      "after": 1,
+      "delta": 0,
+      "interpretation": "stable"
+    },
+    {
+      "suiteId": "form.listScopeCheck",
+      "name": "cache.evict",
+      "before": 0,
+      "after": 0,
+      "delta": 0,
+      "interpretation": "stable"
+    },
+    {
+      "suiteId": "form.listScopeCheck",
+      "name": "cache.hit",
+      "before": 0,
+      "after": 0,
+      "delta": 0,
+      "interpretation": "stable"
+    },
+    {
+      "suiteId": "form.listScopeCheck",
+      "name": "cache.invalidate",
+      "before": 0,
+      "after": 0,
+      "delta": 0,
+      "interpretation": "stable"
+    },
+    {
+      "suiteId": "form.listScopeCheck",
+      "name": "cache.miss",
+      "before": 1,
+      "after": 1,
+      "delta": 0,
+      "interpretation": "stable"
+    },
+    {
+      "suiteId": "form.listScopeCheck",
+      "name": "cache.size",
+      "before": 0,
+      "after": 0,
+      "delta": 0,
+      "interpretation": "stable"
+    },
+    {
+      "suiteId": "form.listScopeCheck",
+      "name": "converge.decisionBudgetMs",
+      "before": 0.5,
+      "after": 0.5,
+      "delta": 0,
+      "interpretation": "stable"
+    },
+    {
+      "suiteId": "form.listScopeCheck",
+      "name": "converge.decisionDurationMs",
+      "before": 0,
+      "after": 0,
+      "delta": 0,
+      "interpretation": "stable"
+    },
+    {
+      "suiteId": "form.listScopeCheck",
+      "name": "converge.executedMode",
+      "interpretation": "missing"
+    },
+    {
+      "suiteId": "form.listScopeCheck",
+      "name": "converge.outcome",
+      "interpretation": "missing"
+    },
+    {
+      "suiteId": "form.listScopeCheck",
+      "name": "converge.reasons",
+      "interpretation": "missing"
+    },
+    {
+      "suiteId": "form.listScopeCheck",
+      "name": "converge.requestedMode",
+      "interpretation": "missing"
+    },
+    {
+      "suiteId": "form.listScopeCheck",
+      "name": "diagnostics.level",
+      "interpretation": "missing"
+    }
+  ],
+  "migratedCosts": [],
+  "allowedClaims": [
+    "Focused validation passed."
+  ],
+  "forbiddenClaims": [
+    "Global Runtime performance improved.",
+    "No global regressions.",
+    "All field-kernel dirty work is fixed.",
+    "FieldKernel is optimal.",
+    "Production performance improved globally."
+  ],
+  "inputs": {
+    "diff": "specs/228-fieldkernel-focused-before-after-evidence-gate/perf/diff.fieldKernel.current-head.local.smoke.json",
+    "before": "specs/228-fieldkernel-focused-before-after-evidence-gate/perf/before.fieldKernel.current-head.local.smoke.json",
+    "after": "specs/228-fieldkernel-focused-before-after-evidence-gate/perf/after.fieldKernel.current-head.local.smoke.json"
+  }
+}

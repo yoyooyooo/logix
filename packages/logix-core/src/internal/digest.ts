@@ -1,6 +1,6 @@
 /**
  * internal/digest：
- * - Minimal "stable digest" utilities for Runtime / Static IR / Traits, etc.
+ * - Minimal "stable digest" utilities for Runtime / Static IR / field declarations, etc.
  * - Goal: stable output across runs/processes while staying lightweight (no extra dependencies).
  *
  * Note: stableStringify does not aim for full JSON equivalence; it only covers the subset needed by this repo:

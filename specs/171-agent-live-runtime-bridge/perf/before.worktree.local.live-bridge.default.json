@@ -1,0 +1,777 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-05-02T11:20:43.747Z",
+    "generator": "packages/logix-perf-evidence/scripts/collect.ts",
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "matrixUpdatedAt": "2026-03-12",
+    "matrixHash": "9da7633b5c605f7a7dfe2694ecbfcaa8fe19d72d740c2c997d81a33a4571763e",
+    "git": {
+      "branch": "next-api",
+      "commit": "8938efd2f325ce55e6b391bd0a5a1dc04c6f3c3e",
+      "dirty": true
+    },
+    "config": {
+      "runs": 30,
+      "warmupDiscard": 5,
+      "timeoutMs": 20000,
+      "headless": true,
+      "profile": "default",
+      "stability": {
+        "maxP95DeltaRatio": 0.1,
+        "maxP95DeltaMs": 5
+      }
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M2 Max",
+      "memoryGb": 64,
+      "node": "v22.22.0",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "chromium",
+        "headless": true,
+        "version": "143.0.7499.4"
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "liveBridge.disabledOverhead.txnCommit",
+      "title": "live bridge: disabled/inactive overhead on txn commit",
+      "priority": "P1",
+      "primaryAxis": "stateWidth",
+      "budgets": [
+        {
+          "id": "disabled<=noBridge+0.05ms-or-1pct",
+          "type": "relative",
+          "metric": "runtime.txnCommitMs",
+          "maxRatio": 1.01,
+          "minDeltaMs": 0.05,
+          "numeratorRef": "bridgeMode=disabled",
+          "denominatorRef": "bridgeMode=noBridge"
+        },
+        {
+          "id": "adapterInactive<=noBridge+0.05ms-or-1pct",
+          "type": "relative",
+          "metric": "runtime.txnCommitMs",
+          "maxRatio": 1.01,
+          "minDeltaMs": 0.05,
+          "numeratorRef": "bridgeMode=adapterInactive",
+          "denominatorRef": "bridgeMode=noBridge"
+        }
+      ],
+      "metricCategories": {
+        "runtime.txnCommitMs": "runtime"
+      },
+      "points": [
+        {
+          "params": {
+            "bridgeMode": "noBridge",
+            "stateWidth": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.6920000004768372,
+                "p95Ms": 0.7179999995231628
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "liveBridge.bridgeMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "noBridge"
+            },
+            {
+              "name": "liveBridge.captureBufferAllocations",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.operationRequests",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.transactionWindowIoCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.transportAllocations",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "module.stateWidth",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "runtime.dispatchesPerSample",
+              "unit": "count",
+              "status": "ok",
+              "value": 100
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "bridgeMode": "disabled",
+            "stateWidth": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.6920000004768372,
+                "p95Ms": 0.7179999995231628
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "liveBridge.bridgeMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "disabled"
+            },
+            {
+              "name": "liveBridge.captureBufferAllocations",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.operationRequests",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.transactionWindowIoCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.transportAllocations",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "module.stateWidth",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "runtime.dispatchesPerSample",
+              "unit": "count",
+              "status": "ok",
+              "value": 100
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "bridgeMode": "adapterInactive",
+            "stateWidth": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.6920000004768372,
+                "p95Ms": 0.7179999995231628
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "liveBridge.bridgeMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "adapterInactive"
+            },
+            {
+              "name": "liveBridge.captureBufferAllocations",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.operationRequests",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.transactionWindowIoCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.transportAllocations",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "module.stateWidth",
+              "unit": "count",
+              "status": "ok",
+              "value": 1
+            },
+            {
+              "name": "runtime.dispatchesPerSample",
+              "unit": "count",
+              "status": "ok",
+              "value": 100
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "bridgeMode": "noBridge",
+            "stateWidth": 128
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.7070000004768372,
+                "p95Ms": 0.745
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "liveBridge.bridgeMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "noBridge"
+            },
+            {
+              "name": "liveBridge.captureBufferAllocations",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.operationRequests",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.transactionWindowIoCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.transportAllocations",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "module.stateWidth",
+              "unit": "count",
+              "status": "ok",
+              "value": 128
+            },
+            {
+              "name": "runtime.dispatchesPerSample",
+              "unit": "count",
+              "status": "ok",
+              "value": 100
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "bridgeMode": "disabled",
+            "stateWidth": 128
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.7070000004768372,
+                "p95Ms": 0.745
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "liveBridge.bridgeMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "disabled"
+            },
+            {
+              "name": "liveBridge.captureBufferAllocations",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.operationRequests",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.transactionWindowIoCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.transportAllocations",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "module.stateWidth",
+              "unit": "count",
+              "status": "ok",
+              "value": 128
+            },
+            {
+              "name": "runtime.dispatchesPerSample",
+              "unit": "count",
+              "status": "ok",
+              "value": 100
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "bridgeMode": "adapterInactive",
+            "stateWidth": 128
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.7070000004768372,
+                "p95Ms": 0.745
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "liveBridge.bridgeMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "adapterInactive"
+            },
+            {
+              "name": "liveBridge.captureBufferAllocations",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.operationRequests",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.transactionWindowIoCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.transportAllocations",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "module.stateWidth",
+              "unit": "count",
+              "status": "ok",
+              "value": 128
+            },
+            {
+              "name": "runtime.dispatchesPerSample",
+              "unit": "count",
+              "status": "ok",
+              "value": 100
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "bridgeMode": "noBridge",
+            "stateWidth": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.7139999985694885,
+                "p95Ms": 0.7759999990463257
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "liveBridge.bridgeMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "noBridge"
+            },
+            {
+              "name": "liveBridge.captureBufferAllocations",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.operationRequests",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.transactionWindowIoCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.transportAllocations",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "module.stateWidth",
+              "unit": "count",
+              "status": "ok",
+              "value": 512
+            },
+            {
+              "name": "runtime.dispatchesPerSample",
+              "unit": "count",
+              "status": "ok",
+              "value": 100
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "bridgeMode": "disabled",
+            "stateWidth": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.7139999985694885,
+                "p95Ms": 0.7759999990463257
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "liveBridge.bridgeMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "disabled"
+            },
+            {
+              "name": "liveBridge.captureBufferAllocations",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.operationRequests",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.transactionWindowIoCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.transportAllocations",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "module.stateWidth",
+              "unit": "count",
+              "status": "ok",
+              "value": 512
+            },
+            {
+              "name": "runtime.dispatchesPerSample",
+              "unit": "count",
+              "status": "ok",
+              "value": 100
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "bridgeMode": "adapterInactive",
+            "stateWidth": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 25,
+                "medianMs": 0.7139999985694885,
+                "p95Ms": 0.7759999990463257
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "liveBridge.bridgeMode",
+              "unit": "string",
+              "status": "ok",
+              "value": "adapterInactive"
+            },
+            {
+              "name": "liveBridge.captureBufferAllocations",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.operationRequests",
+              "unit": "ratio",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.transactionWindowIoCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "liveBridge.transportAllocations",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "module.stateWidth",
+              "unit": "count",
+              "status": "ok",
+              "value": 512
+            },
+            {
+              "name": "runtime.dispatchesPerSample",
+              "unit": "count",
+              "status": "ok",
+              "value": 100
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "thresholds": [
+        {
+          "budget": {
+            "id": "disabled<=noBridge+0.05ms-or-1pct",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.01,
+            "minDeltaMs": 0.05,
+            "numeratorRef": "bridgeMode=disabled",
+            "denominatorRef": "bridgeMode=noBridge"
+          },
+          "maxLevel": 512,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "adapterInactive<=noBridge+0.05ms-or-1pct",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 1.01,
+            "minDeltaMs": 0.05,
+            "numeratorRef": "bridgeMode=adapterInactive",
+            "denominatorRef": "bridgeMode=noBridge"
+          },
+          "maxLevel": 512,
+          "firstFailLevel": null
+        }
+      ]
+    }
+  ]
+}

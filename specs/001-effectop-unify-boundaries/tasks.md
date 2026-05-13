@@ -1,6 +1,6 @@
 # Tasks: 001-effectop-unify-boundaries（EffectOp 总线彻底收口）
 
-**Input**: Design documents from `/Users/yoyo/Documents/code/personal/intent-flow/specs/001-effectop-unify-boundaries/`
+**Input**: Design documents from `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/001-effectop-unify-boundaries/`
 **Prerequisites**: `plan.md`（required）, `spec.md`（required）, `research.md`, `data-model.md`, `contracts/`, `quickstart.md`
 
 ## Phase 1: Foundational（防呆基座，阻塞所有后续）
@@ -30,7 +30,7 @@
 - [x] T011 [US1] Action 边界：dispatch/emit 进入总线并携带 linkId：`packages/logix-core/src/internal/runtime/ModuleRuntime.ts`（及相关 runtime 文件）
 - [x] T012 [US1] State 边界：update/mutate/reducer/patch 进入总线并携带 linkId：`packages/logix-core/src/internal/runtime/BoundApiRuntime.ts`、`packages/logix-core/src/internal/runtime/ModuleRuntime.ts`
 - [x] T013 [US1] Lifecycle + Debug/Devtools 边界：内部/调试类边界一律进入总线：`packages/logix-core/src/internal/runtime/ModuleRuntime.ts`、`packages/logix-core/src/internal/runtime/core/DebugSink.ts` 等
-- [x] T014 [US1] Trait/Service 边界：StateTrait.install 与 resource/query 相关边界进入总线并携带 linkId：`packages/logix-core/src/internal/state-trait/install.ts`（及相关）
+- [x] T014 [US1] Field/Service 边界：FieldKernel.install 与 resource/query 相关边界进入总线并携带 linkId：`packages/logix-core/src/internal/state-field/install.ts`（及相关）
 
 ---
 
@@ -43,7 +43,7 @@
 
 ## Phase 5: 001a 回查与对齐（FR-007/SC-004）
 
-- [x] T017 [US3] 回查 `specs/001a-module-traits-runtime/*` 中与 EffectOp/Middleware 相关承诺，输出“已覆盖/需修订/延期”清单：写入 `specs/001-effectop-unify-boundaries/research.md`
+- [x] T017 [US3] 回查 `specs/000-module-fields-runtime/*` 中与 EffectOp/Middleware 相关承诺，输出“已覆盖/需修订/延期”清单：写入 `specs/001-effectop-unify-boundaries/research.md`
 - [x] T018 [US3] 需要修订的规范/用户文档同步修订（只做叙事与契约对齐，不引入新概念）：`docs/ssot/runtime/**`、`apps/docs/**`
 
 ---

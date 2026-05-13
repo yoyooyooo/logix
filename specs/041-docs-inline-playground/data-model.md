@@ -1,6 +1,6 @@
 # Data Model: 文档内联教学 Playground
 
-**Date**: 2025-12-26  
+**Date**: 2025-12-26
 **Feature**: [041-docs-inline-playground](./plan.md)
 
 > 说明：此处的数据模型用于约束“文档作者声明 → 运行配置 → UI 展示”的结构化边界；不要求引入持久化存储。

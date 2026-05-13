@@ -1,7 +1,7 @@
 # Data Model: StateSchema + Field Ops（069 · pre-codegen）
 
-**Feature**: `specs/069-schema-first-codegen-action-surface/spec.md`  
-**Created**: 2026-01-04  
+**Feature**: `specs/069-schema-first-codegen-action-surface/spec.md`
+**Created**: 2026-01-04
 **Updated**: 2026-01-04
 
 > 说明：本特性不涉及持久化存储；此处的 “Data Model” 指可被 codegen 与 runtime 共同消费的 **Blueprint（Static）**，以及运行时冷路径编译产出的派生结构（非协议）。

@@ -6,6 +6,7 @@ import type { AnyModuleShape, LogicEffect } from './module.js'
 import type { RuntimeInternalsResolvedConcurrencyPolicy } from './RuntimeInternals.js'
 import type { StateTxnOrigin } from './StateTransaction.js'
 import * as ModeRunner from './ModeRunner.js'
+import type { RuntimeHotLifecycleContext } from './hotLifecycle/index.js'
 
 /**
  * Prevents calling run*Task inside a "synchronous transaction execution fiber" (it would deadlock the txnQueue).
@@ -80,7 +81,7 @@ type TaskEffect<Payload, Sh extends AnyModuleShape, R, A, E> =
 export interface TaskRunnerConfig<Payload, Sh extends AnyModuleShape, R, A = void, E = never> {
   /**
    * Optional: trigger source name (e.g. actionTag / fieldPath), used as the default pending origin.name.
-   * - BoundApiRuntime may fill this in for onAction("xxx") / traits.source.refresh("field"), etc.
+   * - BoundApiRuntime may fill this in for onAction("xxx") / fields.source.refresh("field"), etc.
    * - Other callers are not required to provide it.
    */
   readonly triggerName?: string
@@ -123,11 +124,19 @@ export interface TaskRunnerConfig<Payload, Sh extends AnyModuleShape, R, A = voi
 export interface TaskRunnerRuntime {
   readonly moduleId?: string
   readonly instanceId?: string
+  readonly hotLifecycle?: RuntimeHotLifecycleContext
   readonly runWithStateTransaction: (
     origin: StateTxnOrigin,
     body: () => Effect.Effect<void, never, any>,
   ) => Effect.Effect<void, never, any>
   readonly resolveConcurrencyPolicy?: () => Effect.Effect<RuntimeInternalsResolvedConcurrencyPolicy, never, any>
+}
+
+let nextTaskResourceSeq = 0
+
+const nextTaskResourceId = (ownerId: string, category: 'task' | 'timer'): string => {
+  nextTaskResourceSeq += 1
+  return `${ownerId}::${category}:${nextTaskResourceSeq}`
 }
 
 const resolve = <Payload, Sh extends AnyModuleShape, R, A, E>(
@@ -192,8 +201,21 @@ const runTaskLifecycle = <Payload, Sh extends AnyModuleShape, R, A, E>(
   runtime: TaskRunnerRuntime,
   config: TaskRunnerConfig<Payload, Sh, R, A, E>,
   getCanWriteBack?: Effect.Effect<boolean>,
-): Effect.Effect<void, never, Logic.Env<Sh, R>> =>
-  Effect.gen(function* () {
+): Effect.Effect<void, never, Logic.Env<Sh, R>> => {
+  const hotLifecycle = runtime.hotLifecycle
+  const taskResourceId = hotLifecycle ? nextTaskResourceId(hotLifecycle.owner.ownerId, 'task') : undefined
+  let timerResourceId: string | undefined
+
+  return Effect.gen(function* () {
+    if (hotLifecycle && taskResourceId) {
+      hotLifecycle.register({
+        resourceId: taskResourceId,
+        category: 'task',
+        moduleId: runtime.moduleId,
+        moduleInstanceId: runtime.instanceId,
+      })
+    }
+
     const noop = yield* shouldNoopInSyncTransactionFiber({
       moduleId: runtime.moduleId,
       instanceId: runtime.instanceId,
@@ -202,7 +224,7 @@ const runTaskLifecycle = <Payload, Sh extends AnyModuleShape, R, A, E>(
       message: 'run*Task is not allowed inside a synchronous StateTransaction body (it may deadlock the txnQueue).',
       hint:
         'Call run*Task from the run section of a watcher (e.g. $.onAction/$.onState/$.on); ' +
-        'do not call it directly inside a reducer / trait.run / synchronous transaction body. For long-lived flows, use a multi-entry pattern (pending → IO → writeback).',
+        'do not call it directly inside a reducer / field.run / synchronous transaction body. For long-lived flows, use a multi-entry pattern (pending → IO → writeback).',
       kind: 'run_task_in_transaction',
     })
     if (noop) {
@@ -219,16 +241,37 @@ const runTaskLifecycle = <Payload, Sh extends AnyModuleShape, R, A, E>(
     // 1) pending: separate transaction entry; once started it should not be interrupted by runLatest.
     const pending = config.pending
     if (pending) {
+      if (hotLifecycle && !hotLifecycle.isCurrent()) {
+        return
+      }
       yield* Effect.uninterruptible(
         runtime.runWithStateTransaction(origins.pending, () => Effect.asVoid(resolve(pending, payload))),
       )
     }
 
     // 2) IO: runs outside the transaction window.
+    if (hotLifecycle && !hotLifecycle.isCurrent()) {
+      return
+    }
     const io = resolve(config.effect, payload) as Effect.Effect<A, E, Logic.Env<Sh, R>>
+    timerResourceId = hotLifecycle ? nextTaskResourceId(hotLifecycle.owner.ownerId, 'timer') : undefined
+    if (hotLifecycle && timerResourceId) {
+      hotLifecycle.register({
+        resourceId: timerResourceId,
+        category: 'timer',
+        moduleId: runtime.moduleId,
+        moduleInstanceId: runtime.instanceId,
+      })
+    }
     const exit = yield* Effect.exit(io)
+    if (hotLifecycle && timerResourceId) {
+      hotLifecycle.owner.registry.markClosed(timerResourceId)
+    }
 
     // 3) writeback: use the guard to confirm it's still the current task (runLatestTask).
+    if (hotLifecycle && !hotLifecycle.isCurrent()) {
+      return
+    }
     if (getCanWriteBack) {
       const ok = yield* getCanWriteBack
       if (!ok) {
@@ -255,6 +298,17 @@ const runTaskLifecycle = <Payload, Sh extends AnyModuleShape, R, A, E>(
       yield* runtime.runWithStateTransaction(origins.failure, () => Effect.asVoid(failure(cause, payload)))
     }
   }).pipe(
+    Effect.ensuring(
+      Effect.sync(() => {
+        if (!hotLifecycle) return
+        if (taskResourceId) {
+          hotLifecycle.owner.registry.markClosed(taskResourceId)
+        }
+        if (timerResourceId) {
+          hotLifecycle.owner.registry.markClosed(timerResourceId)
+        }
+      }),
+    ),
     // Watchers must not crash as a whole due to a single task failure: swallow errors, but keep them diagnosable.
     Effect.catchCause((cause) =>
       Debug.record({
@@ -273,6 +327,7 @@ const runTaskLifecycle = <Payload, Sh extends AnyModuleShape, R, A, E>(
         },
       }).pipe(Effect.flatMap(() => Effect.logError('TaskRunner error', cause)))),
   ) as Effect.Effect<void, never, Logic.Env<Sh, R>>
+}
 
 /**
  * runTask:

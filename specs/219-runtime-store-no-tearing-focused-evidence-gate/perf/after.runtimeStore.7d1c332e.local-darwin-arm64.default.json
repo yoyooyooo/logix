@@ -1,0 +1,670 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-05-11T13:06:05.460Z",
+    "generator": "packages/logix-perf-evidence/scripts/collect.ts",
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "matrixUpdatedAt": "2026-03-12",
+    "matrixHash": "c8f2c4cb626be089a9fb4636a9d16b70ee6e4d82afc2ad9ce44a3ce3d1a906fc",
+    "git": {
+      "branch": "next-api",
+      "commit": "7d1c332e8177753e3f4369657ff6b90b5c73d359",
+      "dirty": false
+    },
+    "config": {
+      "runs": 10,
+      "warmupDiscard": 2,
+      "timeoutMs": 30000,
+      "headless": true,
+      "profile": "default",
+      "stability": {
+        "maxP95DeltaRatio": 0.1,
+        "maxP95DeltaMs": 5
+      }
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M2 Max",
+      "memoryGb": 64,
+      "node": "v22.22.0",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "chromium",
+        "headless": true,
+        "version": "143.0.7499.4"
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "runtimeStore.noTearing.tickNotify",
+      "title": "runtimeStore: tick→notify baseline (no-tearing workload)",
+      "priority": "P1",
+      "primaryAxis": "watchers",
+      "budgets": [
+        {
+          "id": "p95<=0.30ms",
+          "type": "absolute",
+          "metric": "timePerTickMs",
+          "p95Ms": 0.3
+        },
+        {
+          "id": "full/off<=1.25",
+          "type": "relative",
+          "metric": "timePerTickMs",
+          "maxRatio": 1.25,
+          "minDeltaMs": 0.02,
+          "numeratorRef": "diagnosticsLevel=full",
+          "denominatorRef": "diagnosticsLevel=off"
+        }
+      ],
+      "metricCategories": {
+        "timePerTickMs": "runtimeStore"
+      },
+      "points": [
+        {
+          "params": {
+            "diagnosticsLevel": "off",
+            "watchers": 128
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "timePerTickMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.01239999771118164,
+                "p95Ms": 0.01280000066757202
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "runtimeStore.adapter",
+              "unit": "string",
+              "status": "ok",
+              "value": "runtimeStore"
+            },
+            {
+              "name": "selectorNotify.broadcastFallbackCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "selectorNotify.listenerSnapshotCloneCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "selectorNotify.notifiedTopicCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "selectorNotify.renderCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "selectorNotify.retainedTopicCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 128
+            },
+            {
+              "name": "selectorNotify.runSyncFallbackCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "workload.modules",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.ticksPerRun",
+              "unit": "count",
+              "status": "ok",
+              "value": 500
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "diagnosticsLevel": "full",
+            "watchers": 128
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "timePerTickMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.013799999713897705,
+                "p95Ms": 0.016400002002716064
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "full"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "runtimeStore.adapter",
+              "unit": "string",
+              "status": "ok",
+              "value": "runtimeStore"
+            },
+            {
+              "name": "selectorNotify.broadcastFallbackCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "selectorNotify.listenerSnapshotCloneCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "selectorNotify.notifiedTopicCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "selectorNotify.renderCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "selectorNotify.retainedTopicCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 128
+            },
+            {
+              "name": "selectorNotify.runSyncFallbackCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "workload.modules",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.ticksPerRun",
+              "unit": "count",
+              "status": "ok",
+              "value": 500
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "diagnosticsLevel": "off",
+            "watchers": 256
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "timePerTickMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.011799999237060547,
+                "p95Ms": 0.013600002765655518
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "runtimeStore.adapter",
+              "unit": "string",
+              "status": "ok",
+              "value": "runtimeStore"
+            },
+            {
+              "name": "selectorNotify.broadcastFallbackCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "selectorNotify.listenerSnapshotCloneCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "selectorNotify.notifiedTopicCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "selectorNotify.renderCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "selectorNotify.retainedTopicCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 256
+            },
+            {
+              "name": "selectorNotify.runSyncFallbackCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "workload.modules",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.ticksPerRun",
+              "unit": "count",
+              "status": "ok",
+              "value": 500
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "diagnosticsLevel": "full",
+            "watchers": 256
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "timePerTickMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.012800002098083496,
+                "p95Ms": 0.014600003719329834
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "full"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "runtimeStore.adapter",
+              "unit": "string",
+              "status": "ok",
+              "value": "runtimeStore"
+            },
+            {
+              "name": "selectorNotify.broadcastFallbackCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "selectorNotify.listenerSnapshotCloneCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "selectorNotify.notifiedTopicCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "selectorNotify.renderCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "selectorNotify.retainedTopicCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 256
+            },
+            {
+              "name": "selectorNotify.runSyncFallbackCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "workload.modules",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.ticksPerRun",
+              "unit": "count",
+              "status": "ok",
+              "value": 500
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "diagnosticsLevel": "off",
+            "watchers": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "timePerTickMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.01100000286102295,
+                "p95Ms": 0.013599998950958252
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "off"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "runtimeStore.adapter",
+              "unit": "string",
+              "status": "ok",
+              "value": "runtimeStore"
+            },
+            {
+              "name": "selectorNotify.broadcastFallbackCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "selectorNotify.listenerSnapshotCloneCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "selectorNotify.notifiedTopicCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "selectorNotify.renderCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "selectorNotify.retainedTopicCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 512
+            },
+            {
+              "name": "selectorNotify.runSyncFallbackCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "workload.modules",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.ticksPerRun",
+              "unit": "count",
+              "status": "ok",
+              "value": 500
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "diagnosticsLevel": "full",
+            "watchers": 512
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "timePerTickMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 8,
+                "medianMs": 0.01119999885559082,
+                "p95Ms": 0.011999998569488525
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "diagnostics.level",
+              "unit": "string",
+              "status": "ok",
+              "value": "full"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "runtimeStore.adapter",
+              "unit": "string",
+              "status": "ok",
+              "value": "runtimeStore"
+            },
+            {
+              "name": "selectorNotify.broadcastFallbackCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "selectorNotify.listenerSnapshotCloneCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "selectorNotify.notifiedTopicCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "selectorNotify.renderCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "selectorNotify.retainedTopicCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 512
+            },
+            {
+              "name": "selectorNotify.runSyncFallbackCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            },
+            {
+              "name": "workload.modules",
+              "unit": "count",
+              "status": "ok",
+              "value": 10
+            },
+            {
+              "name": "workload.ticksPerRun",
+              "unit": "count",
+              "status": "ok",
+              "value": 500
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "thresholds": [
+        {
+          "budget": {
+            "id": "p95<=0.30ms",
+            "type": "absolute",
+            "metric": "timePerTickMs",
+            "p95Ms": 0.3
+          },
+          "where": {
+            "diagnosticsLevel": "off"
+          },
+          "maxLevel": 512,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "p95<=0.30ms",
+            "type": "absolute",
+            "metric": "timePerTickMs",
+            "p95Ms": 0.3
+          },
+          "where": {
+            "diagnosticsLevel": "full"
+          },
+          "maxLevel": 512,
+          "firstFailLevel": null
+        },
+        {
+          "budget": {
+            "id": "full/off<=1.25",
+            "type": "relative",
+            "metric": "timePerTickMs",
+            "maxRatio": 1.25,
+            "minDeltaMs": 0.02,
+            "numeratorRef": "diagnosticsLevel=full",
+            "denominatorRef": "diagnosticsLevel=off"
+          },
+          "maxLevel": 512,
+          "firstFailLevel": null
+        }
+      ]
+    }
+  ]
+}

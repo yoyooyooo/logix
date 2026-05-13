@@ -1,0 +1,93 @@
+{
+  "artifacts": [
+    {
+      "digest": "selector-quality:startup:b2e3465c",
+      "kind": "SelectorQualityArtifact",
+      "outputKey": "selector-quality:startup"
+    }
+  ],
+  "environment": {
+    "configKeys": [],
+    "entry": {
+      "exportName": "BasicProgram",
+      "modulePath": "packages/logix-cli/test/fixtures/BasicProgram.ts"
+    },
+    "host": "node",
+    "kernelImplementationRef": {
+      "kernelId": "core",
+      "packageName": "@logixjs/core"
+    },
+    "missingConfigKeys": [],
+    "missingServices": [],
+    "runId": "agent-assess-trial-pass",
+    "runtimeServicesEvidence": {
+      "bindings": [
+        {
+          "implId": "builtin",
+          "implVersion": "v1",
+          "overridden": false,
+          "scope": "builtin",
+          "serviceId": "txnQueue"
+        },
+        {
+          "implId": "builtin",
+          "implVersion": "v1",
+          "overridden": false,
+          "scope": "builtin",
+          "serviceId": "operationRunner"
+        },
+        {
+          "implId": "builtin",
+          "implVersion": "v1",
+          "overridden": false,
+          "scope": "builtin",
+          "serviceId": "transaction"
+        },
+        {
+          "implId": "builtin",
+          "implVersion": "v1",
+          "overridden": false,
+          "scope": "builtin",
+          "serviceId": "dispatch"
+        }
+      ],
+      "instanceId": "i1",
+      "moduleId": "CliBasicProgram",
+      "overridesApplied": [],
+      "scope": "builtin"
+    },
+    "tagIds": [
+      "dispatch",
+      "operationRunner",
+      "transaction",
+      "txnQueue"
+    ],
+    "trialMode": "startup"
+  },
+  "errorCode": null,
+  "kind": "VerificationControlPlaneReport",
+  "mode": "startup",
+  "nextRecommendedStage": null,
+  "repairHints": [],
+  "repeatability": {
+    "ignoredFields": [
+      "environment.runId",
+      "environment.file",
+      "environment.outDir",
+      "artifacts[].file"
+    ],
+    "normalizedInputDigest": "verify-input:7ffbfd70",
+    "reportDigest": "verify-report:7ffbfd70",
+    "stableFields": [
+      "verdict",
+      "errorCode",
+      "artifactKeys",
+      "artifactDigests",
+      "nextRecommendedStage"
+    ]
+  },
+  "schemaVersion": 1,
+  "stage": "trial",
+  "summary": "runtime.trial passed",
+  "verdict": "PASS"
+}

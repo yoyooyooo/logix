@@ -1,6 +1,6 @@
 # Implementation Plan: 084 Loader Spy 依赖采集（加载态自描述证据：不作权威）
 
-**Branch**: `084-loader-spy-dep-capture` | **Date**: 2026-01-09 | **Spec**: [spec.md](./spec.md)  
+**Branch**: `084-loader-spy-dep-capture` | **Date**: 2026-01-09 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `specs/084-loader-spy-dep-capture/spec.md`
 
 ## Summary
@@ -29,11 +29,11 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript（ESM；以仓库配置为准）  
-**Primary Dependencies**: `effect` v3、`@logixjs/core`（`BoundApiRuntime.$.use`、`Observability.trialRun*`、`BuildEnv/ConstructionGuard`）  
-**Storage**: JSON 输出（stdout/落盘；由 `085` CLI 暴露）  
-**Testing**: Vitest（用例聚焦：确定性、预算/超时、覆盖标记、对照 diff、report-only）  
-**Target Platform**: Node.js 20+（平台侧/CI/CLI），浏览器侧只消费报告  
+**Language/Version**: TypeScript（ESM；以仓库配置为准）
+**Primary Dependencies**: `effect` v3、`@logixjs/core`（`BoundApiRuntime.$.use`、`Runtime.trial*`、`BuildEnv/ConstructionGuard`）
+**Storage**: JSON 输出（stdout/落盘；由 `085` CLI 暴露）
+**Testing**: Vitest（用例聚焦：确定性、预算/超时、覆盖标记、对照 diff、report-only）
+**Target Platform**: Node.js 20+（平台侧/CI/CLI），浏览器侧只消费报告
 **Constraints**: 单一真相源；证据不作权威；Slim/可序列化/可 diff；受控执行（预算/超时）；禁 IO 以 best-effort 隔离/检测为主（必须在报告中声明局限）
 
 ## Constitution Check
@@ -85,7 +85,7 @@ specs/084-loader-spy-dep-capture/
 ```text
 packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts   # $.use 插桩：记录 use 证据（按需）
 packages/logix-core/src/internal/observability/                   # 组装/导出 SpyEvidenceReport（按需）
-packages/logix-core/src/Observability.ts                          # 对外导出入口（可选）
+packages/logix-core/src/internal/evidence-api.ts                          # 对外导出入口（可选）
 packages/logix-cli/                                               # 085：通过子命令暴露（可选）
 ```
 

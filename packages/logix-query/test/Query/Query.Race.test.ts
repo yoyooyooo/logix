@@ -3,6 +3,7 @@ import { Duration, Effect, Layer, Schema } from 'effect'
 import { QueryClient } from '@tanstack/query-core'
 import * as Logix from '@logixjs/core'
 import * as Query from '../../src/index.js'
+import { engine as tanstackEngine } from '../../src/internal/engine/tanstack.js'
 
 describe('Query.Race', () => {
   it.effect('should never let stale result overwrite latest', () =>
@@ -10,7 +11,7 @@ describe('Query.Race', () => {
       const KeySchema = Schema.Struct({ q: Schema.String })
       type Key = Schema.Schema.Type<typeof KeySchema>
 
-      const spec = Logix.Resource.make<Key, { readonly q: string }, never, never>({
+      const spec = Query.Engine.Resource.make<Key, { readonly q: string }, never, never>({
         id: 'demo/query-race',
         keySchema: KeySchema,
         load: (key) => {
@@ -36,31 +37,32 @@ describe('Query.Race', () => {
         }),
       })
 
-      const runtime = Logix.Runtime.make(module.impl, {
+      const runtime = Logix.Runtime.make(module, {
         layer: Layer.mergeAll(
-          Logix.Resource.layer([spec]),
-          Query.Engine.layer(Query.TanStack.engine(new QueryClient())),
+          Query.Engine.Resource.layer([spec]),
+          Query.Engine.layer(tanstackEngine(new QueryClient())),
         ),
         middleware: [Query.Engine.middleware()],
       })
 
       const program = Effect.gen(function* () {
           const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
-        const controller = module.controller.make(rt)
+        const commands = module.commands.make(rt)
 
         // Rapid param changes: make older requests slower and the last one faster to reproduce a typical race/overwrite risk.
         yield* Effect.forEach(
           Array.from({ length: 10 }, (_, i) => `q${i}`),
-          (q) => controller.controller.setParams({ q } as any),
+          (q) => commands.setParams({ q } as any),
         )
 
         yield* Effect.sleep(Duration.millis(200))
 
-        const state = yield* controller.getState
+        const state = yield* commands.getState
         const snapshot = state.queries.search
 
         expect(snapshot.status).toBe('success')
         expect(snapshot.data).toEqual({ q: 'q9' })
+        expect(snapshot.keyHash).toBe(Query.Engine.Resource.keyHash({ q: 'q9' }))
       })
 
       yield* Effect.promise(() => runtime.runPromise(program as Effect.Effect<void, never, any>))

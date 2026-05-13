@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "kind": "CanonicalEvidencePackage",
+  "packageId": "fixture:evidence:cli-basic",
+  "artifacts": [
+    {
+      "outputKey": "dvtools-session-snapshot",
+      "kind": "DVToolsSessionSnapshot",
+      "ref": "./session.json"
+    }
+  ]
+}

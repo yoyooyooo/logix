@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { Cause, Chunk, Effect, Fiber, Layer, Schema, Stream } from 'effect'
-import * as Debug from '../../src/Debug.js'
+import * as Debug from '../../src/internal/debug-api.js'
 import * as Logix from '../../src/index.js'
 
 describe('Runtime.readQuery.strictGate', () => {
@@ -15,7 +15,7 @@ describe('Runtime.readQuery.strictGate', () => {
       },
     })
 
-    const impl = M.implement({
+    const program = Logix.Program.make(M, {
       initial: { count: 0 },
       logics: [],
     })
@@ -23,14 +23,14 @@ describe('Runtime.readQuery.strictGate', () => {
     const ring = Debug.makeRingBufferSink(64)
     const layer = Layer.mergeAll(Debug.replace([ring.sink]), Debug.diagnosticsLevel('light')) as Layer.Layer<any, never, never>
 
-    const runtime = Logix.Runtime.make(impl, {
+    const runtime = Logix.Runtime.make(program, {
       layer,
       readQuery: {
         strictGate: { mode: 'error' },
       },
     })
 
-    const program = Effect.gen(function* () {
+    const check = Effect.gen(function* () {
       const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
       const selector = (s: { count: number }) => (s.count > 0 ? s.count : 0)
 
@@ -52,7 +52,7 @@ describe('Runtime.readQuery.strictGate', () => {
     })
 
     try {
-      await runtime.runPromise(program as Effect.Effect<void, never, any>)
+      await runtime.runPromise(check as Effect.Effect<void, never, any>)
       const diag = ring
         .getSnapshot()
         .find((e) => e.type === 'diagnostic' && (e as any).code === 'read_query::strict_gate') as any
@@ -76,7 +76,7 @@ describe('Runtime.readQuery.strictGate', () => {
       },
     })
 
-    const impl = M.implement({
+    const program = Logix.Program.make(M, {
       initial: { count: 0 },
       logics: [],
     })
@@ -84,14 +84,14 @@ describe('Runtime.readQuery.strictGate', () => {
     const ring = Debug.makeRingBufferSink(64)
     const layer = Layer.mergeAll(Debug.replace([ring.sink]), Debug.diagnosticsLevel('light')) as Layer.Layer<any, never, never>
 
-    const runtime = Logix.Runtime.make(impl, {
+    const runtime = Logix.Runtime.make(program, {
       layer,
       readQuery: {
         strictGate: { mode: 'warn' },
       },
     })
 
-    const program = Effect.gen(function* () {
+    const check = Effect.gen(function* () {
       const rt: any = yield* Effect.service(M.tag).pipe(Effect.orDie)
       const selector = (s: { count: number }) => (s.count > 0 ? s.count : 0)
 
@@ -112,7 +112,7 @@ describe('Runtime.readQuery.strictGate', () => {
     })
 
     try {
-      await runtime.runPromise(program as Effect.Effect<void, never, any>)
+      await runtime.runPromise(check as Effect.Effect<void, never, any>)
       const diag = ring
         .getSnapshot()
         .find((e) => e.type === 'diagnostic' && (e as any).code === 'read_query::strict_gate') as any

@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Txn Lanes（更新优先级调度）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-29  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-29
 **Feature**: [Link to spec.md](../spec.md)
 
 ## Content Quality

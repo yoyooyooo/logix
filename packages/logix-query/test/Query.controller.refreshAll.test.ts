@@ -3,8 +3,9 @@ import { Duration, Effect, Layer, Schema } from 'effect'
 import { QueryClient } from '@tanstack/query-core'
 import * as Logix from '@logixjs/core'
 import * as Query from '../src/index.js'
+import { engine as tanstackEngine } from '../src/internal/engine/tanstack.js'
 
-describe('Query.controller.refreshAll', () => {
+describe('Query.commands.refreshAll', () => {
   it('should refresh all queries and skip key-unavailable ones', async () => {
     const waitUntil = <A>(
       read: Effect.Effect<A, never, any>,
@@ -25,8 +26,10 @@ describe('Query.controller.refreshAll', () => {
       })
 
     await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
+      const queryClient = new QueryClient()
+
       let searchCalls = 0
-      const SearchSpec = Logix.Resource.make({
+      const SearchSpec = Query.Engine.Resource.make({
         id: 'demo/query-refresh-all/search',
         keySchema: Schema.Struct({ q: Schema.String }),
         load: (key: { readonly q: string }) =>
@@ -37,7 +40,7 @@ describe('Query.controller.refreshAll', () => {
       })
 
       let detailCalls = 0
-      const DetailSpec = Logix.Resource.make({
+      const DetailSpec = Query.Engine.Resource.make({
         id: 'demo/query-refresh-all/detail',
         keySchema: Schema.Struct({ id: Schema.String }),
         load: (key: { readonly id: string }) =>
@@ -73,17 +76,17 @@ describe('Query.controller.refreshAll', () => {
         }),
       })
 
-      const runtime = Logix.Runtime.make(module.impl, {
+      const runtime = Logix.Runtime.make(module, {
         layer: Layer.mergeAll(
-          Logix.Resource.layer([SearchSpec, DetailSpec]),
-          Query.Engine.layer(Query.TanStack.engine(new QueryClient())),
+          Query.Engine.Resource.layer([SearchSpec, DetailSpec]),
+          Query.Engine.layer(tanstackEngine(queryClient)),
         ),
         middleware: [Query.Engine.middleware()],
       })
 
       const program = Effect.gen(function* () {
         const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
-        const controller = module.controller.make(rt)
+        const commands = module.commands.make(rt)
         yield* Effect.promise(
           () =>
             new Promise<void>((resolve) => {
@@ -92,12 +95,14 @@ describe('Query.controller.refreshAll', () => {
         )
 
         // refreshAll: search key is available; detail key is not.
-        yield* controller.controller.refresh()
+        yield* commands.refresh()
 
-        const state = yield* waitUntil(controller.getState as any, (s: any) => s.queries.search.status === 'success')
+        const state = yield* waitUntil(commands.getState as any, (s: any) => s.queries.search.status === 'success')
 
         expect(state.queries.search.data).toEqual({ q: 'a' })
+        expect(state.queries.search.keyHash).toBe(Query.Engine.Resource.keyHash({ q: 'a' }))
         expect(state.queries.detail.status).toBe('idle')
+        expect(state.queries.detail.keyHash).toBeUndefined()
         expect(searchCalls).toBe(1)
         expect(detailCalls).toBe(0)
       })

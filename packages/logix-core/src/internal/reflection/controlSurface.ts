@@ -1,26 +1,23 @@
-import type { WorkflowDefV1 } from '../workflow/model.js'
-import { compileWorkflowStaticIrV1 } from '../workflow/compiler.js'
-import type { JsonValue } from '../observability/jsonValue.js'
-import { exportControlSurfaceManifest, exportEffectsIndexDigest, exportWorkflowEffectsIndex } from '../observability/controlSurfaceManifest.js'
-import type { ControlSurfaceManifestV1 } from '../observability/controlSurfaceManifest.js'
-import { exportWorkflowSurface } from '../observability/workflowSurface.js'
-import type { WorkflowSurfaceV1 } from '../observability/workflowSurface.js'
+import {
+  exportControlSurfaceManifest,
+  type ControlSurfaceManifestV1,
+  type ControlProgramSurfaceV1,
+  type JsonValue,
+} from '../evidence-api.js'
 
 export type ExportedWorkflowSurface = {
   readonly moduleId: string
-  readonly surface: WorkflowSurfaceV1
+  readonly surface: ControlProgramSurfaceV1
 }
 
 export type ExportControlSurfaceResult = {
   readonly manifest: ControlSurfaceManifestV1
-  readonly workflowSurfaces: ReadonlyArray<ExportedWorkflowSurface>
+  readonly controlProgramSurfaces: ReadonlyArray<ExportedWorkflowSurface>
 }
 
 export type ExportControlSurfaceOptions = {
   readonly meta?: { readonly generator?: JsonValue }
 }
-
-const MODULE_INTERNAL = Symbol.for('logix.module.internal')
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -37,12 +34,12 @@ const resolveTagId = (tag: unknown): string | undefined => {
 }
 
 const resolveModuleIdOrThrow = (module: unknown): string => {
-  if (isRecord(module) && module._tag === 'ModuleImpl') {
+  if (isRecord(module) && module._tag === 'ProgramRuntimeBlueprint') {
     const id = resolveTagId(module.module)
     if (id) return id
     throw new Error(
-      '[ControlSurfaceManifest] Failed to resolve moduleId from ModuleImpl.module.id.\n' +
-        'Fix: pass a configured Module/ModuleImpl (has .id/.tag.id/.module.id), not a read-only handle.',
+      '[ControlSurfaceManifest] Failed to resolve moduleId from ProgramRuntimeBlueprint.module.id.\n' +
+        'Fix: pass a configured Module/ProgramRuntimeBlueprint (has .id/.tag.id/.module.id), not a read-only handle.',
     )
   }
 
@@ -55,15 +52,8 @@ const resolveModuleIdOrThrow = (module: unknown): string => {
 
   throw new Error(
     '[ControlSurfaceManifest] Failed to resolve moduleId.\n' +
-      'Fix: pass a configured Module/ModuleImpl (has .id/.tag.id/.module.id), not a read-only handle.',
+      'Fix: pass a configured Module/ProgramRuntimeBlueprint (has .id/.tag.id/.module.id), not a read-only handle.',
   )
-}
-
-const resolveWorkflowDefs = (module: unknown): ReadonlyArray<WorkflowDefV1> => {
-  if (!isObjectLike(module)) return []
-  const internal = (module as Record<PropertyKey, unknown>)[MODULE_INTERNAL]
-  const defs = isRecord(internal) ? internal.workflowDefs : undefined
-  return Array.isArray(defs) ? (defs as ReadonlyArray<WorkflowDefV1>) : []
 }
 
 export const exportControlSurface = (
@@ -71,7 +61,7 @@ export const exportControlSurface = (
   options?: ExportControlSurfaceOptions,
 ): ExportControlSurfaceResult => {
   const entries: Array<ControlSurfaceManifestV1['modules'][number]> = []
-  const workflowSurfaces: Array<ExportedWorkflowSurface> = []
+  const controlProgramSurfaces: Array<ExportedWorkflowSurface> = []
 
   const seen = new Set<string>()
 
@@ -82,24 +72,9 @@ export const exportControlSurface = (
     }
     seen.add(moduleId)
 
-    const defs = resolveWorkflowDefs(module)
-    if (defs.length === 0) {
-      entries.push({ moduleId, effectsIndex: [] })
-      continue
-    }
-
-    const workflowIrs = defs.map((def) => compileWorkflowStaticIrV1({ moduleId, def }))
-    const surface = exportWorkflowSurface(workflowIrs)
-    workflowSurfaces.push({ moduleId, surface })
-
-    const effectsIndex = exportWorkflowEffectsIndex({ moduleId, workflowSurface: surface.programs })
-    const effectsIndexDigest = effectsIndex.length > 0 ? exportEffectsIndexDigest(effectsIndex) : undefined
-
     entries.push({
       moduleId,
-      workflowSurface: { digest: surface.digest },
-      effectsIndex,
-      ...(effectsIndexDigest ? { effectsIndexDigest } : null),
+      effectsIndex: [],
     })
   }
 
@@ -109,5 +84,5 @@ export const exportControlSurface = (
     ...(options?.meta ? { meta: options.meta } : null),
   })
 
-  return { manifest, workflowSurfaces }
+  return { manifest, controlProgramSurfaces }
 }

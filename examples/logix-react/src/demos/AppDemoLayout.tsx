@@ -1,14 +1,17 @@
 import React from 'react'
 import { Effect, Schema } from 'effect'
 import * as Module from '@logixjs/core/Module'
+import * as Program from '@logixjs/core/Program'
 import * as Runtime from '@logixjs/core/Runtime'
-import * as Debug from '@logixjs/core/Debug'
-import { RuntimeProvider, useModule, useSelector, useDispatch } from '@logixjs/react'
+import * as Debug from '@logixjs/core/repo-internal/debug-api'
+import { RuntimeProvider, fieldValue, useModule, useSelector, useDispatch, fieldValues } from '@logixjs/react'
 
 // 一个基于 Logix Runtime 的简单示例：单模块计数器应用
 
-const AppCounterDef = Module.make('AppCounter', {
-  state: Schema.Struct({ count: Schema.Number }),
+const AppCounter = Module.make('AppCounter', {
+  state: Schema.Struct({
+    count: Schema.Number,
+  }),
   actions: {
     increment: Schema.Void,
     decrement: Schema.Void,
@@ -23,7 +26,7 @@ const AppCounterDef = Module.make('AppCounter', {
   },
 })
 
-const AppCounterLogic = AppCounterDef.logic(($) => {
+const AppCounterLogic = AppCounter.logic('app-counter-logic', ($) => {
   return Effect.gen(function* () {
     yield* Effect.log('AppCounterLogic setup')
     yield* $.onAction('increment').run(() =>
@@ -31,7 +34,7 @@ const AppCounterLogic = AppCounterDef.logic(($) => {
         yield* Effect.log('increment dispatched from AppCounterLogic')
         yield* Debug.record({
           type: 'trace:increment',
-          moduleId: AppCounterDef.id,
+          moduleId: AppCounter.id,
           data: { source: 'AppDemoLayout', at: 'onAction(increment)' },
         })
       }),
@@ -39,13 +42,13 @@ const AppCounterLogic = AppCounterDef.logic(($) => {
   })
 })
 
-const AppCounterModule = AppCounterDef.implement({
+const AppCounterProgram = Program.make(AppCounter, {
   initial: { count: 0 },
   logics: [AppCounterLogic],
 })
 
-const appRuntime = Runtime.make(AppCounterModule, {
-  // 应用级 Runtime：以 AppCounterModule 作为 Root Module 构建一颗 Runtime，
+const appRuntime = Runtime.make(AppCounterProgram, {
+  // 应用级 Runtime：以 AppCounterProgram 作为 Root Program 构建一颗 Runtime，
   // 并通过 devtools 选项一键启用 DevTools 观测。
   label: 'AppDemoRuntime',
   devtools: true,
@@ -53,8 +56,8 @@ const appRuntime = Runtime.make(AppCounterModule, {
 
 const AppCounterView: React.FC = () => {
   // 使用 suspend:true 让 ModuleRuntime 构建走异步路径，避免在 StrictMode / 异步初始化下触发 runSync 的 AsyncFiberException。
-  const runtime = useModule(AppCounterDef.tag)
-  const count = useSelector(runtime, (s) => s.count)
+  const runtime = useModule(AppCounter.tag)
+  const count = useSelector(runtime, fieldValue('count'))
   const dispatch = useDispatch(runtime)
 
   return (
@@ -102,11 +105,11 @@ export const AppDemoLayout: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400 max-w-2xl leading-relaxed">
             本示例展示了如何使用{' '}
             <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm font-mono text-pink-600 dark:text-pink-400">
-              Logix.Runtime.make
+              Program.make
             </code>{' '}
-            定义应用级 Runtime，并通过{' '}
+            装配 Root Program，再通过{' '}
             <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm font-mono text-pink-600 dark:text-pink-400">
-              RuntimeProvider
+              Runtime.make + React host adapter
             </code>{' '}
             将该 Runtime 挂载到 React 组件树中。
           </p>

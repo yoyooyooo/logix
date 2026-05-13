@@ -1,29 +1,53 @@
 ---
 title: Form（表单）
-description: 由浅入深掌握 @logixjs/form 的表单模型、校验、动态列表与性能建议。
+description: Form 是 Logix 中负责可编辑输入状态、校验、submit gating 与列表 identity 的领域包。
 ---
 
-`@logixjs/form` 是 Logix 体系中的“表单领域包”：它把表单的 **values / errors / ui / submit 状态** 作为一个普通模块托管进 Runtime，让表单和其他业务模块共享同一套：
+`@logixjs/form` 是 Logix 的输入状态领域包。
 
-- Runtime 生命周期与事务语义（一次交互最多一次可观察提交）
-- 调试与回放能力（Devtools 时间线、错误树、状态快照）
-- 声明式派生 / 校验 / 异步资源（Trait / Resource / Effect）
+它定义这些领域语义：
 
-## 推荐阅读顺序（由浅入深）
+- 可编辑的 values
+- 校验与错误落点
+- submit gating 与 decode
+- 列表结构编辑与 row ownership
 
-1. [概览：Form 的模型](/cn/docs/form/introduction)
-2. [快速开始](/cn/docs/form/quick-start)
-3. [Rules DSL（z）](/cn/docs/form/rules)
-4. [校验与错误](/cn/docs/form/validation)
-5. [动态列表（Field Array）](/cn/docs/form/field-arrays)
-6. [迁移指南（traits → rules）](/cn/docs/form/migration)
-7. [派生与联动（derived / Trait）](/cn/docs/form/derived)
-8. [Schema 校验与错误映射](/cn/docs/form/schema)
-9. [性能与优化](/cn/docs/form/performance)
+React 消费继续通过 `RuntimeProvider`、`useModule(...)` 和 `useSelector(...)` 回到 core host law。
 
-## 你会得到什么
+## 内容
 
-- 知道 `Form.make(...)` 为什么返回一个 `Blueprint`，以及如何把它像其他模块一样接入 Runtime；
-- 明白错误树为什么统一使用 `$list/rows[]` 口径，以及如何在数组增删/重排时保持错误与 UI 状态稳定；
-- 能用 `validateOn / reValidateOn` 组织“提交前/提交后”的自动校验策略，并通过 controller 在组件外触发精确校验；
-- 在大表单/大列表场景下，能用 selector 订阅与稳定 identity 降低渲染与校验开销。
+1. [Introduction](/cn/docs/form/introduction)
+2. [Quick start](/cn/docs/form/quick-start)
+3. [Instances](/cn/docs/form/instances)
+4. [Sources](/cn/docs/form/sources)
+5. [Companion](/cn/docs/form/companion)
+6. [Rules](/cn/docs/form/rules)
+7. [Validation](/cn/docs/form/validation)
+8. [Selectors and support facts](/cn/docs/form/selectors)
+9. [Field arrays](/cn/docs/form/field-arrays)
+10. [Derived](/cn/docs/form/derived)
+11. [Schema](/cn/docs/form/schema)
+12. [Performance](/cn/docs/form/performance)
+13. [When to use](/cn/docs/form/when-to-use)
+
+## 范围
+
+当前公开主线保持收口：
+
+- 用 `Form.make(...)` 声明领域语义
+- 通过 core React host 挂载
+- 用 `useSelector(...)` 读取
+- 通过 form handle 写入
+
+selector support facts、field explanation 与 row-owned companion read 继续走同一条 `useSelector(...)` host route。
+Form 不为这些读取新增 Form-owned React hooks、public path object、public row owner token 或 generic fact namespace。
+
+当前默认 narrative 继续保持：
+
+- quick-start
+- instance lifecycle
+- source / remote fact
+- companion / local support fact
+- field arrays / row identity
+
+额外的 wrapper family、package-local React helper，以及另一套 form-specific hook family，都不在当前 canonical surface 内。

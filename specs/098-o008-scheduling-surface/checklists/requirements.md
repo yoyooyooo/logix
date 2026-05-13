@@ -1,7 +1,7 @@
 # Specification Quality Checklist: O-008 调度平面统一（Scheduling Surface）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2026-02-25  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2026-02-25
 **Feature**: `specs/098-o008-scheduling-surface/spec.md`
 
 ## Content Quality

@@ -8,6 +8,6 @@ export {
   diagnosticsLevel,
   errorOnlyLayer,
   noopLayer,
-  traitConvergeDiagnosticsSampling,
+  fieldConvergeDiagnosticsSampling,
 } from './DebugSink.record.js'
 

@@ -1,8 +1,8 @@
 # Feature Specification: Named Logic Slots（具名逻辑插槽：从结构可见到语义可见）
 
-**Feature Branch**: `083-named-logic-slots`  
-**Created**: 2026-01-09  
-**Status**: Draft  
+**Feature Branch**: `083-named-logic-slots`
+**Created**: 2026-01-09
+**Status**: Draft
 **Input**: 在模块层引入“具名逻辑插槽（Named Logic Slots）”：平台不再只看到 `logics: []` 的黑盒数组，而能看到逻辑的坑位语义（required/unique/aspect…），从而支持可解释的组装、替换与治理；并为未来 AI 辅助编程提供更强的结构化语义资产。
 
 ## Context

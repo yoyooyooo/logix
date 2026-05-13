@@ -6,7 +6,7 @@ type Mode =
   | { readonly kind: "base"; readonly base: string }
 
 type Rule = {
-  readonly id: "txn-window-io" | "business-subscriptionref-write" | "legacy-runtime-entrypoint"
+  readonly id: "txn-window-io" | "business-subscriptionref-write" | "retired-runtime-entrypoint"
   readonly message: string
   readonly appliesToFile: (file: string) => boolean
   readonly isViolation: (line: string, file: string) => boolean
@@ -47,7 +47,7 @@ const parseArgs = (argv: ReadonlyArray<string>): Mode => {
           "Rules:",
           "  - txn-window-io",
           "  - business-subscriptionref-write",
-          "  - legacy-runtime-entrypoint",
+          "  - retired-runtime-entrypoint",
           "",
           "Modes:",
           "  (default)        git diff --unified=0 HEAD",
@@ -105,7 +105,7 @@ const LEGACY_ENTRY_ALLOWLIST_PREFIXES = [
 
 const SUBSCRIPTION_REF_WRITE_ALLOWLIST_PREFIXES = [
   "packages/logix-core/src/internal/runtime/core/",
-  "packages/logix-core/src/internal/state-trait/",
+  "packages/logix-core/src/internal/field-kernel/",
   "packages/i18n/src/internal/driver/",
 ] as const
 
@@ -136,9 +136,9 @@ const rules: ReadonlyArray<Rule> = [
     },
   },
   {
-    id: "legacy-runtime-entrypoint",
+    id: "retired-runtime-entrypoint",
     message:
-      "Legacy runtime run* entrypoints are forbidden on main paths. Use runtime/scope-managed execution surfaces instead.",
+      "Retired runtime run* entrypoints are forbidden on main paths. Use runtime/scope-managed execution surfaces instead.",
     appliesToFile: (file) => {
       if (!isTsSourceFile(file)) return false
       const inTargetSurface =

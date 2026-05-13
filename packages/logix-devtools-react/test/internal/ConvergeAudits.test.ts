@@ -45,7 +45,7 @@ describe('015 · ConvergeAudits', () => {
     expect(cnv001?.snippets.map((s) => s.kind)).toEqual(['provider_override', 'module_override'])
     expect(cnv001?.snippets[0]?.expectedConfigScope).toBe('provider')
     expect(cnv001?.snippets[1]?.expectedConfigScope).toBe('runtime_module')
-    expect(cnv001?.snippets[0]?.text).toContain('traitConvergeBudgetMs')
+    expect(cnv001?.snippets[0]?.text).toContain('fieldConvergeBudgetMs')
 
     expect(() => JSON.parse(JSON.stringify(audits))).not.toThrow()
   })

@@ -33,7 +33,7 @@ description: "Task list for 005-unify-observability-protocol implementation"
 **Purpose**: docs-first 对齐 + 代码落点占位
 
 - [x] T001 更新 SSoT：在 `docs/ssot/runtime/logix-core/observability/09-debugging.md` 固化 005 的协议/导出导入/Worker-first/Recording Window 语义
-- [x] T002 建立 core 公共入口：新增 `packages/logix-core/src/Observability.ts` 并在 `packages/logix-core/src/index.ts` 导出为 `Logix.Observability`
+- [x] T002 建立 core 公共入口：新增 `packages/logix-core/src/internal/evidence-api.ts` 并在 `packages/logix-core/src/index.ts` 导出为 `Logix.Observability`
 
 ---
 
@@ -46,7 +46,7 @@ description: "Task list for 005-unify-observability-protocol implementation"
 - [ ] T003 [P] 添加协议排序/兼容性测试：`packages/logix-core/test/observability/ObservationEnvelope.test.ts`
 - [ ] T004 [P] 添加证据包录制窗口测试（seq 允许间隙）：`packages/logix-core/test/observability/EvidencePackage.test.ts`
 - [ ] T005 [P] 添加聚合确定性测试（同输入同输出）：`packages/logix-core/test/observability/AggregationEngine.test.ts`
-- [ ] T006 定义协议公共类型与 API：在 `packages/logix-core/src/Observability.ts` 补齐 `ObservationEnvelope`/`EvidencePackage`/`ControlCommand`/`AggregatedSnapshot`/payload 降级标记
+- [ ] T006 定义协议公共类型与 API：在 `packages/logix-core/src/internal/evidence-api.ts` 补齐 `ObservationEnvelope`/`EvidencePackage`/`ControlCommand`/`AggregatedSnapshot`/payload 降级标记
 - [x] T007 [P] 实现 payload 降级与摘要工具：`packages/logix-core/src/internal/observability/jsonValue.ts`
 - [ ] T008 [P] 实现 ObservationEnvelope codec（validate/parse/compat）：`packages/logix-core/src/internal/observability/envelope.ts`
 - [x] T009 [P] 实现 EvidencePackage codec（export/import）：`packages/logix-core/src/internal/observability/evidence.ts`
@@ -54,7 +54,7 @@ description: "Task list for 005-unify-observability-protocol implementation"
 - [ ] T011 实现增量聚合器（append-only 输入 → 快照输出）：`packages/logix-core/src/internal/observability/aggregator.ts`
 - [ ] T012 扩展 DevtoolsHub 为“运行侧事件源”：在 `packages/logix-core/src/internal/runtime/core/DevtoolsHub.ts` 增加 runId/seq、envelope ring buffer、dropped/oversized 统计、clear/pause/resume 处理
 - [ ] T013 在运行侧生成权威 Envelope：在 `packages/logix-core/src/internal/runtime/core/DevtoolsHub.ts` 将 `DebugSink.Event` 归一化为 `RuntimeDebugEventRef`（`Debug.internal.toRuntimeDebugEventRef`）并封装为 `ObservationEnvelope`
-- [ ] T014 暴露统一入口给宿主/UI：在 `packages/logix-core/src/Debug.ts` 导出 Observation Snapshot 订阅与命令派发（例如 `getObservationSnapshot/subscribeObservationSnapshot/sendControlCommand`）
+- [ ] T014 暴露统一入口给宿主/UI：在 `packages/logix-core/src/internal/debug-api.ts` 导出 Observation Snapshot 订阅与命令派发（例如 `getObservationSnapshot/subscribeObservationSnapshot/sendControlCommand`）
 - [ ] T015 [P] 添加命令行为测试（clear/pause/resume）：`packages/logix-core/test/observability/ControlCommand.test.ts`
 
 **Checkpoint**: core 协议 + 证据包 + 聚合引擎 + 命令面已可独立单测验证
@@ -159,7 +159,7 @@ description: "Task list for 005-unify-observability-protocol implementation"
 
 #### Implementation for User Story 3
 
-- [ ] T047 [US3] 页面侧桥接：将 ObservationEnvelope 批量转发到 `window.postMessage`：`packages/logix-core/src/Observability.ts`
+- [ ] T047 [US3] 页面侧桥接：将 ObservationEnvelope 批量转发到 `window.postMessage`：`packages/logix-core/src/internal/evidence-api.ts`
 - [ ] T048 [US3] Content Script：监听 window message 并转发给扩展：`packages/logix-devtools-chrome/src/content-script.ts`
 - [ ] T049 [US3] Background（MV3 service worker）：按 tabId 路由消息/端口：`packages/logix-devtools-chrome/src/background.ts`
 - [ ] T050 [US3] Devtools Page：创建 panel 并连接 background：`packages/logix-devtools-chrome/src/devtools.ts`

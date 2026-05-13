@@ -18,7 +18,7 @@ describe('Runtime.openProgram (US1)', () => {
         },
       })
 
-      const impl = Root.implement({
+      const program = Logix.Program.make(Root, {
         initial: { value: 0 },
         logics: [],
       })
@@ -38,7 +38,7 @@ describe('Runtime.openProgram (US1)', () => {
       const scope = yield* Scope.make()
 
       const ctx = yield* Scope.provide(scope)(
-        Logix.Runtime.openProgram(impl, {
+        Logix.Runtime.openProgram(program, {
           layer,
           handleSignals: false,
         }),

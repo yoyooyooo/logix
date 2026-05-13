@@ -1,42 +1,57 @@
 ---
 title: useSelector
-description: 订阅模块状态（或切片），支持自定义 equality，并在满足条件时启用 ReadQuery 订阅优化。
+description: 订阅完整状态或状态切片。
 ---
 
-`useSelector` 是 React 中读取 Logix 模块状态的主力 Hook：
+`useSelector` 是 React 中读取 Logix 状态的 canonical API。
 
-- 订阅模块状态（或选取一个切片），
-- 只有当选中值发生变化时才触发重渲染。
-
-## 基本用法
+## 完整状态
 
 ```tsx
-import { useModule, useSelector } from '@logixjs/react'
-import { CounterDef } from './modules/counter'
-
-function Counter() {
-  const counter = useModule(CounterDef)
-  const count = useSelector(counter, (s) => s.count)
-
-  return <div>{count}</div>
-}
+const state = useSelector(handle)
 ```
 
-## API
+## 切片订阅
 
-### 1) `useSelector(handle)`（读取完整 state）
+```tsx
+const count = useSelector(handle, (s) => s.count)
+```
 
-返回模块的完整状态。
+也可以提供可选的 equality function：
 
-### 2) `useSelector(handle, selector, equalityFn?)`（读取切片）
+```tsx
+const slice = useSelector(handle, selector, equalityFn)
+```
 
-- `selector`：`(state) => slice`
-- `equalityFn`：可选的相等判断函数，用于控制“何时触发重渲染”
+## 说明
 
-在满足条件时，Logix 会把 selector 编译成 `ReadQuery`，以启用更优化的订阅路径。
+- `useSelector(handle)` 读取完整状态
+- `useSelector(handle, selector, equalityFn?)` 订阅状态切片
+- 符合条件的 selector，在内部可能走更优化的订阅路径
 
-## 延伸阅读
+## Form selector descriptors
 
-- [API: useModule](./use-module)
-- [API: useDispatch](./use-dispatch)
-- [API: ReadQuery](../core/read-query)
+Form-specific support reads 仍然使用这个 hook。
+
+```tsx
+const value = useSelector(form, fieldValue("items.0.warehouseId"))
+const explain = useSelector(form, Form.Error.field("items.0.warehouseId"))
+const support = useSelector(form, Form.Companion.field("items.warehouseId"))
+const rowSupport = useSelector(
+  form,
+  Form.Companion.byRowId("items", rowId, "warehouseId"),
+)
+```
+
+`Form.Companion.*` descriptors 只通过 `useSelector` 消费。
+它们不创建 `useCompanion`、Form-owned hook family、carrier-bound selector route 或第二条 host read route。
+
+`Form.Error.field(path)` 是 field explanation selector。
+它的结果可能表示 `error`、`pending`、`stale`、`cleanup`，也可能表示当前没有 explanation。
+它不只等于 canonical `FormErrorLeaf`，也不会变成第二套 validation truth。
+
+## 相关页面
+
+- [useModule](./use-module)
+- [useDispatch](./use-dispatch)
+- [Form selectors and support facts](/cn/docs/form/selectors)

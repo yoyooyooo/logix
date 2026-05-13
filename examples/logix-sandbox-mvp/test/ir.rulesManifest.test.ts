@@ -3,19 +3,21 @@ import { it, expect } from '@effect/vitest'
 import { Effect, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Form from '@logixjs/form'
+import { trialRunModule } from '../../../packages/logix-core/src/internal/observability/trialRunModule.js'
 
 describe('/ir: rulesManifest artifact', () => {
-  it.effect('exports @logixjs/form.rulesManifest@v1 when module uses Form.rules', () =>
+  it.effect('exports @logixjs/form.rulesManifest@v1 when module uses the Form.make rules DSL', () =>
     Effect.gen(function* () {
       const Values = Schema.Struct({ name: Schema.String })
-      const R = Form.rules(Values)
       const AppRoot = Form.make('IrTest.FormRules', {
         values: Values,
         initialValues: { name: '' },
-        rules: R(R.field('name', { required: true })),
+      }, (form) => {
+        const rules = form.dsl as any
+        form.rules(rules(rules.field('name', { required: true })))
       })
 
-      const report = yield* Logix.Observability.trialRunModule(AppRoot, {
+      const report = yield* trialRunModule(AppRoot as any, {
         diagnosticsLevel: 'off',
         maxEvents: 0,
         trialRunTimeoutMs: 1000,

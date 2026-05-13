@@ -1,8 +1,8 @@
 # Feature Specification: O-005 单一最小 IR 收敛（Static IR + Dynamic Trace）
 
-**Feature Branch**: `[098-unified-minimal-ir]`  
-**Created**: 2026-02-25  
-**Status**: Planned  
+**Feature Branch**: `[098-unified-minimal-ir]`
+**Created**: 2026-02-25
+**Status**: Planned
 **Input**: User description: "O-005 单一最小 IR 收敛：Static IR + Dynamic Trace 同一事实链；收敛多源 IR，减少 trial/fallback 常态化；full cutover 从可选门禁升级为默认策略；验收是 Devtools/Evidence/Replay/Platform 对同一 IR 解释一致。"
 
 ## North Stars & Kill Features Traceability _(optional)_
@@ -24,7 +24,7 @@
 
 **Acceptance Scenarios**:
 
-1. **Given** runtime 使用默认策略，**When** 执行包含 module/flow/trait 的标准场景，**Then** 只导出一套最小 IR，并记录稳定锚点链路（instanceId/txnSeq/opSeq/tickSeq/linkId）。
+1. **Given** runtime 使用默认策略，**When** 执行包含 module/flow/field 的标准场景，**Then** 只导出一套最小 IR，并记录稳定锚点链路（instanceId/txnSeq/opSeq/tickSeq/linkId）。
 2. **Given** 出现不满足 full cutover 的输入，**When** 执行运行，**Then** 系统 fail-fast 或显式降级并给出 reason codes，不允许静默回退到旧路径。
 3. **Given** 诊断关闭，**When** 场景高频执行，**Then** 仅保留最小锚点事实，不引入显著额外开销。
 
@@ -117,7 +117,7 @@
 
 ### Key Entities _(include if feature involves data)_
 
-- **UnifiedStaticIR**: 静态结构事实源，包含 module/flow/trait 等结构切片与可对齐锚点。
+- **UnifiedStaticIR**: 静态结构事实源，包含 module/flow/field 等结构切片与可对齐锚点。
 - **UnifiedDynamicTrace**: 动态证据时间线，记录事务与操作的稳定序列以及降级元信息。
 - **IrEvidencePackage**: 供 Devtools/Evidence/Replay/Platform 共享消费的统一导出载体。
 - **MigrationNote**: 破坏性升级交付物，定义映射规则、断点类型与迁移动作。

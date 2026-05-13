@@ -2,22 +2,19 @@ import { describe, it, expect } from 'vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
 
-describe('Runtime.make(Module)', () => {
-  it('should accept Module and unwrap to module.impl', async () => {
+describe('Runtime.make(Program)', () => {
+  it('should accept Program and resolve its internal runtime blueprint', async () => {
     const Counter = Logix.Module.make('RuntimeMakeModuleCounter', {
       state: Schema.Struct({ count: Schema.Number }),
       actions: { noop: Schema.Void },
     })
 
-    const CounterModule = Counter.implement({
+    const CounterProgram = Logix.Program.make(Counter, {
       initial: { count: 1 },
       logics: [],
     })
 
-    const runtimeA = Logix.Runtime.make(CounterModule.impl, {
-      layer: Layer.empty as Layer.Layer<any, never, never>,
-    })
-    const runtimeB = Logix.Runtime.make(CounterModule, {
+    const runtime = Logix.Runtime.make(CounterProgram, {
       layer: Layer.empty as Layer.Layer<any, never, never>,
     })
 
@@ -27,11 +24,9 @@ describe('Runtime.make(Module)', () => {
     }) as Effect.Effect<number, never, any>
 
     try {
-      expect(await runtimeA.runPromise(readCount)).toBe(1)
-      expect(await runtimeB.runPromise(readCount)).toBe(1)
+      expect(await runtime.runPromise(readCount)).toBe(1)
     } finally {
-      await runtimeA.dispose()
-      await runtimeB.dispose()
+      await runtime.dispose()
     }
   })
 })

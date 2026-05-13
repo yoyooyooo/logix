@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://intent-flow.local/specs/010-form-api-perf-boundaries/schemas/validate-target.schema.json",
+  "$id": "https://logix.local/specs/010-form-api-perf-boundaries/schemas/validate-target.schema.json",
   "title": "ValidateTarget",
-  "description": "Serializable target ref for scoped validate (aligns with TraitLifecycle.FieldRef).",
+  "description": "Serializable target ref for scoped validate (aligns with FieldLifecycle.FieldRef).",
   "oneOf": [
     {
       "type": "object",

@@ -1,8 +1,8 @@
 # Feature Specification: Workbench Contract Suite（031-035 统一验收与治理入口）
 
-**Feature Branch**: `[036-workbench-contract-suite]`  
-**Created**: 2025-12-25  
-**Status**: Draft  
+**Feature Branch**: `[036-workbench-contract-suite]`
+**Created**: 2025-12-25
+**Status**: Draft
 **Input**: 建立一个统一管控 031-035 的集成规格（Contract Suite / Integration Track）：以 `examples/logix-sandbox-mvp` 作为最小平台 Workbench，串起 TrialRun artifacts（含 `@logixjs/form.rulesManifest@v1`）、UI 投影与语义绑定边界、Scenario Canvas 语义蓝图、以及“模块引用空间事实源（PortSpec/TypeIR + CodeAsset 协议）”，定义端到端可验收的集成闭环与版本化治理口径；不新增实现细节，仅提供统一的验收与依赖关系裁决，避免各子 spec 漂移。
 
 ## Assumptions

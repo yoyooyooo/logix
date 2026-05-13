@@ -1,7 +1,7 @@
 # Tasks: Logix Kit Factory（语法糖机器）
 
-**Input**: Design documents from `specs/093-logix-kit-factory/`  
-**Prerequisites**: `specs/093-logix-kit-factory/plan.md`（required）, `specs/093-logix-kit-factory/spec.md`（required）, `specs/093-logix-kit-factory/research.md`, `specs/093-logix-kit-factory/data-model.md`, `specs/093-logix-kit-factory/contracts/*`, `specs/093-logix-kit-factory/quickstart.md`  
+**Input**: Design documents from `specs/093-logix-kit-factory/`
+**Prerequisites**: `specs/093-logix-kit-factory/plan.md`（required）, `specs/093-logix-kit-factory/spec.md`（required）, `specs/093-logix-kit-factory/research.md`, `specs/093-logix-kit-factory/data-model.md`, `specs/093-logix-kit-factory/contracts/*`, `specs/093-logix-kit-factory/quickstart.md`
 **Tests**: REQUIRED（`packages/logix-core/test/Kit/*` 验证“等价展开 + 稳定 identity + 零副作用”）
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
@@ -45,7 +45,7 @@
 
 ## Phase 3: User Story 1 - 端口型能力的统一接入（Priority: P1）
 
-**Goal**: 只声明一次 `Context.Tag` 端口契约，即可生成 Trait/Logic/Workflow 三面 sugar（等价展开）
+**Goal**: 只声明一次 `Context.Tag` 端口契约，即可生成 Field/Logic/Workflow 三面 sugar（等价展开）
 
 **Independent Test**: 仅通过单测即可验证：descriptor 正确、identity 稳定、创建阶段零副作用
 
@@ -78,7 +78,7 @@
 
 - [ ] T015 [US2] Implement `Kit.forModule(module, readQuery)` via `ExternalStore.fromModule` in `packages/logix-core/src/Kit.ts`
 - [ ] T016 [US2] Update Module-as-Source notes (imports requirement + unstableSelectorId fail-fast + no dynamic instance selection) in `specs/093-logix-kit-factory/quickstart.md`
-- [ ] T027 [US2] Improve fail-fast message for unresolved/ambiguous Module-as-Source imports in `packages/logix-core/src/internal/state-trait/external-store.ts` + tests in `packages/logix-core/test/Kit/Kit.forModule.test.ts`
+- [ ] T027 [US2] Improve fail-fast message for unresolved/ambiguous Module-as-Source imports in `packages/logix-core/src/internal/state-field/external-store.ts` + tests in `packages/logix-core/test/Kit/Kit.forModule.test.ts`
 
 **Checkpoint**: US2 在不依赖 React/宿主的前提下可独立通过单测验收
 

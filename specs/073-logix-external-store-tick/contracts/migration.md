@@ -17,22 +17,22 @@
 - 对正常业务用法（`RuntimeProvider` + `useSelector/useModule`），本次迁移目标是 **完全透明**（无需改动调用点/Provider 形态）。若应用存在自研 React Adapter 或绕过 `RuntimeProvider/RuntimeContext` 的定制集成，需要人工介入调整。
 - forward-only：不提供 100% 自动迁移脚本的承诺；若需要 codemod，只能作为辅助工具（以最终类型检查为准）。
 
-## 2) 外部推送源接入：从手写胶水 → `StateTrait.externalStore`
+## 2) 外部推送源接入：从手写胶水 → `FieldKernel.externalStore`
 
 ### 旧写法（典型）
 
 - `yield* $.on(service.changes).runFork((v) => $.state.mutate((d) => { d.inputs.x = v }))`
-- 再用 `$.onState(...).runFork(() => $.traits.source.refresh(...))` 驱动下游 source/query
+- 再用 `$.onState(...).runFork(() => $.fields.source.refresh(...))` 驱动下游 source/query
 
 ### 新写法（推荐）
 
 - 把外部输入归一为 `ExternalStore<T>`（service/ref/stream sugar）
-- 在 Module traits 中声明 `StateTrait.externalStore({ ... })`
+- 在 Module fields 中声明 `FieldKernel.externalStore({ ... })`
 - 下游依赖通过 `computed/source/link` 表达，减少胶水 watcher 与隐式时序
 
 ## 3) 黑盒跨模块 glue：保留，但不进入强一致承诺
 
-若应用仍使用 `Process.link`/任意 Effect 黑盒进行跨模块联动：
+若应用仍使用 `orchestration process link surface`/任意 Effect 黑盒进行跨模块联动：
 
 - 允许继续存在（escape hatch）
 - 但强一致（tick fixpoint + 无 tearing）只对 DeclarativeLinkIR 生效；黑盒逻辑仍可能产生跨 tick 的“中间态”

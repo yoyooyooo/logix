@@ -2,6 +2,7 @@ import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
+import { materializeExtendedHandle } from '../support/form-harness.js'
 
 const waitForAsync = Effect.promise(
   () =>
@@ -21,40 +22,31 @@ describe('Form validateOn/reValidateOn strategy', () => {
 
       type Values = Schema.Schema.Type<typeof ValuesSchema>
 
-      const module = Form.make('Form.ValidateOnStrategy', {
-        values: ValuesSchema,
-        initialValues: { name: '', code: '', secret: '' } satisfies Values,
-        validateOn: ['onSubmit'],
-        reValidateOn: ['onChange'],
-        traits: Logix.StateTrait.from(ValuesSchema)({
-          name: Logix.StateTrait.node<string>({
-            check: {
-              required: {
-                deps: ['name'],
-                validate: (value: string) => (String(value ?? '').trim() ? undefined : 'required'),
-              },
-            },
-          }),
-          code: Logix.StateTrait.node<string>({
-            check: {
-              blurOnly: {
-                deps: ['code'],
-                validateOn: ['onBlur'],
-                validate: (value: string) => (String(value ?? '').trim() ? undefined : 'code-required'),
-              },
-            },
-          }),
-          secret: Logix.StateTrait.node<string>({
-            check: {
-              noAuto: {
-                deps: ['secret'],
-                validateOn: [],
-                validate: (value: string) => (String(value ?? '').trim() ? undefined : 'secret-required'),
-              },
-            },
-          }),
-        }),
-      })
+      const module = Form.make(
+        'Form.ValidateOnStrategy',
+        {
+          values: ValuesSchema,
+          initialValues: { name: '', code: '', secret: '' } satisfies Values,
+          validateOn: ['onSubmit'],
+          reValidateOn: ['onChange'],
+        },
+        (form) => {
+          form.field('name').rule({
+            deps: ['name'],
+            validate: (value: unknown) => (String(value ?? '').trim() ? undefined : 'required'),
+          })
+          form.field('code').rule({
+            deps: ['code'],
+            validateOn: ['onBlur'],
+            validate: (value: unknown) => (String(value ?? '').trim() ? undefined : 'code-required'),
+          })
+          form.field('secret').rule({
+            deps: ['secret'],
+            validateOn: [],
+            validate: (value: unknown) => (String(value ?? '').trim() ? undefined : 'secret-required'),
+          })
+        },
+      )
 
       const runtime = Logix.Runtime.make(module, {
         layer: Layer.empty as Layer.Layer<any, never, never>,
@@ -62,7 +54,7 @@ describe('Form validateOn/reValidateOn strategy', () => {
 
       const program = Effect.gen(function* () {
         const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
-        const form = module.controller.make(rt)
+        const form = materializeExtendedHandle(module.tag, rt) as any
         yield* waitForAsync
 
         // Pre-submit: with validateOn=["onSubmit"], name/secret should not auto-validate on change/blur.
@@ -83,7 +75,7 @@ describe('Form validateOn/reValidateOn strategy', () => {
 
         // submit: must run full validation (including validateOn=[] and validateOn=["onBlur"] rules).
         let invalid = 0
-        yield* form.controller.handleSubmit({
+        yield* form.submit({
           onValid: () => Effect.void,
           onInvalid: () =>
             Effect.sync(() => {

@@ -52,4 +52,3 @@ title: IR 与 Codegen 手册（Static/Dynamic 双层）
 - `references/llms/04-runtime-transaction-rules.md`
 - `references/llms/06-diagnostics-perf-basics.md`
 - `references/llms/08-builder-ir-basics.md`
-- `references/llms/99-project-anchor-template.md`（可选）

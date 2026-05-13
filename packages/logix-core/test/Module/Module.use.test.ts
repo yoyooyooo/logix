@@ -20,7 +20,7 @@ describe('$.use(module) unwrap', () => {
       base: Logix.ModuleHandle<any>,
     ) => ({ ...base, extra: 'ok' })
 
-    const CounterImpl = Counter.implement({
+    const CounterProgram = Logix.Program.make(Counter, {
       initial: { count: 0 },
       logics: [],
     })
@@ -32,7 +32,7 @@ describe('$.use(module) unwrap', () => {
 
     const done = await Effect.runPromise(Deferred.make<void>())
 
-    const hostLogic = Host.logic(($) =>
+    const hostLogic = Host.logic('host-logic', ($) =>
       Effect.gen(function* () {
         const a = yield* $.use(Counter)
         const b = yield* $.use(Counter.tag)
@@ -48,13 +48,15 @@ describe('$.use(module) unwrap', () => {
       }),
     )
 
-    const HostImpl = Host.implement({
+    const HostProgram = Logix.Program.make(Host, {
       initial: { ok: true },
       logics: [hostLogic],
-      imports: [CounterImpl.impl],
+      capabilities: {
+        imports: [CounterProgram],
+      },
     })
 
-    const runtime = Logix.Runtime.make(HostImpl, {
+    const runtime = Logix.Runtime.make(HostProgram, {
       layer: Layer.empty as Layer.Layer<any, never, never>,
     })
 

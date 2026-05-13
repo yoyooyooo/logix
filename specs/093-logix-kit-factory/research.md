@@ -2,19 +2,19 @@
 
 ## 0. 现状证据（Repo Reality）
 
-### 0.1 ExternalStore 与 externalStore trait 已具备“外部输入 → 事务写回”的内核能力
+### 0.1 ExternalStore 与 externalStore field 已具备“外部输入 → 事务写回”的内核能力
 
 - `packages/logix-core/src/ExternalStore.ts`
   - `ExternalStore.fromService(tag, map)`：install/runtime 期解析 service（descriptor.kind=`service`）
   - `ExternalStore.fromModule(module, selector)`：Module-as-Source（descriptor.kind=`module`），并对 `unstableSelectorId` fail-fast
-- `packages/logix-core/src/StateTrait.ts`：`StateTrait.externalStore({ store, select, ... })`
-- `packages/logix-core/src/internal/state-trait/external-store.ts`：install 逻辑（写回进入事务窗口；Module-as-Source 走 declarative link runtime）
+- `packages/logix-core/src/FieldKernel.ts`：`FieldKernel.externalStore({ store, select, ... })`
+- `packages/logix-core/src/internal/state-field/external-store.ts`：install 逻辑（写回进入事务窗口；Module-as-Source 走 declarative link runtime）
 
 结论：Kit 不需要新增“外部输入接入语义”，只需把这些原语的组合方式标准化并去样板。
 
 ### 0.2 Workflow 已具备“call(Tag)→serviceId”的统一入口，且支持 success/failure 分支
 
-- `packages/logix-core/src/Workflow.ts`：
+- `packages/logix-core/src/internal/runtime/core/WorkflowRuntime.ts`：
   - `Workflow.call({ service: Tag, ... })` 通过 Tag 推导稳定 `serviceId`（内部遵守 `specs/078` 口径）
   - `Workflow.callById({ serviceId: string, ... })` 作为 Platform-Grade/LLM 出码的规范形
 - `packages/logix-core/src/internal/runtime/core/WorkflowRuntime.ts`：按 `serviceId` 从 Env 解析 port 并执行
@@ -65,7 +65,7 @@
 
 **Decision**：实现上优先做到“只用 Input/Logic sugar 时，不必引入 Workflow 相关路径”：
 
-- 方案 A（优先）：`Kit.ts` 仅提供 `forService/forModule + input/trait/use/layer`；另增 `KitWorkflow.ts`（或同级子模块）提供 `wfCall` 等 Workflow sugar。
+- 方案 A（优先）：`Kit.ts` 仅提供 `forService/forModule + input/field/use/layer`；另增 `KitWorkflow.ts`（或同级子模块）提供 `wfCall` 等 Workflow sugar。
 - 方案 B（退路）：单文件 `Kit.ts` 同时提供 Workflow sugar，但在文档中声明“namespace import 可能影响 tree-shaking”，并建议按子模块导入。
 
 **Rationale**：减少“万能大对象”带来的 bundler 引入压力；同时保持语义不漂移（Workflow 规则仍以 `Workflow.ts` 为准）。
@@ -74,7 +74,7 @@
 
 **Decision**：
 
-- `InputKit.externalTrait({ meta })` 的 `meta` 语义以 `packages/logix-core/src/internal/state-trait/meta.ts` 的 `TraitMeta + sanitize` 为单点事实源：
+- `InputKit.externalTrait({ meta })` 的 `meta` 语义以 `packages/logix-core/src/internal/state-field/meta.ts` 的 `TraitMeta + sanitize` 为单点事实源：
   - Root IR/Static IR 只承认白名单字段（其余字段会被裁剪掉，不进入工件）。
   - `annotations` 只保留 `x-*` keys，且 value 必须是 JsonValue（函数/闭包不可导出）。
 
@@ -85,7 +85,7 @@
 **Decision**：
 
 - `Kit.forModule(module, readQuery)` 语义与 `ExternalStore.fromModule` 对齐：当传入 ModuleTag 时，源模块实例由 imports 唯一解析；不支持“运行时动态选择某个 instance”。
-- 若业务需要动态选择，应通过数据建模（显式 instanceKey/rowId）+ `ReadQuery/Logic` 侧解析完成，而不是把动态选择伪装成静态 ExternalStore trait。
+- 若业务需要动态选择，应通过数据建模（显式 instanceKey/rowId）+ `ReadQuery/Logic` 侧解析完成，而不是把动态选择伪装成静态 ExternalStore field。
 
 **Rationale**：动态实例选择无法稳定进入 Root IR（不可判定/不可 diff），会引入锚点语义漂移与双真相源风险。
 

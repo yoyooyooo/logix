@@ -185,7 +185,7 @@
 - evidenceRefs:
   - `specs/103-effect-v4-forward-cutover/inventory/gate-b.md`
   - `specs/103-effect-v4-forward-cutover/inventory/gate-g1.md`
-  - `packages/logix-core/src/internal/state-trait/external-store.ts`
+  - `packages/logix-core/src/internal/state-field/external-store.ts`
   - `packages/logix-core/src/internal/runtime/core/TaskRunner.ts`
   - `scripts/checks/forbidden-patterns.ts`
   - `.github/workflows/ci.yml`
@@ -403,7 +403,7 @@
   - `specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw2b.json`
   - `specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw3.json`
   - `specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw3b.json`
-  - `packages/logix-core/src/internal/state-trait/validate.impl.ts`
+  - `packages/logix-core/src/internal/state-field/validate.impl.ts`
   - `packages/logix-core/src/internal/runtime/core/DebugSink.record.ts`
   - `packages/logix-core/src/internal/runtime/core/TickScheduler.ts`
   - `packages/logix-react/src/internal/store/RuntimeExternalStore.ts`
@@ -423,7 +423,7 @@
   - `specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw3.json`
   - `specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw3b.json`
   - `specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw3c.json`
-  - `packages/logix-core/src/internal/state-trait/validate.impl.ts`
+  - `packages/logix-core/src/internal/state-field/validate.impl.ts`
   - `packages/logix-core/src/internal/runtime/core/DebugSink.record.ts`
   - `packages/logix-core/src/internal/runtime/core/TickScheduler.ts`
   - `packages/logix-react/src/internal/store/RuntimeExternalStore.ts`
@@ -443,7 +443,7 @@
   - `specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw4.json`
   - `specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw4b.json`
   - `packages/logix-core/src/internal/runtime/core/DebugSink.record.ts`
-  - `packages/logix-core/src/internal/state-trait/validate.impl.ts`
+  - `packages/logix-core/src/internal/state-field/validate.impl.ts`
 - nextAction: ULW4 系列显示 `runtimeStore/externalStore` 有回收（`full/off<=1.25` 从 `after=null` 改善到 `after=128/256`，externalStore 在 `ulw4b` 轮通过），但 `form.listScopeCheck@light` 仍稳定阻塞，且总回归计数仍高（`21/6`、`18/6`）。下一步聚焦 `form.listScopeCheck(light)` 诊断链（validate→debug→devtools）并继续固定环境重复 quick，再以 broad `soak+strict` 收口重评 G1。
 - checkpointCommit: `8d4f36b1`
 - lastPassCheckpointCommit: `8d4f36b1`
@@ -460,8 +460,8 @@
   - `specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw5.json`
   - `specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw5b.json`
   - `specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw5c.json`
-  - `packages/logix-core/src/internal/state-trait/converge-in-transaction.impl.ts`
-  - `packages/logix-core/src/internal/state-trait/reverse-closure.ts`
+  - `packages/logix-core/src/internal/state-field/converge-in-transaction.impl.ts`
+  - `packages/logix-core/src/internal/state-field/reverse-closure.ts`
 - nextAction: 已完成 dirty-all 快路径与 reverseClosure 队列优化；定向 form 用例显示 `diagnosticsLevel=light` 明显改善（`maxLevel=10`），但 ULW5 broad quick 三轮方差仍大（`13/4`,`17/5`,`25/5`，中位 `17/5`），且 `form.listScopeCheck` 跨轮仍触发 after-only。下一步继续压缩 form light 链路开销（优先 `runWriterStep` 无 middleware 快路）并按 repeated quick 中位 + broad `soak+strict` 重评 G1。
 - checkpointCommit: `8d4f36b1`
 - lastPassCheckpointCommit: `8d4f36b1`
@@ -478,7 +478,7 @@
   - `specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw6.json`
   - `specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw6b.json`
   - `specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw6c.json`
-  - `packages/logix-core/src/internal/state-trait/converge-step.ts`
+  - `packages/logix-core/src/internal/state-field/converge-step.ts`
   - `packages/logix-react/test/browser/watcher-browser-perf.test.tsx`
 - nextAction: 已完成 `runWriterStep` 无 middleware 快路与 watcher 收集稳定化；ULW6 三轮 quick broad 为 `15/4`,`17/5`,`15/8`（中位 `15/5`）。`runtimeStore/externalStore` 保持回收，但 `form.listScopeCheck` 在 `light/off` 仍跨轮触发 `after:budgetExceeded`。下一步继续聚焦 form 链路（auto/full 比值与 light 诊断开销）并触发 broad `soak+strict` 复核后重评 G1。
 - checkpointCommit: `8d4f36b1`
@@ -496,7 +496,7 @@
   - `specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw8.json`
   - `specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw8b.json`
   - `specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw8c.json`
-  - `packages/logix-core/src/internal/state-trait/converge-in-transaction.impl.ts`
+  - `packages/logix-core/src/internal/state-field/converge-in-transaction.impl.ts`
   - `packages/logix-react/test/browser/perf-boundaries/form-list-scope-check.test.tsx`
 - nextAction: 已采用激进前向策略：tiny-graph `auto->full` 提前切换 + form 基准观测对齐（full/auto 同 capture sink）。ULW8 三轮 quick broad 为 `17/5`,`16/5`,`16/5`（中位 `16/5`），`externalStore` 不再复现回归，但 `runtimeStore.noTearing` 与 `form.listScopeCheck` 仍在少量切片阻塞。下一步继续对 form 规则执行链做增量化（按受影响行计算/写回）并复跑 triplet + broad `soak+strict` 重评 G1。
 - checkpointCommit: `8d4f36b1`
@@ -512,8 +512,8 @@
   - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw14.json`
   - `specs/103-effect-v4-forward-cutover/perf/s2.after.local.quick.ulw15.json`
   - `specs/103-effect-v4-forward-cutover/perf/s2.diff.local.quick.ulw14-to-ulw15.json`
-  - `packages/logix-core/src/internal/state-trait/converge-in-transaction.impl.ts`
-  - `packages/logix-core/src/internal/state-trait/converge-exec-ir.ts`
+  - `packages/logix-core/src/internal/state-field/converge-in-transaction.impl.ts`
+  - `packages/logix-core/src/internal/state-field/converge-exec-ir.ts`
 - nextAction: 已完成 converge auto 的“尾部抖动/固定开销”两刀：
   1) planner 不再扫完整 topo slice（改为 BFS 收集 reachableStepIds 的 topoIndex，sort 后映射回 stepId），砍掉稀疏 dirty 下的 O(totalSteps) 尾段成本；
   2) auto 决策链把 `near_full` 的 rootRatio hint 前置，并缓存 `isOffFastPath/fullCommitEwmaOffMs`，修复 `converge-steps` 在 `dirtyRootsRatio=1` 的 `auto<=full*1.05` 硬门（此前在 `steps=2000` 处超比）。
@@ -541,8 +541,8 @@
   - `packages/logix-core/test/internal/Bound/Bound.test.ts`
   - `packages/logix-core/src/Runtime.ts`
   - `packages/logix-core/test/Runtime/Runtime.SchedulingPolicySurfaceMapping.test.ts`
-  - `packages/logix-core/test/StateTrait/StateTrait.ConvergeAuto.ModuleOverride.test.ts`
-  - `packages/logix-core/test/StateTrait/StateTrait.ConvergeBudgetConfig.test.ts`
+  - `packages/logix-core/test/FieldKernel/FieldKernel.ConvergeAuto.ModuleOverride.test.ts`
+  - `packages/logix-core/test/FieldKernel/FieldKernel.ConvergeBudgetConfig.test.ts`
 - nextAction: 旧 perf blocker 已由 current-head 证据解除，不再继续以性能问题阻塞 Stage 2 实施；立即回到剩余迁移项（优先 `T020-T027`、`T031`），formal `G1` 放行待 `GP-1` 满足且 strict gate 记录在可比口径下重算后再刷新；当前已先完成 `T022` 第一刀（公开热切换 API effect 化）与 `T024` 风险写法清零。
 - checkpointCommit: `0ca18a73`
 - lastPassCheckpointCommit: `8d4f36b1`
@@ -561,7 +561,7 @@
   - `packages/logix-core/test/internal/Bound/Bound.test.ts`
   - `packages/logix-core/src/Runtime.ts`
   - `packages/logix-core/src/ExternalStore.ts`
-  - `packages/logix-core/src/internal/state-trait/exec-vm-mode.ts`
+  - `packages/logix-core/src/internal/state-field/exec-vm-mode.ts`
   - `packages/logix-core/src/internal/runtime/core/EffectOpCore.ts`
   - `packages/logix-core/test/internal/Runtime/Runtime.ExecVmModeReference.test.ts`
   - `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.txnQueue.LinkIdFallback.test.ts`

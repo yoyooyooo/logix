@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "runtimeStore.noTearing.tickNotify",
+  "classification": "tax_removed",
+  "claimStrength": "hard",
+  "profile": "default",
+  "gates": [
+    {
+      "id": "profile",
+      "passed": true,
+      "severity": "clue",
+      "detail": "profile=default; hard claims require default or soak"
+    },
+    {
+      "id": "comparable",
+      "passed": true,
+      "severity": "clue",
+      "detail": "diff.meta.comparability.comparable must be true"
+    },
+    {
+      "id": "regressions",
+      "passed": true,
+      "severity": "hard",
+      "detail": "summary.regressions=0"
+    },
+    {
+      "id": "budgetViolations",
+      "passed": true,
+      "severity": "hard",
+      "detail": "summary.budgetViolations=0"
+    },
+    {
+      "id": "warnings",
+      "passed": true,
+      "severity": "clue",
+      "detail": "no comparability warnings"
+    },
+    {
+      "id": "pointStatus",
+      "passed": true,
+      "severity": "hard",
+      "detail": "runtimeStore.noTearing.tickNotify before/after points must not timeout or fail"
+    },
+    {
+      "id": "metricEvidence",
+      "passed": true,
+      "severity": "hard",
+      "detail": "timePerTickMs metric delta must be present and available"
+    },
+    {
+      "id": "watchedEvidence",
+      "passed": true,
+      "severity": "hard",
+      "detail": "selector notify watched evidence must be present and available"
+    }
+  ],
+  "blockers": [],
+  "totalFindings": [
+    {
+      "metric": "timePerTickMs",
+      "improved": 5,
+      "regressed": 0,
+      "missing": 0,
+      "unavailable": 0,
+      "bestP95DeltaMs": -0.005600003719329833
+    }
+  ],
+  "watchedFindings": [
+    {
+      "name": "selectorNotify.notifiedTopicCount",
+      "before": 10,
+      "after": 10,
+      "delta": 0,
+      "interpretation": "stable"
+    },
+    {
+      "name": "selectorNotify.renderCount",
+      "before": 0,
+      "after": 0,
+      "delta": 0,
+      "interpretation": "stable"
+    },
+    {
+      "name": "selectorNotify.runSyncFallbackCount",
+      "before": 0,
+      "after": 0,
+      "delta": 0,
+      "interpretation": "stable"
+    },
+    {
+      "name": "selectorNotify.retainedTopicCount",
+      "before": 256,
+      "after": 256,
+      "delta": 0,
+      "interpretation": "stable"
+    },
+    {
+      "name": "selectorNotify.listenerSnapshotCloneCount",
+      "before": 0,
+      "after": 0,
+      "delta": 0,
+      "interpretation": "stable"
+    },
+    {
+      "name": "selectorNotify.broadcastFallbackCount",
+      "before": 0,
+      "after": 0,
+      "delta": 0,
+      "interpretation": "stable"
+    }
+  ],
+  "migratedPhases": [],
+  "allowedClaims": [
+    "Focused validation passed.",
+    "Comparable focused evidence supports selector notify path improvement."
+  ],
+  "forbiddenClaims": [
+    "Global Runtime performance improved.",
+    "No global regressions.",
+    "React performance is fixed.",
+    "Selector notify path is optimal."
+  ],
+  "inputs": {
+    "diff": "specs/219-runtime-store-no-tearing-focused-evidence-gate/perf/diff.runtimeStore.efd21e85__7d1c332e.local-darwin-arm64.default.json",
+    "before": "specs/219-runtime-store-no-tearing-focused-evidence-gate/perf/before.runtimeStore.efd21e85.local-darwin-arm64.default.json",
+    "after": "specs/219-runtime-store-no-tearing-focused-evidence-gate/perf/after.runtimeStore.7d1c332e.local-darwin-arm64.default.json"
+  }
+}

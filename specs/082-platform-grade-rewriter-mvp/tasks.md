@@ -4,7 +4,7 @@ description: "Task list for 082-platform-grade-rewriter-mvp (PatchPlan@v1 / Writ
 
 # Tasks: Platform-Grade Rewriter MVP（082：PatchPlan@v1 / WriteBackResult@v1）
 
-**Input**: `specs/082-platform-grade-rewriter-mvp/spec.md`  
+**Input**: `specs/082-platform-grade-rewriter-mvp/spec.md`
 **Prerequisites**: `specs/082-platform-grade-rewriter-mvp/plan.md`（required）, `specs/082-platform-grade-rewriter-mvp/research.md`, `specs/082-platform-grade-rewriter-mvp/data-model.md`, `specs/082-platform-grade-rewriter-mvp/contracts/`, `specs/082-platform-grade-rewriter-mvp/quickstart.md`
 
 **Tests**: 本特性是源码回写能力（高风险）：必须把“最小 diff / 幂等 / 显式失败”作为核心回归面，补齐 schema 预检 + 关键边界单测，避免 silent corruption。
@@ -27,7 +27,7 @@ description: "Task list for 082-platform-grade-rewriter-mvp (PatchPlan@v1 / Writ
 
 ## Phase 2: Foundational（回写骨架：PatchPlan 生成 + 执行 WriteBack）
 
-**⚠️ CRITICAL**: 本阶段完成前，不开始任何具体锚点写回（US1/US2/US3 都依赖该骨架）。  
+**⚠️ CRITICAL**: 本阶段完成前，不开始任何具体锚点写回（US1/US2/US3 都依赖该骨架）。
 **Checkpoint**: 给定单个“AddObjectProperty”操作，可生成稳定 PatchPlan，并在 write 模式下写回且幂等。
 
 - [ ] T004 定义 Rewriter 公共入口（入参：operations + mode + budgets）`packages/logix-anchor-engine/src/Rewriter.ts`
@@ -42,7 +42,7 @@ description: "Task list for 082-platform-grade-rewriter-mvp (PatchPlan@v1 / Writ
 
 ## Phase 3: User Story 1 - 最小可审阅补丁（只改缺失，不覆盖已有）（Priority: P1）🎯 MVP
 
-**Goal**: 对缺失锚点字段生成最小补丁：只新增缺失字段、不覆盖已有声明、不引入格式噪音；应用后幂等。  
+**Goal**: 对缺失锚点字段生成最小补丁：只新增缺失字段、不覆盖已有声明、不引入格式噪音；应用后幂等。
 **Independent Test**: fixture 文件在 `--write` 后产生最小 diff；第二次运行产生 0 diff；`services: {}` 不被覆盖。
 
 - [ ] T011 [P] [US1] 构造最小写回 fixture（object literal 缺失字段、已存在字段、`services: {}`）`packages/logix-anchor-engine/test/fixtures/repo-rewrite-minimal/*`
@@ -56,7 +56,7 @@ description: "Task list for 082-platform-grade-rewriter-mvp (PatchPlan@v1 / Writ
 
 ## Phase 4: User Story 2 - 歧义/冲突显式失败（宁可不改）（Priority: P1）
 
-**Goal**: 遇到歧义/风险/子集外形态必须 fail/skip 并输出 reasonCodes（禁止 silent corruption）。  
+**Goal**: 遇到歧义/风险/子集外形态必须 fail/skip 并输出 reasonCodes（禁止 silent corruption）。
 **Independent Test**: 构造“多候选插入点/跨表达式/非 object literal/spread”输入，系统拒绝写回并给出可行动 reason codes。
 
 - [ ] T016 [US2] 定义并固化失败/跳过 reason codes（与 079 reason-codes.md 保持语义一致）`packages/logix-anchor-engine/src/internal/rewriter/reasonCodes.ts`
@@ -69,7 +69,7 @@ description: "Task list for 082-platform-grade-rewriter-mvp (PatchPlan@v1 / Writ
 
 ## Phase 5: User Story 3 - report-only 模式（Priority: P2）
 
-**Goal**: report-only 与 write 模式共享同一 PatchPlan 生成逻辑；report-only 只输出拟修改清单供审阅/门禁。  
+**Goal**: report-only 与 write 模式共享同一 PatchPlan 生成逻辑；report-only 只输出拟修改清单供审阅/门禁。
 **Independent Test**: 同一输入下，report-only 与 write 的 PatchPlan（除 mode 字段外）一致；write 额外产出 WriteBackResult。
 
 - [ ] T021 [US3] 保证 PatchPlan.mode 在 report/write 间切换不影响 operations 内容 `packages/logix-anchor-engine/src/Rewriter.ts`

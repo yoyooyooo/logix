@@ -22,16 +22,18 @@ const Parent = Logix.Module.make('useImportedModuleParent', {
   actions: { noop: Schema.Void },
 })
 
-const ParentImpl = Parent.implement({
+const ParentProgram = Logix.Program.make(Parent, {
   initial: { ok: true },
-  imports: [
-    Child.implement({
-      initial: { count: 0 },
-    }).impl,
-  ],
+  capabilities: {
+    imports: [
+    Logix.Program.make(Child, {
+    initial: { count: 0 },
+    }),
+    ],
+  },
 })
 
-const runtime = Logix.Runtime.make(ParentImpl)
+const runtime = Logix.Runtime.make(ParentProgram)
 
 describe('useImportedModule', () => {
   it('resolves child runtime from the same parent instance scope', async () => {
@@ -43,7 +45,7 @@ describe('useImportedModule', () => {
 
     const { result } = renderHook(
       () => {
-        const host = useModule(ParentImpl, { key: 'host-a-1' })
+        const host = useModule(ParentProgram, { key: 'host-a-1' })
         const child = host.imports.get(Child.tag)
         const count = useSelector(child, (s: any) => s.count)
         const dispatch = useDispatch(child)
@@ -65,6 +67,31 @@ describe('useImportedModule', () => {
     })
   })
 
+  it('useImportedModule(parent, tag) resolves the same child instance as parent.imports.get(tag)', async () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <RuntimeProvider runtime={runtime} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>
+        {children}
+      </RuntimeProvider>
+    )
+
+    const { result } = renderHook(
+      () => {
+        const host = useModule(ParentProgram, { key: 'host-by-hook-eq' })
+        const byImports = host.imports.get(Child.tag)
+        const byHook = useImportedModule(host, Child.tag)
+        return {
+          byImportsId: String(byImports.runtime.instanceId),
+          byHookId: String(byHook.runtime.instanceId),
+        }
+      },
+      { wrapper },
+    )
+
+    await waitFor(() => {
+      expect(result.current.byHookId).toBe(result.current.byImportsId)
+    })
+  })
+
   it('host.imports.get returns a stable ModuleRef (no need for useMemo in render)', async () => {
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <RuntimeProvider runtime={runtime} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>
@@ -76,7 +103,7 @@ describe('useImportedModule', () => {
 
     const { result } = renderHook(
       () => {
-        const host = useModule(ParentImpl, { key: 'host-stable-ref' })
+        const host = useModule(ParentProgram, { key: 'host-stable-ref' })
         const child = host.imports.get(Child.tag)
         const childAgain = host.imports.get(Child.tag)
         const dispatch = useDispatch(child)
@@ -120,7 +147,7 @@ describe('useImportedModule', () => {
 
     const { result: a } = renderHook(
       () => {
-        const host = useModule(ParentImpl, { key: 'host-a-2' })
+        const host = useModule(ParentProgram, { key: 'host-a-2' })
         const child = host.imports.get(Child.tag)
         const count = useSelector(child, (s: any) => s.count)
         const dispatch = useDispatch(child)
@@ -131,7 +158,7 @@ describe('useImportedModule', () => {
 
     const { result: b } = renderHook(
       () => {
-        const host = useModule(ParentImpl, { key: 'host-b-2' })
+        const host = useModule(ParentProgram, { key: 'host-b-2' })
         const child = host.imports.get(Child.tag)
         const count = useSelector(child, (s: any) => s.count)
         return { count }
@@ -163,7 +190,7 @@ describe('useImportedModule', () => {
 
     const { result } = renderHook(
       () => {
-        const host = useModule(Parent)
+        const host = useModule(Parent.tag)
         const child = useImportedModule(host.runtime, Child.tag)
         const count = useSelector(child, (s: any) => s.count)
         const dispatch = useDispatch(child)
@@ -191,11 +218,11 @@ describe('useImportedModule', () => {
       actions: { noop: Schema.Void },
     })
 
-    const ParentNoImportImpl = ParentNoImport.implement({
+    const ParentNoImportProgram = Logix.Program.make(ParentNoImport, {
       initial: { ok: true },
     })
 
-    const localRuntime = Logix.Runtime.make(ParentNoImportImpl)
+    const localRuntime = Logix.Runtime.make(ParentNoImportProgram)
 
     try {
       const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -208,7 +235,7 @@ describe('useImportedModule', () => {
       try {
         renderHook(
           () => {
-            const host = useModule(ParentNoImportImpl, { key: 'missing-import' })
+            const host = useModule(ParentNoImportProgram, { key: 'missing-import' })
             host.imports.get(Child.tag)
             return null
           },
@@ -228,7 +255,8 @@ describe('useImportedModule', () => {
         instanceId: expect.any(String),
       })
       expect(String(thrown.message)).toContain('fix:')
-      expect(String(thrown.message)).toContain('imports: [useImportedModuleChild.impl]')
+      expect(String(thrown.message)).toContain('childModuleId: useImportedModuleChild')
+      expect(String(thrown.message)).toContain('imports: [ChildProgram]')
       expect(Array.isArray(thrown.fix)).toBe(true)
     } finally {
       await localRuntime.dispose()

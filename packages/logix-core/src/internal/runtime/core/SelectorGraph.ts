@@ -1,39 +1,62 @@
 import { Effect, PubSub, Scope } from 'effect'
 import { isPrefixOf, normalizeFieldPath, type FieldPath, type FieldPathIdRegistry } from '../../field-path.js'
 import type { ReadQueryCompiled } from './ReadQuery.js'
-import type { TxnDirtyEvidenceSnapshot } from './StateTransaction.js'
+import type { TxnDirtyPlanSnapshot } from './StateTransaction.js'
 import type { StateChangeWithMeta, StateCommitMeta } from './module.js'
 import * as Debug from './DebugSink.js'
+import { recordKernelHotPathFallback } from './KernelHotPathAudit.js'
+import { routeReadQuery } from './selectorRoute.precision.js'
+import { classifyDirtyPrecision, type DirtyPrecisionRecord } from './selectorRoute.dirty.js'
 
 type ReadRootKey = string
 
 type IndexedRootCandidate<S> = {
-  readonly selectorId: string
+  readonly selectorFingerprint: string
   readonly entry: SelectorEntry<S, any>
   readonly readsForRoot: ReadonlyArray<FieldPath>
 }
 
 type SelectorEvalEventPolicy = 'always' | 'sampled'
+type SelectorSubscriberKind = 'stream' | 'topic'
 
 type SelectorEntry<S, V> = {
   readonly selectorId: string
+  readonly selectorFingerprint: string
   readonly readQuery: ReadQueryCompiled<S, V>
   readonly reads: ReadonlyArray<FieldPath>
   readonly readsByRootKey: ReadonlyMap<ReadRootKey, ReadonlyArray<FieldPath>>
   readonly readRootKeys: ReadonlyArray<ReadRootKey>
   readonly hub: PubSub.PubSub<StateChangeWithMeta<V>>
+  /**
+   * Compatibility accessor for existing internal tests that manually mark an entry as subscribed.
+   * New runtime paths must use stream/topic counters through retainEntry().
+   */
   subscriberCount: number
+  streamSubscriberCount: number
+  topicSubscriberCount: number
   lastScheduledTxnSeq: number
   cachedAtTxnSeq: number
   hasValue: boolean
   cachedValue: V | undefined
 }
 
+export type SelectorEntryLease<S, V> = {
+  readonly selectorFingerprint: string
+  readonly selectorId: string
+  readonly entry: SelectorEntry<S, V>
+  readonly hub: PubSub.PubSub<StateChangeWithMeta<V>>
+  readonly release: Effect.Effect<void>
+}
+
 export interface SelectorGraph<S> {
   readonly ensureEntry: <V>(
     readQuery: ReadQueryCompiled<S, V>,
   ) => Effect.Effect<SelectorEntry<S, V>, never, Scope.Scope>
-  readonly releaseEntry: (selectorId: string) => void
+  readonly retainEntry: <V>(
+    readQuery: ReadQueryCompiled<S, V>,
+    kind: SelectorSubscriberKind,
+  ) => Effect.Effect<SelectorEntryLease<S, V>, never, Scope.Scope>
+  readonly releaseEntry: (selectorFingerprint: string, kind?: SelectorSubscriberKind) => void
   /**
    * O(1) check: whether any selector entries exist.
    *
@@ -44,13 +67,16 @@ export interface SelectorGraph<S> {
   readonly onCommit: (
     state: S,
     meta: StateCommitMeta,
-    dirty: TxnDirtyEvidenceSnapshot,
+    dirtyPlan: TxnDirtyPlanSnapshot,
     diagnosticsLevel: Debug.DiagnosticsLevel,
-    onSelectorChanged?: (selectorId: string) => void,
+    onSelectorChanged?: (selectorFingerprint: string) => void,
   ) => Effect.Effect<void, never, never>
 }
 
 const getReadRootKeyFromPath = (path: FieldPath): ReadRootKey => path[0] ?? ''
+
+const hasAnySubscribers = (entry: SelectorEntry<any, any>): boolean =>
+  entry.streamSubscriberCount > 0 || entry.topicSubscriberCount > 0
 
 const overlaps = (a: FieldPath, b: FieldPath): boolean => isPrefixOf(a, b) || isPrefixOf(b, a)
 
@@ -120,17 +146,53 @@ const nowMs = (): number => {
 
 const SAMPLED_SELECTOR_EVAL_SLOW_THRESHOLD_MS = 4
 
+const recordDirtyFallbackDiagnostic = (args: {
+  readonly moduleId: string
+  readonly instanceId: string
+  readonly meta: StateCommitMeta
+  readonly dirtyPlan: TxnDirtyPlanSnapshot
+  readonly record: DirtyPrecisionRecord
+}): Effect.Effect<void, never, never> =>
+  Debug.record({
+    type: 'diagnostic',
+    moduleId: args.moduleId,
+    instanceId: args.instanceId,
+    txnSeq: args.meta.txnSeq,
+    txnId: args.meta.txnId,
+    code: 'selector_route::dirty_fallback',
+    severity: 'error',
+    message: 'Selector dirty/read overlap fell back to a broad evaluation route.',
+    hint: args.record.repairHint ?? 'Record exact dirty paths for writes that affect host selector projection.',
+    kind: 'selector_dirty_fallback',
+    trigger: {
+      kind: 'selector_route',
+      name: 'dirty_fallback',
+      details: {
+        dirtyQuality: args.record.quality,
+        fallbackKind: args.record.fallbackKind,
+        kernelFallbackReason: args.record.kernelFallbackReason,
+        reason: args.record.reason,
+        dirtyPlanAuthority: args.dirtyPlan.authority,
+        dirtyAllReason: args.dirtyPlan.dirtyAllReason,
+        rootCount: args.dirtyPlan.rootCount,
+        fieldPathsKey: args.dirtyPlan.fieldPathsKey,
+        fieldPathCount: args.dirtyPlan.fieldPathCount,
+      },
+    },
+  })
+
 const shouldEvaluateEntryForDirtyRoots = <S>(args: {
   readonly entry: SelectorEntry<S, any>
-  readonly dirty: TxnDirtyEvidenceSnapshot
+  readonly dirtyPlan: TxnDirtyPlanSnapshot
   readonly getDirtyPath: (id: number) => FieldPath | undefined
   readonly hasRegistry: boolean
 }): boolean => {
-  if (args.dirty.dirtyAll) return true
+  if (args.dirtyPlan.dirtyAll) return true
   if (args.entry.reads.length === 0) return true
+  if (args.dirtyPlan.rootCount === 0) return false
   if (!args.hasRegistry) return true
 
-  for (const dirtyPathId of args.dirty.dirtyPathIds) {
+  for (const dirtyPathId of args.dirtyPlan.rootIds) {
     const dirtyPath = args.getDirtyPath(dirtyPathId)
     if (!dirtyPath) return true
 
@@ -153,13 +215,14 @@ const shouldEvaluateEntryForDirtyRoots = <S>(args: {
 const evaluateEntry = <S>(args: {
   readonly entry: SelectorEntry<S, any>
   readonly selectorId: string
+  readonly selectorFingerprint: string
   readonly state: S
   readonly meta: StateCommitMeta
   readonly emitEvalEvent: boolean
   readonly evalEventPolicy: SelectorEvalEventPolicy
   readonly moduleId: string
   readonly instanceId: string
-  readonly onSelectorChanged?: (selectorId: string) => void
+  readonly onSelectorChanged?: (selectorFingerprint: string) => void
 }): Effect.Effect<void, never, never> =>
   Effect.gen(function* () {
     let next: any
@@ -196,12 +259,19 @@ const evaluateEntry = <S>(args: {
       args.entry.cachedValue = next
       args.entry.hasValue = true
       args.entry.cachedAtTxnSeq = args.meta.txnSeq
-      args.onSelectorChanged?.(args.selectorId)
 
-      yield* PubSub.publish(args.entry.hub as any, {
-        value: args.entry.cachedValue,
-        meta: args.meta,
-      } satisfies StateChangeWithMeta<any>)
+      // RuntimeStore topics are retained separately from legacy stream subscriptions.
+      // React's exact selector path only needs the topic dirty signal; stream consumers only need PubSub.
+      if (args.entry.topicSubscriberCount > 0) {
+        args.onSelectorChanged?.(args.selectorFingerprint)
+      }
+
+      if (args.entry.streamSubscriberCount > 0) {
+        yield* PubSub.publish(args.entry.hub as any, {
+          value: args.entry.cachedValue,
+          meta: args.meta,
+        } satisfies StateChangeWithMeta<any>)
+      }
     }
 
     const shouldEmitEvalTrace =
@@ -220,6 +290,7 @@ const evaluateEntry = <S>(args: {
       txnId: args.meta.txnId,
       data: {
         selectorId: args.selectorId,
+        selectorFingerprint: args.selectorFingerprint,
         lane: args.entry.readQuery.lane,
         producer: args.entry.readQuery.producer,
         fallbackReason: args.entry.readQuery.fallbackReason,
@@ -245,7 +316,9 @@ export const make = <S>(args: {
   const hasAnyEntries: SelectorGraph<S>['hasAnyEntries'] = () => selectorsById.size > 0
 
   const ensureEntry: SelectorGraph<S>['ensureEntry'] = (readQuery) => {
-    const existing = selectorsById.get(readQuery.selectorId)
+    const route = routeReadQuery(readQuery)
+    const selectorFingerprint = route.selectorFingerprint.value
+    const existing = selectorsById.get(selectorFingerprint)
     if (existing) {
       return Effect.succeed(existing as any)
     }
@@ -272,55 +345,103 @@ export const make = <S>(args: {
         }
       }
       if (readRootKeys.length === 0) {
-        selectorsWithoutReads.add(readQuery.selectorId)
+        selectorsWithoutReads.add(selectorFingerprint)
       } else {
         for (const rootKey of readRootKeys) {
           const set = indexByReadRoot.get(rootKey)
           if (set) {
-            set.add(readQuery.selectorId)
+            set.add(selectorFingerprint)
           } else {
-            indexByReadRoot.set(rootKey, new Set([readQuery.selectorId]))
+            indexByReadRoot.set(rootKey, new Set([selectorFingerprint]))
           }
         }
       }
 
       const entry: SelectorEntry<S, any> = {
         selectorId: readQuery.selectorId,
+        selectorFingerprint,
         readQuery: readQuery as any,
         reads,
         readsByRootKey,
         readRootKeys,
         hub,
-        subscriberCount: 0,
+        get subscriberCount() {
+          return Math.max(this.streamSubscriberCount, this.topicSubscriberCount)
+        },
+        set subscriberCount(next: number) {
+          const value = typeof next === 'number' && Number.isFinite(next) ? Math.max(0, Math.floor(next)) : 0
+          // Legacy internal tests set subscriberCount directly and expect both stream publish and topic dirty behavior.
+          // Production paths use retainEntry(kind) below and keep the counters independent.
+          this.streamSubscriberCount = value
+          this.topicSubscriberCount = value
+        },
+        streamSubscriberCount: 0,
+        topicSubscriberCount: 0,
         lastScheduledTxnSeq: -1,
         cachedAtTxnSeq: 0,
         hasValue: false,
         cachedValue: undefined,
       }
-      selectorsById.set(readQuery.selectorId, entry)
+      selectorsById.set(selectorFingerprint, entry)
       return entry as any
     })
   }
 
-  const releaseEntry: SelectorGraph<S>['releaseEntry'] = (selectorId) => {
-    const entry = selectorsById.get(selectorId)
+  const releaseEntry: SelectorGraph<S>['releaseEntry'] = (selectorFingerprint, kind) => {
+    const entry = selectorsById.get(selectorFingerprint)
     if (!entry) return
-    entry.subscriberCount = Math.max(0, entry.subscriberCount - 1)
-    if (entry.subscriberCount > 0) return
 
-    selectorsById.delete(selectorId)
-    selectorsWithoutReads.delete(selectorId)
+    if (kind === 'topic') {
+      entry.topicSubscriberCount = Math.max(0, entry.topicSubscriberCount - 1)
+    } else if (kind === 'stream') {
+      entry.streamSubscriberCount = Math.max(0, entry.streamSubscriberCount - 1)
+    } else {
+      entry.streamSubscriberCount = Math.max(0, entry.streamSubscriberCount - 1)
+      entry.topicSubscriberCount = Math.max(0, entry.topicSubscriberCount - 1)
+    }
+
+    if (hasAnySubscribers(entry)) return
+
+    selectorsById.delete(selectorFingerprint)
+    selectorsWithoutReads.delete(selectorFingerprint)
     for (const rootKey of entry.readRootKeys) {
       const set = indexByReadRoot.get(rootKey)
       if (!set) continue
-      set.delete(selectorId)
+      set.delete(selectorFingerprint)
       if (set.size === 0) {
         indexByReadRoot.delete(rootKey)
       }
     }
   }
 
-  const onCommit: SelectorGraph<S>['onCommit'] = (state, meta, dirty, diagnosticsLevel, onSelectorChanged) =>
+  const retainEntry: SelectorGraph<S>['retainEntry'] = (readQuery, kind) =>
+    Effect.gen(function* () {
+      const entry = yield* ensureEntry(readQuery)
+      if (kind === 'topic') {
+        entry.topicSubscriberCount += 1
+      } else {
+        entry.streamSubscriberCount += 1
+      }
+
+      let released = false
+      const release = Effect.sync(() => {
+        if (released) return
+        released = true
+        releaseEntry(entry.selectorFingerprint, kind)
+      })
+
+      yield* Effect.addFinalizer(() => release)
+
+      return {
+        selectorFingerprint: entry.selectorFingerprint,
+        selectorId: entry.selectorId,
+        entry: entry as any,
+        hub: entry.hub,
+        release,
+      } as SelectorEntryLease<S, any>
+    })
+
+  const onCommit: SelectorGraph<S>['onCommit'] = (state, meta, dirtyPlan, diagnosticsLevel, onSelectorChanged) =>
     Effect.gen(function* () {
       if (selectorsById.size === 0) return
 
@@ -329,7 +450,9 @@ export const make = <S>(args: {
       const evalEventPolicy: SelectorEvalEventPolicy = diagnosticsLevel === 'sampled' ? 'sampled' : 'always'
 
       const registry: FieldPathIdRegistry | undefined =
-        dirty.dirtyAll || dirty.dirtyPathIds.length === 0 ? undefined : getFieldPathIdRegistry?.()
+        dirtyPlan.dirtyAll || dirtyPlan.authority !== 'field-path-registry' || dirtyPlan.rootCount === 0
+          ? undefined
+          : getFieldPathIdRegistry?.()
 
       const getDirtyPath = (id: number): FieldPath | undefined => {
         if (!registry) return undefined
@@ -340,15 +463,16 @@ export const make = <S>(args: {
         return path && Array.isArray(path) ? path : undefined
       }
 
-      const evaluateSubscribedEntry = (entry: SelectorEntry<S, any>, selectorId: string): Effect.Effect<void> => {
-        if (entry.subscriberCount === 0) return Effect.void
+      const evaluateSubscribedEntry = (entry: SelectorEntry<S, any>): Effect.Effect<void> => {
+        if (!hasAnySubscribers(entry)) return Effect.void
         if (entry.lastScheduledTxnSeq === meta.txnSeq) return Effect.void
 
         // evaluateEntry is total (E=never): mark before execution to dedupe multi-root scans in the same txn.
         entry.lastScheduledTxnSeq = meta.txnSeq
         return evaluateEntry({
           entry,
-          selectorId,
+          selectorId: entry.selectorId,
+          selectorFingerprint: entry.selectorFingerprint,
           state,
           meta,
           emitEvalEvent,
@@ -361,8 +485,8 @@ export const make = <S>(args: {
 
       const evaluateAllSubscribedSelectors = (): Effect.Effect<void, never, never> =>
         Effect.gen(function* () {
-          for (const [selectorId, entry] of selectorsById.entries()) {
-            yield* evaluateSubscribedEntry(entry, selectorId)
+          for (const entry of selectorsById.values()) {
+            yield* evaluateSubscribedEntry(entry)
           }
         })
 
@@ -373,20 +497,20 @@ export const make = <S>(args: {
           return cached
         }
 
-        const selectorIds = indexByReadRoot.get(rootKey)
-        if (!selectorIds || selectorIds.size === 0) {
+        const selectorFingerprints = indexByReadRoot.get(rootKey)
+        if (!selectorFingerprints || selectorFingerprints.size === 0) {
           indexedCandidatesByRoot.set(rootKey, [])
           return []
         }
 
         const indexed: Array<IndexedRootCandidate<S>> = []
-        for (const selectorId of selectorIds) {
-          const entry = selectorsById.get(selectorId)
+        for (const selectorFingerprint of selectorFingerprints) {
+          const entry = selectorsById.get(selectorFingerprint)
           if (!entry) continue
           const readsForRoot = entry.readsByRootKey.get(rootKey)
           if (!readsForRoot || readsForRoot.length === 0) continue
           indexed.push({
-            selectorId,
+            selectorFingerprint,
             entry,
             readsForRoot,
           })
@@ -400,10 +524,62 @@ export const make = <S>(args: {
         const entry = selectorsById.values().next().value
         if (!entry) return
 
+        if (dirtyPlan.dirtyAll) {
+          recordKernelHotPathFallback('selector_dirty_route', 'dirty_all')
+          if (emitEvalEvent) {
+            yield* recordDirtyFallbackDiagnostic({
+              moduleId,
+              instanceId,
+              meta,
+              dirtyPlan,
+              record: classifyDirtyPrecision({
+                dirtyAll: true,
+                dirtyAllReason: dirtyPlan.dirtyAllReason,
+                hasPathAuthority: false,
+                pathAuthorityFallbackKind: dirtyPlan.authority,
+              }),
+            })
+          }
+        } else if (dirtyPlan.authority !== 'field-path-registry') {
+          recordKernelHotPathFallback('selector_dirty_route', 'missing_registry')
+          if (emitEvalEvent) {
+            yield* recordDirtyFallbackDiagnostic({
+              moduleId,
+              instanceId,
+              meta,
+              dirtyPlan,
+              record: classifyDirtyPrecision({
+                dirtyAll: dirtyPlan.dirtyAll,
+                dirtyAllReason: dirtyPlan.dirtyAllReason,
+                hasPathAuthority: false,
+                pathAuthorityFallbackKind: dirtyPlan.authority,
+              }),
+            })
+          }
+        } else if (emitEvalEvent && registry) {
+          for (const dirtyPathId of dirtyPlan.rootIds) {
+            if (!getDirtyPath(dirtyPathId)) {
+              recordKernelHotPathFallback('selector_dirty_route', 'invalid_root_id')
+              yield* recordDirtyFallbackDiagnostic({
+                moduleId,
+                instanceId,
+                meta,
+                dirtyPlan,
+                record: classifyDirtyPrecision({
+                  dirtyAll: false,
+                  hasPathAuthority: true,
+                  missingDirtyPath: true,
+                }),
+              })
+              break
+            }
+          }
+        }
+
         if (
           !shouldEvaluateEntryForDirtyRoots({
             entry,
-            dirty,
+            dirtyPlan,
             getDirtyPath,
             hasRegistry: registry != null,
           })
@@ -411,30 +587,83 @@ export const make = <S>(args: {
           return
         }
 
-        yield* evaluateSubscribedEntry(entry, entry.selectorId)
+        yield* evaluateSubscribedEntry(entry)
         return
       }
 
-      if (dirty.dirtyAll) {
+      if (dirtyPlan.dirtyAll) {
+        recordKernelHotPathFallback('selector_dirty_route', 'dirty_all')
+        if (emitEvalEvent) {
+          yield* recordDirtyFallbackDiagnostic({
+            moduleId,
+            instanceId,
+            meta,
+            dirtyPlan,
+            record: classifyDirtyPrecision({
+              dirtyAll: true,
+              dirtyAllReason: dirtyPlan.dirtyAllReason,
+              hasPathAuthority: false,
+              pathAuthorityFallbackKind: dirtyPlan.authority,
+            }),
+          })
+        }
         yield* evaluateAllSubscribedSelectors()
         return
       }
 
-      if (!registry) {
+      if (dirtyPlan.authority !== 'field-path-registry') {
+        recordKernelHotPathFallback('selector_dirty_route', 'missing_registry')
+        if (emitEvalEvent) {
+          yield* recordDirtyFallbackDiagnostic({
+            moduleId,
+            instanceId,
+            meta,
+            dirtyPlan,
+            record: classifyDirtyPrecision({
+              dirtyAll: dirtyPlan.dirtyAll,
+              dirtyAllReason: dirtyPlan.dirtyAllReason,
+              hasPathAuthority: false,
+              pathAuthorityFallbackKind: dirtyPlan.authority,
+            }),
+          })
+        }
         yield* evaluateAllSubscribedSelectors()
         return
       }
 
-      for (const selectorId of selectorsWithoutReads) {
-        const entry = selectorsById.get(selectorId)
+      if (dirtyPlan.rootCount === 0) {
+        for (const selectorFingerprint of selectorsWithoutReads) {
+          const entry = selectorsById.get(selectorFingerprint)
+          if (!entry) continue
+          yield* evaluateSubscribedEntry(entry)
+        }
+        return
+      }
+
+      for (const selectorFingerprint of selectorsWithoutReads) {
+        const entry = selectorsById.get(selectorFingerprint)
         if (!entry) continue
-        yield* evaluateSubscribedEntry(entry, selectorId)
+        yield* evaluateSubscribedEntry(entry)
       }
 
       const dirtyRootsToProcessByRoot = new Map<ReadRootKey, Array<FieldPath>>()
-      for (const dirtyPathId of dirty.dirtyPathIds) {
+      for (const dirtyPathId of dirtyPlan.rootIds) {
         const dirtyPath = getDirtyPath(dirtyPathId)
         if (!dirtyPath) {
+          recordKernelHotPathFallback('selector_dirty_route', 'invalid_root_id')
+          if (emitEvalEvent) {
+            yield* recordDirtyFallbackDiagnostic({
+              moduleId,
+              instanceId,
+              meta,
+              dirtyPlan,
+              record: classifyDirtyPrecision({
+                dirtyAll: false,
+                hasPathAuthority: true,
+                missingDirtyPath: true,
+              }),
+            })
+          }
           yield* evaluateAllSubscribedSelectors()
           return
         }
@@ -458,11 +687,11 @@ export const make = <S>(args: {
         const hasRootLevelDirty = dirtyRootsForRoot.some((path) => path.length <= 1)
 
         for (const candidate of candidates) {
-          const { entry, selectorId, readsForRoot } = candidate
-          if (entry.subscriberCount === 0 || entry.lastScheduledTxnSeq === meta.txnSeq) continue
+          const { entry, readsForRoot } = candidate
+          if (!hasAnySubscribers(entry) || entry.lastScheduledTxnSeq === meta.txnSeq) continue
 
           if (hasRootLevelDirty) {
-            yield* evaluateSubscribedEntry(entry, selectorId)
+            yield* evaluateSubscribedEntry(entry)
             continue
           }
 
@@ -480,10 +709,10 @@ export const make = <S>(args: {
           }
           if (!overlapsAnyDirtyRoot) continue
 
-          yield* evaluateSubscribedEntry(entry, selectorId)
+          yield* evaluateSubscribedEntry(entry)
         }
       }
     })
 
-  return { ensureEntry, releaseEntry, hasAnyEntries, onCommit }
+  return { ensureEntry, retainEntry, releaseEntry, hasAnyEntries, onCommit }
 }

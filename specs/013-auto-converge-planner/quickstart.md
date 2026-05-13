@@ -1,7 +1,7 @@
 # Quickstart: 013 Auto Converge Planner（auto 默认与可证明下界）
 
-**Feature**: [spec.md](./spec.md)  
-**Plan**: [plan.md](./plan.md)  
+**Feature**: [spec.md](./spec.md)
+**Plan**: [plan.md](./plan.md)
 **Created**: 2025-12-16
 
 本 Quickstart 用于快速对齐三件事：
@@ -15,7 +15,7 @@
 - **默认 auto**：未显式配置时 `traitConvergeMode=auto`；模块级可覆盖为 `full|dirty` 并在**下一笔事务**生效。
 - **full 下界**：任何场景下 `auto` 必须满足 `auto <= full * 1.05`（默认噪声预算 5%）；无法可靠判断时宁可回退 `full`。
 - **稀疏写入加速**：重复 dirty-pattern 的场景（如连续输入）会复用 Execution Plan Cache，决策开销接近 0。
-- **可解释证据（仅 light|full）**：每笔事务都能解释“为什么选 full/增量”、是否命中缓存、是否触发止损/失效/自保；`off` 不产出任何可导出的 `trait:converge` 事件/摘要（字段见 `contracts/*`）。
+- **可解释证据（仅 light|full）**：每笔事务都能解释“为什么选 full/增量”、是否命中缓存、是否触发止损/失效/自保；`off` 不产出任何可导出的 `field:converge` 事件/摘要（字段见 `contracts/*`）。
 
 ## 2) 三种模式怎么理解（最小心智模型）
 
@@ -42,8 +42,8 @@
 import * as Logix from "@logixjs/core"
 
 // key 是 Module.make("...") 的 moduleId
-// root 是 program module（ModuleDef.implement(...) 的产物）或其 `.impl`
-const runtime = Logix.Runtime.make(root, {
+// program 是 `Program.make(...)` 的产物
+const runtime = Logix.Runtime.make(program, {
   stateTransaction: {
     // Runtime 级默认（未命中覆盖时使用）
     traitConvergeMode: "auto",
@@ -107,7 +107,7 @@ export const LocalConvergeOverrideDemo = () => (
 
 诊断分档差异：
 
-- `off`：不产出任何可导出的 `trait:converge` 事件/摘要（用于最干净的性能基线）。
+- `off`：不产出任何可导出的 `field:converge` 事件/摘要（用于最干净的性能基线）。
 - `light`：`data.dirty` 只允许 `dirtyAll`（不输出 roots/rootIds/rootCount）；不导出 `ConvergeStaticIR`。
 - `full`：允许输出受控的 roots 摘要（`rootCount` + `rootIds` 前 K 个 + `rootIdsTruncated`，默认 K=3，可配置；硬上界 16）；并在 EvidencePackage 内按 `staticIrDigest` 去重导出 `ConvergeStaticIR` 到 `summary.converge.staticIrByDigest`，用于离线解释/回放（可通过 `ConvergeStaticIR.fieldPaths` + `stepOutFieldPathIdByStepId` 将 `rootIds/stepId` 映射为可读 `FieldPath`）。
 

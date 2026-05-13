@@ -152,8 +152,14 @@ export const runModuleLogics = <S, A, R>(args: {
             Effect.flatMap(() => Effect.failCause(cause)),
           )
 
-    const isLogicPlan = (value: unknown): value is LogicPlan<any, any, any> =>
-      Boolean(value && typeof value === 'object' && 'run' in (value as any) && 'setup' in (value as any))
+    const isLogicDescriptor = (value: unknown): value is LogicPlan<any, any, any> =>
+      Boolean(
+        value &&
+        typeof value === 'object' &&
+        Object.prototype.hasOwnProperty.call(value, 'run') &&
+        (Object.prototype.hasOwnProperty.call(value, 'declare') ||
+          Object.prototype.hasOwnProperty.call(value, 'setup')),
+      )
 
     const hasLogicPhaseError = (cause: Cause.Cause<unknown>): boolean =>
       cause.reasons
@@ -164,12 +170,16 @@ export const runModuleLogics = <S, A, R>(args: {
     const normalizeToPlan = (value: unknown, defaultPhaseRef?: PhaseRef): LogicPlan<any, any, any> => {
       const phaseRef = LogicPlanMarker.getPhaseRef(value) ?? defaultPhaseRef ?? createPhaseRef()
 
-      if (isLogicPlan(value)) {
+      if (isLogicDescriptor(value)) {
         const plan = value as LogicPlan<any, any, any>
-        if (!LogicPlanMarker.getPhaseRef(plan)) {
-          LogicPlanMarker.attachPhaseRef(plan as any, phaseRef)
+        const normalizedPlan: LogicPlan<any, any, any> = {
+          setup: ((plan as any).declare ?? (plan as any).setup) as any,
+          run: plan.run,
         }
-        return plan
+        if (!LogicPlanMarker.getPhaseRef(normalizedPlan)) {
+          LogicPlanMarker.attachPhaseRef(normalizedPlan as any, phaseRef)
+        }
+        return normalizedPlan
       }
 
       const plan: LogicPlan<any, any, any> = {
@@ -256,7 +266,7 @@ export const runModuleLogics = <S, A, R>(args: {
       logicUnit: LogicDiagnostics.LogicUnitService,
     ): Effect.Effect<LogicPlan<any, any, any>, unknown, any> => {
       if (!LogicPlanMarker.isLogicPlanEffect(rawLogic)) {
-        if (isLogicPlan(rawLogic)) {
+        if (isLogicDescriptor(rawLogic)) {
           return Effect.succeed(normalizeToPlan(rawLogic))
         }
 
@@ -264,7 +274,7 @@ export const runModuleLogics = <S, A, R>(args: {
         const runEffect = rawLogic as Effect.Effect<any, any, any>
 
         // Canonical semantics keeps single-phase logic as run-only.
-        // Compatibility: if run returns a marked LogicPlanEffect (async-built ModuleImpl pattern),
+        // Compatibility: if run returns a marked LogicPlanEffect (async-built ProgramRuntimeBlueprint pattern),
         // resolve and execute that nested plan immediately to preserve existing user behavior.
         const plan: LogicPlan<any, any, any> = {
           setup: Effect.void,

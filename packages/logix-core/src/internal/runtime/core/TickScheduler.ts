@@ -71,7 +71,7 @@ export interface TickScheduler {
   readonly onModuleCommit: (commit: RuntimeStoreModuleCommit) => Effect.Effect<void, never, never>
   readonly onSelectorChanged: (args: {
     readonly moduleInstanceKey: ModuleInstanceKey
-    readonly selectorId: string
+    readonly selectorFingerprint: string
     readonly priority: StateCommitPriority
   }) => void
   readonly flushNow: Effect.Effect<void, never, never>
@@ -225,7 +225,7 @@ const topicKeyResolutionCacheLimit = 1024
 
 const toTriggerKind = (originKind: string | undefined): TriggerKind => {
   if (originKind === 'action') return 'dispatch'
-  if (originKind === 'trait-external-store') return 'externalStore'
+  if (originKind === 'field-external-store') return 'externalStore'
   if (originKind?.includes('timer')) return 'timer'
   return 'unknown'
 }
@@ -1061,8 +1061,8 @@ export const makeTickScheduler = (args: {
     return rememberTopicKeyResolution(topicKey, undefined)
   }
 
-  const onSelectorChanged: TickScheduler['onSelectorChanged'] = ({ moduleInstanceKey, selectorId, priority }) => {
-    const coalesced = queue.markTopicDirty(makeReadQueryTopicKey(moduleInstanceKey, selectorId), priority)
+  const onSelectorChanged: TickScheduler['onSelectorChanged'] = ({ moduleInstanceKey, selectorFingerprint, priority }) => {
+    const coalesced = queue.markTopicDirty(makeReadQueryTopicKey(moduleInstanceKey, selectorFingerprint), priority)
     if (coalesced) coalescedTopics += 1
   }
 

@@ -2,7 +2,7 @@
 
 ## Required
 
-- Matrix SSoT：`.codex/skills/logix-perf-evidence/assets/matrix.json`
+- Matrix SSoT：`packages/logix-perf-evidence/assets/matrix.json`
 - 交付 profile：`default`（或 `soak`）；`quick` 仅线索
 - Baseline kernel：以默认 `kernelId=core` 为准；`core-ng` 仅 compare-only/试跑且不得引入显著回归
 - 采集隔离：before/after 必须在独立 `git worktree/单独目录` 中采集

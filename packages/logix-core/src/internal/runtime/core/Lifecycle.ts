@@ -14,6 +14,7 @@ export interface ErrorContext {
   readonly moduleId: string
   readonly instanceId: string
   readonly taskId?: string
+  readonly readinessId?: string
   readonly txnSeq?: number
   readonly opSeq?: number
   /**
@@ -293,6 +294,7 @@ export const makeLifecycleManager = (identity: ModuleRuntimeIdentity): Effect.Ef
         phase: context.phase,
         hook: context.hook,
         taskId: context.taskId,
+        readinessId: context.readinessId,
         txnSeq: context.txnSeq,
         opSeq: context.opSeq,
         origin: context.origin,
@@ -350,6 +352,7 @@ export const makeLifecycleManager = (identity: ModuleRuntimeIdentity): Effect.Ef
           moduleId: identity.moduleId,
           instanceId: identity.instanceId,
           taskId: task.taskId,
+          readinessId: task.name,
           origin: 'initRequired',
         })
 

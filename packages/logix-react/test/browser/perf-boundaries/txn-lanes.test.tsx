@@ -1,3 +1,5 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { test } from 'vitest'
 import React from 'react'
 import { render } from 'vitest-browser-react'
@@ -5,7 +7,7 @@ import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import matrix from '@logixjs/perf-evidence/assets/matrix.json'
 import { RuntimeProvider } from '../../../src/RuntimeProvider.js'
-import { useModule } from '../../../src/Hooks.js'
+import { useModule, useSelector } from '../../../src/Hooks.js'
 import { emitPerfReport, type PerfReport } from './protocol.js'
 import {
   getProfileConfig,
@@ -381,7 +383,7 @@ const summarizeTxnQueueEvidence = (args: {
 const makeTxnLanesModule = (
   steps: number,
   iters: number,
-): { readonly M: any; readonly impl: any; readonly lastKey: string; readonly initialLastValue: number } => {
+): { readonly M: any; readonly program: any; readonly lastKey: string; readonly initialLastValue: number } => {
   const fields: Record<string, any> = {
     a: Schema.Number,
     b: Schema.Number,
@@ -394,28 +396,27 @@ const makeTxnLanesModule = (
   const State = Schema.Struct(fields) as unknown as Schema.Schema<S>
   const Actions = { setA: Schema.Number, urgent: Schema.Void }
 
-  const traits: Record<string, any> = {}
+  const fieldDeclarations: Record<string, any> = {}
   for (let i = 0; i < steps; i++) {
-    traits[`d${i}`] = Logix.StateTrait.computed({
+    fieldDeclarations[`d${i}`] = FieldContracts.fieldComputed({
       deps: ['a'] as any,
       get: (a: any) => computeValue(iters, a as number, i),
       scheduling: 'deferred',
     } as any)
   }
 
-  const M = Logix.Module.make(`Perf060TxnLanesSteps${steps}`, {
-    state: State,
-    actions: Actions,
-    reducers: {
+  const M = FieldContracts.withModuleFieldDeclarations(Logix.Module.make(`Perf060TxnLanesSteps${steps}`, {
+  state: State,
+  actions: Actions,
+  reducers: {
       setA: Logix.Module.Reducer.mutate((draft, payload: number) => {
         draft.a = payload
       }),
       urgent: Logix.Module.Reducer.mutate((draft) => {
         draft.b = (draft.b ?? 0) + 1
       }),
-    },
-    traits: Logix.StateTrait.from(State as any)(traits as any),
-  })
+    }
+}), FieldContracts.fieldFrom(State as any)(fieldDeclarations as any))
 
   const initial: Record<string, number> = {
     a: 0,
@@ -425,10 +426,10 @@ const makeTxnLanesModule = (
     initial[`d${i}`] = computeValue(iters, 0, i)
   }
 
-  const impl = M.implement({ initial })
+  const program = Logix.Program.make(M, { initial })
   const lastKey = `d${Math.max(0, steps - 1)}`
 
-  return { M, impl, lastKey, initialLastValue: initial[lastKey] ?? 0 }
+  return { M, program, lastKey, initialLastValue: initial[lastKey] ?? 0 }
 }
 
 const App: React.FC<{
@@ -451,8 +452,8 @@ const App: React.FC<{
   onUrgentInvoked,
 }) => {
   const module = useModule(moduleTag) as any
-  const b = useModule(module, (s) => (s as any).b as number)
-  const dLast = useModule(module, (s) => (s as any)[lastKey] as number)
+  const b = useSelector(module, (s) => (s as any).b as number)
+  const dLast = useSelector(module, (s) => (s as any)[lastKey] as number)
   const setA0Ref = React.useRef<HTMLButtonElement>(null)
   const setA1Ref = React.useRef<HTMLButtonElement>(null)
   const urgentRef = React.useRef<HTMLButtonElement>(null)
@@ -524,7 +525,7 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { t
       readonly setA0: any
       readonly setA1: any
       readonly urgent: any
-      readonly queueTraceBuffer: ReturnType<typeof Logix.Debug.makeRingBufferSink>
+      readonly queueTraceBuffer: ReturnType<typeof CoreDebug.makeRingBufferSink>
       readonly actionTrace: {
         backlogNativeCaptureAt?: number
         backlogNativeBubbleAt?: number
@@ -551,8 +552,8 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { t
       if (active?.steps === steps && active?.mode === mode) return active
       await disposeActive()
 
-      const { M, impl, lastKey, initialLastValue } = makeTxnLanesModule(steps, ITERS)
-      const queueTraceBuffer = Logix.Debug.makeRingBufferSink(2048)
+      const { M, program, lastKey, initialLastValue } = makeTxnLanesModule(steps, ITERS)
+      const queueTraceBuffer = CoreDebug.makeRingBufferSink(2048)
       const actionTrace: {
         backlogNativeCaptureAt?: number
         backlogNativeBubbleAt?: number
@@ -562,19 +563,19 @@ test('browser txn lanes: urgent p95 under non-urgent backlog (mode matrix)', { t
         urgentActionInvokedAt?: number
       } = {}
       const debugLayer = Layer.mergeAll(
-        Logix.Debug.replace([queueTraceBuffer.sink]),
-        Logix.Debug.diagnosticsLevel('light'),
-        Logix.Debug.traceMode('on'),
+        CoreDebug.replace([queueTraceBuffer.sink]),
+        CoreDebug.diagnosticsLevel('light'),
+        CoreDebug.traceMode('on'),
       ) as Layer.Layer<any, never, never>
 
-      const runtime = Logix.Runtime.make(impl, {
+      const runtime = Logix.Runtime.make(program, {
         layer: Layer.mergeAll(debugLayer, perfKernelLayer) as Layer.Layer<any, never, never>,
         label: `perf:txnLanes:${mode}:${TXN_LANES_YIELD_STRATEGY}:${steps}`,
         stateTransaction: {
-          traitConvergeMode: 'dirty',
-          traitConvergeBudgetMs: 100_000,
-          traitConvergeDecisionBudgetMs: 100_000,
-          traitConvergeTimeSlicing: { enabled: true, debounceMs: 0, maxLagMs: LANE_MAX_LAG_MS },
+          fieldConvergeMode: 'dirty',
+          fieldConvergeBudgetMs: 100_000,
+          fieldConvergeDecisionBudgetMs: 100_000,
+          fieldConvergeTimeSlicing: { enabled: true, debounceMs: 0, maxLagMs: LANE_MAX_LAG_MS },
           ...(mode === 'on'
             ? {
                 txnLanes: {

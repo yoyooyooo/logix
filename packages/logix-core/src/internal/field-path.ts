@@ -1,3 +1,4 @@
+import { fnv1a32, stableStringify } from './digest.js'
 export type FieldPath = ReadonlyArray<string>
 export type FieldPathId = number
 
@@ -5,9 +6,9 @@ export type DirtyAllReason = 'unknownWrite' | 'customMutation' | 'nonTrackablePa
 
 export type PatchReason =
   | 'reducer'
-  | 'trait-computed'
-  | 'trait-link'
-  | 'trait-external-store'
+  | 'field-computed'
+  | 'field-link'
+  | 'field-external-store'
   | 'source-refresh'
   | 'devtools'
   | 'perf'
@@ -16,9 +17,9 @@ export type PatchReason =
 export const normalizePatchReason = (reason: unknown): PatchReason => {
   switch (reason) {
     case 'reducer':
-    case 'trait-computed':
-    case 'trait-link':
-    case 'trait-external-store':
+    case 'field-computed':
+    case 'field-link':
+    case 'field-external-store':
     case 'source-refresh':
     case 'devtools':
     case 'perf':
@@ -58,6 +59,7 @@ interface FieldPathTrieNode {
 
 export interface FieldPathIdRegistry {
   readonly fieldPaths: ReadonlyArray<FieldPath>
+  readonly fieldPathsKey: string
   readonly root: FieldPathTrieNode
   /**
    * Fast path: direct lookup for common string inputs (e.g. 'a.b').
@@ -200,7 +202,7 @@ export const makeFieldPathIdRegistry = (fieldPaths: ReadonlyArray<FieldPath>): F
     }
   }
 
-  return { fieldPaths, root, pathStringToId }
+  return { fieldPaths, fieldPathsKey: fnv1a32(stableStringify(fieldPaths)), root, pathStringToId }
 }
 
 export const getFieldPathId = (registry: FieldPathIdRegistry, path: FieldPath): FieldPathId | undefined => {

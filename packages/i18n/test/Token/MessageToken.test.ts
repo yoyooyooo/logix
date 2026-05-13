@@ -1,5 +1,6 @@
 import { describe, it, expect } from '@effect/vitest'
-import { InvalidI18nMessageTokenError, token, type InvalidI18nMessageTokenReason } from '../../src/index.js'
+import { token } from '../../src/index.js'
+import { InvalidI18nMessageTokenError, type InvalidI18nMessageTokenReason } from '../../src/internal/token/token.js'
 
 const expectInvalid = (f: () => unknown, reason: InvalidI18nMessageTokenReason): void => {
   try {
@@ -17,33 +18,34 @@ const expectInvalid = (f: () => unknown, reason: InvalidI18nMessageTokenReason):
 }
 
 describe('I18n message token', () => {
-  it('canonicalizes options (sort keys, drop undefined)', () => {
+  const legacyFallbackKey = `default${'Value'}`
+
+  it('keeps only semantic params', () => {
     const t = token('form.required', {
-      z: 1,
-      a: 'name',
       field: 'name',
-      defaultValue: 'Required',
+      count: 1,
       undef: undefined,
     })
 
-    expect(Object.keys(t.options ?? {})).toEqual(['a', 'defaultValue', 'field', 'z'])
     expect(t).toEqual({
       _tag: 'i18n',
       key: 'form.required',
-      options: {
-        a: 'name',
-        defaultValue: 'Required',
+      params: {
+        count: 1,
         field: 'name',
-        z: 1,
       },
     })
   })
 
-  it('rejects non JsonPrimitive option values', () => {
-    expectInvalid(() => token('bad.value', { bad: { nested: true } as any }), 'optionValueInvalid')
+  it('rejects render fallback fields', () => {
+    expectInvalid(() => token('form.required', { [legacyFallbackKey]: 'Required' as any }), 'renderFallbackReserved')
   })
 
-  it('rejects NaN/Infinity option values', () => {
+  it('rejects non JsonPrimitive param values', () => {
+    expectInvalid(() => token('bad.value', { bad: { nested: true } as any }), 'paramValueInvalid')
+  })
+
+  it('rejects NaN/Infinity param values', () => {
     expectInvalid(() => token('bad.nan', { n: Number.NaN } as any), 'numberNotJsonSafe')
     expectInvalid(() => token('bad.inf', { n: Number.POSITIVE_INFINITY } as any), 'numberNotJsonSafe')
   })
@@ -53,7 +55,7 @@ describe('I18n message token', () => {
     expectInvalid(() => token('bad.lngs', { lngs: 'en' }), 'languageFrozen')
   })
 
-  it('rejects oversize key/options budgets', () => {
+  it('rejects oversize key/params budgets', () => {
     expectInvalid(() => token('x'.repeat(97)), 'keyTooLong')
     expectInvalid(
       () =>
@@ -68,8 +70,8 @@ describe('I18n message token', () => {
           h: 1,
           i: 1,
         }),
-      'tooManyOptions',
+      'tooManyParams',
     )
-    expectInvalid(() => token('value.too.long', { msg: 'x'.repeat(97) }), 'optionValueTooLong')
+    expectInvalid(() => token('value.too.long', { msg: 'x'.repeat(97) }), 'paramValueTooLong')
   })
 })

@@ -1,8 +1,9 @@
 import { Effect } from 'effect'
-import type { JsonValue } from '../../observability/jsonValue.js'
-import type { EvidencePackage, EvidencePackageSource } from '../../observability/evidence.js'
-import { exportEvidencePackage, OBSERVABILITY_PROTOCOL_VERSION } from '../../observability/evidence.js'
-import type { ConvergeStaticIrExport } from '../../state-trait/converge-ir.js'
+import type { JsonValue } from '../../protocol/jsonValue.js'
+import type { EvidencePackage, EvidencePackageSource } from '../../verification/evidence.js'
+import { exportEvidencePackage, OBSERVABILITY_PROTOCOL_VERSION } from '../../verification/evidence.js'
+import type { ConvergeStaticIrExport } from '../../field-kernel/converge-ir.js'
+import { HOT_LIFECYCLE_EVIDENCE_TYPE } from './hotLifecycle/index.js'
 import type { ConvergeStaticIrCollector } from './ConvergeStaticIrCollector.js'
 import {
   currentDiagnosticsLevel,
@@ -25,7 +26,7 @@ import { getGlobalHostScheduler } from './HostScheduler.js'
  * The Snapshot API is always available (returns empty snapshots when disabled).
  *
  * Performance:
- * - Devtools Debug events can be extremely dense in hot paths (EffectOp / Trait / StateTxn, etc.).
+ * - Devtools Debug events can be extremely dense in hot paths (EffectOp / field / StateTxn, etc.).
  * - The previous implementation copied ringBuffer and Maps per event to build an "immutable snapshot" (O(bufferSize)).
  * - The current implementation lets Snapshot reference internal Map/Array directly (read-only convention) and batches
  *   subscriber notifications in microtasks, avoiding per-event copies and reducing main-thread interference.
@@ -42,7 +43,7 @@ export interface DevtoolsSnapshot {
   readonly instances: ReadonlyMap<string, number>
   readonly events: ReadonlyArray<RuntimeDebugEventRef>
   readonly latestStates: ReadonlyMap<string, JsonValue>
-  readonly latestTraitSummaries: ReadonlyMap<string, JsonValue>
+  readonly latestFieldSummaries: ReadonlyMap<string, JsonValue>
   /**
    * exportBudget：
    * - Tracks "degrade counts" caused by export boundaries (JsonValue projection/trimming), for explainability.
@@ -180,7 +181,7 @@ interface RuntimeDevtoolsBucket {
   readonly runtimeLabel: string
   readonly ring: EventRing
   readonly latestStates: Map<string, JsonValue>
-  readonly latestTraitSummaries: Map<string, JsonValue>
+  readonly latestFieldSummaries: Map<string, JsonValue>
   readonly exportBudget: {
     dropped: number
     oversized: number
@@ -198,7 +199,7 @@ const getOrCreateRuntimeBucket = (runtimeLabel: string): RuntimeDevtoolsBucket =
     runtimeLabel,
     ring: makeEventRing(bufferSize),
     latestStates: new Map<string, JsonValue>(),
-    latestTraitSummaries: new Map<string, JsonValue>(),
+    latestFieldSummaries: new Map<string, JsonValue>(),
     exportBudget: {
       dropped: 0,
       oversized: 0,
@@ -210,7 +211,7 @@ const getOrCreateRuntimeBucket = (runtimeLabel: string): RuntimeDevtoolsBucket =
 
 // Backward-compatible global aggregate views.
 const latestStates = new Map<string, JsonValue>()
-const latestTraitSummaries = new Map<string, JsonValue>()
+const latestFieldSummaries = new Map<string, JsonValue>()
 
 interface RuntimeModuleEntry {
   readonly moduleKey: string
@@ -410,7 +411,7 @@ const currentSnapshot: DevtoolsSnapshot = {
   instances,
   events: globalRing.view,
   latestStates,
-  latestTraitSummaries,
+  latestFieldSummaries,
   exportBudget,
 }
 
@@ -489,7 +490,7 @@ export const getDevtoolsSnapshotByRuntimeLabel = (runtimeLabel: string): Devtool
     instances: runtimeInstances,
     events: bucket ? getEventRingView(bucket.ring) : [],
     latestStates: bucket?.latestStates ?? new Map<string, JsonValue>(),
-    latestTraitSummaries: bucket?.latestTraitSummaries ?? new Map<string, JsonValue>(),
+    latestFieldSummaries: bucket?.latestFieldSummaries ?? new Map<string, JsonValue>(),
     exportBudget: bucket?.exportBudget ?? { dropped: 0, oversized: 0 },
   }
 }
@@ -555,23 +556,36 @@ export const exportDevtoolsEvidencePackage = (options?: {
   const source = options?.source ?? { host: 'unknown' }
 
   const refs = getEventRingView(globalRing)
-  const events = refs.map((payload, i) => ({
-    protocolVersion,
-    runId,
-    seq:
+  const events = refs.map((payload, i) => {
+    const seq =
       typeof payload.eventSeq === 'number' && Number.isFinite(payload.eventSeq) && payload.eventSeq > 0
         ? Math.floor(payload.eventSeq)
-        : i + 1,
-    timestamp: payload.timestamp,
-    type: 'debug:event',
-    payload: payload as unknown as JsonValue,
-  }))
+        : i + 1
+    if (payload.label === HOT_LIFECYCLE_EVIDENCE_TYPE && payload.meta != null) {
+      return {
+        protocolVersion,
+        runId,
+        seq,
+        timestamp: payload.timestamp,
+        type: HOT_LIFECYCLE_EVIDENCE_TYPE,
+        payload: payload.meta,
+      }
+    }
+    return {
+      protocolVersion,
+      runId,
+      seq,
+      timestamp: payload.timestamp,
+      type: 'debug:event',
+      payload: payload as unknown as JsonValue,
+    }
+  })
 
   const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value)
 
   // Export canonical static IR mapping by digest for any diagnostics tier that emits:
-  // - trait:converge (trace) events, or
+  // - field:converge (trace) events, or
   // - state:update events with id-first dirty evidence (pathIds/rootIds).
   //
   // Policy:
@@ -584,7 +598,7 @@ export const exportDevtoolsEvidencePackage = (options?: {
     const meta = isRecord(ref.meta) ? (ref.meta as Record<string, unknown>) : undefined
     if (!meta) continue
 
-    if (ref.kind === 'trait:converge') {
+    if (ref.kind === 'field:converge') {
       const digest = meta.staticIrDigest
       if (typeof digest === 'string' && digest.length > 0) {
         convergeDigests.add(digest)
@@ -673,9 +687,9 @@ export const devtoolsHubSink: Sink = {
             }
             // If instanceId is reused, ensure derived caches do not carry leftovers from the previous lifetime.
             if (latestStates.delete(instanceKey)) changed = true
-            if (latestTraitSummaries.delete(instanceKey)) changed = true
+            if (latestFieldSummaries.delete(instanceKey)) changed = true
             if (runtimeBucket.latestStates.delete(instanceKey)) changed = true
-            if (runtimeBucket.latestTraitSummaries.delete(instanceKey)) changed = true
+            if (runtimeBucket.latestFieldSummaries.delete(instanceKey)) changed = true
           }
         } else {
           const moduleEntry = getRuntimeModuleEntry(runtimeLabel, moduleId)
@@ -693,9 +707,9 @@ export const devtoolsHubSink: Sink = {
             const instanceKey = moduleEntry?.instanceKeyById.get(instanceId) ?? `${moduleKey}::${instanceId}`
             moduleEntry?.instanceKeyById.delete(instanceId)
             if (latestStates.delete(instanceKey)) changed = true
-            if (latestTraitSummaries.delete(instanceKey)) changed = true
+            if (latestFieldSummaries.delete(instanceKey)) changed = true
             if (runtimeBucket.latestStates.delete(instanceKey)) changed = true
-            if (runtimeBucket.latestTraitSummaries.delete(instanceKey)) changed = true
+            if (runtimeBucket.latestFieldSummaries.delete(instanceKey)) changed = true
             if (instanceLabels.delete(instanceId)) changed = true
             changed = true
           }
@@ -742,7 +756,7 @@ export const devtoolsHubSink: Sink = {
       const refRuntimeLabel = normalizeRuntimeLabel(ref.runtimeLabel)
       const runtimeBucket = getOrCreateRuntimeBucket(refRuntimeLabel)
 
-      // latestStates / latestTraitSummaries: record latest snapshots by runtimeLabel::moduleId::instanceId.
+      // latestStates / latestFieldSummaries: record latest snapshots by runtimeLabel::moduleId::instanceId.
       if (ref.kind === 'state' && ref.label === 'state:update') {
         const instanceKey = resolveLiveInstanceKey(refRuntimeLabel, ref.moduleId, ref.instanceId)
 
@@ -755,9 +769,9 @@ export const devtoolsHubSink: Sink = {
               runtimeBucket.latestStates.set(instanceKey, anyMeta.state as JsonValue)
               changed = true
             }
-            if ('traitSummary' in anyMeta && anyMeta.traitSummary !== undefined) {
-              latestTraitSummaries.set(instanceKey, anyMeta.traitSummary as JsonValue)
-              runtimeBucket.latestTraitSummaries.set(instanceKey, anyMeta.traitSummary as JsonValue)
+            if ('fieldSummary' in anyMeta && anyMeta.fieldSummary !== undefined) {
+              latestFieldSummaries.set(instanceKey, anyMeta.fieldSummary as JsonValue)
+              runtimeBucket.latestFieldSummaries.set(instanceKey, anyMeta.fieldSummary as JsonValue)
               changed = true
             }
           }

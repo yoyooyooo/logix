@@ -15,6 +15,10 @@ const TaskRunnerDemoStateSchema = Schema.Struct({
 })
 
 export type TaskRunnerDemoState = Schema.Schema.Type<typeof TaskRunnerDemoStateSchema>
+type RefreshAction = {
+  readonly _tag: 'refresh'
+  readonly payload: number
+}
 
 export const TaskRunnerDemoActions = {
   refresh: Schema.Number,
@@ -22,7 +26,7 @@ export const TaskRunnerDemoActions = {
   reset: Schema.Void,
 }
 
-export const TaskRunnerDemoDef = Logix.Module.make('TaskRunnerDemoModule', {
+export const TaskRunnerDemo = Logix.Module.make('TaskRunnerDemoModule', {
   state: TaskRunnerDemoStateSchema,
   actions: TaskRunnerDemoActions,
 })
@@ -40,12 +44,11 @@ const initialState: TaskRunnerDemoState = {
   logs: [],
 }
 
-export const TaskRunnerDemoLogic = TaskRunnerDemoDef.logic(($) => ({
-  setup: Effect.void,
-  run: Effect.gen(function* () {
+export const TaskRunnerDemoLogic = TaskRunnerDemo.logic('task-runner-demo-logic', ($) =>
+  Effect.gen(function* () {
     // runLatestTask：新触发会取消旧 task，只写回最新一次结果
     const latest = $.onAction('refresh').runLatestTask({
-      pending: (a: any) =>
+      pending: (a: RefreshAction) =>
         $.state.update((s) => ({
           ...s,
           latest: {
@@ -55,8 +58,8 @@ export const TaskRunnerDemoLogic = TaskRunnerDemoDef.logic(($) => ({
           },
           logs: [...s.logs, `latest.pending:${a.payload}`],
         })),
-      effect: (a: any) => Effect.sleep('700 millis').pipe(Effect.as(a.payload * 10)),
-      success: (result, a: any) =>
+      effect: (a: RefreshAction) => Effect.sleep('700 millis').pipe(Effect.as(a.payload * 10)),
+      success: (result: number, a: RefreshAction) =>
         $.state.update((s) => ({
           ...s,
           latest: {
@@ -67,7 +70,7 @@ export const TaskRunnerDemoLogic = TaskRunnerDemoDef.logic(($) => ({
           },
           logs: [...s.logs, `latest.success:${a.payload}:${result}`],
         })),
-      failure: (cause, a: any) =>
+      failure: (cause: unknown, a: RefreshAction) =>
         $.state.update((s) => ({
           ...s,
           latest: {
@@ -109,9 +112,9 @@ export const TaskRunnerDemoLogic = TaskRunnerDemoDef.logic(($) => ({
     // watcher 合并启动
     yield* Effect.all([latest, exhaust, reset], { concurrency: 'unbounded' })
   }),
-}))
+)
 
-export const TaskRunnerDemoModule = TaskRunnerDemoDef.implement({
+export const TaskRunnerDemoProgram = Logix.Program.make(TaskRunnerDemo, {
   initial: initialState,
   logics: [TaskRunnerDemoLogic],
 })

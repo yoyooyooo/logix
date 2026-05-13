@@ -11,19 +11,19 @@
     },
     {
       "id": "039",
-      "dir": "specs/039-trait-converge-int-exec-evidence",
+      "dir": "specs/039-field-converge-int-exec-evidence",
       "status": "done",
       "dependsOn": []
     },
     {
       "id": "043",
-      "dir": "specs/043-trait-converge-time-slicing",
+      "dir": "specs/043-field-converge-time-slicing",
       "status": "done",
       "dependsOn": []
     },
     {
       "id": "044",
-      "dir": "specs/044-trait-converge-diagnostics-sampling",
+      "dir": "specs/044-field-converge-diagnostics-sampling",
       "status": "done",
       "dependsOn": []
     },

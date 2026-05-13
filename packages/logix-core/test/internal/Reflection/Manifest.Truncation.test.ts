@@ -1,3 +1,4 @@
+import * as CoreReflection from '@logixjs/core/repo-internal/reflection-api'
 import { describe, it, expect } from '@effect/vitest'
 import { Schema } from 'effect'
 import * as Logix from '../../../src/index.js'
@@ -21,12 +22,12 @@ describe('Reflection.extractManifest truncation (US2)', () => {
       },
     })
 
-    const program = Root.implement({ initial: { value: 0 }, logics: [] })
+    const program = Logix.Program.make(Root, { initial: { value: 0 }, logics: [] })
 
     const maxBytes = 2048
 
-    const a = Logix.Reflection.extractManifest(program, { budgets: { maxBytes } })
-    const b = Logix.Reflection.extractManifest(program, { budgets: { maxBytes } })
+    const a = CoreReflection.extractManifest(program, { budgets: { maxBytes } })
+    const b = CoreReflection.extractManifest(program, { budgets: { maxBytes } })
 
     expect(a).toEqual(b)
     expect(a.digest).toBe(b.digest)
@@ -39,4 +40,3 @@ describe('Reflection.extractManifest truncation (US2)', () => {
     expect(a.actions.map((x) => x.actionTag)).toEqual(actionTags.slice(0, a.actions.length))
   })
 })
-

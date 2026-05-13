@@ -1,7 +1,7 @@
 # Tasks: 064 Speckit 时间线 Kanban（Specs Timeline Board）
 
-**Input**: `specs/064-speckit-kanban-timeline/spec.md` + `specs/064-speckit-kanban-timeline/plan.md`  
-**Scope**: `packages/speckit-kit/*` + `package.json` + `.codex/skills/speckit/SKILL.md` + `specs/064-speckit-kanban-timeline/*`  
+**Input**: `specs/064-speckit-kanban-timeline/spec.md` + `specs/064-speckit-kanban-timeline/plan.md`
+**Scope**: `packages/speckit-kit/*` + `package.json` + `.codex/skills/speckit/SKILL.md` + `specs/064-speckit-kanban-timeline/*`
 **Note**: 本任务清单按 User Story（P1→P3）组织，保证每个故事可独立验收。
 
 ## Phase 1: Setup（工程落盘）

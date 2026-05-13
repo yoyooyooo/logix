@@ -1,5 +1,5 @@
 import type { ConvergeAuditFinding, ConvergeTxnRow } from './model.js'
-import { makeTraitConvergeOverrideSnippets } from './snippets.js'
+import { makeFieldConvergeOverrideSnippets } from './snippets.js'
 import { parseConvergeDecisionEvidence } from './evidence.js'
 import { makeConvergeTxnKey } from './compute.js'
 
@@ -47,9 +47,9 @@ const auditBudgetCutoff = (rows: ReadonlyArray<ConvergeTxnRow>): ConvergeAuditFi
       '止血优先：先把该模块的 converge budget 小幅上调，避免频繁降级。',
       '长期：减少总 steps / 降低写入扇出，或排查为何频繁触发 budget_cutoff。',
     ],
-    snippets: makeTraitConvergeOverrideSnippets({
+    snippets: makeFieldConvergeOverrideSnippets({
       moduleId,
-      patch: { traitConvergeBudgetMs: nextBudget },
+      patch: { fieldConvergeBudgetMs: nextBudget },
     }),
   })
 }
@@ -89,9 +89,9 @@ const auditNearBudget = (rows: ReadonlyArray<ConvergeTxnRow>): ConvergeAuditFind
       '止血：给 converge 留出稳定余量（避免偶发抖动触发 budget_cutoff）。',
       '长期：减少 steps 或降低写入影响面（dirty roots / affectedSteps）。',
     ],
-    snippets: makeTraitConvergeOverrideSnippets({
+    snippets: makeFieldConvergeOverrideSnippets({
       moduleId,
-      patch: { traitConvergeBudgetMs: nextBudget },
+      patch: { fieldConvergeBudgetMs: nextBudget },
     }),
   })
 }
@@ -119,9 +119,9 @@ const auditAutoAlwaysFull = (rows: ReadonlyArray<ConvergeTxnRow>): ConvergeAudit
     recommendations: [
       '如果你的目标是稳定与可复现（而不是追求 dirty 最小执行），可以先显式固定为 full，减少 auto 决策与 cache 相关开销。',
     ],
-    snippets: makeTraitConvergeOverrideSnippets({
+    snippets: makeFieldConvergeOverrideSnippets({
       moduleId,
-      patch: { traitConvergeMode: 'full' },
+      patch: { fieldConvergeMode: 'full' },
     }),
   })
 }
@@ -155,9 +155,9 @@ const auditDirtyNearFull = (rows: ReadonlyArray<ConvergeTxnRow>): ConvergeAuditF
       '止血：可以考虑先固定为 full，避免 dirty 规划/缓存开销带来额外噪声。',
       '长期：排查 dirty roots 是否过宽、deps 是否准确、以及写入是否影响过多字段。',
     ],
-    snippets: makeTraitConvergeOverrideSnippets({
+    snippets: makeFieldConvergeOverrideSnippets({
       moduleId,
-      patch: { traitConvergeMode: 'full' },
+      patch: { fieldConvergeMode: 'full' },
     }),
   })
 }
@@ -181,9 +181,9 @@ const auditUnknownWrite = (rows: ReadonlyArray<ConvergeTxnRow>): ConvergeAuditFi
       '优先排查事务窗口内是否存在“整棵 state 直接替换”或无法归因到具体路径的写入。',
       '止血：如果短期无法收敛写入影响面，可先固定为 full 保持行为可预测。',
     ],
-    snippets: makeTraitConvergeOverrideSnippets({
+    snippets: makeFieldConvergeOverrideSnippets({
       moduleId,
-      patch: { traitConvergeMode: 'full' },
+      patch: { fieldConvergeMode: 'full' },
     }),
   })
 }
@@ -218,9 +218,9 @@ const auditLowCacheHitRate = (rows: ReadonlyArray<ConvergeTxnRow>): ConvergeAudi
       '止血：可以先固定为 full，避免在低命中率下持续付出规划成本。',
       '长期：让 dirty roots 更稳定（减少 roots 组合抖动），或排查 generation 频繁变化导致的 cache 失效。',
     ],
-    snippets: makeTraitConvergeOverrideSnippets({
+    snippets: makeFieldConvergeOverrideSnippets({
       moduleId,
-      patch: { traitConvergeMode: 'full' },
+      patch: { fieldConvergeMode: 'full' },
     }),
   })
 }
@@ -262,9 +262,9 @@ const auditDirtyRootsTooWide = (rows: ReadonlyArray<ConvergeTxnRow>): ConvergeAu
       '长期：减少事务窗口写入影响面（roots），或收敛写入路径以提升 dirty 精度。',
       '止血：若短期无法收敛 roots，可先固定为 full 保持行为可预测。',
     ],
-    snippets: makeTraitConvergeOverrideSnippets({
+    snippets: makeFieldConvergeOverrideSnippets({
       moduleId,
-      patch: { traitConvergeMode: 'full' },
+      patch: { fieldConvergeMode: 'full' },
     }),
   })
 }
@@ -282,7 +282,7 @@ const auditMultipleStaticIrDigest = (rows: ReadonlyArray<ConvergeTxnRow>): Conve
     id: 'CNV-008',
     severity: 'warning',
     summary: '窗口内出现多个 staticIrDigest（可能存在 generation 变化）',
-    explanation: `检测到多个 staticIrDigest：${shown.join(', ')}${truncated ? ' …' : ''}。这通常意味着 trait program generation 发生变化，会影响 cache 复用与结果可比性。`,
+    explanation: `检测到多个 staticIrDigest：${shown.join(', ')}${truncated ? ' …' : ''}。这通常意味着 field program generation 发生变化，会影响 cache 复用与结果可比性。`,
     requires: { status: 'ok' },
     recommendations: [
       '排查是否存在 logic install/uninstall、imports 变化等导致的 generation 变化；尽量在稳定窗口内做性能对比。',

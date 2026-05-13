@@ -1,7 +1,7 @@
 # Tasks: 088 Async Action Coordinator
 
-**Input**: `specs/088-async-action-coordinator/spec.md`, `specs/088-async-action-coordinator/plan.md`  
-**Prerequisites**: 087 总控已创建（`specs/087-async-coordination-roadmap/`）  
+**Input**: `specs/088-async-action-coordinator/spec.md`, `specs/088-async-action-coordinator/plan.md`
+**Prerequisites**: 087 总控已创建（`specs/087-async-coordination-roadmap/`）
 **Tests**: 本特性触及 Runtime/React/Devtools 关键链路，测试与 perf evidence 视为必需。
 
 ## Phase 1: Setup（术语与文档入口）

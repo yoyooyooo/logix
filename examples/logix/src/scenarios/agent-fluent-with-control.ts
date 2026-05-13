@@ -1,11 +1,11 @@
 /**
- * @scenario Agent · Fluent + Control PoC
+ * @scenario Agent · Fluent + Control
  * @description
- *   作为 Agent 编排规划的配套 PoC，演示两类典型场景在 Fluent 子集中的推荐写法：
- *   1）搜索框输入 → 防抖 + latest 搜索（Flow + Service）；
- *   2）国家变化 → 重置城市 + 加载城市列表失败时弹 Toast（Flow + 结构化控制流：Effect.catch* 等）。
+ *   作为 Agent 编排规划的配套示例，演示两类典型场景在 Fluent 子集中的推荐写法：
+ *   1）搜索框输入 → 防抖 + latest 搜索（运行策略 + Service）；
+ *   2）国家变化 → 重置城市 + 加载城市列表失败时弹 Toast（结构化控制流：Effect.catch* 等）。
  *
- *   代码遵守 v3 的硬约束：
+ *   代码遵守当前硬约束：
  *   - 使用 Bound API (`$`) 作为唯一入口；
  *   - Fluent 链写成单条 `yield* $.onState/$.onAction(...).debounce(...).runLatest(Effect.gen(...))`；
  *   - handler 内仅使用 Effect.gen + yield*，不使用 async/await。
@@ -13,6 +13,7 @@
 
 import { Effect, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
+import { programLayer } from '../runtime/programLayer.js'
 
 // ---------------------------------------------------------------------------
 // 场景一：搜索框输入 → 防抖 + latest 搜索（Fluent + Service）
@@ -28,7 +29,7 @@ const SearchActionMap = {
   noop: Schema.Void,
 }
 
-type SearchShape = Logix.Shape<typeof SearchStateSchema, typeof SearchActionMap>
+type SearchShape = Logix.Module.Shape<typeof SearchStateSchema, typeof SearchActionMap>
 
 // Service Tag：由上层 Runtime 提供实现
 export class SearchService extends ServiceMap.Service<SearchService, SearchService.Service>()('@poc/SearchService') {}
@@ -39,13 +40,13 @@ export namespace SearchService {
   }
 }
 
-export const AgentDef = Logix.Module.make('AgentModule', {
+export const Agent = Logix.Module.make('AgentModule', {
   state: SearchStateSchema,
   actions: SearchActionMap,
 })
 
 // 使用 Module.logic 注入 Bound API `$`，在 Fluent 子集中表达逻辑
-export const SearchLogicAgent = AgentDef.logic<SearchService>(($) =>
+export const SearchLogicAgent = Agent.logic<SearchService>('search-logic-agent', ($) =>
   Effect.gen(function* () {
     yield* $.onState((s) => s.keyword)
       .debounce(500)
@@ -60,7 +61,7 @@ export const SearchLogicAgent = AgentDef.logic<SearchService>(($) =>
   }),
 )
 
-export const SearchAgentModule = AgentDef.implement<SearchService>({
+export const SearchAgentProgram = Logix.Program.make(Agent, {
   initial: {
     keyword: '',
     results: [],
@@ -68,8 +69,7 @@ export const SearchAgentModule = AgentDef.implement<SearchService>({
   logics: [SearchLogicAgent],
 })
 
-export const SearchAgentImpl = SearchAgentModule.impl
-export const SearchLiveAgent = SearchAgentImpl.layer
+export const SearchAgentLayer = programLayer(SearchAgentProgram)
 
 // ---------------------------------------------------------------------------
 // 场景二：国家变化 → 重置城市 + 加载城市列表失败时弹 Toast（Fluent + Control）
@@ -87,7 +87,7 @@ const ProfileActionMap = {
   noop: Schema.Void,
 }
 
-type ProfileShape = Logix.Shape<typeof ProfileStateSchema, typeof ProfileActionMap>
+type ProfileShape = Logix.Module.Shape<typeof ProfileStateSchema, typeof ProfileActionMap>
 
 export class LocationService extends ServiceMap.Service<LocationService, LocationService.Service>()('@poc/LocationService') {}
 
@@ -97,12 +97,12 @@ export namespace LocationService {
   }
 }
 
-export const ProfileDef = Logix.Module.make('ProfileModule', {
+export const Profile = Logix.Module.make('ProfileModule', {
   state: ProfileStateSchema,
   actions: ProfileActionMap,
 })
 
-export const ProfileLogicAgent = ProfileDef.logic<LocationService>(($) =>
+export const ProfileLogicAgent = Profile.logic<LocationService>('profile-logic-agent', ($) =>
   Effect.gen(function* () {
     yield* $.onState((s) => s.country).run(
       Effect.gen(function* () {
@@ -124,7 +124,7 @@ export const ProfileLogicAgent = ProfileDef.logic<LocationService>(($) =>
   }),
 )
 
-export const ProfileAgentModule = ProfileDef.implement<LocationService>({
+export const ProfileAgentProgram = Logix.Program.make(Profile, {
   initial: {
     country: '',
     city: '',
@@ -134,5 +134,4 @@ export const ProfileAgentModule = ProfileDef.implement<LocationService>({
   logics: [ProfileLogicAgent],
 })
 
-export const ProfileAgentImpl = ProfileAgentModule.impl
-export const ProfileLiveAgent = ProfileAgentImpl.layer
+export const ProfileAgentLayer = programLayer(ProfileAgentProgram)

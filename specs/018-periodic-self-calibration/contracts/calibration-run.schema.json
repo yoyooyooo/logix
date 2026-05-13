@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://intent-flow.local/specs/018-periodic-self-calibration/contracts/calibration-run.schema.json",
+  "$id": "https://logix.local/specs/018-periodic-self-calibration/contracts/calibration-run.schema.json",
   "title": "Logix Periodic Self-Calibration Run",
   "type": "object",
   "additionalProperties": false,

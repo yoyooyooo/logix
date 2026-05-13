@@ -1,4 +1,5 @@
 import * as Logix from '@logixjs/core'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { Effect, Schema } from 'effect'
 import type { YieldPolicy } from '../provider/policy.js'
 
@@ -21,7 +22,7 @@ export const makePerfCounterModule = (moduleId: string) =>
 type PerfCounterModule = ReturnType<typeof makePerfCounterModule>
 
 export const makePerfCounterIncWatchersLogic = (module: PerfCounterModule, watcherCount: number) =>
-  module.logic(($) =>
+  module.logic(`${module.id}-inc-watchers`, ($) =>
     Effect.gen(function* () {
       for (let i = 0; i < watcherCount; i++) {
         yield* $.onAction('inc').runParallelFork(
@@ -62,20 +63,22 @@ export const makePerfListScopeInitialState = (rowCount: number): PerfListScopeSt
 })
 
 export const makePerfListScopeCheckModule = (moduleId: string) =>
-  Logix.Module.make(moduleId, {
-    state: PerfListScopeStateSchema,
-    actions: {
-      tick: Schema.Void,
-    },
-    traits: Logix.StateTrait.from(PerfListScopeStateSchema)({
-      digest: Logix.StateTrait.computed({
+  FieldContracts.withModuleFieldDeclarations(
+    Logix.Module.make(moduleId, {
+      state: PerfListScopeStateSchema,
+      actions: {
+        tick: Schema.Void,
+      },
+    }),
+    FieldContracts.fieldFrom(PerfListScopeStateSchema)({
+      digest: FieldContracts.fieldComputed({
         deps: ['items'],
-        get: (items) =>
+        get: (items: ReadonlyArray<PerfListScopeRow>) =>
           `rows:${items.length}:${String(items[0]?.warehouseId ?? '')}:${String(items[items.length - 1]?.warehouseId ?? '')}`,
       }),
-      items: Logix.StateTrait.list<PerfListScopeRow>({
+      items: FieldContracts.fieldList<PerfListScopeRow>({
         identityHint: { trackBy: 'id' },
-        list: Logix.StateTrait.node<ReadonlyArray<PerfListScopeRow>>({
+        list: FieldContracts.fieldNode<ReadonlyArray<PerfListScopeRow>>({
           check: {
             uniqueWarehouse: {
               deps: ['warehouseId'],
@@ -215,7 +218,7 @@ export const makePerfListScopeCheckModule = (moduleId: string) =>
         }),
       }),
     }),
-  })
+  )
 
 type WorkloadStats = {
   seen: boolean

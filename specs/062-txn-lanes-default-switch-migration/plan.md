@@ -12,7 +12,7 @@
 
 ## Deepening Notes
 
-- Decision: perf matrix/diff 口径以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为 SSoT（`profile=default` 为硬结论档位）。
+- Decision: perf matrix/diff 口径以 `packages/logix-perf-evidence/assets/matrix.json` 为 SSoT（`profile=default` 为硬结论档位）。
 - Decision: perf evidence 允许在 dev 工作区（git dirty）采集，但必须确保 `matrix/config/env` 一致，并保留 `git.dirty.*` warnings；结论存疑时必须复测（必要时 `profile=soak`）。
 - Decision: 回退口径必须“显式且可解释”，禁止隐式 fallback（与 048 的迁移口径一致）。
 

@@ -1,6 +1,6 @@
 # Logix 文档应用（apps/docs）
 
-`apps/docs` 是 intent-flow 仓库的用户文档站点，基于 **Next.js + Fumadocs** 搭建，主要面向：
+`apps/docs` 是 Logix 仓库的用户文档站点，基于 **Next.js + Fumadocs** 搭建，主要面向：
 
 - 使用 Logix 的前端/全栈开发者；
 - 在团队内推广 Intent/Flow/Effect 模式的架构师。

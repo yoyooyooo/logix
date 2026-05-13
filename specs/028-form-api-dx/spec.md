@@ -1,8 +1,11 @@
 # Feature Specification: Form API 收敛与 DX 提升
 
-**Feature Branch**: `[028-form-api-dx]`  
-**Created**: 2025-12-23  
-**Status**: Draft  
+> **Final cutover note (2026-05-11):** This early DX spec is superseded by `specs/155-form-api-shape/spec.md` and `docs/ssot/form/13-exact-surface-contract.md`. Mentions of `Form.from`, Form-owned React hooks, public `fields` as a recommended route, or advanced/bottom escape hatches are historical. Current Form core is single-track: `Form.make -> FormProgram -> FormHandle -> useModule + useSelector`; toolkit-only helpers may exist only as mechanically reducible DX wrappers.
+
+
+**Feature Branch**: `[028-form-api-dx]`
+**Created**: 2025-12-23
+**Status**: Draft
 **Input**: User description: "Form API 收敛、开发体验提升，并治理表单包内部的超大文件与可维护性问题。"
 
 ## Assumptions

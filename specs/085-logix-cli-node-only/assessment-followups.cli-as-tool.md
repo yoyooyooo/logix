@@ -1,5 +1,9 @@
 # 085 评估后续行动（CLI as Agent Tool）
 
+> Superseded background only. This follow-up plan does not define current CLI authority.
+> Current CLI authority is [../160-cli-agent-first-control-plane-cutover/spec.md](../160-cli-agent-first-control-plane-cutover/spec.md) and [../../docs/ssot/runtime/15-cli-agent-first-control-plane.md](../../docs/ssot/runtime/15-cli-agent-first-control-plane.md).
+> Old toolbox commands, public discovery, writeback and global `--mode report|write` are negative-only legacy references for `160`.
+
 ## 1. 背景与边界裁决
 
 本文件将“多视角评估结果”转为可执行方案，默认基线：
@@ -52,7 +56,7 @@
   - 可选新增：`specs/085-logix-cli-node-only/contracts/reason-codes.md`
 - 动作：
   - 对每个 reason code 写明：触发条件、严重级别、建议动作、是否可自动重试。
-  - 映射到对应命令（`ir validate/diff`、`anchor autofill`、`transform module`、`contract-suite run`）。
+  - 映射到对应命令（`ir validate/diff`、`transform module`、`contract-suite run`）以及已删除 anchor route 的负向守卫。
 - 验收：
   - `public-api.md` 可追溯到完整枚举。
   - 评审时无需猜测 reason code 语义。

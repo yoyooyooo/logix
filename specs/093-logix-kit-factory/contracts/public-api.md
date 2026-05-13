@@ -34,7 +34,7 @@
 
 输入：
 
-- `module`：ModuleTag/Module/ModuleImpl/ModuleRuntime（必须能解析 moduleId；禁止只读 ModuleHandle）
+- `module`：ModuleTag/Module/ProgramRuntimeBlueprint/ModuleRuntime（必须能解析 moduleId；禁止只读 ModuleHandle）
 - `readQuery`：`ReadQueryInput<S, V>`（必须稳定：禁止 `unstableSelectorId`）
 
 输出：`InputKit<V>`（`store = ExternalStore.fromModule(...)`）。
@@ -47,14 +47,14 @@
 
 输出等价于：
 
-- `StateTrait.externalStore({ store: inputKit.store, ...opts })`
+- `FieldKernel.externalStore({ store: inputKit.store, ...opts })`
 
 并继承 external-owned 写入纪律。
 
 关于 `opts.meta`：
 
 - `meta` 只承诺“可被裁剪为 Slim JSON 并进入 Root IR”，不承诺原样保留；
-- Static IR 导出会按 `packages/logix-core/src/internal/state-trait/meta.ts` 的 `sanitize` 白名单裁剪：
+- Static IR 导出会按 `packages/logix-core/src/internal/state-field/meta.ts` 的 `sanitize` 白名单裁剪：
   - 支持：`label/description/tags/group/docsUrl/cacheGroup/canonical`
 - `annotations` 仅保留 `x-*` keys，且 value 必须是 JsonValue（函数/闭包会被裁剪掉）
 

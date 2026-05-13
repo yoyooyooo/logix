@@ -1,6 +1,6 @@
 # Research: 063 logix-galaxy-api 登录与用户模块
 
-**Feature**: `specs/063-galaxy-user-auth/spec.md`  
+**Feature**: `specs/063-galaxy-user-auth/spec.md`
 **Date**: 2025-12-30
 
 ## Decision 1：BetterAuth-first（用现成能力替代自研安全内核）
@@ -33,7 +33,7 @@
 ## Decision 4：未来 SSO（Casdoor）路径：优先“仍用 BetterAuth”，而不是替换
 
 - **Decision**：为未来企业 SSO 预留两条路径：
-  1) **优先路径**：通过 BetterAuth 的 `genericOAuth` 插件接入 OIDC（Casdoor 属于典型 OIDC 场景），在不替换 BetterAuth 的前提下实现 “SSO + 本地账号并存”；  
+  1) **优先路径**：通过 BetterAuth 的 `genericOAuth` 插件接入 OIDC（Casdoor 属于典型 OIDC 场景），在不替换 BetterAuth 的前提下实现 “SSO + 本地账号并存”；
   2) 备选路径：若未来需要完全替换 BetterAuth，则保持 app 内的 `AuthService` Tag 接口不变，新增 `CasdoorAuthServiceLive` 作为可替换实现。
 - **Rationale**：
   - “先快起来 + 以后好切换”：更可能的现实是“继续用 BetterAuth 叠加 OIDC”，而不是完全替换；但架构上仍留出替换口。

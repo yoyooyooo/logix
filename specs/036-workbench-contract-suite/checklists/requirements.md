@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Workbench Contract Suite（031-035 统一验收与治理入口）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-25  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-25
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality

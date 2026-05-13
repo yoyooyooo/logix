@@ -8,7 +8,7 @@
 
 1. 检查所有 `core-ng` 或非 `core` kernel 运行入口。
 2. 如果业务确实需要“先跑通再收敛”，显式注入：
-   - `Logix.Kernel.fullCutoverGateModeLayer('trial')`
+   - `CoreKernel.fullCutoverGateModeLayer('trial')`
 3. 更新失败处理逻辑，读取 `FullCutoverGateFailed` 的：
    - `reason`
    - `evidence.missingServiceIds`

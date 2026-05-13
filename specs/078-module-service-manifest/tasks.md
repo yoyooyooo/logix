@@ -4,7 +4,7 @@ description: "Task list for 078-module-service-manifest (servicePorts in ModuleM
 
 # Tasks: Module↔Service 关系纳入 Manifest IR（078：servicePorts）
 
-**Input**: `specs/078-module-service-manifest/spec.md`  
+**Input**: `specs/078-module-service-manifest/spec.md`
 **Prerequisites**: `specs/078-module-service-manifest/plan.md`（required）, `specs/078-module-service-manifest/research.md`, `specs/078-module-service-manifest/data-model.md`, `specs/078-module-service-manifest/contracts/`, `specs/078-module-service-manifest/quickstart.md`
 
 **Tests**: 涉及 `packages/logix-core` 的反射/试运行/差异门禁；必须补齐回归防线：确定性（stable sort）、schema/contract 对齐、diff 行为、TrialRun 缺失诊断的端口级定位。
@@ -28,7 +28,7 @@ description: "Task list for 078-module-service-manifest (servicePorts in ModuleM
 
 ## Phase 2: Foundational（ServiceId 单点实现 + 反射导出）
 
-**Checkpoint**: `Reflection.extractManifest` 输出包含 `servicePorts`（稳定排序、JSON-safe），且 `manifestVersion` bump + digest 可门禁化。
+**Checkpoint**: `CoreReflection.extractManifest` 输出包含 `servicePorts`（稳定排序、JSON-safe），且 `manifestVersion` bump + digest 可门禁化。
 
 - [ ] T005 定义 `ServiceId` 单点 helper（按 078 contract 优先级）`packages/logix-core/src/internal/serviceId.ts`
 - [ ] T006 [P] 对齐现有 Tag→string 逻辑：让 `internal/root.ts::tagIdOf` 复用 `serviceIdOf` `packages/logix-core/src/internal/root.ts`
@@ -43,7 +43,7 @@ description: "Task list for 078-module-service-manifest (servicePorts in ModuleM
 
 ## Phase 3: User Story 3 - Diff/Gate（servicePorts 变更可被稳定捕获） (Priority: P2)
 
-**Goal**: `Reflection.diffManifest` 对 `servicePorts` 的新增/删除/变更给出稳定、可机器解析的差异项。  
+**Goal**: `CoreReflection.diffManifest` 对 `servicePorts` 的新增/删除/变更给出稳定、可机器解析的差异项。
 **Independent Test**: before/after manifests 的 port/serviceId 变化能输出明确 changes（含 pointer 与 details），verdict 可门禁化。
 
 - [ ] T013 [US3] 在 manifest diff 中新增 `servicePorts` 比较逻辑（新增/删除/ServiceId 变更/端口名变更）`packages/logix-core/src/internal/reflection/diff.ts`
@@ -53,19 +53,19 @@ description: "Task list for 078-module-service-manifest (servicePorts in ModuleM
 
 ## Phase 4: User Story 2 - Trial Run 对齐（端口级缺失定位） (Priority: P1)
 
-**Goal**: 试运行不依赖业务代码路径，也能给出 `moduleId + port + serviceId` 的缺失诊断。  
+**Goal**: 试运行不依赖业务代码路径，也能给出 `moduleId + port + serviceId` 的缺失诊断。
 **Independent Test**: 模块声明 services 但未提供 Layer 时，TrialRun 报告能给出缺失端口清单；提供 Layer 后缺失清单为空；重复运行结果稳定。
 
 - [ ] T015 [US2] 在 trial-run 装配阶段执行“声明端口 → root-level resolve”检查并产出 `servicePortsAlignment`（区分 required/optional，JSON-safe）`packages/logix-core/src/internal/observability/trialRunModule.ts`
-- [ ] T016 [P] [US2] 单测：缺失 required 服务时 `servicePortsAlignment.missingRequired` 以端口级定位 `packages/logix-core/test/observability/Observability.trialRunModule.servicePortsAlignment.missing-required.test.ts`
-- [ ] T017 [P] [US2] 单测：缺失 optional 服务不导致 hard-fail，但报告 `missingOptional`（若实现）`packages/logix-core/test/observability/Observability.trialRunModule.servicePortsAlignment.missing-optional.test.ts`
-- [ ] T018 [P] [US2] 单测：提供 Layer 后 `missingRequired/missingOptional` 为空且输出稳定 `packages/logix-core/test/observability/Observability.trialRunModule.servicePortsAlignment.provided.test.ts`
+- [ ] T016 [P] [US2] 单测：缺失 required 服务时 `servicePortsAlignment.missingRequired` 以端口级定位 `packages/logix-core/test/observability/Runtime.trial.servicePortsAlignment.missing-required.test.ts`
+- [ ] T017 [P] [US2] 单测：缺失 optional 服务不导致 hard-fail，但报告 `missingOptional`（若实现）`packages/logix-core/test/observability/Runtime.trial.servicePortsAlignment.missing-optional.test.ts`
+- [ ] T018 [P] [US2] 单测：提供 Layer 后 `missingRequired/missingOptional` 为空且输出稳定 `packages/logix-core/test/observability/Runtime.trial.servicePortsAlignment.provided.test.ts`
 
 ---
 
 ## Phase 5: Devtools（解释入口与 UI 展示） (Priority: P2)
 
-- [ ] T019 定义 dev-only 查询入口（moduleId→servicePorts；禁止替代 Manifest/TrialRun 工件）`packages/logix-core/src/Debug.ts`
+- [ ] T019 定义 dev-only 查询入口（moduleId→servicePorts；禁止替代 Manifest/TrialRun 工件）`packages/logix-core/src/internal/debug-api.ts`
 - [ ] T020 在 Devtools UI 展示 servicePorts（模块视图 + ServiceId 聚合视图）`packages/logix-devtools-react/src/**`
 
 ---

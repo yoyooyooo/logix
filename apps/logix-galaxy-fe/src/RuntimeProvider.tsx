@@ -1,16 +1,13 @@
 import type React from 'react'
 import * as Logix from '@logixjs/core'
-import { ReactPlatformLayer, RuntimeProvider } from '@logixjs/react'
-import { Layer } from 'effect'
+import { RuntimeProvider } from '@logixjs/react'
 import { SandboxClientLayer } from '@logixjs/sandbox'
-import { GalaxyRootModule } from './galaxy/root.module'
+import { GalaxyRootProgram } from './galaxy/root.module'
 
 // Minimal runtime layer that wires Logix Debug tooling and Sandbox client.
-const ClientLayer = SandboxClientLayer()
+const AppLayer = SandboxClientLayer()
 
-const AppLayer = Layer.mergeAll(ClientLayer, ReactPlatformLayer) as Layer.Layer<any, never, never>
-
-const appRuntime = Logix.Runtime.make(GalaxyRootModule, {
+const appRuntime = Logix.Runtime.make(GalaxyRootProgram, {
   label: 'logix-galaxy-fe',
   ...(import.meta.env.DEV ? ({ devtools: true } as const) : {}),
   debug: import.meta.env.DEV ? { mode: 'dev', devConsole: 'diagnostic' } : { mode: 'prod' },

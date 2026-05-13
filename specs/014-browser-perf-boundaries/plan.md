@@ -1,6 +1,6 @@
 # Implementation Plan: 014 浏览器压测基线与性能边界地图
 
-**Branch**: `[014-browser-perf-boundaries]` | **Date**: 2025-12-16 | **Spec**: [spec.md](./spec.md)  
+**Branch**: `[014-browser-perf-boundaries]` | **Date**: 2025-12-16 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/specs/014-browser-perf-boundaries/spec.md`
 
 **Note**: This template is copied into `specs/[###-feature-name]/plan.md` by
@@ -20,12 +20,12 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.8.2（ESM） + Node.js 20+  
-**Primary Dependencies**: `effect@^3.19.8`、`@logixjs/core`、`@logixjs/react`、Vitest 4（`@vitest/browser` + `@vitest/browser-playwright` + Playwright Chromium）、`vitest-browser-react`  
-**Storage**: 运行时无持久化；基线/报告以仓库内文件固化（`specs/014-browser-perf-boundaries/perf/*`）  
-**Testing**: Vitest browser mode（集成测试主跑道；不使用 watch）；可选 Node preflight（contract/schema + budget 语义回归，默认不作为 CI 门禁，仅在显式开关启用时运行，例如 `LOGIX_PREFLIGHT=1`）；必要时辅以少量 Node micro-benchmark（仅作辅证）  
-**Target Platform**: modern browsers（默认 Chromium headless）+ Node.js 20+（采集/对比脚本）  
-**Project Type**: pnpm workspace monorepo  
+**Language/Version**: TypeScript 5.8.2（ESM） + Node.js 20+
+**Primary Dependencies**: `effect@^3.19.8`、`@logixjs/core`、`@logixjs/react`、Vitest 4（`@vitest/browser` + `@vitest/browser-playwright` + Playwright Chromium）、`vitest-browser-react`
+**Storage**: 运行时无持久化；基线/报告以仓库内文件固化（`specs/014-browser-perf-boundaries/perf/*`）
+**Testing**: Vitest browser mode（集成测试主跑道；不使用 watch）；可选 Node preflight（contract/schema + budget 语义回归，默认不作为 CI 门禁，仅在显式开关启用时运行，例如 `LOGIX_PREFLIGHT=1`）；必要时辅以少量 Node micro-benchmark（仅作辅证）
+**Target Platform**: modern browsers（默认 Chromium headless）+ Node.js 20+（采集/对比脚本）
+**Project Type**: pnpm workspace monorepo
 **Performance Goals**:
 
 - 报告必须同时支持：
@@ -62,7 +62,7 @@
 ### Answers (Pre-Implementation)
 
 - **Intent → Flow/Logix → Code → Runtime**：014 属于“回归防线基础设施”，目标是让任何 runtime 改动都能通过同一套浏览器端长链路用例输出可对比证据；不引入第二套运行时真相源。
-- **Docs-first & SSoT**：矩阵与报告 schema 的 SSoT 统一为 `@logixjs/perf-evidence/assets/*`（物理：`.codex/skills/logix-perf-evidence/assets/*`）；runtime 文档中已有的浏览器基线（watcher）明确作为其中一个维度示例（已互引）。
+- **Docs-first & SSoT**：矩阵与报告 schema 的 SSoT 统一为 `@logixjs/perf-evidence/assets/*`（物理：`packages/logix-perf-evidence/assets/*`）；runtime 文档中已有的浏览器基线（watcher）明确作为其中一个维度示例（已互引）。
 - **Contracts**：本特性的“结构化报告 JSON”本身是对外契约的一部分（字段语义稳定、可序列化）；后续以 feature 内 schema 文件固化并版本化。
 - **Performance budget**：预算以绝对 ms 与相对 ratio 两类表达，并要求在报告中给出阈值与越界档位定位；Before/After 对照以同机同配置为主。
 - **Negative boundary map**：将负优化对抗场景纳入矩阵，并要求输出资源上界证据（cache hit/miss/evict/invalidate/cut-off 等；不可得则显式标注）。
@@ -102,7 +102,7 @@ packages/logix-react/
     ├── watcher-browser-perf.test.tsx        # 已有维度示例（watcher 延迟基线）
     └── perf-boundaries/                     # 014 的矩阵用例（计划新增）
 
-.codex/skills/logix-perf-evidence/
+packages/logix-perf-evidence/
 ├── assets/matrix.json                       # 维度矩阵（代码侧 SSoT；供 browser 用例 import）
 ├── assets/schemas/perf-report.schema.json   # 报告 schema（代码侧 SSoT）
 ├── assets/schemas/perf-diff.schema.json     # diff schema（代码侧 SSoT）
@@ -116,7 +116,7 @@ docs/ssot/runtime/
     └── impl/04-watcher-performance-and-flow.md # 互引 014（已补）
 ```
 
-**Structure Decision**: 014 的可执行用例优先落在 `packages/logix-react/test/browser/*`（真实浏览器 + 可挂载最小 React host）；采集/对比入口统一收敛到 `.codex/skills/logix-perf-evidence/*`，证据归档仍落在各自 feature 的 `specs/<id>/perf/*`（014 也不例外）。
+**Structure Decision**: 014 的可执行用例优先落在 `packages/logix-react/test/browser/*`（真实浏览器 + 可挂载最小 React host）；采集/对比入口统一收敛到 `packages/logix-perf-evidence/*`，证据归档仍落在各自 feature 的 `specs/<id>/perf/*`（014 也不例外）。
 
 ## Implementation Strategy（分阶段落地与交付物）
 

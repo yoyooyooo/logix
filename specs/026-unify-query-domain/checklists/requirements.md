@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Query 收口到 @logixjs/query（与 Form 同形）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-23  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-23
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality

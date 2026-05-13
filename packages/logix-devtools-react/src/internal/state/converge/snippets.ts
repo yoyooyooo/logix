@@ -1,33 +1,33 @@
 import type { ConvergeActionSnippet } from './model.js'
 // Snippet text only: runtime hot-switch APIs are now effectful and should be executed via Effect.runPromise / yield*.
 
-export type TraitConvergeRequestedMode = 'auto' | 'full' | 'dirty'
+export type FieldConvergeRequestedMode = 'auto' | 'full' | 'dirty'
 
-export type TraitConvergeOverridePatch = {
-  readonly traitConvergeMode?: TraitConvergeRequestedMode
-  readonly traitConvergeBudgetMs?: number
-  readonly traitConvergeDecisionBudgetMs?: number
+export type FieldConvergeOverridePatch = {
+  readonly fieldConvergeMode?: FieldConvergeRequestedMode
+  readonly fieldConvergeBudgetMs?: number
+  readonly fieldConvergeDecisionBudgetMs?: number
 }
 
 const stableStringify = (value: unknown): string => JSON.stringify(value, null, 2)
 
-export const makeTraitConvergeOverrideSnippets = (params: {
+export const makeFieldConvergeOverrideSnippets = (params: {
   readonly moduleId: string
-  readonly patch: TraitConvergeOverridePatch
+  readonly patch: FieldConvergeOverridePatch
 }): ReadonlyArray<ConvergeActionSnippet> => {
   const moduleId = params.moduleId
 
   const patch = Object.fromEntries(
     Object.entries(params.patch).filter(([, v]) => v !== undefined),
-  ) as TraitConvergeOverridePatch
+  ) as FieldConvergeOverridePatch
 
   const providerOverride = `Logix.Runtime.stateTransactionOverridesLayer(${stableStringify({
-    traitConvergeOverridesByModuleId: {
+    fieldConvergeOverridesByModuleId: {
       [moduleId]: patch,
     },
   })})`
 
-  const moduleOverride = `await Effect.runPromise(Logix.Runtime.setTraitConvergeOverride(runtime, ${stableStringify(moduleId)}, ${stableStringify(
+  const moduleOverride = `await Effect.runPromise(Logix.Runtime.setFieldConvergeOverride(runtime, ${stableStringify(moduleId)}, ${stableStringify(
     patch,
   )}))`
 

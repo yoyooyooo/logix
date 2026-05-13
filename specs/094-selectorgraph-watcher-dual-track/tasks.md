@@ -1,7 +1,7 @@
 # Tasks: SelectorGraph Watcher Dual Track（O-001）
 
-**Input**: `specs/094-selectorgraph-watcher-dual-track/spec.md`, `specs/094-selectorgraph-watcher-dual-track/plan.md`  
-**Prerequisites**: `spec.md`（required）, `plan.md`（required）  
+**Input**: `specs/094-selectorgraph-watcher-dual-track/spec.md`, `specs/094-selectorgraph-watcher-dual-track/plan.md`
+**Prerequisites**: `spec.md`（required）, `plan.md`（required）
 **Tests**: REQUIRED（runtime 订阅路径改动）
 
 ## Format: `[ID] [P?] [Story] Description with file path`

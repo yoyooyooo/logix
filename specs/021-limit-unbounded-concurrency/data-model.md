@@ -1,7 +1,7 @@
 # Data Model: 并发护栏与预警（限制无上限并发）
 
-**Date**: 2025-12-21  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/021-limit-unbounded-concurrency/spec.md`
+**Date**: 2025-12-21
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/021-limit-unbounded-concurrency/spec.md`
 
 ## Entities
 

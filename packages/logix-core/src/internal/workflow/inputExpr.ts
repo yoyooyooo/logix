@@ -1,4 +1,4 @@
-import { isJsonValue } from '../observability/jsonValue.js'
+import { isJsonValue } from '../protocol/jsonValue.js'
 import { makeWorkflowError } from './errors.js'
 import type { InputExprV1 } from './model.js'
 

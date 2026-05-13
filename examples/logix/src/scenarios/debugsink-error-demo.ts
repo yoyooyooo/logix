@@ -1,15 +1,17 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 /**
  * @scenario DebugSink · Logic 错误观测示例
  * @description
- *   演示如何通过 DebugSink 观测 Module 逻辑中的错误：
+ *   演示如何通过 DebugSink 观测 Program 逻辑中的错误：
  *     - 自定义 DebugSink，将事件打印到控制台；
  *     - 构造一个会失败的 Logic，触发 lifecycle:error 事件；
- *     - 使用 ModuleImpl.layer + Effect.provide 将 DebugSink 注入运行时。
+ *     - 使用 programLayer(Program) + Effect.provide 将 DebugSink 注入运行时。
  */
 
 import { Effect, Schema } from 'effect'
 import { fileURLToPath } from 'node:url'
 import * as Logix from '@logixjs/core'
+import { programLayer } from '../runtime/programLayer.js'
 
 // ---------------------------------------------------------------------------
 // Module：简单计数模块，带一个会触发错误的 Action
@@ -23,13 +25,13 @@ const ErrorActionMap = {
   triggerError: Schema.Void,
 }
 
-export const ErrorDef = Logix.Module.make('DebugDemoModule', {
+export const ErrorModule = Logix.Module.make('DebugDemoModule', {
   state: ErrorStateSchema,
   actions: ErrorActionMap,
 })
 
 // Logic：监听 triggerError，并返回一个失败的 Effect
-export const ErrorLogic = ErrorDef.logic(($) =>
+export const ErrorLogic = ErrorModule.logic('error-logic', ($) =>
   Effect.gen(function* () {
     // 在 run 段监听 triggerError，避免 setup 阶段触发 Phase Guard
     yield* $.onAction('triggerError').run(() =>
@@ -40,18 +42,17 @@ export const ErrorLogic = ErrorDef.logic(($) =>
   }),
 )
 
-export const ErrorModule = ErrorDef.implement({
+export const ErrorProgram = Logix.Program.make(ErrorModule, {
   initial: { count: 0 },
   logics: [ErrorLogic],
 })
-export const ErrorImpl = ErrorModule.impl
 
 // ---------------------------------------------------------------------------
 // DebugSink 实现：把所有 Debug.Event 打印到控制台
 // ---------------------------------------------------------------------------
 
-const consoleDebugSink: Logix.Debug.Sink = {
-  record: (event: Logix.Debug.Event) =>
+const consoleDebugSink: CoreDebug.Sink = {
+  record: (event: CoreDebug.Event) =>
     Effect.sync(() => {
       // 这里只做简单打印，真实应用可以写入文件或上报到监控系统。
       // eslint-disable-next-line no-console
@@ -66,12 +67,12 @@ const consoleDebugSink: Logix.Debug.Sink = {
 export const main = Effect.gen(function* () {
   const program = Effect.provideService(
     Effect.gen(function* () {
-      const runtime = yield* Effect.service(ErrorDef.tag).pipe(Effect.orDie)
+      const runtime = yield* Effect.service(ErrorModule.tag).pipe(Effect.orDie)
 
       yield* runtime.dispatch({ _tag: 'triggerError', payload: undefined })
       yield* Effect.sleep(50)
-    }).pipe(Effect.provide(ErrorImpl.layer)),
-    Logix.Debug.internal.currentDebugSinks,
+    }).pipe(Effect.provide(programLayer(ErrorProgram))),
+    CoreDebug.internal.currentDebugSinks,
     [consoleDebugSink],
   ) as Effect.Effect<void, never, never>
 

@@ -1,12 +1,13 @@
 import { test, expect } from 'vitest'
-import { createSandboxClient, type MockManifest } from '@logixjs/sandbox'
+import { createSandboxClient } from '../../src/Client.js'
+import type { MockManifest } from '../../src/Types.js'
 import { startKernelMock } from './msw/kernel-mock.js'
 
 const hasWorker = typeof Worker !== 'undefined'
 const testFn = hasWorker ? test : test.skip
 
 testFn(
-  'sandbox worker emits http/ui/spy/logix-debug traces',
+  'sandbox worker emits http/ui/spy traces',
   async () => {
     const kernelUrl = `${window.location.origin}/sandbox/logix-core.js`
 
@@ -25,9 +26,6 @@ testFn(
       import * as Logix from "@logixjs/core";
 
       const program = Effect.gen(function* () {
-        // Trigger a Debug trace:* event; the worker maps it to TRACE(kind:"logix-debug").
-        yield* Logix.Debug.record({ type: "trace:demo", payload: { foo: "bar" } });
-
         // Trigger UI_INTENT
         const bridge = (globalThis as any).logixSandboxBridge;
         if (bridge && typeof bridge.emitUiIntent === "function") {
@@ -91,9 +89,6 @@ testFn(
     expect(spyTrace).toBeDefined()
     expect((spyTrace!.attributes as any).target).toBe('sdk-demo')
 
-    const logixDebugTrace = byKind('logix-debug')
-    expect(logixDebugTrace).toBeDefined()
-    expect((logixDebugTrace!.attributes as any).type).toBe('trace:demo')
   },
   60000,
 )

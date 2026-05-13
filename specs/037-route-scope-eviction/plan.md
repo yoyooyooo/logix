@@ -1,6 +1,6 @@
 # Implementation Plan: 037 限定 scope 的全局（路由 Host(imports) + ModuleScope）
 
-**Branch**: `037-route-scope-eviction` | **Date**: 2025-12-26 | **Spec**: `specs/037-route-scope-eviction/spec.md`  
+**Branch**: `037-route-scope-eviction` | **Date**: 2025-12-26 | **Spec**: `specs/037-route-scope-eviction/spec.md`
 **Input**: `specs/037-route-scope-eviction/spec.md`
 
 ## Summary
@@ -25,12 +25,12 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.x（ESM），Node.js 22.x  
-**Primary Dependencies**: `effect` v3、`@logixjs/core`、`@logixjs/react`  
-**Storage**: N/A  
-**Testing**: Vitest（`vitest run`）+ `@testing-library/react` + jsdom（React 19）  
-**Target Platform**: 浏览器（React 适配）+ Node.js（测试）  
-**Project Type**: pnpm workspace monorepo  
+**Language/Version**: TypeScript 5.x（ESM），Node.js 22.x
+**Primary Dependencies**: `effect` v3、`@logixjs/core`、`@logixjs/react`
+**Storage**: N/A
+**Testing**: Vitest（`vitest run`）+ `@testing-library/react` + jsdom（React 19）
+**Target Platform**: 浏览器（React 适配）+ Node.js（测试）
+**Project Type**: pnpm workspace monorepo
 **Performance Goals**:
   - 不回退现有 `useModule(Impl)` 的 acquire/retain/release 热路径：Scope 工具必须是薄封装，不在 render 热路径引入额外 O(n) 工作。
   - ScopeRegistry/Bridge 属于低频边界操作：目标是“可解释 + 可预测”，不追求极致性能，但不得引入明显的额外分配或泄漏风险。
@@ -103,7 +103,7 @@ apps/docs/content/docs/                                           # 用户文档
 
 ### Phase 1：`@logixjs/react` Scope 工具（实现与测试）
 
-- 提供一个 public API：输入 Host ModuleImpl（+ defaults），产出 `{ Provider, use, useImported, Context }`。
+- 提供一个 public API：输入 Host ProgramRuntimeBlueprint（+ defaults），产出 `{ Provider, use, useImported, Context }`。
 - Provider 行为：
   - 内部创建/持有 Host 实例；允许传入 `options` 覆盖（含 stable scopeId 与 `gcTime`）。
   - 若缺少 Provider，`use()` 必须抛出可读错误。

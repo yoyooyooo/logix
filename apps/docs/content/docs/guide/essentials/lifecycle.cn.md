@@ -1,64 +1,34 @@
 ---
 title: Lifecycle
-description: 理解模块生命周期钩子以及它们与 Runtime/React 的关系。
+description: 通过 scope、启动阶段和实例 owner 理解生命周期钩子。
 ---
 
-Logix Module 的生命周期与 Effect 的 `Scope` 紧密绑定。
+Logix 的生命周期由 `Scope` 决定。
 
-### 适合谁
+当一个 scope 关闭时：
 
-- 已经能编写基本 Logic，希望正确处理“初始化 / 清理 / 错误上报”等生命周期问题；
-- 在 React 项目里使用 Logix，想搞清楚 Module 与组件挂载/卸载之间的对应关系。
+- 挂在该 scope 上的长生命周期 fiber 会被中断
+- destroy 或 finalizer 相关工作会执行
 
-### 前置知识
+## 常见 scope 边界
 
-- 了解 Module / Logic 的基本概念；
-- 读过 [Flows & Effects](./flows-and-effects)，知道什么是长逻辑 Watcher。
+1. `Runtime` scope
+2. 局部模块 scope
+3. provider layer scope
 
-### 读完你将获得
+这些边界共同决定 logic 何时启动、停止和清理。
 
-- 知道何时应该在 `onInit` 里做初始化，何时用 Watcher 监听 Action/State；
-- 理解 `onDestroy` 与 React 卸载之间的关系，以及它适合做哪些事情；
-- 能为模块设计合理的“启动/销毁”和错误上报策略。
+## 主要钩子
 
-## Scope 速记（决定“什么时候被掐断”）
+### `onInitRequired`
 
-Logix 里大多数“逻辑什么时候生效 / 什么时候停止 / 什么时候触发清理”，本质都是在回答：**这段逻辑挂在哪个 `Scope` 上**。
-
-- 当 `Scope` 被关闭时：
-  - 该 `Scope` 上的长生命周期 Fiber 会被中断；
-  - `$.lifecycle.onDestroy(...)` / `Effect.addFinalizer(...)` 才会触发（用于收尾清理）。
-
-常见三类 `Scope`：
-
-1. **Runtime Scope（全局）**：由 `Logix.Runtime.make(...)` 创建；当你调用 `runtime.dispose()`（或 Node/CLI 的 `Runtime.runProgram/openProgram` 关闭 `ctx.scope`）时关闭。
-2. **局部模块 Scope（Local Module）**：由 `useModule(Impl)` / `useLocalModule(Module)` / `ModuleScope` 创建；当最后一个持有者卸载后（可能有 `gcTime` 延迟）关闭。
-3. **Provider layer Scope（局部 Env）**：由 `RuntimeProvider.layer` 创建；在对应 Provider 卸载或 `layer` 变更时关闭。
-
-> 提示：`Effect.addFinalizer(...)` 只绑定“当前 Scope 关闭”，不会因为某个 Watcher 自己结束就立刻触发；如果你需要“这段 Effect 结束就清理”，用 `Effect.acquireRelease` / `Effect.ensuring`。
-
-## 主要阶段
-
-1.  **Mount (Init)**: 模块被挂载时。
-2.  **Running**: 模块运行中。
-3.  **Unmount (Destroy)**: 模块被卸载时。
-
-## 钩子函数
-
-### `onInitRequired` / `onInit`
-
-必需初始化：决定实例可用性。适合做“必须先完成才能进入业务”的初始化请求（例如加载配置）。
-
-> `onInit` 是 legacy alias，语义等同于 `onInitRequired`。
-
-提示：`onInitRequired/onInit` 会在 Watcher 启动前执行，因此这里不适合 `dispatch` 一个“依赖 `$.onAction/$.onState` 处理”的 Action；如果想复用某段逻辑，建议把它提取成函数，并在 `onInitRequired` 与对应 Watcher 中分别调用。
+`onInitRequired` 适合放“实例可用前必须完成”的初始化工作。
 
 ```ts
 $.lifecycle.onInitRequired(
   Effect.gen(function* () {
-    yield* Effect.log('Module mounted')
-    yield* $.state.mutate((d) => {
-      d.ready = true
+    yield* $.state.mutate((draft) => {
+      draft.ready = true
     })
   }),
 )
@@ -66,51 +36,33 @@ $.lifecycle.onInitRequired(
 
 ### `onStart`
 
-启动任务：不阻塞实例可用性，适合启动轮询/订阅等后台行为；失败会进入同一条错误兜底链路。
-
-```ts
-$.lifecycle.onStart(Effect.log('Start background tasks'))
-```
+`onStart` 适合放不阻塞可用性的后台工作。
 
 ### `onDestroy`
 
-模块卸载时触发。适合做清理工作（尽管 Effect Scope 通常会自动处理）。
-
-```ts
-$.lifecycle.onDestroy(Effect.log('Module unmounted'))
-```
+`onDestroy` 适合放实例关闭时的清理逻辑。
 
 ### `onError`
 
-当后台逻辑发生未捕获错误时触发。
+`onError` 用来处理后台逻辑中的未捕获 runtime defect。
 
-```ts
-$.lifecycle.onError((cause) => Effect.logError('Something went wrong', cause))
-```
+## Logic phases
 
-## 编写 Logic 的启动顺序（避免初始化噪音）
+Logic 分成两个阶段：
 
-Logix 的 Logic 会经历 **setup → run** 两个阶段：return 前的同步调用用于注册生命周期与 reducer，return 的 Effect 才会在 Env 就绪后以长期 Fiber 运行。推荐按以下顺序书写，避免在 Env 未就绪时读取 Service：
+- declaration phase
+- run phase
 
-1. 在 builder 顶部注册 `$.lifecycle.onError/onInit`；
-2. 如需动态 reducer，随后调用 `$.reducer`（确保目标 action 尚未 dispatch 过）；
-3. 在 `return Effect.gen(...)` 内挂载 `$.onAction/$.onState` 等 Watcher/Flow，并在此处读取 Env/Service。
+生命周期钩子在 declaration phase 注册。
+watcher、flow 和依赖读取在 run phase 执行。
 
-在开发模式下，如果在 setup 段访问 `$.use/$.onAction/$.onState`，或在 builder 顶层直接 `Effect.run*`，Runtime 会给出 `logic::invalid_phase` / `logic::setup_unsafe_effect` 诊断提示。
+## React 对应关系
 
-## React 集成
+- 通过 `useModule(ModuleTag)` 获取的共享实例，会跟随承载它的 runtime 生命周期
+- 通过 `useModule(Program, options?)` 获取的局部实例，会跟随对应子树 owner 的生命周期
+- `useLocalModule(...)` 这类高级局部路线，继续遵循组件局部 owner
 
-在 React 中，常见有两类生命周期：
+## 相关页面
 
-- **全局模块（`useModule(Tag)`）**：从 Runtime 里解析同一个 ModuleRuntime 实例；不会因为组件卸载而销毁，只有 `runtime.dispose()`（或 Node/CLI 关闭 `ctx.scope`）才会触发 `onDestroy`。
-- **局部模块（`useModule(Impl)` / `useLocalModule(Module)`）**：按子树/`key` 创建实例；当最后一个持有者卸载后（可能有 `gcTime` 延迟）会关闭 Scope 并触发 `onDestroy`。
-
-## 下一步
-
-恭喜你完成了 Essentials 必备概念的学习！接下来可以：
-
-- 进入核心概念深入学习：[描述模块](../learn/describing-modules)
-- 学习高级主题：[Suspense & Async](../advanced/suspense-and-async)
-- 学习错误处理：[错误处理](../advanced/error-handling)
-- 补齐 Scope 心智模型：[Scope 与资源生命周期](../advanced/scope-and-resource-lifetime)
-- 查看 React 集成指南：[React 集成](../recipes/react-integration)
+- [Flows & Effects](./flows-and-effects)
+- [React integration](./react-integration)

@@ -9,7 +9,7 @@ type SpecScenario = SpecStory['scenarios'][number]
 type SpecStep = SpecScenario['steps'][number]
 
 export function SpecNavigation() {
-  const runtime: SandboxRuntime = useModule(SandboxDef)
+  const runtime: SandboxRuntime = useModule(SandboxDef.tag)
   const specFeatures = useSelector(runtime, (s) => s.specFeatures)
   const selectedFeatureId = useSelector(runtime, (s) => s.selectedFeatureId)
   const selectedStoryId = useSelector(runtime, (s) => s.selectedStoryId)

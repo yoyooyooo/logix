@@ -1,5 +1,5 @@
 import * as Logix from '@logixjs/core'
-import { StateTrait } from '@logixjs/core'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { Schema } from 'effect'
 
 // 1) State Schema：包含原始字段 + computed 字段 + 资源字段
@@ -26,38 +26,38 @@ export const CounterStateSchema = Schema.Struct({
 
 export type CounterState = Schema.Schema.Type<typeof CounterStateSchema>
 
-// 2) Actions：这里只关注 traits 示例，保持最小集合
+// 2) Actions：这里只关注字段行为示例，保持最小集合
 export const CounterActions = {
   increment: Schema.Void,
   loadProfile: Schema.String, // userId
 }
 
-// 3) Traits：使用 StateTrait.from(StateSchema) 声明 computed / source / link
-export const CounterTraits = StateTrait.from(CounterStateSchema)({
+// 3) Field declarations：使用 repo-internal field declarations 声明 computed / source
+export const CounterFields = FieldContracts.fieldFrom(CounterStateSchema)({
   // sum 是 a + b 的派生字段
-  sum: StateTrait.computed({
+  sum: FieldContracts.fieldComputed({
     deps: ['a', 'b'],
     get: (a, b) => a + b,
   }),
 
   // profileResource 代表 "user/profile" 资源
-  profileResource: StateTrait.source({
+  profileResource: FieldContracts.fieldSource({
     deps: ['profile.id'],
     resource: 'user/profile',
     key: (profileId) => ({ userId: profileId }),
   }),
 
-  // profile.name 跟随 profileResource.data.name（内部字段联动）
-  'profile.name': StateTrait.link({
-    from: 'profileResource.data.name',
+  // profile.name 跟随 profileResource.data.name（内部字段派生）
+  'profile.name': FieldContracts.fieldComputed({
+    deps: ['profileResource.data.name'],
+    get: (profileName) => String(profileName ?? ''),
   }),
 })
 
-// 4) Module 图纸：state + actions + traits
-export const CounterWithProfileDef = Logix.Module.make('CounterWithProfile', {
+// 4) Module 图纸：state + actions + field declarations
+export const CounterWithProfile = Logix.Module.make('CounterWithProfile', {
   state: CounterStateSchema,
   actions: CounterActions,
-  traits: CounterTraits,
 })
 
-export const CounterWithProfile = CounterWithProfileDef
+FieldContracts.withModuleFieldDeclarations(CounterWithProfile, CounterFields)

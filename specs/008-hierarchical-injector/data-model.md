@@ -195,11 +195,11 @@ type LinkHandle = {
   readonly actions: Record<string, (payload: any) => Effect.Effect<void, any, any>>
 }
 
-// key 来自 Module.id（字符串），Link.make 会把 modules 变为 record 并注入到逻辑中
+// key 来自 Module.id（字符串），orchestration link alias 会把 modules 变为 record 并注入到逻辑中
 type LinkHandles = Record<string, LinkHandle>
 ```
 
 语义边界：
 
 - `$.use(ModuleTag)`：用于“父模块实例 scope 下访问 imports 子模块”（strict 默认）。
-- `Link.make`：用于“显式跨模块胶水逻辑/IR 承载”（process 形式）；它并不替代 imports 关系，也不用于实例选择。
+- `orchestration link alias`：用于“显式跨模块胶水逻辑/IR 承载”（process 形式）；它并不替代 imports 关系，也不用于实例选择。

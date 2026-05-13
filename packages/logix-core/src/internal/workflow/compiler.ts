@@ -1,5 +1,5 @@
 import { fnv1a32, stableStringify } from '../digest.js'
-import { isJsonValue, projectJsonValue, type JsonValue } from '../observability/jsonValue.js'
+import { isJsonValue, projectJsonValue, type JsonValue } from '../protocol/jsonValue.js'
 import { makeWorkflowError } from './errors.js'
 import type {
   InputExprV1,
@@ -581,7 +581,7 @@ export const compileWorkflowStaticIrV1 = (args: {
     meta,
   } as const
 
-  const digest = makeDigest('workflow_ir_v1', irNoDigest)
+  const digest = makeDigest('control_program_ir_v1', irNoDigest)
 
   return {
     ...irNoDigest,

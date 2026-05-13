@@ -37,13 +37,13 @@
 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-- `Intent → Flow/Logix → Code → Runtime` 映射：Intent/交互（高频输入/联动）→ Flow/Logix（dispatch + traits converge/validate）→ Code（`ModuleRuntime`/`StateTransaction`/traits + React 外部订阅）→ Runtime（txnQueue 串行化 + 0/1 commit + 诊断事件/trace）。
+- `Intent → Flow/Logix → Code → Runtime` 映射：Intent/交互（高频输入/联动）→ Flow/Logix（dispatch + fields converge/validate）→ Code（`ModuleRuntime`/`StateTransaction`/fields + React 外部订阅）→ Runtime（txnQueue 串行化 + 0/1 commit + 诊断事件/trace）。
 - 依赖/对齐的 specs：`specs/009-txn-patch-dirtyset`（dirty-set/patch/trace contract）、`specs/013-auto-converge-planner`（converge 事件与缓存证据）、`specs/016-serializable-diagnostics-and-identity`（可序列化诊断与稳定标识）、`specs/015-devtools-converge-performance`（devtools/性能口径）、`specs/014-browser-perf-boundaries`（浏览器侧基线口径）。
 - Effect/Logix contracts 变更：若新增“显式 batch/低优先级”公共入口或诊断协议，必须同步更新 `docs/ssot/runtime/logix-core/*`（observability/runtime）与 `apps/docs` 对应章节；本计划在 Phase 1 先用 `contracts/*` 固化协议，再进入代码实现。
 - IR & anchors：不引入第二套真相源；以 009 的 unified minimal IR（Static IR + Dynamic Trace）为底座，通过本特性 `contracts/*` 扩展 trace 元信息（commitMode/priority/dirtyAll 等），避免漂移。
 - Deterministic identity：沿用现有 `instanceId + txnSeq` 模型（见 `StateTransaction.beginTransaction`），补齐必要的 `opSeq/eventSeq`（如需）也必须是单调序列且可注入/可复现。
 - Transaction boundary：batch/低优先级只允许包裹“纯同步写入”；任何 IO/async 必须在事务外执行并以独立写回事务表达；对违规路径提供可行动诊断。
-- Performance budget：热路径为 `packages/logix-core/src/internal/runtime/ModuleRuntime.ts`（队列/事务）、`packages/logix-core/src/internal/runtime/core/StateTransaction.ts`（commit/patch/dirty-set）、`packages/logix-core/src/internal/state-trait/{converge,validate}.ts`（派生闭包）；基线复用 `pnpm perf bench:009:txn-dirtyset` + `pnpm perf bench:016:diagnostics-overhead`，并补齐本特性专用测量（任务阶段落地）。
+- Performance budget：热路径为 `packages/logix-core/src/internal/runtime/ModuleRuntime.ts`（队列/事务）、`packages/logix-core/src/internal/runtime/core/StateTransaction.ts`（commit/patch/dirty-set）、`packages/logix-core/src/internal/state-field/{converge,validate}.ts`（派生闭包）；基线复用 `pnpm perf bench:009:txn-dirtyset` + `pnpm perf bench:016:diagnostics-overhead`，并补齐本特性专用测量（任务阶段落地）。
 - Diagnosability：扩展 `state:update` 与相关 trace 事件的结构化字段（Slim/JsonValue），并保证 `diagnostics=off` 路径不引入 O(n) 扫描；事件与字段以 `contracts/*` 为单一事实源。
 - 对外心智模型：在 `quickstart.md` 与后续 `apps/docs` 中固定 ≤5 关键词 + 成本模型 + 优化梯子，并与诊断字段命名一致。
 - Breaking changes：默认不改变既有默认语义；若必须调整公共 API 或事件协议，直接破坏式更新并在 `tasks.md` 阶段补齐迁移说明（不做兼容层）。
@@ -73,8 +73,8 @@ packages/logix-core/src/internal/runtime/ModuleRuntime.ts
 packages/logix-core/src/internal/runtime/core/StateTransaction.ts
 packages/logix-core/src/internal/runtime/core/DebugSink.ts
 packages/logix-core/src/internal/runtime/core/env.ts
-packages/logix-core/src/internal/state-trait/converge.ts
-packages/logix-core/src/internal/state-trait/validate.ts
+packages/logix-core/src/internal/state-field/converge.ts
+packages/logix-core/src/internal/state-field/validate.ts
 packages/logix-core/src/internal/field-path.ts
 
 packages/logix-react/src/internal/ModuleRuntimeExternalStore.ts
@@ -82,4 +82,4 @@ packages/logix-react/src/internal/ModuleRuntimeExternalStore.ts
 apps/docs/content/docs/            # 用户文档（高性能最佳实践）
 ```
 
-**Structure Decision**: 本特性属于“runtime hot path + react 集成 + 文档/协议”交付，代码落点以 `packages/logix-core`（事务/traits/诊断协议）为主，`packages/logix-react` 负责消费侧可见性调度（避免非必要 render），并在 `apps/docs` 输出对外最佳实践。
+**Structure Decision**: 本特性属于“runtime hot path + react 集成 + 文档/协议”交付，代码落点以 `packages/logix-core`（事务/fields/诊断协议）为主，`packages/logix-react` 负责消费侧可见性调度（避免非必要 render），并在 `apps/docs` 输出对外最佳实践。

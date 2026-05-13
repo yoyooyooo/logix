@@ -16,7 +16,7 @@
 
 - 先做 073 的 **M1（Reference Frame Cutover）**：把 tickSeq 参考系立住（React 单订阅点/no-tearing）。
 - 再做 070：把默认档位“零诊断税/单内核边界”固化下来（避免后续优化口径漂移）。
-- 并行打地基：074（显式 deps selector）+ 068（watcher fan-out 纯赚）+ 006（Trait converge 上限提升）。
+- 并行打地基：074（显式 deps selector）+ 068（watcher fan-out 纯赚）+ 006（Field converge 上限提升）。
 - 最后推进 076：把 Query/Form 的默认自动刷新从 watcher 胶水升级为内核 auto-trigger。
 - 018（可选）：基于工作负载做默认值审计/自校准（不影响默认档位）。
 

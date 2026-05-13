@@ -1,9 +1,10 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import React from 'react'
 import { Effect, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
-import { RuntimeProvider, useRuntime } from '@logixjs/react'
-import { ComplexTraitFormDemoLayout } from './form/ComplexTraitFormDemoLayout'
-import { TraitFormDemoLayout } from './form/TraitFormDemoLayout'
+import { RuntimeProvider, useRuntime, type RuntimeProviderProps } from '@logixjs/react'
+import { FieldFormDemoLayout } from './form/FieldFormDemoLayout'
 import { ConvergeControlPlanePanel, type ConvergeControlPlaneChange } from '../sections/ConvergeControlPlanePanel'
 
 type MetricStats = {
@@ -39,23 +40,23 @@ const formatControlPlaneSummary = (
 ): string => {
   if (!overrides) return 'default'
   const parts: string[] = []
-  if (overrides.traitConvergeMode) parts.push(`mode=${overrides.traitConvergeMode}`)
-  if (typeof overrides.traitConvergeDecisionBudgetMs === 'number') {
-    parts.push(`decisionBudgetMs=${String(overrides.traitConvergeDecisionBudgetMs)}`)
+  if (overrides.fieldConvergeMode) parts.push(`mode=${overrides.fieldConvergeMode}`)
+  if (typeof overrides.fieldConvergeDecisionBudgetMs === 'number') {
+    parts.push(`decisionBudgetMs=${String(overrides.fieldConvergeDecisionBudgetMs)}`)
   }
-  if (typeof overrides.traitConvergeBudgetMs === 'number') {
-    parts.push(`budgetMs=${String(overrides.traitConvergeBudgetMs)}`)
+  if (typeof overrides.fieldConvergeBudgetMs === 'number') {
+    parts.push(`budgetMs=${String(overrides.fieldConvergeBudgetMs)}`)
   }
 
-  const patch = overrides.traitConvergeOverridesByModuleId?.[moduleId]
+  const patch = overrides.fieldConvergeOverridesByModuleId?.[moduleId]
   if (patch) {
     const patchParts: string[] = []
-    if (patch.traitConvergeMode) patchParts.push(`mode=${patch.traitConvergeMode}`)
-    if (typeof patch.traitConvergeDecisionBudgetMs === 'number') {
-      patchParts.push(`decisionBudgetMs=${String(patch.traitConvergeDecisionBudgetMs)}`)
+    if (patch.fieldConvergeMode) patchParts.push(`mode=${patch.fieldConvergeMode}`)
+    if (typeof patch.fieldConvergeDecisionBudgetMs === 'number') {
+      patchParts.push(`decisionBudgetMs=${String(patch.fieldConvergeDecisionBudgetMs)}`)
     }
-    if (typeof patch.traitConvergeBudgetMs === 'number') {
-      patchParts.push(`budgetMs=${String(patch.traitConvergeBudgetMs)}`)
+    if (typeof patch.fieldConvergeBudgetMs === 'number') {
+      patchParts.push(`budgetMs=${String(patch.fieldConvergeBudgetMs)}`)
     }
     parts.push(`${moduleId}{${patchParts.length > 0 ? patchParts.join(',') : 'empty'}}`)
   }
@@ -78,6 +79,55 @@ type ConvergeDecision = {
   }
 }
 
+type BenchState = Record<string, number>
+type BenchAction = {
+  readonly _tag: 'bump'
+  readonly payload: number
+}
+type BenchReducer = (state: BenchState, action: BenchAction) => BenchState
+type BenchRuntime = Logix.Module.ModuleRuntime<BenchState, BenchAction>
+type BenchTxnScope = Pick<BenchRuntime, 'getState' | 'setState'>
+type BenchModule = ServiceMap.Key<unknown, BenchRuntime>
+type RuntimeLayer = RuntimeProviderProps['layer']
+
+const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const optionalString = (value: unknown): string | undefined => (typeof value === 'string' ? value : undefined)
+
+const optionalNumber = (value: unknown): number | undefined => (typeof value === 'number' ? value : undefined)
+
+const parseStepStats = (value: unknown): ConvergeDecision['stepStats'] | undefined => {
+  if (!isRecord(value)) return undefined
+  return {
+    totalSteps: optionalNumber(value.totalSteps),
+    executedSteps: optionalNumber(value.executedSteps),
+    skippedSteps: optionalNumber(value.skippedSteps),
+    changedSteps: optionalNumber(value.changedSteps),
+  }
+}
+
+const parseConvergeDecision = (value: unknown): ConvergeDecision | undefined => {
+  if (!isRecord(value)) return undefined
+  return {
+    requestedMode: optionalString(value.requestedMode),
+    executedMode: optionalString(value.executedMode),
+    outcome: optionalString(value.outcome),
+    reasons: Array.isArray(value.reasons) ? value.reasons.map(String) : undefined,
+    decisionDurationMs: optionalNumber(value.decisionDurationMs),
+    executionDurationMs: optionalNumber(value.executionDurationMs),
+    stepStats: parseStepStats(value.stepStats),
+  }
+}
+
+const readConvergeDecision = (event: CoreDebug.Event): ConvergeDecision | undefined => {
+  if (event.type !== 'state:update') return undefined
+  if (!isRecord(event.fieldSummary)) return undefined
+  return parseConvergeDecision(event.fieldSummary.converge)
+}
+
+const benchDep = (index: number): readonly [string] => [`b${index}`]
+
 type BenchSnapshot = {
   readonly id: string
   readonly atMs: number
@@ -97,52 +147,51 @@ type BenchSnapshot = {
 type BenchBundle = {
   readonly module: BenchModule
   readonly runtime: ReturnType<typeof Logix.Runtime.make>
-  readonly bumpReducer: (state: any, action: any) => any
+  readonly bumpReducer: BenchReducer
   readonly getLastDecision: () => ConvergeDecision | undefined
   readonly clearLastDecision: () => void
 }
 
-type BenchTxnScope = Pick<Logix.Module.ModuleRuntime<any, any>, 'getState' | 'setState'>
-type BenchModule = ServiceMap.Key<any, Logix.Module.ModuleRuntime<any, any>>
-
 const makeBenchBundle = (steps: number): BenchBundle => {
-  const fields: Record<string, unknown> = {}
+  const fields: Record<string, Schema.Schema<number>> = {}
   for (let i = 0; i < steps; i++) {
     fields[`b${i}`] = Schema.Number
     fields[`d${i}`] = Schema.Number
   }
 
-  const State = Schema.Struct(fields as any)
+  const State = Schema.Struct(fields)
 
-  const traits: Record<string, unknown> = {}
+  const fieldDeclarations: FieldContracts.FieldSpec<BenchState> = {}
   for (let i = 0; i < steps; i++) {
-    traits[`d${i}`] = Logix.StateTrait.computed<any, any, any>({
-      deps: [`b${i}`] as any,
-      get: (value: any) => (value as number) + 1,
-    }) as any
+    fieldDeclarations[`d${i}`] = FieldContracts.fieldComputed<BenchState, string, readonly [string]>({
+      deps: benchDep(i),
+      get: (value) => value + 1,
+    })
   }
 
-  const M = Logix.Module.make(`PerfConvergeSteps${steps}`, {
-    state: State as any,
-    actions: { bump: Schema.Number },
-    traits: Logix.StateTrait.from(State as any)(traits as any) as any,
-  })
+  const M = FieldContracts.withModuleFieldDeclarations(
+    Logix.Module.make(`PerfConvergeSteps${steps}`, {
+      state: State,
+      actions: { bump: Schema.Number },
+    }),
+    FieldContracts.fieldFrom(State)(fieldDeclarations),
+  )
 
-  const initial: Record<string, number> = {}
+  const initial: BenchState = {}
   for (let i = 0; i < steps; i++) {
     initial[`b${i}`] = 0
     initial[`d${i}`] = 1
   }
 
-  const impl = M.implement({
-    initial: initial as any,
+  const program = Logix.Program.make(M, {
+    initial,
     logics: [],
   })
 
-  const bumpReducer = Logix.Module.Reducer.mutate((draft: Record<string, number>, dirtyRoots: number) => {
+  const bumpReducer: BenchReducer = Logix.Module.Reducer.mutate<BenchState, BenchAction>((draft, dirtyRoots) => {
     for (let i = 0; i < dirtyRoots; i++) {
       const k = `b${i}`
-      draft[k] += 1
+      draft[k] = (draft[k] ?? 0) + 1
     }
   })
 
@@ -152,19 +201,18 @@ const makeBenchBundle = (steps: number): BenchBundle => {
   }
   const getLastDecision = () => lastDecision
 
-  const captureSink: Logix.Debug.Sink = {
-    record: (event: Logix.Debug.Event) =>
+  const captureSink: CoreDebug.Sink = {
+    record: (event: CoreDebug.Event) =>
       Effect.sync(() => {
-        if (event.type !== 'state:update') return
-        const decision = (event as any)?.traitSummary?.converge as ConvergeDecision | undefined
+        const decision = readConvergeDecision(event)
         if (decision) lastDecision = decision
       }),
   }
 
-  const runtime = Logix.Runtime.make(impl, {
+  const runtime = Logix.Runtime.make(program, {
     label: `PerfTuningLab · ConvergeSteps(${steps})`,
     devtools: true,
-    layer: Logix.Debug.appendSinks([captureSink]),
+    layer: CoreDebug.appendSinks([captureSink]),
   })
 
   return {
@@ -179,7 +227,7 @@ const makeBenchBundle = (steps: number): BenchBundle => {
 const BenchInner: React.FC<{
   readonly steps: number
   readonly module: BenchModule
-  readonly bumpReducer: (state: any, action: any) => any
+  readonly bumpReducer: BenchReducer
   readonly getLastDecision: () => ConvergeDecision | undefined
   readonly clearLastDecision: () => void
   readonly overrides?: ConvergeControlPlaneChange['overrides']
@@ -255,24 +303,24 @@ const BenchInner: React.FC<{
         clearLastDecision()
 
         const op = Effect.gen(function* () {
-          const scope = (yield* Effect.service(module).pipe(Effect.orDie)) as BenchTxnScope
+          const scope: BenchTxnScope = yield* Effect.service(module).pipe(Effect.orDie)
 
-          yield* Logix.InternalContracts.runWithStateTransaction(
+          yield* FieldContracts.runWithStateTransaction(
             scope,
             { kind: 'perf', name: 'converge:txnCommit:warmup' },
             () =>
               Effect.gen(function* () {
-                const prev = (yield* scope.getState) as any
-                const next = bumpReducer(prev, { _tag: 'bump', payload: dirtyRoots } as any)
+                const prev = yield* scope.getState
+                const next = bumpReducer(prev, { _tag: 'bump', payload: dirtyRoots })
                 yield* scope.setState(next)
                 for (let j = 0; j < dirtyRoots; j++) {
-                  Logix.InternalContracts.recordStatePatch(scope, `b${j}`, 'perf')
+                  FieldContracts.recordStatePatch(scope, `b${j}`, 'perf')
                 }
               }),
           )
         })
 
-        await runtime.runPromise(op as any)
+        await runtime.runPromise(op)
         clearLastDecision()
       }
 
@@ -280,25 +328,25 @@ const BenchInner: React.FC<{
         clearLastDecision()
 
         const op = Effect.gen(function* () {
-          const scope = (yield* Effect.service(module).pipe(Effect.orDie)) as BenchTxnScope
+          const scope: BenchTxnScope = yield* Effect.service(module).pipe(Effect.orDie)
 
-          yield* Logix.InternalContracts.runWithStateTransaction(
+          yield* FieldContracts.runWithStateTransaction(
             scope,
             { kind: 'perf', name: 'converge:txnCommit' },
             () =>
               Effect.gen(function* () {
-                const prev = (yield* scope.getState) as any
-                const next = bumpReducer(prev, { _tag: 'bump', payload: dirtyRoots } as any)
+                const prev = yield* scope.getState
+                const next = bumpReducer(prev, { _tag: 'bump', payload: dirtyRoots })
                 yield* scope.setState(next)
                 for (let j = 0; j < dirtyRoots; j++) {
-                  Logix.InternalContracts.recordStatePatch(scope, `b${j}`, 'perf')
+                  FieldContracts.recordStatePatch(scope, `b${j}`, 'perf')
                 }
               }),
           )
         })
 
         const start = performance.now()
-        await runtime.runPromise(op as any)
+        await runtime.runPromise(op)
         const end = performance.now()
         commitDurations.push(Math.max(0, end - start))
 
@@ -443,7 +491,7 @@ const BenchInner: React.FC<{
               : '（unavailable）'}
           </div>
           <div className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-            converge 内部执行耗时（更贴近 Traits 本身）
+            converge 内部执行耗时（更贴近字段行为本身）
           </div>
         </div>
         <div className="bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-800 rounded-lg p-3">
@@ -563,7 +611,7 @@ const BenchInner: React.FC<{
 }
 
 const ConvergeStepsBench: React.FC<{
-  readonly layer?: any
+  readonly layer?: RuntimeLayer
   readonly overrides?: ConvergeControlPlaneChange['overrides']
 }> = ({ layer, overrides }) => {
   const [steps, setSteps] = React.useState<number>(800)
@@ -657,7 +705,7 @@ const ConvergeStepsBench: React.FC<{
         <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/40 p-4 space-y-2">
           <div className="text-sm text-gray-700 dark:text-gray-300">合成 bench 尚未初始化（steps={steps}）。</div>
           <div className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
-            初始化会同步构造一个较大的 Schema/Traits 模块（steps 越大越慢）。为了避免切路由卡顿，这里改为按需初始化。
+            初始化会同步构造一个较大的 Schema/Fields 模块（steps 越大越慢）。为了避免切路由卡顿，这里改为按需初始化。
           </div>
           <div>
             <button
@@ -684,7 +732,7 @@ export const PerfTuningLabLayout: React.FC = () => {
       <section className="border-b border-gray-200 dark:border-gray-800 pb-6">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Perf Tuning Lab（013 控制面）</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400 max-w-3xl leading-relaxed">
-          这里把「控制面调参」与「压力体验」放在同一页：先用合成 bench 看趋势，再用真实 UI 场景（表单 Traits）观察交互与
+          这里把「控制面调参」与「压力体验」放在同一页：先用合成 bench 看趋势，再用真实 UI 场景（表单字段行为）观察交互与
           Devtools 事件。
         </p>
       </section>
@@ -720,7 +768,7 @@ export const PerfTuningLabLayout: React.FC = () => {
       <ConvergeControlPlanePanel
         onChange={setControlPlane}
         knownModuleIds={[
-          'TraitFormModule',
+          'FieldFormModule',
           'ComplexFormDemo',
           'PerfConvergeSteps200',
           'PerfConvergeSteps800',
@@ -734,11 +782,11 @@ export const PerfTuningLabLayout: React.FC = () => {
 
       <section className="space-y-4">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-          真实 UI 压力样本：TraitForm / ComplexTraitForm
+          真实 UI 压力样本：FieldForm / ComplexFieldForm
         </h3>
         <p className="text-[11px] text-gray-600 dark:text-gray-400 max-w-3xl leading-relaxed">
-          下面两个示例会继承同一份 Provider 覆盖。建议打开 Devtools，观察{' '}
-          <span className="font-mono">state:update</span> 里的 <span className="font-mono">traitSummary.converge</span>
+          下面的真实 UI 样本会继承同一份 Provider 覆盖。建议打开 Devtools，观察{' '}
+          <span className="font-mono">state:update</span> 里的 <span className="font-mono">fieldSummary.converge</span>
           （executedMode/reasons）。
         </p>
 
@@ -759,8 +807,7 @@ export const PerfTuningLabLayout: React.FC = () => {
 
         {showRealUiSamples ? (
           <div className="space-y-6">
-            <TraitFormDemoLayout layer={controlPlane.layer} />
-            <ComplexTraitFormDemoLayout layer={controlPlane.layer} />
+            <FieldFormDemoLayout layer={controlPlane.layer} />
           </div>
         ) : null}
       </section>

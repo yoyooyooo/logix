@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://intent-flow.local/specs/084/spy-evidence-report.schema.json",
+  "$id": "https://logix.local/specs/084/spy-evidence-report.schema.json",
   "title": "SpyEvidenceReport@v1",
   "type": "object",
   "additionalProperties": false,

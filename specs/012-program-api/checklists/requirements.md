@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Process（长效逻辑与跨模块协同收敛）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-16  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-16
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality

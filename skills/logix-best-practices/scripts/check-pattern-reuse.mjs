@@ -23,7 +23,7 @@ const usage = () => {
   console.error('Usage:')
   // eslint-disable-next-line no-console
   console.error(
-    '  node check-pattern-reuse.mjs --patterns-dir src/patterns --consumer-dirs src/features,src/scenarios --min 2 --allowlist confirm,notification',
+    '  node check-pattern-reuse.mjs --patterns-dir src/patterns --consumer-dirs src/features,src/runnable --min 2 --allowlist confirm,notification',
   )
   // eslint-disable-next-line no-console
   console.error('  node check-pattern-reuse.mjs --config pattern-reuse.config.json')
@@ -173,4 +173,3 @@ const main = async () => {
 }
 
 await main()
-

@@ -1,4 +1,4 @@
-import type { TrialRunArtifactExporter } from './exporter.js'
+import type { TrialRunArtifactExporter } from '../../artifacts/exporter.js'
 
 const ARTIFACT_EXPORTERS = Symbol.for('logix.module.trialRunArtifactExporters')
 

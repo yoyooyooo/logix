@@ -18,9 +18,9 @@
 ### 1) Loader/反射（不读 AST）
 
 - `@logixjs/core` 已提供：
-  - `Reflection.extractManifest`：导出 `ModuleManifest`（可序列化、可 diff）。
-  - `Reflection.exportStaticIr`：导出 Static IR（StateTrait IR）。
-  - `Observability.trialRunModule`：BuildEnv 中对 module 做受控试跑，导出 `TrialRunReport`（含 environment/evidence/artifacts）。
+  - `CoreReflection.extractManifest`：导出 `ModuleManifest`（可序列化、可 diff）。
+  - `CoreReflection.exportStaticIr`：导出 Static IR（FieldKernel IR）。
+  - `Runtime.trial`：BuildEnv 中对 module 做受控试跑，导出 `TrialRunReport`（含 environment/evidence/artifacts）。
 - 现状的 `ModuleManifest` 已包含：actions/effects/schemaKeys/logicUnits/meta/source/staticIr/digest 等，但 **尚未包含** `servicePorts`（由 `078` 补齐）。
 
 结论：Loader/反射能提供“最终对象的结构摘要”，但它不解决“源码里没写锚点字段”的问题；它只能作为补全与对齐的输入/校验。

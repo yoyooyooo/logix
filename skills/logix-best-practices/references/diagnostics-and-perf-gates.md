@@ -7,8 +7,9 @@ title: 核心路径改动的诊断与性能证据闭环
 ## 1) 触发条件（命中任一即执行）
 
 - 改动 `StateTransaction` / `TaskRunner` / `ProcessRuntime` / `DevtoolsHub` / `EffectOp` / `DebugSink`。
-- 改动事务窗口规则、协作语义（`link`/`linkDeclarative`）、诊断协议字段。
+- 改动事务窗口规则、协作语义或诊断协议字段。
 - 改动影响 IR/Trace 解释链或稳定锚点（`instanceId/txnSeq/opSeq`）。
+- 改动 selector route、selector fingerprint、path authority、dirty/read overlap、evaluate-all fallback 或 React host projection route。
 
 ## 2) 最小质量门（先过再谈优化）
 
@@ -36,12 +37,18 @@ title: 核心路径改动的诊断与性能证据闭环
 - `state_transaction::async_escape`
 - `state_transaction::dirty_all_fallback`
 - `process_link::blackbox_best_effort`
+- selector broad / dynamic fallback 的 strict-policy verdict
+- dirty-side precision loss 的 strict-policy verdict
+- selector fingerprint 与 path-authority digest 或 epoch 的一致性
+- selector-quality evidence layering：`runtime.check` 只报 static artifact，startup trial 只报 policy wiring，host projection precision 只来自 scenario 或 repo-internal host harness evidence
 
 同时确认：
 
 - 事件载荷 Slim + JsonValue 可导出。
 - 事件链可读取稳定锚点（`instanceId/txnSeq/opSeq`）。
 - 未引入并行真相源（Static IR 与 Dynamic Trace 分层仍成立）。
+- React host 只消费 core route，不保留平行 selector eligibility 判断。
+- public docs / README / skill 示例不得把 `SelectorQualityArtifact`、read topic、selector graph 或 dirty evidence 当 authoring concept。
 
 ## 5) 常见错误结论（拒绝）
 
@@ -54,4 +61,3 @@ title: 核心路径改动的诊断与性能证据闭环
 - `references/llms/04-runtime-transaction-rules.md`
 - `references/llms/06-diagnostics-perf-basics.md`
 - `references/llms/07-testing-basics.md`
-- `references/llms/99-project-anchor-template.md`（可选）

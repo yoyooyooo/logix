@@ -1,6 +1,6 @@
 # Implementation Plan: SchemaAST 分层能力升级（040：Schema Registry + schemaId 引用）
 
-**Branch**: `040-schemaast-layered-upgrade` | **Date**: 2025-12-26 | **Spec**: `specs/040-schemaast-layered-upgrade/spec.md`  
+**Branch**: `040-schemaast-layered-upgrade` | **Date**: 2025-12-26 | **Spec**: `specs/040-schemaast-layered-upgrade/spec.md`
 **Input**: `specs/040-schemaast-layered-upgrade/spec.md`
 
 ## Summary
@@ -15,12 +15,12 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.8.2（workspace）+ Node.js 22.x  
-**Primary Dependencies**: `effect` v3（workspace override 固定到 `3.19.13`）、`@logixjs/core`、`@logixjs/sandbox`（以及 Devtools/Workbench 消费方）  
-**Storage**: N/A（以可序列化 JSON 工件导出/导入，不引入持久化存储）  
-**Testing**: Vitest（Effect-heavy 场景优先用 `@effect/vitest`）  
-**Target Platform**: Node.js（CI/脚本/试跑）+ 现代浏览器（Sandbox Worker / Workbench）  
-**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）  
+**Language/Version**: TypeScript 5.8.2（workspace）+ Node.js 22.x
+**Primary Dependencies**: `effect` v3（workspace override 固定到 `3.19.13`）、`@logixjs/core`、`@logixjs/sandbox`（以及 Devtools/Workbench 消费方）
+**Storage**: N/A（以可序列化 JSON 工件导出/导入，不引入持久化存储）
+**Testing**: Vitest（Effect-heavy 场景优先用 `@effect/vitest`）
+**Target Platform**: Node.js（CI/脚本/试跑）+ 现代浏览器（Sandbox Worker / Workbench）
+**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）
 **Performance Goals**:
 - 默认近零开销：diagnostics=off 时，热路径不新增显著分配或 O(n) 扫描；SchemaAST 的归一化/摘要计算必须避开事务窗口与常驻路径。
 - diagnostics=on 的额外成本可预算：每条事件只新增 `schemaId` 等 slim 字段；registry 查询必须是 O(1) 映射查找。

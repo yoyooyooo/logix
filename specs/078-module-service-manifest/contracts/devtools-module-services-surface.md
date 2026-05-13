@@ -15,13 +15,13 @@
 
 数据来源（权威顺序）：
 
-1. 平台侧/CI：直接消费 `Reflection.extractManifest` 的输出（Manifest IR）。
+1. 平台侧/CI：直接消费 `CoreReflection.extractManifest` 的输出（Manifest IR）。
 2. 运行期 Devtools：使用“dev-only registry”从 `moduleId` 查到 `servicePorts`（仅用于 UI 解释；不能替代 Manifest/TrialRunReport 的导出事实源）。
 
 ## API 形态（建议）
 
-- `Logix.Debug.getModuleServicePortsById(moduleId): { servicePorts?: ... } | undefined`
-- 或 `Logix.Debug.getModuleManifestById(moduleId): ModuleManifest | undefined`（若成本可控）
+- `CoreDebug.getModuleServicePortsById(moduleId): { servicePorts?: ... } | undefined`
+- 或 `CoreDebug.getModuleManifestById(moduleId): ModuleManifest | undefined`（若成本可控）
 
 ## 展示建议（UI）
 

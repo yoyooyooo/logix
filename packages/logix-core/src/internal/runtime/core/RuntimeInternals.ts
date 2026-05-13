@@ -3,9 +3,10 @@ import type { ModuleRuntime as PublicModuleRuntime } from './module.js'
 import type * as Lifecycle from './Lifecycle.js'
 import type * as StateTransaction from './StateTransaction.js'
 import type { ResolvedTxnLanePolicy } from './ModuleRuntime.txnLanePolicy.js'
-import type { ConcurrencyLimit, StateTransactionInstrumentation } from './env.js'
-import type * as ModuleTraits from './ModuleTraits.js'
+import type { SchedulingPolicyLimit, StateTransactionInstrumentation } from './env.js'
+import type * as ModuleFields from './ModuleFields.js'
 import type { TxnOriginOverride } from './TxnOriginOverride.js'
+import type { RuntimeHotLifecycleContext } from './hotLifecycle/index.js'
 
 export type RuntimeInternalsEffects = {
   readonly registerEffect: (args: {
@@ -71,40 +72,40 @@ export type RuntimeInternalsTxn = {
     reason: StateTransaction.PatchReason,
     from?: unknown,
     to?: unknown,
-    traitNodeId?: string,
+    fieldNodeId?: string,
     stepId?: number,
   ) => void
   readonly recordReplayEvent: (event: unknown) => void
   readonly applyTransactionSnapshot: (txnId: string, mode: 'before' | 'after') => Effect.Effect<void, never, any>
 }
 
-export type RuntimeInternalsTraits = {
+export type RuntimeInternalsFields = {
   readonly rowIdStore: unknown
   readonly getListConfigs: () => ReadonlyArray<unknown>
   /**
    * registerSourceRefresh：
-   * - Used only by StateTrait.install/source to mount refresh logic during the build/install phase.
+   * - Used only by FieldKernel.install/source to mount refresh logic during the build/install phase.
    * - The implementation must be scoped per runtime instance (must not be process-wide global).
    */
   readonly registerSourceRefresh: (
     fieldPath: string,
     handler: (state: unknown) => Effect.Effect<void, never, any>,
   ) => void
+  readonly forkSourceRefresh: (
+    fieldPath: string,
+    handler: (state: unknown) => Effect.Effect<void, never, any>,
+    state: unknown,
+  ) => Effect.Effect<void, never, any>
   readonly getSourceRefreshHandler: (
     fieldPath: string,
   ) => ((state: unknown) => Effect.Effect<void, never, any>) | undefined
-  readonly registerStateTraitProgram: (
+  readonly registerFieldProgram: (
     program: unknown,
     registerOptions?: { readonly bumpReason?: unknown; readonly exportStaticIr?: boolean },
   ) => void
-  readonly enqueueStateTraitValidateRequest: (request: unknown) => void
-
-  // ---- 023: Logic Traits in Setup (module-level + logic-level contributions) ----
-  readonly registerModuleTraitsContribution: (contribution: ModuleTraits.TraitContribution) => void
-  readonly freezeModuleTraits: () => void
-  readonly getModuleTraitsContributions: () => ReadonlyArray<ModuleTraits.TraitContribution>
-  readonly getModuleTraitsSnapshot: () => ModuleTraits.ModuleTraitsSnapshot | undefined
-  readonly setModuleTraitsSnapshot: (snapshot: ModuleTraits.ModuleTraitsSnapshot) => void
+  readonly enqueueFieldValidateRequest: (request: unknown) => void
+  readonly getModuleFieldsSnapshot: () => ModuleFields.ModuleFieldsSnapshot | undefined
+  readonly setModuleFieldsSnapshot: (snapshot: ModuleFields.ModuleFieldsSnapshot) => void
 }
 
 export type RuntimeInternalsDevtools = {
@@ -114,7 +115,7 @@ export type RuntimeInternalsDevtools = {
 export type ConcurrencyPolicyConfigScope = 'builtin' | 'runtime_default' | 'runtime_module' | 'provider'
 
 export type RuntimeInternalsResolvedConcurrencyPolicy = {
-  readonly concurrencyLimit: ConcurrencyLimit
+  readonly concurrencyLimit: SchedulingPolicyLimit
   readonly losslessBackpressureCapacity: number
   readonly allowUnbounded: boolean
   readonly pressureWarningThreshold: {
@@ -124,7 +125,7 @@ export type RuntimeInternalsResolvedConcurrencyPolicy = {
   readonly warningCooldownMs: number
   readonly configScope: ConcurrencyPolicyConfigScope
   readonly concurrencyLimitScope: ConcurrencyPolicyConfigScope
-  readonly requestedConcurrencyLimit: ConcurrencyLimit
+  readonly requestedConcurrencyLimit: SchedulingPolicyLimit
   readonly requestedConcurrencyLimitScope: ConcurrencyPolicyConfigScope
   readonly allowUnboundedScope: ConcurrencyPolicyConfigScope
 }
@@ -147,13 +148,14 @@ export interface RuntimeInternals {
   readonly moduleId?: string
   readonly instanceId: string
   readonly stateSchema?: unknown
+  readonly hotLifecycle?: RuntimeHotLifecycleContext
 
   readonly lifecycle: RuntimeInternalsLifecycle
   readonly imports: ImportsScope
   readonly txn: RuntimeInternalsTxn
   readonly concurrency: RuntimeInternalsConcurrency
   readonly txnLanes: RuntimeInternalsTxnLanes
-  readonly traits: RuntimeInternalsTraits
+  readonly fields: RuntimeInternalsFields
   readonly effects: RuntimeInternalsEffects
   readonly devtools: RuntimeInternalsDevtools
 }

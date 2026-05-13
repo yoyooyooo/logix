@@ -1,7 +1,7 @@
 # Specification Quality Checklist: core-ng 事务零分配（txn zero-alloc）
 
-**Purpose**: 在进入规划（plan/tasks）之前，校验规格是否可验收、无明显歧义  
-**Created**: 2025-12-29  
+**Purpose**: 在进入规划（plan/tasks）之前，校验规格是否可验收、无明显歧义
+**Created**: 2025-12-29
 **Feature**: `specs/051-core-ng-txn-zero-alloc/spec.md`
 
 ## Content Quality

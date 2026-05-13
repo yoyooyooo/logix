@@ -2,6 +2,9 @@ import { getAtPath, updateArrayAtPath } from './path.js'
 
 export type AnyState = Record<string, unknown>
 
+export const cleanupReceiptPath = (path: string): string => `ui.$cleanup.${path}`
+export const cleanupReceiptReasonSlotId = (path: string): string => `cleanup:${path}`
+
 export const isAuxRootPath = (path: string): boolean =>
   path === 'errors' ||
   path === 'ui' ||

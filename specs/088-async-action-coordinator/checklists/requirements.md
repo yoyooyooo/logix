@@ -1,7 +1,7 @@
 # Specification Quality Checklist: 088 Async Action Coordinator
 
-**Purpose**: Validate specification completeness and quality before proceeding to execution  
-**Created**: 2026-01-10  
+**Purpose**: Validate specification completeness and quality before proceeding to execution
+**Created**: 2026-01-10
 **Feature**: `specs/088-async-action-coordinator/spec.md`
 
 ## Content Quality

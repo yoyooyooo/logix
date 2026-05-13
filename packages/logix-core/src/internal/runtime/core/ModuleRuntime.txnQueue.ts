@@ -142,7 +142,7 @@ export const makeEnqueueTransaction = (args: {
         }
       })
 
-    const acquireBacklogSlot = (lane: TxnLane, capacity: number, policy: ResolvedConcurrencyPolicy): Effect.Effect<void> =>
+    const ensureCanEnqueue = (): Effect.Effect<void> =>
       Effect.gen(function* () {
         const inTxn = yield* Effect.service(TaskRunner.inSyncTransactionFiber).pipe(Effect.orDie)
         if (inTxn) {
@@ -159,6 +159,34 @@ export const makeEnqueueTransaction = (args: {
           })
           yield* Effect.die(new Error('enqueueTransaction is not allowed inside a synchronous StateTransaction body'))
         }
+      })
+
+    const tryAcquireBacklogSlotFast = (lane: TxnLane, capacity: number): Effect.Effect<boolean> =>
+      Effect.gen(function* () {
+        yield* ensureCanEnqueue()
+
+        if (capacity <= 0) return false
+
+        const stateRef = lane === 'urgent' ? urgentStateRef : nonUrgentStateRef
+        return yield* Ref.modify(stateRef, (s): readonly [boolean, BackpressureState] => {
+          if (s.backlogCount < capacity) {
+            return [
+              true,
+              {
+                backlogCount: s.backlogCount + 1,
+                waiters: s.waiters,
+                signal: s.signal,
+              },
+            ] as const
+          }
+
+          return [false, s] as const
+        })
+      })
+
+    const acquireBacklogSlot = (lane: TxnLane, capacity: number, policy: ResolvedConcurrencyPolicy): Effect.Effect<void> =>
+      Effect.gen(function* () {
+        yield* ensureCanEnqueue()
 
         const stateRef = lane === 'urgent' ? urgentStateRef : nonUrgentStateRef
 
@@ -260,14 +288,14 @@ export const makeEnqueueTransaction = (args: {
       return undefined
     }
 
-    const recordStartTrace = (waiter: QueueWaiter, startMode: TxnQueueStartMode): void => {
+    const recordStartTrace = (waiter: QueueWaiter, startMode: TxnQueueStartMode): TxnQueueStartTrace => {
       const startAtMs = readClockMs()
-      startTraceByStart.set(waiter.start, {
+      const trace: TxnQueueStartTrace = {
         lane: waiter.lane,
         waiterSeq: waiter.waiterSeq,
         enqueueAtMs: waiter.enqueueAtMs,
         startAtMs,
-        queueWaitMs: Math.max(0, startAtMs - waiter.enqueueAtMs),
+        queueWaitMs: startMode === 'direct_idle' ? 0 : Math.max(0, startAtMs - waiter.enqueueAtMs),
         startMode,
         ...(lastCompletedLane ? { previousCompletedLane: lastCompletedLane } : {}),
         ...(waiter.activeLaneAtEnqueue ? { activeLaneAtEnqueue: waiter.activeLaneAtEnqueue } : {}),
@@ -275,7 +303,9 @@ export const makeEnqueueTransaction = (args: {
           urgent: urgentWaitQueue.length,
           nonUrgent: nonUrgentWaitQueue.length,
         },
-      })
+      }
+      startTraceByStart.set(waiter.start, trace)
+      return trace
     }
 
     const removeWaiter = (lane: TxnLane, start: Deferred.Deferred<void>): void => {
@@ -303,9 +333,10 @@ export const makeEnqueueTransaction = (args: {
               data: trace,
             })
 
-    const enqueueAndMaybeStart = (waiter: QueueWaiter): Effect.Effect<void> =>
+    const enqueueAndMaybeStart = (waiter: QueueWaiter): Effect.Effect<TxnQueueStartTrace | undefined> =>
       Effect.gen(function* () {
         let toStart: QueueWaiter | undefined
+        let immediateTrace: TxnQueueStartTrace | undefined
         yield* Effect.uninterruptible(
           Effect.sync(() => {
             if (waiter.lane === 'urgent') {
@@ -319,7 +350,7 @@ export const makeEnqueueTransaction = (args: {
               if (next) {
                 currentWaiter = next
                 currentLane = next.lane
-                recordStartTrace(next, lastCompletedLane ? 'direct_handoff' : 'direct_idle')
+                immediateTrace = recordStartTrace(next, lastCompletedLane ? 'direct_handoff' : 'direct_idle')
                 toStart = next
               }
             }
@@ -328,6 +359,7 @@ export const makeEnqueueTransaction = (args: {
         if (toStart) {
           yield* Deferred.succeed(toStart.start, undefined)
         }
+        return immediateTrace
       })
 
     const advanceQueue = (lane: TxnLane, start: Deferred.Deferred<void>): Effect.Effect<void> =>
@@ -425,8 +457,19 @@ export const makeEnqueueTransaction = (args: {
         const resolvePolicyMs = phaseTimingEnabled ? Math.max(0, readClockMs() - resolvePolicyStartedAtMs) : 0
         const capacity = policy.losslessBackpressureCapacity
         const backpressureStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
-        yield* (Effect.provideService(acquireBacklogSlot(lane, capacity, policy), EffectOpCore.currentLinkId, linkId) as Effect.Effect<void, never, never>)
-        const backpressureMs = phaseTimingEnabled ? Math.max(0, readClockMs() - backpressureStartedAtMs) : 0
+        const fastBackpressureAcquired = yield* (Effect.provideService(
+          tryAcquireBacklogSlotFast(lane, capacity),
+          EffectOpCore.currentLinkId,
+          linkId,
+        ) as Effect.Effect<boolean, never, never>)
+        if (!fastBackpressureAcquired) {
+          yield* (Effect.provideService(acquireBacklogSlot(lane, capacity, policy), EffectOpCore.currentLinkId, linkId) as Effect.Effect<void, never, never>)
+        }
+        const backpressureMs = phaseTimingEnabled
+          ? fastBackpressureAcquired
+            ? 0
+            : Math.max(0, readClockMs() - backpressureStartedAtMs)
+          : 0
 
         const enqueueBookkeepingStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
         const start = yield* Deferred.make<void>()
@@ -437,14 +480,18 @@ export const makeEnqueueTransaction = (args: {
           enqueueAtMs: readClockMs(),
           ...(currentLane ? { activeLaneAtEnqueue: currentLane } : {}),
         }
-        yield* (Effect.provideService(enqueueAndMaybeStart(waiter), EffectOpCore.currentLinkId, linkId) as Effect.Effect<void, never, never>)
+        const immediateStartTrace = yield* (Effect.provideService(
+          enqueueAndMaybeStart(waiter),
+          EffectOpCore.currentLinkId,
+          linkId,
+        ) as Effect.Effect<TxnQueueStartTrace | undefined, never, never>)
         const enqueueBookkeepingMs = phaseTimingEnabled ? Math.max(0, readClockMs() - enqueueBookkeepingStartedAtMs) : 0
 
         return yield* (Effect.provideService(
           Effect.uninterruptibleMask((restore) =>
             Effect.ensuring(
-              Effect.flatMap(restore(Deferred.await(start)), () => {
-                const startTrace = startTraceByStart.get(start)
+              Effect.flatMap(immediateStartTrace ? Effect.void : restore(Deferred.await(start)), () => {
+                const startTrace = immediateStartTrace ?? startTraceByStart.get(start)
                 startTraceByStart.delete(start)
                 const resumedAtMs = phaseTimingEnabled ? readClockMs() : 0
                 const queuePhaseTiming: TxnQueuePhaseTiming | undefined = phaseTimingEnabled
@@ -456,7 +503,7 @@ export const makeEnqueueTransaction = (args: {
                       backpressureMs,
                       enqueueBookkeepingMs,
                       queueWaitMs: startTrace?.queueWaitMs ?? 0,
-                      startHandoffMs: startTrace ? Math.max(0, resumedAtMs - startTrace.startAtMs) : 0,
+                      startHandoffMs: immediateStartTrace ? 0 : startTrace ? Math.max(0, resumedAtMs - startTrace.startAtMs) : 0,
                       ...(startTrace?.startMode ? { startMode: startTrace.startMode } : null),
                       ...(startTrace?.activeLaneAtEnqueue ? { activeLaneAtEnqueue: startTrace.activeLaneAtEnqueue } : null),
                       ...(startTrace?.previousCompletedLane ? { previousCompletedLane: startTrace.previousCompletedLane } : null),

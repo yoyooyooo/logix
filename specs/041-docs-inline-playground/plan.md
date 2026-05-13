@@ -1,6 +1,6 @@
 # Implementation Plan: 文档内联教学 Playground
 
-**Branch**: `[041-docs-inline-playground]` | **Date**: 2025-12-26 | **Spec**: [spec.md](./spec.md)  
+**Branch**: `[041-docs-inline-playground]` | **Date**: 2025-12-26 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/specs/041-docs-inline-playground/spec.md`
 
 **Note**: This template is copied into `specs/[###-feature-name]/plan.md` by
@@ -18,14 +18,14 @@
   the iteration process.
 -->
 
-**Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: Next.js 16 + React 19 + Fumadocs（apps/docs）；effect v3 + `@logixjs/core` + `@logixjs/sandbox`（Playground 运行底座）  
-**Storage**: N/A（默认不持久化读者编辑内容；运行状态仅页面内存态）  
-**Testing**: apps/docs：`types:check` + `build`；sandbox/runtime 相关：Vitest（必要时用 `@effect/vitest`）  
-**Target Platform**: Node.js 20+（构建）+ 现代浏览器（运行 Worker Sandbox）  
-**Project Type**: pnpm workspace（`packages/*` + `apps/docs`）  
-**Performance Goals**: 教学页默认不加载 Sandbox/编辑器代码；用户触发运行后能快速进入“运行中”状态并尽快产出首批输出；对代表性示例记录一次“编译+运行”的可复现耗时基线（作为后续优化依据）  
-**Constraints**: 安全隔离（Worker 内执行）、默认可复现（不依赖外部网络资源）、输出与观测数据有界（避免内存膨胀）、runId/事件序列可确定性复现  
+**Language/Version**: TypeScript 5.9.x（ESM）
+**Primary Dependencies**: Next.js 16 + React 19 + Fumadocs（apps/docs）；effect v3 + `@logixjs/core` + `@logixjs/sandbox`（Playground 运行底座）
+**Storage**: N/A（默认不持久化读者编辑内容；运行状态仅页面内存态）
+**Testing**: apps/docs：`types:check` + `build`；sandbox/runtime 相关：Vitest（必要时用 `@effect/vitest`）
+**Target Platform**: Node.js 20+（构建）+ 现代浏览器（运行 Worker Sandbox）
+**Project Type**: pnpm workspace（`packages/*` + `apps/docs`）
+**Performance Goals**: 教学页默认不加载 Sandbox/编辑器代码；用户触发运行后能快速进入“运行中”状态并尽快产出首批输出；对代表性示例记录一次“编译+运行”的可复现耗时基线（作为后续优化依据）
+**Constraints**: 安全隔离（Worker 内执行）、默认可复现（不依赖外部网络资源）、输出与观测数据有界（避免内存膨胀）、runId/事件序列可确定性复现
 **Scale/Scope**: MVP 覆盖 ≥3 篇代表性文档页；仅作者标记的示例可运行；单示例块支持编辑/重跑/重置/取消；高级观测按块启用
 
 ## Constitution Check

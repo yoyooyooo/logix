@@ -33,5 +33,5 @@ const program = Effect.gen(function* () {
   })
 }).pipe(Effect.provideService(NotificationServiceTag, ConsoleNotificationService))
 
-// 单文件可运行入口（PoC 环境下可选执行）
+// 单文件可运行入口，便于手动验证
 void Effect.runPromise(program)

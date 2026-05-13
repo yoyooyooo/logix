@@ -1,7 +1,7 @@
 import { describe, it, expect } from '@effect/vitest'
 import { readFileSync } from 'node:fs'
 import { Effect } from 'effect'
-import * as ModuleRuntime from '../../../../src/internal/runtime/ModuleRuntime.js'
+import * as ModuleRuntime from '../../../../src/internal/runtime/core/ModuleRuntime.js'
 import * as RuntimeKernel from '../../../../src/internal/runtime/core/RuntimeKernel.js'
 
 const readJson = (url: URL): any => JSON.parse(readFileSync(url, 'utf8'))

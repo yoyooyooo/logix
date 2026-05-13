@@ -7,7 +7,7 @@
     "directory": "packages/logix-query"
   },
   "license": "Apache-2.0",
-  "description": "Query domain package for Logix v3 Trait system",
+  "description": "Query domain package for the current Logix runtime",
   "files": [
     "dist/**"
   ],
@@ -18,7 +18,6 @@
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
-    "./*": "./src/*.ts",
     "./internal/*": null
   },
   "publishConfig": {
@@ -29,11 +28,6 @@
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js",
         "require": "./dist/index.cjs"
-      },
-      "./*": {
-        "types": "./dist/*.d.ts",
-        "import": "./dist/*.js",
-        "require": "./dist/*.cjs"
       },
       "./internal/*": null
     },

@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 // @vitest-environment happy-dom
 import React from 'react'
 import { renderHook, waitFor, act } from '@testing-library/react'
 import * as Logix from '@logixjs/core'
 import { ManagedRuntime, Schema, Layer } from 'effect'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
-import { useModule } from '../../src/Hooks.js'
+import { useModule, useSelector } from '../../src/Hooks.js'
 
 const Counter = Logix.Module.make('useSelectorStructMemoCounter', {
   state: Schema.Struct({ count: Schema.Number, age: Schema.Number, other: Schema.Number }),
@@ -26,7 +27,7 @@ const Counter = Logix.Module.make('useSelectorStructMemoCounter', {
 describe('useSelector(struct memo)', () => {
   it('reuses object reference when unrelated fields change', async () => {
     const layer = Counter.live({ count: 0, age: 0, other: 0 })
-    const tickServicesLayer = Logix.InternalContracts.tickServicesLayer as Layer.Layer<any, never, any>
+    const tickServicesLayer = RuntimeContracts.tickServicesLayer as Layer.Layer<any, never, any>
     const runtime = ManagedRuntime.make(
       Layer.mergeAll(
         tickServicesLayer,
@@ -40,8 +41,8 @@ describe('useSelector(struct memo)', () => {
 
     const useTest = () => {
       const rt = useModule(Counter.tag)
-      const other = useModule(Counter.tag, (s: any) => s.other)
-      const view = useModule(Counter.tag, (s: any) => ({ count: s.count, age: s.age }))
+      const other = useSelector(Counter.tag, (s: any) => s.other)
+      const view = useSelector(Counter.tag, (s: any) => ({ count: s.count, age: s.age }))
       return { rt, other, view }
     }
 

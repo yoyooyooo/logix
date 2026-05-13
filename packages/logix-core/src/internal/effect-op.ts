@@ -6,7 +6,7 @@
 
 import { Effect, Option } from 'effect'
 import * as Core from './runtime/core/EffectOpCore.js'
-import { RunSessionTag } from './observability/runSession.js'
+import { RunSessionTag } from './verification/runSession.js'
 
 export type EffectOp<Out = unknown, Err = unknown, Env = unknown> = Core.EffectOp<Out, Err, Env>
 

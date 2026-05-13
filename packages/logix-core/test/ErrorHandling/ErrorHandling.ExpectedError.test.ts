@@ -1,14 +1,13 @@
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Deferred, Effect, Layer, Schema } from 'effect'
-import * as Debug from '../../src/Debug.js'
+import * as Debug from '../../src/internal/debug-api.js'
 import * as Logix from '../../src/index.js'
 
 describe('Error handling - expected error', () => {
   it.effect('should not emit lifecycle:error or invoke onError when an error is caught locally', () =>
     Effect.gen(function* () {
       const events: Debug.Event[] = []
-      const onErrorCalls: Array<unknown> = []
 
       const sink: Debug.Sink = {
         record: (event) =>
@@ -24,17 +23,12 @@ describe('Error handling - expected error', () => {
         actions: {},
       })
 
-      const logic = TestModule.logic(($) => ({
-        setup: $.lifecycle.onError((cause, context) =>
-          Effect.sync(() => {
-            onErrorCalls.push({ cause, context })
-          }),
-        ),
-        run: Effect.gen(function* () {
+      const logic = TestModule.logic('test-module-logic', ($) => {
+        return Effect.gen(function* () {
           yield* Effect.catch(Effect.fail('expected'), () => Effect.void)
           yield* Deferred.succeed(runDone, undefined)
-        }),
-      }))
+        })
+      })
 
       const layer = TestModule.live({ value: 0 }, logic) as unknown as Layer.Layer<
         Logix.ModuleRuntime<any, any>,
@@ -49,7 +43,6 @@ describe('Error handling - expected error', () => {
         }).pipe(Effect.provide(layer)),
       ), Debug.internal.currentDebugSinks as any, [sink])
 
-      expect(onErrorCalls.length).toBe(0)
       expect(events.some((e) => e.type === 'lifecycle:error')).toBe(false)
     }),
   )

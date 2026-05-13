@@ -127,7 +127,7 @@
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - Answer the following BEFORE starting research, and re-check after Phase 1:
-  - Intent → Flow/Logix → Code → Runtime：审计/校准属于“控制面策略”的上层能力，最终落到 Runtime 的 `stateTransaction` 配置；库侧审计评估内置默认值，用户侧校准产出应用侧覆盖（Provider override / runtime options）；证据来自 converge Trace（`traitSummary.converge`）与 perf 证据体系（`logix-perf-evidence`）。
+  - Intent → Flow/Logix → Code → Runtime：审计/校准属于“控制面策略”的上层能力，最终落到 Runtime 的 `stateTransaction` 配置；库侧审计评估内置默认值，用户侧校准产出应用侧覆盖（Provider override / runtime options）；证据来自 converge Trace（`fieldSummary.converge`）与 perf 证据体系（`logix-perf-evidence`）。
   - 依赖 specs：`specs/013-auto-converge-planner`（控制面参数与策略）、`specs/017-perf-tuning-lab`（调参实验场与推荐口径）。性能证据口径与 runner 统一以 `logix-perf-evidence` 为事实源（collect/diff/tuning + matrix/schema）。
   - Contract 变更：不新增 DSL；新增/固化的是“审计/校准产物 schema + 默认值更新建议（库侧）+ 推荐应用方式（用户侧覆盖）”的契约与口径，需要与 `logix-perf-evidence` 的字段解释保持一致，避免并行真相源。
   - IR & anchors：不改变统一最小 IR；校准只消费既有 Static IR（stepCount 等）与 Dynamic Trace 字段（budget/outcome/reasons）。

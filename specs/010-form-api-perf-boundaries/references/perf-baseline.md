@@ -6,7 +6,7 @@
 ## 0) 目标与口径
 
 - **主门槛（SC-002）**：`Diagnostics Level=off` 下，动态列表（100 行）+ 跨行唯一性规则的关键用例 `p95 <= 50ms`。
-- **诊断分档**：`off` 不产出 `trait:*` trace；`light|full` 产出 Slim 且可序列化事件，并单独记录其 overhead（不与 `SC-002` 门槛混用口径）。
+- **诊断分档**：`off` 不产出 `field:*` trace；`light|full` 产出 Slim 且可序列化事件，并单独记录其 overhead（不与 `SC-002` 门槛混用口径）。
 - **证据优先**：能引用现有 evidence 文件就不重复造跑道（014/016/009 等为主事实源）。
 
 ## 1) 环境信息（填写）
@@ -20,7 +20,7 @@
 
 ## 2) US1 关键用例基线（Diagnostics=off）
 
-- Test（添加于 T029）：`packages/logix-core/test/StateTrait.ListScopeCheck.Perf.off.test.ts`
+- Test（添加于 T029）：`packages/logix-core/test/FieldKernel.ListScopeCheck.Perf.off.test.ts`
 - Scenario：动态列表 100 行；制造重复 → 解除重复；跨行唯一性一次扫描，多行写回；错误即时一致。
 
 记录（填写）：
@@ -31,7 +31,7 @@ diagnostics=off
 p50=0.43ms
 p95=1.12ms
 allocs(optional)=
-notes=StateTrait.ListScopeCheck.Perf.off.test.ts (iters=30,warmup=5)
+notes=FieldKernel.ListScopeCheck.Perf.off.test.ts (iters=30,warmup=5)
 ```
 
 ## 3) “off/light/sampled/full” 开销对齐（填写）

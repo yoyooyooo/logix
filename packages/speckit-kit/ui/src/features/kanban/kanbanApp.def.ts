@@ -132,7 +132,7 @@ const KanbanActions = {
   'board/setFocusedTask': Schema.NullOr(FocusedTaskSchema),
 } as const
 
-export type KanbanShape = Logix.Shape<typeof KanbanStateSchema, typeof KanbanActions>
+export type KanbanShape = Logix.Module.Shape<typeof KanbanStateSchema, typeof KanbanActions>
 
 export const KanbanAppDef = Logix.Module.make('SpeckitKanbanApp', {
   state: KanbanStateSchema,

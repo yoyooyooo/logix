@@ -1,32 +1,62 @@
 ---
-title: Schema validation and error mapping
-description: Schema.decode on submit, writing into errors.$schema, and path mapping.
+title: Schema
+description: Form uses schema for editable values and submit decode, then maps decode issues back into the same error model.
 ---
 
-## 1) Where do Schema errors go?
+Form uses schema in two places:
 
-Form writes “Schema decode/validation errors” into the `errors.$schema` branch, separating them from rule errors (`errors.*`) and manual errors (`errors.$manual.*`).
+- `values`, for the editable state shape
+- `submit.decode`, for the payload that may leave the form boundary
 
-In UI, `useField` reads errors by priority:
-
-1. `errors.$manual.<path>`
-2. `errors.<path>` (rule errors)
-3. `errors.$schema.<path>` (Schema errors)
-
-## 2) Manually mapping Schema errors (optional)
-
-If you need to “decode manually and write errors back” in some scenarios, use `Form.SchemaErrorMapping`:
+## Values schema
 
 ```ts
-const writes = Form.SchemaErrorMapping.toSchemaErrorWrites(schemaError, {
-  // Optional: rename when schema field names differ from form field names
-  rename: { amount: "amountText" },
-  toLeaf: () => "Invalid field",
-})
-
-for (const w of writes) {
-  dispatch({ _tag: "setValue", payload: { path: w.errorPath, value: w.error } })
-}
+Form.make(
+  "InvoiceForm",
+  {
+    values: InvoiceDraft,
+    initialValues,
+  },
+  (form) => {
+    // ...
+  },
+)
 ```
 
-This generates error paths aligned with the `$list/rows[]` convention (e.g. array indices are mapped into `rows`).
+`values` should match the shape the UI edits.
+
+## Submit decode
+
+```ts
+Form.make(
+  "InvoiceForm",
+  {
+    values: InvoiceDraft,
+    initialValues,
+  },
+  (form) => {
+    form.submit({
+      decode: InvoicePayload,
+    })
+  },
+)
+```
+
+`submit.decode` should match the payload shape accepted outside the form boundary.
+
+## Mapping decode issues
+
+Use lower-level schema bridge helpers in repo-local glue when decode issues need stable placement.
+
+These helpers determine:
+
+- which value path receives a decode issue
+- which canonical error leaf should be written
+
+If a decode issue cannot be mapped to a field path, it falls back to the submit slot instead of being left in an unmapped schema payload.
+
+## See also
+
+- [Quick start](/docs/form/quick-start)
+- [Validation](/docs/form/validation)
+- [Rules](/docs/form/rules)

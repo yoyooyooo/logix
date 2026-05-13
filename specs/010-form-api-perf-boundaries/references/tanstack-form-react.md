@@ -1,7 +1,7 @@
 # TanStack Form（React）文档要点摘录（面向 010）— 精简归档
 
-> 来源：`/Users/yoyo/Documents/code/personal/llms.txt/docs/tanstack-form`（TanStack Form React docs 快照）  
-> 官方入口：https://tanstack.com/form/latest/docs/framework/react/reference/index  
+> 来源：`/Users/yoyo/Documents/code/personal/llms.txt/docs/tanstack-form`（TanStack Form React docs 快照）
+> 官方入口：https://tanstack.com/form/latest/docs/framework/react/reference/index
 > 说明：本文件原本用于摘录 TanStack Form 的启发点；截至目前，绝大多数“高价值结论”已被 010 的 `spec.md/plan.md/tasks.md/quickstart.md` 固化，因此这里只保留 **后置（DEFER）/不采纳（REJECT）** 与索引，避免重复维护。
 
 ## 已吸收（ADOPT/TRANSFORM → 010 已固化）

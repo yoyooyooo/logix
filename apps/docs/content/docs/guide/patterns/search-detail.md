@@ -8,7 +8,7 @@ A classic master-detail UI: a searchable list on the left, a detail panel on the
 ## Core idea
 
 1. **Two modules**: `SearchModule` (list) + `DetailModule` (detail)
-2. **Linkage**: cross-module communication via `$.use` or `Link.make`
+2. **Linkage**: cross-module communication via `Program.capabilities.imports` and `$.imports.get(...)`
 3. **Race handling**: use `runLatest` so detail always corresponds to the latest selection
 
 ## State design
@@ -82,7 +82,7 @@ const SearchLogic = SearchDef.logic(($) =>
 ```ts
 const SearchLogic = SearchDef.logic(($) =>
   Effect.gen(function* () {
-    const Detail = yield* $.use(DetailModule)
+    const Detail = yield* $.imports.get(DetailDef.tag)
 
     // When selection changes, trigger detail loading
     yield* $.onState((s) => s.selectedId)
@@ -92,20 +92,20 @@ const SearchLogic = SearchDef.logic(($) =>
 )
 ```
 
-### Option 2: use Link.make
+The host Program must import the detail Program:
 
 ```ts
-const SyncSelectedToDetail = Logix.Link.make({ modules: [SearchDef, DetailDef] as const }, ($) =>
-  $.Search.changes((s) => s.selectedId).pipe(
-    Stream.filter((id): id is string => id !== null),
-    Stream.runForEach((id) => $.Detail.actions.load(id)),
-  ),
-)
-
-// Mount in Root
-const RootModule = RootDef.implement({
-  imports: [SearchImpl, DetailImpl],
-  processes: [SyncSelectedToDetail],
+const SearchProgram = Logix.Program.make(SearchDef, {
+  initial: {
+    keyword: "",
+    results: [],
+    selectedId: null,
+    isSearching: false,
+  },
+  capabilities: {
+    imports: [DetailProgram],
+  },
+  logics: [SearchLogic],
 })
 ```
 
@@ -122,7 +122,7 @@ function MasterDetail() {
 }
 
 function SearchPanel() {
-  const search = useModule(SearchModule)
+  const search = useModule(SearchDef.tag)
   const { keyword, results, selectedId } = useSelector(search, (s) => s)
   const dispatch = useDispatch(search)
 
@@ -150,10 +150,7 @@ function SearchPanel() {
 - [Pagination loading](./pagination)
 - [Cross-module communication](../learn/cross-module-communication)
 
-## Runnable examples
+## Example code
 
-- Index: [Runnable examples](../recipes/runnable-examples)
-- Code:
-  - `examples/logix/src/scenarios/search-with-debounce-latest.ts`
-  - `examples/logix/src/scenarios/cross-module-link.ts`
-  - `examples/logix-react/src/modules/querySearchDemo.ts`
+- `examples/logix/src/scenarios/search-with-debounce-latest.ts`
+- `examples/logix-react/src/modules/querySearchDemo.ts`

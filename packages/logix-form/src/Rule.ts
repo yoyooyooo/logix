@@ -1,4 +1,6 @@
 import type * as Logix from '@logixjs/core'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
+import { Effect } from 'effect'
 import * as Validators from './internal/validators/index.js'
 import type { CanonicalPath } from './internal/form/types.js'
 
@@ -14,7 +16,7 @@ type RuleDeps<Input> = Input extends object
     : CanonicalPath<Input>
   : string
 
-export type Rule<Input, Ctx = unknown> = Logix.StateTrait.CheckRule<Input, Ctx> & {
+export type Rule<Input, Ctx = unknown> = FieldContracts.CheckRule<Input, Ctx> & {
   /**
    * validateOn：
    * - Only affects the auto-validation phase (onChange/onBlur); submit/manual always runs.
@@ -24,6 +26,27 @@ export type Rule<Input, Ctx = unknown> = Logix.StateTrait.CheckRule<Input, Ctx> 
 }
 
 export type RuleSet<Input, Ctx = unknown> = Readonly<Record<string, Rule<Input, Ctx>>>
+
+const RULE_SKIP = Symbol.for('logix.field-kernel.validate.skip')
+const EFFECTFUL_VALIDATE = Symbol.for('@logixjs/form/effectfulRuleValidate')
+
+export const getEffectfulValidate = (validate: unknown): RuleFn<any, any> | undefined =>
+  typeof validate === 'function' ? ((validate as any)[EFFECTFUL_VALIDATE] as RuleFn<any, any> | undefined) : undefined
+
+const wrapEffectfulValidate = <Input, Ctx>(validate: RuleFn<Input, Ctx>): RuleFn<Input, Ctx> => {
+  const wrapped = ((input: Input, ctx: Ctx) => {
+    const out = validate(input, ctx)
+    return Effect.isEffect(out) ? RULE_SKIP : out
+  }) as RuleFn<Input, Ctx>
+
+  Object.defineProperty(wrapped, EFFECTFUL_VALIDATE, {
+    value: validate,
+    enumerable: false,
+    configurable: false,
+  })
+
+  return wrapped
+}
 
 export type RuleEntry<Input, Ctx = unknown> =
   | RuleFn<Input, Ctx>
@@ -42,7 +65,8 @@ export type RuleConfig<Input, Ctx = unknown> = Readonly<{
   readonly validateOn?: RuleValidateOn
 
   // RHF-like builtins (expanded at build time into equivalent pure functions)
-  readonly required?: Validators.RequiredDecl
+  readonly required?: Validators.RequiredDecl | string
+  readonly email?: Validators.EmailDecl | string
   readonly minLength?: Validators.MinLengthDecl
   readonly maxLength?: Validators.MaxLengthDecl
   readonly min?: Validators.MinDecl
@@ -83,7 +107,7 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> =>
 
 /**
  * make：
- * - The result must be directly attachable to `StateTrait.node({ check })`.
+ * - The result must be directly attachable to `FieldKernel.node({ check })`.
  * - Does not introduce an extra wrapper (e.g. `{ rules: ... }`).
  */
 export const make = <Input, Ctx = unknown>(input: RuleInput<Input, Ctx>): RuleSet<Input, Ctx> => {
@@ -115,7 +139,7 @@ export const make = <Input, Ctx = unknown>(input: RuleInput<Input, Ctx>): RuleSe
     if (typeof raw === 'function') {
       byName.set(ruleName, {
         deps: baseDeps,
-        validate: raw as any,
+        validate: wrapEffectfulValidate(raw as any),
         ...(baseValidateOn !== undefined ? { validateOn: baseValidateOn } : {}),
       })
       return
@@ -131,16 +155,22 @@ export const make = <Input, Ctx = unknown>(input: RuleInput<Input, Ctx>): RuleSe
     byName.set(ruleName, {
       ...entry,
       deps,
-      validate,
+      validate: wrapEffectfulValidate(validate),
       ...(validateOn !== undefined ? { validateOn } : {}),
     })
   }
 
   // RHF-like builtins (if declared, it will be expanded into an equivalent pure function)
-  const requiredDecl = (input as any).required as Validators.RequiredDecl | undefined
+  const requiredDecl = (input as any).required as Validators.RequiredDecl | string | undefined
   if (requiredDecl !== undefined && requiredDecl !== false) {
-    const validate = Validators.required(requiredDecl)
+    const validate = Validators.required(typeof requiredDecl === 'string' ? { message: requiredDecl } : requiredDecl)
     addRule('required', (value: Input) => validate(value))
+  }
+
+  const emailDecl = (input as any).email as Validators.EmailDecl | string | undefined
+  if (emailDecl !== undefined && emailDecl !== false) {
+    const validate = Validators.email(typeof emailDecl === 'string' ? { message: emailDecl } : emailDecl)
+    addRule('email', (value: Input) => validate(value))
   }
 
   const minLengthDecl = (input as any).minLength as Validators.MinLengthDecl | undefined
@@ -173,7 +203,7 @@ export const make = <Input, Ctx = unknown>(input: RuleInput<Input, Ctx>): RuleSe
     addRule('pattern', (value: Input) => validate(value))
   }
 
-  // validate: supports both legacy RuleGroup `{ validate: Record<string, RuleEntry> }`
+  // validate: supports both grouped RuleGroup `{ validate: Record<string, RuleEntry> }`
   // and RHF-style `validate: fn | Record<string, fn>`.
   const validateBlock = (input as any).validate as unknown
   if (typeof validateBlock === 'function') {
@@ -245,7 +275,12 @@ export type ListDecl<Item, Ctx = unknown> = Readonly<{
   readonly identity: ListIdentityPolicy
   readonly item?: RuleInput<Item, Ctx>
   readonly list?: RuleInput<ReadonlyArray<Item>, Ctx>
+  readonly minItems?: MinItemsDecl
+  readonly maxItems?: MaxItemsDecl
 }>
+
+export type MinItemsDecl = Validators.MinLengthDecl
+export type MaxItemsDecl = Validators.MaxLengthDecl
 
 export type RulesDecl<TValues extends object = any> = FieldDecl<any> | RootDecl<TValues> | ListDecl<any>
 
@@ -271,6 +306,8 @@ export const list = <Item, Ctx = unknown>(
     readonly identity: ListIdentityPolicy
     readonly item?: RuleInput<Item, Ctx>
     readonly list?: RuleInput<ReadonlyArray<Item>, Ctx>
+    readonly minItems?: MinItemsDecl
+    readonly maxItems?: MaxItemsDecl
   },
 ): ListDecl<Item, Ctx> => ({
   kind: 'list',
@@ -278,6 +315,8 @@ export const list = <Item, Ctx = unknown>(
   identity: spec.identity,
   ...(spec.item !== undefined ? { item: spec.item } : {}),
   ...(spec.list !== undefined ? { list: spec.list } : {}),
+  ...(spec.minItems !== undefined ? { minItems: spec.minItems } : {}),
+  ...(spec.maxItems !== undefined ? { maxItems: spec.maxItems } : {}),
 })
 
 export const fields = <Input, Ctx = unknown>(
@@ -312,6 +351,7 @@ export {
   ERROR_VALUE_MAX_BYTES,
   assertErrorValueBudget,
   required,
+  email,
   minLength,
   maxLength,
   min,

@@ -9,7 +9,7 @@ pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/
 2. 运行最小功能回归：
 
 ```bash
-pnpm -C packages/logix-core exec vitest run test/internal/StateTrait/RowId.UpdateGate.test.ts
+pnpm -C packages/logix-core exec vitest run test/internal/FieldKernel/RowId.UpdateGate.test.ts
 ```
 
 3. 查看 PR 证据记录：

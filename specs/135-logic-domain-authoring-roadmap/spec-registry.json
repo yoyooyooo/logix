@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "group": "135-logic-domain-authoring-roadmap",
+  "statusEnum": ["idea", "draft", "planned", "active", "done", "frozen"],
+  "entries": [
+    {
+      "id": "122",
+      "dir": "specs/122-runtime-public-authoring-convergence",
+      "status": "done",
+      "dependsOn": [],
+      "scope": "public api spine, canonical authoring, logic composition baseline"
+    },
+    {
+      "id": "125",
+      "dir": "specs/125-form-field-kernel-second-wave",
+      "status": "done",
+      "dependsOn": ["122"],
+      "scope": "form versus field-kernel second-wave boundary baseline"
+    },
+    {
+      "id": "127",
+      "dir": "specs/127-domain-packages-second-wave",
+      "status": "done",
+      "dependsOn": ["122"],
+      "scope": "domain package service-first or program-first baseline"
+    },
+    {
+      "id": "129",
+      "dir": "specs/129-anchor-profile-static-governance",
+      "status": "done",
+      "dependsOn": ["122"],
+      "scope": "postponed naming governance and naming bucket baseline"
+    },
+    {
+      "id": "136",
+      "dir": "specs/136-declare-run-phase-contract",
+      "status": "planned",
+      "dependsOn": ["122", "125", "127", "129"],
+      "scope": "core logic declaration versus run phase contract, lifecycle and fields ownership, internal normalized descriptor path"
+    },
+    {
+      "id": "137",
+      "dir": "specs/137-form-logic-authoring-cutover",
+      "status": "planned",
+      "dependsOn": ["125", "127", "136"],
+      "scope": "form default authoring path, field-kernel expert boundary, root export and example cleanup"
+    },
+    {
+      "id": "138",
+      "dir": "specs/138-query-logic-contract-cutover",
+      "status": "planned",
+      "dependsOn": ["122", "127", "136"],
+      "scope": "query program-first contract, shared declaration model, root export and cache truth cleanup"
+    },
+    {
+      "id": "139",
+      "dir": "specs/139-i18n-logic-contract-cutover",
+      "status": "planned",
+      "dependsOn": ["122", "127", "129", "136"],
+      "scope": "i18n service-first contract, lifecycle wiring, optional projection demotion and root surface cleanup"
+    }
+  ]
+}

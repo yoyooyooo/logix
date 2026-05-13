@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 // @vitest-environment happy-dom
 
 import React from 'react'
@@ -6,7 +7,7 @@ import { render, fireEvent, waitFor } from '@testing-library/react'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
-import { useModule } from '../../src/Hooks.js'
+import { useModule, useSelector } from '../../src/Hooks.js'
 
 describe('App-like counter demo layout (AppDemoLayout-style)', () => {
   const CounterModule = Logix.Module.make('AppDemoCounter', {
@@ -21,11 +22,8 @@ describe('App-like counter demo layout (AppDemoLayout-style)', () => {
     },
   })
 
-  const CounterLogic = CounterModule.logic(($) => {
-    // setup-only: register a global fallback error handler.
-    $.lifecycle.onError((cause) => Effect.logError('AppDemoCounter logic error', cause))
-
-    return Effect.gen(function* () {
+  const CounterLogic = CounterModule.logic('counter-logic', ($) =>
+    Effect.gen(function* () {
       // Normal business log
       yield* Effect.log('AppDemoCounter logic setup')
 
@@ -34,23 +32,23 @@ describe('App-like counter demo layout (AppDemoLayout-style)', () => {
 
       // Trace watcher: emit a trace:* Debug event on each increment.
       yield* $.onAction('increment').run(() =>
-        Logix.Debug.record({
+        CoreDebug.record({
           type: 'trace:increment',
           moduleId: CounterModule.id,
           data: { source: 'app-counter-demo-layout.test' },
         }),
       )
-    })
-  })
+    }),
+  )
 
-  const CounterImpl = CounterModule.implement({
+  const CounterProgram = Logix.Program.make(CounterModule, {
     initial: { count: 0 },
     logics: [CounterLogic],
   })
 
   const CounterView: React.FC = () => {
-    const counter = useModule(CounterImpl)
-    const count = useModule(counter, (s) => (s as { count: number }).count)
+    const counter = useModule(CounterProgram)
+    const count = useSelector(counter, (s) => (s as { count: number }).count)
 
     return (
       <div>
@@ -66,7 +64,7 @@ describe('App-like counter demo layout (AppDemoLayout-style)', () => {
   }
 
   it('should update count via Runtime.make + RuntimeProvider + hooks chain', async () => {
-    const appRuntime = Logix.Runtime.make(CounterImpl, {
+    const appRuntime = Logix.Runtime.make(CounterProgram, {
       // Do not inject an extra DebugSink here; only verify the Runtime -> Provider -> hooks chain works.
       // Debug.trace behavior is covered by runtime-debug-trace-integration.test.tsx.
       layer: Layer.empty as Layer.Layer<any, never, never>,

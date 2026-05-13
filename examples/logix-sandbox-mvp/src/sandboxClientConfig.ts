@@ -1,9 +1,8 @@
-import type { KernelRegistry, SandboxClientConfig } from '@logixjs/sandbox'
+import type { KernelRegistry, SandboxClientConfig } from './sandbox-contract'
 
 export const sandboxKernelRegistry: KernelRegistry = {
   kernels: [
     { kernelId: 'core', label: 'core', kernelUrl: '/sandbox/logix-core.js' },
-    { kernelId: 'core-ng', label: 'core-ng', kernelUrl: '/sandbox/logix-core.js' },
   ],
   defaultKernelId: 'core',
 }

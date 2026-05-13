@@ -10,7 +10,7 @@
 2. **不改变兜底语义**：
    - `lifecycle:error` 必须可见（至少 Node 下不会静默丢失）。
    - `diagnostic` 的 warn/error 在 prod/errorOnly 下必须可见；`diagnostic(info)` 仍可被丢弃（避免噪音）。
-3. **默认档 off 近零成本**：在 `diagnosticsLevel=off` 且 sinks 为 errorOnly-only 时不得生成纯观测 payload（decision/dirtySummary/topK/hotspots 等）；若 sinks 非 errorOnly-only（存在明确 consumer），允许生成 `state:update.traitSummary` 所需的 slim decision，但必须避免 heavy/exportable 细节（hotspots、静态 IR 导出等）。
+3. **默认档 off 近零成本**：在 `diagnosticsLevel=off` 且 sinks 为 errorOnly-only 时不得生成纯观测 payload（decision/dirtySummary/topK/hotspots 等）；若 sinks 非 errorOnly-only（存在明确 consumer），允许生成 `state:update.fieldSummary` 所需的 slim decision，但必须避免 heavy/exportable 细节（hotspots、静态 IR 导出等）。
 
 ## errorOnly-only 判定
 

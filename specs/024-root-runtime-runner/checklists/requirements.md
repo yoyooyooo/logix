@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Root Runtime Runner（根模块运行入口）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-23  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-23
 **Feature**: [Link to spec.md](../spec.md)
 
 ## Content Quality

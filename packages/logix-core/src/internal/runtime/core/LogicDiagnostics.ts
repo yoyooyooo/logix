@@ -14,7 +14,7 @@ const phaseDiagnosticsEnabled = (): boolean => isDevEnv()
  * - Such errors often occur once, do not change final semantics, but pollute logs.
  *
  * Therefore we emit a warning diagnostic via Debug, explaining likely causes and investigation paths.
- * The real error semantics are still handled by lifecycle.onError / AppRuntime.onError.
+ * The real error semantics are handled by Runtime / Provider error observers and diagnostics sinks.
  */
 
 const SERVICE_NOT_FOUND_PREFIX = 'Service not found:'
@@ -66,8 +66,8 @@ export const emitEnvServiceNotFoundDiagnosticIfNeeded = (
       severity: 'error',
       message: '$.use is not allowed before Env is fully ready.',
       hint:
-        'Avoid reading services during setup or before Env is ready; ' +
-        'move Env access to the Logic run section, or wrap init via $.lifecycle.onInitRequired.',
+        'Avoid reading services during the declaration phase or before Env is ready; ' +
+        'move Env access to the returned run effect, or declare readiness via $.readyAfter(...).',
       kind: 'env_service_not_ready',
     })
   })
@@ -92,7 +92,7 @@ export class LogicPhaseServiceTag extends ServiceMap.Service<
 /**
  * LogicUnitService:
  * - Injected while executing each mounted logic unit (scope = the logic unit's setup/run fiber).
- * - Used for trait provenance and other "bound to the current logic unit" information (aligned with 022-module logicUnitId).
+ * - Used for field provenance and other "bound to the current logic unit" information (aligned with 022-module logicUnitId).
  *
  * Constraints:
  * - Read-only (must not mutate runtime state); only a provenance/diagnostics anchor.
@@ -147,12 +147,16 @@ export const emitInvalidPhaseDiagnosticIfNeeded = (
         const phaseErr = logicErr as LogicPhaseError
         const hint =
           phaseErr.kind === 'use_in_setup' || phaseErr.kind === 'lifecycle_in_setup'
-            ? 'The setup phase must not read Env/services or run long-lived logic; move the relevant calls to the run phase.'
-            : phaseErr.kind === 'lifecycle_in_run'
-              ? 'Do not register $.lifecycle.* in the run phase (setup-only). Move lifecycle registrations to the synchronous part of Module.logic builder (before return).'
-              : phaseErr.kind === 'traits_in_run' || phaseErr.kind === 'traits_declare_in_run'
-                ? 'Traits are frozen after setup; move $.traits.declare to LogicPlan.setup or the setup registration phase of Module.logic builder.'
-                : 'Move logic to the run phase; keep setup for registrations only.'
+            ? 'The declaration phase must not read Env/services or run long-lived logic; move the relevant calls to the returned run effect.'
+            : phaseErr.kind === 'readiness_in_run'
+              ? 'Move $.readyAfter(...) to the synchronous declaration part of Module.logic builder (before return).'
+              : phaseErr.kind === 'lifecycle_in_run'
+                ? 'Public lifecycle hooks are removed. Use $.readyAfter(...) for readiness, returned run effects for long-lived work, and Effect Scope finalizers for dynamic cleanup.'
+                : phaseErr.kind === 'declaration_in_run'
+                  ? 'Move declaration calls to the synchronous declaration part of Module.logic builder (before return).'
+              : phaseErr.kind === 'traits_in_run' || phaseErr.kind === 'traits_declare_in_run' || phaseErr.kind === 'fields_declare_in_run'
+                ? 'Field declarations are frozen after the declaration phase; move $.fields(...) to the synchronous declaration part of Module.logic builder.'
+                : 'Move logic to the returned run effect; keep declaration for registrations only.'
 
         yield* Debug.record({
           type: 'diagnostic',

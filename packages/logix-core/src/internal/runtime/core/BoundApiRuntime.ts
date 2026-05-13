@@ -9,233 +9,26 @@ import * as FlowRuntime from './FlowRuntime.js'
 import * as MatchBuilder from './MatchBuilder.js'
 import * as Platform from './Platform.js'
 import * as Lifecycle from './Lifecycle.js'
+import * as Readiness from './BoundApiRuntime.readiness.js'
 import * as Debug from './DebugSink.js'
 import * as LogicDiagnostics from './LogicDiagnostics.js'
 import { isDevEnv } from './env.js'
-import type { JsonValue } from '../../observability/jsonValue.js'
-import { RunSessionTag, type RunSession } from '../../observability/runSession.js'
+import { computed as fieldComputed, externalStore as fieldExternalStore, source as fieldSource } from '../../field-kernel/dsl.js'
+import type { JsonValue } from '../../protocol/jsonValue.js'
+import { RunSessionTag, type RunSession } from '../../verification/runSession.js'
 import * as Root from '../../root.js'
 import type { RuntimeInternals } from './RuntimeInternals.js'
-import type * as ModuleTraits from './ModuleTraits.js'
+import type * as ModuleFields from './ModuleFields.js'
 import { getRuntimeInternals, setBoundInternals } from './runtimeInternalsAccessor.js'
-import type { AnyModuleShape, ModuleRuntime, StateOf, ActionOf } from './module.js'
-
-const DIRECT_STATE_WRITE_EFFECT = Symbol.for('logix.directStateWriteEffect')
-
-type DirectStateWriteMetadata<Sh extends AnyModuleShape> =
-  | { readonly kind: 'update'; readonly run: (prev: StateOf<Sh>) => StateOf<Sh> }
-  | { readonly kind: 'mutate'; readonly run: (draft: Logic.Draft<StateOf<Sh>>) => void }
-
-type DirectStateWriteEffect<Sh extends AnyModuleShape> = Effect.Effect<void, never, any> & {
-  [DIRECT_STATE_WRITE_EFFECT]?: DirectStateWriteMetadata<Sh>
-}
-
-const markDirectStateWriteEffect = <Sh extends AnyModuleShape, A extends Effect.Effect<void, never, any>>(
-  effect: A,
-  metadata: DirectStateWriteMetadata<Sh>,
-): A => {
-  ;(effect as DirectStateWriteEffect<Sh>)[DIRECT_STATE_WRITE_EFFECT] = metadata
-  return effect
-}
-
-const getDirectStateWriteMetadata = <Sh extends AnyModuleShape>(
-  value: unknown,
-): DirectStateWriteMetadata<Sh> | undefined => {
-  if (!value || (typeof value !== 'object' && typeof value !== 'function')) return undefined
-  return (value as DirectStateWriteEffect<Sh>)[DIRECT_STATE_WRITE_EFFECT]
-}
-
-// Local IntentBuilder factory; equivalent to the old internal/dsl/LogicBuilder.makeIntentBuilderFactory.
-const LogicBuilderFactory = <Sh extends AnyModuleShape, R = never>(
-  runtime: ModuleRuntime<StateOf<Sh>, ActionOf<Sh>>,
-  runtimeInternals: RuntimeInternals,
-) => {
-  const flowApi = FlowRuntime.make<Sh, R>(runtime, runtimeInternals)
-
-  return <T>(stream: Stream.Stream<T>, triggerName?: string): Logic.IntentBuilder<T, Sh, R> => {
-    const runWithStateTransaction: TaskRunner.TaskRunnerRuntime['runWithStateTransaction'] = (origin, body) =>
-      runtimeInternals.txn.runWithStateTransaction(origin as any, body)
-
-    const taskRunnerRuntime: TaskRunner.TaskRunnerRuntime = {
-      moduleId: runtime.moduleId,
-      instanceId: runtimeInternals.instanceId,
-      runWithStateTransaction,
-      resolveConcurrencyPolicy: runtimeInternals.concurrency.resolveConcurrencyPolicy,
-    }
-
-    const builder = {
-      debounce: (ms: number) =>
-        LogicBuilderFactory<Sh, R>(runtime, runtimeInternals)(flowApi.debounce<T>(ms)(stream), triggerName),
-      throttle: (ms: number) =>
-        LogicBuilderFactory<Sh, R>(runtime, runtimeInternals)(flowApi.throttle<T>(ms)(stream), triggerName),
-      filter: (predicate: (value: T) => boolean) =>
-        LogicBuilderFactory<Sh, R>(runtime, runtimeInternals)(flowApi.filter(predicate)(stream), triggerName),
-      map: <U>(f: (value: T) => U) =>
-        LogicBuilderFactory<Sh, R>(runtime, runtimeInternals)(stream.pipe(Stream.map(f)), triggerName),
-      run<A = void, E = never, R2 = unknown>(
-        eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
-        options?: Logic.OperationOptions,
-      ): Logic.Of<Sh, R & R2, void, E> {
-        return flowApi.run<T, A, E, R2>(eff, options)(stream)
-      },
-      runLatest<A = void, E = never, R2 = unknown>(
-        eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
-        options?: Logic.OperationOptions,
-      ): Logic.Of<Sh, R & R2, void, E> {
-        return flowApi.runLatest<T, A, E, R2>(eff, options)(stream)
-      },
-      runExhaust<A = void, E = never, R2 = unknown>(
-        eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
-        options?: Logic.OperationOptions,
-      ): Logic.Of<Sh, R & R2, void, E> {
-        return flowApi.runExhaust<T, A, E, R2>(eff, options)(stream)
-      },
-      runParallel<A = void, E = never, R2 = unknown>(
-        eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
-        options?: Logic.OperationOptions,
-      ): Logic.Of<Sh, R & R2, void, E> {
-        return flowApi.runParallel<T, A, E, R2>(eff, options)(stream)
-      },
-      runFork: <A = void, E = never, R2 = unknown>(
-        eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
-      ): Logic.Of<Sh, R & R2, void, E> => {
-        if (runtimeInternals && triggerName && typeof eff !== 'function' && getDirectStateWriteMetadata<Sh>(eff) != null) {
-          return Effect.sync(() => {
-            const metadata = getDirectStateWriteMetadata<Sh>(eff)!
-            runtimeInternals.txn.registerActionStateWriteback(
-              triggerName,
-              metadata.kind === 'update'
-                ? ({ kind: 'update', run: metadata.run } as any)
-                : ({ kind: 'mutate', run: metadata.run } as any),
-            )
-          }) as Logic.Of<Sh, R & R2, void, E>
-        }
-        return Effect.forkScoped(flowApi.run<T, A, E, R2>(eff)(stream)).pipe(Effect.asVoid) as Logic.Of<
-          Sh,
-          R & R2,
-          void,
-          E
-        >
-      },
-      runParallelFork: <A = void, E = never, R2 = unknown>(
-        eff: Logic.Of<Sh, R & R2, A, E> | ((p: T) => Logic.Of<Sh, R & R2, A, E>),
-      ): Logic.Of<Sh, R & R2, void, E> => {
-        if (runtimeInternals && triggerName && typeof eff !== 'function' && getDirectStateWriteMetadata<Sh>(eff) != null) {
-          return Effect.sync(() => {
-            const metadata = getDirectStateWriteMetadata<Sh>(eff)!
-            runtimeInternals.txn.registerActionStateWriteback(
-              triggerName,
-              metadata.kind === 'update'
-                ? ({ kind: 'update', run: metadata.run } as any)
-                : ({ kind: 'mutate', run: metadata.run } as any),
-            )
-          }) as Logic.Of<Sh, R & R2, void, E>
-        }
-        return Effect.forkScoped(flowApi.runParallel<T, A, E, R2>(eff)(stream)).pipe(Effect.asVoid) as Logic.Of<
-          Sh,
-          R & R2,
-          void,
-          E
-        >
-      },
-      runTask: <A = void, E = never, R2 = unknown>(
-        config: TaskRunner.TaskRunnerConfig<T, Sh, R & R2, A, E>,
-      ): Logic.Of<Sh, R & R2, void, never> =>
-        TaskRunner.makeTaskRunner<T, Sh, R & R2, A, E>(stream, 'task', taskRunnerRuntime, {
-          ...config,
-          triggerName: config.triggerName ?? triggerName,
-        }) as Logic.Of<Sh, R & R2, void, never>,
-      runParallelTask: <A = void, E = never, R2 = unknown>(
-        config: TaskRunner.TaskRunnerConfig<T, Sh, R & R2, A, E>,
-      ): Logic.Of<Sh, R & R2, void, never> =>
-        TaskRunner.makeTaskRunner<T, Sh, R & R2, A, E>(stream, 'parallel', taskRunnerRuntime, {
-          ...config,
-          triggerName: config.triggerName ?? triggerName,
-        }) as Logic.Of<Sh, R & R2, void, never>,
-      runLatestTask: <A = void, E = never, R2 = unknown>(
-        config: TaskRunner.TaskRunnerConfig<T, Sh, R & R2, A, E>,
-      ): Logic.Of<Sh, R & R2, void, never> =>
-        TaskRunner.makeTaskRunner<T, Sh, R & R2, A, E>(stream, 'latest', taskRunnerRuntime, {
-          ...config,
-          triggerName: config.triggerName ?? triggerName,
-        }) as Logic.Of<Sh, R & R2, void, never>,
-      runExhaustTask: <A = void, E = never, R2 = unknown>(
-        config: TaskRunner.TaskRunnerConfig<T, Sh, R & R2, A, E>,
-      ): Logic.Of<Sh, R & R2, void, never> =>
-        TaskRunner.makeTaskRunner<T, Sh, R & R2, A, E>(stream, 'exhaust', taskRunnerRuntime, {
-          ...config,
-          triggerName: config.triggerName ?? triggerName,
-        }) as Logic.Of<Sh, R & R2, void, never>,
-      toStream: () => stream,
-      update: (
-        reducer: (prev: StateOf<Sh>, payload: T) => StateOf<Sh> | Effect.Effect<StateOf<Sh>, any, any>,
-      ): Logic.Of<Sh, R, void, never> =>
-        Stream.runForEach(stream, (payload) =>
-          taskRunnerRuntime.runWithStateTransaction(
-            {
-              kind: 'watcher:update',
-              name: triggerName,
-            },
-            () =>
-              Effect.gen(function* () {
-                const prev = (yield* runtime.getState) as StateOf<Sh>
-                const next = reducer(prev, payload)
-                if (Effect.isEffect(next)) {
-                  const exit = yield* Effect.exit(next as Effect.Effect<StateOf<Sh>, any, any>)
-                  if (exit._tag === 'Failure') {
-                    yield* Effect.logError('Flow error', exit.cause)
-                    return
-                  }
-                  yield* runtime.setState(exit.value as StateOf<Sh>)
-                  return
-                }
-                yield* runtime.setState(next as StateOf<Sh>)
-              }),
-          ),
-        ).pipe(Effect.catchCause((cause) => Effect.logError('Flow error', cause))) as Logic.Of<Sh, R, void, never>,
-      mutate: (reducer: (draft: Logic.Draft<StateOf<Sh>>, payload: T) => void): Logic.Of<Sh, R, void, never> =>
-        Stream.runForEach(stream, (payload) =>
-          taskRunnerRuntime.runWithStateTransaction(
-            {
-              kind: 'watcher:mutate',
-              name: triggerName,
-            },
-            () =>
-              Effect.gen(function* () {
-                const prev = (yield* runtime.getState) as StateOf<Sh>
-                const recordPatch = runtimeInternals.txn.recordStatePatch
-                const updateDraft = runtimeInternals.txn.updateDraft
-
-                const { nextState, patchPaths } = mutateWithPatchPaths(prev as StateOf<Sh>, (draft) => {
-                  reducer(draft as Logic.Draft<StateOf<Sh>>, payload)
-                })
-
-                for (const path of patchPaths) {
-                  recordPatch(path, 'unknown')
-                }
-
-                updateDraft(nextState)
-              }),
-          ),
-        ).pipe(Effect.catchCause((cause) => Effect.logError('Flow error', cause))) as Logic.Of<Sh, R, void, never>,
-    } as Omit<Logic.IntentBuilder<T, Sh, R>, 'pipe'>
-
-    const pipe: Logic.IntentBuilder<T, Sh, R>['pipe'] = function (this: unknown) {
-      // eslint-disable-next-line prefer-rest-params
-      const fns = arguments as unknown as ReadonlyArray<
-        (self: Logic.IntentBuilder<T, Sh, R>) => Logic.IntentBuilder<T, Sh, R>
-      >
-      let acc: Logic.IntentBuilder<T, Sh, R> = builder as Logic.IntentBuilder<T, Sh, R>
-      for (let i = 0; i < fns.length; i++) {
-        acc = fns[i](acc)
-      }
-      return acc
-    }
-
-    return Object.assign(builder, { pipe }) as Logic.IntentBuilder<T, Sh, R>
-  }
-}
 import type { BoundApi } from './module.js'
+import { markDirectStateWriteEffect } from './BoundApiRuntime.directStateWrite.js'
+import { makeLogicBuilderFactory } from './BoundApiRuntime.logicBuilder.js'
+import {
+  buildModuleHandle,
+  makeActionStreamByTag,
+  makeDispatch,
+  makeDispatchers,
+} from './BoundApiRuntime.facade.js'
 
 /**
  * BoundApi implementation: creates a pre-bound `$` for a given Store shape + runtime.
@@ -250,6 +43,16 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
     readonly phaseService?: LogicDiagnostics.LogicPhaseService
     readonly moduleId?: string
     readonly logicUnit?: LogicDiagnostics.LogicUnitService
+    readonly captureDeclarations?: (args: {
+      readonly fields: ModuleFields.FieldSpec
+      readonly provenance: {
+        readonly originType: 'logicUnit'
+        readonly originId: string
+        readonly originIdKind: 'explicit' | 'derived'
+        readonly originLabel: string
+        readonly path?: string
+      }
+    }) => void
   },
 ): BoundApi<Sh, R> {
   const runtimeInternals = getRuntimeInternals(runtime as any)
@@ -270,7 +73,7 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
   const flowApi = FlowRuntime.make<Sh, R>(runtime, runtimeInternals)
 
   const makeIntentBuilder = (runtime_: Logix.ModuleRuntime<any, any>) =>
-    LogicBuilderFactory<Sh, R>(runtime_, runtimeInternals)
+    makeLogicBuilderFactory<Sh, R>(runtime_, runtimeInternals)
   const withLifecycle = <A>(
     available: (manager: Lifecycle.LifecycleManager) => Effect.Effect<A, never, any>,
     missing: () => Effect.Effect<A, never, any>,
@@ -292,39 +95,59 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
       ),
     )
 
-  const emitSetupOnlyViolation = (api: string): Effect.Effect<void> =>
+  const emitDeclarationOnlyViolation = (api: string): Effect.Effect<void> =>
     Debug.record({
       type: 'diagnostic',
       moduleId: runtime.moduleId,
       instanceId: runtime.instanceId,
       code: 'logic::invalid_phase',
       severity: 'error',
-      message: `${api} is setup-only and is not allowed in run phase.`,
+      message: `${api} belongs to the declaration phase and is not allowed in run phase.`,
       hint:
-        'Move $.lifecycle.* calls to the synchronous part of Module.logic builder (before return) for registration; ' +
-        'for dynamic resource cleanup in the run phase, use Effect.acquireRelease / Scope finalizer instead of registering onDestroy late.',
-      kind: 'lifecycle_in_run',
+        api === '$.readyAfter'
+          ? 'Move $.readyAfter(...) to the synchronous declaration part of Module.logic builder (before return).'
+          : 'Move declaration calls to the synchronous declaration part of Module.logic builder (before return); for dynamic resource cleanup in the run phase, use Effect.acquireRelease / Scope finalizer.',
+      kind: api === '$.readyAfter' ? 'readiness_in_run' : 'declaration_in_run',
     }).pipe(Effect.orDie)
+
+  const readyAfter = Readiness.makeReadyAfter<Sh, R>({
+    getPhase: getCurrentPhase,
+    runtimeInternals,
+    emitDeclarationOnlyViolation,
+  })
+
+  const declareFields = (fields: ModuleFields.FieldSpec): void => {
+    if (getCurrentPhase() === 'run') {
+      throw LogicDiagnostics.makeLogicPhaseError('fields_declare_in_run', '$.fields.declare', 'run', options?.moduleId)
+    }
+
+    if (!fields || typeof fields !== 'object') {
+      throw new Error('[InvalidFieldsDeclaration] $.fields.declare expects an object.')
+    }
+
+    const logicUnit = options?.logicUnit ?? {
+      logicUnitId: 'unknown',
+      logicUnitIdKind: 'derived' as const,
+      logicUnitLabel: 'logicUnit:unknown',
+      path: undefined as string | undefined,
+    }
+
+    options?.captureDeclarations?.({
+      fields,
+      provenance: {
+        originType: 'logicUnit',
+        originId: logicUnit.logicUnitId,
+        originIdKind: logicUnit.logicUnitIdKind,
+        originLabel: logicUnit.logicUnitLabel,
+        path: logicUnit.path,
+      },
+    })
+  }
 
   const createIntentBuilder = <T>(stream: Stream.Stream<T>, triggerName?: string) =>
     makeIntentBuilder(runtime)(stream, triggerName)
 
-  const actionMatchesTag = (action: unknown, tag: string): boolean => {
-    const actionTag = (action as any)?._tag
-    if (actionTag === tag) {
-      return true
-    }
-    const actionType = (action as any)?.type
-    return actionType === tag
-  }
-
-  const actionStreamByTag = (tag: string): Stream.Stream<Logix.ActionOf<Sh>> => {
-    const topicSelector = runtime.actionsByTag$
-    if (typeof topicSelector === 'function') {
-      return topicSelector(tag)
-    }
-    return runtime.actions$.pipe(Stream.filter((action: unknown) => actionMatchesTag(action, tag)))
-  }
+  const actionStreamByTag = makeActionStreamByTag(runtime)
 
   const onceInRunSession = (key: string): Effect.Effect<boolean, never, any> =>
     Effect.serviceOption(RunSessionTag as unknown as ServiceMap.Key<any, RunSession>).pipe(
@@ -332,13 +155,26 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
     )
 
   let cachedDiagnosticsLevel: Debug.DiagnosticsLevel | undefined
+  const moduleHandleCache = new WeakMap<Logix.ModuleRuntime<any, any>, unknown>()
+
+  const getOrBuildModuleHandle = (
+    tag: ServiceMap.Key<any, Logix.ModuleRuntime<any, any>>,
+    rt: Logix.ModuleRuntime<any, any>,
+  ): unknown => {
+    const cached = moduleHandleCache.get(rt)
+    if (cached) return cached
+
+    const handle = buildModuleHandle(tag, rt)
+    moduleHandleCache.set(rt, handle)
+    return handle
+  }
 
   const isModuleLike = (
     value: unknown,
   ): value is {
-    readonly _kind: 'ModuleDef' | 'Module'
+    readonly _kind: 'Module' | 'Program'
     readonly id: string
-  readonly tag: ServiceMap.Key<any, Logix.ModuleRuntime<any, any>>
+    readonly tag: ServiceMap.Key<any, Logix.ModuleRuntime<any, any>>
     readonly schemas?: Record<string, unknown>
     readonly meta?: Record<string, JsonValue>
     readonly dev?: { readonly source?: { readonly file: string; readonly line: number; readonly column: number } }
@@ -346,41 +182,10 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
     Boolean(
       value &&
       typeof value === 'object' &&
-      ((value as any)._kind === 'ModuleDef' || (value as any)._kind === 'Module') &&
+      ((value as any)._kind === 'Module' || (value as any)._kind === 'Program') &&
       'tag' in (value as object) &&
-  ServiceMap.isKey((value as any).tag),
+      ServiceMap.isKey((value as any).tag),
     )
-
-  const buildModuleHandle = (
-  tag: ServiceMap.Key<any, Logix.ModuleRuntime<any, any>>,
-    rt: Logix.ModuleRuntime<any, any>,
-  ): unknown => {
-    const actionsProxy: Logix.ModuleHandle<any>['actions'] = new Proxy(
-      {},
-      {
-        get: (_target, prop) => (payload: unknown) =>
-          rt.dispatch({
-            _tag: prop as string,
-            payload,
-          }),
-      },
-    ) as Logix.ModuleHandle<any>['actions']
-
-    const handle: Logix.ModuleHandle<any> = {
-      read: (selector) => Effect.map(rt.getState, selector),
-      changes: rt.changes,
-      dispatch: rt.dispatch,
-      actions$: rt.actions$,
-      actions: actionsProxy,
-    }
-
-    const EXTEND_HANDLE = Symbol.for('logix.module.handle.extend')
-    const extend = (tag as any)?.[EXTEND_HANDLE] as
-      | ((runtime: Logix.ModuleRuntime<any, any>, base: Logix.ModuleHandle<any>) => unknown)
-      | undefined
-
-    return typeof extend === 'function' ? (extend(rt, handle) ?? handle) : handle
-  }
 
   const emitModuleDescriptorOnce = (
     module: {
@@ -418,11 +223,11 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
 
       const source = module.dev?.source
 
-      const traitsSnapshot = runtimeInternals.traits.getModuleTraitsSnapshot()
-      const traits = traitsSnapshot
+      const fieldsSnapshot = runtimeInternals.fields.getModuleFieldsSnapshot()
+      const fields = fieldsSnapshot
         ? {
-            digest: traitsSnapshot.digest,
-            count: traitsSnapshot.traits.length,
+            digest: fieldsSnapshot.digest,
+            count: fieldsSnapshot.fields.length,
           }
         : undefined
 
@@ -435,7 +240,7 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
         schemaKeys,
         meta,
         source,
-        traits,
+        fields,
       }
 
       yield* Debug.record({
@@ -455,6 +260,7 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
    */
   const resolveModuleRuntime = (
   tag: ServiceMap.Key<any, Logix.ModuleRuntime<any, any>>,
+    entrypoint = 'logic.$.use',
   ): Effect.Effect<Logix.ModuleRuntime<any, any>, never, any> =>
     Effect.gen(function* () {
       const requestedModuleId = typeof (tag as any)?.id === 'string' ? ((tag as any).id as string) : undefined
@@ -483,7 +289,7 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
       const fix: string[] = isDevEnv()
         ? [
             '- Provide the child implementation in the same scope (imports).',
-            `  Example: ${fromModuleId ?? 'ParentModule'}.implement({ imports: [${requestedModuleId ?? 'ChildModule'}.impl], ... })`,
+            `  Example: Program.make(${fromModuleId ?? 'ParentModule'}, { capabilities: { imports: [${requestedModuleId ?? 'ChildModule'}] }, ... })`,
             '- If you intentionally want a root singleton, provide it at app root (Runtime.make(...,{ layer }) / root imports),',
             '  and use Root.resolve(ModuleTag) (instead of $.use) at the callsite.',
           ]
@@ -495,7 +301,7 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
               '[MissingModuleRuntimeError] Cannot resolve ModuleRuntime for ModuleTag.',
               '',
               `tokenId: ${tokenId}`,
-              'entrypoint: logic.$.use',
+              `entrypoint: ${entrypoint}`,
               'mode: strict',
               `from: ${fromModuleId ?? '<unknown module id>'}`,
               `startScope: moduleId=${fromModuleId ?? '<unknown>'}, instanceId=${String(runtime.instanceId ?? '<unknown>')}`,
@@ -507,7 +313,7 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
       )
 
       ;(err as any).tokenId = tokenId
-      ;(err as any).entrypoint = 'logic.$.use'
+      ;(err as any).entrypoint = entrypoint
       ;(err as any).mode = 'strict'
       ;(err as any).from = fromModuleId
       ;(err as any).startScope = {
@@ -758,46 +564,8 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
 
   const actions = shape.actionMap as BoundApi<Sh, R>['actions']
 
-  const dispatcherCache = new Map<string, (...args: any[]) => Effect.Effect<void, any, any>>()
-
-  const hasAction = (key: string): boolean => Object.prototype.hasOwnProperty.call(actions as any, key)
-
-  const dispatchers: BoundApi<Sh, R>['dispatchers'] = new Proxy({} as any, {
-    get: (_target, prop) => {
-      if (typeof prop !== 'string') return undefined
-      if (!hasAction(prop)) return undefined
-
-      const cached = dispatcherCache.get(prop)
-      if (cached) return cached
-
-      const token = (actions as any)[prop] as Action.AnyActionToken
-      const fn = (...args: any[]) => runtime.dispatch((token as any)(...args))
-
-      dispatcherCache.set(prop, fn)
-      return fn
-    },
-    has: (_target, prop) => typeof prop === 'string' && hasAction(prop),
-    ownKeys: () => Object.keys(actions as any),
-    getOwnPropertyDescriptor: (_target, prop) => {
-      if (typeof prop !== 'string') return undefined
-      if (!hasAction(prop)) return undefined
-      return { enumerable: true, configurable: true }
-    },
-  }) as unknown as BoundApi<Sh, R>['dispatchers']
-
-  const dispatch: BoundApi<Sh, R>['dispatch'] = (...args: any[]) => {
-    const [first, second] = args
-
-    if (typeof first === 'string') {
-      return runtime.dispatch({ _tag: first, payload: second } as Logix.ActionOf<Sh>)
-    }
-
-    if (Action.isActionToken(first)) {
-      return runtime.dispatch((first as any)(second))
-    }
-
-    return runtime.dispatch(first as Logix.ActionOf<Sh>)
-  }
+  const dispatchers = makeDispatchers(actions as any, runtime) as BoundApi<Sh, R>['dispatchers']
+  const dispatch = makeDispatch(runtime) as BoundApi<Sh, R>['dispatch']
 
   const matchApi = <V>(value: V): Logic.FluentMatch<V> => MatchBuilder.makeMatch(value)
 
@@ -846,6 +614,14 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
         }) as any
       },
     },
+    imports: {
+      get: (tag: any) => {
+        guardRunOnly('imports_get_in_setup', '$.imports.get')
+        return resolveModuleRuntime(tag, 'logic.$.imports.get').pipe(
+          Effect.map((rt: Logix.ModuleRuntime<any, any>) => getOrBuildModuleHandle(tag, rt)),
+        ) as unknown as Logic.Of<Sh, R, any, never>
+      },
+    },
     state: stateApi,
     actions,
     dispatchers,
@@ -853,142 +629,49 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
     flow: flowApi,
     match: matchApi,
     matchTag: matchTagApi,
-    lifecycle: {
-      onInitRequired: (eff: Logic.Of<Sh, R, void, never>) => {
-        if (getCurrentPhase() === 'run') {
-          return emitSetupOnlyViolation('$.lifecycle.onInitRequired') as any
-        }
-        runtimeInternals.lifecycle.registerInitRequired(eff as any)
-        return Effect.void as any
+    readyAfter,
+    fields: Object.assign(
+      (fields: ModuleFields.FieldSpec) => {
+        declareFields(fields)
       },
-      onStart: (eff: Logic.Of<Sh, R, void, never>) => {
-        if (getCurrentPhase() === 'run') {
-          return emitSetupOnlyViolation('$.lifecycle.onStart') as any
-        }
-        runtimeInternals.lifecycle.registerStart(eff as any)
-        return Effect.void as any
-      },
-      onInit: (eff: Logic.Of<Sh, R, void, never>) => {
-        // Legacy alias: same semantics as onInitRequired (to reduce migration friction).
-        if (getCurrentPhase() === 'run') {
-          return emitSetupOnlyViolation('$.lifecycle.onInit') as any
-        }
-        runtimeInternals.lifecycle.registerInitRequired(eff as any)
-        return Effect.void as any
-      },
-      onDestroy: (eff: Logic.Of<Sh, R, void, never>) => {
-        if (getCurrentPhase() === 'run') {
-          return emitSetupOnlyViolation('$.lifecycle.onDestroy') as any
-        }
-        runtimeInternals.lifecycle.registerDestroy(eff as any)
-        return Effect.void as any
-      },
-      onError: (
-        handler: (
-          cause: import('effect').Cause.Cause<unknown>,
-          context: Lifecycle.ErrorContext,
-        ) => Effect.Effect<void, never, R>,
-      ) => {
-        if (getCurrentPhase() === 'run') {
-          return emitSetupOnlyViolation('$.lifecycle.onError') as any
-        }
-        runtimeInternals.lifecycle.registerOnError(handler as any)
-        return Effect.void as any
-      },
-      onSuspend: (eff: Logic.Of<Sh, R, void, never>) => {
-        if (getCurrentPhase() === 'run') {
-          return emitSetupOnlyViolation('$.lifecycle.onSuspend') as any
-        }
-        runtimeInternals.lifecycle.registerPlatformSuspend(Effect.asVoid(eff as Effect.Effect<void, never, any>))
-        return Effect.void as any
-      },
-      onResume: (eff: Logic.Of<Sh, R, void, never>) => {
-        if (getCurrentPhase() === 'run') {
-          return emitSetupOnlyViolation('$.lifecycle.onResume') as any
-        }
-        runtimeInternals.lifecycle.registerPlatformResume(Effect.asVoid(eff as Effect.Effect<void, never, any>))
-        return Effect.void as any
-      },
-      onReset: (eff: Logic.Of<Sh, R, void, never>) => {
-        if (getCurrentPhase() === 'run') {
-          return emitSetupOnlyViolation('$.lifecycle.onReset') as any
-        }
-        runtimeInternals.lifecycle.registerPlatformReset(Effect.asVoid(eff as Effect.Effect<void, never, any>))
-        return Effect.void as any
-      },
-    },
-    traits: {
-      declare: (traits: ModuleTraits.TraitSpec) => {
-        if (getCurrentPhase() === 'run') {
-          throw LogicDiagnostics.makeLogicPhaseError(
-            'traits_declare_in_run',
-            '$.traits.declare',
-            'run',
-            options?.moduleId,
-          )
-        }
+      {
+        computed: fieldComputed,
+        source: Object.assign(fieldSource, {
+          refresh: (fieldPath: string, options?: { readonly force?: boolean }) =>
+            Effect.gen(function* () {
+              const handler = runtimeInternals.fields.getSourceRefreshHandler(fieldPath) as
+                | ((state: Logix.StateOf<Sh>) => Effect.Effect<void, never, any>)
+                | undefined
+              if (!handler) {
+                return yield* Effect.void
+              }
 
-        if (!traits || typeof traits !== 'object') {
-          throw new Error('[InvalidTraitsDeclaration] $.traits.declare expects an object.')
-        }
+              const force = options?.force === true
+              const runHandler = (state: Logix.StateOf<Sh>) =>
+                force ? Effect.provideService(handler(state), TaskRunner.forceSourceRefresh, true) : handler(state)
 
-        const logicUnit = options?.logicUnit ?? {
-          logicUnitId: 'unknown',
-          logicUnitIdKind: 'derived' as const,
-          logicUnitLabel: 'logicUnit:unknown',
-          path: undefined as string | undefined,
-        }
+              const inTxn = yield* Effect.service(TaskRunner.inSyncTransactionFiber).pipe(Effect.orDie)
+              if (inTxn) {
+                const state = (yield* runtime.getState) as Logix.StateOf<Sh>
+                return yield* runHandler(state)
+              }
 
-        runtimeInternals.traits.registerModuleTraitsContribution({
-          traits,
-          provenance: {
-            originType: 'logicUnit',
-            originId: logicUnit.logicUnitId,
-            originIdKind: logicUnit.logicUnitIdKind,
-            originLabel: logicUnit.logicUnitLabel,
-            path: logicUnit.path,
-          },
-        })
+              return yield* runtimeInternals.txn.runWithStateTransaction(
+                {
+                  kind: 'source-refresh',
+                  name: fieldPath,
+                } as any,
+                () =>
+                  Effect.gen(function* () {
+                    const state = (yield* runtime.getState) as Logix.StateOf<Sh>
+                    return yield* runHandler(state)
+                  }),
+              )
+            }),
+        }),
+        external: fieldExternalStore,
       },
-      source: {
-        refresh: (fieldPath: string, options?: { readonly force?: boolean }) =>
-          Effect.gen(function* () {
-            const handler = runtimeInternals.traits.getSourceRefreshHandler(fieldPath) as
-              | ((state: Logix.StateOf<Sh>) => Effect.Effect<void, never, any>)
-              | undefined
-            if (!handler) {
-              // If no refresh handler is registered, treat it as a no-op to avoid throwing when StateTraitProgram is not installed.
-              return yield* Effect.void
-            }
-
-            const force = options?.force === true
-            const runHandler = (state: Logix.StateOf<Sh>) =>
-              force ? Effect.provideService(handler(state), TaskRunner.forceSourceRefresh, true) : handler(state)
-
-            // Never call enqueueTransaction inside the transaction window (it can deadlock):
-            // - Run the handler inside the current transaction so it writes to the draft via bound.state.mutate.
-            // - The outer transaction window is responsible for commit + debug aggregation.
-            const inTxn = yield* Effect.service(TaskRunner.inSyncTransactionFiber).pipe(Effect.orDie)
-            if (inTxn) {
-              const state = (yield* runtime.getState) as Logix.StateOf<Sh>
-              return yield* runHandler(state)
-            }
-
-            // Treat one source-refresh as a dedicated transaction entry.
-            return yield* runtimeInternals.txn.runWithStateTransaction(
-              {
-                kind: 'source-refresh',
-                name: fieldPath,
-              } as any,
-              () =>
-                Effect.gen(function* () {
-                  const state = (yield* runtime.getState) as Logix.StateOf<Sh>
-                  return yield* runHandler(state)
-                }),
-            )
-          }),
-      },
-    },
+    ),
     reducer,
     effect,
     use: new Proxy(() => {}, {
@@ -998,11 +681,13 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
           const domain = arg
           const tag = domain.tag as unknown as ServiceMap.Key<any, Logix.ModuleRuntime<any, any>>
 
-          const resolveAndBuild = resolveModuleRuntime(tag).pipe(Effect.map((rt) => buildModuleHandle(tag, rt)))
+          const resolveAndBuild = resolveModuleRuntime(tag, 'logic.$.use').pipe(
+            Effect.map((rt) => getOrBuildModuleHandle(tag, rt)),
+          )
 
-          const resolveWithDescriptor = resolveModuleRuntime(tag).pipe(
+          const resolveWithDescriptor = resolveModuleRuntime(tag, 'logic.$.use').pipe(
             Effect.tap((rt) => emitModuleDescriptorOnce(domain, rt)),
-            Effect.map((rt) => buildModuleHandle(tag, rt)),
+            Effect.map((rt) => getOrBuildModuleHandle(tag, rt)),
           )
 
           const detectAndSelect = Effect.service(Debug.currentDiagnosticsLevel).pipe(
@@ -1032,8 +717,8 @@ export function make<Sh extends Logix.AnyModuleShape, R = never>(
 
           // Module: return a read-only ModuleHandle view.
           if (candidate._kind === 'ModuleTag') {
-            return resolveModuleRuntime(arg as any).pipe(
-              Effect.map((rt: Logix.ModuleRuntime<any, any>) => buildModuleHandle(arg as any, rt)),
+            return resolveModuleRuntime(arg as any, 'logic.$.use').pipe(
+              Effect.map((rt: Logix.ModuleRuntime<any, any>) => getOrBuildModuleHandle(arg as any, rt)),
             ) as unknown as Logic.Of<Sh, R, any, never>
           }
 

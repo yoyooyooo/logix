@@ -3,7 +3,7 @@ import type { RuntimeInternals } from './RuntimeInternals.js'
 
 const RUNTIME_INTERNALS = Symbol.for('@logixjs/core/runtimeInternals')
 const BOUND_INTERNALS = Symbol.for('@logixjs/core/boundInternals')
-const MODULE_TRAITS_PROGRAM = Symbol.for('@logixjs/core/moduleTraitsProgram')
+const MODULE_FIELD_PROGRAM = Symbol.for('@logixjs/core/moduleFieldProgram')
 
 const defineHidden = (target: object, key: symbol, value: unknown): void => {
   Object.defineProperty(target, key, {
@@ -23,20 +23,20 @@ export const setBoundInternals = (bound: object, internals: RuntimeInternals): v
 }
 
 /**
- * ModuleTraitsProgram（StateTraitProgram）：
- * - Attaches a traits Program to a module definition object (used by TraitLifecycle/Debug).
+ * ModuleFieldsProgram（FieldProgram）：
+ * - Attaches a field program to a module definition object (used by field-runtime wiring and Debug).
  * - Uses Symbol + non-enumerable properties to avoid spreading `.__*` magic fields.
  *
  * Note: this is a "module-definition-side" internal slot, not RuntimeInternals (instance-level); the semantics differ.
  */
-export const setModuleTraitsProgram = (module: object, program: unknown): void => {
-  defineHidden(module, MODULE_TRAITS_PROGRAM, program)
+export const setModuleFieldsProgram = (module: object, program: unknown): void => {
+  defineHidden(module, MODULE_FIELD_PROGRAM, program)
 }
 
-export const getModuleTraitsProgram = (module: unknown): unknown | undefined => {
+export const getModuleFieldsProgram = (module: unknown): unknown | undefined => {
   if (!module) return undefined
   if (typeof module !== 'object' && typeof module !== 'function') return undefined
-  return (module as any)[MODULE_TRAITS_PROGRAM] as unknown | undefined
+  return (module as any)[MODULE_FIELD_PROGRAM] as unknown | undefined
 }
 
 const formatScope = (moduleId: unknown, instanceId: unknown): string => {

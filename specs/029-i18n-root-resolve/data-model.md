@@ -1,11 +1,11 @@
 # Data Model: 029 国际化接入与 `$.root.resolve(Tag)` 语法糖
 
-**Branch**: `029-i18n-root-resolve`  
-**Source Spec**: `specs/029-i18n-root-resolve/spec.md`  
-**Source Plan**: `specs/029-i18n-root-resolve/plan.md`  
+**Branch**: `029-i18n-root-resolve`
+**Source Spec**: `specs/029-i18n-root-resolve/spec.md`
+**Source Plan**: `specs/029-i18n-root-resolve/plan.md`
 **Source Research**: `specs/029-i18n-root-resolve/research.md`
 
-> 作用：以“实体/关系/不变量”视角描述本特性的最小数据模型，帮助 core/react/traits 在同一事实源下对齐实现与测试。
+> 作用：以“实体/关系/不变量”视角描述本特性的最小数据模型，帮助 core/react/fields 在同一事实源下对齐实现与测试。
 
 ---
 
@@ -80,16 +80,16 @@ type I18nSnapshot = {
 - `seq` 单调递增且可复现（同一 tree 内不依赖随机数）。
 - 快照必须 Slim、可序列化（允许进入诊断事件载荷）。
 
-### 2.3 TranslateMode（等待/不等待）
+### 2.3 RenderMode（等待/不等待）
 
 ```ts
-type TranslateMode = "now" | "waitReady"
+type RenderMode = "now" | "waitReady"
 ```
 
 语义：
 
 - `now`：不等待 ready；未就绪时返回可展示回退值；
-- `waitReady`：等待 init=ready 后再翻译；默认等待上限 5 秒（支持调用方覆盖）；若 init=failed 或超过上限，则返回可预测降级（不无限等待）。
+- `waitReady`：等待 init=ready 后再渲染；默认等待上限 5 秒（支持调用方覆盖）；若 init=failed 或超过上限，则返回可预测降级（不无限等待）。
 
 ### 2.4 Message Token（可延迟翻译的消息描述）
 
@@ -98,40 +98,44 @@ type TranslateMode = "now" | "waitReady"
 ```ts
 type JsonPrimitive = null | boolean | number | string
 
-type I18nTokenOptions = Readonly<Record<string, JsonPrimitive>>
+type I18nTokenParams = Readonly<Record<string, JsonPrimitive>>
 
 type I18nMessageToken = {
   readonly _tag: "i18n"
   readonly key: string
-  readonly options?: I18nTokenOptions
+  readonly params?: I18nTokenParams
 }
 ```
 
 不变量（预算示例，最终以 `contracts/message-token.md` 为准）：
 
-- `key`/`options` 长度/体积有上限（早期可 soft，后续可升级为 hard）；
-- `options` 只允许 JsonPrimitive（禁止嵌套对象/数组/函数等不可序列化值）；
-- `options` 必须被 canonicalize（去掉 `undefined`，并按 key 字典序重建），保证稳定对比/稳定序列化；
-- `options` 不允许携带语言冻结字段（例如 `lng` / `lngs`），避免 token 把语言“写死”。
+- `key`/`params` 长度/体积有上限（早期可 soft，后续可升级为 hard）；
+- `params` 只允许 JsonPrimitive（禁止嵌套对象/数组/函数等不可序列化值）；
+- `params` 必须被 canonicalize（去掉 `undefined`，并按 key 字典序重建），保证稳定对比/稳定序列化；
+- `params` 不允许携带语言冻结字段（例如 `lng` / `lngs`），避免 token 把语言“写死”；
+- render fallback 只允许通过 render hints 传入，不进入 token canonical truth。
 
 ### 2.5 I18n Service Contract（最小能力集合）
 
 ```ts
 type I18nService = {
-  readonly instance: I18nDriver
   readonly snapshot: unknown // effect SubscriptionRef<I18nSnapshot> 或等价可订阅引用
 
   // 非阻塞：永远返回可展示字符串（未就绪时回退）
-  readonly t: (key: string, options?: I18nTokenOptions) => string
+  readonly render: (
+    token: I18nMessageToken,
+    hints?: { readonly fallback?: string },
+  ) => string
 
   // 等待就绪：返回最终字符串；失败走可预测降级（不无限等待）
-  readonly tReady: (key: string, options?: I18nTokenOptions, timeoutMs?: number) => unknown // Effect<string, never, ...>
+  readonly renderReady: (
+    token: I18nMessageToken,
+    hints?: { readonly fallback?: string },
+    timeoutMs?: number,
+  ) => unknown // Effect<string, never, ...>
 
   // 请求切换语言：以当前 tree 注入的外部实例为准，并通过 snapshot 作为单一变化信号对外传播
   readonly changeLanguage: (language: string) => unknown // Effect<void, never, ...>
-
-  // 纯函数：构造可回放 token（canonicalize；预算可先 soft 再升级 hard）
-  readonly token: (key: string, options?: I18nTokenOptions) => I18nMessageToken
 }
 ```
 

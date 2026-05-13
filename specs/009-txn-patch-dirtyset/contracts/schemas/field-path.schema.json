@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://intent-flow.local/specs/009-txn-patch-dirtyset/schemas/field-path.schema.json",
+  "$id": "https://logix.local/specs/009-txn-patch-dirtyset/schemas/field-path.schema.json",
   "title": "FieldPath",
   "type": "array",
   "minItems": 1,

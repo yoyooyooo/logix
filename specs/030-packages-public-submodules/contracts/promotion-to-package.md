@@ -1,7 +1,7 @@
 # Contract: Promotion Path（子模块 → 独立子包）
 
-**Branch**: `030-packages-public-submodules`  
-**Date**: 2025-12-25  
+**Branch**: `030-packages-public-submodules`
+**Date**: 2025-12-25
 **Spec**: `specs/030-packages-public-submodules/spec.md`
 
 > 目标：允许今天以“子模块（Public Submodule / subpath）”快速迭代，但不把未来锁死；当规模/依赖/冲突面增长时，可以把某个概念剥离为独立子包，且迁移成本可控（以迁移说明替代兼容层）。

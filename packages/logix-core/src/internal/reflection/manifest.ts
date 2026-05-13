@@ -1,9 +1,10 @@
 import { Schema } from 'effect'
-import type { AnyModuleShape, ModuleImpl } from '../runtime/core/module.js'
+import type { AnyModuleShape, ProgramRuntimeBlueprint } from '../runtime/core/module.js'
 import * as Action from '../action.js'
 import { stableStringify, fnv1a32 } from '../digest.js'
-import { isJsonValue, type JsonValue } from '../observability/jsonValue.js'
+import { isJsonValue, type JsonValue } from '../protocol/jsonValue.js'
 import { exportStaticIr } from './staticIr.js'
+import { summarizePayloadSchema } from './payloadSummary.js'
 
 export interface ManifestBudgets {
   readonly maxBytes?: number
@@ -25,6 +26,8 @@ export interface ModuleManifestAction {
   readonly actionTag: string
   readonly payload: {
     readonly kind: 'void' | 'nonVoid' | 'unknown'
+    readonly summary?: string
+    readonly schemaDigest?: string
   }
   readonly primaryReducer?: {
     readonly kind: 'declared' | 'registered'
@@ -68,11 +71,11 @@ export interface ModuleManifest {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
-const isModuleImpl = (value: unknown): value is ModuleImpl<any, AnyModuleShape, any> =>
-  isRecord(value) && value._tag === 'ModuleImpl' && isRecord(value.module)
+const isProgramRuntimeBlueprint = (value: unknown): value is ProgramRuntimeBlueprint<any, AnyModuleShape, any> =>
+  isRecord(value) && value._tag === 'ProgramRuntimeBlueprint' && isRecord(value.module)
 
 const resolveModuleId = (input: unknown): string => {
-  if (isModuleImpl(input)) {
+  if (isProgramRuntimeBlueprint(input)) {
     const id = (input.module as any).id
     return typeof id === 'string' && id.length > 0 ? id : 'unknown'
   }
@@ -91,7 +94,7 @@ const resolveModuleId = (input: unknown): string => {
 }
 
 const resolveActionKeys = (input: unknown): ReadonlyArray<string> => {
-  const tag = isModuleImpl(input) ? (input.module as any) : (input as any)?.tag
+  const tag = isProgramRuntimeBlueprint(input) ? (input.module as any) : (input as any)?.tag
   const actionMap = tag?.shape?.actionMap
   if (!isRecord(actionMap)) return []
   return Object.keys(actionMap).sort()
@@ -116,7 +119,7 @@ const resolveTokenSource = (token: unknown): DevSource | undefined => {
 }
 
 const resolveActions = (input: unknown): ReadonlyArray<ModuleManifestAction> => {
-  const tag = isModuleImpl(input) ? (input.module as any) : (input as any)?.tag
+  const tag = isProgramRuntimeBlueprint(input) ? (input.module as any) : (input as any)?.tag
   const actionMap = tag?.shape?.actionMap
   if (!isRecord(actionMap)) return []
 
@@ -129,19 +132,22 @@ const resolveActions = (input: unknown): ReadonlyArray<ModuleManifestAction> => 
   for (const actionTag of actionTags) {
     const token = actionMap[actionTag]
     const source = resolveTokenSource(token) ?? moduleSource
-    const payloadKind =
-      Action.isActionToken(token) && Schema.isSchema((token as Action.AnyActionToken).schema)
-        ? (token as Action.AnyActionToken).schema === Schema.Void
-          ? 'void'
-          : 'nonVoid'
-        : 'unknown'
+    const schema = Action.isActionToken(token) && Schema.isSchema((token as Action.AnyActionToken).schema)
+      ? (token as Action.AnyActionToken).schema
+      : undefined
+    const payloadKind = schema ? (schema === Schema.Void ? 'void' : 'nonVoid') : 'unknown'
+    const payloadSummary = schema && schema !== Schema.Void ? summarizePayloadSchema(schema) : undefined
 
     const primaryReducer =
       reducers && typeof reducers[actionTag] === 'function' ? ({ kind: 'declared' } as const) : undefined
 
     out.push({
       actionTag,
-      payload: { kind: payloadKind },
+      payload: {
+        kind: payloadKind,
+        ...(payloadSummary?.label ? { summary: payloadSummary.label } : {}),
+        ...(payloadSummary?.digest ? { schemaDigest: payloadSummary.digest } : {}),
+      },
       ...(primaryReducer ? { primaryReducer } : {}),
       ...(source ? { source } : {}),
     })
@@ -153,7 +159,7 @@ const resolveActions = (input: unknown): ReadonlyArray<ModuleManifestAction> => 
 const MODULE_DECLARED_EFFECTS = Symbol.for('logix.module.effects.declared')
 
 const resolveEffects = (input: unknown): ReadonlyArray<ModuleManifestEffect> | undefined => {
-  const tag = isModuleImpl(input) ? (input.module as any) : (input as any)?.tag
+  const tag = isProgramRuntimeBlueprint(input) ? (input.module as any) : (input as any)?.tag
   const actionMap = tag?.shape?.actionMap
   if (!isRecord(actionMap)) return undefined
 

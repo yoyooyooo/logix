@@ -1,10 +1,10 @@
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Fiber, PubSub, Ref, Stream } from 'effect'
-import * as ModuleRuntime from '../../../../src/internal/runtime/ModuleRuntime.js'
-import * as FlowRuntime from '../../../../src/internal/runtime/FlowRuntime.js'
+import * as ModuleRuntime from '../../../../src/internal/runtime/core/ModuleRuntime.js'
+import * as FlowRuntime from '../../../../src/internal/runtime/core/FlowRuntime.js'
 import { getRuntimeInternals } from '../../../../src/internal/runtime/core/runtimeInternalsAccessor.js'
-import { ConcurrencyPolicyTag } from '../../../../src/internal/runtime/core/env.js'
+import { SchedulingPolicySurfaceTag } from '../../../../src/internal/runtime/core/env.js'
 
 describe('ConcurrencyPolicy (US1): nested concurrency', () => {
   it('nested runParallel should still apply bounded concurrency at each layer', async () => {
@@ -60,7 +60,7 @@ describe('ConcurrencyPolicy (US1): nested concurrency', () => {
         expect(maxOuter).toBeLessThanOrEqual(2)
         expect(maxInner).toBeLessThanOrEqual(4)
       }).pipe(
-        Effect.provideService(ConcurrencyPolicyTag, {
+        Effect.provideService(SchedulingPolicySurfaceTag, {
           concurrencyLimit: 2,
         }),
       ),

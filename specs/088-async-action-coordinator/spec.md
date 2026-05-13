@@ -1,8 +1,8 @@
 # Feature Specification: Async Action Coordinator（统一异步 Action 协调面）
 
-**Feature Branch**: `088-async-action-coordinator`  
-**Created**: 2026-01-10  
-**Status**: Draft  
+**Feature Branch**: `088-async-action-coordinator`
+**Created**: 2026-01-10
+**Status**: Draft
 **Input**: 新增 Async Action / Transition 协调抽象：为一次用户交互的异步链路提供统一的 pending/完成/失败/取消语义，并绑定稳定标识（linkId/txnId/opSeq）；React 与 Devtools 可基于统一事件模型呈现忙碌/进度与因果链路，业务代码只声明 action 而不再手写 loading 协调。
 
 ## Context

@@ -1,9 +1,9 @@
 import type { SerializableErrorSummary } from '../../runtime/core/errorSummary.js'
 import { toSerializableErrorSummary } from '../../runtime/core/errorSummary.js'
-import { isJsonValue, type JsonValue } from '../jsonValue.js'
+import { isJsonValue, type JsonValue } from '../../protocol/jsonValue.js'
 import type { ArtifactEnvelope, ArtifactKey, TrialRunArtifacts } from './model.js'
 import { isArtifactKey } from './model.js'
-import type { TrialRunArtifactExporter, TrialRunArtifactInspectionContext } from './exporter.js'
+import type { TrialRunArtifactExporter, TrialRunArtifactInspectionContext } from '../../artifacts/exporter.js'
 import { digestJsonValue } from './digest.js'
 
 export interface TrialRunArtifactsBudgets {

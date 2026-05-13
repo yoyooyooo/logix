@@ -1,8 +1,8 @@
 # Phase 0 Research: Lifecycle 全面升级
 
-**Feature**: [spec.md](./spec.md)  
-**Plan**: [plan.md](./plan.md)  
-**Created**: 2025-12-16  
+**Feature**: [spec.md](./spec.md)
+**Plan**: [plan.md](./plan.md)
+**Created**: 2025-12-16
 
 本文件用于在实现前固化关键决策与取舍，避免“语义先跑偏、实现后补文档”的事实源漂移。
 

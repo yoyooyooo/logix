@@ -1,6 +1,6 @@
 # Implementation Plan: Sandbox 多内核试跑与对照（core/core-ng）
 
-**Branch**: `058-sandbox-multi-kernel` | **Date**: 2025-12-28 | **Spec**: `specs/058-sandbox-multi-kernel/spec.md`  
+**Branch**: `058-sandbox-multi-kernel` | **Date**: 2025-12-28 | **Spec**: `specs/058-sandbox-multi-kernel/spec.md`
 **Input**: Feature specification from `specs/058-sandbox-multi-kernel/spec.md`
 
 **Note**: This template is copied into `specs/[###-feature-name]/plan.md` by
@@ -32,14 +32,14 @@
   the iteration process.
 -->
 
-**Language/Version**: TypeScript 5.8.x（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、`@logixjs/sandbox`  
-**Storage**: N/A（运行资产与结果仅内存态；Host 负责提供同源静态资源）  
-**Testing**: Vitest（`packages/logix-sandbox`）；必要时用 `@effect/vitest` 管理 Effect 环境  
-**Target Platform**: 现代浏览器（Web Worker）+ Node.js 20+（构建）  
-**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `specs/*`）  
-**Performance Goals**: 单内核默认路径不新增额外常驻请求/分配；多内核仅在选择时额外加载对应内核资产；结果/证据有界（maxEvents/maxBytes）  
-**Constraints**: 可序列化 DTO、确定性 `runId`（Host 显式提供）、strict/fallback 可解释且可门禁、consumer 不直接依赖 `@logixjs/core-ng`  
+**Language/Version**: TypeScript 5.8.x（ESM）
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、`@logixjs/sandbox`
+**Storage**: N/A（运行资产与结果仅内存态；Host 负责提供同源静态资源）
+**Testing**: Vitest（`packages/logix-sandbox`）；必要时用 `@effect/vitest` 管理 Effect 环境
+**Target Platform**: 现代浏览器（Web Worker）+ Node.js 20+（构建）
+**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `specs/*`）
+**Performance Goals**: 单内核默认路径不新增额外常驻请求/分配；多内核仅在选择时额外加载对应内核资产；结果/证据有界（maxEvents/maxBytes）
+**Constraints**: 可序列化 DTO、确定性 `runId`（Host 显式提供）、strict/fallback 可解释且可门禁、consumer 不直接依赖 `@logixjs/core-ng`
 **Scale/Scope**: P1 支持 `core`/`core-ng` 两个 kernel variant；P2 支持扩展到更多 variant（不要求任意版本管理/远程包解析）
 
 ## Constitution Check
@@ -111,7 +111,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 ## Perf Evidence Plan（MUST）
 
 > 若本特性触及 Logix Runtime 核心路径 / 渲染关键路径 / 对外性能边界：此节必须填写；否则标注 `N/A`。
-> 详细口径见：`.codex/skills/logix-perf-evidence/references/perf-evidence.md`
+> 详细口径见：`packages/logix-perf-evidence/references/perf-evidence.md`
 
 N/A（不触及 Logix Runtime 核心路径；本特性以“单内核默认路径零额外请求/分配”为主要预算约束，先用 consumer 侧代表性页面做手工对照即可）
 

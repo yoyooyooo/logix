@@ -1,0 +1,329 @@
+# runtimeOwnership Dev Lifecycle Review Ledger
+
+## Meta
+
+- target: `docs/superpowers/plans/2026-05-04-runtime-ownership-dev-lifecycle.md`
+- targets:
+  - `docs/superpowers/plans/2026-05-04-runtime-ownership-dev-lifecycle.md`
+- source_kind: `file-plan`
+- reviewers: A1 structure purity, A2 compression, A3 dominance, C1 residual, C2 residual, C3 residual
+- round_count: 2
+- challenge_scope: `open`
+- consensus_status: `consensus-after-converge`
+
+## Bootstrap
+
+- target_complete: true
+- alignment_gate:
+  - policy: `auto`
+  - status: `inferred`
+  - resolved_points:
+    - User explicitly requested `$plan-optimality-loop`.
+    - Target is the existing runtimeOwnership implementation plan.
+    - Review may challenge plan design, tests, docs, implementation ordering and proof obligations.
+    - No source implementation is in scope.
+  - open_questions: []
+  - confirmation_basis: User asked to polish the plan with `$plan-optimality-loop`.
+- review_contract:
+  - artifact_kind: `implementation-plan`
+  - review_goal: `implementation-ready`
+  - target_claim: The plan should explicitly model React DEV lifecycle `runtimeOwnership`, default borrowed runtime bindings, allow only owned bindings to dispose runtimes, and prove module-scope Playground runtime survives SPA remount.
+  - target_refs:
+    - `docs/superpowers/plans/2026-05-04-runtime-ownership-dev-lifecycle.md`
+    - `packages/logix-react/src/internal/dev/lifecycleCarrier.ts`
+    - `packages/logix-react/src/internal/provider/runtimeDevLifecycleBridge.ts`
+    - `packages/logix-react/src/internal/provider/RuntimeProvider.tsx`
+    - `packages/logix-react/src/internal/hooks/useModule.ts`
+    - `packages/logix-react/src/internal/hooks/useModuleRuntime.ts`
+    - `packages/logix-react/src/internal/store/ModuleCache.ts`
+    - `packages/logix-playground/src/Playground.tsx`
+    - `examples/logix-react/test/browser/playground-route-contract.playwright.ts`
+    - `docs/ssot/runtime/10-react-host-projection-boundary.md`
+    - `docs/ssot/runtime/07-standardized-scenario-patterns.md`
+  - non_default_overrides:
+    - alignment_policy: `auto`
+    - scope_fence: Challenge plan, contract, testing proof, docs writeback and implementation sequence only. Do not start implementation.
+    - stop_condition: `consensus`
+    - write_policy: Reviewers do not edit files. Main agent may update the plan and write this ledger.
+- review_object_manifest:
+  - source_inputs:
+    - User request to introduce explicit runtime ownership and move Playground runtime back to module scope.
+    - Existing implementation plan.
+    - Current React DEV lifecycle carrier, bridge, provider and hook callsites.
+  - materialized_targets:
+    - `docs/superpowers/plans/2026-05-04-runtime-ownership-dev-lifecycle.md`
+  - authority_target: `docs/superpowers/plans/2026-05-04-runtime-ownership-dev-lifecycle.md`
+  - bound_docs:
+    - `docs/ssot/runtime/10-react-host-projection-boundary.md`
+    - `docs/ssot/runtime/07-standardized-scenario-patterns.md`
+  - derived_scope: implementation plan plus bound SSoT update obligations
+  - allowed_classes:
+    - ambiguity
+    - invalidity
+    - controversy
+    - stronger alternative
+    - proof gap
+    - verification command correction
+  - blocker_classes:
+    - runtimeOwnership public or target discovery leakage
+    - duplicate ownership authority
+    - missing React host binding entrypoint
+    - reset-only proof for reset/dispose contract
+    - ModuleCache ownership ambiguity
+    - invalid verification command
+  - ledger_target: `docs/review-plan/runs/2026-05-04-runtime-ownership-dev-lifecycle-optimality.md`
+- challenge_scope: `open`
+- reviewer_set:
+  - A1: structure purity and minimum authority
+  - A2: compression and maintenance cost
+  - A3: dominance and future stability
+  - C1: residual-only converge
+  - C2: residual-only converge
+  - C3: residual-only converge
+- active_advisors: []
+- activation_reason: none
+- max_reviewer_count: 3 per round
+- kernel_council:
+  - Ramanujan
+  - Kolmogorov
+  - Godel
+- dominance_axes:
+  - concept-count
+  - public-surface
+  - compat-budget
+  - migration-cost
+  - proof-strength
+  - future-headroom
+- stop_rule: Consensus requires no unresolved residual findings, adopted freeze record, updated authority target and saved ledger.
+- reopen_bar: Reopen only if a proposal strictly reduces public surface or duplicate authority, or improves proof strength without expanding public/runtime contracts.
+- ledger_path: `docs/review-plan/runs/2026-05-04-runtime-ownership-dev-lifecycle-optimality.md`
+- writable: true
+
+## Assumptions
+
+- A-001:
+  - summary: `runtimeOwnership` must appear in binding snapshots to be explicit.
+  - status: `overturned`
+  - resolution_basis: The adopted plan keeps it in carrier bind args and internal record state; target discovery snapshots stay free of dispose authority.
+- A-002:
+  - summary: `layerForRuntime` and `bindRuntime` can both carry ownership.
+  - status: `overturned`
+  - resolution_basis: The adopted plan makes ownership a runtime-binding fact decided by `bindRuntime`; `layerForRuntime` only provides lifecycle owner/layer.
+- A-003:
+  - summary: Every React host callsite should explicitly pass `runtimeOwnership: 'borrowed'`.
+  - status: `overturned`
+  - resolution_basis: The adopted plan centralizes the borrowed default in `bindInstalledDevLifecycleCarrier` and requires a callsite sweep.
+- A-004:
+  - summary: Runtime-alive assertions are sufficient proof for borrowed cleanup.
+  - status: `overturned`
+  - resolution_basis: The adopted proof matrix requires host/dev cleanup evidence plus runtime-alive assertions for borrowed reset and borrowed dispose.
+- A-005:
+  - summary: Playground browser remount is sufficient proof that Program module scope remains owned by `ModuleCache`.
+  - status: `overturned`
+  - resolution_basis: The adopted plan requires direct `ModuleCache` cleanup evidence through instance turnover or a test-only scope cleanup spy.
+- A-006:
+  - summary: Jest-style `--runInBand` commands are acceptable for local Vitest verification.
+  - status: `overturned`
+  - resolution_basis: Commands now use `pnpm ... exec vitest run ...` without `--runInBand`.
+
+## Rounds
+
+### Round 1 - Challenge
+
+- input_residual: Original implementation plan for React DEV lifecycle runtime ownership and Playground module-scope runtime restoration.
+- findings:
+  - F-001:
+    - severity: high
+    - class: invalidity
+    - summary: `runtimeOwnership` was planned for `listRuntimeBindings()` snapshots, expanding live target discovery without proof need.
+    - evidence: Original plan added ownership to binding snapshots and exact snapshot tests while also saying CLI machine fields should not expose it.
+    - status: `closed`
+  - F-002:
+    - severity: high
+    - class: ambiguity
+    - summary: Ownership source was duplicated across `layerForRuntime`, `bindRuntime` and mutable owner records.
+    - evidence: Original plan allowed both layer and bind args to set ownership, creating last-writer-wins and downgrade risk.
+    - status: `closed`
+  - F-003:
+    - severity: high
+    - class: ambiguity
+    - summary: React host borrowed default had both bridge default and per-callsite literal forms, and omitted `useModuleRuntime`.
+    - evidence: Current source includes `RuntimeProvider.tsx`, `useModule.ts`, `useModuleRuntime.ts` and bridge helper callsites.
+    - status: `closed`
+  - F-004:
+    - severity: high
+    - class: ambiguity
+    - summary: Proof matrix covered runtime still alive but did not directly prove borrowed reset/dispose still cleans host/dev bindings.
+    - evidence: Original carrier tests only asserted `runtime.runPromise(...)` after reset.
+    - status: `closed`
+  - F-005:
+    - severity: medium
+    - class: ambiguity
+    - summary: `ModuleCache` ownership was asserted but not directly proven.
+    - evidence: Original Program remount test only proved base runtime was alive.
+    - status: `closed`
+  - F-006:
+    - severity: medium
+    - class: invalidity
+    - summary: Verification commands used Jest-style `--runInBand` in a Vitest package.
+    - evidence: `packages/logix-react` test script is `vitest run`; local Vitest help does not list `--runInBand`.
+    - status: `closed`
+  - F-007:
+    - severity: medium
+    - class: ambiguity
+    - summary: Existing carrier binding creates/uses duplicate lifecycle owners for one owner id.
+    - evidence: Carrier first binds `record.owner`, then creates a React binding owner and returns that second owner.
+    - status: `closed`
+- counter_proposals:
+  - P-001:
+    - summary: Treat `runtimeOwnership` as carrier-internal dispose authority only.
+    - why_better: Keeps target discovery and live inspect contracts smaller while preserving cleanup correctness.
+    - overturns_assumptions: A-001
+    - resolves_findings: F-001
+    - supersedes_proposals: Add ownership to binding snapshots.
+    - dominance: `dominates`
+    - axis_scores:
+      - concept-count: lower
+      - public-surface: lower
+      - compat-budget: better
+      - migration-cost: lower
+      - proof-strength: unchanged
+      - future-headroom: better
+    - status: `adopted`
+  - P-002:
+    - summary: Make ownership a `bindRuntime` fact and keep `layerForRuntime` ownership-free.
+    - why_better: Eliminates double source and downgrade ambiguity.
+    - overturns_assumptions: A-002
+    - resolves_findings: F-002
+    - supersedes_proposals: Layer and bind both accept ownership.
+    - dominance: `dominates`
+    - axis_scores:
+      - concept-count: lower
+      - public-surface: lower
+      - compat-budget: better
+      - migration-cost: neutral
+      - proof-strength: better
+      - future-headroom: better
+    - status: `adopted`
+  - P-003:
+    - summary: Centralize borrowed default in `bindInstalledDevLifecycleCarrier` and require callsite sweep.
+    - why_better: One default source covers `RuntimeProvider`, `useModule`, `useModuleRuntime` and bridge helper paths.
+    - overturns_assumptions: A-003
+    - resolves_findings: F-003
+    - supersedes_proposals: Add borrowed literals at each React callsite.
+    - dominance: `dominates`
+    - axis_scores:
+      - concept-count: lower
+      - public-surface: unchanged
+      - compat-budget: better
+      - migration-cost: lower
+      - proof-strength: better
+      - future-headroom: better
+    - status: `adopted`
+  - P-004:
+    - summary: Use a direct proof matrix for borrowed reset, borrowed dispose, owned reset, owned dispose, one-owner invariant and ModuleCache cleanup.
+    - why_better: It maps tests to lifecycle obligations instead of relying on browser remount as indirect proof.
+    - overturns_assumptions: A-004, A-005
+    - resolves_findings: F-004, F-005, F-007
+    - supersedes_proposals: Runtime-alive-only tests.
+    - dominance: `dominates`
+    - axis_scores:
+      - concept-count: neutral
+      - public-surface: unchanged
+      - compat-budget: unchanged
+      - migration-cost: neutral
+      - proof-strength: higher
+      - future-headroom: better
+    - status: `adopted`
+- resolution_delta:
+  - The authority plan was rewritten around adopted contract, implementation waves, proof obligations and final verification.
+  - Snapshot ownership exposure and per-callsite borrowed defaults were removed from the plan.
+  - `useModuleRuntime`, dispose-path tests, ModuleCache proof, one-owner invariant and Vitest command correction were added.
+
+### Round 2 - Converge
+
+- input_residual: Revised adopted plan after Round 1.
+- findings:
+  - F-C1:
+    - severity: none
+    - class: ambiguity
+    - summary: C1 returned no unresolved findings.
+    - evidence: Residual review confirmed the old findings were closed.
+    - status: `closed`
+  - F-C2:
+    - severity: none
+    - class: ambiguity
+    - summary: C2 returned no unresolved findings.
+    - evidence: Residual review confirmed the old findings were closed.
+    - status: `closed`
+  - F-C3:
+    - severity: none
+    - class: ambiguity
+    - summary: C3 returned no unresolved findings.
+    - evidence: Residual review confirmed the old findings were closed.
+    - status: `closed`
+- counter_proposals: []
+- resolution_delta:
+  - No further plan changes required after converge.
+  - Remaining items are implementation verification risks.
+
+## Adoption
+
+- adopted_candidate: Carrier-internal `runtimeOwnership` dispose authority with bridge-only borrowed default and direct reset/dispose proof matrix.
+- lineage:
+  - Original plan
+  - Round 1 reviewer alternatives P-001 through P-004
+  - Rewritten authority plan
+  - Round 2 consensus
+- rejected_alternatives:
+  - Add `runtimeOwnership` to `listRuntimeBindings()` snapshots.
+  - Add borrowed literals at each React host callsite.
+  - Let `layerForRuntime` and `bindRuntime` both set ownership.
+  - Add a public `RuntimeProvider` ownership prop.
+  - Introduce a production owned runtime factory solely for this plan.
+- rejection_reason:
+  - Rejected alternatives either expanded public/dev discovery surface, introduced duplicate authority, or added production concepts without current need.
+- dominance_verdict: Adopted candidate strictly improves public-surface, concept-count, proof-strength and future-headroom without increasing migration cost.
+- freeze_record:
+  - adopted_summary: `runtimeOwnership` is a carrier-internal bind-time dispose authority. `borrowed` is centralized in the React bridge. Target snapshots stay ownership-free. Reset/dispose proof is direct and includes ModuleCache responsibility.
+  - kernel_verdict: Passes Ramanujan by removing duplicate authority; passes Kolmogorov by shortening the plan and reducing contract surface; passes Godel by eliminating snapshot/ownership contradiction and double owner ambiguity.
+  - frozen_decisions:
+    - `runtimeOwnership` is not a route, CLI or target discovery field.
+    - `layerForRuntime` does not carry ownership.
+    - `bindRuntime` carries ownership.
+    - `bindInstalledDevLifecycleCarrier` is the React bridge defaulting point.
+    - Borrowed reset/dispose must clean host/dev bindings and keep runtime alive.
+    - Owned reset/dispose may dispose runtime.
+    - Carrier binding should expose one lifecycle owner per owner record.
+    - `ModuleCache` remains module instance scope owner.
+  - non_goals:
+    - No public React ownership prop.
+    - No new production owned runtime factory unless implementation discovers an existing owner.
+    - No live inspect or CLI machine-output ownership field.
+    - No code implementation in this review pass.
+  - allowed_reopen_surface:
+    - Implementation discovers a real owned producer that needs documentation and tests.
+    - ModuleCache cleanup cannot be proven without a minimal test-only fixture.
+    - Browser route contract cannot express SPA navigation without test harness adjustment.
+  - proof_obligations:
+    - Carrier ownership tests: borrowed reset, borrowed dispose, owned reset, owned dispose.
+    - One-owner invariant test.
+    - Discovery boundary test proving snapshots omit `runtimeOwnership`.
+    - React host remount tests for provider, Program module and ModuleTag path.
+    - Playground SPA browser remount contract.
+    - Docs naming and boundary sweep.
+  - delta_from_previous_round:
+    - Replaced snapshot exposure with internal dispose authority.
+    - Replaced per-callsite defaults with bridge-only default plus sweep.
+    - Added dispose-path and ModuleCache proof obligations.
+    - Replaced invalid Vitest flags.
+
+## Consensus
+
+- status: `consensus-after-converge`
+- unresolved_findings: none
+- residual_risks:
+  - ModuleCache cleanup proof may need a minimal test-only spy or instance-turnover assertion.
+  - Playground browser route contract must remain true SPA navigation/history, not repeated fresh `page.goto(...)`.
+  - Implementation must keep borrowed default centralized in the bridge and avoid reintroducing per-callsite literals.
+  - If direct bindings exist outside `packages/logix-react/src`, implementation needs a sweep beyond the current React source inventory.

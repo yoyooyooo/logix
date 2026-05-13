@@ -11,7 +11,7 @@ const RootModule = Logix.Module.make('RuntimeRoot', {
   actions: RootActions,
 })
 
-const RootLogic = RootModule.logic(($) =>
+const RootLogic = RootModule.logic('root-logic', ($) =>
   Effect.gen(function* () {
     yield* $.onAction('bump').run(() =>
       $.state.update((s) => ({
@@ -23,18 +23,18 @@ const RootLogic = RootModule.logic(($) =>
 )
 
 describe('Runtime.make (public API)', () => {
-  it.effect('should run a simple ModuleImpl program', () =>
+  it.effect('should run a simple Program via Runtime.make', () =>
     Effect.gen(function* () {
-      const impl = RootModule.implement({
+      const program = Logix.Program.make(RootModule, {
         initial: { value: 0 },
         logics: [RootLogic],
       })
 
-      const runtime = Logix.Runtime.make(impl, {
+      const runtime = Logix.Runtime.make(program, {
         layer: Layer.empty as Layer.Layer<any, never, never>,
       })
 
-      const program = Effect.gen(function* () {
+      const check = Effect.gen(function* () {
         const rt = yield* Effect.service(RootModule.tag).pipe(Effect.orDie)
 
         yield* rt.dispatch({ _tag: 'bump', payload: undefined })
@@ -47,7 +47,7 @@ describe('Runtime.make (public API)', () => {
         expect(state.value).toBeGreaterThan(0)
       })
 
-      yield* Effect.promise(() => runtime.runPromise(program as Effect.Effect<void, never, any>))
+      yield* Effect.promise(() => runtime.runPromise(check as Effect.Effect<void, never, any>))
     }),
   )
 })

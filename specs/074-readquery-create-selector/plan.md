@@ -1,6 +1,6 @@
 # Implementation Plan: ReadQuery.createSelector（reselect 风格组合器）
 
-**Branch**: `074-readquery-create-selector` | **Date**: 2026-01-05 | **Spec**: [spec.md](./spec.md)  
+**Branch**: `074-readquery-create-selector` | **Date**: 2026-01-05 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `specs/074-readquery-create-selector/spec.md`
 
 ## Summary
@@ -24,14 +24,14 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: `effect` v3，`@logixjs/core`  
-**Storage**: N/A  
-**Testing**: Vitest（logix-core tests）  
-**Target Platform**: Node.js + browsers（纯 TS runtime）  
-**Project Type**: pnpm workspace（`packages/*`）  
-**Performance Goals**: 不引入 Proxy/动态追踪；组合器构造成本 O(sum(reads))；SelectorGraph 评估策略不变。  
-**Constraints**: 统一最小 IR（Static IR + Dynamic Trace）；标识去随机化。  
+**Language/Version**: TypeScript 5.9.x（ESM）
+**Primary Dependencies**: `effect` v3，`@logixjs/core`
+**Storage**: N/A
+**Testing**: Vitest（logix-core tests）
+**Target Platform**: Node.js + browsers（纯 TS runtime）
+**Project Type**: pnpm workspace（`packages/*`）
+**Performance Goals**: 不引入 Proxy/动态追踪；组合器构造成本 O(sum(reads))；SelectorGraph 评估策略不变。
+**Constraints**: 统一最小 IR（Static IR + Dynamic Trace）；标识去随机化。
 **Scale/Scope**: 主要面向 selector 数量大、commit 频繁的场景，避免 dynamic lane 带来的“每次 commit 都 eval”。
 
 ## Kernel support matrix
@@ -61,7 +61,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 ## Perf Evidence Plan（MUST）
 
-N/A（本特性不改变 SelectorGraph 的评估/通知机制；仅新增一个构造器 API）。  
+N/A（本特性不改变 SelectorGraph 的评估/通知机制；仅新增一个构造器 API）。
 若后续在实现中不得不修改 `ReadQuery.compile`/`SelectorGraph` 行为，则回退补齐 perf evidence（至少证明 `ReadQuery.compile` 与 `SelectorGraph.onCommit` 无回归）。
 
 ## Project Structure

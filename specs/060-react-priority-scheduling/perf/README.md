@@ -1,7 +1,7 @@
 # Perf Evidence: 060 Txn Lanes
 
 > 本特性触及 Logix Runtime 核心路径（txnQueue 调度与 follow-up work），必须提供可复现证据。
-> suites/budgets 的 SSoT：`.codex/skills/logix-perf-evidence/assets/matrix.json`
+> suites/budgets 的 SSoT：`packages/logix-perf-evidence/assets/matrix.json`
 
 本目录用于存放 `$logix-perf-evidence` 的 before/after/diff 输出文件（Node + Browser）。
 

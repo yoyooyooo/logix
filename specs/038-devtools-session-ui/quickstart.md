@@ -1,6 +1,6 @@
 # Quickstart: Devtools Session‑First（会话树 + Advisor）
 
-**Feature**: `specs/038-devtools-session-ui/spec.md`  
+**Feature**: `specs/038-devtools-session-ui/spec.md`
 **Created**: 2025-12-27
 
 ## ≤5 关键词（心智模型）

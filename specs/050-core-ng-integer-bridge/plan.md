@@ -1,6 +1,6 @@
 # Implementation Plan: 050 core-ng 整型桥（Integer Bridge）
 
-**Branch**: `050-core-ng-integer-bridge` | **Date**: 2025-12-27 | **Spec**: `specs/050-core-ng-integer-bridge/spec.md`  
+**Branch**: `050-core-ng-integer-bridge` | **Date**: 2025-12-27 | **Spec**: `specs/050-core-ng-integer-bridge/spec.md`
 **Input**: Feature specification from `specs/050-core-ng-integer-bridge/spec.md`
 
 ## Summary
@@ -22,7 +22,7 @@
 
 ## Deepening Notes
 
-- Decision: perf evidence 以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为 SSoT，交付结论以 `profile=default`（或 `soak`）且 `comparable=true && regressions==0` 为硬门（source: spec clarify AUTO）
+- Decision: perf evidence 以 `packages/logix-perf-evidence/assets/matrix.json` 为 SSoT，交付结论以 `profile=default`（或 `soak`）且 `comparable=true && regressions==0` 为硬门（source: spec clarify AUTO）
 - Decision: perf evidence 允许在 dev 工作区（git dirty）采集，但必须确保 `matrix/config/env` 一致，并保留 `git.dirty.*` warnings；结论存疑时必须复测（source: spec clarify AUTO）
 - Decision: 动态/异常路径允许存在，但必须显式降级 `dirtyAll=true` + `DirtyAllReason` 且在 Perf Gate 覆盖场景中视为 FAIL（source: spec clarify AUTO）
 - Decision: diagnostics=light/sampled/full 允许 materialize 可读映射，但不得落在 txn hot loop；off 下不 materialize（source: spec clarify AUTO）
@@ -31,14 +31,14 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（实现阶段）`@logixjs/core-ng`  
-**Storage**: N/A（证据落盘到 `specs/050-core-ng-integer-bridge/perf/*`）  
-**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）  
-**Target Platform**: Node.js 20+ + modern browsers（必须含 ≥1 headless browser evidence）  
-**Project Type**: pnpm workspace  
-**Performance Goals**: 以 perf matrix 的 P1 suites 为硬门（`profile=default`/`soak` + `comparable=true && regressions==0`），并争取在关键点位获得可证据化收益（推荐 `p95` 下降 ≥20% 或 heap/alloc 明显改善）  
-**Constraints**: 统一最小 IR + 稳定锚点；事务窗口禁 IO；diagnostics=off 近零成本；禁止半成品默认化；consumer 不直接依赖 core-ng  
+**Language/Version**: TypeScript 5.9.x（ESM）
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（实现阶段）`@logixjs/core-ng`
+**Storage**: N/A（证据落盘到 `specs/050-core-ng-integer-bridge/perf/*`）
+**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）
+**Target Platform**: Node.js 20+ + modern browsers（必须含 ≥1 headless browser evidence）
+**Project Type**: pnpm workspace
+**Performance Goals**: 以 perf matrix 的 P1 suites 为硬门（`profile=default`/`soak` + `comparable=true && regressions==0`），并争取在关键点位获得可证据化收益（推荐 `p95` 下降 ≥20% 或 heap/alloc 明显改善）
+**Constraints**: 统一最小 IR + 稳定锚点；事务窗口禁 IO；diagnostics=off 近零成本；禁止半成品默认化；consumer 不直接依赖 core-ng
 **Scale/Scope**: 优先 converge/txn/dirtyset；其它路径扩面由后续 specs 管理
 
 ## Constitution Check
@@ -70,7 +70,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 ## Perf Evidence Plan（MUST）
 
 - Baseline 语义：代码前后（before=改动前代码，after=改动后代码）
-- Matrix SSoT：`.codex/skills/logix-perf-evidence/assets/matrix.json`（before/after 的 `meta.matrixId/matrixHash` 必须一致）
+- Matrix SSoT：`packages/logix-perf-evidence/assets/matrix.json`（before/after 的 `meta.matrixId/matrixHash` 必须一致）
 - Hard conclusion：交付结论必须 `profile=default`（`quick` 仅线索；需要更稳可用 `soak` 复核）
 - 采集环境：允许在 dev 工作区采集（可为 git dirty），但 before/after 必须 `meta.matrixId/matrixHash` 一致且 env/config 不漂移；如出现 `stabilityWarning` 或结果存疑，必须复测（必要时 `profile=soak`）
 - PASS 判据：`pnpm perf diff` 输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`
@@ -111,7 +111,7 @@ specs/050-core-ng-integer-bridge/
 packages/logix-core/
 ├── src/internal/runtime/core/StateTransaction.ts
 ├── src/internal/field-path.ts
-└── src/internal/state-trait/converge.ts
+└── src/internal/state-field/converge.ts
 
 packages/logix-core-ng/
 └── src/*                        # id 驱动的执行/访问器/txn 相关实现（通过 045 注入）

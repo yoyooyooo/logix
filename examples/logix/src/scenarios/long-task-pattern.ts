@@ -1,5 +1,6 @@
 import { Effect, Scope } from 'effect'
 import * as Logix from '@logixjs/core'
+import { programLayer } from '../runtime/programLayer.js'
 import {
   LongTaskStateSchema,
   LongTaskActionMap,
@@ -13,15 +14,15 @@ import {
 // Module：定义长任务模块
 // ---------------------------------------------------------------------------
 
-export const LongTaskDef = Logix.Module.make('LongTaskModule', {
+export const LongTask = Logix.Module.make('LongTaskModule', {
   state: LongTaskStateSchema,
   actions: LongTaskActionMap,
 })
 
-// Logic：通过 Action 触发长逻辑 Effect，并用 Flow 控制并发语义（通过 Module.logic 注入 $）
+// Logic：通过 Action 触发长逻辑 Effect，并用运行策略控制并发语义
 // ---------------------------------------------------------------------------
 
-export const LongTaskLogic = LongTaskDef.logic<Scope.Scope>(($) =>
+export const LongTaskLogic = LongTask.logic<Scope.Scope>('long-task-logic', ($) =>
   Effect.gen(function* () {
     // 启动长任务：如果已经在 running，runExhaust 会丢弃后续触发，避免重复启动
     const startEffect = Effect.gen(function* () {
@@ -42,10 +43,10 @@ export const LongTaskLogic = LongTaskDef.logic<Scope.Scope>(($) =>
 )
 
 // ---------------------------------------------------------------------------
-// Module / Impl / Live：组合 State / Action / Logic 成为一棵可注入的领域模块
+// Program / Layer：组合 State / Action / Logic 成为一棵可注入的领域程序
 // ---------------------------------------------------------------------------
 
-export const LongTaskModule = LongTaskDef.implement<Scope.Scope>({
+export const LongTaskProgram = Logix.Program.make(LongTask, {
   initial: {
     status: 'idle',
     progress: 0,
@@ -53,5 +54,4 @@ export const LongTaskModule = LongTaskDef.implement<Scope.Scope>({
   logics: [LongTaskLogic],
 })
 
-export const LongTaskImpl = LongTaskModule.impl
-export const LongTaskLive = LongTaskImpl.layer
+export const LongTaskLayer = programLayer(LongTaskProgram)

@@ -9,7 +9,7 @@ import { useRuntime } from '../../src/Hooks.js'
 
 const TestTag = ServiceMap.Service<string>('@tests/custom-service')
 
-describe('RuntimeProvider layer propagation', () => {
+describe('host adapter subtree layer propagation', () => {
   it('should make provided Layer services visible to descendants', async () => {
     const baseRuntime = ManagedRuntime.make(Layer.empty as Layer.Layer<any, never, never>)
     const serviceLayer = Layer.succeed(TestTag, 'hello-runtime-provider')
@@ -37,7 +37,7 @@ describe('RuntimeProvider layer propagation', () => {
     await waitFor(() => expect(result.current).toBe('hello-runtime-provider'))
   })
 
-  it('useRuntime({ layer }) should override Provider.layer for the same Tag', async () => {
+  it('useRuntime({ layer }) should override the parent subtree layer for the same Tag', async () => {
     const baseRuntime = ManagedRuntime.make(Layer.succeed(TestTag, 'base') as Layer.Layer<any, never, never>)
     const providerLayer = Layer.succeed(TestTag, 'provider')
     const hookLayer = Layer.succeed(TestTag, 'hook')

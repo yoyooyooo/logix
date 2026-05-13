@@ -1,3 +1,5 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 // @vitest-environment happy-dom
 
 import React from 'react'
@@ -5,27 +7,29 @@ import { render, waitFor, cleanup } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
-import { RuntimeProvider, useModule } from '../../src/index.js'
+import { RuntimeProvider, useModule, useSelector } from '../../src/index.js'
+import { useProgramRuntimeBlueprint } from '../../src/internal/hooks/useProgramRuntimeBlueprint.js'
 
 const State = Schema.Struct({ count: Schema.Number })
 const Actions = { inc: Schema.Void }
 
-const ImplModule = Logix.Module.make('ReactBootResolvePhaseTrace.Impl', { state: State, actions: Actions })
+const ProgramModule = Logix.Module.make('ReactBootResolvePhaseTrace.Program', { state: State, actions: Actions })
 const TagModule = Logix.Module.make('ReactBootResolvePhaseTrace.Tag', { state: State, actions: Actions })
 
-const ImplModuleImpl = ImplModule.implement({ initial: { count: 0 }, logics: [] }).impl
-const TagModuleImpl = TagModule.implement({ initial: { count: 0 }, logics: [] }).impl
+const LocalProgram = Logix.Program.make(ProgramModule, { initial: { count: 0 }, logics: [] })
+const LocalBlueprint = RuntimeContracts.getProgramRuntimeBlueprint(LocalProgram)
+const TagModuleProgram = Logix.Program.make(TagModule, { initial: { count: 0 }, logics: [] })
 
 const App: React.FC = () => {
-  const impl = useModule(ImplModuleImpl, { key: 'shared' })
-  const implCount = useModule(impl, (s) => (s as { count: number }).count)
+  const local = useProgramRuntimeBlueprint(LocalBlueprint, { key: 'shared' })
+  const localCount = useSelector(local, (s) => (s as { count: number }).count)
 
   const tag = useModule(TagModule.tag)
-  const tagCount = useModule(tag, (s) => (s as { count: number }).count)
+  const tagCount = useSelector(tag, (s) => (s as { count: number }).count)
 
   return (
     <div>
-      <p>Impl: {implCount}</p>
+      <p>Program: {localCount}</p>
       <p>Tag: {tagCount}</p>
     </div>
   )
@@ -37,13 +41,13 @@ afterEach(() => {
 
 describe('RuntimeProvider bootResolve phase traces', () => {
   it('emits provider gating and moduleTag resolve durations', async () => {
-    const events: Logix.Debug.Event[] = []
+    const events: CoreDebug.Event[] = []
 
     const debugLayer = Layer.mergeAll(
-      Logix.Debug.diagnosticsLevel('light'),
-      Logix.Debug.replace([
+      CoreDebug.diagnosticsLevel('light'),
+      CoreDebug.replace([
         {
-          record: (event: Logix.Debug.Event) =>
+          record: (event: CoreDebug.Event) =>
             Effect.sync(() => {
               events.push(event)
             }),
@@ -51,7 +55,7 @@ describe('RuntimeProvider bootResolve phase traces', () => {
       ]) as Layer.Layer<any, never, never>,
     ) as Layer.Layer<any, never, never>
 
-    const runtime = Logix.Runtime.make(TagModuleImpl, {
+    const runtime = Logix.Runtime.make(TagModuleProgram, {
       layer: debugLayer,
     })
 
@@ -62,7 +66,7 @@ describe('RuntimeProvider bootResolve phase traces', () => {
     )
 
     await waitFor(() => {
-      expect(document.body.textContent).toContain('Impl: 0')
+      expect(document.body.textContent).toContain('Program: 0')
       expect(document.body.textContent).toContain('Tag: 0')
     })
 
@@ -71,10 +75,10 @@ describe('RuntimeProvider bootResolve phase traces', () => {
       const configSnapshot = events.find(
         (event) => event.type === 'trace:react.runtime.config.snapshot' && (event as any).data?.mode === 'sync',
       ) as any
-      const moduleImplResolve = events.find((event) => event.type === 'trace:react.moduleImpl.resolve') as any
+      const programResolve = events.find((event) => event.type === 'trace:react.program.resolve') as any
       const tagResolve = events.find((event) => event.type === 'trace:react.moduleTag.resolve') as any
-      const implInit = events.find(
-        (event) => event.type === 'trace:react.module.init' && event.moduleId === ImplModule.id,
+      const programInit = events.find(
+        (event) => event.type === 'trace:react.module.init' && event.moduleId === ProgramModule.id,
       ) as any
       const tagInit = events.find(
         (event) => event.type === 'trace:react.module.init' && event.moduleId === TagModule.id,
@@ -87,13 +91,13 @@ describe('RuntimeProvider bootResolve phase traces', () => {
       expect(typeof configSnapshot?.data?.durationMs).toBe('number')
       expect(configSnapshot?.data?.mode).toBe('sync')
 
-      expect(typeof moduleImplResolve?.data?.durationMs).toBe('number')
-      expect(moduleImplResolve?.data?.cacheMode).toBe('sync')
+      expect(typeof programResolve?.data?.durationMs).toBe('number')
+      expect(programResolve?.data?.cacheMode).toBe('sync')
 
       expect(typeof tagResolve?.data?.durationMs).toBe('number')
       expect(tagResolve?.data?.cacheMode).toBe('sync')
 
-      expect(typeof implInit?.data?.durationMs).toBe('number')
+      expect(typeof programInit?.data?.durationMs).toBe('number')
       expect(typeof tagInit?.data?.durationMs).toBe('number')
     })
 

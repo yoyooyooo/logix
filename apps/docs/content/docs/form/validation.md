@@ -1,93 +1,94 @@
 ---
-title: Validation and errors
-description: validateOn / reValidateOn, rules, default controller actions, and the error tree conventions.
+title: Validation
+description: Validation, decode, manual errors, and submit all converge on the same carrier.
 ---
 
-## 1) Two-phase auto validation: `validateOn` / `reValidateOn`
+Validation converges into one model:
 
-Form splits auto validation into two phases by default:
+1. rule failures
+2. submit decode failures
+3. manual errors
+4. submit-side mapped errors
 
-- **Before first submit**: `validateOn` controls whether validation runs on `onChange/onBlur` (default: validate only on submit)
-- **After first submit**: `reValidateOn` controls whether incremental validation runs on `onChange/onBlur` (default: `onChange`)
-
-This avoids “heavy validation on every keystroke” for large forms/lists, while still giving immediate feedback after the user’s first submit attempt.
-
-## 2) Rules: treat deps as a contract
-
-Prefer writing validation in `rules` (field/list/root rules). `deps` is the contract for “linkage-triggered validation”: only when you explicitly declare dependencies will changes in related fields trigger this rule’s incremental validation.
-
-> See [Rules DSL (z)](./rules) for the `rules` DSL (`const z = $.rules`).
+All of them land on the same leaf shape:
 
 ```ts
-const $ = Form.from(Values)
-const z = $.rules
+type FormErrorLeaf = {
+  origin: "rule" | "decode" | "manual" | "submit"
+  severity: "error" | "warning"
+  code?: string
+  message: I18nMessageToken
+}
+```
 
-const ProfileForm = Form.make("ProfileForm", {
-  values: Values,
-  initialValues: { name: "" },
-  rules: z(
-    z.field("name", {
-      // deps defaults to []: declare only when you need cross-field linkage triggers
-      required: "Required",
-      minLength: 2,
-    }),
-  ),
+## Runtime entry points
+
+The form handle exposes three validation entry points:
+
+```ts
+form.validate()
+form.validatePaths(["shipping.address"])
+form.submit({
+  onValid: (payload, ctx) => Effect.void,
+  onInvalid: (errors) => Effect.void,
 })
 ```
 
-When a rule needs to read other fields inside the same object and you want “other field changes also trigger this field’s validation”, add deps (e.g. `deps: ["preferredChannel"]`).
+Their roles are:
 
-### 2.1) `$self`: object-level refine (don’t overwrite subtree)
+- `validate()` runs the current validation funnel without submitting
+- `validatePaths(...)` targets one path or one subtree
+- `submit(...)` is the blocking gate
 
-For object-level cross-field validation, prefer writing errors to `errors.<path>.$self` (instead of overwriting the whole `errors.<path>` subtree):
+## Submit decode
 
 ```ts
-rules: z(
-  z.field(
-    "profile.security",
-    {
-      deps: ["password", "confirmPassword"],
-      validate: (security: any) =>
-        security?.password === security?.confirmPassword ? undefined : "Passwords do not match",
-    },
-    { errorTarget: "$self" },
-  ),
+Form.make(
+  "CheckoutForm",
+  {
+    values: Values,
+    initialValues,
+  },
+  (form) => {
+    form.submit({
+      decode: SubmitPayload,
+    })
+  },
 )
 ```
 
-### 2.2) List validation: list/item scopes
+`values` defines the editable state shape.
+`decode` defines the payload that may leave the form boundary.
 
-- Item-level (item): return `{ field: error }` or `{ $item: error }`, written to `errors.<list>.rows[i].*`
-- List-level (list): return `{ $list: error }` or `{ rows: [...] }`, written to `errors.<list>.$list` / `errors.<list>.rows[i]`
+When decode issues need stable error placement, continue using lower-level schema bridge helpers in repo-local glue instead of the form root public surface.
 
-## 3) `Form.Rule.*`: organizing rules and reuse
+## Manual errors
 
-- `z.field/z.list/z.root`: recommended declarative entry points (types narrow by values schema)
-- `Form.Rule.make(...)`: low-level normalization utility (expand config into a rule set attachable to `check`)
-- `Form.Rule.merge(...)`: low-level merge utility (duplicate ruleName fails deterministically)
-- Built-in validators: `required/minLength/maxLength/min/max/pattern`
+```ts
+yield* form.setError(
+  "email",
+  Form.Error.leaf({
+    origin: "manual",
+    severity: "error",
+    message: I18n.token("user.email.taken"),
+  }),
+)
+```
 
-## 4) Default controller actions (triggerable outside components)
+Manual errors do not create a second model.
+They enter the same carrier as rule and decode failures.
 
-The controller returned by `useForm(formBlueprint)` is consistent across React and Logic. You can trigger form actions outside components:
+## Rendering
 
-- `controller.validate()`: root validate (includes Schema writes)
-- `controller.validatePaths(paths)`: precise validation by valuePath (field or list)
-- `controller.setError(path, error)` / `controller.clearErrors(paths?)`: write/clear manual errors
-- `controller.reset(values?)`: reset values/errors/ui/$form
-- `controller.handleSubmit({ onValid, onInvalid? })`: submit flow (increment submitCount, validate, branch by errorCount)
+UI rendering should consume:
 
-Also: if you dispatch the `submit` action directly (or call `form.submit()`), it only triggers Rules root validation. Schema validation only runs in `controller.validate()` / `controller.handleSubmit(...)`.
+- `errors` from form state
+- the current i18n snapshot at render time
 
-> Tip: if UI wants to validate only a small path (e.g. one row in a field array), prefer `validatePaths` to avoid pulling the whole form into one validation transaction.
+This keeps already-visible errors reactive to locale changes without forcing rule declarations to emit render-ready strings.
 
-## 5) traits: kept as an advanced entry
+## See also
 
-You can still use `traits` to express lower-level `StateTrait` structures, but it’s recommended to keep “regular validation” in `rules` and reserve `traits` for:
-
-- computed / link / source (derivations, linkage, async resources)
-- a small number of advanced cases that require direct node/list manipulation (paired with performance/diagnostic comparisons)
-
-> [!TIP]
-> For a broader mental model and the semantic boundaries around “transaction windows / convergence”:
-> - [Traits (capability rules and convergence)](../guide/essentials/traits)
+- [Rules](/docs/form/rules)
+- [Schema](/docs/form/schema)
+- [Selectors and support facts](/docs/form/selectors)

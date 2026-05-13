@@ -11,7 +11,7 @@ class ServiceB extends ServiceMap.Service<ServiceB, { readonly value: number }>(
 
 const baseRuntime = ManagedRuntime.make(Layer.succeed(ServiceA, { value: 'base' }) as Layer.Layer<any, never, never>)
 
-describe('RuntimeProvider resilience', () => {
+describe('React host adapter resilience', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
   })

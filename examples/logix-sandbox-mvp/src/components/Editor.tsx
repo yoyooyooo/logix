@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react'
 import type * as MonacoTypes from 'monaco-editor'
 import * as Logix from '@logixjs/core'
-import { useDispatch, useLocalModule, useSelector } from '@logixjs/react'
+import { useDispatch, useModule, useSelector } from '@logixjs/react'
 import { Schema } from 'effect'
 import 'monaco-editor/min/vs/editor/editor.main.css'
 import { ensureTypeSenseInstalled, type TypeSenseStatus } from './editor/typesense'
@@ -130,16 +130,21 @@ export const Editor = React.memo(function Editor({
   enableTypeSense = false,
   resetKey,
 }: EditorProps) {
-  const editorUi = useLocalModule(EditorUiDef, {
+  const editorUiProgram = useMemo(
+    () =>
+      Logix.Program.make(EditorUiDef, {
+        initial: {
+          mode: 'textarea',
+          inputReadyMs: null,
+          typeSense: { status: 'idle' },
+          fallbackError: null,
+          fallbackUi: enableTypeSense ? 'skeleton' : 'textarea',
+        },
+      }),
+    [enableTypeSense],
+  )
+  const editorUi = useModule(editorUiProgram, {
     key: 'examples.logix-sandbox-mvp:EditorUI',
-    initial: {
-      mode: 'textarea',
-      inputReadyMs: null,
-      typeSense: { status: 'idle' },
-      fallbackError: null,
-      fallbackUi: enableTypeSense ? 'skeleton' : 'textarea',
-    },
-    deps: [enableTypeSense],
   })
 
   const dispatchEditorUi = useDispatch(editorUi)

@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { useEffect, useMemo, useContext, useRef } from 'react'
 import * as Logix from '@logixjs/core'
 import { Effect, Scope } from 'effect'
@@ -7,28 +8,45 @@ import { RuntimeContext } from '../provider/ReactContext.js'
 import { emitRuntimeDebugEventBestEffort, readRuntimeDiagnosticsLevel } from '../provider/runtimeDebugBridge.js'
 import { RuntimeProviderNotFoundError } from '../provider/errors.js'
 import { getModuleCache, type ModuleCacheFactory } from '../store/ModuleCache.js'
+import { bindInstalledRuntimeHostLifecycle } from '../provider/runtimeHostLifecycleBridge.js'
 
 const isModuleRuntime = (value: unknown): value is Logix.ModuleRuntime<any, any> =>
   typeof value === 'object' && value !== null && 'dispatch' in value && 'getState' in value
 
-export type ReactModuleHandle = Logix.ModuleRuntime<any, any> | Logix.ModuleTagType<any, any> | ModuleRef<any, any>
+type ModuleRuntimeHandleLike = {
+  readonly dispatch: unknown
+  readonly getState: unknown
+}
+
+type ModuleRefHandleLike = {
+  readonly runtime: unknown
+}
+
+export type ReactModuleHandle =
+  | Logix.Module.ModuleTag<any, any>
+  | ModuleRuntimeHandleLike
+  | ModuleRefHandleLike
 
 export type StateOfHandle<H> =
   H extends ModuleRef<infer S, any, any, any, any>
     ? S
+    : H extends { readonly runtime: Logix.ModuleRuntime<infer S, any> }
+      ? S
     : H extends Logix.ModuleRuntime<infer S, any>
       ? S
-      : H extends Logix.ModuleTagType<any, infer Sh>
-        ? Logix.StateOf<Sh>
+      : H extends Logix.Module.ModuleTag<any, infer Sh>
+        ? Logix.Module.StateOf<Sh>
         : never
 
 export type ActionOfHandle<H> =
   H extends ModuleRef<any, infer A, any, any, any>
     ? A
+    : H extends { readonly runtime: Logix.ModuleRuntime<any, infer A> }
+      ? A
     : H extends Logix.ModuleRuntime<any, infer A>
       ? A
-      : H extends Logix.ModuleTagType<any, infer Sh>
-        ? Logix.ActionOf<Sh>
+      : H extends Logix.Module.ModuleTag<any, infer Sh>
+        ? Logix.Module.ActionOf<Sh>
         : never
 
 export function useModuleRuntime<H extends ReactModuleHandle>(
@@ -66,7 +84,7 @@ export function useModuleRuntime(handle: ReactModuleHandle): Logix.ModuleRuntime
       return handle
     }
 
-    const tag = handle as unknown as Logix.ModuleTagType<string, Logix.AnyModuleShape>
+    const tag = handle as unknown as Logix.Module.ModuleTag<string, Logix.AnyModuleShape>
     const tokenId = tag.id ?? 'ModuleTag'
 
     const preloadKey = runtimeContext.policy.preload?.keysByTagId.get(tokenId)
@@ -106,6 +124,19 @@ export function useModuleRuntime(handle: ReactModuleHandle): Logix.ModuleRuntime
     if (!isTagHandle) {
       return
     }
+    bindInstalledRuntimeHostLifecycle(runtime as unknown as any, {
+      ownerId: (resolved as any).moduleId ?? (handle as any)?.id ?? 'ModuleTag',
+      runtimeInstanceId: (resolved as any).instanceId,
+      moduleRuntime: {
+        getState: resolved.getState as Effect.Effect<unknown, unknown, any>,
+        dispatch: resolved.dispatch as (action: unknown) => Effect.Effect<void, unknown, any>,
+      },
+      fieldInspect: {
+        getSnapshot: () => CoreDebug.getModuleFieldSnapshot(resolved as any),
+        getGraph: () => CoreDebug.getModuleFieldProgramById((resolved as any).moduleId)?.graph,
+      },
+    })
+
     const diagnosticsLevel = readRuntimeDiagnosticsLevel(runtime)
     if (diagnosticsLevel === 'off') {
       return
@@ -114,7 +145,7 @@ export function useModuleRuntime(handle: ReactModuleHandle): Logix.ModuleRuntime
     const tokenId = (handle as any)?.id ?? 'ModuleTag'
     const trace = moduleTagResolveTraceRef.current
 
-    const effect = Logix.Debug.record({
+    const effect = CoreDebug.record({
       type: 'trace:react.moduleTag.resolve',
       moduleId: (resolved as any).moduleId,
       instanceId: (resolved as any).instanceId,

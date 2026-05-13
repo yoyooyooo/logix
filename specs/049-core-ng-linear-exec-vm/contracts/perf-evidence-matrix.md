@@ -4,7 +4,7 @@
 
 ## Required
 
-- Matrix SSoT：`.codex/skills/logix-perf-evidence/assets/matrix.json`（before/after 的 `meta.matrixId/matrixHash` 必须一致）
+- Matrix SSoT：`packages/logix-perf-evidence/assets/matrix.json`（before/after 的 `meta.matrixId/matrixHash` 必须一致）
 - 交付 profile：`default`（或 `soak`）；`quick` 仅线索（不可下硬结论）
 - 采集隔离：允许在同一 dev 工作区采集 before/after（可为 git dirty），但必须保证 `matrix/config/env` 一致；若出现 `stabilityWarning` / `comparable=false` / drift，必须复测并在结论中标注
 - PASS 判据：Node 与 Browser 的 `pnpm perf diff` 都必须输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`（任一 FAIL 则整体 Gate FAIL）

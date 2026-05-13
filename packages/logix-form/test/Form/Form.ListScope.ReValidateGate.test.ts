@@ -2,6 +2,7 @@ import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer } from 'effect'
 import * as Logix from '@logixjs/core'
 import { makeFormModule } from '../fixtures/listScopeCheck.js'
+import { materializeExtendedHandle } from '../support/form-harness.js'
 
 describe('Form list-scope reValidate gate (submitCount)', () => {
   it.effect('pre-submit skips auto validate; post-submit re-validates onChange', () =>
@@ -18,14 +19,14 @@ describe('Form list-scope reValidate gate (submitCount)', () => {
 
       const program = Effect.gen(function* () {
         const rt = yield* Effect.service(form.tag).pipe(Effect.orDie)
-        const controller = form.controller.make(rt)
+        const handle = materializeExtendedHandle(form.tag, rt) as any
 
         // Pre-submit: `onChange` does not auto-validate (no cross-row errors).
-        yield* controller.field('items.0.warehouseId').set('WH-DUP')
-        yield* controller.field('items.1.warehouseId').set('WH-DUP')
+        yield* handle.field('items.0.warehouseId').set('WH-DUP')
+        yield* handle.field('items.1.warehouseId').set('WH-DUP')
         yield* Effect.sleep('20 millis')
 
-        const s1: any = yield* controller.getState
+        const s1: any = yield* handle.getState
         const rows1: any[] = s1.errors?.items?.rows ?? []
         expect(rows1[0]).toBeUndefined()
         expect(rows1[1]).toBeUndefined()
@@ -33,7 +34,7 @@ describe('Form list-scope reValidate gate (submitCount)', () => {
 
         // Submit: root validate must run full validation, produce cross-row errors, and increment submitCount.
         let invalid = 0
-        yield* controller.controller.handleSubmit({
+        yield* handle.submit({
           onValid: () => Effect.void,
           onInvalid: () =>
             Effect.sync(() => {
@@ -41,7 +42,7 @@ describe('Form list-scope reValidate gate (submitCount)', () => {
             }),
         })
 
-        const s2: any = yield* controller.getState
+        const s2: any = yield* handle.getState
         const rows2: any[] = s2.errors?.items?.rows ?? []
         expect(invalid).toBe(1)
         expect(s2.$form.submitCount).toBe(1)
@@ -49,10 +50,10 @@ describe('Form list-scope reValidate gate (submitCount)', () => {
         expect(rows2[1]?.warehouseId).toBe('仓库选择需跨行互斥（当前重复）')
 
         // Post-submit: with reValidateOn=["onChange"], errors should be cleared automatically after duplication is removed.
-        yield* controller.field('items.1.warehouseId').set('WH-001')
+        yield* handle.field('items.1.warehouseId').set('WH-001')
         yield* Effect.sleep('20 millis')
 
-        const s3: any = yield* controller.getState
+        const s3: any = yield* handle.getState
         const rows3: any[] = s3.errors?.items?.rows ?? []
         expect(rows3[0]).toBeUndefined()
         expect(rows3[1]).toBeUndefined()

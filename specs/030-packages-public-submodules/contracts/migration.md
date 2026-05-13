@@ -1,7 +1,7 @@
 # Migration: Packages 对外子模块与导出面收口
 
-**Branch**: `030-packages-public-submodules`  
-**Date**: 2025-12-25  
+**Branch**: `030-packages-public-submodules`
+**Date**: 2025-12-25
 **Spec**: `specs/030-packages-public-submodules/spec.md`
 
 ## 1) 迁移原则
@@ -54,7 +54,7 @@
 | `@logixjs/sandbox` | 概念入口 PascalCase（Client/Service/Protocol/Types/Vite）；保留 `@logixjs/sandbox/vite` 且非空壳；exports/publishConfig.exports 对齐；internal 屏蔽与 gate 通过 | 涉及 Worker/kernel 资源与 Vite 插件入口；必须保持 `test/browser/**` 结构不被破坏；避免把静态资源路径变成事实 API |
 | `@logixjs/test` | 建立 `TestRuntime/TestProgram/Execution/Assertions/Vitest` 概念入口；exports 对齐并通过 gate；更新各包测试用例 import | 现状大量实现目录暴露在 `src/**`；迁移时容易引发测试循环依赖，按 “test structure 对齐” 任务同步迁移更安全 |
 | `@logixjs/react` | 新增 `RuntimeProvider/Hooks/Platform/ReactPlatform` 概念入口；`components/hooks/platform` 下沉 internal；exports/publishConfig.exports 对齐；通过 gate；更新 docs/examples | 现状 C 类泄漏（实现目录被当作 API）；React 组件/Hook 迁移影响面极大，必须同步更新所有示例与 docs import 形态 |
-| `@logixjs/devtools-react` | 新增 `LogixDevtools/DevtoolsLayer/StateTraitGraphView` 概念入口；UI/state/theme/snapshot 下沉 internal；exports/publishConfig.exports 对齐；通过 gate | 现状 C 类泄漏（`./*` 直接暴露 `.tsx` 实现文件）；需确保 `theme.css` 等资源不成为 subpath importable |
+| `@logixjs/devtools-react` | 新增 `LogixDevtools/DevtoolsLayer/FieldGraphView` 概念入口；UI/state/theme/snapshot 下沉 internal；exports/publishConfig.exports 对齐；通过 gate | 现状 C 类泄漏（`./*` 直接暴露 `.tsx` 实现文件）；需确保 `theme.css` 等资源不成为 subpath importable |
 | `@logixjs/core` | （若改动）仅做结构/导出面一致性；保证 internal 分层铁律不被破坏；publishConfig.exports 一致；通过 gate | 任何触及 runtime 核心逻辑都必须补齐 perf evidence 与诊断影响说明；优先做 move/rename/exports 对齐，避免语义改动 |
 
 ## 4) 逐包步骤清单（引用 Gap Report，并给出每步验收）
@@ -64,7 +64,7 @@
 ### `@logixjs/form`（Gap: C）
 
 1. 收敛 Public Submodules 入口（PascalCase）并更新引用
-   - 旧 → 新：`@logixjs/form/form` → `@logixjs/form/Form`（`rule/error/trait/path/...` 同理）
+   - 旧 → 新：`@logixjs/form/form` → `@logixjs/form/Form`（`rule/error/field/path/...` 同理）
    - 验收：`pnpm -C packages/logix-form typecheck:test`
 2. 下沉实现并按 internal 分区收敛（避免 `./*` 把实现变 public）
    - 禁止：`@logixjs/form/validators`、`@logixjs/form/types`、`@logixjs/form/form.impl` 等“实现直通车”
@@ -77,7 +77,7 @@
 ### `@logixjs/query`（Gap: C）
 
 1. 删除空壳入口并收敛概念入口命名
-   - 旧 → 新：`@logixjs/query/query` → `@logixjs/query/Query`（`engine/middleware/traits` 同理）
+   - 旧 → 新：`@logixjs/query/query` → `@logixjs/query/Query`（`engine/middleware/fields` 同理）
    - 删除：`@logixjs/query/react`（不再提供）
    - 验收：`pnpm -C packages/logix-query typecheck:test`
 2. 下沉实现并消除“通配导出泄漏”
@@ -135,7 +135,7 @@
 
 ### `@logixjs/devtools-react`（Gap: C）
 
-1. 收敛对外入口为概念模块（LogixDevtools/DevtoolsLayer/StateTraitGraphView）
+1. 收敛对外入口为概念模块（LogixDevtools/DevtoolsLayer/FieldGraphView）
    - 禁止：依赖任意未裁决子路径入口（例如 `@logixjs/devtools-react/DevtoolsHooks` 一类）
    - 验收：`pnpm -C packages/logix-devtools-react typecheck:test`
 2. 对齐 exports-policy 并确保资源不被当作入口

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 // @vitest-environment happy-dom
 import React from 'react'
 import { renderHook, waitFor, act } from '@testing-library/react'
@@ -21,9 +22,9 @@ const Counter = Logix.Module.make('useSelectorLaneSubscriptionCounter', {
 })
 
 describe('useSelector(lane subscription)', () => {
-  it('static lane avoids recompute on unrelated dirtyRoots, dynamic lane still recomputes', async () => {
+  it('static lane avoids recompute on unrelated dirtyRoots and dynamic lane is rejected', async () => {
     const layer = Counter.live({ count: 0, other: 0 })
-    const tickServicesLayer = Logix.InternalContracts.tickServicesLayer as Layer.Layer<any, never, any>
+    const tickServicesLayer = RuntimeContracts.tickServicesLayer as Layer.Layer<any, never, any>
     const runtime = ManagedRuntime.make(
       Layer.mergeAll(
         tickServicesLayer,
@@ -36,7 +37,6 @@ describe('useSelector(lane subscription)', () => {
     )
 
     let staticCalls = 0
-    let dynamicCalls = 0
 
     const staticSelector = Object.assign(
       (s: { readonly count: number; readonly other: number }) => {
@@ -46,17 +46,11 @@ describe('useSelector(lane subscription)', () => {
       { fieldPaths: ['count'] },
     )
 
-    const dynamicSelector = (s: { readonly count: number; readonly other: number }) => {
-      dynamicCalls += 1
-      return s.count + 1
-    }
-
     const useTest = () => {
       const rt = useModule(Counter.tag)
       const other = useSelector(rt, (s: any) => s.other)
       const staticCount = useSelector(rt, staticSelector as any)
-      const dynamicCount = useSelector(rt, dynamicSelector as any)
-      return { rt, other, staticCount, dynamicCount }
+      return { rt, other, staticCount }
     }
 
     const { result } = renderHook(() => useTest(), { wrapper })
@@ -64,11 +58,9 @@ describe('useSelector(lane subscription)', () => {
     await waitFor(() => {
       expect(result.current.other).toBe(0)
       expect(result.current.staticCount).toBe(0)
-      expect(result.current.dynamicCount).toBe(1)
     })
 
     const baselineStaticCalls = staticCalls
-    const baselineDynamicCalls = dynamicCalls
 
     await act(async () => {
       result.current.rt.dispatchers.bumpOther()
@@ -79,6 +71,15 @@ describe('useSelector(lane subscription)', () => {
     })
 
     expect(staticCalls).toBe(baselineStaticCalls)
-    expect(dynamicCalls).toBeGreaterThan(baselineDynamicCalls)
+  })
+
+  it('rejects dynamic selector fallback at the core route gate', () => {
+    const dynamicSelector = (s: { readonly count: number; readonly other: number }) => s.count + 1
+    const decision = RuntimeContracts.Selector.route(
+      RuntimeContracts.Selector.compile(dynamicSelector),
+    )
+
+    expect(decision.kind).toBe('reject')
+    expect(decision.failureCode).toBe('selector.dynamic_fallback')
   })
 })

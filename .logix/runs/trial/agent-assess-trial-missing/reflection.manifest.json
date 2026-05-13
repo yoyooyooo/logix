@@ -1,0 +1,107 @@
+{
+  "actions": [
+    {
+      "actionTag": "noop",
+      "authority": "runtime-reflection",
+      "payload": {
+        "kind": "nonVoid",
+        "schemaDigest": "schema:38bc1280",
+        "summary": "Schema.Void",
+        "validatorAvailable": true
+      }
+    }
+  ],
+  "budget": {
+    "originalActionCount": 1,
+    "truncated": false
+  },
+  "capabilities": {
+    "check": "available",
+    "run": "available",
+    "trial": "available"
+  },
+  "digest": "runtime-manifest:cd307647",
+  "effects": [],
+  "imports": [],
+  "initialState": {
+    "digest": "schema:1bb469f8",
+    "jsonShape": {
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "type": "object"
+    },
+    "kind": "struct",
+    "label": "Schema.Struct({ ok: Schema.Boolean })"
+  },
+  "logicUnits": [
+    {
+      "id": "missing-service",
+      "kind": "user",
+      "name": "missing-service"
+    }
+  ],
+  "manifestVersion": "runtime-reflection-manifest@167B",
+  "modules": [
+    {
+      "actionKeys": [
+        "noop"
+      ],
+      "actions": [
+        {
+          "actionTag": "noop",
+          "payload": {
+            "kind": "nonVoid",
+            "schemaDigest": "schema:38bc1280",
+            "summary": "Schema.Void"
+          }
+        }
+      ],
+      "digest": "manifest:067:cd4aed1f",
+      "logicUnits": [
+        {
+          "id": "missing-service",
+          "kind": "user",
+          "name": "missing-service"
+        }
+      ],
+      "manifestVersion": "067",
+      "moduleId": "CliMissingServiceProgram"
+    }
+  ],
+  "processes": [],
+  "programId": "CliMissingServiceProgram::program:1",
+  "rootModule": {
+    "actionKeys": [
+      "noop"
+    ],
+    "actions": [
+      {
+        "actionTag": "noop",
+        "payload": {
+          "kind": "nonVoid",
+          "schemaDigest": "schema:38bc1280",
+          "summary": "Schema.Void"
+        }
+      }
+    ],
+    "digest": "manifest:067:cd4aed1f",
+    "logicUnits": [
+      {
+        "id": "missing-service",
+        "kind": "user",
+        "name": "missing-service"
+      }
+    ],
+    "manifestVersion": "067",
+    "moduleId": "CliMissingServiceProgram"
+  },
+  "rootModuleId": "CliMissingServiceProgram",
+  "services": [],
+  "sourceRefs": []
+}

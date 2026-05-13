@@ -1,4 +1,4 @@
 import { Effect } from 'effect'
-import { CustomerDetailDef } from './customerDetail.def.js'
+import { CustomerDetail } from './customerDetail.def.js'
 
-export const CustomerDetailLogic = CustomerDetailDef.logic(() => Effect.void)
+export const CustomerDetailLogic = CustomerDetail.logic('customer-detail-logic', () => Effect.void)

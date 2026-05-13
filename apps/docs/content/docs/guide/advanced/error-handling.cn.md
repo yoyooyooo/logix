@@ -3,31 +3,16 @@ title: 错误处理
 description: Logix 中的错误处理策略。
 ---
 
-在 Logix 中，推荐把失败分层处理：
+Logix 的错误处理建议分成三层：
 
 - **局部（Local）**：预期错误（业务可恢复）留在 Effect 的错误通道 `E`，就地捕获并转换为状态/返回值。
 - **模块（Module）**：未处理缺陷（Defect）走 `$.lifecycle.onError` 做“最后上报”（日志/监控/兜底清理）。
 - **全局（App/React）**：在 React 集成中用 `RuntimeProvider.onError` 统一接入上报系统，避免每个模块各写一套。
 
-另外两点也很关键：
+另外两条规则也需要单独记住：
 
 - **装配失败**（缺少 provider/imports）属于配置错误，应按错误提示修复装配，而不是在业务逻辑里吞掉。
 - **取消/中断**（interrupt）不是错误，不应进入错误兜底链路或告警系统。
-
-### 适合谁
-
-- 已经在项目中使用 Logix，希望系统整理"业务错误 vs 系统缺陷"的处理策略；
-- 对 Effect 的错误通道（`E`）和 React Error Boundary 有基本了解，想在项目里统一用法。
-
-### 前置知识
-
-- 读过 [Effect 速成](../essentials/effect-basics) 或对 `Effect.gen` 有基本直觉；
-- 了解 `$.lifecycle.onError` 用于兜底“未处理失败”的上报。
-
-### 读完你将获得
-
-- 一套可落地的"业务错误（Expected）"与"系统缺陷（Defect）"处理分层方案；
-- 在 Logix/React 组合场景下，如何在 Module 层、Runtime 层与 UI 层配合处理错误的示例。
 
 ## 1. 预期错误 (Expected Errors)
 
@@ -65,21 +50,20 @@ const LoginLogic = LoginModule.logic(($) =>
 
 ### `onError` 钩子
 
-你可以通过 `$.lifecycle.onError` 统一处理未捕获的错误（**setup-only 注册**）：
+你可以通过 `$.lifecycle.onError` 统一处理未捕获的错误（declaration-only 注册）：
 
 ```ts
-const AppLogic = AppModule.logic(($) => ({
-  setup: Effect.sync(() => {
-    $.lifecycle.onError((cause, context) =>
-      Effect.logError({
-        message: "Unhandled module error",
-        cause,
-        context, // 含 moduleId/instanceId/phase/hook 等上下文
-      }),
-    )
-  }),
-  run: Effect.void,
-}))
+const AppLogic = AppModule.logic(($) => {
+  $.lifecycle.onError((cause, context) =>
+    Effect.logError({
+      message: "Unhandled module error",
+      cause,
+      context, // 含 moduleId/instanceId/phase/hook 等上下文
+    }),
+  )
+
+  return Effect.void
+})
 ```
 
 ## 3. React 全局上报（RuntimeProvider.onError）
@@ -136,8 +120,7 @@ yield*
   )
 ```
 
-## 下一步
+## 延伸阅读
 
-- 了解如何调试模块行为：[调试与 DevTools](./debugging-and-devtools)
 - 学习如何测试你的模块：[测试](./testing)
 - 查看常用模式与最佳实践：[常用模式](../recipes/common-patterns)

@@ -3,7 +3,7 @@
 ## 现状（As-Is）
 
 - `packages/logix-core/src/internal/runtime/core/DevtoolsHub.ts` 当前以进程级全局单例维护观测快照。
-- `events` 由单一 `ringBuffer` 承载，`latestStates/latestTraitSummaries` 为全局 Map；多 runtime 共享同一窗口。
+- `events` 由单一 `ringBuffer` 承载，`latestStates/latestFieldSummaries` 为全局 Map；多 runtime 共享同一窗口。
 - `clearDevtoolsEvents()` 仅支持全局清理，无法定向清理单 runtime。
 - 对外公开查询只有 `getDevtoolsSnapshot()`，缺少 runtimeLabel 维度的隔离查询。
 

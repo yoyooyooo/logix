@@ -95,7 +95,7 @@
 
 - 统一最小 IR 的稳定锚点沿用 009：`instanceId/txnSeq/opSeq/eventSeq`；013 只新增 converge 相关证据字段，不改变锚点模型。
 - 对外协议以 `specs/013-auto-converge-planner/contracts/*` 固化，并复用 009 的 schema（以引用为主，不复制）。
-- converge 的决策/缓存/失效/止损证据以 “DynamicTrace event 扩展 schema” 交付：定义一个 `kind="trait:converge"` 的事件，其 `data` 为可序列化、Slim 的 ConvergeDecisionSummary（light/full 下字段可裁剪，off 下不得保留任何额外数据）。
+- converge 的决策/缓存/失效/止损证据以 “DynamicTrace event 扩展 schema” 交付：定义一个 `kind="field:converge"` 的事件，其 `data` 为可序列化、Slim 的 ConvergeDecisionSummary（light/full 下字段可裁剪，off 下不得保留任何额外数据）。
 - 性能门槛与回归主跑道复用 014：`auto/full ≤ 1.05` 作为可执行断言；并在 014 报告中输出 cache hit/miss/evict、generation bump、budget cut-off、`staticIrBuildDurationMs` 等最小证据字段。
 
 **Rationale**：
@@ -140,9 +140,9 @@
 **Decision**：
 
 - 同步更新 Runtime SSoT：`docs/ssot/runtime/logix-core/runtime/05-runtime-implementation.md` 补齐 `traitConvergeMode=auto` 的语义口径（requested vs executed、下界门槛、决策预算止损、cache 证据与失效/自保护）。
-- 同步更新 Debug 协议 SSoT：`docs/ssot/runtime/logix-core/observability/09-debugging.md` 固化 converge 的最小证据形态（推荐以 `trait:converge` 事件/summary schema 表达），并对齐 `off|light|full` 分档裁剪规则。
+- 同步更新 Debug 协议 SSoT：`docs/ssot/runtime/logix-core/observability/09-debugging.md` 固化 converge 的最小证据形态（推荐以 `field:converge` 事件/summary schema 表达），并对齐 `off|light|full` 分档裁剪规则。
 - 同步更新用户文档：`apps/docs/content/docs/**` 补齐默认 `auto`、模块级覆盖/回退、以及“如何用证据字段定位回归与调参”的稳定心智模型。
-- 标注/更新历史 spec 口径：`specs/007-unify-trait-system/review.md` 等仍以 `full|dirty` 默认与枚举为主的描述，需明确被 013 更新/替代的范围，避免读者误用。
+- 标注/更新历史 spec 口径：`specs/007-unify-field-system/review.md` 等仍以 `full|dirty` 默认与枚举为主的描述，需明确被 013 更新/替代的范围，避免读者误用。
 - 明确迁移口径：若业务需要维持旧行为，显式设置 `traitConvergeMode="full"`；迁移说明写入 `specs/013-auto-converge-planner/quickstart.md` 与对应文档章节（不提供兼容层）。
 
 **Rationale**：
@@ -176,7 +176,7 @@
 **Decision**：
 
 - converge 的有效配置解析以 DI 为载体：Provider 范围通过 `Tag/Layer` 注入差量 override（例如 `StateTransactionOverridesTag`），Runtime 侧可同时支持 `moduleId` 维度覆盖与 default 配置。
-- 配置解析优先级固定为：`provider > runtime_module > runtime_default > builtin`，并要求每次事务的 converge 证据中输出 `configScope`（与 `trait-converge-data.schema.json` 一致）。
+- 配置解析优先级固定为：`provider > runtime_module > runtime_default > builtin`，并要求每次事务的 converge 证据中输出 `configScope`（与 `field-converge-data.schema.json` 一致）。
 - 规划阶段明确拒绝“手写查表 Map + if/else 拼装”：该形态只能作为过渡实现存在，不应成为对外心智模型与长期 SSOT。
 
 **Rationale**：

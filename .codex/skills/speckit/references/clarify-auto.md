@@ -39,6 +39,9 @@ From repo root, run `SKILL_DIR/scripts/bash/check-prerequisites.sh --json --path
 If `FEATURE_SPEC` is missing, instruct the user to run `$speckit specify` first (do not create a spec here).
 
 Load the current `FEATURE_SPEC`.
+If `FEATURE_DIR/discussion.md` exists, load it as a non-authoritative source of candidate open questions and deferred items.
+Prioritize `Must Close Before Implementation` items over non-blocking deferred items.
+Do not auto-resolve `Deferred / Non-Blocking` items unless they have become implementation blockers.
 
 ### 2) Auto-clarify (self Q&A, non-interactive)
 
@@ -57,6 +60,8 @@ Baseline: read and follow `SKILL_DIR/references/clarify.md` EXACTLY, with these 
 - If a high-impact ambiguity cannot be responsibly auto-resolved:
   - Do not guess silently.
   - Record it under `## Clarifications` as an explicit assumption (prefix the line with `ASSUMPTION:`), and stop (do not continue auto-resolving).
+  - If the unresolved item came from `discussion.md`, keep it there as residual open evidence and do not silently drop it.
+  - If the unresolved item is under `Must Close Before Implementation`, report that implementation cannot start until it is closed.
 
 ### 3) Report completion
 
@@ -66,4 +71,3 @@ Report:
 - Whether any `ASSUMPTION` items were recorded
 - Path to updated `FEATURE_SPEC`
 - Suggested next command (usually `$speckit plan-deep` or `$speckit plan`)
-

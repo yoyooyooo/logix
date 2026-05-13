@@ -1,7 +1,7 @@
 # Research: IR Reflection Loader（IR 反射与试运行提取）
 
-**Date**: 2025-12-23  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/025-ir-reflection-loader/spec.md`
+**Date**: 2025-12-23
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/025-ir-reflection-loader/spec.md`
 
 ## 背景与目标
 
@@ -15,7 +15,7 @@
 
 ## Decision 1：Manifest IR 以“字段投影 + 确定性 digest”为主
 
-**Decision**: ModuleManifest 作为 `ModuleDescriptor` 的“平台化投影”，但 **不包含 runtime instance 信息**，并提供稳定 digest 供 diff。  
+**Decision**: ModuleManifest 作为 `ModuleDescriptor` 的“平台化投影”，但 **不包含 runtime instance 信息**，并提供稳定 digest 供 diff。
 **Rationale**:
 
 - `packages/logix-core/src/Module.ts` 的 `descriptor(module, runtime)` 混入了 `moduleId/instanceId`（运行期锚点），不适合作为平台静态 Manifest。
@@ -46,7 +46,7 @@
 
 ## Decision 1.2：Contract Guard（diffManifest）对 meta 的默认口径
 
-**Decision**: `diffManifest` 默认把 meta 变化归类为 **RISKY**（不作为 breaking），并支持通过 allowlist 降噪（只检查 allowlist keys）。  
+**Decision**: `diffManifest` 默认把 meta 变化归类为 **RISKY**（不作为 breaking），并支持通过 allowlist 降噪（只检查 allowlist keys）。
 **Rationale**:
 
 - meta 变化不应阻断 CI，但需要被显式提示与可解释（避免“悄悄漂移”）。
@@ -59,7 +59,7 @@
 
 ## Decision 2：Schema 暂以 `schemaKeys` 为主，JSON Schema 转换是扩展点
 
-**Decision**: 025 的 Manifest 默认只保证 `schemaKeys`（以及 meta/source/logic slots 等），不强制交付 Schema→JSON Schema 的转换器；但在 contracts/plan 中保留扩展点。  
+**Decision**: 025 的 Manifest 默认只保证 `schemaKeys`（以及 meta/source/logic slots 等），不强制交付 Schema→JSON Schema 的转换器；但在 contracts/plan 中保留扩展点。
 **Rationale**:
 
 - 当前仓库内未发现稳定的 `effect/Schema -> JSON Schema` 转换器；强行引入会扩大 scope，且容易引入非确定性（`$ref` 命名、排序、去重策略）。
@@ -70,12 +70,12 @@
 - 立即在 core 内实现 JSON Schema 转换：风险与工作量过大，且会牵涉大量确定性规则；暂缓。
 - 平台侧用 AST 取 schema：与本特性目标冲突；拒绝。
 
-## Decision 3：Static IR 的首选落点 = StateTrait.exportStaticIr（图级、可 diff）
+## Decision 3：Static IR 的首选落点 = FieldKernel.exportStaticIr（图级、可 diff）
 
-**Decision**: FR-010（Static IR）优先复用 `StateTrait.exportStaticIr` 的输出形态作为“声明式推导关系依赖图”的 canonical Static IR。  
+**Decision**: FR-010（Static IR）优先复用 `FieldKernel.exportStaticIr` 的输出形态作为“声明式推导关系依赖图”的 canonical Static IR。
 **Rationale**:
 
-- `packages/logix-core/src/internal/state-trait/ir.ts` 已提供 stable stringify + digest（`stir:...`），输出纯 JSON（nodes/edges），天然适合平台可视化与 CI diff。
+- `packages/logix-core/src/internal/state-field/ir.ts` 已提供 stable stringify + digest（`stir:...`），输出纯 JSON（nodes/edges），天然适合平台可视化与 CI diff。
 - 该 IR 语义上正对应“派生/联动/校验”等声明式关系（computed/link/source/check），符合 FR-010 的定义。
 
 **Alternatives considered**:
@@ -84,7 +84,7 @@
 
 ## Decision 4：ConvergeStaticIrExport 属于“证据摘要”，而非 Manifest 主体
 
-**Decision**: `packages/logix-core/src/internal/state-trait/converge-ir.ts` 的 `exportConvergeStaticIr` 作为 EvidencePackage 的一个 summary 子项（或可选导出），默认不进入 Manifest。  
+**Decision**: `packages/logix-core/src/internal/state-field/converge-ir.ts` 的 `exportConvergeStaticIr` 作为 EvidencePackage 的一个 summary 子项（或可选导出），默认不进入 Manifest。
 **Rationale**:
 
 - `ConvergeStaticIrExport` 以 `instanceId:generation` 为 digest，天然更偏运行期对齐（并与实例/代际绑定）；而 Manifest 面向“静态结构对比”。
@@ -94,9 +94,9 @@
 
 - 强行把 converge IR 放入 Manifest：会把运行期概念带入静态面，增加困惑与噪音；拒绝。
 
-## Decision 5：Trial Run 复用 Observability.trialRun（Scope close = 资源释放语义）
+## Decision 5：Trial Run 复用 Runtime.trial（Scope close = 资源释放语义）
 
-**Decision**: 受控试跑的执行与资源释放复用 `packages/logix-core/src/internal/observability/trialRun.ts` 的 `trialRun`：内部 `Scope.make()` + `Scope.close(scope, exit)` 保证结束时释放资源/取消 fibers。  
+**Decision**: 受控试跑的执行与资源释放复用 `packages/logix-core/src/internal/observability/trialRun.ts` 的 `trialRun`：内部 `Scope.make()` + `Scope.close(scope, exit)` 保证结束时释放资源/取消 fibers。
 **Rationale**:
 
 - 试跑无法推断“何时退出常驻逻辑”；唯一可靠手段是 **由试跑策略显式关闭 Scope**。
@@ -108,7 +108,7 @@
 
 ## Decision 6：Trial Run 的可对比性要求显式注入 `runId`（CI 必须）
 
-**Decision**: 在 CI/平台场景，Trial Run 必须显式提供 `runId`（以及需要时 `startedAt`），禁止依赖 `RunSession` 默认的 `Date.now()`/进程序号。  
+**Decision**: 在 CI/平台场景，Trial Run 必须显式提供 `runId`（以及需要时 `startedAt`），禁止依赖 `RunSession` 默认的 `Date.now()`/进程序号。
 **Rationale**:
 
 - `packages/logix-core/src/internal/observability/runSession.ts` 默认 `runId=run-${Date.now()}.${seq}`，天然非确定；用于 diff 会导致“每次都变”。
@@ -125,7 +125,7 @@
 1. **observed（观测到的依赖）**：trial run 过程中被访问的 `tagIds/configKeys`（尽量记录、去重、可裁剪）。
 2. **violations（可行动违规）**：构建态缺失服务/禁止副作用等违规摘要（必须明确阶段与原因）。
 
-其中 Tag 稳定标识规则复用 `packages/logix-core/src/Root.ts` 的 `tagIdOf(tag)`（优先 `tag.id`，否则 `tag.key`）。  
+其中 Tag 稳定标识规则复用 `packages/logix-core/src/Root.ts` 的 `tagIdOf(tag)`（优先 `tag.id`，否则 `tag.key`）。
 **Rationale**:
 
 - 平台化需要“依赖契约”的可序列化摘要；在动态组合/条件分支存在时，只能承诺“观测到的集合”，并把不确定性显式暴露出来。
@@ -138,7 +138,7 @@
 
 ## Decision 7.1：TrialRunReport 失败时仍尽可能携带可解释 IR
 
-**Decision**: TrialRunReport 在失败时仍尽可能输出 `environment`（含缺失清单）与 `manifest`（若能提取），用于 CI/平台解释与修复；提取不到或超限则省略对应字段。  
+**Decision**: TrialRunReport 在失败时仍尽可能输出 `environment`（含缺失清单）与 `manifest`（若能提取），用于 CI/平台解释与修复；提取不到或超限则省略对应字段。
 **Rationale**:
 
 - 平台与 CI 的核心诉求是“可行动”：失败时没有缺失清单/manifest 会迫使用户反复重跑或去读源码，背离“可解释链路”目标。
@@ -151,7 +151,7 @@
 
 ## Decision 8：控制面证据（RuntimeServicesEvidence）直接复用为 Trial Run summary 的 runtime 子项
 
-**Decision**: 025 不再发明“控制面 IR”，直接复用 `RuntimeServicesEvidence`（scope/bindings/overridesApplied）进入 EvidencePackage summary（已有 schema：`specs/020-runtime-internals-contracts/contracts/schemas/runtime-services-evidence.schema.json`）。  
+**Decision**: 025 不再发明“控制面 IR”，直接复用 `RuntimeServicesEvidence`（scope/bindings/overridesApplied）进入 EvidencePackage summary（已有 schema：`specs/020-runtime-internals-contracts/contracts/schemas/runtime-services-evidence.schema.json`）。
 **Rationale**:
 
 - 这是现有控制面的单一事实源；平台侧如需解释“为什么选了这个 impl”，应该直接消费该证据模型。

@@ -1,45 +1,46 @@
 // @vitest-environment happy-dom
 import React from 'react'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 import { describe, it, expect } from 'vitest'
 import { render, fireEvent, screen, waitFor } from '@testing-library/react'
 import { Effect, Layer, ManagedRuntime, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
-import { RuntimeProvider, useModule, useRuntime, useSelector } from '../../src/index.js'
+import { fieldValue, RuntimeProvider, useModule, useRuntime, useSelector } from '../../src/index.js'
+import { useProgramRuntimeBlueprint } from '../../src/internal/hooks/useProgramRuntimeBlueprint.js'
 
 const CounterDef = Logix.Module.make('T073.RuntimeProviderTickServices.Counter', {
   state: Schema.Struct({ count: Schema.Number }),
   actions: { inc: Schema.Void },
 })
 
-const CounterLogic = CounterDef.logic(($) => ({
-  setup: Effect.void,
-  run: Effect.gen(function* () {
+const CounterLogic = CounterDef.logic('counter-logic', ($) =>
+  Effect.gen(function* () {
     yield* $.onAction('inc').mutate((s) => {
       ;(s as any).count += 1
     })
   }),
-}))
+)
 
-const CounterModule = CounterDef.implement({
+const CounterProgram = Logix.Program.make(CounterDef, {
   initial: { count: 0 },
   logics: [CounterLogic],
 })
 
 const makeBaseRuntimeWithoutTickServices = () => {
-  const baseRuntime = ManagedRuntime.make(CounterModule.impl.layer as Layer.Layer<any, never, never>)
-  expect(() => Logix.InternalContracts.getRuntimeStore(baseRuntime as any)).toThrow()
+  const baseRuntime = ManagedRuntime.make(RuntimeContracts.getProgramRuntimeBlueprint(CounterProgram).layer as Layer.Layer<any, never, never>)
+  expect(() => RuntimeContracts.getRuntimeStore(baseRuntime as any)).toThrow()
   return baseRuntime
 }
 
 const makeEmptyBaseRuntimeWithoutTickServices = () => {
   const baseRuntime = ManagedRuntime.make(Layer.empty as Layer.Layer<any, never, never>)
-  expect(() => Logix.InternalContracts.getRuntimeStore(baseRuntime as any)).toThrow()
+  expect(() => RuntimeContracts.getRuntimeStore(baseRuntime as any)).toThrow()
   return baseRuntime
 }
 
 const CounterApp: React.FC = () => {
   const runtime = useRuntime()
-  const count = useModule(CounterDef, (s) => (s as any).count as number)
+  const count = useSelector(CounterDef.tag, (s) => (s as any).count as number)
 
   const onInc = React.useCallback(() => {
     void runtime.runPromise(
@@ -59,19 +60,19 @@ const CounterApp: React.FC = () => {
   )
 }
 
-const CounterImplApp: React.FC = () => {
-  const counter = useModule(CounterModule.impl, {
+const CounterProgramApp: React.FC = () => {
+  const counter = useProgramRuntimeBlueprint(RuntimeContracts.getProgramRuntimeBlueprint(CounterProgram), {
     suspend: true,
-    key: 'impl:strict',
+    key: 'program:strict',
     initTimeoutMs: 5_000,
   })
-  const count = useModule(counter, (s) => (s as any).count as number)
+  const count = useSelector(counter, (s) => (s as any).count as number)
 
   return (
     <div>
-      <div data-testid="impl-count">{count}</div>
-      <button type="button" onClick={() => counter.actions.inc()}>
-        ImplInc
+      <div data-testid="program-count">{count}</div>
+      <button type="button" onClick={() => counter.dispatchers.inc()}>
+        ProgramInc
       </button>
     </div>
   )
@@ -87,7 +88,7 @@ const BigStepLayer = Layer.succeed(StepConfigTag, { step: 5 })
 
 const StepCounterPanel: React.FC<{ readonly variant: 'root' | 'nested' }> = ({ variant }) => {
   const runtime = useRuntime()
-  const count = useModule(CounterDef, (s) => (s as any).count as number)
+  const count = useSelector(CounterDef.tag, (s) => (s as any).count as number)
 
   const onInc = React.useCallback(() => {
     void runtime.runPromise(
@@ -113,7 +114,7 @@ const StepCounterPanel: React.FC<{ readonly variant: 'root' | 'nested' }> = ({ v
 
 const CounterBatchApp: React.FC = () => {
   const runtime = useRuntime()
-  const count = useModule(CounterDef, (s) => (s as any).count as number)
+  const count = useSelector(CounterDef.tag, (s) => (s as any).count as number)
 
   const onBatch = React.useCallback(() => {
     void runtime.runPromise(
@@ -139,7 +140,7 @@ const CounterBatchApp: React.FC = () => {
 
 const CounterLowPriorityApp: React.FC = () => {
   const runtime = useRuntime()
-  const state = useSelector(CounterDef.tag) as any
+  const count = useSelector(CounterDef.tag, fieldValue('count')) as number
 
   const onLowInc = React.useCallback(() => {
     void runtime.runPromise(
@@ -151,7 +152,7 @@ const CounterLowPriorityApp: React.FC = () => {
 
   return (
     <div>
-      <div data-testid="low-count">{(state as any).count as number}</div>
+      <div data-testid="low-count">{count}</div>
       <button type="button" onClick={onLowInc}>
         LowInc
       </button>
@@ -159,7 +160,7 @@ const CounterLowPriorityApp: React.FC = () => {
   )
 }
 
-describe('RuntimeProvider tick services auto-binding', () => {
+describe('React host adapter tick services auto-binding', () => {
   it('should re-render immediately when dispatch commits state (base runtime has no tick services)', async () => {
     const baseRuntime = makeBaseRuntimeWithoutTickServices()
 
@@ -228,7 +229,7 @@ describe('RuntimeProvider tick services auto-binding', () => {
     })
   })
 
-  it('should re-render in StrictMode + policy.mode=suspend for keyed ModuleImpl (base runtime has no tick services)', async () => {
+  it('should re-render in StrictMode + policy.mode=suspend for keyed ProgramRuntimeBlueprint (base runtime has no tick services)', async () => {
     const baseRuntime = makeEmptyBaseRuntimeWithoutTickServices()
 
     render(
@@ -238,23 +239,23 @@ describe('RuntimeProvider tick services auto-binding', () => {
           policy={{ mode: 'suspend', syncBudgetMs: 1000 }}
           fallback={<div data-testid="fallback">loading</div>}
         >
-          <CounterImplApp />
+        <CounterProgramApp />
         </RuntimeProvider>
       </React.StrictMode>,
     )
 
     await waitFor(() => {
-      expect(screen.getByTestId('impl-count').textContent).toBe('0')
+      expect(screen.getByTestId('program-count').textContent).toBe('0')
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'ImplInc' }))
+    fireEvent.click(screen.getByRole('button', { name: 'ProgramInc' }))
 
     await waitFor(() => {
-      expect(screen.getByTestId('impl-count').textContent).toBe('1')
+      expect(screen.getByTestId('program-count').textContent).toBe('1')
     })
   })
 
-  it('should apply RuntimeProvider.layer overrides and still re-render immediately (LayerOverrideDemoLayout-like)', async () => {
+  it('should apply subtree layer overrides and still re-render immediately (LayerOverrideDemoLayout-like)', async () => {
     const baseRuntime = makeBaseRuntimeWithoutTickServices()
 
     render(

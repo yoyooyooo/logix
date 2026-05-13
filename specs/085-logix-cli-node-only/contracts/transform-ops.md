@@ -1,5 +1,9 @@
 # Transform Ops（delta.json）：Logix CLI（085）
 
+> Superseded background only. This 085 transform contract is not current CLI authority.
+> Current CLI authority is [../../160-cli-agent-first-control-plane-cutover/spec.md](../../160-cli-agent-first-control-plane-cutover/spec.md) and [../../../docs/ssot/runtime/15-cli-agent-first-control-plane.md](../../../docs/ssot/runtime/15-cli-agent-first-control-plane.md).
+> `transform module`, writeback, and report/write mode are negative-only legacy references for `160`.
+
 > 目标：用一个显式、可版本化的 delta 文件表达“多项机械变更”，由 `logix transform module --ops` 一次性执行（默认 report-only）。
 
 ## 1) 基本结构（v1）
@@ -59,4 +63,3 @@
 - delta 输入必须是纯数据（JSON），禁止携带函数/闭包语义。
 - 任何写回必须生成 PatchPlan（可审阅），并遵守 082 的幂等与竞态防护。
 - 无法确定插入点/格式无法保持/子集外形态：必须跳过并输出 reason codes（宁可漏不乱补）。
-

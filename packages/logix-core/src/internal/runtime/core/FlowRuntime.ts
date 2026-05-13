@@ -3,7 +3,7 @@ import type { AnyModuleShape, LogicEffect, ModuleRuntime, StateOf, ActionOf, Mod
 import type * as Logic from './LogicMiddleware.js'
 import * as EffectOp from '../../effect-op.js'
 import * as EffectOpCore from './EffectOpCore.js'
-import { RunSessionTag } from '../../observability/runSession.js'
+import { RunSessionTag } from '../../verification/runSession.js'
 import type { RuntimeInternals } from './RuntimeInternals.js'
 import * as Debug from './DebugSink.js'
 import * as ReadQuery from './ReadQuery.js'
@@ -149,7 +149,9 @@ export const make = <Sh extends AnyModuleShape, R = never>(
   runtimeInternals?: RuntimeInternals,
 ): Api<Sh, R> => {
   let flowBudgetRunSeq = 0
+  let flowWatcherResourceSeq = 0
   const scope = getRuntimeScope(runtime)
+  const hotLifecycle = runtimeInternals?.hotLifecycle
   const resolveConcurrencyLimit = (): Effect.Effect<number | 'unbounded', never, any> =>
     runtimeInternals
       ? runtimeInternals.concurrency.resolveConcurrencyPolicy().pipe(Effect.map((p) => p.concurrencyLimit))
@@ -267,16 +269,40 @@ export const make = <Sh extends AnyModuleShape, R = never>(
       Effect.gen(function* () {
         const context = yield* makeFlowOpRunContext(options)
         const mapper = makeFlowOpMapper<T, A, E, R2>(context, name, resolver)
+        const watcherResourceId = hotLifecycle
+          ? `${hotLifecycle.owner.ownerId}::watcher:${scope.moduleId ?? 'unknown'}:${scope.instanceId ?? 'unknown'}:${++flowWatcherResourceSeq}`
+          : undefined
+        if (hotLifecycle && watcherResourceId) {
+          hotLifecycle.register({
+            resourceId: watcherResourceId,
+            category: 'watcher',
+            moduleId: scope.moduleId,
+            moduleInstanceId: scope.instanceId,
+          })
+        }
 
         return yield* ModeRunner.runByMode<T, E, any>({
           stream,
           mode,
-          run: mapper,
+          run: (payload) =>
+            hotLifecycle && !hotLifecycle.isCurrent()
+              ? Effect.void
+              : mapper(payload).pipe(
+                  Effect.flatMap((value) => (hotLifecycle && !hotLifecycle.isCurrent() ? Effect.void : Effect.succeed(value))),
+                ),
           resolveConcurrencyLimit: resolveConcurrencyLimit(),
           latest: {
             strategy: 'switch',
           },
-        })
+        }).pipe(
+          Effect.ensuring(
+            Effect.sync(() => {
+              if (hotLifecycle && watcherResourceId) {
+                hotLifecycle.owner.registry.markClosed(watcherResourceId)
+              }
+            }),
+          ),
+        )
       }) as any
 
   const runStreamParallelWithDiagnostics =

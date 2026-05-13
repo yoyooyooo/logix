@@ -1,8 +1,12 @@
+import * as CoreKernel from '@logixjs/core/repo-internal/kernel-api'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
+import * as CoreReflection from '@logixjs/core/repo-internal/reflection-api'
 import { describe, it, expect } from '@effect/vitest'
-import {Effect, Exit, Layer, Schema, ServiceMap } from 'effect'
+import { Effect, Exit, Layer, Schema, ServiceMap } from 'effect'
 import { TestClock } from 'effect/testing'
 import * as Logix from '../../src/index.js'
-import { coreNgRuntimeServicesRegistry } from '../../src/internal/runtime/core/RuntimeServices.impls.coreNg.js'
+import * as RuntimeContracts from '../../src/internal/runtime-contracts.js'
+import { trialRun } from '../../src/internal/verification/trialRun.js'
 
 describe('contracts (045): Kernel contract verification harness', () => {
   it.effect(
@@ -17,12 +21,12 @@ describe('contracts (045): Kernel contract verification harness', () => {
           },
         })
 
-        const program = Root.implement({
+        const program = Logix.Program.make(Root, {
           initial: { count: 0 },
           logics: [],
         })
 
-        const result = yield* Logix.Reflection.verifyKernelContract(program, {
+        const result = yield* CoreReflection.verifyKernelContract(program, {
           diagnosticsLevel: 'light',
           maxEvents: 200,
           before: {
@@ -45,7 +49,7 @@ describe('contracts (045): Kernel contract verification harness', () => {
   )
 
   it.effect(
-    'core vs core-ng should keep converge static IR digest/mapping stable (050 integer bridge guard)',
+    'core vs experimental full-cutover should keep converge static IR digest/mapping stable (050 integer bridge guard)',
     () =>
       Effect.gen(function* () {
         const State = Schema.Struct({
@@ -53,40 +57,29 @@ describe('contracts (045): Kernel contract verification harness', () => {
           derivedA: Schema.Number,
         })
 
-        const Root = Logix.Module.make('Contracts.045.KernelContractVerification.IntegerBridge', {
-          state: State,
-          actions: { inc: Schema.Void },
-          reducers: {
+        const Root = FieldContracts.withModuleFieldDeclarations(Logix.Module.make('Contracts.045.KernelContractVerification.IntegerBridge', {
+  state: State,
+  actions: { inc: Schema.Void },
+  reducers: {
             inc: (s: any) => ({ ...s, a: (s?.a ?? 0) + 1 }),
-          },
-          traits: Logix.StateTrait.from(State)({
-            derivedA: Logix.StateTrait.computed({
+          }
+}), FieldContracts.fieldFrom(State)({
+            derivedA: FieldContracts.fieldComputed({
               deps: ['a'],
               get: (a) => a + 1,
             }),
-          }),
-        })
+          }))
 
-        const program = Root.implement({
+        const program = Logix.Program.make(Root, {
           initial: { a: 0, derivedA: 1 },
           logics: [],
         })
 
-        const coreNgLayer = Layer.mergeAll(
-          Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logixjs/core' }),
-          Logix.Kernel.fullCutoverGateModeLayer('fullCutover'),
-          Logix.Kernel.runtimeServicesRegistryLayer(coreNgRuntimeServicesRegistry),
-          Logix.Kernel.runtimeDefaultServicesOverridesLayer(
-            Object.fromEntries(
-              Logix.Kernel.CutoverCoverageMatrix.requiredServiceIds.map((serviceId) => [
-                serviceId,
-                { implId: 'core-ng' },
-              ]),
-            ),
-          ),
-        )
+        const experimentalLayer = CoreKernel.fullCutoverLayer({
+          capabilities: ['contract:experimental'],
+        })
 
-        const contract = yield* Logix.Reflection.verifyKernelContract(program, {
+        const contract = yield* CoreReflection.verifyKernelContract(program, {
           diagnosticsLevel: 'light',
           maxEvents: 200,
           before: {
@@ -94,20 +87,21 @@ describe('contracts (045): Kernel contract verification harness', () => {
             interaction: (rt) => rt.dispatch({ _tag: 'inc', payload: undefined } as any),
           },
           after: {
-            runId: 'run:test:kernel-contract:after:core-ng',
-            layer: coreNgLayer,
+            runId: 'run:test:kernel-contract:after:experimental',
+            layer: experimentalLayer,
             interaction: (rt) => rt.dispatch({ _tag: 'inc', payload: undefined } as any),
           },
         })
 
         expect(contract.verdict).toBe('PASS')
         expect(contract.before.kernelImplementationRef.kernelId).toBe('core')
-        expect(contract.after.kernelImplementationRef.kernelId).toBe('core-ng')
+        expect(contract.after.kernelImplementationRef.kernelId).toBe('core')
+        expect(contract.after.kernelImplementationRef.capabilities).toContain('contract:experimental')
 
         const runTrial = (options: { readonly runId: string; readonly layer?: Layer.Layer<any, any, any> }) =>
-          Logix.Observability.trialRun(
+          trialRun(
             Effect.gen(function* () {
-              const ctx = yield* program.impl.layer.pipe(Layer.build)
+              const ctx = yield* RuntimeContracts.getProgramRuntimeBlueprint(program).layer.pipe(Layer.build)
               const runtime = ServiceMap.get(ctx, Root.tag) as any
 
               yield* TestClock.adjust('1 millis')
@@ -125,36 +119,39 @@ describe('contracts (045): Kernel contract verification harness', () => {
           )
 
         const core = yield* runTrial({ runId: 'run:test:integer-bridge:core' })
-        const coreNg = yield* runTrial({ runId: 'run:test:integer-bridge:core-ng', layer: coreNgLayer })
+        const experimental = yield* runTrial({
+          runId: 'run:test:integer-bridge:experimental',
+          layer: experimentalLayer,
+        })
 
         expect(Exit.isSuccess(core.exit)).toBe(true)
-        expect(Exit.isSuccess(coreNg.exit)).toBe(true)
+        expect(Exit.isSuccess(experimental.exit)).toBe(true)
 
         const coreInstanceId = Exit.isSuccess(core.exit) ? core.exit.value : 'unknown'
-        const coreNgInstanceId = Exit.isSuccess(coreNg.exit) ? coreNg.exit.value : 'unknown'
+        const experimentalInstanceId = Exit.isSuccess(experimental.exit) ? experimental.exit.value : 'unknown'
 
         const coreSummary: any = core.evidence.summary
-        const coreNgSummary: any = coreNg.evidence.summary
+        const experimentalSummary: any = experimental.evidence.summary
 
         const coreIrByDigest: any = coreSummary?.converge?.staticIrByDigest
-        const coreNgIrByDigest: any = coreNgSummary?.converge?.staticIrByDigest
+        const experimentalIrByDigest: any = experimentalSummary?.converge?.staticIrByDigest
 
         expect(coreIrByDigest && typeof coreIrByDigest === 'object').toBe(true)
-        expect(coreNgIrByDigest && typeof coreNgIrByDigest === 'object').toBe(true)
+        expect(experimentalIrByDigest && typeof experimentalIrByDigest === 'object').toBe(true)
 
         const coreDigests = Object.keys(coreIrByDigest ?? {})
-        const coreNgDigests = Object.keys(coreNgIrByDigest ?? {})
+        const experimentalDigests = Object.keys(experimentalIrByDigest ?? {})
         expect(coreDigests.length).toBe(1)
-        expect(coreNgDigests.length).toBe(1)
-        expect(coreDigests[0]).toBe(coreNgDigests[0])
+        expect(experimentalDigests.length).toBe(1)
+        expect(coreDigests[0]).toBe(experimentalDigests[0])
 
         const digest = coreDigests[0]!
         expect(digest.startsWith('converge_ir_v2:')).toBe(true)
 
         const coreIr: any = coreIrByDigest[digest]
-        const coreNgIr: any = coreNgIrByDigest[digest]
+        const experimentalIr: any = experimentalIrByDigest[digest]
         expect(coreIr?.instanceId).toBe(coreInstanceId)
-        expect(coreNgIr?.instanceId).toBe(coreNgInstanceId)
+        expect(experimentalIr?.instanceId).toBe(experimentalInstanceId)
 
         const canonical = (ir: any) => ({
           staticIrDigest: ir?.staticIrDigest,
@@ -165,8 +162,8 @@ describe('contracts (045): Kernel contract verification harness', () => {
           topoOrder: ir?.topoOrder,
         })
 
-        expect(canonical(coreIr)).toEqual(canonical(coreNgIr))
-        expect(JSON.stringify({ contract, core: core.evidence.summary, coreNg: coreNg.evidence.summary })).toBeTruthy()
+        expect(canonical(coreIr)).toEqual(canonical(experimentalIr))
+        expect(JSON.stringify({ contract, core: core.evidence.summary, experimental: experimental.evidence.summary })).toBeTruthy()
       }),
     20_000,
   )

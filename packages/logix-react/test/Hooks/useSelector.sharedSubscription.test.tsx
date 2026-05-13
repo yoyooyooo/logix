@@ -1,3 +1,5 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 import { describe, it, expect } from 'vitest'
 // @vitest-environment happy-dom
 import React from 'react'
@@ -5,7 +7,8 @@ import { renderHook, waitFor, act } from '@testing-library/react'
 import * as Logix from '@logixjs/core'
 import { Effect, Layer, ManagedRuntime, Schema } from 'effect'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
-import { useModule } from '../../src/Hooks.js'
+import { useModule, useSelector } from '../../src/Hooks.js'
+import { fieldValue } from '../../src/FormProjection.js'
 
 const Counter = Logix.Module.make('useSelectorSharedSubscriptionCounter', {
   state: Schema.Struct({ count: Schema.Number }),
@@ -17,17 +20,17 @@ const Counter = Logix.Module.make('useSelectorSharedSubscriptionCounter', {
   },
 })
 
-const makeRuntime = (events: Logix.Debug.Event[]) => {
-  const debugLayer = Logix.Debug.replace([
+const makeRuntime = (events: CoreDebug.Event[]) => {
+  const debugLayer = CoreDebug.replace([
     {
-      record: (event: Logix.Debug.Event) =>
+      record: (event: CoreDebug.Event) =>
         Effect.sync(() => {
           events.push(event)
         }),
     },
   ]) as Layer.Layer<any, never, never>
 
-  const tickServicesLayer = Logix.InternalContracts.tickServicesLayer as Layer.Layer<any, never, any>
+  const tickServicesLayer = RuntimeContracts.tickServicesLayer as Layer.Layer<any, never, any>
   const counterLayer = Counter.live({ count: 0 }) as Layer.Layer<any, never, any>
 
   const layer = Layer.mergeAll(
@@ -38,9 +41,17 @@ const makeRuntime = (events: Logix.Debug.Event[]) => {
   return ManagedRuntime.make(layer)
 }
 
+const countPlus = (offset: number): RuntimeContracts.Selector.ReadQuery<{ readonly count: number }, number> => ({
+  selectorId: `shared-count-plus:${offset}`,
+  debugKey: `shared-count-plus(${offset})`,
+  reads: ['count'],
+  select: (state) => state.count + offset,
+  equalsKind: 'objectIs',
+})
+
 describe('useSelector(shared subscription)', () => {
-  it('does not start one changes() subscription per useSelector call', async () => {
-    const events: Logix.Debug.Event[] = []
+  it('shares the same exact read-query external store across repeated selector calls', async () => {
+    const events: CoreDebug.Event[] = []
     const runtime = makeRuntime(events)
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <RuntimeProvider runtime={runtime}>{children}</RuntimeProvider>
@@ -53,11 +64,13 @@ describe('useSelector(shared subscription)', () => {
     >
 
     const moduleInstanceKey = `${baseHandle.moduleId}::${baseHandle.instanceId}`
-    const runtimeStore = Logix.InternalContracts.getRuntimeStore(runtime as any) as any
+    const countRoute = RuntimeContracts.Selector.route(RuntimeContracts.Selector.compile(fieldValue('count') as any))
+    const countTopicKey = `${moduleInstanceKey}::rq:${countRoute.selectorFingerprint.value}`
+    const runtimeStore = RuntimeContracts.getRuntimeStore(runtime as any) as any
     let subscribeCallCount = 0
     const subscribeOriginal = runtimeStore.subscribeTopic?.bind(runtimeStore)
     runtimeStore.subscribeTopic = (topicKey: string, listener: () => void) => {
-      if (topicKey === moduleInstanceKey) {
+      if (topicKey === countTopicKey) {
         subscribeCallCount += 1
       }
       return subscribeOriginal(topicKey, listener)
@@ -65,14 +78,14 @@ describe('useSelector(shared subscription)', () => {
 
     const useTest = () => {
       const rt = useModule(baseHandle)
-      const a = useModule(baseHandle, (s: any) => s.count)
-      const b = useModule(baseHandle, (s: any) => s.count + 1)
-      const c = useModule(baseHandle, (s: any) => s.count + 2)
-      const d = useModule(baseHandle, (s: any) => s.count + 3)
-      const e = useModule(baseHandle, (s: any) => s.count + 4)
-      const f = useModule(baseHandle, (s: any) => s.count + 5)
-      const g = useModule(baseHandle, (s: any) => s.count + 6)
-      const h = useModule(baseHandle, (s: any) => s.count + 7)
+      const a = useSelector(baseHandle, fieldValue('count'))
+      const b = useSelector(baseHandle, fieldValue('count'))
+      const c = useSelector(baseHandle, fieldValue('count'))
+      const d = useSelector(baseHandle, fieldValue('count'))
+      const e = useSelector(baseHandle, fieldValue('count'))
+      const f = useSelector(baseHandle, fieldValue('count'))
+      const g = useSelector(baseHandle, fieldValue('count'))
+      const h = useSelector(baseHandle, fieldValue('count'))
       return { a, b, c, d, e, f, g, h, inc: rt.dispatchers.inc }
     }
 
@@ -82,7 +95,7 @@ describe('useSelector(shared subscription)', () => {
       expect(result.current.a).toBe(0)
     })
 
-    // Even with multiple selectors in the same component, they should share a single runtime-store subscription.
+    // Repeated exact selector inputs share one read-query topic subscription.
     expect(subscribeCallCount).toBe(1)
 
     await act(async () => {
@@ -99,7 +112,7 @@ describe('useSelector(shared subscription)', () => {
 
   it('react-render events do not scale with selector count', async () => {
     const runScenario = async (selectors: 1 | 8) => {
-      const events: Logix.Debug.Event[] = []
+      const events: CoreDebug.Event[] = []
       const runtime = makeRuntime(events)
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <RuntimeProvider runtime={runtime}>{children}</RuntimeProvider>
@@ -110,21 +123,21 @@ describe('useSelector(shared subscription)', () => {
       const useTest1 = () => {
         renderCount += 1
         const rt = useModule(Counter.tag)
-        const count = useModule(rt, (s: any) => s.count)
+        const count = useSelector(rt, fieldValue('count'))
         return { rt, count, inc: rt.dispatchers.inc }
       }
 
       const useTest8 = () => {
         renderCount += 1
         const rt = useModule(Counter.tag)
-        const a = useModule(rt, (s: any) => s.count)
-        useModule(rt, (s: any) => s.count + 1)
-        useModule(rt, (s: any) => s.count + 2)
-        useModule(rt, (s: any) => s.count + 3)
-        useModule(rt, (s: any) => s.count + 4)
-        useModule(rt, (s: any) => s.count + 5)
-        useModule(rt, (s: any) => s.count + 6)
-        useModule(rt, (s: any) => s.count + 7)
+        const a = useSelector(rt, fieldValue('count'))
+        useSelector(rt, countPlus(1))
+        useSelector(rt, countPlus(2))
+        useSelector(rt, countPlus(3))
+        useSelector(rt, countPlus(4))
+        useSelector(rt, countPlus(5))
+        useSelector(rt, countPlus(6))
+        useSelector(rt, countPlus(7))
         return { rt, count: a, inc: rt.dispatchers.inc }
       }
 

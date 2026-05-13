@@ -1,6 +1,6 @@
 # Data Model: 运行时可观测性加固
 
-**Feature**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/027-runtime-observability-hardening/spec.md`  
+**Feature**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/027-runtime-observability-hardening/spec.md`
 **Created**: 2025-12-23
 
 > 说明：本特性不涉及持久化数据模型；此处的 “Data Model” 指运行期的结构化实体、键与状态转换，用于可诊断性与回放对齐。
@@ -47,14 +47,14 @@
 - `instances`：按 `runtimeLabel::moduleId` 聚合的活跃实例计数。
 - `events`：最近事件窗口（按时间顺序排列，有容量上界）。
 - `latestStates`：按实例键的最新状态摘要缓存。
-- `latestTraitSummaries`：按实例键的最新 trait 摘要缓存。
+- `latestFieldSummaries`：按实例键的最新 field 摘要缓存。
 - `exportBudget`：导出边界的降级计数（累计值）。
 - `snapshotToken`：快照变更令牌（用于外部订阅安全）。
 
 **Validation rules**:
 
 - `events` 有容量上界（Recording Window），不代表 run 全量历史。
-- `latestStates/latestTraitSummaries` 必须可回收，避免随历史实例无限累积。
+- `latestStates/latestFieldSummaries` 必须可回收，避免随历史实例无限累积。
 - 任何可导出载荷必须保持 Slim 且可序列化。
 - `snapshotToken` 是快照的外部变更检测事实源：对外可见字段变化必须推动 token 单调变化；外部订阅者应订阅 token 而非快照对象引用。
 
@@ -94,7 +94,7 @@
 - **Input**: 单条宿主内事件
 - **Transition**:
   - `instances`：对 module:init/module:destroy 做计数增减
-  - `latestStates/latestTraitSummaries`：对 state:update 做更新
+  - `latestStates/latestFieldSummaries`：对 state:update 做更新
   - `events`：写入事件窗口（有上界）
   - `exportBudget`：累积导出边界降级计数
   - `snapshotToken`：对外可见变化 → token 变化
@@ -104,7 +104,7 @@
 - **Input**: 实例销毁事件（包含 moduleId/instanceId/runtimeLabel）
 - **Transition**:
   - `instances`：减少计数并在归零时清理键
-  - `latestStates/latestTraitSummaries`：按 instanceKey 删除对应条目
+  - `latestStates/latestFieldSummaries`：按 instanceKey 删除对应条目
   - 可选：清理与 instanceId 直接相关的标签索引
 
 ### D) 清空窗口 / 切换 run

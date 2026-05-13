@@ -4,6 +4,7 @@ import path from "node:path"
 import process from "node:process"
 import { pathToFileURL } from "node:url"
 import * as Logix from "@logixjs/core"
+import * as CoreReflection from "@logixjs/core/repo-internal/reflection-api"
 
 type DiagnosticsLevel = "off" | "light" | "full"
 
@@ -164,19 +165,41 @@ const readJson = async (filePath: string): Promise<any> => {
 }
 
 const normalizeTrialRunReport = (report: any): unknown => {
-  const environment = report?.environment
+  const environment = isPlainRecord(report?.environment) ? report.environment : undefined
+  const artifacts = Array.isArray(report?.artifacts)
+    ? report.artifacts
+        .map((artifact) =>
+          isPlainRecord(artifact)
+            ? {
+                outputKey: artifact.outputKey ? String(artifact.outputKey) : "",
+                kind: artifact.kind ? String(artifact.kind) : "",
+                file: artifact.file ? String(artifact.file) : undefined,
+                digest: artifact.digest ? String(artifact.digest) : undefined,
+                reasonCodes: Array.isArray(artifact.reasonCodes)
+                  ? artifact.reasonCodes.map(String).slice().sort()
+                  : undefined,
+              }
+            : undefined,
+        )
+        .filter((artifact): artifact is Record<string, unknown> => artifact !== undefined)
+        .sort((a, b) => String(a.outputKey).localeCompare(String(b.outputKey)))
+    : []
+
   return {
-    ok: report?.ok === true,
-    error: report?.error
-      ? {
-          code: String(report.error.code ?? ""),
-          name: String(report.error.name ?? ""),
-          message: String(report.error.message ?? ""),
-          hint: report.error.hint ? String(report.error.hint) : undefined,
-        }
-      : undefined,
+    stage: typeof report?.stage === "string" ? report.stage : undefined,
+    mode: typeof report?.mode === "string" ? report.mode : undefined,
+    verdict: typeof report?.verdict === "string" ? report.verdict : undefined,
+    errorCode:
+      typeof report?.errorCode === "string"
+        ? report.errorCode
+        : report?.errorCode === null
+          ? null
+          : undefined,
+    summary: typeof report?.summary === "string" ? report.summary : undefined,
     environment: environment
       ? {
+          runId: typeof environment.runId === "string" ? environment.runId : undefined,
+          hostKind: typeof environment.hostKind === "string" ? environment.hostKind : undefined,
           tagIds: Array.isArray(environment.tagIds)
             ? environment.tagIds.map(String).slice().sort()
             : [],
@@ -191,9 +214,13 @@ const normalizeTrialRunReport = (report: any): unknown => {
             : [],
         }
       : undefined,
-    manifestDigest: report?.manifest?.digest ? String(report.manifest.digest) : undefined,
-    staticIrDigest: report?.staticIr?.digest ? String(report.staticIr.digest) : undefined,
-    truncated: report?.summary?.__logix?.truncated === true ? true : undefined,
+    artifacts,
+    nextRecommendedStage:
+      typeof report?.nextRecommendedStage === "string"
+        ? report.nextRecommendedStage
+        : report?.nextRecommendedStage === null
+          ? null
+          : undefined,
   }
 }
 
@@ -202,13 +229,13 @@ const main = async (): Promise<unknown> => {
 
   const programModule = await loadProgramModule(args)
 
-  const manifest = Logix.Reflection.extractManifest(programModule as any, {
+  const manifest = CoreReflection.extractManifest(programModule as any, {
     includeStaticIr: args.includeStaticIr,
     budgets: isFiniteNumber(args.manifestMaxBytes) ? { maxBytes: args.manifestMaxBytes } : undefined,
   })
 
   const report = await Effect.runPromise(
-    Logix.Observability.trialRunModule(programModule as any, {
+    Logix.Runtime.trial(programModule as any, {
       runId: args.runId,
       startedAt: args.startedAt,
       source: { host: "node", label: "inspect-module" },
@@ -239,7 +266,7 @@ const main = async (): Promise<unknown> => {
     const baselineManifest = await readJson(baselineManifestFile)
     const baselineReport = await readJson(baselineReportFile)
 
-    const diff = Logix.Reflection.diffManifest(baselineManifest, manifest)
+    const diff = CoreReflection.diffManifest(baselineManifest, manifest)
     const diffFile = path.join(outDirAbs, "module-manifest-diff.json")
     await writeJson(diffFile, diff)
 
@@ -271,7 +298,7 @@ const main = async (): Promise<unknown> => {
     outDir: outDirAbs,
     module: { path: args.modulePath, export: args.exportName },
     manifest: { digest: manifest.digest, file: manifestFile },
-    trialRun: { ok: report.ok, errorCode: report.error?.code, file: reportFile },
+    trialRun: { verdict: report.verdict, errorCode: report.errorCode, file: reportFile },
     compare,
   }
 

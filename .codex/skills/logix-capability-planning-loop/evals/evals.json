@@ -1,0 +1,83 @@
+{
+  "skill_name": "logix-capability-planning-loop",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "基于 Form 的 SC-C 和 SC-D 起一个 API proposal，让 sub-agent 分别打磨，然后汇总到 portfolio。",
+      "expected_output": "Agent should create a Slice Manifest, require Proposal Delta fields, avoid exact surface freeze, update proposal portfolio, and route multi-review through plan-optimality-loop when explicitly requested.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "我想看看当前 Logix API 大概长什么样，不需要完整教程，只按场景给关键写法。",
+      "expected_output": "Agent should update or produce a scenario-first API shape snapshot, cite proposals/projections/collisions, and avoid authority claims.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "三个 proposal 都在改同一个 projection，而且重复争论同一个 owner 边界，帮我收成底层原则。",
+      "expected_output": "Agent should use Principle Promotion Lane, create PRIN candidate, require promotion triggers, backpropagation record, authority target, proof obligations, and ledger.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "sub-agent 在评审 proposal 时发现一个反复出现的新边界，想把它回流到这个 skill 里。",
+      "expected_output": "Agent should require a Skill Feedback Packet, classify the feedback, evaluate it through champion/challenger fitness gates, protect the immutable judge core, and update feedback ledger if adopted or rejected.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "某个 proof probe 已经跑通了，sub-agent 想把 probe-local helper 直接写成 runtime-owned API law。",
+      "expected_output": "Agent should keep probe evidence probe-local until promotion, require a proof ledger that states what it proves and does not prove, reject direct authority promotion, and route any reusable rule through principle promotion or authority writeback.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "现在所有 CAP 看起来都有覆盖了，判断当前 API 形状能不能算整体收敛。",
+      "expected_output": "Agent should run the Global API Shape Closure Gate, inspect scenario coverage, cap owners, projection states, collisions, proofs, surface candidate registry, authority writebacks, snapshot sync, and housekeeping before claiming closure.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "三个 proposal 分别长出了新的公开概念候选，我想看哪些应该保留、合并或拒绝。",
+      "expected_output": "Agent should update the surface candidate registry with candidate ids, covered caps and scenarios, owner projections, generator verdicts, proof states, authority targets, and statuses before refreshing any human shape snapshot.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "规划跑了几轮后中间文档太多了，继续前先把活跃状态收干净。",
+      "expected_output": "Agent should apply housekeeping, keep run-state to one cursor, compress consumed proposal rows, preserve review ledgers as history, ensure registry rows have terminal or active statuses, and avoid deleting authority facts.",
+      "files": []
+    },
+    {
+      "id": 9,
+      "prompt": "为了验证场景写了一些 scenario / witness 命名的 probe 代码，现在这些代码开始被复用，判断是否应该保留、泛化、降级或删除。",
+      "expected_output": "Agent should run Probe Artifact Lifecycle review, classify artifacts as probe-local, retained-harness, generalized-internal, demoted-test-fixture, deleted, or promoted-authority-request, perform naming review, record cleanup triggers, update ledgers and housekeeping, and avoid treating scenario-specific names as final implementation vocabulary.",
+      "files": []
+    },
+    {
+      "id": 10,
+      "prompt": "run-state 显示 active_phase=paused，只剩一个 deferred authority-intake 的 TASK-003。用户只说继续。",
+      "expected_output": "Agent should not start the deferred authority-intake or productization work from a generic continue request. It should either stay paused, run housekeeping, refresh a stale snapshot, or process skill feedback, and it should record that explicit productization or authority-intake request is required.",
+      "files": []
+    },
+    {
+      "id": 11,
+      "prompt": "用 CAP-PRESS-003 挑战 frozen API shape，看看 row owner / nested remap / selector read route 是否会逼出新 API。",
+      "expected_output": "Agent should run Adversarial Pressure Mode, bundle interacting caps, identify cross-pressure axes, generate at least two plausible counter-shapes, carry status quo burden for no public change, require implementation friction probe when document reasoning is insufficient, and update pressure packet plus control-plane ledgers.",
+      "files": []
+    },
+    {
+      "id": 12,
+      "prompt": "能力覆盖已经闭合了。现在用 human first-read、接受阻力和 API 品味去继续挑战 frozen shape，但不能让主观偏好绕过 Agent-first。",
+      "expected_output": "Agent should read references/taste.md, run dual-audience pressure, separate agent_cost human_cost and taste_cost, apply overfit/underfit guard, score the frozen shape and counter-shapes with the taste rubric, carry human status quo burden for no-change decisions, add a decision latch, and preserve P0 laws, concept-count, public-surface containment, proof obligations, concept admission, and Agent-first stability.",
+      "files": []
+    },
+    {
+      "id": 13,
+      "prompt": "冻结 API 前为了试压写过一些 Probe/Witness/pressure 测试和辅助代码，现在准备开源，判断哪些可以留下以及怎么收干净。",
+      "expected_output": "Agent should run the Final Asset Hygiene Gate, keep production src names behavior-first, require formal test file names to be contract/boundary/guard oriented, preserve CAP/PF/SC/task ids only in comments metadata or docs links, quarantine fixture/support/harness artifacts with lifecycle and cleanup trigger, update proof commands and control-plane references after renames, and avoid treating process-oriented probe names as final implementation vocabulary.",
+      "files": []
+    }
+  ]
+}

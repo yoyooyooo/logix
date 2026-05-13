@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "intent-flow://specs/058-sandbox-multi-kernel/contracts/schemas/kernel-variant.schema.json",
+  "$id": "logix://specs/058-sandbox-multi-kernel/contracts/schemas/kernel-variant.schema.json",
   "title": "KernelVariant",
   "type": "object",
   "additionalProperties": false,

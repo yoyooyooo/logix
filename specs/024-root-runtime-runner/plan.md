@@ -1,7 +1,7 @@
 # Implementation Plan: Root Runtime Runner（根模块运行入口）
 
 **Branch**: `024-root-runtime-runner` | **Date**: 2025-12-24 | **Spec**: [spec.md](./spec.md)
-**Input**: Feature specification from `/Users/yoyo/Documents/code/personal/intent-flow/specs/024-root-runtime-runner/spec.md`
+**Input**: Feature specification from `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/024-root-runtime-runner/spec.md`
 
 ## Summary
 
@@ -66,7 +66,7 @@
 2. **多模块 + Link（长期流程）**
 
 - 旧：`modules: [...] + layers: [Layer.scopedDiscard(LinkLogic)]`（或依赖 `_op_layer` 推断 process layer）
-- 新：把协作模块实现体放到 `programModule.implement({ imports: [...] })`，把 Link/长期流程放到 `programModule.implement({ processes: [Link.make(...)] })`；Service Mock 等 Env 注入改为 `RuntimeOptions.layer`（由 `TestProgram` 透传给 core runner），不再通过 `_op_layer` 分类。
+- 新：把协作模块实现体放到 `programModule.implement({ imports: [...] })`，把 Link/长期流程放到 `programModule.implement({ processes: [orchestration link alias(...)] })`；Service Mock 等 Env 注入改为 `RuntimeOptions.layer`（由 `TestProgram` 透传给 core runner），不再通过 `_op_layer` 分类。
 
 ### 批量替换与验收（迁移完成后必须满足）
 

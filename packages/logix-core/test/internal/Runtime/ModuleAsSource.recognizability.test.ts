@@ -1,7 +1,10 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../../src/index.js'
+import * as RuntimeContracts from '../../../src/internal/runtime-contracts.js'
 import { RuntimeStoreTag, TickSchedulerTag } from '../../../src/internal/runtime/core/env.js'
 
 describe('Module-as-Source (recognizability gate)', () => {
@@ -15,7 +18,7 @@ describe('Module-as-Source (recognizability gate)', () => {
     }
 
     try {
-      Logix.ExternalStore.fromModule(fakeHandle as any, (s: any) => s)
+      RuntimeContracts.ExternalInput.fromModule(fakeHandle as any, (s: any) => s)
       throw new Error('Expected ExternalStore.fromModule to throw')
     } catch (err) {
       expect((err as any)?.code).toBe('external_store::unresolvable_module_id')
@@ -29,7 +32,7 @@ describe('Module-as-Source (recognizability gate)', () => {
     })
 
     try {
-      Logix.ExternalStore.fromModule(Mod, function (s: any) {
+      RuntimeContracts.ExternalInput.fromModule(Mod, function (s: any) {
         return (s as any).value + 1
       })
       throw new Error('Expected ExternalStore.fromModule to throw')
@@ -40,7 +43,7 @@ describe('Module-as-Source (recognizability gate)', () => {
 
   it.effect('dynamic selector (no readsDigest): should degrade to module-topic edge and emit a diagnostic', () =>
     Effect.gen(function* () {
-      Logix.Debug.clearDevtoolsEvents()
+      CoreDebug.clearDevtoolsEvents()
 
       const Source = Logix.Module.make('ModuleAsSourceDynamicSource', {
         state: Schema.Struct({ value: Schema.Number }),
@@ -59,32 +62,35 @@ describe('Module-as-Source (recognizability gate)', () => {
         keyHash: Schema.String,
       })
 
-      const Target = Logix.Module.make('ModuleAsSourceDynamicTarget', {
-        state: TargetState,
-        actions: {},
-        traits: Logix.StateTrait.from(TargetState)({
-          fromSource: Logix.StateTrait.externalStore({
-            store: Logix.ExternalStore.fromModule(Source, dynamicSelector),
+      const Target = FieldContracts.withModuleFieldDeclarations(Logix.Module.make('ModuleAsSourceDynamicTarget', {
+  state: TargetState,
+  actions: {}
+}), FieldContracts.fieldFrom(TargetState)({
+          fromSource: FieldContracts.fieldExternalStore({
+            store: RuntimeContracts.ExternalInput.fromModule(Source, dynamicSelector),
           }),
-          keyHash: Logix.StateTrait.computed({
+          keyHash: FieldContracts.fieldComputed({
             deps: ['fromSource'],
             get: (v) => `h:${v}`,
           }),
-        }),
-      })
+        }))
 
-      const TargetImpl = Target.implement({
+      const targetProgram = Logix.Program.make(Target, {
         initial: { fromSource: 0, keyHash: 'h:0' },
-        imports: [Source.implement({ initial: { value: 0 } }).impl],
+        capabilities: {
+          imports: [Logix.Program.make(Source, { initial: { value: 0 } })],
+        },
       })
 
       const Root = Logix.Module.make('ModuleAsSourceDynamicRoot', { state: Schema.Void, actions: {} })
-      const RootImpl = Root.implement({
+      const rootProgram = Logix.Program.make(Root, {
         initial: undefined,
-        imports: [TargetImpl.impl],
+        capabilities: {
+          imports: [targetProgram],
+        },
       })
 
-      const runtime = Logix.Runtime.make(RootImpl, {
+      const runtime = Logix.Runtime.make(rootProgram, {
         layer: Layer.empty as Layer.Layer<any, never, never>,
         devtools: { diagnosticsLevel: 'light', bufferSize: 256 },
       })
@@ -111,7 +117,7 @@ describe('Module-as-Source (recognizability gate)', () => {
         yield* Effect.promise(() => runtime.dispose())
       }
 
-      const degraded = Logix.Debug.getDevtoolsSnapshot().events.filter(
+      const degraded = CoreDebug.getDevtoolsSnapshot().events.filter(
         (e) => (e.meta as any)?.code === 'external_store::module_source_degraded',
       )
       expect(degraded.length).toBeGreaterThanOrEqual(1)

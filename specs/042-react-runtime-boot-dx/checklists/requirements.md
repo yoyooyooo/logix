@@ -1,7 +1,7 @@
 # Specification Quality Checklist: React 集成冷启动策略与 DX 优化
 
-**Purpose**: 在进入 `$speckit clarify` / `$speckit plan` 前，验证本需求规格的完整性与可验收性  
-**Created**: 2025-12-27  
+**Purpose**: 在进入 `$speckit clarify` / `$speckit plan` 前，验证本需求规格的完整性与可验收性
+**Created**: 2025-12-27
 **Feature**: `../spec.md`
 
 ## Content Quality

@@ -4,7 +4,7 @@
 
 ## Required
 
-- coverage matrix MUST 作为单一事实源维护（SSoT=代码）：必选 serviceId 列表由 `@logixjs/core` 导出读取入口提供（优先 `packages/logix-core/src/Kernel.ts`）；测试/CI/harness 只读此处。
+- coverage matrix MUST 作为单一事实源维护（SSoT=代码）：必选 serviceId 列表由 `@logixjs/core` 导出读取入口提供（优先 `packages/logix-core/src/internal/kernel-api.ts`）；测试/CI/harness 只读此处。
 - matrix MUST 明确 Full Cutover Gate 的必选 serviceId 集合，且该集合 MUST 等于 Kernel Contract 当前所有可替换 `serviceId`（随着 Contract 演进自动扩面；新增/扩展必须同步纳入，避免漏判）。
 - matrix MUST 版本化（可审计），并能关联到 046 spec registry 的条目与里程碑（M3）。
 - contract diff allowlist（如启用）MUST 同样遵循 SSoT=代码：在 `@logixjs/core` 导出读取入口（例如 `KernelContractMetaAllowlist`），并以 `metaKey` 作为条目主键（避免 spec/CI 漂移）。

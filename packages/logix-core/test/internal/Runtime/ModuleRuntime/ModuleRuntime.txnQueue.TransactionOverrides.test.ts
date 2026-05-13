@@ -3,8 +3,8 @@ import { it, expect } from '@effect/vitest'
 import { Effect, Option } from 'effect'
 import type { ConcurrencyDiagnostics } from '../../../../src/internal/runtime/core/ConcurrencyDiagnostics.js'
 import { StateTransactionOverridesTag } from '../../../../src/internal/runtime/core/env.js'
-import type { ResolvedConcurrencyPolicy } from '../../../../src/internal/runtime/ModuleRuntime.concurrencyPolicy.js'
-import { makeEnqueueTransaction } from '../../../../src/internal/runtime/ModuleRuntime.txnQueue.js'
+import type { ResolvedConcurrencyPolicy } from '../../../../src/internal/runtime/core/ModuleRuntime.concurrencyPolicy.js'
+import { makeEnqueueTransaction } from '../../../../src/internal/runtime/core/ModuleRuntime.txnQueue.js'
 
 describe('ModuleRuntime.txnQueue (StateTransactionOverrides propagation)', () => {
   it.effect('enqueueTransaction should preserve StateTransactionOverrides across queue boundary', () =>
@@ -38,8 +38,8 @@ describe('ModuleRuntime.txnQueue (StateTransactionOverrides propagation)', () =>
       })
 
       const overrides = {
-        traitConvergeMode: 'full',
-        traitConvergeBudgetMs: 123,
+        fieldConvergeMode: 'full',
+        fieldConvergeBudgetMs: 123,
       } as any
 
       const inside = yield* enqueueTransaction(Effect.serviceOption(StateTransactionOverridesTag)).pipe(

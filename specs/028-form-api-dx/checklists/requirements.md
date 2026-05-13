@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Form API 收敛与 DX 提升
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-23  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-23
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality

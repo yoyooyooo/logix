@@ -7,7 +7,7 @@
 1. **strict 默认**：`$.use(...)` 只解析当前实例 scope（imports/局部）——缺失就报错，不要指望它拿到全局。
 2. **root 显式**：要拿全局单例（I18n/Auth/Config），用 `yield* $.root.resolve(Tag)`（或 `Logix.Root.resolve(Tag)`）。
 3. **状态里优先放 token**：表单错误/提示等放 message token，最终字符串在展示边界生成。
-4. **异步初始化有两档**：多数场景用“不等待”翻译立即回退；少数场景用“等待就绪”拿最终文案（`tReady` 默认等待上限 5 秒，可覆盖）。
+4. **异步初始化有两档**：多数场景用 `render(...)` 立即回退；少数场景用 `renderReady(...)` 等待就绪后拿最终文案（默认等待上限 5 秒，可覆盖）。
 
 ## 1. 注入外部 i18n 实例（每棵 Runtime Tree 一份）
 
@@ -61,7 +61,7 @@ export function Root() {
 
 ### 1.2 可选：i18n 后台异步初始化（不阻塞启动）
 
-如果你的语言包来自外部平台，通常会走“先启动应用、i18n 后台就绪”的流程；本特性支持这种模式（不等待翻译会回退，少数场景再用 `tReady` 等待）。
+如果你的语言包来自外部平台，通常会走“先启动应用、i18n 后台就绪”的流程；本特性支持这种模式（`render(...)` 会立即回退，少数场景再用 `renderReady(...)` 等待）。
 
 沿用 1.1 的 imports/Provider，只调整初始化顺序：
 
@@ -84,19 +84,19 @@ void initI18n
 
 - `const i18n = yield* $.root.resolve(I18nTag)`
 - `I18nTag` 来自 `@logixjs/i18n`（I18n 领域特性包）
-- `const token = i18n.token("form.required", { field: "name", defaultValue: "Name is required" })`
+- `const token = I18n.token("form.required", { field: "name" })`
 - 把 `token` 写入 state（例如错误树）
 
 示意（只强调“root 显式 + token”两点，不展开模块细节）：
 
 ```ts
 import { Effect } from "effect"
-import { I18nTag } from "@logixjs/i18n"
+import { I18nTag, token } from "@logixjs/i18n"
 
 const mkRequiredToken = ($, field) =>
   Effect.gen(function* () {
-    const i18n = yield* $.root.resolve(I18nTag)
-    return i18n.token("form.required", { field, defaultValue: "Required" })
+    yield* $.root.resolve(I18nTag)
+    return token("form.required", { field })
   })
 ```
 
@@ -106,7 +106,7 @@ const mkRequiredToken = ($, field) =>
 import type { I18nMessageToken } from "@logixjs/i18n"
 import { useTranslation } from "react-i18next"
 
-const renderToken = (t: (key: string, options?: any) => string, token: I18nMessageToken) => t(token.key, token.options)
+const renderToken = (t: (key: string, params?: any) => string, token: I18nMessageToken) => t(token.key, token.params)
 
 export function FieldErrorView(props: { token: I18nMessageToken }) {
   const { t } = useTranslation()
@@ -116,11 +116,11 @@ export function FieldErrorView(props: { token: I18nMessageToken }) {
 
 ## 3. Toast / 异步流程：需要“最终字符串”时怎么做
 
-多数 toast 不需要随语言变化更新：只要在触发时用当前语言翻译一次即可。
+多数 toast 不需要随语言变化更新：只要在触发时按当前快照渲染一次即可。
 
-- 不等待（推荐默认）：`i18n.t(key, { ...vars, defaultValue })` → 未就绪时立即回退（不阻塞流程）
-- 等待就绪（少数场景）：`yield* i18n.tReady(key, { ...vars, defaultValue }, timeoutMs?)` → 就绪后返回最终文案；失败进入可预测降级（不无限等待）
-- `tReady` 默认等待上限 5 秒；可由调用方覆盖等待上限（到达上限也进入回退）。
+- 不等待（推荐默认）：`i18n.render(token(key, vars), { fallback })` → 未就绪时立即回退（不阻塞流程）
+- 等待就绪（少数场景）：`yield* i18n.renderReady(token(key, vars), { fallback }, timeoutMs?)` → 就绪后返回最终文案；失败进入可预测降级（不无限等待）
+- `renderReady` 默认等待上限 5 秒；可由调用方覆盖等待上限（到达上限也进入回退）。
 
 > 约束：事务窗口禁止 IO；等待就绪属于 Effect 流程边界，不能放在同步 state transaction 闭包里。
 

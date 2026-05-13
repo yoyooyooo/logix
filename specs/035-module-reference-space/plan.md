@@ -1,6 +1,6 @@
 # Implementation Plan: Module Reference Space（035：模块引用空间事实源）
 
-**Branch**: `035-module-reference-space` | **Date**: 2025-12-26 | **Spec**: `specs/035-module-reference-space/spec.md`  
+**Branch**: `035-module-reference-space` | **Date**: 2025-12-26 | **Spec**: `specs/035-module-reference-space/spec.md`
 **Input**: `specs/035-module-reference-space/spec.md`
 
 ## Summary
@@ -22,12 +22,12 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.x（ESM）  
-**Primary Dependencies**: `effect` v3、`@logixjs/core`（导出端口与类型信息）、`@logixjs/sandbox`（作为最小消费者/执行壳）  
-**Storage**: N/A（以可序列化 JSON 工件为主，可被平台/CI 存档）  
-**Testing**: Vitest（导出/归一化/diff 建议以纯函数 + 单测为主）  
-**Target Platform**: Node.js（CI/脚本）+ 现代浏览器（Workbench/Studio）  
-**Project Type**: pnpm workspace  
+**Language/Version**: TypeScript 5.x（ESM）
+**Primary Dependencies**: `effect` v3、`@logixjs/core`（导出端口与类型信息）、`@logixjs/sandbox`（作为最小消费者/执行壳）
+**Storage**: N/A（以可序列化 JSON 工件为主，可被平台/CI 存档）
+**Testing**: Vitest（导出/归一化/diff 建议以纯函数 + 单测为主）
+**Target Platform**: Node.js（CI/脚本）+ 现代浏览器（Workbench/Studio）
+**Project Type**: pnpm workspace
 **Performance Goals**:
 
 - 不影响运行时热路径：PortSpec/TypeIR 只在 trial-run/inspection 路径导出（NFR-001）

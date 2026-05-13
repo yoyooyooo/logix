@@ -1,26 +1,28 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
 import * as Logix from '../../src/index.js'
+import { trialRun } from '../../src/internal/verification/trialRun.js'
 
 describe('Exec VM evidence (diagnostics off)', () => {
   it.effect('should not export trace:exec-vm debug event payload', () =>
     Effect.gen(function* () {
-      const program = Logix.Debug.record({
+      const program = CoreDebug.record({
         type: 'trace:exec-vm',
-        moduleId: '@logixjs/core-ng',
-        instanceId: 'kernel:core-ng',
+        moduleId: '@logixjs/core',
+        instanceId: 'kernel:core',
         data: {
           version: 'v1',
           stage: 'assembly',
           hit: true,
           reasonCode: 'not_implemented',
           serviceId: 'transaction',
-          implId: 'core-ng',
+          implId: 'core-experimental',
         },
       } as any)
 
-      const result = yield* Logix.Observability.trialRun(program, {
+      const result = yield* trialRun(program, {
         runId: 'run:test:exec-vm-evidence-off',
         diagnosticsLevel: 'off',
         maxEvents: 50,

@@ -1,6 +1,6 @@
 # Tasks: Root Runtime Runner（根模块运行入口）
 
-**Input**: `specs/024-root-runtime-runner/spec.md`、`specs/024-root-runtime-runner/plan.md`、`specs/024-root-runtime-runner/research.md`、`specs/024-root-runtime-runner/data-model.md`、`specs/024-root-runtime-runner/contracts/*`、`specs/024-root-runtime-runner/quickstart.md`  
+**Input**: `specs/024-root-runtime-runner/spec.md`、`specs/024-root-runtime-runner/plan.md`、`specs/024-root-runtime-runner/research.md`、`specs/024-root-runtime-runner/data-model.md`、`specs/024-root-runtime-runner/contracts/*`、`specs/024-root-runtime-runner/quickstart.md`
 **Prerequisites**: `specs/024-root-runtime-runner/plan.md`（required）、`specs/024-root-runtime-runner/spec.md`（required）
 
 **Tests**: 本特性落点涉及 `packages/logix-core` 与 `packages/logix-test`，测试视为必选；并补齐最小“启动耗时”基线证据，防止无意引入重复 build/boot 的开销。
@@ -86,7 +86,7 @@
 - [x] T030 [P] [US3] 同步 runtime SSoT（收口阶段）：program runner 的语义、`module vs runtime` 区分、`ctx.scope/ctx.$` 的定位、`RuntimeOptions.onError` 顶级上报、`closeScopeTimeout` 释放收束、`handleSignals/args/exitCode/reportError`（CLI ergonomics）、退出策略不自动推断：`docs/ssot/runtime/logix-core/api/05-runtime-and-runner.md`
 - [x] T032 [P] [US3] 同步 runtime glossary（收口阶段）：补齐 Program runner/ProgramRunContext/closeScopeTimeout/DisposeTimeout/handleSignals/exitCode/reportError 等术语：`docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.md`
 - [x] T033 [P] 同步 runtime SSoT/impl（收口阶段）：更新 `@logixjs/test` 的推荐入口与心智模型（删掉 `TestProgram.make/Scenario` 旧口径，改为 program module + core runner 复用）：`docs/ssot/runtime/logix-core/impl/07-test-package.md`
-- [x] T034 [P] 同步 `docs/specs` 旧口径（收口阶段）：替换所有对 `TestProgram.make/itScenario/Scenario` 的过时描述，统一指向新模型与 `Runtime.runProgram/openProgram`：`docs/specs/review/runtime-ssot-spec-todo.md`、`docs/ssot/platform/implementation-status.md`、`specs/003-trait-txn-lifecycle/quickstart.md`
+- [x] T034 [P] 同步 `docs/specs` 旧口径（收口阶段）：替换所有对 `TestProgram.make/itScenario/Scenario` 的过时描述，统一指向新模型与 `Runtime.runProgram/openProgram`：`docs/specs/review/runtime-ssot-spec-todo.md`、`docs/ssot/platform/implementation-status.md`、`specs/003-field-txn-lifecycle/quickstart.md`
 - [x] T035 [P] 迁移验收（收口阶段）：在 `@logixjs/test` 源码范围（`packages/logix-test/src`）内旧 API / hack 不再出现（允许其它包/示例/规格出现同名 UI 术语或 `effect` 的 `_op_layer` 内部标记）；验收命令：`rg "TestProgram\\.make\\(" packages/logix-test/src`、`rg "\\bitScenario\\b" packages/logix-test/src`、`rg "\\bScenario(Config|Builder)?\\b" packages/logix-test/src`、`rg "\\bTestRuntime\\b" packages/logix-test/src`、`rg "_op_layer\\b" packages/logix-test/src`；确认 `handoff.md` 已包含关键迁移的 Before/After 代码对比；并确认 `contracts/api.md`、`quickstart.md`、runtime SSoT 与 examples 的用法口径一致
 - [x] T043 [P] 收口复核 runtime SSoT 链接与口径：更新 api/README.md 入口链接，并确认与 `contracts/api.md`、`quickstart.md`、025 引用点一致：`docs/ssot/runtime/logix-core/api/README.md`
 - [x] T041 [P] 更新 `specs/024-root-runtime-runner/quickstart.md`：确保示例与最终 API/术语一致
@@ -107,5 +107,5 @@
 
 > 来自 `$speckit acceptance 024 025` 的漂移/缺口项；用于恢复质量门并消除长期漂移风险。
 
-- [x] T050 [P] [Acceptance] 修复 `examples/logix-react` 的 program module 导出/用法漂移，恢复工作区 `pnpm typecheck`：更新 `examples/logix-react/src/demos/form/QuerySearchDemoLayout.tsx`（`QuerySearchDemoHostImpl` → `QuerySearchDemoHostModule` 并匹配 `useModule(...)` 的参数类型）、更新 `examples/logix-react/test/module-flows.integration.test.ts`（传入 `ModuleImpl/AnyModule`，移除错误的 `.impl` 链式访问，并收敛 `unknown` 推导）。Refs: SC-004, FR-008
+- [x] T050 [P] [Acceptance] 修复 `examples/logix-react` 的 program module 导出/用法漂移，恢复工作区 `pnpm typecheck`：更新 `examples/logix-react/src/demos/form/QuerySearchDemoLayout.tsx`（`QuerySearchDemoHostProgram` 并匹配 `useModule(...)` 的参数类型）、更新 `examples/logix-react/test/module-flows.integration.test.ts`（传入 Program/Module，移除错误的内部 blueprint 访问，并收敛 `unknown` 推导）。Refs: SC-004, FR-008
 - [x] T051 [P] [Acceptance] 为 `Runtime.runProgram` 补齐与 `openProgram` 同等的同步事务窗口防线（禁止在 StateTransaction body 内调用），确保 runner 不会把 IO/async 引入事务窗口。Refs: NFR-004

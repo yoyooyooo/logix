@@ -1,17 +1,17 @@
-import type { AnyModuleShape, ModuleImpl } from '../runtime/core/module.js'
-import { getModuleTraitsProgram } from '../runtime/core/runtimeInternalsAccessor.js'
-import type { StaticIr } from '../state-trait/ir.js'
-import type { StateTraitProgram } from '../state-trait/model.js'
-import { exportStaticIr as exportStateTraitStaticIr } from '../state-trait/ir.js'
+import type { AnyModuleShape, ProgramRuntimeBlueprint } from '../runtime/core/module.js'
+import { getModuleFieldsProgram } from '../runtime/core/runtimeInternalsAccessor.js'
+import type { StaticIr } from '../field-kernel/ir.js'
+import type { FieldProgram } from '../field-kernel/model.js'
+import { exportStaticIr as exportFieldStaticIr } from '../field-kernel/ir.js'
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
-const isModuleImpl = (value: unknown): value is ModuleImpl<any, AnyModuleShape, any> =>
-  isRecord(value) && value._tag === 'ModuleImpl' && isRecord(value.module)
+const isProgramRuntimeBlueprint = (value: unknown): value is ProgramRuntimeBlueprint<any, AnyModuleShape, any> =>
+  isRecord(value) && value._tag === 'ProgramRuntimeBlueprint' && isRecord(value.module)
 
 const resolveModuleId = (input: unknown): string => {
-  if (isModuleImpl(input)) {
+  if (isProgramRuntimeBlueprint(input)) {
     const id = (input.module as any).id
     return typeof id === 'string' && id.length > 0 ? id : 'unknown'
   }
@@ -30,19 +30,21 @@ const resolveModuleId = (input: unknown): string => {
 }
 
 const resolveModuleTag = (input: unknown): unknown => {
-  if (isModuleImpl(input)) return input.module
+  if (isProgramRuntimeBlueprint(input)) return input.module
   if (isRecord(input) && (input as any).tag) return (input as any).tag
   return undefined
 }
 
 export const exportStaticIr = (module: unknown): StaticIr | undefined => {
-  const tag = resolveModuleTag(module)
-  if (!tag) return undefined
-
-  const program = getModuleTraitsProgram(tag) as StateTraitProgram<any> | undefined
+  const program =
+    (getModuleFieldsProgram(module) as FieldProgram<any> | undefined) ??
+    ((() => {
+      const tag = resolveModuleTag(module)
+      return tag ? (getModuleFieldsProgram(tag) as FieldProgram<any> | undefined) : undefined
+    })())
   if (!program) return undefined
 
-  return exportStateTraitStaticIr({
+  return exportFieldStaticIr({
     program,
     moduleId: resolveModuleId(module),
   })

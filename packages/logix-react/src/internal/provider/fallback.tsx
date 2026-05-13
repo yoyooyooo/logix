@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import React, { useEffect, useState } from 'react'
 import type { ManagedRuntime } from 'effect'
 import { Effect } from 'effect'
@@ -72,13 +73,13 @@ const recordFallbackDuration = (args: {
   readonly durationMs: number
   readonly blockers?: string
 }): void => {
-  if (!isDevEnv() && !Logix.Debug.isDevtoolsEnabled()) {
+  if (!isDevEnv() && !CoreDebug.isDevtoolsEnabled()) {
     return
   }
 
   void args.runtime
     .runPromise(
-      Logix.Debug.record({
+      CoreDebug.record({
         type: 'trace:react.fallback.duration',
         data: {
           phase: args.phase,
@@ -132,8 +133,8 @@ const warnFallbackDuration = (args: {
     if (isVisibleLong) {
       if (args.phase === 'provider.gating') {
         return args.policyMode === 'sync'
-          ? 'Hint: You are using policy.mode="sync", but the provider is still waiting for dependencies (layer/config). Consider using "suspend"/"defer" (default UX), and/or make your layer/config ready earlier.'
-          : 'Hint: RuntimeProvider is still waiting for dependencies (layer/config/preload). Provide a fallback, use defer+preload, or switch to sync (deterministic, but render-blocking).'
+          ? 'Hint: You are using policy.mode="sync", but the React host adapter is still waiting for dependencies (layer/config). Consider using "suspend"/"defer", and/or make your layer/config ready earlier.'
+          : 'Hint: The React host adapter (<RuntimeProvider>) is still waiting for dependencies (layer/config/preload). Provide a fallback, use defer+preload, or switch to sync (deterministic, but render-blocking).'
       }
       return 'Hint: Suspense fallback is active (module resolve). If you prefer fewer fallbacks, use defer+preload; if you prefer “no waiting”, switch to policy.mode="sync" (moves the cost to render-time sync blocking).'
     }
@@ -146,7 +147,7 @@ const warnFallbackDuration = (args: {
       return 'Example: <RuntimeProvider policy={{ mode: "sync" }} fallback={<Loading />}>…</RuntimeProvider>'
     }
     return args.phase === 'provider.gating'
-      ? 'Example: <RuntimeProvider policy={{ mode: "defer", preload: [MyImpl] }} fallback={<Loading />}>…</RuntimeProvider>'
+      ? 'Example: <RuntimeProvider policy={{ mode: "defer", preload: [MyProgram] }} fallback={<Loading />}>…</RuntimeProvider>'
       : 'Example: <RuntimeProvider policy={{ mode: "sync" }} fallback={<Loading />}>…</RuntimeProvider>'
   })()
 
@@ -171,7 +172,7 @@ const warnFallbackDuration = (args: {
   )
 }
 
-const FallbackProbeEnabled: React.FC<{
+const FallbackDurationRecorderEnabled: React.FC<{
   readonly runtime: ManagedRuntime.ManagedRuntime<any, any>
   readonly phase: FallbackPhase
   readonly policyMode: RuntimeProviderPolicyMode
@@ -190,7 +191,7 @@ const FallbackProbeEnabled: React.FC<{
   return <>{children}</>
 }
 
-const FallbackProbeNoop: React.FC<{
+const FallbackDurationRecorderNoop: React.FC<{
   readonly runtime: ManagedRuntime.ManagedRuntime<any, any>
   readonly phase: FallbackPhase
   readonly policyMode: RuntimeProviderPolicyMode
@@ -198,14 +199,14 @@ const FallbackProbeNoop: React.FC<{
   readonly children: React.ReactNode
 }> = ({ children }) => <>{children}</>
 
-export const FallbackProbe: React.FC<{
+export const FallbackDurationRecorder: React.FC<{
   readonly runtime: ManagedRuntime.ManagedRuntime<any, any>
   readonly phase: FallbackPhase
   readonly policyMode: RuntimeProviderPolicyMode
   readonly blockers?: string
   readonly children: React.ReactNode
 }> = (props) => {
-  const enabled = isDevEnv() || Logix.Debug.isDevtoolsEnabled()
-  const Impl = enabled ? FallbackProbeEnabled : FallbackProbeNoop
+  const enabled = isDevEnv() || CoreDebug.isDevtoolsEnabled()
+  const Impl = enabled ? FallbackDurationRecorderEnabled : FallbackDurationRecorderNoop
   return <Impl {...props} />
 }

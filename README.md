@@ -18,7 +18,7 @@ This README intentionally focuses on Logix; other directories may contain experi
 
 - **Module**: a unit of business boundary (identity + State/Actions shape).
 - **Logic**: an Effect program that reacts to Actions / State changes via the bound API `$`.
-- **Runtime**: hosts module instances, runs Logic/Processes, and wires service Layers.
+- **Runtime**: hosts Program instances, runs Program-mounted Logic, and wires service Layers.
 
 ## Minimal example
 
@@ -37,10 +37,12 @@ export const CounterLogic = CounterDef.logic(($) =>
   }),
 )
 
-export const CounterModule = CounterDef.implement({
+export const CounterProgram = Logix.Program.make(CounterDef, {
   initial: { count: 0 },
   logics: [CounterLogic],
 })
+
+export const CounterRuntime = Logix.Runtime.make(CounterProgram)
 ```
 
 ## Quick start (from this monorepo)

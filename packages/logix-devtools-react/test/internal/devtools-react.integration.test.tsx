@@ -1,3 +1,5 @@
+import * as CoreEvidence from '@logixjs/core/repo-internal/evidence-api'
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 // @vitest-environment jsdom
 import React from 'react'
 import { describe, expect, it, beforeAll, beforeEach, afterEach } from 'vitest'
@@ -5,13 +7,12 @@ import { render, fireEvent, waitFor, screen, cleanup } from '@testing-library/re
 import { Effect, Schema, Layer } from 'effect'
 import * as Logix from '@logixjs/core'
 import { RuntimeProvider, useModule, useSelector, useDispatch } from '@logixjs/react'
-import { LogixDevtools } from '../../src/LogixDevtools.js'
+import { LogixDevtools } from '../../src/internal/ui/shell/LogixDevtools.js'
 import {
-  devtoolsLayer,
   getDevtoolsSnapshot,
   clearDevtoolsEvents,
   clearDevtoolsSnapshotOverride,
-} from '../../src/DevtoolsLayer.js'
+} from '../../src/internal/snapshot/index.js'
 import { devtoolsRuntime, devtoolsModuleRuntime, type DevtoolsState } from '../../src/internal/state/index.js'
 
 // A minimal Counter Module used to verify integration behavior across @logixjs/core + @logixjs/react + devtools.
@@ -27,14 +28,14 @@ const CounterModule = Logix.Module.make('DevtoolsTestCounter', {
   },
 })
 
-const CounterImpl = CounterModule.implement({
+const CounterProgram = Logix.Program.make(CounterModule, {
   initial: { count: 0 },
   logics: [
-    CounterModule.logic(($) =>
+    CounterModule.logic('counter-increment-trace', ($) =>
       Effect.gen(function* () {
         // Record one debug event to verify the Debug Sink receives events.
         yield* $.onAction('increment').run(() =>
-          Logix.Debug.record({
+          CoreDebug.record({
             type: 'trace:increment',
             moduleId: CounterModule.id,
             data: { source: 'devtools-react.integration.test' },
@@ -45,13 +46,13 @@ const CounterImpl = CounterModule.implement({
   ],
 })
 
-const runtime = Logix.Runtime.make(CounterImpl, {
+const runtime = Logix.Runtime.make(CounterProgram, {
   label: 'DevtoolsIntegrationRuntime',
-  layer: devtoolsLayer as Layer.Layer<any, never, never>,
+  layer: CoreDebug.devtoolsHubLayer() as Layer.Layer<any, never, never>,
 })
 
 const CounterView: React.FC = () => {
-  const runtimeHandle = useModule(CounterImpl.tag)
+  const runtimeHandle = useModule(CounterProgram.tag)
   const count = useSelector(runtimeHandle, (s) => s.count)
   const dispatch = useDispatch(runtimeHandle)
 
@@ -175,8 +176,12 @@ describe('@logixjs/devtools-react integration with @logixjs/react', () => {
       const stateUpdates = snapshot.events.filter((e) => e.kind === 'state' && e.label === 'state:update')
       expect(stateUpdates.length).toBeGreaterThanOrEqual(2)
 
-      // The Devtools panel is open and the Inspector shows a Transaction Summary overview.
       expect(screen.getByText(/Developer Tools/i)).not.toBeNull()
+    })
+
+    fireEvent.click(screen.getAllByRole('button', { name: /^inspector$/i })[0] as HTMLButtonElement)
+
+    await waitFor(() => {
       expect(screen.getByText(/Transaction Summary/i)).not.toBeNull()
     })
   })
@@ -184,7 +189,7 @@ describe('@logixjs/devtools-react integration with @logixjs/react', () => {
   it('imports EvidencePackage JSON and shows errorSummary + downgrade reason in Inspector', async () => {
     render(<LogixDevtools position="bottom-left" initialOpen={true} />)
 
-    const protocolVersion = Logix.Observability.protocolVersion
+    const protocolVersion = CoreEvidence.protocolVersion
 
     const evidence = {
       protocolVersion,
@@ -230,6 +235,8 @@ describe('@logixjs/devtools-react integration with @logixjs/react', () => {
       expect(state.selectedInstance).toBe('i1')
     })
 
+    fireEvent.click(screen.getAllByRole('button', { name: /^inspector$/i })[0] as HTMLButtonElement)
+
     await waitFor(() => {
       expect(screen.getByText(/Developer Tools/i)).not.toBeNull()
       expect(screen.getByText(/Error Summary/i)).not.toBeNull()
@@ -241,7 +248,7 @@ describe('@logixjs/devtools-react integration with @logixjs/react', () => {
   it('materializes dirty rootPaths from canonical staticIrDigest + staticIrByDigest.fieldPaths on evidence import', async () => {
     render(<LogixDevtools position="bottom-left" initialOpen={true} />)
 
-    const protocolVersion = Logix.Observability.protocolVersion
+    const protocolVersion = CoreEvidence.protocolVersion
     const digest = 'digest-light-1'
 
     const evidence = {
@@ -310,10 +317,10 @@ describe('@logixjs/devtools-react integration with @logixjs/react', () => {
     })
   })
 
-  it('strips payload legacy rootPaths and keeps id-first when digest is missing or not matched', async () => {
+  it('strips payload historical rootPaths and keeps id-first when digest is missing or not matched', async () => {
     render(<LogixDevtools position="bottom-left" initialOpen={true} />)
 
-    const protocolVersion = Logix.Observability.protocolVersion
+    const protocolVersion = CoreEvidence.protocolVersion
     const evidence = {
       protocolVersion,
       runId: 'run-root-paths-miss',
@@ -354,7 +361,7 @@ describe('@logixjs/devtools-react integration with @logixjs/react', () => {
                 keySize: 1,
                 keyHash: 456,
                 rootIdsTruncated: false,
-                rootPaths: [['legacy', 'state']],
+                rootPaths: [['historical', 'state']],
               },
             },
           },
@@ -369,8 +376,8 @@ describe('@logixjs/devtools-react integration with @logixjs/react', () => {
             eventSeq: 2,
             eventId: 'i1::e3',
             timestamp: 4,
-            kind: 'trait:converge',
-            label: 'trace:trait:converge',
+            kind: 'field:converge',
+            label: 'trace:field:converge',
             moduleId: 'M',
             instanceId: 'i1',
             runtimeLabel: 'R',
@@ -382,7 +389,7 @@ describe('@logixjs/devtools-react integration with @logixjs/react', () => {
                 dirtyAll: false,
                 rootIds: [0],
                 rootIdsTruncated: false,
-                rootPaths: [['legacy', 'trait']],
+                rootPaths: [['historical', 'trait']],
               },
             },
           },
@@ -405,16 +412,16 @@ describe('@logixjs/devtools-react integration with @logixjs/react', () => {
       expect(importedState).toBeDefined()
       expect(importedState?.meta?.dirtySet?.rootPaths).toBeUndefined()
 
-      const importedTrait = snapshot.events.find((event) => event.kind === 'trait:converge') as any
+      const importedTrait = snapshot.events.find((event) => event.kind === 'field:converge') as any
       expect(importedTrait).toBeDefined()
       expect(importedTrait?.meta?.dirty?.rootPaths).toBeUndefined()
     })
   })
 
-  it('materializes trait:converge dirty.rootPaths on evidence import', async () => {
+  it('materializes field:converge dirty.rootPaths on evidence import', async () => {
     render(<LogixDevtools position="bottom-left" initialOpen={true} />)
 
-    const protocolVersion = Logix.Observability.protocolVersion
+    const protocolVersion = CoreEvidence.protocolVersion
     const digest = 'digest-trait-1'
     const evidence = {
       protocolVersion,
@@ -441,8 +448,8 @@ describe('@logixjs/devtools-react integration with @logixjs/react', () => {
             eventSeq: 1,
             eventId: 'i1::e3',
             timestamp: 4,
-            kind: 'trait:converge',
-            label: 'trace:trait:converge',
+            kind: 'field:converge',
+            label: 'trace:field:converge',
             moduleId: 'M',
             instanceId: 'i1',
             runtimeLabel: 'R',
@@ -470,7 +477,7 @@ describe('@logixjs/devtools-react integration with @logixjs/react', () => {
 
     await waitFor(() => {
       const snapshot = getDevtoolsSnapshot()
-      const imported = snapshot.events.find((event) => event.kind === 'trait:converge') as any
+      const imported = snapshot.events.find((event) => event.kind === 'field:converge') as any
       expect(imported).toBeDefined()
       expect(imported?.meta?.dirty?.rootPaths).toEqual([['profile', 'email']])
     })

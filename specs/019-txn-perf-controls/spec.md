@@ -1,8 +1,8 @@
 # Feature Specification: 事务性能控制：增量派生、同步合并、低优先级更新与最佳实践
 
-**Feature Branch**: `[019-txn-perf-controls]`  
-**Created**: 2025-12-20  
-**Status**: Draft  
+**Feature Branch**: `[019-txn-perf-controls]`
+**Created**: 2025-12-20
+**Status**: Draft
 **Input**: User description: "创建个新 spec，把这1234 全做了。 其实 1 算是 specs/013-auto-converge-planner/ 的延续或者未完全接上的一环吧。4 的话就是需要给用户文档补充完善高性能最佳实践"
 
 ## User Scenarios & Testing *(mandatory)*
@@ -11,7 +11,7 @@
   IMPORTANT: User stories should be PRIORITIZED as user journeys ordered by importance.
   Each user story/journey must be INDEPENDENTLY TESTABLE - meaning if you implement just ONE of them,
   you should still have a viable MVP (Minimum Viable Product) that delivers value.
-  
+
   Assign priorities (P1, P2, P3, etc.) to each story, where P1 is the most critical.
   Think of each story as a standalone slice of functionality that can be:
   - Developed independently
@@ -88,7 +88,7 @@
 
 ### Functional Requirements
 
-- **FR-001**: 系统 MUST 在所有“可追踪的同步写入路径”上生成“字段级影响域”（dirty-set），且不要求业务显式提供 dirty-set：至少覆盖 `$.state.mutate/$.state.update`、`Logix.Module.Reducer.mutate`（主 reducer）、以及 Trait 的同步写回（computed/link/check/source idle）。对于不可追踪写入（例如直接 set 整棵 state、普通 reducer 返回新对象且未提供 patch 证据），系统 MUST 确定性降级为 `dirtyAll=true` 并通过诊断给出原因与迁移建议。
+- **FR-001**: 系统 MUST 在所有“可追踪的同步写入路径”上生成“字段级影响域”（dirty-set），且不要求业务显式提供 dirty-set：至少覆盖 `$.state.mutate/$.state.update`、`Logix.Module.Reducer.mutate`（主 reducer）、以及 Field 的同步写回（computed/link/check/source idle）。对于不可追踪写入（例如直接 set 整棵 state、普通 reducer 返回新对象且未提供 patch 证据），系统 MUST 确定性降级为 `dirtyAll=true` 并通过诊断给出原因与迁移建议。
 - **FR-002**: 系统 MUST 将影响域归一化为稳定、可比较的字段路径集合（忽略数组索引/通配符等不稳定因素），以支持增量派生与可复现诊断。
 - **FR-003**: 系统 MUST 使用字段级影响域驱动派生收敛（converge）的最小执行集合：当影响域与某派生步骤无交集时，该步骤必须被跳过。
 - **FR-004**: 系统 MUST 使用字段级影响域驱动校验（validate）的最小执行集合：当影响域与某校验 scope 无交集时，该 scope 必须被跳过。

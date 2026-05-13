@@ -26,7 +26,7 @@
 
 **Chosen**：
 
-- Matrix SSoT：`.codex/skills/logix-perf-evidence/assets/matrix.json`
+- Matrix SSoT：`packages/logix-perf-evidence/assets/matrix.json`
 - 交付 profile：`default`（或 `soak`）；并要求 `pnpm perf diff` 输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`
 - before/after/diff 必须在隔离 worktree/目录分别采集（混杂结果仅作线索）
 - Node+Browser 任一失败整体 FAIL

@@ -2,8 +2,9 @@ import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
+import { trialRunModule } from '../../src/internal/observability/trialRunModule.js'
 
-describe('Observability.trialRunModule (runtime services evidence)', () => {
+describe('Runtime.trial (runtime services evidence)', () => {
   it.effect('should export environment.runtimeServicesEvidence (020 schema aligned shape)', () =>
     Effect.gen(function* () {
       const Root = Logix.Module.make('TrialRunModule.RuntimeServicesEvidence', {
@@ -11,9 +12,9 @@ describe('Observability.trialRunModule (runtime services evidence)', () => {
         actions: {},
       })
 
-      const program = Root.implement({ initial: undefined, logics: [] })
+      const program = Logix.Program.make(Root, { initial: undefined, logics: [] })
 
-      const report = yield* Logix.Observability.trialRunModule(program, {
+      const report = yield* trialRunModule(program as any, {
         runId: 'run:test:runtime-services-evidence',
         buildEnv: { hostKind: 'node', config: {} },
         diagnosticsLevel: 'light',

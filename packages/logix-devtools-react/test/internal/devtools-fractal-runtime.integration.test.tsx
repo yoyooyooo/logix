@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { render, waitFor, screen, fireEvent } from '@testing-library/react'
 import { FractalRuntimeLayout } from '../../../../examples/logix-react/src/demos/FractalRuntimeLayout.js'
 import { devtoolsRuntime, devtoolsModuleRuntime, type DevtoolsState } from '../../src/internal/state/index.js'
-import { getDevtoolsSnapshot, clearDevtoolsEvents } from '../../src/DevtoolsLayer.js'
+import { getDevtoolsSnapshot, clearDevtoolsEvents } from '../../src/internal/snapshot/index.js'
 
 const waitForStartup = () =>
   new Promise<void>((resolve) => {

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 // @vitest-environment happy-dom
 import React from 'react'
 import { renderHook, act } from '@testing-library/react'
@@ -6,6 +7,7 @@ import * as Logix from '@logixjs/core'
 import { Schema } from 'effect'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
 import { useModule } from '../../src/Hooks.js'
+import { useProgramRuntimeBlueprint } from '../../src/internal/hooks/useProgramRuntimeBlueprint.js'
 
 const Child = Logix.Module.make('ImportsScopeCleanupChild', {
   state: Schema.Struct({ ok: Schema.Boolean }),
@@ -17,13 +19,17 @@ const Parent = Logix.Module.make('ImportsScopeCleanupParent', {
   actions: { noop: Schema.Void },
 })
 
-const ParentImpl = Parent.implement({
+const ChildProgram = Logix.Program.make(Child, {
   initial: { ok: true },
-  imports: [
-    Child.implement({
-      initial: { ok: true },
-    }).impl,
-  ],
+  logics: [],
+})
+
+const ParentProgram = Logix.Program.make(Parent, {
+  initial: { ok: true },
+  capabilities: {
+    imports: [ChildProgram],
+  },
+  logics: [],
 })
 
 describe('ImportsScope cleanup', () => {
@@ -36,7 +42,7 @@ describe('ImportsScope cleanup', () => {
   })
 
   it("clears imports-scope mappings when a local ModuleRuntime is GC'ed after unmount", async () => {
-    const runtime = Logix.Runtime.make(ParentImpl)
+    const runtime = Logix.Runtime.make(ParentProgram)
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <RuntimeProvider runtime={runtime} policy={{ mode: 'sync', syncBudgetMs: 1000 }}>
@@ -49,7 +55,10 @@ describe('ImportsScope cleanup', () => {
 
     const { unmount } = renderHook(
       () => {
-        const host = useModule(ParentImpl, { key: 'cleanup-host', gcTime: 10 })
+        const host = useProgramRuntimeBlueprint(RuntimeContracts.getProgramRuntimeBlueprint(ParentProgram), {
+          key: 'cleanup-host',
+          gcTime: 10,
+        })
         const child = host.imports.get(Child.tag)
         capturedHost = host.runtime
         capturedChild = child.runtime
@@ -61,11 +70,11 @@ describe('ImportsScope cleanup', () => {
     expect(capturedHost).toBeDefined()
     expect(capturedChild).toBeDefined()
 
-    const hostImportsScopeBefore = Logix.InternalContracts.getImportsScope(capturedHost as any)
+    const hostImportsScopeBefore = RuntimeContracts.getImportsScope(capturedHost as any)
     expect(hostImportsScopeBefore).toBeDefined()
     expect(hostImportsScopeBefore.get(Child.tag)).toBe(capturedChild)
 
-    const childImportsScopeBefore = Logix.InternalContracts.getImportsScope(capturedChild as any)
+    const childImportsScopeBefore = RuntimeContracts.getImportsScope(capturedChild as any)
     expect(childImportsScopeBefore).toBeDefined()
 
     unmount()

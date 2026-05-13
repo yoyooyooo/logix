@@ -1,8 +1,9 @@
 import { Effect, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
+import { programLayer } from '../runtime/programLayer.js'
 
-// Note: 本示例中的 `Logic.forShape` 写法仅作为“针对 SearchShape + SearchApi 预绑定的 Bound API `$`”
-// 的概念性缩写；当前 PoC 实现中，真实代码应在对应 Module 上通过 `Module.logic(($)=>...)` 注入 `$`。
+// Note: 本示例中的 `Logic.forShape` 写法只用于表达“针对 SearchShape + SearchApi 预绑定的 Bound API `$`”
+// 的概念；当前仓内推荐直接在对应 Module 上通过 `Module.logic('module-logic', ($) => ...)` 注入 `$`。
 
 // ---------------------------------------------------------------------------
 // Schema → Shape：搜索场景的 State / Action
@@ -19,9 +20,9 @@ const SearchActionMap = {
   noop: Schema.Void,
 }
 
-export type SearchShape = Logix.Shape<typeof SearchStateSchema, typeof SearchActionMap>
-export type SearchState = Logix.StateOf<SearchShape>
-export type SearchAction = Logix.ActionOf<SearchShape>
+export type SearchShape = Logix.Module.Shape<typeof SearchStateSchema, typeof SearchActionMap>
+export type SearchState = Logix.Module.StateOf<SearchShape>
+export type SearchAction = Logix.Module.ActionOf<SearchShape>
 
 // ---------------------------------------------------------------------------
 // DI 示例：SearchApi 作为 Tag 注入的服务
@@ -36,19 +37,19 @@ export namespace SearchApi {
 }
 
 // ---------------------------------------------------------------------------
-// Module / Live：组合 State / Action / Logic 成为一棵领域模块（示例代码）
+// Module / Program：组合 State / Action / Logic 成为一棵领域程序
 // ---------------------------------------------------------------------------
 
-export const SearchDef = Logix.Module.make('SearchModule', {
+export const Search = Logix.Module.make('SearchModule', {
   state: SearchStateSchema,
   actions: SearchActionMap,
 })
 
 // ---------------------------------------------------------------------------
-// Logic：基于 Flow 的控制流编排（fromState + debounce + filter + runLatest）
+// Logic：基于变化监听与运行策略做控制流编排（fromState + debounce + filter + runLatest）
 // ---------------------------------------------------------------------------
 
-export const SearchLogic = SearchDef.logic<SearchApi>(($) =>
+export const SearchLogic = Search.logic<SearchApi>('search-logic', ($) =>
   Effect.gen(function* () {
     // 1. 从 State.keyword 构造变化流
     const keywordChanges$ = $.flow.fromState((s) => s.keyword)
@@ -81,7 +82,7 @@ export const SearchLogic = SearchDef.logic<SearchApi>(($) =>
   }),
 )
 
-export const SearchModule = SearchDef.implement<SearchApi>({
+export const SearchProgram = Logix.Program.make(Search, {
   initial: {
     keyword: '',
     results: [],
@@ -90,5 +91,4 @@ export const SearchModule = SearchDef.implement<SearchApi>({
   logics: [SearchLogic],
 })
 
-export const SearchImpl = SearchModule.impl
-export const SearchLive = SearchImpl.layer
+export const SearchLayer = programLayer(SearchProgram)

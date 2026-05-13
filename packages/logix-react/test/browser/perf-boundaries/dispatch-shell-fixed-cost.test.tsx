@@ -4,6 +4,7 @@ import { emitPerfReport, type PerfReport } from './protocol.js'
 import { getProfileConfig, runMatrixSuite, withNodeEnv, type MatrixSuite } from './harness.js'
 import {
   makeDispatchShellRuntime,
+  dispatchShellShellModeEvidence,
   runDispatchShellSample,
   runDispatchShellSampleWithDiagnosticsLevel,
   runDispatchShellSampleWithBreakdown,
@@ -45,6 +46,8 @@ const suite: MatrixSuite = {
     'module.traitCount',
     'runtime.dispatchesPerSample',
     'runtime.entrypointMode',
+    'runtime.shellMode',
+    'runtime.shellMode.source',
     'runtime.resolveScopeMsPerDispatch',
     'runtime.dispatchAwaitMsPerDispatch',
     'runtime.txnPhase.traceCount',
@@ -60,7 +63,7 @@ const suite: MatrixSuite = {
     'runtime.txnPhase.dispatchActionCount',
     'runtime.txnPhase.bodyShellMs',
     'runtime.txnPhase.asyncEscapeGuardMs',
-    'runtime.txnPhase.traitConvergeMs',
+    'runtime.txnPhase.fieldConvergeMs',
     'runtime.txnPhase.scopedValidateMs',
     'runtime.txnPhase.sourceSyncMs',
     'runtime.txnPhase.commitTotalMs',
@@ -131,6 +134,7 @@ test('browser dispatch shell: fixed cost across state width', { timeout: TEST_TI
               'module.traitCount': 0,
               'runtime.dispatchesPerSample': SAMPLE_BATCH,
               'runtime.entrypointMode': entrypointMode,
+              ...dispatchShellShellModeEvidence(metricRuntime.shellMode),
               'runtime.resolveScopeMsPerDispatch': breakdown.resolveScopeMsPerDispatch,
               'runtime.dispatchAwaitMsPerDispatch': breakdown.dispatchAwaitMsPerDispatch,
               'runtime.txnPhase.traceCount':
@@ -162,7 +166,7 @@ test('browser dispatch shell: fixed cost across state width', { timeout: TEST_TI
               ),
               'runtime.txnPhase.bodyShellMs': timingEvidence(phaseTiming, (value) => value.bodyShellMs),
               'runtime.txnPhase.asyncEscapeGuardMs': timingEvidence(phaseTiming, (value) => value.asyncEscapeGuardMs),
-              'runtime.txnPhase.traitConvergeMs': timingEvidence(phaseTiming, (value) => value.traitConvergeMs),
+              'runtime.txnPhase.fieldConvergeMs': timingEvidence(phaseTiming, (value) => value.fieldConvergeMs),
               'runtime.txnPhase.scopedValidateMs': timingEvidence(phaseTiming, (value) => value.scopedValidateMs),
               'runtime.txnPhase.sourceSyncMs': timingEvidence(phaseTiming, (value) => value.sourceSyncMs),
               'runtime.txnPhase.commitTotalMs': timingEvidence(phaseTiming, (value) => value.commitTotalMs),

@@ -1,13 +1,13 @@
 # Tasks: 068 Watcher 纯赚性能优化（全量交付）
 
-**Input**: Design documents from `specs/068-watcher-pure-wins/`  
+**Input**: Design documents from `specs/068-watcher-pure-wins/`
 **Prerequisites**: `specs/068-watcher-pure-wins/plan.md`, `specs/068-watcher-pure-wins/spec.md`
 
 ## Phase 1: Setup (Shared Infrastructure)
 
 - [ ] T001 [P] Add perf evidence index doc in `specs/068-watcher-pure-wins/perf/README.md`
-- [ ] T002 [P] Register 068 perf scripts in `.codex/skills/logix-perf-evidence/package.json`
-- [ ] T003 [P] Add Node perf bench suite in `.codex/skills/logix-perf-evidence/scripts/068-watcher-pure-wins.watcher-fanout.node.ts`
+- [ ] T002 [P] Register 068 perf scripts in `packages/logix-perf-evidence/package.json`
+- [ ] T003 [P] Add Node perf bench suite in `packages/logix-perf-evidence/scripts/068-watcher-pure-wins.watcher-fanout.node.ts`
 
 ---
 
@@ -46,7 +46,7 @@
 - [ ] T012 [US2] Route dispatch publish to tag topic hubs in `packages/logix-core/src/internal/runtime/core/ModuleRuntime.dispatch.ts`
 - [ ] T013 [US2] Switch `$.onAction("tag")` to topic stream in `packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts`
 - [ ] T014 [US2] Add unit test for cross-tag isolation in `packages/logix-core/test/Bound/Bound.onAction.tagTopic.test.ts`
-- [ ] T015 [US2] Wire Node perf bench to 068 suite in `.codex/skills/logix-perf-evidence/scripts/068-watcher-pure-wins.watcher-fanout.node.ts`
+- [ ] T015 [US2] Wire Node perf bench to 068 suite in `packages/logix-perf-evidence/scripts/068-watcher-pure-wins.watcher-fanout.node.ts`
 
 ---
 
@@ -72,7 +72,7 @@
 - [ ] T020 [US4] Define optional compilation artifacts contract + strict gate knobs in `packages/logix-core/src/internal/runtime/core/ReadQuery.ts`
 - [ ] T021 [US4] Prefer precompiled artifacts when enabled; fallback to JIT/dynamic lane when unsure in `packages/logix-core/src/internal/runtime/core/ReadQuery.ts`
 - [ ] T022 [US4] Add regression test (on/off equivalence + fallback reason anchors) in `packages/logix-core/test/ReadQuery/ReadQuery.compilationEnhancement.onoff.test.ts`
-- [ ] T023 [US4] Add perf suite C scaffolding in `.codex/skills/logix-perf-evidence/scripts/068-watcher-pure-wins.compilation-onoff.node.ts`
+- [ ] T023 [US4] Add perf suite C scaffolding in `packages/logix-perf-evidence/scripts/068-watcher-pure-wins.compilation-onoff.node.ts`
 
 ---
 
@@ -111,4 +111,3 @@
 
 - Phase 1 的 T001/T002/T003 可并行
 - Phase 8 的文档更新（T026/T027）可与 perf evidence 采集（T028~T037）并行推进
- 

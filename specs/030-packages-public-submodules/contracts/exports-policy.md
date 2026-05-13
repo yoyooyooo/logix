@@ -1,7 +1,7 @@
 # Contract: package.json exports 策略（Public Surface 收口）
 
-**Branch**: `030-packages-public-submodules`  
-**Date**: 2025-12-24  
+**Branch**: `030-packages-public-submodules`
+**Date**: 2025-12-24
 **Spec**: `specs/030-packages-public-submodules/spec.md`
 
 ## 目标

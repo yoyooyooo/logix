@@ -1,7 +1,7 @@
 # Specification Quality Checklist: 064-speckit-kanban-timeline
 
-**Purpose**: 在进入 `$speckit plan` 之前，校验 spec.md 的完整性与可测试性  
-**Created**: 2025-12-31  
+**Purpose**: 在进入 `$speckit plan` 之前，校验 spec.md 的完整性与可测试性
+**Created**: 2025-12-31
 **Feature**: `specs/064-speckit-kanban-timeline/spec.md`
 
 ## Content Quality

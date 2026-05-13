@@ -1,8 +1,8 @@
 # Feature Specification: core-ng Flat Store PoC（arena/SoA/handle 化）
 
-**Feature Branch**: `055-core-ng-flat-store-poc`  
-**Created**: 2025-12-31  
-**Status**: Frozen  
+**Feature Branch**: `055-core-ng-flat-store-poc`
+**Created**: 2025-12-31
+**Status**: Frozen
 **Input**: 046 registry 条目 `055`（`specs/046-core-ng-roadmap/spec-registry.json`）
 
 ## Summary

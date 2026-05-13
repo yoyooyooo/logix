@@ -1,12 +1,14 @@
 import { describe, it, expect } from 'vitest'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 // @vitest-environment happy-dom
 import React from 'react'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { Schema, ManagedRuntime, Effect, Layer, Scope } from 'effect'
 import * as Logix from '@logixjs/core'
-import type { StateOf, ActionOf } from '@logixjs/core'
+import type { StateOf, ActionOf } from '@logixjs/core/Module'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
-import { useModule } from '../../src/Hooks.js'
+import { useModule, useSelector } from '../../src/Hooks.js'
+import { useProgramRuntimeBlueprint } from '../../src/internal/hooks/useProgramRuntimeBlueprint.js'
 
 const Counter = Logix.Module.make('Counter', {
   state: Schema.Struct({ value: Schema.Number }),
@@ -16,21 +18,20 @@ const Counter = Logix.Module.make('Counter', {
   },
 })
 
-// ModuleImpl: used to verify that in React, Impl + runFork behaves the same as Tag mode.
-const CounterImpl = Counter.implement({
+// ProgramRuntimeBlueprint: used to verify that React's internal blueprint helper behaves the same as Tag mode.
+const CounterProgram = Logix.Program.make(Counter, {
   initial: { value: 0 },
   logics: [],
 })
+const CounterBlueprint = RuntimeContracts.getProgramRuntimeBlueprint(CounterProgram)
 
-// Error-logging Logic: helps make logic errors visible during tests.
+// Empty auxiliary Logic keeps the multi-logic test matrix stable.
 type CounterShape = typeof Counter.shape
 
-const CounterErrorLogic = Counter.logic<Scope.Scope>(($) =>
-  $.lifecycle.onError((cause: unknown, context: unknown) => Effect.logError('Counter logic error', cause, context)),
-)
+const CounterErrorLogic = Counter.logic<Scope.Scope>('counter-error-logic', () => Effect.void)
 
 // Logic 1: use runFork-style wiring to mount two watchers in a single Logic.
-const CounterRunForkLogic = Counter.logic<Scope.Scope>(($) =>
+const CounterRunForkLogic = Counter.logic<Scope.Scope>('counter-run-fork-logic', ($) =>
   Effect.gen(function* () {
     yield* Effect.log('CounterRunForkLogic setup')
 
@@ -55,7 +56,7 @@ const CounterRunForkLogic = Counter.logic<Scope.Scope>(($) =>
 )
 
 // Logic 2: use Effect.all + run to mount two watchers (all in the run phase).
-const CounterAllLogic = Counter.logic<Scope.Scope>(($) =>
+const CounterAllLogic = Counter.logic<Scope.Scope>('counter-all-logic', ($) =>
   Effect.gen(function* () {
     yield* Effect.all(
       [
@@ -68,7 +69,7 @@ const CounterAllLogic = Counter.logic<Scope.Scope>(($) =>
 )
 
 // Logic 3: manually forkScoped($.onAction().run(...)) for two watchers (equivalence check vs runFork).
-const CounterManualForkLogic = Counter.logic<Scope.Scope>(($) =>
+const CounterManualForkLogic = Counter.logic<Scope.Scope>('counter-manual-fork-logic', ($) =>
   Effect.gen(function* () {
     yield* Effect.forkScoped($.onAction('inc').runParallel($.state.update((s) => ({ ...s, value: s.value + 1 }))))
 
@@ -79,7 +80,7 @@ const CounterManualForkLogic = Counter.logic<Scope.Scope>(($) =>
 describe('React watcher patterns integration', () => {
   it('runFork-based watcher should update state via React hooks', async () => {
     const layer = Counter.live({ value: 0 }, CounterRunForkLogic, CounterErrorLogic)
-    const tickServicesLayer = Logix.InternalContracts.tickServicesLayer as Layer.Layer<any, never, any>
+    const tickServicesLayer = RuntimeContracts.tickServicesLayer as Layer.Layer<any, never, any>
 
     const runtime = ManagedRuntime.make(
       Layer.mergeAll(
@@ -98,7 +99,7 @@ describe('React watcher patterns integration', () => {
 
     const useTest = () => {
       const counter = useModule(Counter.tag)
-      const value = useModule(Counter.tag, (s) => (s as { value: number }).value)
+      const value = useSelector(Counter.tag, (s) => (s as { value: number }).value)
       return { value, counter }
     }
 
@@ -128,7 +129,7 @@ describe('React watcher patterns integration', () => {
 
   it('Effect.all + run style watcher should update state via React hooks', async () => {
     const layer = Counter.live({ value: 0 }, CounterAllLogic, CounterErrorLogic)
-    const tickServicesLayer = Logix.InternalContracts.tickServicesLayer as Layer.Layer<any, never, any>
+    const tickServicesLayer = RuntimeContracts.tickServicesLayer as Layer.Layer<any, never, any>
 
     const runtime = ManagedRuntime.make(
       Layer.mergeAll(
@@ -147,7 +148,7 @@ describe('React watcher patterns integration', () => {
 
     const useTest = () => {
       const counter = useModule(Counter.tag)
-      const value = useModule(Counter.tag, (s) => (s as { value: number }).value)
+      const value = useSelector(Counter.tag, (s) => (s as { value: number }).value)
       return { value, counter }
     }
 
@@ -177,7 +178,7 @@ describe('React watcher patterns integration', () => {
 
   it('manual Effect.fork($.onAction().run(...)) watcher should behave like runFork', async () => {
     const layer = Counter.live({ value: 0 }, CounterManualForkLogic, CounterErrorLogic)
-    const tickServicesLayer = Logix.InternalContracts.tickServicesLayer as Layer.Layer<any, never, any>
+    const tickServicesLayer = RuntimeContracts.tickServicesLayer as Layer.Layer<any, never, any>
 
     const runtime = ManagedRuntime.make(
       Layer.mergeAll(
@@ -196,7 +197,7 @@ describe('React watcher patterns integration', () => {
 
     const useTest = () => {
       const counter = useModule(Counter.tag)
-      const value = useModule(Counter.tag, (s) => (s as { value: number }).value)
+      const value = useSelector(Counter.tag, (s) => (s as { value: number }).value)
       return { value, counter }
     }
 
@@ -226,16 +227,14 @@ describe('React watcher patterns integration', () => {
     })
   })
 
-  it('runFork-based watcher should also work with ModuleImpl + useModule(Impl)', async () => {
-    // Build a local Module impl from CounterImpl (keep logic consistent with Tag mode).
-    const CounterImplRunFork = Counter.implement({
+  it('runFork-based watcher should also work with ProgramRuntimeBlueprint + useProgramRuntimeBlueprint', async () => {
+    const CounterProgramRunFork = Logix.Program.make(Counter, {
       initial: { value: 0 },
       logics: [CounterRunForkLogic, CounterErrorLogic],
     })
+    const CounterBlueprintRunFork = RuntimeContracts.getProgramRuntimeBlueprint(CounterProgramRunFork)
 
-    // In Impl mode, Runtime.make uses ModuleImpl as the root entrypoint,
-    // and React still uses useModule(Impl) to construct/reuse ModuleRuntime within component scope.
-    const runtime = Logix.Runtime.make(CounterImplRunFork, {
+    const runtime = Logix.Runtime.make(CounterProgramRunFork, {
       layer: Layer.empty as Layer.Layer<any, never, never>,
     })
 
@@ -248,9 +247,9 @@ describe('React watcher patterns integration', () => {
     )
 
     const useTest = () => {
-      // Consume ModuleImpl directly: useModule constructs ModuleRuntime within component scope.
-      const counter = useModule(CounterImplRunFork)
-      const value = useModule(counter, (s) => (s as { value: number }).value)
+      // Consume ProgramRuntimeBlueprint directly: useProgramRuntimeBlueprint constructs ModuleRuntime within component scope.
+      const counter = useProgramRuntimeBlueprint(CounterBlueprintRunFork)
+      const value = useSelector(counter, (s) => (s as { value: number }).value)
       return { value, counter }
     }
 

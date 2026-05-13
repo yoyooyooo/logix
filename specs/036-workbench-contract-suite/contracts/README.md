@@ -1,7 +1,7 @@
 # Contracts: 036 Workbench Contract Suite（Integrated Verdict / Context Pack）
 
-**Date**: 2025-12-26  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/036-workbench-contract-suite/spec.md`
+**Date**: 2025-12-26
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/036-workbench-contract-suite/spec.md`
 
 本目录固化 036 的治理层对外契约（仅用于验收/CI/Agent 工具面，不要求 runtime 热路径承担任何额外成本）：
 

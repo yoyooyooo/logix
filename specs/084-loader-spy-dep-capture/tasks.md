@@ -4,7 +4,7 @@ description: "Task list for 084-loader-spy-dep-capture (SpyEvidenceReport@v1, re
 
 # Tasks: Loader Spy 依赖采集（084：加载态自描述证据·不作权威）
 
-**Input**: `specs/084-loader-spy-dep-capture/spec.md`  
+**Input**: `specs/084-loader-spy-dep-capture/spec.md`
 **Prerequisites**: `specs/084-loader-spy-dep-capture/plan.md`（required）, `specs/084-loader-spy-dep-capture/data-model.md`, `specs/084-loader-spy-dep-capture/contracts/`, `specs/084-loader-spy-dep-capture/quickstart.md`
 
 **Tests**: 本特性会在 `$.use` 处插桩，必须保证默认零成本（不注入 SpyCollector 时不记录、不改变错误语义），并覆盖确定性/预算/超时/对照 diff 的关键用例。
@@ -26,20 +26,20 @@ description: "Task list for 084-loader-spy-dep-capture (SpyEvidenceReport@v1, re
 
 ## Phase 2: Foundational（SpyCollector 注入点 + report-only 导出）
 
-**⚠️ CRITICAL**: 本阶段完成前，不开始任何“对照 diff/CLI 暴露”（US2/Phase 5）。  
+**⚠️ CRITICAL**: 本阶段完成前，不开始任何“对照 diff/CLI 暴露”（US2/Phase 5）。
 **Checkpoint**: 在注入 SpyCollector 时能采集到 use 证据；不注入时行为与输出不变。
 
 - [ ] T003 定义 SpyCollector Tag（可注入、默认缺席；记录 use 证据）`packages/logix-core/src/internal/observability/spy/SpyCollector.ts`
 - [ ] T004 在 `$.use` 实现处 best-effort 记录（不改变业务语义；记录失败不得影响原错误）`packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts`
 - [ ] T005 组装并导出 `SpyEvidenceReport@v1`（稳定排序/去重 + `occurrences` 聚合计数/coverage marker）`packages/logix-core/src/internal/observability/spy/exportSpyEvidenceReport.ts`
-- [ ] T006 [P] 增加对外入口（可选：`Logix.Observability.*` 导出）`packages/logix-core/src/Observability.ts`
+- [ ] T006 [P] 增加对外入口（可选：`CoreEvidence.*` 导出）`packages/logix-core/src/internal/evidence-api.ts`
 - [ ] T007 [P] 单测：未注入 SpyCollector 时不记录且不引入额外失败 `packages/logix-core/test/Spy/SpyCollector.disabled.test.ts`
 
 ---
 
 ## Phase 3: User Story 1 - 加载态采集服务使用证据（Priority: P1）
 
-**Goal**: 在受控加载/构造窗口中采集 `$.use(Tag)` 的实际调用证据，并输出可序列化、确定性的 `SpyEvidenceReport@v1`（best-effort）。  
+**Goal**: 在受控加载/构造窗口中采集 `$.use(Tag)` 的实际调用证据，并输出可序列化、确定性的 `SpyEvidenceReport@v1`（best-effort）。
 **Independent Test**: 同一输入重复采集输出一致；未触达分支依赖不被误报。
 
 - [ ] T008 [US1] 实现受控采集 Harness（runId/预算/超时；默认不提供业务 Service）`packages/logix-core/src/internal/observability/spy/spyHarness.ts`
@@ -50,7 +50,7 @@ description: "Task list for 084-loader-spy-dep-capture (SpyEvidenceReport@v1, re
 
 ## Phase 4: User Story 2 - 声明 vs 实际偏离对照（Priority: P2）
 
-**Goal**: 把 Spy 证据与显式声明（services/servicePorts/manifest）对照输出 `diff`（used-but-not-declared / declared-but-not-used）。  
+**Goal**: 把 Spy 证据与显式声明（services/servicePorts/manifest）对照输出 `diff`（used-but-not-declared / declared-but-not-used）。
 **Independent Test**: 构造声明缺失/声明冗余样例，diff 输出稳定且可解释。
 
 - [ ] T011 [US2] 实现 diff：SpyEvidenceReport 与声明快照对照（稳定排序）`packages/logix-core/src/internal/observability/spy/diffDeclaredVsUsed.ts`
@@ -67,7 +67,7 @@ description: "Task list for 084-loader-spy-dep-capture (SpyEvidenceReport@v1, re
 
 ## Phase 6: Perf Evidence（$.use 热路径回归防线，MUST）
 
-**Goal**: 为 `BoundApiRuntime.$.use` 插桩提供可对比的性能证据：disabled（默认未注入）接近零成本；enabled（注入）开销可解释且在预算内。  
+**Goal**: 为 `BoundApiRuntime.$.use` 插桩提供可对比的性能证据：disabled（默认未注入）接近零成本；enabled（注入）开销可解释且在预算内。
 **Independent Test**: `pnpm perf collect` 的 before/after 可比（`meta.comparability.comparable=true`），且 diff 不显示 disabled 回归。
 
 - [ ] T015 新增 perf suite：覆盖 disabled/enabled 两种模式的 `$.use` 热路径 `packages/logix-core/test/perf/BoundApiRuntime.use.spy.perf.test.ts`

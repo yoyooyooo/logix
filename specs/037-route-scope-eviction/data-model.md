@@ -1,7 +1,7 @@
 # Data Model: 037 ScopeRegistry（scope-bound 值注册表）
 
-**Branch**: `037-route-scope-eviction`  
-**Source Spec**: `specs/037-route-scope-eviction/spec.md`  
+**Branch**: `037-route-scope-eviction`
+**Source Spec**: `specs/037-route-scope-eviction/spec.md`
 **Source Plan**: `specs/037-route-scope-eviction/plan.md`
 
 > 目标：为“限定 scope 的全局”与后续的 Bridge（跨 React 子树复用同一 scope）固化最小数据模型与不变量，避免实现随意漂移。

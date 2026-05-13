@@ -1,7 +1,8 @@
 import * as Logix from '@logixjs/core'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { Effect, ServiceMap } from 'effect'
 import { Engine, type InvalidateRequest } from '../../Engine.js'
-import type { QuerySourceConfig } from '../../Traits.js'
+import type { QuerySourceConfig } from '../query-declarations.js'
 
 export interface InvalidateLogicConfig<TParams, TUI> {
   readonly queries: Readonly<Record<string, QuerySourceConfig<TParams, TUI>>>
@@ -31,17 +32,17 @@ const toInvalidateTargets = <TParams, TUI>(
 }
 
 export const invalidate = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
-  module: Logix.ModuleTagType<any, Sh>,
+  module: Logix.Module.ModuleTag<any, Sh>,
   config: InvalidateLogicConfig<TParams, TUI>,
 ): Logix.ModuleLogic<Sh, any, never> =>
-  module.logic(($) =>
+  module.logic('query-invalidate', ($) =>
     Effect.gen(function* () {
       yield* $.onAction('invalidate').runFork((action: any) =>
         Effect.gen(function* () {
           const request = action.payload as InvalidateRequest
 
           // 1) Eventize: goes into ReplayLog (kernel-owned).
-          yield* Logix.TraitLifecycle.scopedExecute($ as any, {
+          yield* FieldContracts.fieldScopedExecute($ as any, {
             kind: 'query:invalidate',
             request,
           })
@@ -58,7 +59,7 @@ export const invalidate = <Sh extends Logix.AnyModuleShape, TParams, TUI>(
           yield* Effect.forEach(
             targets,
             (t) =>
-              $.traits.source.refresh(sourcePathOf(t.name) as any, { force: true }) as Effect.Effect<void, never, any>,
+              $.fields.source.refresh(sourcePathOf(t.name) as any, { force: true }) as Effect.Effect<void, never, any>,
           ).pipe(Effect.asVoid)
         }),
       )

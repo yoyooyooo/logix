@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Full-Duplex Prelude（全双工前置：统一最小 IR + Platform-Grade 锚点 + 保守回写）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2026-01-09  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2026-01-09
 **Feature**: `specs/080-full-duplex-prelude/spec.md`
 
 ## Content Quality

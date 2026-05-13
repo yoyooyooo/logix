@@ -3,27 +3,15 @@ title: Performance and Optimization
 description: Tune Logix Runtime and DevTools observability strategies to keep good performance in complex scenarios.
 ---
 
-Logix Runtime is “observability-first” by default.
-In development it records full state transactions, trait behavior, and debug events, and DevTools provides a timeline and time travel.
-In production it automatically converges to a lighter observability mode.
+Logix performance work starts with cost attribution. In most regressions, the hot path is dominated by one or more of these buckets:
 
-This page provides an actionable performance tuning playbook from the perspective of everyday application development.
+- transaction count and dirty-set quality
+- derive or validation scale
+- React render fan-out
+- module initialization
+- diagnostics and DevTools overhead
 
-### Who is this for
-
-- You’re already using Logix Runtime / `@logixjs/react`, and DevTools is enabled.
-- You want good responsiveness in high-frequency interaction, complex forms, or long-list scenarios.
-
-### Prerequisites
-
-- Understand basic usage of `Logix.Module` / `Module.logic` / `Module.live`.
-- Know how to create a Runtime via `Logix.Runtime.make`, and use `RuntimeProvider` / `useModule` in React.
-
-### What you’ll get
-
-- Understand where the main costs of an interaction usually come from.
-- Control observability overhead via `stateTransaction.instrumentation` and DevTools settings.
-- A layered optimization checklist for “high trait density / lots of watchers”.
+The runtime already exposes enough evidence to separate these costs. Tune observability first, then narrow the fix to convergence, rendering, or module structure only where the evidence points.
 
 ## 0. Remember 5 keywords
 
@@ -39,21 +27,21 @@ This page provides an actionable performance tuning playbook from the perspectiv
 - **`dirtySet` quality**: more precise means more incremental paths; more `dirtyAll` means more full recomputation degradation.
 - **Derive/validation scale**: more rules and deeper dependencies rely more on incremental and plan cache reuse.
 - **React render fan-out**: coarse subscriptions and unstable list identity increase render pressure.
-- **Module initialization**: build/setup/install at startup (including trait aggregation/merge/install) impacts first paint / first availability.
+- **Module initialization**: build/setup/install at startup (including field declaration aggregation/merge/install) impacts first paint / first availability.
 - **Diagnostics level**: more evidence improves explainability, but should have a predictable cost.
 
-### Cost model for trait composition (`$.traits.declare` / Module `traits`)
+### Cost model for field-program composition (`$.fields(...)` / repo-internal module declarations)
 
-If you use many traits in a module (both Module-level `traits` and `$.traits.declare` inside Logic setup), initialization does more work:
+If you use many field declarations in a module, initialization does more work:
 
 1. **Collect**: aggregate module-level declarations and each logic unit’s declarations into one set.
-2. **Deterministic merge**: merge into the “final trait set” with stable rules (same input does not drift by composition order).
-3. **Consistency checks**: detect duplicate `traitId`, mutual exclusion / prerequisites; failures surface before runtime.
-4. **Freeze + install**: freeze traits after setup, then install corresponding behavior Programs during initialization.
+2. **Deterministic merge**: merge into the final field behavior set with stable rules (same input does not drift by composition order).
+3. **Consistency checks**: detect duplicate field nodes, mutual exclusion / prerequisites; failures surface before runtime.
+4. **Freeze + install**: freeze field behaviors after setup, then install corresponding behavior Programs during initialization.
 
 Common tuning levers:
 
-- **Control scale**: more traits slows init; prioritize extracting truly reusable rules into shared Logic/Patterns, keep the rest local.
+- **Control scale**: more field behaviors slows init; prioritize extracting truly reusable rules into shared Logic/Patterns, keep the rest local.
 - **Stable identity**: provide stable `logicUnitId` for reusable Logic to avoid provenance drift and replay/compare difficulty.
 - **Observe on demand**: keep diagnostics off (default or explicit) on performance-sensitive paths; switch to `light/full` when debugging, and compare evidence packages via `digest/count`.
 
@@ -66,14 +54,14 @@ When you hit performance issues, proceed in this order (later steps cost more bu
 3. **Narrow writes**: prefer `$.state.mutate` / `Module.Reducer.mutate` / `Module.Reducer.mutateMap` so Runtime can capture a precise impact scope; avoid meaningless full-tree setState.
 4. **Stable identity**: provide stable business ids for list items / logic units (e.g. list `trackBy`, `logicUnitId`) to reduce drift and avoid recompute/re-render.
 5. **Targeted overrides**: only override hotspots (observability level, scheduling/budget thresholds, etc.), and lock the regression window with evidence.
-6. **Split/refactor**: if a single module/logic becomes too dense, split Module / Logic / trait rules to reduce complexity and improve diagnosability.
+6. **Split/refactor**: if a single module/logic becomes too dense, split Module / Logic / field rules to reduce complexity and improve diagnosability.
 
 ## 1. Where does the cost of one interaction go?
 
 In Logix, a typical user interaction (typing/clicking) goes through:
 
 1. **Action dispatch**: `dispatch(action)` starts a StateTransaction.
-2. **In-transaction logic**: reducer / trait / middleware reads/writes state multiple times within the transaction.
+2. **In-transaction logic**: reducer / field behavior / middleware reads/writes state multiple times within the transaction.
 3. **State commit**: the transaction `commit`s; outwardly, state is written once and subscribers are notified once.
 4. **React render**: affected components re-render based on selector results.
 5. **Debugging & DevTools**: record debug events and update DevTools timeline/views.
@@ -82,7 +70,7 @@ In most cases:
 
 - **The biggest cost is React rendering and your own business logic.**
 - Runtime + debugging overhead mainly comes from:
-  - number of watchers/traits (higher fan-out means more work per event),
+  - number of watchers/field behaviors (higher fan-out means more work per event),
   - observability strategy (whether to record patches/snapshots/fine-grained events),
   - DevTools depth mode and how many events it renders.
 
@@ -106,7 +94,7 @@ Example: set an app-level default strategy on the Runtime:
 import * as Logix from '@logixjs/core'
 
 // App-level default observability strategy
-const runtime = Logix.Runtime.make(RootImpl, {
+const runtime = Logix.Runtime.make(RootProgram, {
   stateTransaction: {
     instrumentation: 'full', // or 'light'
   },
@@ -117,54 +105,52 @@ For a few high-frequency modules (dragging/animation/heavy input forms), you can
 
 ```ts
 // HeavyFormDef = Logix.Module.make(...)
-export const HeavyFormModule = HeavyFormDef.implement({
+export const HeavyFormProgram = Logix.Program.make(HeavyFormDef, {
   // other config omitted
   stateTransaction: {
     instrumentation: 'light',
   },
 })
-
-export const HeavyFormImpl = HeavyFormModule.impl
 ```
 
 Priority order:
 
-1. **ModuleImpl config** (explicit on the module)
+1. **Program config** (explicit on the assembled business unit)
 2. **Runtime.make config** (runtime-level default)
 3. **Environment default**: `"full"` in non-production (`NODE_ENV !== "production"`), `"light"` in production
 
-> Tip: when investigating performance, temporarily switch a module or the whole Runtime to `"light"` and compare interaction latency and React render counts to determine whether observability is part of the budget.
+For performance investigations, temporarily switch a module or the whole Runtime to `"light"` and compare interaction latency with React render counts. That quickly tells you whether observability is part of the budget.
 
 ### 2.3 (Optional) control converge strategy & budgets
 
-If your scenario has lots of derived fields/linkage/computed values and each interaction triggers substantial linkage computation, beyond observability you can also use the converge scheduling control plane for:
+If your scenario has lots of derived fields/linkage/computed values and each interaction triggers substantial linkage computation, beyond observability you can also use the converge scheduling policy for:
 
 - quick mitigations when regressions occur
 - experimenting with better defaults at page/module scope (with rollback)
 
-See: [Converge scheduling control plane](./converge-control-plane)
+See: [Field convergence policy](./field-convergence-policy)
 
 ## 3. Use DevTools settings to control noise
 
 When DevTools is enabled, overhead also depends on DevTools settings. Common switches:
 
 - `mode: "basic" | "deep"`
-  - `basic`: shows coarse-grained events (Action/State/Service), hides trait details and time-travel controls; good for day-to-day work.
-  - `deep`: shows trait-level events, React render events, and time-travel buttons; good for deep debugging.
-- `showTraitEvents` / `showReactRenderEvents`
-  - In high-frequency rendering or heavy-trait scenarios, you can temporarily disable a class of events to reduce timeline noise.
+  - `basic`: shows coarse-grained events (Action/State/Service), hides field-level details and time-travel controls; good for day-to-day work.
+  - `deep`: shows field-level events, React render events, and time-travel buttons; good for deep debugging.
+- `showFieldEvents` / `showReactRenderEvents`
+  - In high-frequency rendering or heavy-field scenarios, you can temporarily disable a class of events to reduce timeline noise.
 - `eventBufferSize`
   - controls how many events DevTools keeps internally (default ~500)
   - you can temporarily increase it for extreme debugging, but avoid keeping it in the thousands long-term to prevent DevTools itself from using too much memory.
 
-### 3.1 Runtime-level knobs (besides the converge scheduling control plane)
+### 3.1 Runtime-level knobs (besides the converge scheduling policy)
 
 If you want more “deterministic” control (not just UI toggles), tune Runtime config:
 
 ```ts
 import * as Logix from "@logixjs/core"
 
-const runtime = Logix.Runtime.make(RootImpl, {
+const runtime = Logix.Runtime.make(RootProgram, {
   // if devtools is omitted or set to false, DevTools observability is not enabled (cheaper)
   devtools: {
     bufferSize: 500, // DevTools event window length (bigger uses more memory)
@@ -185,7 +171,7 @@ Diagnostics level affects how many debug events are generated/retained for expor
 It does not change business semantics, but it affects “how much evidence you can see” and “how much extra overhead you pay”.
 
 - `off`: near-zero overhead, good for benchmarks/extreme performance checks; you lose most explainability (DevTools/evidence packages become sparse).
-- `sampled`: keeps debugging capability at low cost (especially for hotspots in the trait converge chain). Runtime uses **deterministic sampling per transaction**, and only emits Top-K hotspot summaries for converge chains in sampled transactions (payload stays slim).
+- `sampled`: keeps debugging capability at low cost (especially for hotspots in the field converge chain). Runtime uses **deterministic sampling per transaction**, and only emits Top-K hotspot summaries for converge chains in sampled transactions (payload stays slim).
 - `light`: emits slim events for every transaction, good as a default “observable but not too expensive” tier; it doesn’t include step-level hotspot summaries.
 - `full`: the most complete and the most expensive; use it for short, deep debugging and explanation-chain alignment.
 
@@ -196,72 +182,71 @@ Example: enable `sampled` on a Runtime with sampling frequency and Top-K cap:
 ```ts
 import * as Logix from '@logixjs/core'
 
-const runtime = Logix.Runtime.make(RootImpl, {
+const runtime = Logix.Runtime.make(RootProgram, {
   devtools: {
     diagnosticsLevel: 'sampled',
-    traitConvergeDiagnosticsSampling: { sampleEveryN: 32, topK: 3 },
+    fieldConvergeDiagnosticsSampling: { sampleEveryN: 32, topK: 3 },
   },
 })
 ```
 
 A common practice:
 
-1. When first developing a module: `instrumentation = "full"` + `mode = "deep"` to fully observe transactions and trait behavior.
+1. When first developing a module: `instrumentation = "full"` + `mode = "deep"` to fully observe transactions and field behavior execution.
 2. After the module stabilizes: switch back to `mode = "basic"` and keep only key events.
 3. When performance issues appear:
    - use Overview Strip and Timeline in `"deep"` to locate the noisiest window,
-   - then combine `"light"` instrumentation and `showReactRenderEvents` to validate whether it’s mostly render fan-out or trait event volume.
+   - then combine `"light"` instrumentation and `showReactRenderEvents` to validate whether it’s mostly render fan-out or field event volume.
 
 ### 3.2 TrialRun: offline evidence and IR collection (for diffs/regression)
 
-When you need “refactor without regression” comparisons, prefer **TrialRun** to run a program in a controlled environment and export machine-processable evidence:
+When you need “refactor without regression” comparisons, prefer **TrialRun** to run a program in a controlled environment and export a machine-processable verification shell:
 
 - You can collect key evidence **without opening DevTools UI**.
 - You can explicitly control `diagnosticsLevel` and `maxEvents` to avoid observer effects.
-- `EvidencePackage.summary` answers “what runtime strategies/overrides were enabled for this instance”, and provides comparable IR summaries.
+- The control-plane report gives you stable `summary`, `errorCode`, `environment`, and artifact refs without introducing a second report object.
 
 ```ts
 import * as Logix from "@logixjs/core"
 import { Effect } from "effect"
 
 const result = await Effect.runPromise(
-  Logix.Observability.trialRun(program, {
+  Logix.Runtime.trial(AppRoot, {
     runId: "perf-check-1",
-    source: { host: "node", label: "trial-run" },
+    buildEnv: { hostKind: "node", config: {} },
     diagnosticsLevel: "light",
     maxEvents: 200,
   }),
 )
 
-// summary.runtime.services: evidence of runtime strategies and override provenance (slim, serializable)
-// summary.converge.staticIrByDigest: static IR summaries (deduped by digest, easy to diff)
-console.log(result.evidence.summary)
+console.log(result.summary)
+console.log(result.artifacts)
 ```
 
 Practical steps:
 
-1. Run once with the same inputs to produce a “baseline evidence package” (save it for comparison).
-2. Run again after changes with the same inputs, and compare key fields and event density in `summary`.
+1. Run once with the same inputs to produce a baseline control-plane report.
+2. Run again after changes with the same inputs, and compare `summary`, `errorCode`, `environment`, and artifact refs.
 3. If you only care about performance (not explainability), prefer `diagnosticsLevel: "off"` + smaller `maxEvents` for a quick check.
 
-## 4. Watcher and trait granularity guidelines
+## 4. Watcher and field granularity guidelines
 
-Logix allows many `$.onAction` / `$.onState` watchers and trait nodes within one Module.
+Logix allows many `$.onAction` / `$.onState` watchers and field nodes within one Module.
 From experience, these ballpark numbers can serve as guidance:
 
 - Watcher count per Module / per Logic block:
   - about **≤ 128**: usually “safe”; interaction latency is mostly decided by business logic and React.
   - about **256**: watch for many watchers firing at once and handlers doing heavy work.
   - **≥ 512**: prefer splitting Module/Logic or merging rules instead of stacking more watchers.
-- Trait granularity:
+- Field granularity:
   - for high-frequency fields (e.g. form inputs), avoid too many layers of computed/link nodes;
-  - for statistics only needed on submit, consider computing during submit logic instead of maintaining via traits on every input;
-  - inspect node density around a hot field in TraitGraph; if a hotspot field has too many attached traits, simplify first.
+  - for statistics only needed on submit, consider computing during submit logic instead of maintaining via field behaviors on every input;
+  - inspect node density around a hot field in FieldGraph; if a hotspot field has too many attached field behaviors, simplify first.
 
 Common simplification tactics:
 
 - merge similar rules into structured matching within one watcher instead of duplicating many similar watchers;
-- move recomputation unrelated to UI down into Services or dedicated Flows instead of doing it synchronously in traits/watchers;
+- move recomputation unrelated to UI down into Services or dedicated Flows instead of doing it synchronously in field behaviors/watchers;
 - for long lists/virtual scrolling, prefer list virtualization components to reduce the number of nodes React needs to re-render per state change.
 
 ### 4.1 Writing high-frequency watchers
@@ -275,7 +260,7 @@ If a page has many `$.onAction / $.onState` watchers (or a few but extremely hig
 - **Choose the right `.run*` strategy for the semantics**:
   - **search/suggest/input-driven requests**: `debounce + runLatest` (cancel previous requests on new input; keep only the latest).
   - **submit/save/idempotent ops**: `runExhaust` (ignore new events while busy; avoid duplicate submits).
-  - **allow concurrency but cap it**: when using `runParallel`, remember concurrency is constrained by the Runtime’s concurrency policy; avoid assuming “unbounded parallelism” in performance-sensitive modules (see [Concurrency control plane](./concurrency-control-plane)).
+  - **allow concurrency but cap it**: when using `runParallel`, remember concurrency is constrained by the Runtime’s concurrency policy; avoid assuming “unbounded parallelism” in performance-sensitive modules (see [Concurrency policy](./concurrency-policy)).
 - **Prefer reducers over watchers when possible**: if an Action only performs pure synchronous state updates, prefer `$.reducer(...)` (or Module Reducer) and reserve watchers for I/O or complex orchestration.
 - **Make `onState` selectors return stable values**:
   - selector dedupe usually relies on value/reference equality; if you return a new object/array every time, it’s almost always considered “changed”, amplifying watcher pressure.
@@ -294,11 +279,11 @@ When a page “feels janky”, check in this order:
 3. **Adjust observability strategy**
    - Locally switch the target module or Runtime to `instrumentation = "light"` and compare performance.
    - If the difference is significant, observability is consuming part of the budget; in DevTools, consider disabling deep events or shrinking the event window.
-4. **Review watcher / trait counts**
-   - Identify high-frequency Actions/fields and the nearby watcher and trait node counts.
+4. **Review watcher / field counts**
+   - Identify high-frequency Actions/fields and the nearby watcher and field node counts.
    - Merge rules or move logic down as suggested above to shorten the per-event processing chain.
 5. **Make trade-offs from the business perspective**
-   - For modules that truly require strong observability (e.g. financial flows, risk control), keep `"full"` instrumentation and fine-grained traits.
+   - For modules that truly require strong observability (e.g. financial flows, risk control), keep `"full"` instrumentation and fine-grained field behaviors.
    - For display-only modules that just need to be fast, use `"light"` + `mode = "basic"` and reserve budget for UI and business logic.
 
 ## 6. Explicit batching and low-priority updates (high-frequency fallback)
@@ -377,17 +362,17 @@ When you see the `state_transaction::dirty_all_fallback` diagnostic in dev, it u
 If your page is dominated by “complex form linkage” or “parameterized queries”, these tips often help:
 
 1. **Treat `deps` as a contract, not a hint**
-   - If you see `state_trait::deps_mismatch` warnings in dev, fix `deps` first:
+   - If you see `field_kernel::deps_mismatch` warnings in dev, fix `deps` first:
      - missing deps can cause “no update when it should update”;
      - overly fine deps can cause “recompute on irrelevant changes”.
    - If a rule truly depends on an entire object, declare a coarser dep (e.g. depend on `profile` instead of `profile.name`).
 
 2. **Use `validateOn / reValidateOn` to control validation workload per keystroke**
    - Default is “two-phase”: before first submit it tends to validate on submit; after first submit it incrementally validates on change/blur.
-   - For cross-row validation, complex deps, or high-frequency forms: prefer a more conservative `validateOn` (e.g. only `"onSubmit"`), and use `controller.validatePaths(...)` to precisely trigger local validation when needed.
+   - For cross-row validation, complex deps, or high-frequency forms: prefer a more conservative `validateOn` (e.g. only `"onSubmit"`), and use `commands.validatePaths(...)` to precisely trigger local validation when needed.
 
-3. **Watch for budget-triggered degradation in traits**
-   - If you see warnings like `trait::budget_exceeded`, it means linkage computation exceeded budget for an interaction.
+3. **Watch for budget-triggered degradation in field behaviors**
+   - If you see warnings like `field::budget_exceeded`, it means linkage computation exceeded budget for an interaction.
    - Common treatments:
      - move heavy computation down into service calls or async tasks (turn synchronous derive into cached results);
      - add equivalence checks to computed values (avoid write-back when nothing changes);
@@ -395,10 +380,10 @@ If your page is dominated by “complex form linkage” or “parameterized quer
 
 4. **Subscribe only to the state slices you truly need in React**
    - Avoid subscribing to whole `values/errors`; prefer a derived view state selector (e.g. `canSubmit/isSubmitting/isValid/isDirty/submitCount`).
-   - `@logixjs/form/react` provides `useFormState(form, selector)` for stable access without scanning huge trees.
+   - Prefer the core host law: `useModule(FormProgram)` plus `useSelector(form, selector)` gives the same stable access without scanning huge trees.
 
 5. **Long lists/nested arrays: provide stable identity**
-   - For “thousand-row forms” or “virtual scrolling”, ensure each row has a stable business id, and provide `trackBy` hints in domain/trait config when available.
+   - For “thousand-row forms” or “virtual scrolling”, ensure each row has a stable business id, and provide `trackBy` hints in domain field config when available.
    - This improves cache reuse and async write-back stability and reduces meaningless invalidation due to insert/reorder.
 
 6. **Query scenarios: ensure the cache engine is injected and enabled**

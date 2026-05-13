@@ -1,16 +1,17 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import React from 'react'
 import * as Logix from '@logixjs/core'
 import { useDevtoolsState, useDevtoolsDispatch } from '../hooks/DevtoolsHooks.js'
 import { ConvergePerformancePane } from '../perf/ConvergePerformancePane.js'
 
-type TimelineEventKind = Logix.Debug.RuntimeDebugEventRef['kind']
+type TimelineEventKind = CoreDebug.RuntimeDebugEventRef['kind']
 
 const classifyEventKind = (event: unknown): TimelineEventKind | undefined => {
-  const ref = Logix.Debug.internal.toRuntimeDebugEventRef(event as Logix.Debug.Event)
+  const ref = CoreDebug.internal.toRuntimeDebugEventRef(event as CoreDebug.Event)
   return ref?.kind
 }
 
-type KindFilter = 'all' | 'action' | 'trait' | 'state' | 'service' | 'view' | 'devtools'
+type KindFilter = 'all' | 'action' | 'field' | 'state' | 'service' | 'view' | 'devtools'
 
 const kindMatchesFilter = (filter: KindFilter, kind: TimelineEventKind | undefined): boolean => {
   if (filter === 'all' || !kind) return true
@@ -19,8 +20,8 @@ const kindMatchesFilter = (filter: KindFilter, kind: TimelineEventKind | undefin
       return kind === 'action'
     case 'state':
       return kind === 'state'
-    case 'trait':
-      return kind === 'trait-computed' || kind === 'trait-link' || kind === 'trait-source'
+    case 'field':
+      return kind === 'field-computed' || kind === 'field-link' || kind === 'field-source'
     case 'service':
       return kind === 'service'
     case 'view':
@@ -38,8 +39,8 @@ const kindLabel = (kind: KindFilter): string => {
       return 'All'
     case 'action':
       return 'Action'
-    case 'trait':
-      return 'Trait'
+    case 'field':
+      return 'Field'
     case 'state':
       return 'State'
     case 'service':
@@ -56,15 +57,24 @@ const kindLabel = (kind: KindFilter): string => {
  * - Renders an EffectOp / Debug event timeline from DevtoolsState.timeline.
  * - The view does not couple to DebugSink implementation; it only consumes derived state.
  */
-export const EffectOpTimelineView: React.FC = () => {
+export interface EffectOpTimelineViewProps {
+  readonly compact?: boolean
+  readonly initialView?: 'events' | 'converge'
+}
+
+export const EffectOpTimelineView: React.FC<EffectOpTimelineViewProps> = ({ compact = false, initialView = 'events' }) => {
   const state = useDevtoolsState()
   const dispatch = useDevtoolsDispatch()
 
-  const { timeline: events, selectedEventIndex, settings, timelineRange } = state
-  const showTraitEvents = settings?.showTraitEvents ?? true
+  const { timeline: events, selectedEventIndex, settings } = state
+  const showFieldEvents = settings?.showFieldEvents ?? true
   const showReactRenderEvents = settings?.showReactRenderEvents ?? true
   const [kindFilter, setKindFilter] = React.useState<KindFilter>('all')
-  const [view, setView] = React.useState<'events' | 'converge'>('events')
+  const [view, setView] = React.useState<'events' | 'converge'>(initialView)
+
+  React.useEffect(() => {
+    setView(initialView)
+  }, [initialView])
 
   const prevLengthRef = React.useRef(events.length)
   const prevLength = prevLengthRef.current
@@ -84,7 +94,7 @@ export const EffectOpTimelineView: React.FC = () => {
 
   return (
     <div
-      className="flex-1 flex flex-col h-full min-h-0 overflow-hidden"
+      className={`${compact ? 'w-full' : 'flex-1'} flex flex-col h-full min-h-0 overflow-hidden`}
       style={{ backgroundColor: 'var(--dt-bg-surface)' }}
     >
       <div
@@ -130,7 +140,7 @@ export const EffectOpTimelineView: React.FC = () => {
             })}
           </div>
           <div className="flex items-center gap-1 ml-2">
-            {((kinds: KindFilter[]) => kinds)(['all', 'action', 'trait', 'state', 'service', 'view', 'devtools']).map(
+            {((kinds: KindFilter[]) => kinds)(['all', 'action', 'field', 'state', 'service', 'view', 'devtools']).map(
               (kind) => {
                 const isActive = kindFilter === kind
                 return (
@@ -189,19 +199,16 @@ export const EffectOpTimelineView: React.FC = () => {
           <div className="flex flex-col min-h-full">
             {ordered.map(({ entry, index: actualIndex }, orderedIndex) => {
               const { event } = entry
-              if (timelineRange && (actualIndex < timelineRange.start || actualIndex > timelineRange.end)) {
-                return null
-              }
-              const ref = event as Logix.Debug.RuntimeDebugEventRef | undefined
+              const ref = event as CoreDebug.RuntimeDebugEventRef | undefined
               if (!ref) return null
               const kind = ref.kind
 
-              const isTraitKind = kind === 'trait-computed' || kind === 'trait-link' || kind === 'trait-source'
+              const isFieldKind = kind === 'field-computed' || kind === 'field-link' || kind === 'field-source'
               const isReactRenderKind = kind === 'react-render' || kind === 'react-selector'
 
-              // Hide Trait-level events or React render events based on global settings,
+              // Hide field-level events or React render events based on global settings,
               // then apply the local kind filter.
-              if (!showTraitEvents && isTraitKind) {
+              if (!showFieldEvents && isFieldKind) {
                 return null
               }
               if (!showReactRenderEvents && isReactRenderKind) {
@@ -218,7 +225,7 @@ export const EffectOpTimelineView: React.FC = () => {
 
               const isAction = kind === 'action'
               const isStateUpdate = kind === 'state'
-              const isTrait = isTraitKind
+              const isField = isFieldKind
               const isReactRender = isReactRenderKind
               const isDevtools = kind === 'devtools'
 
@@ -253,7 +260,7 @@ export const EffectOpTimelineView: React.FC = () => {
                             ? 'var(--dt-state-dim)'
                             : isAction
                               ? 'var(--dt-action-dim)'
-                              : isTrait
+                              : isField
                                 ? 'var(--dt-info)'
                                 : isReactRender
                                   ? 'var(--dt-warning)'

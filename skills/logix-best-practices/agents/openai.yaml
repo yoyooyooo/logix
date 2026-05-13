@@ -1,0 +1,4 @@
+interface:
+  display_name: "Logix Best Practices"
+  short_description: "Generate Logix API code with current guardrails"
+  default_prompt: "Use $logix-best-practices to generate or review Logix code against the current public API and runtime guardrails."

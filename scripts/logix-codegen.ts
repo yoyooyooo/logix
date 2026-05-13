@@ -210,9 +210,14 @@ function renderScaffold(opts: Options, fieldPaths: string[]): string {
       ? "{} as any"
       : "{} as any";
 
+  const formPrelude =
+    opts.kind === "form"
+      ? [`const define = (form: any) => {`, `  const z = form.dsl as any;`, ``, `  form.rules(`, `    z.schema(`, `      z.object({`, `        // TODO: rules`, `      }),`, `    ),`, `  );`, `};`, ``]
+      : [];
+
   const makeCall =
     opts.kind === "form"
-      ? `Form.make("${opts.id}", {\n  ${schemaType}: ${schemaVar},\n  ${initialVar}: ${initialPlaceholder},\n  traits: Form.traits(${schemaVar})({\n    // TODO: traits\n  }),\n})`
+      ? `Form.make("${opts.id}", {\n  ${schemaType}: ${schemaVar},\n  ${initialVar}: ${initialPlaceholder},\n}, define)`
       : `Query.make("${opts.id}", {\n  ${schemaType}: ${schemaVar},\n  ${initialVar}: ${initialPlaceholder},\n  queries: ($) => ({\n    // TODO: queries\n    example: $.source({\n      resource: { id: \"demo/resource\" },\n      deps: [],\n      triggers: [\"manual\"],\n      key: () => undefined,\n    }),\n  }),\n})`;
 
   return [
@@ -221,6 +226,7 @@ function renderScaffold(opts: Options, fieldPaths: string[]): string {
     "",
     `import { ${opts.schemaExport} as ${schemaVar} } from "${schemaImport}";`,
     "",
+    ...formPrelude,
     `export const ${opts.id}FieldPaths = [`,
     ...fieldPaths.map((p) => `  "${p}",`),
     `] as const;`,

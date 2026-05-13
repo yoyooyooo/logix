@@ -29,7 +29,7 @@
 
 ### 2.1 TxnOrigin
 
-- `kind: string`：触发源类别（例如 `action`、`watcher:update`、`trait-source`、`devtools`）。
+- `kind: string`：触发源类别（例如 `action`、`watcher:update`、`field-source`、`devtools`）。
 - `name?: string`：可选显示名。
 - `details?: unknown`：可选细节，必须可序列化（禁止闭包/大型对象图）；默认软上限 2KB（按 JSON 字符串长度估算），超限必须截断/丢字段或省略。
 
@@ -50,8 +50,8 @@
 - `affectedIndices?: ReadonlyArray<number>`（可选；best-effort 索引证据，不稳定，仅用于缺少 key 的过渡场景）
 - `from?: unknown`（可选；full 模式；必须可序列化，不可 `JSON.stringify` 时必须省略）
 - `to?: unknown`（可选；full 模式；必须可序列化，不可 `JSON.stringify` 时必须省略）
-- `reason: string`（例如 `reducer`、`trait-computed`、`trait-link`、`source-refresh`）
-- `stepId?: string`：若来自 trait/program 的 step
+- `reason: string`（例如 `reducer`、`field-computed`、`field-link`、`source-refresh`）
+- `stepId?: string`：若来自 field/program 的 step
 - `nodeId?: string`：若来自 Static IR 的节点锚点（平台对齐用）
 
 **合并/冲突语义（最小裁决）**：
@@ -83,10 +83,10 @@
 
 ### 3.1 IRNode
 
-静态节点描述一个“声明性行为单元”（例如 reducer、trait-computed、trait-source、task 等）：
+静态节点描述一个“声明性行为单元”（例如 reducer、field-computed、field-source、task 等）：
 
 - `nodeId: string`（稳定）
-- `kind: string`（例如 `reducer` / `trait.computed` / `trait.link` / `trait.source` / `check` / `task`）
+- `kind: string`（例如 `reducer` / `field.computed` / `field.link` / `field.source` / `check` / `task`）
 - `reads: ReadonlyArray<FieldPath>`
 - `writes: ReadonlyArray<FieldPath>`（若无法静态确定，必须显式标记为 `writesUnknown=true` 并触发更严格的运行期约束/诊断）
 - `policy?: Record<string, unknown>`（预算、并发语义、降级策略、观测级别等）

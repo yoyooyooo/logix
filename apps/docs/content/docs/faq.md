@@ -1,124 +1,75 @@
 ---
 title: FAQ
-description: Frequently asked questions about Logix, to help you find answers quickly.
+description: Common questions about choosing, using, and operating Logix.
 ---
 
-## Concepts and choosing a solution
+## Choosing Logix
 
-### What’s the difference between Logix and Redux/Zustand?
+### How is Logix different from Redux or Zustand?
 
-| Dimension     | Redux/Zustand                   | Logix                              |
-| ------------- | ------------------------------- | ---------------------------------- |
-| Async         | Needs middleware (thunk/saga)   | Built-in Effect + Flow             |
-| Concurrency   | Managed manually                | Built-in `runLatest/runExhaust`    |
-| Type safety   | Maintained manually             | Derived automatically from Schema  |
-| Observability | Requires external DevTools      | Built-in event pipeline            |
+| Dimension | Redux / Zustand | Logix |
+| --- | --- | --- |
+| async | external middleware or conventions | built into Logic and Effect |
+| concurrency | managed manually | explicit run policies such as `runLatest` and `runExhaust` |
+| type safety | maintained by hand | derived from schema |
+| observability | external tooling | built-in event pipeline |
 
-In short: if your app has complex async/concurrency logic, Logix tends to be a better fit; if you only need simple global state, Zustand can be lighter.
+### How is Logix different from XState?
 
-### What’s the difference between Logix and XState?
+XState is strongest when the problem is a strict state machine.
+Logix is strongest when the problem is data-driven state plus explicit reactions.
 
-- **XState** fits scenarios that require strict state machine modeling (finite states + explicit transitions).
-- **Logix** fits data-driven application logic (state can be any structure + reactive flows).
+### When should Form be used instead of a plain Module?
 
-They can also be used together: use XState for the workflow state machine, and Logix for business data.
+Use a plain module when:
 
-### When should I use `@logixjs/form` instead of a plain Module?
-
-Use a plain Module when:
-
-- It’s a single-field input (search box, toggle).
-- You don’t need complex validation.
+- one or two inputs are enough
+- submit semantics are not needed
+- validation is simple
 
 Use `@logixjs/form` when:
 
-- It’s a multi-field form (3+ fields).
-- You need field-level validation and error display.
-- You need dynamic arrays (add/remove/update/reorder).
-- You need cross-field derived logic and linkage.
+- multiple fields are involved
+- validation and error placement matter
+- dynamic arrays are involved
+- submit gating matters
 
-### Is Effect’s learning curve steep?
+## Using Logix
 
-You don’t need to learn every concept in Effect from day one. Logix’s Bound API (`$`) wraps most low-level details:
-
-```ts
-// You don't need to know Effect details—just this:
-yield* $.onAction('save').run(() => $.state.update((s) => ({ ...s, saved: true })))
-```
-
-Only when you need advanced capabilities (retries, timeouts, resource management) do you need to go deeper into Effect.
-
----
-
-## Usage and debugging
-
-### How do I view Action history in DevTools?
-
-1. Enable DevTools in the Runtime config:
-   ```ts
-   const runtime = Logix.Runtime.make(RootImpl, { devtools: true })
-   ```
-2. Add the DevTools component in your React app:
-   ```tsx
-   import { LogixDevtools } from '@logixjs/devtools-react'
-   ;<LogixDevtools position="bottom-left" />
-   ```
-3. Open your browser and inspect Action events in the timeline.
-
-### Why didn’t my watcher trigger?
+### Why did a watcher not trigger?
 
 Common causes:
 
-1. **Your selector returns the same reference**: `$.onState((s) => s)` triggers on every state change, but `$.onState((s) => s.user)` only triggers when `user` changes.
-2. **Your watcher is in the setup phase**: make sure `$.onAction/$.onState` is called in the run phase (inside `Effect.gen`).
-3. **The Logic isn’t installed**: check that `implement({ logics: [...] })` includes the Logic.
+1. the selected value did not change
+2. the watcher was placed in the wrong phase
+3. the logic was not assembled into the program
 
-### How do I correctly cancel an in-flight request?
+### How should an in-flight request be cancelled?
 
-Use `runLatest`:
+Use `runLatest` when only the newest request should survive.
 
-```ts
-yield* $.onAction('search').runLatest((keyword) =>
-  Effect.gen(function* () {
-    const results = yield* api.search(keyword)
-    yield* $.state.update((s) => ({ ...s, results }))
-  }),
-)
-```
+### How can Action history be inspected?
 
-When a new `search` Action arrives, the previous request is automatically cancelled.
+Enable DevTools on the runtime and mount the DevTools component in the React app.
 
----
+## Production and hosting
 
-## Performance and production
+### What is the runtime overhead?
 
-### What is the overhead of Logix?
+In most application scenarios the overhead is negligible.
+For performance-sensitive paths, use the advanced performance and diagnostics guides.
 
-- **State updates**: based on `SubscriptionRef`, change detection is O(1).
-- **Derived computation**: supports dirty checking and only recomputes affected traits.
-- **DevTools**: overhead can be controlled via `diagnosticsLevel`.
+### How is debug output reduced in production?
 
-In most scenarios the overhead is negligible. For performance-sensitive cases, see [Performance and optimization](./guide/advanced/performance-and-optimization).
+Use production-oriented runtime debug settings and disable DevTools in production builds.
 
-### How do I disable debug output in production?
+### What about SSR or RSC?
 
-```ts
-const runtime = Logix.Runtime.make(RootImpl, {
-  layer: AppInfraLayer,
-  debug: { mode: 'prod' }, // production mode
-  devtools: false, // disable DevTools
-})
-```
+- SSR can run through Runtime execution on the server
+- RSC is not currently the primary execution route for modules; prefer client boundaries
 
-### What about SSR/RSC support?
+## Further reading
 
-- **SSR**: you can pre-render state on the server via `Runtime.runPromise`.
-- **RSC**: running Modules inside Server Components is not directly supported yet; prefer using Modules behind a Client boundary.
-
----
-
-## More resources
-
-- [Troubleshooting](./guide/advanced/troubleshooting): diagnostics and common fixes
-- [Debugging and DevTools](./guide/advanced/debugging-and-devtools): the full debugging guide
-- [React integration recipes](./guide/recipes/react-integration): common patterns
+- [Guide Overview](/docs/guide)
+- [API Reference](/docs/api)
+- [Form](/docs/form)

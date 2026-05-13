@@ -15,7 +15,7 @@ description: 'Task list for 019-txn-perf-controls'
 
 - [x] T001 创建 019 性能产物目录与说明：`specs/019-txn-perf-controls/perf/README.md`, `specs/019-txn-perf-controls/perf/.gitkeep`, `specs/019-txn-perf-controls/perf.md`
 - [x] T002 [P] 复用 014 的浏览器跑道产出 019 基线证据：在 `specs/019-txn-perf-controls/perf/README.md` 固化“SC-001/SC-002/SC-003 → suite/指标/证据字段/预算”的映射与命令模板（`pnpm perf collect -- --out specs/019-txn-perf-controls/perf/after.worktree.json` + `pnpm perf diff ...`），并规定 before/after/diff 的命名约定
-- [x] T003 [P] 收敛 perf 命令入口：统一通过 `.codex/skills/logix-perf-evidence/package.json` 的 scripts 运行 collect/diff（通过 `--out` 约定落盘到 `specs/<id>/perf/`），避免在根 `package.json` 堆积 `perf:<id>:*` 别名
+- [x] T003 [P] 收敛 perf 命令入口：统一通过 `packages/logix-perf-evidence/package.json` 的 scripts 运行 collect/diff（通过 `--out` 约定落盘到 `specs/<id>/perf/`），避免在根 `package.json` 堆积 `perf:<id>:*` 别名
 - [x] T004 [P] 增加 contracts 预检测试：`packages/logix-core/test/Contracts.019.TxnPerfControls.test.ts`（至少验证 schemas JSON 可解析）
 
 ---
@@ -43,8 +43,8 @@ description: 'Task list for 019-txn-perf-controls'
 
 ### Tests for User Story 1
 
-- [x] T011 [P] [US1] 新增“mutate 自动字段级 dirty-set + 普通 reducer 退化 dirtyAll”用例：`packages/logix-core/test/StateTrait.ConvergeAuto.DirtySetFromMutate.test.ts`
-- [x] T012 [P] [US1] 新增 validate 最小集合/去重用例：`packages/logix-core/test/StateTrait.Validate.Incremental.test.ts`
+- [x] T011 [P] [US1] 新增“mutate 自动字段级 dirty-set + 普通 reducer 退化 dirtyAll”用例：`packages/logix-core/test/FieldKernel.ConvergeAuto.DirtySetFromMutate.test.ts`
+- [x] T012 [P] [US1] 新增 validate 最小集合/去重用例：`packages/logix-core/test/FieldKernel.Validate.Incremental.test.ts`
 
 ### Implementation for User Story 1
 
@@ -54,7 +54,7 @@ description: 'Task list for 019-txn-perf-controls'
 - [x] T016 [US1] 明确 reducer 的 dirty-set 口径并消灭默认 `path="*"`：`packages/logix-core/src/internal/runtime/ModuleRuntime.ts`（对 `Logix.Module.Reducer.mutate` 产出字段级 patchPaths；普通 reducer 无法产出证据时确定性降级 dirtyAll+reason，并发出迁移诊断）
 - [x] T017 [US1] 为 `state.update / runtime.setState` 明确降级语义：`packages/logix-core/src/internal/runtime/ModuleRuntime.ts`（保留可用性但把 `path="*"` 解释为 dirtyAll+reason，并在 dev 模式发出可行动 diagnostic）
 - [x] T018 [US1] 事务内 validate 请求合并/去重：`packages/logix-core/src/internal/runtime/ModuleRuntime.ts`（flush 前 dedupe targets；root 请求覆盖其他请求）
-- [x] T019 [US1] 对齐 converge 的 dirtyAll reason（不增加 off 成本）：`packages/logix-core/src/internal/state-trait/converge.ts`（在 decision/reasons 中暴露原因，保持轻载荷裁剪）
+- [x] T019 [US1] 对齐 converge 的 dirtyAll reason（不增加 off 成本）：`packages/logix-core/src/internal/state-field/converge.ts`（在 decision/reasons 中暴露原因，保持轻载荷裁剪）
 
 **Checkpoint**: User Story 1 should be functional and independently testable
 
@@ -64,7 +64,7 @@ description: 'Task list for 019-txn-perf-controls'
 
 **Goal**: 一次触发链路内的同步写回（reducer → converge → validate）最多产生一次可观察提交与一次 state:update。
 
-**Independent Test**: 构造“dispatch + scopedValidate + traits 派生”的链路，验证同一 linkId 下 `state:update` ≤ 1，且最终 state 与 errors 正确。
+**Independent Test**: 构造“dispatch + scopedValidate + fields 派生”的链路，验证同一 linkId 下 `state:update` ≤ 1，且最终 state 与 errors 正确。
 
 ### Tests for User Story 2
 
@@ -149,8 +149,8 @@ description: 'Task list for 019-txn-perf-controls'
 ### Parallel Example: US1
 
 ```bash
-Task: "T011 [US1] packages/logix-core/test/StateTrait.ConvergeAuto.DirtySetFromMutate.test.ts"
-Task: "T012 [US1] packages/logix-core/test/StateTrait.Validate.Incremental.test.ts"
+Task: "T011 [US1] packages/logix-core/test/FieldKernel.ConvergeAuto.DirtySetFromMutate.test.ts"
+Task: "T012 [US1] packages/logix-core/test/FieldKernel.Validate.Incremental.test.ts"
 Task: "T013 [US1] packages/logix-core/src/internal/runtime/core/mutativePatches.ts"
 ```
 

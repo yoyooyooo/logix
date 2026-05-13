@@ -1,7 +1,7 @@
 # Specification Quality Checklist: logix-galaxy 项目管理与 RBAC（成员/角色/权限/成员组）
 
-**Purpose**: 校验 `spec.md` 是否清晰、可测试、可进入 `$speckit plan`  
-**Created**: 2025-12-31  
+**Purpose**: 校验 `spec.md` 是否清晰、可测试、可进入 `$speckit plan`
+**Created**: 2025-12-31
 **Feature**: `specs/066-galaxy-project-rbac/spec.md`
 
 ## Completeness

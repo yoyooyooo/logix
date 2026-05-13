@@ -22,9 +22,9 @@
 
 - `specs/045-dual-kernel-contract/`（可替换内核契约与对照验证跑道）
 - `specs/057-core-ng-static-deps-without-proxy/`（读状态车道：ReadQuery/SelectorSpec + SelectorGraph）
-- `specs/039-trait-converge-int-exec-evidence/`（当前内核热路径整型化与证据达标）
-- `specs/043-trait-converge-time-slicing/`（显式 opt-in 的语义改变：跨帧/降频）
-- `specs/044-trait-converge-diagnostics-sampling/`（新观测口径：采样诊断）
+- `specs/039-field-converge-int-exec-evidence/`（当前内核热路径整型化与证据达标）
+- `specs/043-field-converge-time-slicing/`（显式 opt-in 的语义改变：跨帧/降频）
+- `specs/044-field-converge-diagnostics-sampling/`（新观测口径：采样诊断）
 - `specs/060-react-priority-scheduling/`（Txn Lanes：更新优先级 / 可解释调度）
 - `docs/specs/drafts/topics/logix-ng-architecture/`（NG 架构探索草案：非裁决、供参考）
 
@@ -35,8 +35,8 @@
 - Q: 这里的 ReadQuery/SelectorSpec 是否等同于领域层 `@logixjs/query`？ → A: 不等同。ReadQuery 只描述“读状态依赖与投影”，用于渲染/派生/订阅的静态化与可解释性；领域 Query 仍负责“服务调用/缓存/请求”等。
 - Q: 不安装任何编译插件时是否仍可用？ → A: 必须可用。默认走 Runtime JIT；无法静态化时可回退到 Dynamic，但回退必须可观测/可审计，并在 Strict Gate 下可变为失败。
 - Q: `$logix-perf-evidence` 的采集隔离要求怎么定？ → A: 允许在 dev 工作区采集（可为 git dirty），但必须确保 `matrix/config/env` 一致，并保留 `git.dirty.*` warnings；若出现 `stabilityWarning` 或结论存疑，必须复测（必要时 `profile=soak`）。
-- Q: perf evidence 的 suites/budgets 的单一事实源（SSoT）怎么定？ → A: 统一以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为 SSoT（至少覆盖 `priority=P1`），并以 `matrixId+matrixHash` 保证可比性；硬结论至少 `profile=default`。
-- Q: 047 Full Cutover Gate 的 coverage matrix（必选 serviceId 列表）SSoT 落点？ → A: 以代码为 SSoT：在 `@logixjs/core`（优先 `packages/logix-core/src/Kernel.ts`）导出读取入口；测试/CI/harness 只读此处；spec/docs 仅解释口径。
+- Q: perf evidence 的 suites/budgets 的单一事实源（SSoT）怎么定？ → A: 统一以 `packages/logix-perf-evidence/assets/matrix.json` 为 SSoT（至少覆盖 `priority=P1`），并以 `matrixId+matrixHash` 保证可比性；硬结论至少 `profile=default`。
+- Q: 047 Full Cutover Gate 的 coverage matrix（必选 serviceId 列表）SSoT 落点？ → A: 以代码为 SSoT：在 `@logixjs/core`（优先 `packages/logix-core/src/internal/kernel-api.ts`）导出读取入口；测试/CI/harness 只读此处；spec/docs 仅解释口径。
 - Q: 从哪个里程碑开始强制要求以独立包 `@logixjs/core-ng` 承载 core-ng？ → A: M2 起强制（进入 trial-run/test/dev 渐进替换就必须是独立包；否则不计入 core-ng 证据与 Gate）。
 - Q: 047 Full Cutover Gate 的 coverage 是否要求全覆盖 Kernel Contract 的可替换 services？ → A: 要求全覆盖：coverage 必须等于 Kernel Contract 当前所有可替换 `serviceId`；新增 `serviceId` 必须同步纳入，否则视为 Gate 失真。
 - Q: 047 Gate 失败输出的最小可序列化证据锚点必须包含哪些字段？ → A: `kernelId + missingServiceIds + moduleId/instanceId/txnSeq`（完整 runtimeServicesEvidence 仅 light/full）。
@@ -115,11 +115,11 @@
 ### Functional Requirements
 
 - **FR-001**: 路线图 MUST 固化为 `specs/` 下的正式交付物，并以“里程碑 + 门槛 + 边界”的形式表达，使读者不依赖草案也能做决策。
-- **FR-002**: 路线图 MUST 明确 045 的分支点作用：稳定 Kernel Contract，并定义“切换默认内核到 core-ng”的硬门槛（契约一致性验证 + 证据门禁 + 无 fallback/可解释）；其中 047 Full Cutover Gate 的 coverage matrix 必须以代码为单一事实源（`@logixjs/core` 导出，优先落点：`packages/logix-core/src/Kernel.ts`）。
+- **FR-002**: 路线图 MUST 明确 045 的分支点作用：稳定 Kernel Contract，并定义“切换默认内核到 core-ng”的硬门槛（契约一致性验证 + 证据门禁 + 无 fallback/可解释）；其中 047 Full Cutover Gate 的 coverage matrix 必须以代码为单一事实源（`@logixjs/core` 导出，优先落点：`packages/logix-core/src/internal/kernel-api.ts`）。
 - **FR-002 (clarified)**: 路线图 MUST 明确：从 M2（trial-run/test/dev 渐进替换）起，core-ng 必须是独立包 `@logixjs/core-ng`（`packages/logix-core-ng/`）；否则不得将其作为 core-ng 证据或用于宣称 Gate PASS。
 - **FR-002 (clarified-2)**: 路线图 MUST 明确：047 Full Cutover Gate 的 coverage 必须全覆盖 Kernel Contract 当前所有可替换 `serviceId`；任何新增可替换 serviceId 必须同步纳入 coverage matrix（否则 Gate 语义失真）。
 - **FR-002 (clarified-3)**: 路线图 MUST 明确：047 Gate FAIL 时必须输出 Slim、可序列化的失败证据锚点，至少包含 `kernelId + missingServiceIds + moduleId/instanceId/txnSeq`；完整 `runtimeServicesEvidence` 只允许在 diagnostics=light/sampled/full 下输出。
-- **FR-003**: 路线图 MUST 给出 `specs/039-trait-converge-int-exec-evidence/` 的后续处置策略：它在“当前内核加固/NG 原则验证/core-ng 风险拦截”中的定位、以及何时可视为完成/冻结。
+- **FR-003**: 路线图 MUST 给出 `specs/039-field-converge-int-exec-evidence/` 的后续处置策略：它在“当前内核加固/NG 原则验证/core-ng 风险拦截”中的定位、以及何时可视为完成/冻结。
 - **FR-004**: 路线图 MUST 回答工具链问题：core-ng 的进阶不以 Vite/AOT 为前置条件；若未来引入 AOT/编译工具链，必须明确触发条件、失败回退口径与证据门禁，并要求另立 feature spec 承载。
 - **FR-005**: 路线图 MUST 明确哪些探索属于“语义改变/新口径”（例如 time-slicing、采样诊断）并指向独立 spec（避免混入纯优化链路）。
 - **FR-006**: 路线图 MUST 明确“编译友好（AOT-ready）但不绑定工具链”的底层目标：底层契约与 IR 形态应允许未来把“构造期预编译”前移到构建阶段作为可选优化（视为同一套工件/证据的另一种生产方式），但不得让上层生态或默认运行路径被工具链绑死。

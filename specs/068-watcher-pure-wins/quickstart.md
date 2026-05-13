@@ -1,6 +1,6 @@
 # Quickstart: 068 Watcher 纯赚性能优化
 
-**Spec**: `specs/068-watcher-pure-wins/spec.md`  
+**Spec**: `specs/068-watcher-pure-wins/spec.md`
 **Plan**: `specs/068-watcher-pure-wins/plan.md`
 
 本 quickstart 用于在实现落地后快速验收本 spec 的关键门槛：回归用例 + perf evidence（Node + Browser）。

@@ -19,15 +19,6 @@
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
-    "./Client": "./src/Client.ts",
-    "./Protocol": "./src/Protocol.ts",
-    "./Service": "./src/Service.ts",
-    "./Types": "./src/Types.ts",
-    "./Vite": {
-      "types": "./dist/Vite.d.ts",
-      "import": "./dist/Vite.js",
-      "require": "./dist/Vite.cjs"
-    },
     "./vite": {
       "types": "./dist/Vite.d.ts",
       "import": "./dist/Vite.js",
@@ -43,31 +34,6 @@
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js",
         "require": "./dist/index.cjs"
-      },
-      "./Client": {
-        "types": "./dist/Client.d.ts",
-        "import": "./dist/Client.js",
-        "require": "./dist/Client.cjs"
-      },
-      "./Protocol": {
-        "types": "./dist/Protocol.d.ts",
-        "import": "./dist/Protocol.js",
-        "require": "./dist/Protocol.cjs"
-      },
-      "./Service": {
-        "types": "./dist/Service.d.ts",
-        "import": "./dist/Service.js",
-        "require": "./dist/Service.cjs"
-      },
-      "./Types": {
-        "types": "./dist/Types.d.ts",
-        "import": "./dist/Types.js",
-        "require": "./dist/Types.cjs"
-      },
-      "./Vite": {
-        "types": "./dist/Vite.d.ts",
-        "import": "./dist/Vite.js",
-        "require": "./dist/Vite.cjs"
       },
       "./vite": {
         "types": "./dist/Vite.d.ts",

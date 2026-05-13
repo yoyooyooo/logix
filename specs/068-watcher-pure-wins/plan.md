@@ -1,6 +1,6 @@
 # Implementation Plan: 068 Watcher 纯赚性能优化（全量交付，不拆短/中长期）
 
-**Branch**: `068-watcher-pure-wins` | **Date**: 2025-12-31 | **Spec**: `specs/068-watcher-pure-wins/spec.md`  
+**Branch**: `068-watcher-pure-wins` | **Date**: 2025-12-31 | **Spec**: `specs/068-watcher-pure-wins/spec.md`
 **Input**: Feature specification from `specs/068-watcher-pure-wins/spec.md`
 
 ## Summary
@@ -19,14 +19,14 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.8.x（ESM；以仓库 `package.json` 为准）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（browser evidence）`@logixjs/react`  
-**Storage**: N/A（证据落盘到 `specs/068-watcher-pure-wins/perf/*`）  
-**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）  
-**Target Platform**: Node.js 20+ + modern browsers  
-**Project Type**: pnpm workspace（`packages/*` + `examples/*`）  
-**Performance Goals**: watcher 压力回归无退化；Action/State 的 fan-out 在对照场景中有可判定改善；编译期优化 on/off 行为一致且可解释回退（见 `spec.md` 的 SC-001~SC-005）。  
-**Constraints**: 默认近零诊断税；统一最小 IR + 稳定锚点（instanceId/txnSeq/opSeq）；事务窗口禁 IO；AOT-ready but not AOT-required（无构建期插件也能用，启用编译期优化仅做保守正确的增强）；consumer 不直接依赖 `@logixjs/core-ng`  
+**Language/Version**: TypeScript 5.8.x（ESM；以仓库 `package.json` 为准）
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（browser evidence）`@logixjs/react`
+**Storage**: N/A（证据落盘到 `specs/068-watcher-pure-wins/perf/*`）
+**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）
+**Target Platform**: Node.js 20+ + modern browsers
+**Project Type**: pnpm workspace（`packages/*` + `examples/*`）
+**Performance Goals**: watcher 压力回归无退化；Action/State 的 fan-out 在对照场景中有可判定改善；编译期优化 on/off 行为一致且可解释回退（见 `spec.md` 的 SC-001~SC-005）。
+**Constraints**: 默认近零诊断税；统一最小 IR + 稳定锚点（instanceId/txnSeq/opSeq）；事务窗口禁 IO；AOT-ready but not AOT-required（无构建期插件也能用，启用编译期优化仅做保守正确的增强）；consumer 不直接依赖 `@logixjs/core-ng`
 **Scale/Scope**: 聚焦 watcher 分发与订阅传播，不引入“丢弃/重排/合并 Action”的隐式语义
 
 ## Kernel support matrix
@@ -59,7 +59,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 ## Perf Evidence Plan（MUST）
 
 - Baseline 语义：代码前后（before=改动前，after=改动后）
-- Matrix SSoT：`.codex/skills/logix-perf-evidence/assets/matrix.json`
+- Matrix SSoT：`packages/logix-perf-evidence/assets/matrix.json`
 - Hard conclusion：交付结论必须 `profile=default`（`quick` 仅线索；需要更稳可用 `soak` 复核）
 - PASS 判据：`pnpm perf diff` 输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`
 
@@ -105,7 +105,7 @@ packages/logix-core/
 packages/logix-react/
 └── test/browser/perf-boundaries/**  # 新增 068 的 browser perf boundary
 
-.codex/skills/logix-perf-evidence/
+packages/logix-perf-evidence/
 └── scripts/**  # 新增 068 的 perf suites（node + browser）
 ```
 

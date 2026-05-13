@@ -5,7 +5,7 @@ import { ThemeDef, type Theme } from '../modules/ThemeModule'
 export type { Theme } from '../modules/ThemeModule'
 
 export function useTheme() {
-  const runtime = useModule(ThemeDef)
+  const runtime = useModule(ThemeDef.tag)
   const dispatch = useDispatch(runtime)
   const theme = useSelector(runtime, (s) => s.theme as Theme)
 

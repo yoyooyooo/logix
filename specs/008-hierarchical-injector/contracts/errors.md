@@ -34,5 +34,5 @@ prod 环境下可降级为短消息，但必须保持：
 
 错误的修复建议至少要覆盖两类动作：
 
-1. **补齐提供者**：例如 “`Parent.implement({ imports: [Child.impl] })`” / “在 root layer 提供单例”。
+1. **补齐提供者**：例如 “`Program.make(Parent, { capabilities: { imports: [ChildProgram] } })`” / “在 root layer 提供单例”。
 2. **选择正确语义**：例如 “如果想要单例（当前运行环境），使用 `useModule(Child.tag)`；如果想要固定 root provider 的单例，使用 `Root.resolve(Child.tag)`（React 侧通过 `runtime.run*` 执行）”；“如果想要多实例，透传 `ModuleRef`，不要按 Tag 猜”。

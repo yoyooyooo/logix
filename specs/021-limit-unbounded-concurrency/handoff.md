@@ -2,7 +2,7 @@
 
 > 目的：由于“上下文不够”，把这次对 020 落地结果的复核结论、可复用落点、未决设计点与下一步执行计划固化到仓库，便于后续继续推进 021。
 
-Date: 2025-12-22  
+Date: 2025-12-22
 Scope: `specs/021-limit-unbounded-concurrency/`（并发护栏与预警：限制无上限并发）
 
 ## TL;DR（结论摘要）
@@ -25,8 +25,8 @@ Scope: `specs/021-limit-unbounded-concurrency/`（并发护栏与预警：限制
 - 已完成并勾选：`specs/021-limit-unbounded-concurrency/tasks.md` 的 `T011–T015`、`T018–T021`。
 - `dispatch` 的 lossless/backpressure publish 已移出事务窗口与 txnQueue 消费 fiber（避免 bounded PubSub 下的循环等待死锁）。
 - `concurrency::pressure` 由 `packages/logix-core/src/internal/runtime/core/ConcurrencyDiagnostics.ts` 统一发射（实例作用域冷却/合并；`trigger.details` 至少包含 `configScope/limit`）。
-- 修复一个被“事务内 enqueue 禁止”暴露出来的旧路径：list.item source refresh 的 IO fiber 需要显式 `Effect.locally(TaskRunner.inSyncTransactionFiber, false)`，否则后续写回会被误判为事务窗口内并被阻断（见 `packages/logix-core/src/internal/state-trait/source.ts`）。
-- `packages/logix-core/src/internal/runtime/core/runtimeInternalsAccessor.ts` 修正了对 ModuleTag（函数对象）的识别，恢复 `Debug.getModuleTraits*` 在 test/build-env 下读取 `StateTraitProgram` 的能力。
+- 修复一个被“事务内 enqueue 禁止”暴露出来的旧路径：list.item source refresh 的 IO fiber 需要显式 `Effect.locally(TaskRunner.inSyncTransactionFiber, false)`，否则后续写回会被误判为事务窗口内并被阻断（见 `packages/logix-core/src/internal/state-field/source.ts`）。
+- `packages/logix-core/src/internal/runtime/core/runtimeInternalsAccessor.ts` 修正了对 ModuleTag（函数对象）的识别，恢复 `Debug.getModuleFields*` 在 test/build-env 下读取 `FieldProgram` 的能力。
 
 US1 之后的主线：
 
@@ -57,7 +57,7 @@ US1 之后的主线：
   - 冷却窗口内重复 `concurrency::pressure` 合并；下次 emit 时携带 `degradeStrategy="cooldown"` 与 `suppressedCount`；
   - 补齐 `sampleRate/droppedCount` 字段位（当前默认 `sampleRate=1`、`droppedCount=0`）。
 - 文档同步：
-  - 用户文档新增并接入导航：`apps/docs/content/docs/guide/advanced/concurrency-control-plane.md`、`apps/docs/content/docs/guide/advanced/meta.json`
+  - 用户文档新增并接入导航：`apps/docs/content/docs/guide/advanced/concurrency-policy.md`、`apps/docs/content/docs/guide/advanced/meta.json`
   - runtime SSoT 补齐并发诊断 code 与 details schema 口径：`docs/ssot/runtime/logix-core/observability/09-debugging.md`
 
 ## 已确认可复用/已实现的 020 相关落点（对 021 直接有用）
@@ -108,7 +108,7 @@ US1 之后的主线：
 
 ### 021 perf 证据落点与 runner
 
-- `.codex/skills/logix-perf-evidence/package.json` 已有：
+- `packages/logix-perf-evidence/package.json` 已有：
   - `collect` / `collect:quick`（通过 `--out` 落盘到 `specs/<id>/perf/*`）
   - `diff`（通过 `--out` 落盘到 `specs/<id>/perf/*`）
 - `specs/021-limit-unbounded-concurrency/perf/README.md`
@@ -210,7 +210,7 @@ US1 之后的主线：
    - multi-module starvation
    - pressure warning & diagnostics degrade
 6. 文档与证据：
-   - `apps/docs/content/docs/guide/advanced/concurrency-control-plane.md` + `meta.json`
+   - `apps/docs/content/docs/guide/advanced/concurrency-policy.md` + `meta.json`
    - perf：按 `specs/021-limit-unbounded-concurrency/perf/README.md` 用 `pnpm perf collect:quick -- --out ...` / `diff -- --out ...` 采集 before/after/diff，并把摘要写到 `specs/021-limit-unbounded-concurrency/perf.md`。
 
 ---
@@ -241,18 +241,18 @@ US1 之后的主线：
 - 诊断信号（pressure / unbounded opt-in / cooldown 合并）：`packages/logix-core/src/internal/runtime/core/ConcurrencyDiagnostics.ts`
 - contracts gate：`specs/021-limit-unbounded-concurrency/contracts/concurrency-diagnostic-details.schema.json`
   - 对应测试：`packages/logix-core/test/Contracts.021.LimitUnboundedConcurrency.test.ts`
-- 用户文档：`apps/docs/content/docs/guide/advanced/concurrency-control-plane.md`
+- 用户文档：`apps/docs/content/docs/guide/advanced/concurrency-policy.md`
 
 ### 工程性修复（本次为通过 typecheck/test 的必要收敛）
 
-- 将若干 state-trait helper 的 `Effect` 环境类型从 `any` 收敛为 `never`，避免 runtime hot path 的 `any` 泄漏：
-  - `packages/logix-core/src/internal/state-trait/converge.ts`
-  - `packages/logix-core/src/internal/state-trait/validate.ts`
-  - `packages/logix-core/src/internal/state-trait/source.ts`
+- 将若干 state-field helper 的 `Effect` 环境类型从 `any` 收敛为 `never`，避免 runtime hot path 的 `any` 泄漏：
+  - `packages/logix-core/src/internal/state-field/converge.ts`
+  - `packages/logix-core/src/internal/state-field/validate.ts`
+  - `packages/logix-core/src/internal/state-field/source.ts`
 - 修复示例包的类型推导漂移（`Effect.gen` 在 `any` 上退化为 `unknown`），避免全仓 typecheck 被 `@examples/logix-react` 阻塞：
   - `examples/logix-react/src/demos/PerfTuningLabLayout.tsx`
 - 调整一条 converge auto 决策测试用例，使其符合“先提供字段级 dirty-set 证据，再进行 setState”的既有约束：
-  - `packages/logix-core/test/StateTrait.ConvergeAuto.BasicDecision.test.ts`
+  - `packages/logix-core/test/FieldKernel.ConvergeAuto.BasicDecision.test.ts`
 
 ### 非阻塞改进建议（review 吸收，已落地）
 
@@ -262,5 +262,5 @@ US1 之后的主线：
 ### Perf baseline worktree（可选清理）
 
 - 本次为了采集 Before，在本机创建了 git worktree：
-  - 路径：`/Users/yoyo/Documents/code/personal/intent-flow-perf-before`
-  - 清理：`git worktree remove /Users/yoyo/Documents/code/personal/intent-flow-perf-before`
+  - 路径：`/Users/yoyo/Documents/code/personal/logix.worktrees/next-api-perf-before`
+  - 清理：`git worktree remove /Users/yoyo/Documents/code/personal/logix.worktrees/next-api-perf-before`

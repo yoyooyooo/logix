@@ -1,7 +1,7 @@
 # Specification Quality Checklist: 017 调参实验场（基于 014 跑道，消费 013 控制面）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-20  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-20
 **Feature**: `specs/017-perf-tuning-lab/spec.md`
 
 ## Content Quality

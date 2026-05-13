@@ -1,6 +1,6 @@
 # Quickstart: 001-effectop-unify-boundaries
 
-**Feature**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/001-effectop-unify-boundaries/spec.md`  
+**Feature**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/001-effectop-unify-boundaries/spec.md`
 **Goal**: 用最小示例证明三件事：所有边界必经总线、守卫拒绝是显式失败且无副作用、同一链路可通过 linkId 关联。
 
 ## 1) 最小验收场景

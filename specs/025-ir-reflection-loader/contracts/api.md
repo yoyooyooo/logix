@@ -1,9 +1,9 @@
 # Contract: IR Reflection & Trial Run API
 
-**Date**: 2025-12-24  
-**Feature**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/025-ir-reflection-loader/spec.md`
+**Date**: 2025-12-24
+**Feature**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/025-ir-reflection-loader/spec.md`
 
-> 本文件定义对外 API 与行为契约（以 `@logixjs/core` 为主事实源），用于后续实现与测试对齐。  
+> 本文件定义对外 API 与行为契约（以 `@logixjs/core` 为主事实源），用于后续实现与测试对齐。
 > 具体函数命名可在实现阶段微调，但必须满足下述语义与确定性约束。
 
 ## Terminology
@@ -16,13 +16,13 @@
 
 ## Public API (core)
 
-### `Reflection.extractManifest(module, options?)`
+### `CoreReflection.extractManifest(module, options?)`
 
 **Purpose**: 从用户导出的 `Module` 对象提取 `ModuleManifest`（不依赖 AST）。
 
 **Inputs**:
 
-- `module`：与 024 的 program runner **同形**（首个载体）：`AnyModule` / `ModuleImpl`（最终对象形状，可能由工厂/trait 组合生成；也可能已被 `.implement(...)` 变为可运行蓝图）。
+- `program`：与 024 的 program runner 同形，使用 `Program.make(...)` 产物作为反射输入。
 - `options?`：
   - `includeStaticIr?: boolean`：是否尝试导出 `StaticIR`（默认可为 false，以保持 Manifest slim）。
   - `budgets?: { maxBytes?: number }`：输出裁剪预算（超限必须显式降级或标注）。
@@ -34,16 +34,16 @@
 - `digest` 必须只由结构字段决定（不包含 `meta/source`），用于减少 CI diff 噪音。
 - Schema 相关默认只输出 `schemaKeys`；若未来引入 Schema→JSON Schema 转换，可通过可选字段扩展，但不得破坏确定性。
 
-### `Reflection.exportStaticIr(module, options?)`
+### `CoreReflection.exportStaticIr(module, options?)`
 
-**Purpose**: 为具备声明式 traits 的 module 导出 `StaticIR`（FR-010）。
+**Purpose**: 为具备声明式 fields 的 module 导出 `StaticIR`（FR-010）。
 
 **Behavior**:
 
-- MUST 复用 `StateTrait.exportStaticIr` 的 canonical 形态（见 `specs/025-ir-reflection-loader/data-model.md`）。
-- 若 module 不包含可导出关系（例如无 traits），MUST 返回 `undefined` 或空对象（但调用语义稳定）。
+- MUST 复用 `FieldKernel.exportStaticIr` 的 canonical 形态（见 `specs/025-ir-reflection-loader/data-model.md`）。
+- 若 module 不包含可导出关系（例如无 fields），MUST 返回 `undefined` 或空对象（但调用语义稳定）。
 
-### `Reflection.diffManifest(before, after, options?)`（拟新增）
+### `CoreReflection.diffManifest(before, after, options?)`（拟新增）
 
 **Purpose**: 对比两份 `ModuleManifest`，输出可机器消费且可 UI 渲染的差异摘要（CI Contract Guard；FR-009）。
 
@@ -70,7 +70,7 @@
   - `WARN`：无 BREAKING，但存在 `severity=RISKY`
   - `PASS`：只有 INFO 或无变化
 
-### `Observability.trialRun(program, options?)`
+### `Runtime.trial(program, options?)`
 
 **Purpose**: 受控试跑任意 Effect 程序并导出 EvidencePackage（已有实现，025 复用）。
 
@@ -80,7 +80,7 @@
 - CI/平台场景 MUST 支持显式注入 `runId`（禁止默认非确定性 runId 用于 diff）。
 - EvidencePackage.summary 必须是 JsonValue；可包含 `runtime.services`（RuntimeServicesEvidence）等摘要。
 
-### `Observability.trialRunModule(module, options?)`（拟新增）
+### `Runtime.trial(module, options?)`（拟新增）
 
 **Purpose**: 对 module 做一次“构建/装配阶段”的受控试跑，并导出 `TrialRunReport`（平台/CI 入口）。
 

@@ -1,7 +1,7 @@
 # Contract: Root Runtime Runner API
 
-**Date**: 2025-12-23  
-**Feature**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/024-root-runtime-runner/spec.md`
+**Date**: 2025-12-23
+**Feature**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/024-root-runtime-runner/spec.md`
 
 > 本文件定义对外 API 与行为契约（以 `@logixjs/core` 为主事实源），用于后续实现与测试对齐。具体函数命名可在实现阶段微调，但必须满足下述语义。
 >
@@ -82,7 +82,7 @@
 
 **Inputs**:
 
-- `programModule`：program module（必须有 `.impl`；推荐通过 `ModuleDef.implement({ initial, logics, imports, processes })` 构造）
+- `programModule`：`Program.make(ModuleDef, { initial, logics, capabilities })` 的结果
 - `body(api)`：测试主流程（显式表达退出条件；成功/失败都会触发释放收束）
 - `options?`：透传 runner 所需的最小配置：
   - MUST 透传 `RuntimeOptions`（尤其 `layer/onError`）

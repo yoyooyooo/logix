@@ -1,7 +1,7 @@
 # Contracts: React 冷启动/解析策略
 
-**Feature**: `042-react-runtime-boot-dx`  
-**Created**: 2025-12-27  
+**Feature**: `042-react-runtime-boot-dx`
+**Created**: 2025-12-27
 
 本特性不新增 HTTP/Schema 等对外协议文件；对外契约体现为 `@logixjs/react` 的 TypeScript API（RuntimeProvider props / hooks options / 可注入配置 Tag）。
 

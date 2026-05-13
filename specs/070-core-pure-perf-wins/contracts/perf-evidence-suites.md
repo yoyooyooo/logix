@@ -4,7 +4,7 @@
 
 ### 1) Node：`converge.txnCommit`
 
-- 目的：验证 trait converge 的 decision/dirtySummary 门控与 DebugSink fast-path 不引入回归，并捕捉默认税改善。
+- 目的：验证 field converge 的 decision/dirtySummary 门控与 DebugSink fast-path 不引入回归，并捕捉默认税改善。
 - 命令形态：见 `specs/070-core-pure-perf-wins/plan.md` 的 `Perf Evidence Plan（MUST）`。
 
 ### 2) Browser：`diagnostics.overhead.e2e`

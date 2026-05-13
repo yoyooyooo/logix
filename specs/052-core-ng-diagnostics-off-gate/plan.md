@@ -1,6 +1,6 @@
 # Implementation Plan: 052 diagnostics=off 近零成本 Gate（回归防线）
 
-**Branch**: `052-core-ng-diagnostics-off-gate` | **Date**: 2025-12-29 | **Spec**: `specs/052-core-ng-diagnostics-off-gate/spec.md`  
+**Branch**: `052-core-ng-diagnostics-off-gate` | **Date**: 2025-12-29 | **Spec**: `specs/052-core-ng-diagnostics-off-gate/spec.md`
 **Input**: Feature specification from `specs/052-core-ng-diagnostics-off-gate/spec.md`
 
 ## Summary
@@ -19,20 +19,20 @@
 
 - Decision: Gate baseline 以 `diagnostics=off` 为准；light/full 仅用于解释链路与开销曲线（source: 039/044）
 - Decision: 本 spec 作为“全局闸门”：覆盖 049/050/051 的 off 行为（source: 046 P1 边界）
-- Decision: perf evidence 以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为 SSoT，交付结论以 `profile=default`（或 `soak`）且 `meta.comparability.comparable=true && summary.regressions==0` 为硬门（source: spec clarify AUTO）
+- Decision: perf evidence 以 `packages/logix-perf-evidence/assets/matrix.json` 为 SSoT，交付结论以 `profile=default`（或 `soak`）且 `meta.comparability.comparable=true && summary.regressions==0` 为硬门（source: spec clarify AUTO）
 - Decision: before/after 必须隔离采集（独立 worktree/目录），混杂改动结果仅作线索（source: spec clarify AUTO）
 - Decision: Node+Browser 都必须 Gate PASS，任一失败整体 FAIL（source: spec clarify AUTO）
 - Decision: P1 Gate 以默认 `kernelId=core` 为准；`core-ng` 仅 compare-only/试跑且不得引入显著回归（source: spec clarify AUTO）
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（实现阶段）`@logixjs/core-ng`  
-**Storage**: N/A（证据落盘到 `specs/052-core-ng-diagnostics-off-gate/perf/*`）  
-**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）  
-**Target Platform**: Node.js 20+ + modern browsers（必须含 ≥1 headless browser evidence）  
-**Project Type**: pnpm workspace  
-**Performance Goals**: `diagnostics.overhead.e2e`（Browser）+ 关键 Node bench diff 无回归  
+**Language/Version**: TypeScript 5.9.x（ESM）
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（实现阶段）`@logixjs/core-ng`
+**Storage**: N/A（证据落盘到 `specs/052-core-ng-diagnostics-off-gate/perf/*`）
+**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）
+**Target Platform**: Node.js 20+ + modern browsers（必须含 ≥1 headless browser evidence）
+**Project Type**: pnpm workspace
+**Performance Goals**: `diagnostics.overhead.e2e`（Browser）+ 关键 Node bench diff 无回归
 **Constraints**: off 档位近零成本；统一最小 IR + 稳定锚点；事务窗口禁 IO；consumer 不直接依赖 core-ng
 
 ## Constitution Check
@@ -51,7 +51,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 ## Perf Evidence Plan（MUST）
 
-- Matrix SSoT：`.codex/skills/logix-perf-evidence/assets/matrix.json`
+- Matrix SSoT：`packages/logix-perf-evidence/assets/matrix.json`
 - Hard conclusion：`profile=default`（或 `soak`；`quick` 仅线索不可下硬结论）
 - 采集隔离：before/after/diff 必须在独立 `git worktree/单独目录` 中采集
 - PASS 判据：`pnpm perf diff` 输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`
@@ -89,7 +89,7 @@ specs/052-core-ng-diagnostics-off-gate/
 ```text
 packages/logix-core/
 ├── src/Debug.ts
-├── src/internal/state-trait/converge.ts
+├── src/internal/state-field/converge.ts
 └── src/internal/runtime/core/DebugSink.ts
 
 packages/logix-core-ng/

@@ -1,11 +1,11 @@
-import type * as EffectOp from '@logixjs/core/EffectOp'
+import type * as EffectOp from '@logixjs/core/repo-internal/effect-op'
 import { Effect, Option, ServiceMap } from 'effect'
 import { Engine } from '../../Engine.js'
 import type { Engine as EngineService } from '../../Engine.js'
 
 export interface MiddlewareConfig {
   /**
-   * Default: only applies to EffectOp that carries resourceId+keyHash (from StateTrait.source).
+   * Default: only applies to EffectOp that carries resourceId+keyHash (from FieldKernel.source).
    * Optional: further filter by resourceId.
    */
   readonly useFor?: (resourceId: string) => boolean
@@ -23,7 +23,7 @@ export const middleware = (config?: MiddlewareConfig): EffectOp.Middleware =>
     let cachedEngine: EngineService | undefined
 
     return (op) => {
-      if ((op.kind !== 'service' && op.kind !== 'trait-source') || !op.meta?.resourceId || !op.meta.keyHash) {
+      if ((op.kind !== 'service' && op.kind !== 'field-source') || !op.meta?.resourceId || !op.meta.keyHash) {
         return op.effect as any
       }
 
@@ -46,7 +46,7 @@ export const middleware = (config?: MiddlewareConfig): EffectOp.Middleware =>
           if (Option.isNone(engineOpt)) {
             return Effect.fail(
               new Error(
-                `[Query.Engine.middleware] Missing Query.Engine in the Runtime scope; please provide Query.Engine.layer(Query.TanStack.engine(new QueryClient())) (recommended) or Query.Engine.layer(customEngine).`,
+                `[Query.Engine.middleware] Missing Query.Engine in the Runtime scope; please provide Query.Engine.layer(customEngine).`,
               ),
             )
           }

@@ -8,6 +8,7 @@ import * as Query from '../src/index.js'
 
 type Extends<A, B> = A extends B ? true : false
 type Assert<T extends true> = T
+type AssertFalse<T extends false> = T
 
 // Note: this file is for type-level regression; it must not execute any Query.make / Resource.make logic at vitest runtime.
 // Put all value-level constructions behind an unreachable branch to keep compile-time checks while avoiding runtime errors.
@@ -19,7 +20,7 @@ if (false) {
   const KeySchema = Schema.Struct({ q: Schema.String })
   type Key = Schema.Schema.Type<typeof KeySchema>
 
-  const Spec = Logix.Resource.make<Key, { readonly ok: true }, never, never>({
+  const Spec = Query.Engine.Resource.make<Key, { readonly ok: true }, never, never>({
     id: 'demo/query-types',
     keySchema: KeySchema,
     load: (_key) => Effect.succeed({ ok: true as const }),
@@ -47,14 +48,22 @@ if (false) {
   })
 
   type Sh = typeof Module.shape
-  type Action = Logix.ActionOf<Sh>
-  type State = Logix.StateOf<Sh>
+  type Action = Logix.Module.ActionOf<Sh>
+  type State = Logix.Module.StateOf<Sh>
+  type RootKeys = keyof typeof Query
+  type _AssertRootMake = Assert<Extends<'make', RootKeys>>
+  type _AssertRootEngine = Assert<Extends<'Engine', RootKeys>>
+  type _AssertEngineResource = Assert<Extends<'Resource', keyof typeof Query.Engine>>
+  type _AssertNoRootTanStack = AssertFalse<Extends<'TanStack', RootKeys>>
+  type _AssertNoRootSource = AssertFalse<Extends<'source', RootKeys>>
+  type _AssertNoRootLegacyFields = AssertFalse<Extends<`${'tr'}${'aits'}`, RootKeys>>
 
   type RefreshPayload = Extract<Action, { readonly _tag: 'refresh' }>['payload']
   type _AssertRefreshPayload = Assert<Extends<RefreshPayload, 'search' | undefined>>
 
   type SearchSnapshot = State['queries']['search']
   type _AssertSearchSnapshotData = Assert<Extends<SearchSnapshot['data'], { readonly ok: true } | undefined>>
+  type _AssertSearchSnapshotKeyHash = Assert<Extends<SearchSnapshot['keyHash'], string | undefined>>
 
   // @ts-expect-error refresh target must be keyof queries
   const _BadRefreshAction: Action = { _tag: 'refresh', payload: 'typo' }

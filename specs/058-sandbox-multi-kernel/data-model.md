@@ -1,6 +1,6 @@
 # Data Model: Sandbox 多内核试跑与对照（core/core-ng）
 
-**Date**: 2025-12-28  
+**Date**: 2025-12-28
 **Feature**: [058-sandbox-multi-kernel](./plan.md)
 
 > 说明：本数据模型用于约束 “Host 注册内核变体 → 单次运行选择 → 结果可解释” 的结构化边界；不引入持久化存储。

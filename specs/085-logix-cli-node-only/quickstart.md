@@ -1,11 +1,15 @@
 # Quickstart: 085 Logix CLI（Node-only）
 
-> 目标：在平台落地前，用 `logix` CLI 串起 IR 导出 / 受控试跑 / Anchor 索引 / 保守回写，并输出版本化 JSON 工件供 CI/Devtools/平台侧消费。
+> Superseded background only. This quickstart is not current CLI usage guidance.
+> Current CLI authority is [../160-cli-agent-first-control-plane-cutover/spec.md](../160-cli-agent-first-control-plane-cutover/spec.md) and [../../docs/ssot/runtime/15-cli-agent-first-control-plane.md](../../docs/ssot/runtime/15-cli-agent-first-control-plane.md).
+> Commands below are negative-only legacy references when they mention old toolbox routes, public discovery, writeback, global `--mode report|write`, `ControlSurfaceManifest`, or `controlProgramSurface`.
+
+> 目标：在平台落地前，用 `logix` CLI 串起 IR 导出 / 受控试跑 / Gate / Contract Suite / 受限 Transform，并输出版本化 JSON 工件供 CI/Devtools/平台侧消费。
 
 ## 1) 产物是什么
 
 - `CommandResult@v1`：CLI 输出 envelope（stdout + 落盘引用）。
-- 工件示例（按子命令不同）：`TrialRunReport`、`AnchorIndex@v1`、`PatchPlan@v1`、`WriteBackResult@v1` 等。
+- 工件示例（按子命令不同）：`TrialRunReport`、`PatchPlan@v1`、`TransformReport@v1`、`WriteBackResult@v1` 等。
 - 集成验收（036）：`ContractSuiteVerdict@v1`、`ContractSuiteContextPack@v1`。
 - 机器可读契约（S 级补强）：`CliDescribeReport@v1`（`logix describe --json`）。
 
@@ -21,10 +25,8 @@
 - `logix ir validate`：对导出工件做门禁（锚点/预算/Raw Mode 统计）
 - `logix ir diff`：对两份工件做稳定 diff（用于 CI gate）
 - `logix trialrun`：导出 TrialRunReport（受控窗口 + 预算/超时）
-- `logix contract-suite run`：一键集成验收（036）：trialrun + verdict/context-pack；可选 baseline diff；可注入 `facts.inputs`（`--inputs`）用于 Agent 最小编辑上下文；用于 CI/Agent gate
+- `logix contract-suite run`：一键集成验收：trialrun + verdict/context-pack；可选 baseline diff；可注入 `facts.inputs`（`--inputs`）用于 Agent 最小编辑上下文；用于 CI/Agent gate
 - （可选）`logix spy evidence`：采集 `$.use(Tag)` 的 best-effort 证据并输出 `SpyEvidenceReport@v1`（084；不写回源码）
-- `logix anchor index`：导出 `AnchorIndex@v1`（081）
-- `logix anchor autofill --mode report|write`：导出 PatchPlan/WriteBackResult（082），并在 `mode=write` 时执行写回（079）
 - （可选）`logix transform module --ops <delta.json> --mode report|write`：对 Platform-Grade 子集内的 Module 做 batch ops（默认 report-only）
 - `logix describe --json`：输出命令契约、schema 引用与配置覆盖链（defaults/profile/argv）
 
@@ -126,7 +128,7 @@ logix describe --runId desc1 --json --profile trace
 
 ### 最小可跑样例（当前实现进度）
 
-> 当前 `packages/logix-cli` 已实现：`ir export / ir validate / ir diff / trialrun / spy evidence / anchor index / anchor autofill / transform module`。  
+> 当前 `packages/logix-cli` 已实现：`ir export / ir validate / ir diff / trialrun / spy evidence / contract-suite run / transform module / describe --json`。
 > 备注：`transform module` v1 支持 `ensureWorkflowStepKeys` 与 `addState/addAction`（其余 ops 会在报告中标记为 unsupported）。
 > 备注：`--entry` 的 `modulePath` 按执行时 cwd 解析；脚本/CI 建议使用绝对路径或固定在 repoRoot 下运行。
 
@@ -147,22 +149,12 @@ logix trialrun --runId tr1 --entry ./path/to/app.ts#AppRoot --out ./.logix/tr/tr
 # - `--allowWarn`：把 WARN 视为通过（exit code=0）
 # - `--baseline`：可选，读取 baseline 目录内的 trialrun.report.json 进行 manifest diff（输出 manifest.diff.json）
 # - `--inputs`：可选，注入 `facts.inputs`（StageBlueprint/UIBlueprint/BindingSchema/...），并进入 context pack（默认会剥离 uiKitRegistry；可用 `--includeUiKitRegistry` 保留）
-# - `--includeAnchorAutofill`：可选，在同一条命令里执行 `anchor autofill --mode report`，并把 `PatchPlan/AutofillReport` 作为 artifacts 写入 context pack（需要时用 `--repoRoot`/`--tsconfig` 限定扫描范围与解析配置；该选项会强制输出 context pack，即使 verdict=PASS）
 logix contract-suite run --runId cs1 --entry ./path/to/app.ts#AppRoot --out ./.logix/cs/cs1 --requireRulesManifest --allowWarn
 
 # 4c) 可选：Loader Spy（084，证据不作权威；不写回源码）
 logix spy evidence --runId se1 --entry ./path/to/app.ts#AppRoot --out ./.logix/spy/se1
 
-# 5) 构建 AnchorIndex（081）
-logix anchor index --runId ai1 --repoRoot . --out ./.logix/anchor/ai1
-
-# 6) 保守 autofill（079 + 082，默认 report-only；不会写回源码）
-logix anchor autofill --runId af1 --repoRoot . --mode report --out ./.logix/anchor/af1
-
-# 7) 审阅后显式写回（幂等；第二次运行应 0 diff）
-logix anchor autofill --runId af2 --repoRoot . --mode write --out ./.logix/anchor/af2
-
-# 8) 可选：受限 batch transform（stepKey / state / action；report-only）
+# 5) 可选：受限 batch transform（stepKey / state / action；report-only）
 logix transform module --runId tm1 --repoRoot . --mode report --ops ./delta.json --out ./.logix/transform/tm1
 ```
 
@@ -195,5 +187,5 @@ pnpm -C packages/logix-cli measure:startup:ci
 ## 3) 安全边界（必须牢记）
 
 - 强制显式 `runId`；输出必须确定性、可序列化、可 diff。
-- `--mode write` 会修改源码：只补“未声明且高置信度”的锚点缺口；对子集外/歧义形态必须拒绝写回并给出 reason codes。
+- `--mode write` 会修改源码：只允许受限 transform 写入显式声明面；对子集外/歧义形态必须拒绝写回并给出 reason codes。
 - 默认工作方式建议：先直接出码/重构，再用 `ir export/validate/diff` 做证据链与门禁；仅在“机械且高风险小改动”时才考虑 `transform module`。

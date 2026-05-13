@@ -1,7 +1,7 @@
 # Research: Logix Runes（Svelte-like 赋值驱动状态语法糖）
 
-**Feature**: `072-logix-runes-dx`  
-**Created**: 2026-01-03  
+**Feature**: `072-logix-runes-dx`
+**Created**: 2026-01-03
 **Goal**: 把“局部状态 + 高频交互”的 DX 提升为接近 Svelte 5 `$state` 的体验，同时保持 Logix 的可追踪写入与可诊断链路。
 
 ## Decision 1：必须是编译期改写（transform-first）

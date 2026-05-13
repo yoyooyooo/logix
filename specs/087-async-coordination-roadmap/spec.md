@@ -1,8 +1,8 @@
 # Feature Specification: Async Coordination Roadmap（协调优先：从混乱到可验收闭环）
 
-**Feature Branch**: `087-async-coordination-roadmap`  
-**Created**: 2026-01-10  
-**Status**: Draft  
+**Feature Branch**: `087-async-coordination-roadmap`
+**Created**: 2026-01-10
+**Status**: Draft
 **Input**: 建立一套 Async 协调路线的总控 Spec（group）：把 Logix 在 React 场景的异步体验（Transition/Suspense/Optimistic/Busy 指示/可诊断链路）拆成可并行推进的子 specs，并提供 registry/checklist 作为单入口。
 
 ## Context

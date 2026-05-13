@@ -1,6 +1,6 @@
 # Tasks: O-009 ReadQuery 严格门禁前移到构建期
 
-**Input**: Design documents from `specs/099-o009-readquery-build-gate/`  
+**Input**: Design documents from `specs/099-o009-readquery-build-gate/`
 **Prerequisites**: `plan.md`、`spec.md`、`research.md`、`data-model.md`、`contracts/*`
 
 **Tests**: 本特性触及 `packages/logix-core` 热路径，测试与性能/诊断回归防线为必选项。

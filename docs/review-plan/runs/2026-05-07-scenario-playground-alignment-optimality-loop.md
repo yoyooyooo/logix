@@ -1,0 +1,320 @@
+# Scenario Playground Alignment Review Ledger
+
+## Meta
+
+- target: `docs/next/logix-api-planning/scenario-playground-alignment-proposal.md`
+- targets:
+  - `docs/next/logix-api-planning/scenario-playground-alignment-proposal.md`
+  - `docs/next/logix-api-planning/README.md`
+  - `docs/next/logix-api-planning/proposal-portfolio.md`
+- source_kind: `file-plan`
+- reviewers: `A1`, `A2`, `A3`, `A4`, `C1`, `C2`, `C3`
+- round_count: 2
+- challenge_scope: `open`
+- consensus_status: `consensus-with-platform-fallback`
+
+## Bootstrap
+
+- target_complete: yes
+- alignment_gate:
+  - policy: `auto`
+  - status: `inferred`
+  - resolved_points:
+    - User explicitly requested a proposal and `$plan-optimality-loop`.
+    - The target is a planning proposal, not implementation.
+    - Review may challenge the target function, scenario authority direction, Playground alignment strategy and proof obligations.
+    - Review must preserve the current SSoT rule that scenario verification authority belongs to `fixtures/env + steps + expect` and runtime control plane reports.
+  - open_questions: none
+  - confirmation_basis: current turn explicitly asked to create the proposal and polish it with `$plan-optimality-loop`.
+- review_contract:
+  - artifact_kind: `implementation-plan`
+  - review_goal: `design-closure`
+  - target_claim: `trial --mode scenario` should align with `examples/logix-react/src/playground` only through verification-owned scenario corpus, mappability and provenance, without making Playground a verification authority.
+  - target_refs:
+    - `docs/ssot/runtime/09-verification-control-plane.md`
+    - `docs/ssot/runtime/15-cli-agent-first-control-plane.md`
+    - `docs/ssot/runtime/07-standardized-scenario-patterns.md`
+    - `packages/logix-playground/src/Project.ts`
+    - `examples/logix-react/src/playground/projects/local-counter/scenarios.ts`
+    - `examples/logix/src/verification/index.ts`
+    - `packages/logix-core/src/internal/verification/scenarioCompiledPlanCarrier.ts`
+    - `packages/logix-core/test/internal/verification/fixtures/scenarioCompiledPlanFixtureAdapter.ts`
+  - non_default_overrides:
+    - alignment_policy: `auto`
+    - scope_fence: challenge plan, authority direction, docs writeback and proof obligations only; do not implement code.
+    - stop_condition: `consensus`
+    - write_policy: reviewers do not edit files; main agent may update the proposal and this ledger.
+- review_object_manifest:
+  - source_inputs:
+    - User questions about `trial --mode scenario`, scenario meaning, e2e-like restoration, Agent self-verification and Playground alignment.
+    - Initial materialized proposal.
+    - Current verification control-plane and CLI SSoT pages.
+  - materialized_targets:
+    - `docs/next/logix-api-planning/scenario-playground-alignment-proposal.md`
+  - authority_target: `docs/next/logix-api-planning/scenario-playground-alignment-proposal.md`
+  - bound_docs:
+    - `docs/next/logix-api-planning/README.md`
+    - `docs/next/logix-api-planning/proposal-portfolio.md`
+  - derived_scope:
+    - planning direction for `trial --mode scenario`
+    - scenario corpus ownership
+    - Playground scenario mappability and provenance
+    - non-public bridge and cleanup guard
+  - allowed_classes:
+    - ambiguity
+    - invalidity
+    - controversy
+    - dominance-based counter proposal
+    - authority direction challenge
+    - proof obligation gap
+  - blocker_classes:
+    - second scenario grammar
+    - second report object
+    - Playground product playback owning verification verdict
+    - product-to-control-plane truth flow
+    - `packages/logix-core/src/**` importing Playground types
+    - public scenario authoring surface
+  - ledger_target: `docs/review-plan/runs/2026-05-07-scenario-playground-alignment-optimality-loop.md`
+- challenge_scope: `open`
+- reviewer_set:
+  - A1: structure purity and authority boundary
+  - A2: compression and description-length economy
+  - A3: dominance alternative and second-system search
+  - A4: target function challenge
+  - C1: converge residual fallback-local after model capacity failure
+  - C2: converge compression and snapshot-contract risk
+  - C3: converge authority and second-system risk
+- active_advisors: none
+- activation_reason: A4 enabled because challenge scope is open and target involves architecture, public contract and long-term governance.
+- max_reviewer_count: 4 challenge reviewers, 3 converge reviewers
+- kernel_council:
+  - Ramanujan
+  - Kolmogorov
+  - Godel
+- dominance_axes:
+  - concept-count
+  - public-surface
+  - compat-budget
+  - migration-cost
+  - proof-strength
+  - future-headroom
+- stop_rule: consensus requires no unresolved reviewer findings, no stale round result mixed into the freeze, no unhandled dominating alternative, adopted freeze record saved, target text saved, and ledger updated.
+- reopen_bar: reopen only if a proposal reduces concept-count or public-surface, or strictly improves proof strength, without weakening verification authority, CLI structured-failure boundary or no-second-truth rules.
+- ledger_path: `docs/review-plan/runs/2026-05-07-scenario-playground-alignment-optimality-loop.md`
+- writable: yes
+
+## Assumptions
+
+- A-001:
+  - summary: Playground scenario metadata can be projected into scenario verification input.
+  - status: `overturned`
+  - resolution_basis: A4 showed this inverts the target function and risks product-to-control-plane truth flow; adopted plan starts from verification-owned corpus.
+- A-002:
+  - summary: A stable `ScenarioVerificationFixture` style grammar would make alignment clearer.
+  - status: `overturned`
+  - resolution_basis: A1/A3 found that it creates a second grammar beside `fixtures/env + steps + expect`; adopted plan forbids a new scenario union.
+- A-003:
+  - summary: Playground playback can act as verdict or proof evidence.
+  - status: `overturned`
+  - resolution_basis: runtime control plane remains the only report/verdict authority; Playground may display or map evidence, not own it.
+- A-004:
+  - summary: A projection bridge should be planned now.
+  - status: `overturned`
+  - resolution_basis: adopted plan defers any bridge until corpus and mappability prove need; kill gate stops bridge work if corpus alone covers Agent self-verification.
+- A-005:
+  - summary: A short-lived provenance snapshot is acceptable if guarded.
+  - status: `kept`
+  - resolution_basis: C2/C3 accepted it only as non-executable docs/tests/examples support with cleanup trigger, no public export, no core import and no CLI/control-plane consumption.
+- A-006:
+  - summary: All reviewer sessions returned usable converge results.
+  - status: `overturned`
+  - resolution_basis: A2 and C1 hit model capacity; A1/A3 first-round converge sessions became unavailable. Their failures are recorded as platform-limited and replaced by main-agent fallback-local residual checks plus C2/C3 completed converge reviews.
+
+## Rounds
+
+### Round 1 - Challenge
+
+- input_residual: Initial proposal direction using `PlaygroundProject` scenario metadata as upstream material for verification projection.
+- findings:
+  - F-001:
+    - severity: high
+    - class: invalidity
+    - summary: Initial direction made Playground metadata an upstream source for verification.
+    - evidence: initial direction was `PlaygroundProject metadata -> verification fixture -> compiled plan -> VerificationControlPlaneReport`.
+    - status: `closed`
+  - F-002:
+    - severity: high
+    - class: invalidity
+    - summary: Initial proposal risked inventing a second fixture grammar.
+    - evidence: reviewer A1 flagged `ScenarioVerificationFixture`-like vocabulary and local report-like proof as duplicate authority beside `fixtures/env + steps + expect`.
+    - status: `closed`
+  - F-003:
+    - severity: high
+    - class: controversy
+    - summary: Target function was wrong: the plan optimized Playground projection instead of Agent self-verification authority.
+    - evidence: reviewer A4 proposed verification-owned scenario fixture corpus first and Playground mappability/provenance only.
+    - status: `closed`
+  - F-004:
+    - severity: medium
+    - class: ambiguity
+    - summary: Owner and import boundaries needed to be explicit.
+    - evidence: reviewers A1/A3 required core not to import Playground types and Playground assets not to become control-plane authority.
+    - status: `closed`
+  - F-005:
+    - severity: medium
+    - class: ambiguity
+    - summary: Any projection snapshot can drift into a long-term contract unless lifecycle is explicit.
+    - evidence: reviewer A3 suggested projection snapshot lane only as a short-lived non-authority artifact; C2/C3 later kept this as residual risk.
+    - status: `closed`
+- counter_proposals:
+  - P-001:
+    - summary: Verification-owned scenario fixture corpus first, Playground mappability and provenance only.
+    - why_better: It preserves one scenario grammar, one report authority and one CLI route owner while still letting Playground align with verification intent.
+    - overturns_assumptions: A-001, A-002, A-003, A-004
+    - resolves_findings: F-001, F-002, F-003, F-004
+    - supersedes_proposals: Playground-to-verification projection pipeline.
+    - dominance: `dominates`
+    - axis_scores:
+      - concept-count: lower
+      - public-surface: lower
+      - compat-budget: better
+      - migration-cost: lower
+      - proof-strength: better
+      - future-headroom: better
+    - status: `adopted`
+  - P-002:
+    - summary: Projection Snapshot Lane as a short-lived provenance-only support asset.
+    - why_better: It gives a limited escape route for docs/tests evidence without promoting product metadata into runtime truth.
+    - overturns_assumptions: none
+    - resolves_findings: F-005
+    - supersedes_proposals: Stable bridge or stable fixture grammar.
+    - dominance: `partial`
+    - axis_scores:
+      - concept-count: slightly higher than no snapshot
+      - public-surface: unchanged
+      - compat-budget: unchanged
+      - migration-cost: bounded
+      - proof-strength: better
+      - future-headroom: better
+    - status: `kept`
+  - P-003:
+    - summary: Playground-to-verification projection pipeline.
+    - why_better: none under current target function.
+    - overturns_assumptions: none
+    - resolves_findings: none
+    - supersedes_proposals: none
+    - dominance: `none`
+    - axis_scores:
+      - concept-count: worse
+      - public-surface: worse
+      - compat-budget: worse
+      - migration-cost: worse
+      - proof-strength: worse
+      - future-headroom: worse
+    - status: `rejected`
+- resolution_delta:
+  - Proposal rewritten to reverse direction from Playground upstream projection to verification-owned corpus first.
+  - New scenario grammar, public fixture union and local report-like proof removed.
+  - Work waves redefined as corpus freeze, mappability matrix, optional short-lived provenance snapshot and later core bridge decision.
+  - Kill gate added to stop bridge work if verification corpus alone covers Agent self-verification.
+
+### Round 2 - Converge
+
+- input_residual: Version 2 proposal with adopted candidate already written.
+- findings:
+  - F-006:
+    - severity: low
+    - class: ambiguity
+    - summary: Wave 3 provenance snapshot still needs concrete cleanup and non-consumption guards when implemented.
+    - evidence: A4 and C2/C3 converge residuals identified snapshot drift risk if later consumed by tests, CLI or core as executable input.
+    - status: `residual-risk`
+  - F-007:
+    - severity: low
+    - class: ambiguity
+    - summary: C1 and earlier A2 review sessions were platform-limited.
+    - evidence: model capacity errors returned for A2 and C1; A1/A3 converge session handles became unavailable after first-round findings were already consumed.
+    - status: `closed`
+- counter_proposals:
+  - P-004:
+    - summary: Delete Wave 3 entirely.
+    - why_better: It lowers concept count but loses a bounded provenance sidecar for docs/tests evidence.
+    - overturns_assumptions: A-005
+    - resolves_findings: none
+    - supersedes_proposals: P-002
+    - dominance: `none`
+    - axis_scores:
+      - concept-count: lower
+      - public-surface: unchanged
+      - compat-budget: unchanged
+      - migration-cost: lower
+      - proof-strength: worse
+      - future-headroom: worse
+    - status: `rejected`
+- resolution_delta:
+  - Proposal advanced to version 3 and `reviewed-adopted`.
+  - Added `Review Result` section and ledger link.
+  - Added Wave 2 guard that mappability matrix is non-executable and cannot be consumed by `Runtime.trial`, CLI schemas or core scenario executor.
+  - Added Wave 3 guards: docs/tests/examples-only support, no core import, no public export, no CLI/control-plane consumption and named cleanup trigger at creation time.
+  - Added implementation-planning proof obligations for core import sweep, CLI structured failure and no public scenario/report surface.
+
+## Adoption
+
+- adopted_candidate: `verification-owned scenario fixture corpus first + Playground mappability/provenance only`
+- lineage: A4 target-function challenge dominated the initial proposal; A1/A3 boundary findings and C2/C3 converge residuals shaped the final guards.
+- rejected_alternatives:
+  - Playground-to-verification projection pipeline
+  - stable `ScenarioVerificationFixture` or new scenario union
+  - Playground product playback owns verdict or proof
+  - core imports Playground types
+  - public scenario authoring API
+  - second report object or local proof envelope
+  - immediate core bridge before corpus/mappability proof
+- rejection_reason: rejected alternatives increase concept-count and public-surface, create duplicate authority or weaken runtime control-plane ownership.
+- dominance_verdict: adopted candidate dominates on concept-count, public-surface, compat-budget, migration-cost, proof-strength and future-headroom.
+
+### Freeze Record
+
+- adopted_summary: Scenario planning starts from a verification-owned corpus using `fixtures/env + steps + expect`; Playground contributes only mappability, provenance and demo playback. Any bridge is deferred until corpus and mappability prove need.
+- kernel_verdict: Smaller authority set wins; no second scenario grammar, no second report, no product-to-control-plane truth flow.
+- frozen_decisions:
+  - `fixtures/env + steps + expect` remains the only scenario input authority.
+  - Runtime control plane remains the only report/verdict authority.
+  - Playground scenarios remain product metadata, not verification truth.
+  - `trial --mode scenario` stays reserved and structured-failure until core-owned executor exists.
+  - No public scenario API, public scenario union or second report object.
+  - Mappability matrix is non-executable.
+  - Provenance snapshot, if created, must be short-lived, repo-internal, non-public, non-core, non-CLI and cleanup-triggered.
+  - Projection bridge is deferred and must pass the kill gate before work starts.
+- non_goals:
+  - no implementation code in this review
+  - no CLI productization for scenario mode
+  - no host deep verification or e2e browser playback promotion
+  - no raw trace as default compare surface
+- allowed_reopen_surface:
+  - verification-owned corpus cannot express a critical Agent self-verification scenario
+  - Playground provenance is proven necessary to preserve useful evidence without becoming authority
+  - core-owned scenario executor requires a bridge and can preserve all no-second-truth guards
+- proof_obligations:
+  - corpus uses `fixtures/env + steps + expect`
+  - `packages/logix-core/src/**` has no Playground type import
+  - CLI `trial --mode scenario` remains structured failure before executor authority
+  - no new public scenario grammar, report object or evidence envelope
+  - unsupported Playground intents are reported structurally
+  - provenance snapshot declares cleanup trigger and is not consumed by Runtime trial, CLI schema or core report builder
+- delta_from_previous_round: target function reversed, grammar/report additions removed, Wave 3 guard hardened and review result linked.
+
+## Consensus
+
+- reviewers:
+  - A1 challenge: findings adopted
+  - A2 challenge: platform-limited model capacity failure, replaced by fallback-local compression review and C2 converge
+  - A3 challenge: findings adopted
+  - A4 challenge and converge: no unresolved findings after rewrite
+  - C1 converge: platform-limited model capacity failure, replaced by fallback-local residual check
+  - C2 converge: no unresolved findings
+  - C3 converge: no unresolved findings
+- adopted_candidate: `verification-owned scenario fixture corpus first + Playground mappability/provenance only`
+- final_status: `consensus-with-platform-fallback`
+- stop_rule_satisfied: `true`
+- stale_result_handling: lost or failed reviewer sessions were not counted as positive consensus; their available first-round findings were consumed, and missing converge capacity was recorded explicitly.
+- residual_risk: Wave 2/3 implementation can still drift into a second scenario grammar if mappability inventory or provenance snapshot becomes executable input. Future implementation must run import, public surface, report-shape and CLI schema sweeps.

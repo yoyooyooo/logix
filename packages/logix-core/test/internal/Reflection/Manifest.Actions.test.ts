@@ -1,7 +1,10 @@
+import * as CoreReflection from '@logixjs/core/repo-internal/reflection-api'
 import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../../src/index.js'
-import * as Debug from '../../../src/Debug.js'
+import * as Action from '../../../src/Action.js'
+import type { Draft } from '../../../src/Logic.js'
+import * as Debug from '../../../src/internal/debug-api.js'
 
 describe('Reflection.extractManifest actions[] (US1)', () => {
   it.effect('should output stable actions[] and allow joining action events', () =>
@@ -17,7 +20,7 @@ describe('Reflection.extractManifest actions[] (US1)', () => {
           m: Schema.String,
         } as const,
         reducers: {
-          a: Logix.Module.Reducer.mutate((draft: Logix.Logic.Draft<S>, n) => {
+          a: Logix.Module.Reducer.mutate((draft: Draft<S>, n) => {
             draft.count += n
           }),
         },
@@ -26,22 +29,30 @@ describe('Reflection.extractManifest actions[] (US1)', () => {
         },
       })
 
-      const impl = M.implement({ initial: { count: 0 }, logics: [] })
+      const program = Logix.Program.make(M, { initial: { count: 0 }, logics: [] })
 
-      const manifest = Logix.Reflection.extractManifest(impl)
+      const manifest = CoreReflection.extractManifest(program)
       expect(manifest.moduleId).toBe('Manifest.Actions.Join')
       expect(manifest.actions.map((a) => a.actionTag)).toEqual(['a', 'm', 'z'])
 
       expect(manifest.actions.find((a) => a.actionTag === 'a')).toEqual({
         actionTag: 'a',
-        payload: { kind: 'nonVoid' },
+        payload: {
+          kind: 'nonVoid',
+          summary: 'Schema.Number',
+          schemaDigest: expect.stringMatching(/^schema:/),
+        },
         primaryReducer: { kind: 'declared' },
         source: { file: 'Manifest.Actions.test.ts', line: 1, column: 1 },
       })
 
       expect(manifest.actions.find((a) => a.actionTag === 'm')).toEqual({
         actionTag: 'm',
-        payload: { kind: 'nonVoid' },
+        payload: {
+          kind: 'nonVoid',
+          summary: 'Schema.String',
+          schemaDigest: expect.stringMatching(/^schema:/),
+        },
         source: { file: 'Manifest.Actions.test.ts', line: 1, column: 1 },
       })
 
@@ -52,20 +63,20 @@ describe('Reflection.extractManifest actions[] (US1)', () => {
       })
 
       const ring = Debug.makeRingBufferSink(64)
-      const runtime = Logix.Runtime.make(impl, {
+      const runtime = Logix.Runtime.make(program, {
         layer: Layer.mergeAll(
           Debug.replace([ring.sink]) as Layer.Layer<any, never, never>,
           Debug.diagnosticsLevel('light'),
         ) as Layer.Layer<any, never, never>,
       })
 
-      const program = Effect.gen(function* () {
+      const runActions = Effect.gen(function* () {
         const rt = yield* Effect.service(M.tag).pipe(Effect.orDie)
         yield* rt.dispatch({ _tag: 'a', payload: 2 } as any)
         yield* rt.dispatch({ _tag: 'z', payload: undefined } as any)
       })
 
-      yield* Effect.promise(() => runtime.runPromise(program as Effect.Effect<void, never, any>)).pipe(
+      yield* Effect.promise(() => runtime.runPromise(runActions as Effect.Effect<void, never, any>)).pipe(
         Effect.ensuring(Effect.promise(() => runtime.dispose()).pipe(Effect.asVoid)),
       )
 
@@ -92,7 +103,7 @@ describe('Reflection.extractManifest actions[] (US1)', () => {
     Effect.gen(function* () {
       const State = Schema.Struct({ count: Schema.Number })
 
-      const CounterActions = Logix.Action.makeActions(
+      const CounterActions = Action.makeActions(
         {
           z: Schema.Void,
           a: Schema.Number,
@@ -113,9 +124,9 @@ describe('Reflection.extractManifest actions[] (US1)', () => {
         },
       })
 
-      const impl = M.implement({ initial: { count: 0 }, logics: [] })
+      const program = Logix.Program.make(M, { initial: { count: 0 }, logics: [] })
 
-      const manifest = Logix.Reflection.extractManifest(impl)
+      const manifest = CoreReflection.extractManifest(program)
       expect(manifest.actions.find((a) => a.actionTag === 'a')?.source).toEqual({ file: 'a.action.ts', line: 2, column: 3 })
       expect(manifest.actions.find((a) => a.actionTag === 'z')?.source).toEqual({ file: 'z.action.ts', line: 4, column: 5 })
     }),

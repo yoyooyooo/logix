@@ -1,8 +1,8 @@
 # Feature Specification: Platform Visualization Lab（Logix IR / Evidence / Gate 可视化 POC）
 
-**Feature Branch**: `086-platform-visualization-lab`  
-**Created**: 2026-01-10  
-**Status**: Draft  
+**Feature Branch**: `086-platform-visualization-lab`
+**Created**: 2026-01-10
+**Status**: Draft
 **Input**: 在 `examples/logix-react` 提供“独立颗粒度”的平台侧可视化 POC：把 `@logixjs/core` 已有/将有的 IR 与证据（Manifest/ManifestDiff/TrialRun 等）做成可玩的独立路由；优先验证这些可视化单独存在是否有价值，未来平台再做组合与画布化编排。
 
 ## Context
@@ -10,7 +10,7 @@
 `080`（Full‑Duplex Prelude）跑通后，平台侧将同时拥有：
 
 - Static IR：`ModuleManifest`、`StaticIr`、`Artifacts`、（未来）`servicePorts`、`PortSpec/TypeIR`
-- Static IR（控制面）：`ControlSurfaceManifest`（Root IR）+ `workflowSurface`（Π slice；锚点为 `ControlSurfaceManifest.modules[*].workflowSurface.digest`）
+- Static IR（控制面）：`ControlSurfaceManifest`（Root IR）+ `controlProgramSurface`（Π slice；锚点为 `ControlSurfaceManifest.modules[*].controlProgramSurface.digest`）
 - Dynamic Evidence：TrialRun / EvidencePackage、（未来）Spy evidence
 - Platform‑Grade 工具链工件：`AnchorIndex@v1`、`PatchPlan@v1`、`WriteBackResult@v1`（Node-only 产出）
 
@@ -30,7 +30,7 @@
 - AUTO: Q: `Manifest Diff Viewer` 在“模块选择模式”下如何保持 before/after 可比？ → A: before/after 共用同一组选项（`includeStaticIr`/`maxBytes`），避免因参数不同导致噪音 diff。
 - AUTO: Q: JSON 粘贴输入的校验与失败处理口径？ → A: 仅做最小字段校验；解析/校验失败时阻止计算并显示错误（不得崩溃/空白）。
 - AUTO: Q: 缺失的未来字段（例如 `servicePorts`）如何提示？ → A: UI 固定展示 pending 清单（078/031/035/081/082/085），并标注“当前 core `ModuleManifest.manifestVersion=067` 尚未包含”。
-  - 更新：pending 清单需包含 `075`（workflowSurface/stepKey）与 `079`（stepKey autofill），避免 workflow 变成“能导出但不可解释”的灰区。
+  - 更新：pending 清单需包含 `075`（controlProgramSurface/stepKey）与 `079`（stepKey autofill），避免 workflow 变成“能导出但不可解释”的灰区。
 - AUTO: Q: Raw JSON 视图是否需要一键复制？ → A: 需要；提供一键复制 pretty JSON（2 spaces），并显示复制成功/失败反馈。
 
 ## Goals / Scope
@@ -38,12 +38,12 @@
 ### In Scope
 
 - 在 `examples/logix-react` 新增 `/platform-viz/*` 路由组，每个页面只承载一个可视化能力：
-  - Manifest Inspector（`Reflection.extractManifest`）
-  - Manifest Diff Viewer（`Reflection.diffManifest`）
+  - Manifest Inspector（`CoreReflection.extractManifest`）
+  - Manifest Diff Viewer（`CoreReflection.diffManifest`）
   - TrialRun Evidence Inspector（复用/包装现有 TrialRun 示例）
 - UI 只消费 JSON-safe 的工件/输出；不引入 Node-only 依赖（`ts-morph/swc/fs` 等）。
 - 为后续 `servicePorts` / `AnchorIndex` / `PatchPlan` 等工件预留“展示占位”与信息架构（但不要求本特性实现其生产链路）。
-- 为后续 `workflowSurface`（Π slice）预留展示占位：Root IR 的 workflow slice 能被加载并在 UI 中可视化/定位（锚点为 `ControlSurfaceManifest.modules[*].workflowSurface.digest`；不要求本特性生产该 slice）。
+- 为后续 `controlProgramSurface`（Π slice）预留展示占位：Root IR 的 workflow slice 能被加载并在 UI 中可视化/定位（锚点为 `ControlSurfaceManifest.modules[*].controlProgramSurface.digest`；不要求本特性生产该 slice）。
 
 ### Out of Scope
 
@@ -68,14 +68,14 @@
 
 ### User Story 1 - Manifest Inspector（单模块 IR 可解释） (Priority: P1)
 
-作为平台/Devtools/运行时维护者，我希望打开一个独立页面，选择一个模块（ModuleDef/Module/ModuleImpl），并看到它的 `ModuleManifest`：
+作为平台/Devtools/运行时维护者，我希望打开一个独立页面，选择一个 `Module` 或 `Program.make(...)` 产物，并看到它的 `ModuleManifest`：
 
 - 关键字段摘要（moduleId、digest、actionKeys、schemaKeys、logicUnits…）
 - Raw JSON（便于拷贝、比对、作为回归基线）
 
 **Why this priority**: 这是平台“结构可见”的最小闭环入口；一旦 Manifest 的字段/确定性发生漂移，页面能第一时间暴露问题。
 
-**Independent Test**: 启动 `examples/logix-react`，访问 `/platform-viz/manifest`，选择不同模块对象，能稳定渲染 `Reflection.extractManifest` 输出。
+**Independent Test**: 启动 `examples/logix-react`，访问 `/platform-viz/manifest`，选择不同模块对象，能稳定渲染 `CoreReflection.extractManifest` 输出。
 
 **Acceptance Scenarios**:
 
@@ -86,7 +86,7 @@
 
 ### User Story 2 - Manifest Diff Viewer（门禁化差异可视化） (Priority: P1)
 
-作为 CI/平台维护者，我希望选择两个 Manifest（before/after），并在一个独立页面中看到 `Reflection.diffManifest` 的结果：
+作为 CI/平台维护者，我希望选择两个 Manifest（before/after），并在一个独立页面中看到 `CoreReflection.diffManifest` 的结果：
 
 - verdict（PASS/WARN/FAIL）与 summary（BREAKING/RISKY/INFO 计数）
 - changes 列表（severity/code/pointer/message/details）
@@ -122,7 +122,7 @@
 
 - Manifest 超大：Raw JSON 必须可滚动且不阻塞主线程；必要时支持 `ExtractManifestOptions.budgets.maxBytes` 的裁剪演示。
 - 可选字段缺失：例如 `servicePorts/staticIr/artifacts` 等尚未实现或未开启时，页面需明确提示“未提供/未开启”，避免误解为 bug。
-- 不同输入形态：ModuleDef / Module / ModuleImpl 任选其一都应可展示（用于验证反射契约的鲁棒性）。
+- 不同输入形态：`Module` / `Program` 任选其一都应可展示（用于验证反射契约的鲁棒性）。
 - JSON 粘贴失败：JSON parse/字段缺失/类型不符必须显式报错并阻止计算，不得崩溃或静默吞掉。
 
 ## Requirements _(mandatory)_
@@ -135,12 +135,12 @@
 ### Functional Requirements
 
 - **FR-001**: 系统 MUST 在 `examples/logix-react` 提供独立路由组：`/platform-viz/*`，并提供入口页（index）引导到各单项可视化页面。
-- **FR-002**: `Manifest Inspector` 页面 MUST 调用 `Logix.Reflection.extractManifest` 并展示：
+- **FR-002**: `Manifest Inspector` 页面 MUST 调用 `CoreReflection.extractManifest` 并展示：
   - 摘要视图（moduleId、digest、counts）
   - Raw JSON 视图（pretty JSON + 一键复制）
   - 可选参数：`includeStaticIr`、`budgets.maxBytes`
-- **FR-003**: `Manifest Diff Viewer` 页面 MUST 支持两类 before/after 输入：选择预置模块（内部 `extractManifest`）或粘贴 `ModuleManifest` JSON；页面 MUST 调用 `Logix.Reflection.diffManifest` 并展示 verdict/summary/changes，且 Raw JSON 可见。
-- **FR-004**: 页面 MUST 对缺失的可选字段做显式提示（例如 `servicePorts`/`workflowSurface` 尚未实现时展示 pending），不得静默吞掉或导致崩溃；并提供固定的“pending spec 清单”（075/078/079/031/035/081/082/085）以避免误解为 bug。
+- **FR-003**: `Manifest Diff Viewer` 页面 MUST 支持两类 before/after 输入：选择预置模块（内部 `extractManifest`）或粘贴 `ModuleManifest` JSON；页面 MUST 调用 `CoreReflection.diffManifest` 并展示 verdict/summary/changes，且 Raw JSON 可见。
+- **FR-004**: 页面 MUST 对缺失的可选字段做显式提示（例如 `servicePorts`/`controlProgramSurface` 尚未实现时展示 pending），不得静默吞掉或导致崩溃；并提供固定的“pending spec 清单”（075/078/079/031/035/081/082/085）以避免误解为 bug。
 - **FR-005**: 该特性 MUST NOT 引入 Node-only 依赖（`ts-morph/swc/fs` 等）进入浏览器 bundle；仅消费 `@logixjs/core`/`@logixjs/react`/`@logixjs/devtools-react` 的运行时 API 与 JSON 工件。
 
 ### Non-Functional Requirements (Performance & Diagnosability)
@@ -157,9 +157,9 @@
 
 ### Key Entities _(include if feature involves data)_
 
-- **ModuleManifest**: `Reflection.extractManifest` 的输出（平台可消费 Static IR 的入口）。
-- **ModuleManifestDiff**: `Reflection.diffManifest` 的输出（CI/门禁/解释链路的差异报告）。
-- **TrialRun Evidence Summary**: `Observability.trialRun` 的 evidence.summary（平台可消费 Dynamic Evidence 的入口）。
+- **ModuleManifest**: `CoreReflection.extractManifest` 的输出（平台可消费 Static IR 的入口）。
+- **ModuleManifestDiff**: `CoreReflection.diffManifest` 的输出（CI/门禁/解释链路的差异报告）。
+- **TrialRun Evidence Summary**: `Runtime.trial` 的 evidence.summary（平台可消费 Dynamic Evidence 的入口）。
 
 ## Success Criteria _(mandatory)_
 

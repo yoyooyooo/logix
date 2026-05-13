@@ -1,8 +1,8 @@
 # Feature Specification: Logix Runes（Svelte-like 赋值驱动状态语法糖）
 
-**Feature Branch**: `072-logix-runes-dx`  
-**Created**: 2026-01-03  
-**Status**: Draft  
+**Feature Branch**: `072-logix-runes-dx`
+**Created**: 2026-01-03
+**Status**: Draft
 **Input**: User discussion: "我主要想像 svelte 那样的响应式语法糖：`let count = $state(0); count += 1` 直接修改即可触发更新；背后还是用 Logix 去支撑。"
 
 ## Context

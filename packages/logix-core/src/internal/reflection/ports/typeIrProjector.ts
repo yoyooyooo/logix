@@ -1,4 +1,4 @@
-import type { JsonValue } from '../../observability/jsonValue.js'
+import type { JsonValue } from '../../protocol/jsonValue.js'
 import type { AnyModuleShape, ModuleTag } from '../../runtime/core/module.js'
 import * as SchemaAST from 'effect/SchemaAST'
 import { normalizeFieldPath } from '../../field-path.js'

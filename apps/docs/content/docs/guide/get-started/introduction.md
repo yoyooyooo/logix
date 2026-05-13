@@ -1,74 +1,45 @@
 ---
 title: Introduction
-description: Welcome to Logix — an Effect-native runtime for frontend state and business logic.
+description: Logix is an Effect-native runtime for state, logic, and host integration.
 ---
 
-Welcome to Logix.
+Logix is an Effect-native runtime for state and business logic.
 
-Logix is an **Effect-native runtime for state and business logic** designed for modern frontend applications. It integrates deeply with the **Effect** ecosystem and is built to solve the hard parts of real-world business logic: **async orchestration**, **state linkage**, and **type safety**.
+It is designed for applications that need:
 
-## Do these situations hurt?
+- structured state
+- explicit asynchronous orchestration
+- stable host integration
+- diagnosable execution
 
-> [!TIP]
-> If any of these resonate with you, Logix might be what you need.
+## Typical problems it addresses
 
-1. **useEffect race-condition hell**: you switch tabs quickly, response A overwrites response B, and the UI flickers.
-2. **State sync nightmare**: state is passed across components via prop drilling; one Context change causes a full re-render.
-3. **Scattered async logic**: cancellation, retries, and loading states live everywhere; bugs never stop.
-4. **Form linkage debugging**: field A changes → B validates → C becomes disabled… where did the chain break? DevTools can’t tell you.
+- request races caused by rapid UI changes
+- business logic scattered across components
+- state linkage that becomes hard to trace
+- weak visibility into why async work started, stopped, or was replaced
 
-### Who is this for?
+## Core ideas
 
-- You have React / Vue / frontend engineering experience and want something better than `useState + useEffect` for complex business logic.
-- You’re new to Effect / functional programming and don’t want to be overwhelmed by new terminology on day one.
+Logix can be read through four layers:
 
-### Prerequisites
+- intent
+- flow
+- logic
+- runtime
 
-- Basic TypeScript experience
-- Familiarity with core frontend concepts: components, state, event handling
+These layers are introduced gradually through the guide.
 
-### What you’ll get
+## Recommended next steps
 
-- A clear sense of what Logix is built to solve, and how it differs from Redux / MobX.
-- An intuitive picture of “Module / Logic / Runtime / Bound API `$`”.
-- A concrete next-step learning path (what to read and which examples to run).
+1. [Quick Start](/docs/guide/get-started/quick-start)
+2. [Cancelable search tutorial](/docs/guide/get-started/tutorial-first-app)
+3. [Complex list tutorial](/docs/guide/get-started/tutorial-complex-list)
+4. [Modules & State](/docs/guide/essentials/modules-and-state)
 
-## Why Logix?
+## Form note
 
-### 1. Intent-first
+When the problem is already a real form boundary, move directly to:
 
-UI components focus on rendering and dispatching intent (Actions), instead of embedding complex business logic.
-
-### 2. Reactive flows
-
-Use declarative Flow APIs to handle async races, debouncing, throttling, and state linkage—without the `useEffect` waterfall.
-
-### 3. Type-safe
-
-With strong typing based on `effect/Schema`, you get great autocomplete and type checking from API to UI.
-
-### 4. Modular
-
-Encapsulate business logic in independent Modules that are easy to test, reuse, and maintain.
-
-## Next: where to start
-
-If you want to **get a demo running as quickly as possible**, read in this order:
-
-1. [Quick Start: Your first app](../get-started/quick-start) — a counter app in under 30 minutes.
-2. [Tutorial: Your first business flow (cancelable search)](../get-started/tutorial-first-app) — debouncing, auto-cancel, and error handling.
-3. [Tutorial: Complex list query](../get-started/tutorial-complex-list) — production patterns for multi-source triggers, auto-reset, and race handling.
-4. [Modules & State](../essentials/modules-and-state) — a systematic model of Module / State / Action.
-
-> [!TIP]
-> If you’re building real forms (multiple fields, validations, dynamic arrays), don’t hand-roll form state in Get Started.
-> Follow the `@logixjs/form` track instead—it’s faster and the boundaries are already baked in.
->
-> - [When to use Form](../../form/when-to-use)
-> - [Form Quick Start](../../form/quick-start)
-
-If you’re interested in the “why” behind the design, continue after the three steps above:
-
-- [Thinking in Logix](../essentials/thinking-in-logix)
-- [Flows & Effects](../essentials/flows-and-effects)
-- [Effect basics: learn the 20% you need](../essentials/effect-basics)
+- [Form](/docs/form)
+- [Form Quick Start](/docs/form/quick-start)

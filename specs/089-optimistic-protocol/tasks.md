@@ -1,7 +1,7 @@
 # Tasks: 089 Optimistic Protocol
 
-**Input**: `specs/089-optimistic-protocol/spec.md`, `specs/089-optimistic-protocol/plan.md`  
-**Prerequisites**: `specs/088-async-action-coordinator/`（协议与稳定标识）  
+**Input**: `specs/089-optimistic-protocol/spec.md`, `specs/089-optimistic-protocol/plan.md`
+**Prerequisites**: `specs/088-async-action-coordinator/`（协议与稳定标识）
 **Tests**: 触及事务写入与订阅传播，测试与 perf evidence 视为必需。
 
 ## Phase 1: Setup（文档与契约入口）

@@ -37,7 +37,7 @@
 
 - 本 suite 为新增点位，diff 中会标注 `missing suite in before report`（需要后续补一份含该 suite 的 baseline 才能严格做 Before/After 对照）。
 - After（default）现状：相对预算 `auto<=full*1.05` 可达 `maxLevel=300`（rows 主轴）。
-- `trait:converge` 解释链路已输出：可在 `points[].evidence` 查看 `converge.*` 与 `cache.*`（例如 `cache_hit,near_full`）。
+- `field:converge` 解释链路已输出：可在 `points[].evidence` 查看 `converge.*` 与 `cache.*`（例如 `cache_hit,near_full`）。
 
 ## 需要关注的点（当前仅 2 个回归）
 
@@ -54,7 +54,7 @@
   - typical：dirty `median=0.325ms` vs full `median=1.860ms`（约 5.7× 更快）
   - extreme：dirty `median=2.856ms` vs full `median=3.571ms`（约 1.25× 更快）
   - 证据：`specs/009-txn-patch-dirtyset/perf/after.worktree.convergeMode=dirty.r1.json`、`...full.r1.json`
-- 011（Lifecycle gate）：`ok=true`  
+- 011（Lifecycle gate）：`ok=true`
   - 证据：`specs/011-upgrade-lifecycle/perf/after.worktree.r2.json`
 - 016（Diagnostics 分档开销，10k txn micro-benchmark）：
   - off：`p50=79.9ms`、`p95=93.9ms`

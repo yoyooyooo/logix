@@ -1,11 +1,14 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { describe, it, expect } from 'vitest'
 // @vitest-environment happy-dom
 import React from 'react'
 import { renderHook, waitFor } from '@testing-library/react'
 import * as Logix from '@logixjs/core'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 import { ConfigProvider, Effect, Layer, Logger, ManagedRuntime, References, Schema } from 'effect'
 import { RuntimeProvider } from '../../../src/RuntimeProvider.js'
 import { useRuntime, useModule, useSelector } from '../../../src/Hooks.js'
+import { useProgramRuntimeBlueprint } from '../../../src/internal/hooks/useProgramRuntimeBlueprint.js'
 import { getModuleCache } from '../../../src/internal/store/ModuleCache.js'
 import { RuntimeContext } from '../../../src/internal/provider/ReactContext.js'
 import { ReactRuntimeConfig } from '../../../src/internal/provider/config.js'
@@ -17,10 +20,11 @@ const Counter = Logix.Module.make('ConfigCounter', {
   },
 })
 
-const CounterImpl = Counter.implement({
+const CounterProgram = Logix.Program.make(Counter, {
   initial: { count: 0 },
   logics: [],
 })
+const CounterBlueprint = RuntimeContracts.getProgramRuntimeBlueprint(CounterProgram)
 
 describe('ReactModuleConfig with RuntimeProvider', () => {
   it('applies ConfigProvider values to ModuleCache via runtime snapshot', async () => {
@@ -35,8 +39,8 @@ describe('ReactModuleConfig with RuntimeProvider', () => {
     )
 
     const useTest = () => {
-      const moduleRuntime = useModule(CounterImpl)
-      const count = useSelector(moduleRuntime, (s: Logix.StateOf<typeof Counter.shape>) => s.count)
+      const moduleRuntime = useProgramRuntimeBlueprint(CounterBlueprint)
+      const count = useSelector(moduleRuntime, (s: Logix.Module.StateOf<typeof Counter.shape>) => s.count)
 
       const ctx = React.useContext(RuntimeContext)
       if (!ctx) {
@@ -79,8 +83,8 @@ describe('ReactModuleConfig with RuntimeProvider', () => {
     )
 
     const useTest = () => {
-      const moduleRuntime = useModule(CounterImpl)
-      const count = useSelector(moduleRuntime, (s: Logix.StateOf<typeof Counter.shape>) => s.count)
+      const moduleRuntime = useProgramRuntimeBlueprint(CounterBlueprint)
+      const count = useSelector(moduleRuntime, (s: Logix.Module.StateOf<typeof Counter.shape>) => s.count)
 
       const ctx = React.useContext(RuntimeContext)
       if (!ctx) {
@@ -122,8 +126,8 @@ describe('ReactModuleConfig with RuntimeProvider', () => {
       if (!ctx) {
         throw new Error('RuntimeContext missing')
       }
-      const moduleRuntime = useModule(CounterImpl)
-      const count = useSelector(moduleRuntime, (s: Logix.StateOf<typeof Counter.shape>) => s.count)
+      const moduleRuntime = useProgramRuntimeBlueprint(CounterBlueprint)
+      const count = useSelector(moduleRuntime, (s: Logix.Module.StateOf<typeof Counter.shape>) => s.count)
       return { count, gcTime: ctx.reactConfigSnapshot.gcTime, version: ctx.configVersion }
     }
 
@@ -165,8 +169,8 @@ describe('ReactModuleConfig with RuntimeProvider', () => {
         throw new Error('RuntimeContext missing')
       }
 
-      const ref = useModule(CounterImpl)
-      const count = useSelector(ref, (s: Logix.StateOf<typeof Counter.shape>) => s.count)
+      const ref = useProgramRuntimeBlueprint(CounterBlueprint)
+      const count = useSelector(ref, (s: Logix.Module.StateOf<typeof Counter.shape>) => s.count)
 
       return {
         count,
@@ -218,8 +222,8 @@ describe('ReactModuleConfig with RuntimeProvider', () => {
       if (!ctx) {
         throw new Error('RuntimeContext missing')
       }
-      const moduleRuntime = useModule(CounterImpl)
-      useSelector(moduleRuntime, (s: Logix.StateOf<typeof Counter.shape>) => s.count)
+      const moduleRuntime = useProgramRuntimeBlueprint(CounterBlueprint)
+      useSelector(moduleRuntime, (s: Logix.Module.StateOf<typeof Counter.shape>) => s.count)
       const cache = React.useMemo(
         () => getModuleCache(ctx.runtime, ctx.reactConfigSnapshot, ctx.configVersion),
         [ctx.runtime, ctx.reactConfigSnapshot, ctx.configVersion],
@@ -243,8 +247,8 @@ describe('ReactModuleConfig with RuntimeProvider', () => {
 
     const runtimeLayer = Layer.mergeAll(
       Layer.succeed(References.MinimumLogLevel, 'Debug') as Layer.Layer<any, never, never>,
-      Logix.Debug.layer({ mode: 'dev' }) as Layer.Layer<any, never, never>,
-      Logix.Debug.traceLayer(() => Effect.void),
+      CoreDebug.layer({ mode: 'dev' }) as Layer.Layer<any, never, never>,
+      CoreDebug.traceLayer(() => Effect.void),
     ) as Layer.Layer<any, never, never>
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -255,14 +259,14 @@ describe('ReactModuleConfig with RuntimeProvider', () => {
 
     const useTest = () => {
       const activeRuntime = useRuntime()
-      const moduleRuntime = useModule(CounterImpl)
-      useSelector(moduleRuntime, (s: Logix.StateOf<typeof Counter.shape>) => s.count)
+      const moduleRuntime = useProgramRuntimeBlueprint(CounterBlueprint)
+      useSelector(moduleRuntime, (s: Logix.Module.StateOf<typeof Counter.shape>) => s.count)
 
       return activeRuntime.runSync(
         Effect.gen(function* () {
           const loggers = yield* Effect.service(Logger.CurrentLoggers).pipe(Effect.orDie)
           const level = yield* Effect.service(References.MinimumLogLevel).pipe(Effect.orDie)
-          const sinks = yield* Effect.service(Logix.Debug.internal.currentDebugSinks).pipe(Effect.orDie)
+          const sinks = yield* Effect.service(CoreDebug.internal.currentDebugSinks).pipe(Effect.orDie)
           return {
             loggerCount: (loggers as any).length ?? (loggers as any)?.size ?? 0,
             level,

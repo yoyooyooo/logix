@@ -11,14 +11,14 @@ describe('Runtime.openProgram multi-root isolation (US1)', () => {
         actions: { noop: Schema.Void },
       })
 
-      const SharedImplA = Shared.implement({ initial: { value: 1 }, logics: [] })
-      const SharedImplB = Shared.implement({ initial: { value: 2 }, logics: [] })
+      const SharedProgramA = Logix.Program.make(Shared, { initial: { value: 1 }, logics: [] })
+      const SharedProgramB = Logix.Program.make(Shared, { initial: { value: 2 }, logics: [] })
 
       const OnlyInA = Logix.Module.make('Runtime.openProgram.multiRoot.OnlyInA', {
         state: Schema.Struct({ value: Schema.Number }),
         actions: {},
       })
-      const OnlyInAImpl = OnlyInA.implement({ initial: { value: 100 }, logics: [] })
+      const OnlyInAProgram = Logix.Program.make(OnlyInA, { initial: { value: 100 }, logics: [] })
 
       const RootA = Logix.Module.make('Runtime.openProgram.multiRoot.RootA', {
         state: Schema.Void,
@@ -29,29 +29,33 @@ describe('Runtime.openProgram multi-root isolation (US1)', () => {
         actions: {},
       })
 
-      const RootAImpl = RootA.implement({
+      const RootAProgram = Logix.Program.make(RootA, {
         initial: undefined,
         logics: [],
-        imports: [SharedImplA.impl, OnlyInAImpl.impl],
+        capabilities: {
+          imports: [SharedProgramA, OnlyInAProgram],
+        },
       })
 
-      const RootBImpl = RootB.implement({
+      const RootBProgram = Logix.Program.make(RootB, {
         initial: undefined,
         logics: [],
-        imports: [SharedImplB.impl],
+        capabilities: {
+          imports: [SharedProgramB],
+        },
       })
 
       const scope = yield* Scope.make()
 
       const [ctxA, ctxB] = yield* Effect.all([
         Scope.provide(scope)(
-          Logix.Runtime.openProgram(RootAImpl, {
+          Logix.Runtime.openProgram(RootAProgram, {
             layer: Layer.empty as Layer.Layer<any, never, never>,
             handleSignals: false,
           }),
         ),
         Scope.provide(scope)(
-          Logix.Runtime.openProgram(RootBImpl, {
+          Logix.Runtime.openProgram(RootBProgram, {
             layer: Layer.empty as Layer.Layer<any, never, never>,
             handleSignals: false,
           }),

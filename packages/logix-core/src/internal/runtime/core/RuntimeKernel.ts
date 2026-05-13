@@ -178,7 +178,7 @@ export interface RuntimeServiceImpl<Service> {
 
 /**
  * RuntimeServicesRegistry：
- * - Used to inject additional serviceId → impls (e.g. implementations provided by core-ng).
+ * - Used to inject additional serviceId → impls (e.g. implementations provided by experimental routing).
  * - A non-serializable contract used only during assembly; selection evidence is still carried by
  *   RuntimeServicesOverrides + RuntimeServicesEvidence.
  */

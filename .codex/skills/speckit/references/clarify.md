@@ -37,7 +37,12 @@ Execution steps:
    - If JSON parsing fails, abort and instruct user to re-run `$speckit specify` or verify feature branch environment.
    - For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
-2. Load the current spec file. Perform a structured ambiguity & coverage scan using this taxonomy. For each category, mark status: Clear / Partial / Missing. Produce an internal coverage map used for prioritization (do not output raw map unless no questions will be asked).
+2. Load the current spec file. If `FEATURE_DIR/discussion.md` exists, load it too as a non-authoritative working artifact.
+   - `discussion.md` may provide `Must Close Before Implementation` items, `Deferred / Non-Blocking` items, candidate questions, and reopen evidence.
+   - Prioritize `Must Close Before Implementation` items before lower-impact ambiguities.
+   - Do not spend clarification budget on `Deferred / Non-Blocking` items unless they have become implementation blockers.
+   - `discussion.md` MUST NOT override owner / boundary / closure truth already present in `spec.md`.
+   Perform a structured ambiguity & coverage scan using this taxonomy. For each category, mark status: Clear / Partial / Missing. Produce an internal coverage map used for prioritization (do not output raw map unless no questions will be asked).
 
    Functional Scope & Behavior:
    - Core user goals & success criteria
@@ -133,6 +138,7 @@ Execution steps:
      - Otherwise, validate the answer maps to one option or fits the <=5 word constraint.
      - If ambiguous, ask for a quick disambiguation (count still belongs to same question; do not advance).
      - Once satisfactory, record it in working memory (do not yet write to disk) and move to the next queued question.
+   - Prefer unresolved `Must Close Before Implementation` items already present in `discussion.md` when they are high-impact and still block planning.
    - Stop asking further questions when:
      - All critical ambiguities resolved early (remaining queued items become unnecessary), OR
      - User signals completion ("done", "good", "no more"), OR
@@ -154,6 +160,9 @@ Execution steps:
      - Edge case / negative flow → Add a new bullet under Edge Cases / Error Handling (or create such subsection if template provides placeholder for it).
      - Terminology conflict → Normalize term across spec; retain original only if necessary by adding `(formerly referred to as "X")` once.
    - If the clarification invalidates an earlier ambiguous statement, replace that statement instead of duplicating; leave no obsolete contradictory text.
+   - If the accepted answer closes an open item that exists in `discussion.md`, update `discussion.md` immediately:
+     - remove the stale open item, or
+     - move it under a residual section / backlink note if the discussion record is still useful
    - Save the spec file AFTER each integration to minimize risk of context loss (atomic overwrite).
    - Preserve formatting: do not reorder unrelated sections; keep heading hierarchy intact.
    - Keep each inserted clarification minimal and testable (avoid narrative drift).
@@ -171,6 +180,7 @@ Execution steps:
 8. Report completion (after questioning loop ends or early termination):
    - Number of questions asked & answered.
    - Path to updated spec.
+   - Path to updated discussion file if touched.
    - Sections touched (list names).
    - Coverage summary table listing each taxonomy category with Status: Resolved (was Partial/Missing and addressed), Deferred (exceeds question quota or better suited for planning), Clear (already sufficient), Outstanding (still Partial/Missing but low impact).
    - If any Outstanding or Deferred remain, recommend whether to proceed to `$speckit plan` or run `$speckit clarify` again later post-plan.

@@ -4,7 +4,7 @@ import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
 
 describe('FormModule $.self', () => {
-  it.effect('module.logic can yield* $.self and access controller', () =>
+  it.effect('module.logic can yield* $.self and access direct form methods', () =>
     Effect.gen(function* () {
       const ValuesSchema = Schema.Struct({
         name: Schema.String,
@@ -12,31 +12,28 @@ describe('FormModule $.self', () => {
 
       type Values = Schema.Schema.Type<typeof ValuesSchema>
 
-      const form = Form.make('FormModule.self', {
-        values: ValuesSchema,
-        initialValues: { name: '' } satisfies Values,
-        traits: Logix.StateTrait.from(ValuesSchema)({
-          name: Logix.StateTrait.node<string>({
-            check: {
-              required: {
-                deps: ['name'],
-                validate: (value: string) => (String(value ?? '').trim() ? undefined : 'required'),
-              },
-            },
-          }),
-        }),
-      })
+      const form = Form.make(
+        'FormModule.self',
+        {
+          values: ValuesSchema,
+          initialValues: { name: '' } satisfies Values,
+        },
+        (define) => {
+          define.field('name').rule({
+            deps: ['name'],
+            validate: (value: unknown) => (String(value ?? '').trim() ? undefined : 'required'),
+          })
+        },
+      )
 
       const done = yield* Deferred.make<void>()
 
-      const SelfValidate = form.logic(
-        ($) =>
+      const SelfValidate = form.logic('self-validate', ($) =>
           Effect.gen(function* () {
             const self = yield* $.self
-            yield* self.controller.validatePaths('name')
+            yield* self.validatePaths('name')
             yield* Deferred.succeed(done, undefined)
           }),
-        { id: 'SelfValidate' },
       )
 
       const live = form.withLogic(SelfValidate)

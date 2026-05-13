@@ -1,41 +1,40 @@
-import * as ReadQueryCore from './internal/runtime/core/ReadQuery.js'
-import * as ReadQueryBuildGateCore from './internal/runtime/core/ReadQueryBuildGate.js'
+import * as ReadQueryInternal from './internal/read-query.js'
 
-export type ReadLane = ReadQueryCore.ReadLane
-export type ReadProducer = ReadQueryCore.ReadProducer
-export type EqualsKind = ReadQueryCore.EqualsKind
-export type ReadsDigest = ReadQueryCore.ReadsDigest
-export type ReadQueryStrictGateRule = ReadQueryCore.ReadQueryStrictGateRule
-export type ReadQueryFallbackReason = ReadQueryCore.ReadQueryFallbackReason
-export type ReadQueryQualityMeta = ReadQueryCore.ReadQueryQualityMeta
-export type ReadQueryStrictGateGrade = ReadQueryCore.ReadQueryStrictGateGrade
+export type ReadLane = ReadQueryInternal.ReadLane
+export type ReadProducer = ReadQueryInternal.ReadProducer
+export type EqualsKind = ReadQueryInternal.EqualsKind
+export type ReadsDigest = ReadQueryInternal.ReadsDigest
+export type ReadQueryStrictGateRule = ReadQueryInternal.ReadQueryStrictGateRule
+export type ReadQueryFallbackReason = ReadQueryInternal.ReadQueryFallbackReason
+export type ReadQueryQualityMeta = ReadQueryInternal.ReadQueryQualityMeta
+export type ReadQueryStrictGateGrade = ReadQueryInternal.ReadQueryStrictGateGrade
 
-export type ReadQueryStaticIr = ReadQueryCore.ReadQueryStaticIr
+export type ReadQueryStaticIr = ReadQueryInternal.ReadQueryStaticIr
 
-export type ReadQuery<S, V> = ReadQueryCore.ReadQuery<S, V>
-export type ReadQueryCompiled<S, V> = ReadQueryCore.ReadQueryCompiled<S, V>
-export type ReadQueryInput<S, V> = ReadQueryCore.ReadQueryInput<S, V>
-export type ReadQueryStrictGateConfig = ReadQueryCore.ReadQueryStrictGateConfig
-export type ReadQueryStrictGateDecision = ReadQueryCore.ReadQueryStrictGateDecision
+export type ReadQuery<S, V> = ReadQueryInternal.ReadQuery<S, V>
+export type ReadQueryCompiled<S, V> = ReadQueryInternal.ReadQueryCompiled<S, V>
+export type ReadQueryInput<S, V> = ReadQueryInternal.ReadQueryInput<S, V>
+export type ReadQueryStrictGateConfig = ReadQueryInternal.ReadQueryStrictGateConfig
+export type ReadQueryStrictGateDecision = ReadQueryInternal.ReadQueryStrictGateDecision
 
-export const isReadQuery = ReadQueryCore.isReadQuery
-export const isReadQueryCompiled = ReadQueryCore.isReadQueryCompiled
-export const hasBuildQualityGrade = ReadQueryCore.hasBuildQualityGrade
-export const shouldEvaluateStrictGateAtRuntime = ReadQueryCore.shouldEvaluateStrictGateAtRuntime
-export const markRuntimeMissingBuildGrade = ReadQueryCore.markRuntimeMissingBuildGrade
-export const resolveBuildGradeStrictGateDecision = ReadQueryCore.resolveBuildGradeStrictGateDecision
+export const isReadQuery = ReadQueryInternal.isReadQuery
+export const isReadQueryCompiled = ReadQueryInternal.isReadQueryCompiled
+export const hasBuildQualityGrade = ReadQueryInternal.hasBuildQualityGrade
+export const shouldEvaluateStrictGateAtRuntime = ReadQueryInternal.shouldEvaluateStrictGateAtRuntime
+export const markRuntimeMissingBuildGrade = ReadQueryInternal.markRuntimeMissingBuildGrade
+export const resolveBuildGradeStrictGateDecision = ReadQueryInternal.resolveBuildGradeStrictGateDecision
 
-export const make = ReadQueryCore.make
+export const make = ReadQueryInternal.make
 
-export const compile = ReadQueryCore.compile
-export const evaluateStrictGate = ReadQueryCore.evaluateStrictGate
+export const compile = ReadQueryInternal.compile
+export const evaluateStrictGate = ReadQueryInternal.evaluateStrictGate
 
-export type SelectorQualityEntry = ReadQueryBuildGateCore.SelectorQualityEntry
-export type SelectorQualitySummary = ReadQueryBuildGateCore.SelectorQualitySummary
-export type SelectorQualityReport = ReadQueryBuildGateCore.SelectorQualityReport
-export type SelectorQualityReportResult = ReadQueryBuildGateCore.SelectorQualityReportResult
-export type BuildReadQueryGradeResult<S, V> = ReadQueryBuildGateCore.BuildReadQueryGradeResult<S, V>
+export type SelectorQualityEntry = ReadQueryInternal.SelectorQualityEntry
+export type SelectorQualitySummary = ReadQueryInternal.SelectorQualitySummary
+export type SelectorQualityReport = ReadQueryInternal.SelectorQualityReport
+export type SelectorQualityReportResult = ReadQueryInternal.SelectorQualityReportResult
+export type BuildReadQueryGradeResult<S, V> = ReadQueryInternal.BuildReadQueryGradeResult<S, V>
 
-export const gradeReadQueryAtBuild = ReadQueryBuildGateCore.gradeReadQueryAtBuild
-export const buildSelectorQualityReport = ReadQueryBuildGateCore.buildSelectorQualityReport
-export const hasBuildGateFailure = ReadQueryBuildGateCore.hasBuildGateFailure
+export const gradeReadQueryAtBuild = ReadQueryInternal.gradeReadQueryAtBuild
+export const buildSelectorQualityReport = ReadQueryInternal.buildSelectorQualityReport
+export const hasBuildGateFailure = ReadQueryInternal.hasBuildGateFailure

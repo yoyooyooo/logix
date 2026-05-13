@@ -1,6 +1,12 @@
 export type FieldPath = string
 
-export type SchemaError = unknown
+export type SchemaError = Readonly<{
+  readonly path?: unknown
+  readonly code?: string
+  readonly message?: unknown
+  readonly sourceRef?: unknown
+  readonly artifactRef?: unknown
+}>
 
 export interface SchemaPathMappingOptions {
   /**
@@ -140,30 +146,8 @@ const mapByRename = (
 }
 
 const extractRawPaths = (schemaError: SchemaError): ReadonlyArray<unknown> => {
-  const out: Array<unknown> = []
-
-  if (schemaError && typeof schemaError === 'object') {
-    const anyErr = schemaError as any
-    if (Array.isArray(anyErr.errors)) {
-      for (const e of anyErr.errors) {
-        if (e && typeof e === 'object' && 'path' in (e as any)) {
-          out.push((e as any).path)
-        }
-      }
-    }
-    if (Array.isArray(anyErr.issues)) {
-      for (const e of anyErr.issues) {
-        if (e && typeof e === 'object' && 'path' in (e as any)) {
-          out.push((e as any).path)
-        }
-      }
-    }
-    if ('path' in anyErr) {
-      out.push(anyErr.path)
-    }
-  }
-
-  return out
+  if (!schemaError || typeof schemaError !== 'object') return []
+  return 'path' in schemaError ? [schemaError.path] : []
 }
 
 /**

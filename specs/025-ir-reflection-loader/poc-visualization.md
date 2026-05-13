@@ -1,10 +1,10 @@
 # POC: IR 平台可视化（小而美、可复用）
 
-**Date**: 2025-12-24  
-**Feature**: `specs/025-ir-reflection-loader/spec.md`（025）  
+**Date**: 2025-12-24
+**Feature**: `specs/025-ir-reflection-loader/spec.md`（025）
 **Status**: Draft（用于指导 POC 交付，不作为 runtime 对外契约）
 
-> 目标：把 025 产出的 IR（Manifest/StaticIR/TrialRunReport/RuntimeServicesEvidence/EvidencePackage）做成一组**可嵌入、可复用、可独立运行**的小组件/小页面（POC），未来平台侧“拿来就用”。  
+> 目标：把 025 产出的 IR（Manifest/StaticIR/TrialRunReport/RuntimeServicesEvidence/EvidencePackage）做成一组**可嵌入、可复用、可独立运行**的小组件/小页面（POC），未来平台侧“拿来就用”。
 > 约束：POC **只消费 JSON schema 约束的载荷**（`specs/025-*/contracts/schemas/*` + `specs/020-*` + `specs/005-*`），不依赖 Logix runtime 内部对象图。
 
 ## 0.0 前端选型（POC 基座）
@@ -210,7 +210,7 @@ type IrRef =
 
 ---
 
-## P1: StaticIR（StateTrait）DAG 可视化（computed/link/source/check）
+## P1: StaticIR（FieldKernel）DAG 可视化（computed/link/source/check）
 
 ### 目标
 

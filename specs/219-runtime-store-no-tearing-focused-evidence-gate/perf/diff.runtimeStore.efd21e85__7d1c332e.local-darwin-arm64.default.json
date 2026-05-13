@@ -1,0 +1,383 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-05-11T13:08:18.533Z",
+    "from": {
+      "file": "specs/219-runtime-store-no-tearing-focused-evidence-gate/perf/before.runtimeStore.efd21e85.local-darwin-arm64.default.json",
+      "commit": "efd21e85a06ba70fdc5045d7317baeee6026dfa5"
+    },
+    "to": {
+      "file": "specs/219-runtime-store-no-tearing-focused-evidence-gate/perf/after.runtimeStore.7d1c332e.local-darwin-arm64.default.json",
+      "commit": "7d1c332e8177753e3f4369657ff6b90b5c73d359"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": []
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 0,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "runtimeStore.noTearing.tickNotify",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 2,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=0 ok=2 unavailable=0 missing=0] after[value=0 ok=2 unavailable=0 missing=0]"
+        },
+        {
+          "name": "diagnostics.level",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "full"
+          },
+          "message": "diagnostics.level(points) unit=count: before[value=full ok=6 unavailable=0 missing=0] after[value=full ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=6 unavailable=0 missing=0] after[value=core ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtimeStore.adapter",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "runtimeStore"
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "runtimeStore"
+          },
+          "message": "runtimeStore.adapter(points) unit=count: before[value=runtimeStore ok=6 unavailable=0 missing=0] after[value=runtimeStore ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "selectorNotify.broadcastFallbackCount",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "selectorNotify.broadcastFallbackCount(points) unit=count: before[value=0 ok=6 unavailable=0 missing=0] after[value=0 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "selectorNotify.listenerSnapshotCloneCount",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "selectorNotify.listenerSnapshotCloneCount(points) unit=count: before[value=0 ok=6 unavailable=0 missing=0] after[value=0 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "selectorNotify.notifiedTopicCount",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 10
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 10
+          },
+          "message": "selectorNotify.notifiedTopicCount(points) unit=count: before[value=10 ok=6 unavailable=0 missing=0] after[value=10 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "selectorNotify.renderCount",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "selectorNotify.renderCount(points) unit=count: before[value=0 ok=6 unavailable=0 missing=0] after[value=0 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "selectorNotify.retainedTopicCount",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 256
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 256
+          },
+          "message": "selectorNotify.retainedTopicCount(points) unit=count: before[value=256 ok=6 unavailable=0 missing=0] after[value=256 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "selectorNotify.runSyncFallbackCount",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "selectorNotify.runSyncFallbackCount(points) unit=count: before[value=0 ok=6 unavailable=0 missing=0] after[value=0 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "workload.modules",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 10
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 10
+          },
+          "message": "workload.modules(points) unit=count: before[value=10 ok=6 unavailable=0 missing=0] after[value=10 ok=6 unavailable=0 missing=0]"
+        },
+        {
+          "name": "workload.ticksPerRun",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 500
+          },
+          "after": {
+            "ok": 6,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 500
+          },
+          "message": "workload.ticksPerRun(points) unit=count: before[value=500 ok=6 unavailable=0 missing=0] after[value=500 ok=6 unavailable=0 missing=0]"
+        }
+      ],
+      "metricDeltas": [
+        {
+          "metric": "timePerTickMs",
+          "unit": "ms",
+          "compared": 6,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [],
+          "topImprovements": [
+            {
+              "params": {
+                "watchers": 512,
+                "diagnosticsLevel": "full"
+              },
+              "before": {
+                "n": 8,
+                "medianMs": 0.01699999952316284,
+                "p95Ms": 0.017600002288818358
+              },
+              "after": {
+                "n": 8,
+                "medianMs": 0.01119999885559082,
+                "p95Ms": 0.011999998569488525
+              },
+              "deltaMs": {
+                "medianMs": -0.005800000667572022,
+                "p95Ms": -0.005600003719329833
+              },
+              "ratio": {
+                "median": 0.6588234805730786,
+                "p95": 0.6818180118710763
+              }
+            },
+            {
+              "params": {
+                "watchers": 128,
+                "diagnosticsLevel": "off"
+              },
+              "before": {
+                "n": 8,
+                "medianMs": 0.013599997043609618,
+                "p95Ms": 0.016200000286102294
+              },
+              "after": {
+                "n": 8,
+                "medianMs": 0.01239999771118164,
+                "p95Ms": 0.01280000066757202
+              },
+              "deltaMs": {
+                "medianMs": -0.0011999993324279777,
+                "p95Ms": -0.003399999618530273
+              },
+              "ratio": {
+                "median": 0.9117647357878041,
+                "p95": 0.7901234840441901
+              }
+            },
+            {
+              "params": {
+                "watchers": 256,
+                "diagnosticsLevel": "full"
+              },
+              "before": {
+                "n": 8,
+                "medianMs": 0.016000004768371583,
+                "p95Ms": 0.01699999952316284
+              },
+              "after": {
+                "n": 8,
+                "medianMs": 0.012800002098083496,
+                "p95Ms": 0.014600003719329834
+              },
+              "deltaMs": {
+                "medianMs": -0.0032000026702880876,
+                "p95Ms": -0.0023999958038330074
+              },
+              "ratio": {
+                "median": 0.7999998927116713,
+                "p95": 0.8588237722852307
+              }
+            },
+            {
+              "params": {
+                "watchers": 128,
+                "diagnosticsLevel": "full"
+              },
+              "before": {
+                "n": 8,
+                "medianMs": 0.015599997997283935,
+                "p95Ms": 0.01859999704360962
+              },
+              "after": {
+                "n": 8,
+                "medianMs": 0.013799999713897705,
+                "p95Ms": 0.016400002002716064
+              },
+              "deltaMs": {
+                "medianMs": -0.00179999828338623,
+                "p95Ms": -0.0021999950408935556
+              },
+              "ratio": {
+                "median": 0.8846154798417524,
+                "p95": 0.8817206779261609
+              }
+            },
+            {
+              "params": {
+                "watchers": 256,
+                "diagnosticsLevel": "off"
+              },
+              "before": {
+                "n": 8,
+                "medianMs": 0.013999997615814209,
+                "p95Ms": 0.014799999237060548
+              },
+              "after": {
+                "n": 8,
+                "medianMs": 0.011799999237060547,
+                "p95Ms": 0.013600002765655518
+              },
+              "deltaMs": {
+                "medianMs": -0.002199998378753662,
+                "p95Ms": -0.0011999964714050296
+              },
+              "ratio": {
+                "median": 0.8428572318991988,
+                "p95": 0.9189191531577834
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import type { JsonValue } from '../jsonValue.js'
+import type { JsonValue } from '../../protocol/jsonValue.js'
 import type { SerializableErrorSummary } from '../../runtime/core/errorSummary.js'
 
 export type ArtifactKey = string

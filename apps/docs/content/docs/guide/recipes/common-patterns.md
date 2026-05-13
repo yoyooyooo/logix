@@ -1,55 +1,34 @@
 ---
 title: Common recipes
-description: Practical Logix patterns you can reuse in real products.
+description: Reusable patterns for linkage, async validation, aggregate recomputation, initialization, and external events.
 ---
 
-This page collects common Logix recipes, covering field linkage, async validation, multi-field constraints, and more — ready to copy into production code.
+The sections below collect reusable Logix recipes for common application problems.
 
-### Who is this for?
+## Field linkage and reset
 
-- You already know the basics of Modules/Logic and want proven recipes for “field linkage / async validation / multi-field constraints”.
-- You maintain shared snippets in your team’s internal component library or scaffolding.
+Reset dependent fields when an upstream field changes:
 
-### Prerequisites
-
-- You’ve read [Flows & Effects](../essentials/flows-and-effects) and related Learn chapters.
-- You can read combinations like `$.onState / $.flow.* / $.state.mutate`.
-
-### How to use
-
-- Copy the snippets and adapt them to your own State/Service types.
-- Or extract them as team Patterns/Helpers for unified reuse.
-
-## 1. Field linkage and reset
-
-**Scenario**: when a field changes, reset a set of dependent fields (e.g. when country changes, reset province/city).
-
-**Pattern**: watch the source field via `flow.fromState`, then update target fields via `state.mutate` inside `flow.run`.
-
-```typescript
-// Conceptually, `$Form` is a Bound API pre-bound to a FormShape.
+```ts
 const resetProvinceLogic = Effect.gen(function* () {
   const country$ = $Form.flow.fromState((s) => s.country)
 
   yield* country$.pipe(
     $Form.flow.run(
       $Form.state.mutate((draft) => {
-        draft.province = ''
-        draft.city = ''
+        draft.province = ""
+        draft.city = ""
       }),
     ),
   )
 })
 ```
 
-## 2. Async validation and error state
+## Async validation
 
-**Scenario**: field changes trigger async validation (e.g. username uniqueness). Write results into `errors.xxx`.
+Run latest-only async validation and write the verdict back to state:
 
-**Pattern**: `flow.fromState` + `debounce` + `filter`, then `runLatest` to execute an Effect that calls an API and automatically handles races.
-
-```typescript
-// Conceptually, `$Form` is a Bound API pre-bound to FormShape + UserApi.
+```ts
 const validateUsernameLogic = Effect.gen(function* () {
   const username$ = $Form.flow.fromState((s) => s.username)
 
@@ -57,13 +36,13 @@ const validateUsernameLogic = Effect.gen(function* () {
     $Form.flow.debounce(500),
     $Form.flow.filter((username) => username.length >= 3),
     $Form.flow.runLatest(
-      // Ensure only the latest input is processed
       Effect.gen(function* () {
         const api = yield* $Form.use(UserApi)
         const { username } = yield* $Form.state.read
         const isTaken = yield* api.checkUsername(username)
+
         yield* $Form.state.mutate((draft) => {
-          draft.errors.username = isTaken ? 'Username already taken' : undefined
+          draft.errors.username = isTaken ? "Username already taken" : undefined
         })
       }),
     ),
@@ -71,14 +50,11 @@ const validateUsernameLogic = Effect.gen(function* () {
 })
 ```
 
-## 3. Multi-field constraints (e.g. start/end date)
+## Multi-field constraints
 
-**Scenario**: multiple fields have a constraint (start date must be before end date).
+Validate constraints that depend on more than one field:
 
-**Pattern**: `flow.fromState` over a tuple like `[s.startDate, s.endDate]`, then validate in `flow.run`.
-
-```typescript
-// Conceptually, `$Form` is a Bound API pre-bound to a FormShape.
+```ts
 const validateDateRangeLogic = Effect.gen(function* () {
   const datePair$ = $Form.flow.fromState((s) => [s.startDate, s.endDate] as const)
 
@@ -86,7 +62,7 @@ const validateDateRangeLogic = Effect.gen(function* () {
     $Form.flow.run(
       $Form.state.mutate((draft) => {
         if (draft.startDate && draft.endDate && draft.startDate > draft.endDate) {
-          draft.errors.dateRange = 'Start date must be before end date'
+          draft.errors.dateRange = "Start date must be before end date"
         } else {
           delete draft.errors.dateRange
         }
@@ -96,28 +72,27 @@ const validateDateRangeLogic = Effect.gen(function* () {
 })
 ```
 
-## 4. Aggregate computation over arrays (inline list totals)
+## Aggregate recomputation
 
-**Scenario**: in a cart/list, any row field change requires recomputing totals.
+Recompute row-level and summary-level derived state in one pass:
 
-**Pattern**: watch the entire `items` array. In `flow.run`, compute derived state in one pass (row `total` and overall `summary`) to avoid multiple updates and redundant renders.
-
-```typescript
-// Conceptually, `$Cart` is a Bound API pre-bound to a CartShape.
+```ts
 const calculateTotalsLogic = Effect.gen(function* () {
   const items$ = $Cart.flow.fromState((s) => s.items)
 
   yield* items$.pipe(
-    $Cart.flow.debounce(50), // light debounce for batch operations
+    $Cart.flow.debounce(50),
     $Cart.flow.run(
       $Cart.state.mutate((draft) => {
         let totalAmount = 0
+
         draft.items.forEach((item) => {
           item.total = item.price * item.quantity
           if (item.checked) {
             totalAmount += item.total
           }
         })
+
         draft.summary.totalAmount = totalAmount
       }),
     ),
@@ -125,47 +100,38 @@ const calculateTotalsLogic = Effect.gen(function* () {
 })
 ```
 
-## 5. Init load
+## Initialization load
 
-**Scenario**: automatically load data once when the Store is created (e.g. a detail page).
+Load initial data during logic startup:
 
-**Pattern**: in the main body of `Effect.gen` inside Logic, directly `yield*` a loading Effect. It runs only once on Logic initialization.
-
-```typescript
-// Conceptually, `$Page` is a Bound API pre-bound to PageShape + PageApi.
+```ts
 const initialLoadLogic = Effect.gen(function* () {
   const api = yield* $Page.use(PageApi)
-  const pageId = (yield* $Page.state.read).pageId // assume pageId is in initial state
+  const pageId = (yield* $Page.state.read).pageId
 
-  // Execute load during Logic init
   yield* $Page.state.mutate((draft) => {
     draft.meta.isLoading = true
   })
+
   const data = yield* api.fetchPage(pageId)
+
   yield* $Page.state.mutate((draft) => {
     draft.data = data
     draft.meta.isLoading = false
   })
-
-  // You can define more flow logic below...
 })
 ```
 
-## 6. External source integration (WebSocket / polling)
+## External event integration
 
-**Scenario**: subscribe to WebSocket messages or poll task status.
+Consume an external event source through a service:
 
-**Pattern**: inject the external source (WebSocket connection, timer) as an `Effect.Service` into Logic env. In Logic, read a `Stream` from the service and use `flow.run` to map events to state updates.
-
-```typescript
-// 1) Define a service
+```ts
 class Ticker extends Context.Tag("Ticker")<Ticker, { readonly ticks$: Stream.Stream<number> }>() {}
 
-// 2) Consume it in Logic; `$Ticker` conceptually means a Bound API pre-bound to TickerShape + Ticker.
 const tickerLogic = Effect.gen(function* () {
   const ticker = yield* $Ticker.use(Ticker)
 
-  // Bridge external ticks$ into Logix
   yield* ticker.ticks$.pipe(
     $Ticker.flow.run((tick) =>
       $Ticker.state.mutate((draft) => {
@@ -176,51 +142,26 @@ const tickerLogic = Effect.gen(function* () {
 })
 ```
 
-## 7. Use-case Actions instead of dispatch + sleep + dispatch
+## Use-case actions
 
-**Scenario**: you need “update state, then do the next step based on the updated state”. Many people instinctively dispatch twice from callers and insert `setTimeout` / `sleep` to “wait a bit”.
+Collapse “dispatch, wait, dispatch again” into one explicit use-case action:
 
-**Pattern**: collapse the sequence into one “use-case Action”, do “update state → read latest state → run follow-up effects” sequentially inside Logic. Callers dispatch only once.
-
-```typescript
-// 1) Define a Module with a use-case Action applyFilterAndReload
-const Search = Logix.Module.make("Search", {
-  state: Schema.Struct({
-    filter: Schema.String,
-    items: Schema.Array(Schema.String),
-  }),
-  actions: {
-    setFilter: Schema.String,
-    reload: Schema.Void,
-    applyFilterAndReload: Schema.Struct({ filter: Schema.String }),
-  },
-})
-
-// 2) Orchestrate “update filter + reload” sequentially inside Logic
-const logic = Search.logic(($) =>
+```ts
+const logic = Search.logic("search-logic", ($) =>
   $.onAction("applyFilterAndReload").run(({ payload }) =>
     Effect.gen(function* () {
-      // Step 1: write the latest filter
-      yield* $.state.update((s) => ({ ...s, filter: payload.filter }))
+      yield* $.state.mutate((draft) => {
+        draft.filter = payload.filter
+      })
 
-      // Optionally read the latest state
       const state = yield* $.state.read
-
-      // Step 2: run follow-up work based on the latest filter (API call / dispatch other Actions / etc.)
       yield* runSearchWithFilter(state.filter)
-      // Or: yield* $.actions.reload(undefined)
     }),
   ),
 )
 ```
 
-With this pattern:
+## See also
 
-- UI/callers dispatch only `applyFilterAndReload` once; they don’t need to reason about timing between “set then reload”.
-- Ordering is owned by Logic; `$.state.update` / `$.state.read` naturally guarantees “the next step always sees the committed previous step”, avoiding sleep hacks and magic delays.
-
-## Next
-
-- Full React integration guide: [React integration](./react-integration)
-- API reference: [API Reference](../../api/)
-- More advanced patterns: [Unified API example](./unified-api)
+- [React integration](./react-integration)
+- [Unified API](./unified-api)

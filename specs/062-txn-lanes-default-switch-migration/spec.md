@@ -1,8 +1,8 @@
 # Feature Specification: Txn Lanes 默认开启（迁移与回退口径）
 
-**Feature Branch**: `062-txn-lanes-default-switch-migration`  
-**Created**: 2025-12-31  
-**Status**: Done  
+**Feature Branch**: `062-txn-lanes-default-switch-migration`
+**Created**: 2025-12-31
+**Status**: Done
 **Input**: 046 路线条目 `062`："Txn Lanes 默认开启：从显式 opt-in 切换为默认 on（迁移与回退口径）"
 
 ## Terminology

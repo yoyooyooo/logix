@@ -29,7 +29,7 @@
     },
     {
       "id": "006",
-      "dir": "specs/006-optimize-traits",
+      "dir": "specs/006-optimize-fields",
       "status": "draft",
       "dependsOn": ["073", "070"]
     },

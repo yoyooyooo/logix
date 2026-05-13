@@ -1,63 +1,193 @@
 ---
-title: Overview - the Form model
-description: Build a clear mental model first, then start writing demos.
+title: Introduction
+description: Form defines input-state semantics. React acquisition and projection remain on the core host route.
 ---
 
-## 1) What is a Form?
+`@logixjs/form` defines input-state semantics on top of the Logix runtime.
 
-`@logixjs/form` provides `Form.make(id, config)`, which returns a **Form Module** (a module definition object) that can be consumed directly by Runtime / React.
+Its user surface is organized around three layers:
 
-- **Runtime**: you can start it with `Logix.Runtime.make(FormModule, ...)` directly (no need to manually extract `FormModule.impl`).
-- **React**: you can call `useForm(FormModule)` to get a form view and the default `controller` (e.g. `handleSubmit/validate/reset/...`).
-- **Composition**: only when you need to mount the form as a child module inside a bigger Runtime do you use `imports: [FormModule.impl]`.
+1. `Form.make(...)` defines form semantics
+2. the returned `FormProgram` enters Runtime like any other program
+3. the form handle performs validation, submit, field edits, and list edits
 
-In other words: Form is not “local state attached to a React component”. It’s a module managed, composed, and debugged by the Runtime.
+## Public surface
 
-> [!TIP]
-> Form’s derivation/linkage/validation capabilities are powered by traits (capability rules and convergence).
-> If you want a more systematic mental model:
-> - [Traits (capability rules and convergence)](../guide/essentials/traits)
+Root exports are:
 
-## 2) What does Form state look like?
+- `Form.make`
+- `Form.Rule`
+- `Form.Error`
+- `Form.Companion`
 
-A Form state has four parts:
+Optional public subpath:
 
-- **values**: business form values you care about (determined by the Schema in `config.values`)
-- **errors**: an error tree (rule errors, manual errors, and Schema errors all go here)
-- **ui**: interaction state (e.g. touched/dirty)
-- **$form**: form meta (submitCount/isSubmitting/isDirty/errorCount, etc.)
+- `@logixjs/form/locales`
 
-`errorCount` enables O(1) `isValid/canSubmit` checks in UI, avoiding scanning the whole error tree.
+React consumption remains on the core host route:
 
-## 3) Unified convention for array errors: `$list/rows[]`
+- mount through `RuntimeProvider`
+- acquire through `useModule(...)`
+- read through `useSelector(...)`
+- write through the form handle
 
-Array field errors are written using a unified `rows` mapping:
+## Default reading order
 
-- valuePath: `items.0.name`
-- errorsPath: `errors.items.rows.0.name`
+- start with the default authoring path plus submit/validation
+- then inspect shared, local, and keyed instance lifetimes
+- then inspect source scheduling and remote fact flow
+- then inspect companion local support facts
+- then inspect row identity, cleanup receipts, and row-heavy edits
 
-List-level and row-level errors also have stable locations:
+## Authoring
 
-- list-level: `errors.items.$list`
-- row-level: `errors.items.rows.0.$item`
+```ts
+import * as Form from "@logixjs/form"
+import { Schema } from "effect"
 
-The goal: when you **insert/remove/reorder** array items, the error tree and UI tree can “move with rows” stably instead of drifting due to index changes.
+const Values = Schema.Struct({
+  name: Schema.String,
+  email: Schema.String,
+})
 
-## 4) Transaction semantics: at most one observable commit per interaction
+const SubmitPayload = Schema.Struct({
+  name: Schema.String,
+  email: Schema.String,
+})
 
-In React you typically call:
+export const ProfileForm = Form.make(
+  "ProfileForm",
+  {
+    values: Values,
+    initialValues: {
+      name: "",
+      email: "",
+    },
+    validateOn: ["onSubmit"],
+    reValidateOn: ["onChange"],
+  },
+  (form) => {
+    form.field("name").rule(
+      Form.Rule.make({
+        required: "profile.name.required",
+        minLength: {
+          min: 2,
+          message: "profile.name.minLength",
+        },
+      }),
+    )
 
-- `useField(form, path).onChange(...)` (dispatches `setValue` internally)
-- `useField(form, path).onBlur()` (dispatches `blur` internally)
-- `useFieldArray(form, listPath).append/remove/swap/move(...)`
+    form.field("email").rule(
+      Form.Rule.make({
+        required: "profile.email.required",
+      }),
+    )
 
-All of these go into the same Runtime transaction window. The runtime runs derivations/validation writes back and notifies subscribers with “at most one commit”.
+    form.submit({
+      decode: SubmitPayload,
+    })
+  },
+)
+```
 
-## 5) Recommended entry points: `derived + rules`
+## Runtime consumption
 
-For everyday product forms, a good default is to build your form with only two top-level concepts:
+```tsx
+import React from "react"
+import * as Logix from "@logixjs/core"
+import { Effect } from "effect"
+import { RuntimeProvider, useModule, useSelector } from "@logixjs/react"
+import { ProfileForm } from "./ProfileForm"
 
-- `derived`: derivations/linkage (`computed/link/source`), writing only values/ui
-- `rules`: validation (`field/list/root`), writing only errors
+const runtime = Logix.Runtime.make(ProfileForm)
 
-`traits` still exists, but is better suited for advanced capabilities or performance/diagnostic comparisons; it’s not recommended as the default entry.
+function ProfilePage() {
+  const form = useModule(ProfileForm.tag)
+  const name = useSelector(form, (s) => s.name)
+  const email = useSelector(form, (s) => s.email)
+  const nameError = useSelector(form, (s) => s.errors?.name)
+  const canSubmit = useSelector(
+    form,
+    (s) => s.$form.errorCount === 0 && !s.$form.isSubmitting,
+  )
+
+  return (
+    <form>
+      <input
+        value={String(name ?? "")}
+        onChange={(e) => void Effect.runPromise(form.field("name").set(e.target.value))}
+        onBlur={() => void Effect.runPromise(form.field("name").blur())}
+      />
+
+      <input
+        value={String(email ?? "")}
+        onChange={(e) => void Effect.runPromise(form.field("email").set(e.target.value))}
+        onBlur={() => void Effect.runPromise(form.field("email").blur())}
+      />
+
+      {nameError ? <p>{String(nameError)}</p> : null}
+
+      <button
+        type="button"
+        disabled={!canSubmit}
+        onClick={() =>
+          void Effect.runPromise(
+            form.submit({
+              onValid: (payload) => Effect.log(payload),
+            }),
+          )
+        }
+      >
+        Submit
+      </button>
+    </form>
+  )
+}
+
+export const App = () => (
+  <RuntimeProvider runtime={runtime}>
+    <ProfilePage />
+  </RuntimeProvider>
+)
+```
+
+## Instance selection
+
+Use `useModule(ProfileForm.tag)` when the Runtime already hosts one shared form instance.
+
+Use `useModule(ProfileForm, { key })` when a page needs an independent instance:
+
+```tsx
+const form = useModule(ProfileForm, { key: "profile:42" })
+```
+
+If each component needs its own copy, omit the key:
+
+```tsx
+const form = useModule(ProfileForm)
+```
+
+If route changes should restore the form shortly after unmount, add `gcTime` to a keyed instance:
+
+```tsx
+const form = useModule(ProfileForm, {
+  key: "profile:42",
+  gcTime: 60_000,
+})
+```
+
+## Exclusions
+
+The current surface does not include:
+
+- a second form-owned React hook family
+- package-local React wrappers as public truth
+- render-ready strings emitted directly from rule declarations
+- helper families that replace the core host route
+
+## See also
+
+- [Instances](/docs/form/instances)
+- [Sources](/docs/form/sources)
+- [Companion](/docs/form/companion)
+- [Field arrays](/docs/form/field-arrays)

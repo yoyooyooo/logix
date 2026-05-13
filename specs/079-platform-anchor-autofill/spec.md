@@ -1,9 +1,11 @@
 # Feature Specification: 保守自动补全 Platform-Grade 锚点声明（单一真相源）
 
-**Feature Branch**: `079-platform-anchor-autofill`  
-**Created**: 2026-01-09  
-**Status**: Draft  
+**Feature Branch**: `079-platform-anchor-autofill`
+**Created**: 2026-01-09
+**Status**: Frozen
 **Input**: 以编译期/构建期的保守补全方式，把“试跑/IR/全双工”所需的关键锚点缺口补齐，并回写到源码保持单一真相源（宁可错过不可乱补）
+
+> Freeze note: 本目录保留为历史锚点回写规划输入。当前 `085` CLI public surface 不接入 anchor/autofill route；若未来重启，必须先更新当前 SSoT、CLI public surface 和 `specs/README.md` 排期口径。
 
 ## Context
 

@@ -3,6 +3,7 @@ import { Duration, Effect, Layer, Schema } from 'effect'
 import { QueryClient } from '@tanstack/query-core'
 import * as Logix from '@logixjs/core'
 import * as Query from '../../src/index.js'
+import { engine as tanstackEngine } from '../../src/internal/engine/tanstack.js'
 
 describe('Query.CacheReuse', () => {
   it.effect('should reuse same keyHash and avoid redundant loading', () =>
@@ -12,7 +13,7 @@ describe('Query.CacheReuse', () => {
 
       let loadCalls = 0
 
-      const spec = Logix.Resource.make<Key, { readonly q: string }, never, never>({
+      const spec = Query.Engine.Resource.make<Key, { readonly q: string }, never, never>({
         id: 'demo/query-cache-reuse',
         keySchema: KeySchema,
         load: (key) =>
@@ -41,17 +42,17 @@ describe('Query.CacheReuse', () => {
         }),
       })
 
-      const runtime = Logix.Runtime.make(module.impl, {
+      const runtime = Logix.Runtime.make(module, {
         layer: Layer.mergeAll(
-          Logix.Resource.layer([spec]),
-          Query.Engine.layer(Query.TanStack.engine(new QueryClient())),
+          Query.Engine.Resource.layer([spec]),
+          Query.Engine.layer(tanstackEngine(new QueryClient())),
         ),
         middleware: [Query.Engine.middleware()],
       })
 
       const program = Effect.gen(function* () {
           const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
-        const controller = module.controller.make(rt)
+        const commands = module.commands.make(rt)
 
         // `onMount` triggers one load.
         yield* Effect.sleep(Duration.millis(30))
@@ -59,16 +60,17 @@ describe('Query.CacheReuse', () => {
         // Repeatedly write params that are value-equal but referentially different; should not trigger refresh again.
         yield* Effect.forEach(
           Array.from({ length: 10 }, () => ({ q: 'same' })),
-          (p) => controller.controller.setParams(p as any),
+          (p) => commands.setParams(p as any),
         )
 
         yield* Effect.sleep(Duration.millis(30))
 
-        const state = yield* controller.getState
+        const state = yield* commands.getState
         const snapshot = state.queries.search
 
         expect(snapshot.status).toBe('success')
         expect(snapshot.data).toEqual({ q: 'same' })
+        expect(snapshot.keyHash).toBe(Query.Engine.Resource.keyHash({ q: 'same' }))
         expect(loadCalls).toBe(1)
       })
 

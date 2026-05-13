@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Logger } from 'effect'
@@ -5,7 +6,7 @@ import * as Logix from '../../src/index.js'
 
 describe('Debug (public API)', () => {
   it.effect('record should be a no-op when no DebugSink is provided', () =>
-    Logix.Debug.record({
+    CoreDebug.record({
       type: 'module:init',
       moduleId: 'test-module',
     }),
@@ -13,10 +14,10 @@ describe('Debug (public API)', () => {
 
   it.effect('record should delegate to provided DebugSink implementation', () =>
     Effect.gen(function* () {
-      const events: Logix.Debug.Event[] = []
+      const events: CoreDebug.Event[] = []
 
-      const sink: Logix.Debug.Sink = {
-        record: (event: Logix.Debug.Event) =>
+      const sink: CoreDebug.Sink = {
+        record: (event: CoreDebug.Event) =>
           Effect.sync(() => {
             events.push(event)
           }),
@@ -24,14 +25,14 @@ describe('Debug (public API)', () => {
 
       yield* Effect.provideService(
         Effect.provideService(
-          Logix.Debug.record({
+          CoreDebug.record({
             type: 'module:init',
             moduleId: 'test-module',
           }),
-          Logix.Debug.internal.currentDebugSinks,
+          CoreDebug.internal.currentDebugSinks,
           [sink],
         ),
-        Logix.Debug.internal.currentDiagnosticsLevel,
+        CoreDebug.internal.currentDiagnosticsLevel,
         'full',
       )
 
@@ -46,17 +47,17 @@ describe('Debug (public API)', () => {
 
   it.effect('record should preserve sink failure propagation in multi-sink dispatch', () =>
     Effect.gen(function* () {
-      const events: Logix.Debug.Event[] = []
+      const events: CoreDebug.Event[] = []
 
-      const brokenSink: Logix.Debug.Sink = {
+      const brokenSink: CoreDebug.Sink = {
         record: () =>
           Effect.sync(() => {
             throw new Error('sink failure')
           }),
       }
 
-      const healthySink: Logix.Debug.Sink = {
-        record: (event: Logix.Debug.Event) =>
+      const healthySink: CoreDebug.Sink = {
+        record: (event: CoreDebug.Event) =>
           Effect.sync(() => {
             events.push(event)
           }),
@@ -65,14 +66,14 @@ describe('Debug (public API)', () => {
       const exit = yield* Effect.exit(
         Effect.provideService(
           Effect.provideService(
-            Logix.Debug.record({
+            CoreDebug.record({
               type: 'module:init',
               moduleId: 'test-module',
             }),
-            Logix.Debug.internal.currentDebugSinks,
+            CoreDebug.internal.currentDebugSinks,
             [brokenSink, healthySink],
           ),
-          Logix.Debug.internal.currentDiagnosticsLevel,
+          CoreDebug.internal.currentDiagnosticsLevel,
           'full',
         ),
       )
@@ -84,7 +85,7 @@ describe('Debug (public API)', () => {
 
   it.effect('Debug.layer (dev) should be buildable as a Layer', () =>
     Effect.gen(function* () {
-      const layer = Logix.Debug.layer({ mode: 'dev' })
+      const layer = CoreDebug.layer({ mode: 'dev' })
       expect(layer).toBeDefined()
       expect(Layer.isLayer(layer)).toBe(true)
     }),
@@ -92,8 +93,8 @@ describe('Debug (public API)', () => {
 
   it.effect('Debug.layer should accept diagnosticsLevel option', () =>
     Effect.gen(function* () {
-      const level = yield* Effect.service(Logix.Debug.internal.currentDiagnosticsLevel).pipe(
-        Effect.provide(Logix.Debug.layer({ mode: 'dev', diagnosticsLevel: 'full' })),
+      const level = yield* Effect.service(CoreDebug.internal.currentDiagnosticsLevel).pipe(
+        Effect.provide(CoreDebug.layer({ mode: 'dev', diagnosticsLevel: 'full' })),
       )
       expect(level).toBe('full')
     }),
@@ -106,7 +107,7 @@ describe('Debug (public API)', () => {
 
       const after = yield* Effect.service(Logger.CurrentLoggers).pipe(
         Effect.provide(
-          Logix.Debug.withPrettyLogger(Layer.empty as unknown as Layer.Layer<any, any, any>) as Layer.Layer<
+          CoreDebug.withPrettyLogger(Layer.empty as unknown as Layer.Layer<any, any, any>) as Layer.Layer<
             any,
             never,
             never
@@ -124,7 +125,7 @@ describe('Debug (public API)', () => {
 
   it.effect('makeModuleRuntimeCounterSink should track instance counts per runtimeLabel::moduleId', () =>
     Effect.gen(function* () {
-      const { sink, getSnapshot } = Logix.Debug.makeModuleRuntimeCounterSink()
+      const { sink, getSnapshot } = CoreDebug.makeModuleRuntimeCounterSink()
 
       // Simulate two modules and multiple init/destroy events.
       yield* sink.record({ type: 'module:init', moduleId: 'A' })
@@ -147,7 +148,7 @@ describe('Debug (public API)', () => {
 
   it.effect('makeRingBufferSink should keep a bounded, ordered window of events after repeated overflow and clear', () =>
     Effect.gen(function* () {
-      const { sink, getSnapshot, clear } = Logix.Debug.makeRingBufferSink(3)
+      const { sink, getSnapshot, clear } = CoreDebug.makeRingBufferSink(3)
 
       // Initially empty
       expect(getSnapshot()).toHaveLength(0)
@@ -184,7 +185,7 @@ describe('Debug (public API)', () => {
 
   it.effect('makeRingBufferSink should ignore writes when capacity <= 0', () =>
     Effect.gen(function* () {
-      const { sink, getSnapshot, clear } = Logix.Debug.makeRingBufferSink(0)
+      const { sink, getSnapshot, clear } = CoreDebug.makeRingBufferSink(0)
 
       yield* sink.record({ type: 'module:init', moduleId: 'A' })
       yield* sink.record({ type: 'module:init', moduleId: 'B' })
@@ -197,22 +198,22 @@ describe('Debug (public API)', () => {
 
   it.effect('toRuntimeDebugEventRef should normalize action/state events', () =>
     Effect.gen(function* () {
-      const actionEvent: Logix.Debug.Event = {
+      const actionEvent: CoreDebug.Event = {
         type: 'action:dispatch',
         moduleId: 'M1',
         instanceId: 'i-1',
         action: { _tag: 'inc', payload: 1 },
       }
 
-      const stateEvent: Logix.Debug.Event = {
+      const stateEvent: CoreDebug.Event = {
         type: 'state:update',
         moduleId: 'M1',
         instanceId: 'i-1',
         state: { count: 1 },
       }
 
-      const actionRef = Logix.Debug.internal.toRuntimeDebugEventRef(actionEvent)
-      const stateRef = Logix.Debug.internal.toRuntimeDebugEventRef(stateEvent)
+      const actionRef = CoreDebug.internal.toRuntimeDebugEventRef(actionEvent)
+      const stateRef = CoreDebug.internal.toRuntimeDebugEventRef(stateEvent)
 
       expect(actionRef).toBeDefined()
       expect(actionRef?.kind).toBe('action')
@@ -244,7 +245,7 @@ describe('Debug (public API)', () => {
         effect: Effect.void as any,
       }
 
-      const traceEvent: Logix.Debug.Event = {
+      const traceEvent: CoreDebug.Event = {
         type: 'trace:effectop',
         moduleId: 'FallbackModule',
         instanceId: 'i-service',
@@ -252,7 +253,7 @@ describe('Debug (public API)', () => {
         data: effectOp as any,
       }
 
-      const ref = Logix.Debug.internal.toRuntimeDebugEventRef(traceEvent)
+      const ref = CoreDebug.internal.toRuntimeDebugEventRef(traceEvent)
 
       expect(ref).toBeDefined()
       expect(ref?.kind).toBe('service')
@@ -290,7 +291,7 @@ describe('Debug (public API)', () => {
         effect: Effect.void as any,
       }
 
-      const traceEvent: Logix.Debug.Event = {
+      const traceEvent: CoreDebug.Event = {
         type: 'trace:effectop',
         moduleId: 'FallbackModule',
         instanceId: 'i-service',
@@ -298,7 +299,7 @@ describe('Debug (public API)', () => {
         data: effectOp as any,
       }
 
-      const full: any = Logix.Debug.internal.toRuntimeDebugEventRef(traceEvent, {
+      const full: any = CoreDebug.internal.toRuntimeDebugEventRef(traceEvent, {
         diagnosticsLevel: 'full',
       })
       expect(full?.moduleId).toBe('BigMetaModule')
@@ -312,7 +313,7 @@ describe('Debug (public API)', () => {
       expect(full?.meta?.payload?.bigObject?.__truncatedKeys).toBe(68)
       expect(full?.meta?.meta?.fn).toBe('[Function]')
 
-      const light: any = Logix.Debug.internal.toRuntimeDebugEventRef(traceEvent, {
+      const light: any = CoreDebug.internal.toRuntimeDebugEventRef(traceEvent, {
         diagnosticsLevel: 'light',
       })
       expect(light?.moduleId).toBe('BigMetaModule')

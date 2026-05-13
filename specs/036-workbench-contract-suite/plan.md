@@ -1,6 +1,6 @@
 # Implementation Plan: Workbench Contract Suite（036：031-035 统一验收入口 + Agent 工具面草案）
 
-**Branch**: `036-workbench-contract-suite` | **Date**: 2025-12-26 | **Spec**: `specs/036-workbench-contract-suite/spec.md`  
+**Branch**: `036-workbench-contract-suite` | **Date**: 2025-12-26 | **Spec**: `specs/036-workbench-contract-suite/spec.md`
 **Input**: `specs/036-workbench-contract-suite/spec.md`
 
 ## Summary
@@ -21,12 +21,12 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.x（ESM；pnpm workspace）  
-**Primary Dependencies**: `effect` v3、`@logixjs/core`、`@logixjs/sandbox`、`@logixjs/react`、React（Workbench UI）  
-**Storage**: N/A（以可序列化 JSON 工件为主；Workbench 可导出下载，CI 可存档到 artifact store）  
-**Testing**: Vitest（含 `@effect/vitest` 约定）、TypeScript typecheck、ESLint  
-**Target Platform**: Node.js（CI/脚本）+ 现代浏览器（Workbench）  
-**Project Type**: pnpm monorepo（`packages/*` + `examples/*`）  
+**Language/Version**: TypeScript 5.x（ESM；pnpm workspace）
+**Primary Dependencies**: `effect` v3、`@logixjs/core`、`@logixjs/sandbox`、`@logixjs/react`、React（Workbench UI）
+**Storage**: N/A（以可序列化 JSON 工件为主；Workbench 可导出下载，CI 可存档到 artifact store）
+**Testing**: Vitest（含 `@effect/vitest` 约定）、TypeScript typecheck、ESLint
+**Target Platform**: Node.js（CI/脚本）+ 现代浏览器（Workbench）
+**Project Type**: pnpm monorepo（`packages/*` + `examples/*`）
 **Performance Goals**:
 - 不触及运行时热路径：所有导出/验收/Agent 工具均为按需路径（NFR-001，`specs/036-workbench-contract-suite/spec.md:106`）
 - 统一判定与对比必须是 O(工件体积) 量级，且输出确定性（NFR-002，`specs/036-workbench-contract-suite/spec.md:107`）

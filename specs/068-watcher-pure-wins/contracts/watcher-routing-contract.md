@@ -1,6 +1,6 @@
 # Contracts: Watcher Routing (068)
 
-**Spec**: `specs/068-watcher-pure-wins/spec.md`  
+**Spec**: `specs/068-watcher-pure-wins/spec.md`
 **Plan**: `specs/068-watcher-pure-wins/plan.md`
 
 本文件把 “watcher 分发/订阅传播” 的关键语义边界固化为契约，确保实现优化不会引入隐式语义变化，并且在出现降级/回退时可解释、可诊断。

@@ -10,7 +10,7 @@
 - PR 记录：`.context/prs/refactor-logix-core-moduletxn-listconfigs-guard-evidence-20260225.md`
 - 验证命令：
   - `pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.transaction.ListConfigsGuard.Perf.off.test.ts`
-  - `pnpm -C packages/logix-core exec vitest run test/internal/StateTrait/RowId.UpdateGate.test.ts`
+  - `pnpm -C packages/logix-core exec vitest run test/internal/FieldKernel/RowId.UpdateGate.test.ts`
 
 ## Constitution Check
 

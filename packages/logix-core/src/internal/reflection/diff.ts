@@ -1,5 +1,5 @@
 import { stableStringify } from '../digest.js'
-import type { JsonValue } from '../observability/jsonValue.js'
+import type { JsonValue } from '../protocol/jsonValue.js'
 import type { ModuleManifest, ModuleManifestLogicUnit } from './manifest.js'
 
 export type ManifestDiffSeverity = 'BREAKING' | 'RISKY' | 'INFO'
