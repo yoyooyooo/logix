@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "kind": "LogixSelectionManifest",
+  "selectionId": "fixture:selection:cli-basic",
+  "sessionId": "session:1",
+  "findingId": "finding:1",
+  "artifactOutputKey": "dvtools-session-snapshot",
+  "focusRef": {
+    "sourceRef": "src/basic.ts:1"
+  }
+}

@@ -1,8 +1,8 @@
 # Feature Specification: E2E Latency Trace（端到端：action → txn → notify → commit）
 
-**Feature Branch**: `092-e2e-latency-trace`  
-**Created**: 2026-01-10  
-**Status**: Draft  
+**Feature Branch**: `092-e2e-latency-trace`
+**Created**: 2026-01-10
+**Status**: Draft
 **Input**: 补齐端到端可观测链路：让一次用户交互/Async Action 的稳定标识（txnId/linkId/opSeq）贯穿到外部存储通知、React commit 与可选的 paint 采样；Devtools 必须能解释“卡在 IO / 事务收敛 / 调度等待 / 渲染提交”的因果链路，并提供可复现的性能预算与采样策略。
 
 ## Context

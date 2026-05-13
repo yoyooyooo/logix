@@ -1,8 +1,8 @@
 # Feature Specification: core-ng Wasm Planner（可选极致路线）
 
-**Feature Branch**: `054-core-ng-wasm-planner`  
-**Created**: 2025-12-31  
-**Status**: Frozen  
+**Feature Branch**: `054-core-ng-wasm-planner`
+**Created**: 2025-12-31
+**Status**: Frozen
 **Input**: 046 registry 条目 `054`（`specs/046-core-ng-roadmap/spec-registry.json`）
 
 ## Summary
@@ -37,4 +37,4 @@
 
 - 046 总控：`specs/046-core-ng-roadmap/`
 - 规划/Reachability baseline：`specs/013-auto-converge-planner/`
-- Guardrails：`specs/039-trait-converge-int-exec-evidence/`
+- Guardrails：`specs/039-field-converge-int-exec-evidence/`

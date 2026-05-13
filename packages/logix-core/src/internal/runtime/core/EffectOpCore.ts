@@ -1,6 +1,6 @@
 // EffectOp core model and middleware composition logic.
 // For higher-level Runtime / Devtools integration, see:
-// specs/000-module-traits-runtime/references/effectop-and-middleware.md
+// EffectOp / middleware reference.
 
 import { Effect, ServiceMap } from 'effect'
 
@@ -69,9 +69,9 @@ export interface EffectOp<Out = unknown, Err = unknown, Env = unknown> {
     | 'state'
     | 'service'
     | 'lifecycle'
-    | 'trait-computed'
-    | 'trait-link'
-    | 'trait-source'
+    | 'field-computed'
+    | 'field-link'
+    | 'field-source'
     | 'devtools'
   readonly name: string
   readonly payload?: unknown
@@ -92,7 +92,7 @@ export interface EffectOp<Out = unknown, Err = unknown, Env = unknown> {
     deps?: ReadonlyArray<string>
     from?: string
     to?: string
-    traitNodeId?: string
+    fieldNodeId?: string
     stepId?: string
     resourceId?: string
     key?: unknown
@@ -118,7 +118,7 @@ const composeMiddlewareCache = new WeakMap<MiddlewareStack, Middleware>()
  * EffectOpMiddlewareEnv：
  * - A Service in Effect Env that carries the current Runtime's MiddlewareStack.
  * - Injected by Runtime.ts when constructing a ManagedRuntime.
- * - Runtime code (e.g. StateTrait.install) uses this Service to decide which MiddlewareStack to use.
+ * - Runtime code (e.g. FieldKernel.install) uses this Service to decide which MiddlewareStack to use.
  */
 export interface EffectOpMiddlewareEnv {
   readonly stack: MiddlewareStack

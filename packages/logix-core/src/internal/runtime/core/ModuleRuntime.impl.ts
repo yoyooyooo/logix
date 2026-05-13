@@ -23,7 +23,7 @@ import * as Lifecycle from './Lifecycle.js'
 import * as Debug from './DebugSink.js'
 import { currentConvergeStaticIrCollectors } from './ConvergeStaticIrCollector.js'
 import type { RuntimeInternals } from './RuntimeInternals.js'
-import type * as ModuleTraits from './ModuleTraits.js'
+import type * as ModuleFields from './ModuleFields.js'
 import * as StateTransaction from './StateTransaction.js'
 import * as RuntimeKernel from './RuntimeKernel.js'
 import * as FullCutoverGate from './FullCutoverGate.js'
@@ -42,36 +42,33 @@ import {
 import type {
   StateTransactionInstrumentation,
   StateTransactionOverrides,
-  TraitConvergeTimeSlicingPatch,
+  FieldConvergeTimeSlicingPatch,
   TickSchedulerService,
   TxnLanesPatch,
 } from './env.js'
-import { normalizeNonEmptyString } from './normalize.js'
-import { EvidenceCollectorTag } from '../../observability/evidenceCollector.js'
+import { EvidenceCollectorTag } from '../../verification/evidenceCollector.js'
 import * as EffectOp from '../../effect-op.js'
 import { makeRunOperation } from './ModuleRuntime.operation.js'
 import { makeDispatchOps } from './ModuleRuntime.dispatch.js'
 import { makeEffectsRegistry } from './ModuleRuntime.effects.js'
-import { makeTransactionOps } from './ModuleRuntime.transaction.js'
+import { hasFieldConvergeTimeSlicingBacklog, makeTransactionOps } from './ModuleRuntime.transaction.js'
 import { makeResolveConcurrencyPolicy } from './ModuleRuntime.concurrencyPolicy.js'
 import { makeResolveTxnLanePolicy } from './ModuleRuntime.txnLanePolicy.js'
 import {
-  makeResolveTraitConvergeConfig,
-  type ResolvedTraitConvergeConfig,
-} from './ModuleRuntime.traitConvergeConfig.js'
-import { compareFieldPath, isPrefixOf, normalizeFieldPath, toKey, type DirtyAllReason, type FieldPath } from '../../field-path.js'
-import * as RowId from '../../state-trait/rowid.js'
-import * as StateTraitBuild from '../../state-trait/build.js'
-import { exportConvergeStaticIr, getConvergeStaticIrDigest } from '../../state-trait/converge-ir.js'
-import { makeConvergeExecIr } from '../../state-trait/converge-exec-ir.js'
-import * as StateTraitConverge from '../../state-trait/converge.js'
-import * as StateTraitValidate from '../../state-trait/validate.js'
-import { installInternalHooks, type TraitState } from './ModuleRuntime.internalHooks.js'
+  makeResolveFieldConvergeConfig,
+  type ResolvedFieldConvergeConfig,
+} from './ModuleRuntime.fieldConvergeConfig.js'
+import { isPrefixOf, normalizeFieldPath, toKey, type DirtyAllReason, type FieldPath } from '../../field-path.js'
+import * as RowId from '../../field-kernel/rowid.js'
+import * as FieldKernelConverge from '../../field-kernel/converge.js'
+import * as FieldValidate from '../../field-kernel/validate.js'
+import { installInternalHooks, type FieldRuntimeState } from './ModuleRuntime.internalHooks.js'
 import { RootContextTag, type RootContext } from './RootContext.js'
 import * as ProcessRuntime from './process/ProcessRuntime.js'
 import * as ReadQuery from './ReadQuery.js'
 import * as SelectorGraph from './SelectorGraph.js'
-import { makeModuleInstanceKey, type RuntimeStoreModuleCommit } from './RuntimeStore.js'
+import type { RuntimeStoreModuleCommit } from './RuntimeStore.js'
+import { resolveModuleRuntimeMakeOptions } from './ModuleRuntime.makeOptions.js'
 import {
   getRegisteredRuntime,
   getRuntimeByModuleAndInstance,
@@ -87,6 +84,13 @@ import {
 } from './ModuleRuntime.txnQueue.js'
 import { runModuleLogics } from './ModuleRuntime.logics.js'
 import * as ConcurrencyDiagnostics from './ConcurrencyDiagnostics.js'
+import * as HotLifecycle from './hotLifecycle/index.js'
+import {
+  DEFAULT_CONVERGE_PLAN_CACHE_CAPACITY,
+  installSchemaBackedFieldProgram,
+  makeFieldRuntimeState,
+  makeRegisterFieldProgram,
+} from './ModuleRuntime.fieldKernelInstall.js'
 
 export { registerRuntime, unregisterRuntime, getRegisteredRuntime, getRuntimeByModuleAndInstance }
 
@@ -121,19 +125,28 @@ export interface ModuleRuntimeOptions<S, A, R = never> {
    */
   readonly stateTransaction?: {
     readonly instrumentation?: StateTransactionInstrumentation
-    readonly traitConvergeBudgetMs?: number
-    readonly traitConvergeDecisionBudgetMs?: number
-    readonly traitConvergeMode?: 'auto' | 'full' | 'dirty'
-    readonly traitConvergeTimeSlicing?: TraitConvergeTimeSlicingPatch
+    readonly fieldConvergeBudgetMs?: number
+    readonly fieldConvergeDecisionBudgetMs?: number
+    readonly fieldConvergeMode?: 'auto' | 'full' | 'dirty'
+    readonly fieldConvergeTimeSlicing?: FieldConvergeTimeSlicingPatch
     readonly txnLanes?: TxnLanesPatch
   }
 }
 
-let nextInstanceSeq = 0
+type ReadQueryTopicRetainLease = {
+  readonly selectorFingerprint: string
+  readonly selectorId: string
+}
 
-const makeDefaultInstanceId = (): string => {
-  nextInstanceSeq += 1
-  return `i${nextInstanceSeq}`
+type InternalReadQueryTopicRetainer<S> = {
+  /**
+   * Internal host bridge: retain the SelectorGraph entry that backs a RuntimeStore read-query topic.
+   * This is intentionally not part of the public ModuleRuntime surface.
+   */
+  readonly retainReadQueryTopic: <V>(
+    readQuery: ReadQuery.ReadQueryInput<S, V>,
+  ) => Effect.Effect<ReadQueryTopicRetainLease, never, Scope.Scope>
+  readonly __internalSelectorGraphHasEntries?: () => boolean
 }
 
 export const make = <S, A, R = never>(
@@ -142,6 +155,7 @@ export const make = <S, A, R = never>(
 ): Effect.Effect<PublicModuleRuntime<S, A>, never, Scope.Scope | R> => {
   const program = Effect.gen(function* () {
     const stateRef = options.createState ? yield* options.createState : yield* SubscriptionRef.make(initialState)
+    const runtimeScope = yield* Effect.scope
 
     const commitHub = yield* PubSub.unbounded<StateChangeWithMeta<S>>()
     const actionCommitHub = yield* PubSub.unbounded<StateChangeWithMeta<A>>()
@@ -159,15 +173,47 @@ export const make = <S, A, R = never>(
       }),
     )
 
-    const moduleId = options.moduleId ?? 'unknown'
-    const instanceId = normalizeNonEmptyString(options.instanceId) ?? makeDefaultInstanceId()
-    const moduleInstanceKey = makeModuleInstanceKey(moduleId, instanceId)
+    const { moduleId, instanceId, moduleInstanceKey } = resolveModuleRuntimeMakeOptions(options)
     const runtimeLabel = yield* Effect.service(Debug.currentRuntimeLabel).pipe(Effect.orDie)
     const lifecycle = yield* Lifecycle.makeLifecycleManager({
       moduleId,
       instanceId,
       runtimeLabel,
     })
+    const hotLifecycleOwner = yield* HotLifecycle.getCurrentRuntimeHotLifecycleOwner()
+    const hotLifecycle = hotLifecycleOwner
+      ? HotLifecycle.makeRuntimeHotLifecycleContext(hotLifecycleOwner)
+      : undefined
+    if (hotLifecycle) {
+      hotLifecycle.register({
+        resourceId: `${hotLifecycle.owner.ownerId}::module:${moduleInstanceKey}`,
+        category: 'module-cache-entry',
+        moduleId,
+        moduleInstanceId: instanceId,
+        cleanup: () =>
+          Effect.sync(() => {
+            unregisterRuntimeByInstanceKey(moduleInstanceKey)
+            if (options.tag) {
+              unregisterRuntime(options.tag as ServiceMap.Key<any, PublicModuleRuntime<any, any>>)
+            }
+          }),
+      })
+      hotLifecycle.register({
+        resourceId: `${hotLifecycle.owner.ownerId}::subscription:${moduleInstanceKey}:commit`,
+        category: 'subscription',
+        moduleId,
+        moduleInstanceId: instanceId,
+        cleanup: () => PubSub.shutdown(commitHub).pipe(Effect.catchCause(() => Effect.void)) as Effect.Effect<void, never, never>,
+      })
+      hotLifecycle.register({
+        resourceId: `${hotLifecycle.owner.ownerId}::subscription:${moduleInstanceKey}:action-commit`,
+        category: 'subscription',
+        moduleId,
+        moduleInstanceId: instanceId,
+        cleanup: () =>
+          PubSub.shutdown(actionCommitHub).pipe(Effect.catchCause(() => Effect.void)) as Effect.Effect<void, never, never>,
+      })
+    }
     const concurrencyDiagnostics = yield* ConcurrencyDiagnostics.make({
       moduleId: options.moduleId,
       instanceId,
@@ -187,7 +233,7 @@ export const make = <S, A, R = never>(
     const instrumentation: StateTransactionInstrumentation =
       options.stateTransaction?.instrumentation ?? runtimeInstrumentation ?? getDefaultStateTxnInstrumentation()
 
-    const resolveTraitConvergeConfig = makeResolveTraitConvergeConfig({
+    const resolveFieldConvergeConfig = makeResolveFieldConvergeConfig({
       moduleId: options.moduleId,
       stateTransaction: options.stateTransaction,
     })
@@ -212,24 +258,21 @@ export const make = <S, A, R = never>(
           const policy = yield* resolveConcurrencyPolicy()
           return yield* PubSub.bounded<A>(policy.losslessBackpressureCapacity)
         })
+    if (hotLifecycle) {
+      hotLifecycle.register({
+        resourceId: `${hotLifecycle.owner.ownerId}::subscription:${moduleInstanceKey}:actions`,
+        category: 'subscription',
+        moduleId,
+        moduleInstanceId: instanceId,
+        cleanup: () => PubSub.shutdown(actionHub).pipe(Effect.catchCause(() => Effect.void)) as Effect.Effect<void, never, never>,
+      })
+    }
 
-		    const convergePlanCacheCapacity = 128
-		    const traitState: TraitState = {
-		      program: undefined,
-		      convergeStaticIrDigest: undefined,
-		      convergePlanCache: undefined,
-	      convergeGeneration: {
-	        generation: 0,
-	        generationBumpCount: 0,
-	      },
-	      pendingCacheMissReason: undefined,
-	      pendingCacheMissReasonCount: 0,
-		      lastConvergeIrKeys: undefined,
-		      listConfigs: [],
-		    }
+    const convergePlanCacheCapacity = DEFAULT_CONVERGE_PLAN_CACHE_CAPACITY
+    const fieldState: FieldRuntimeState = makeFieldRuntimeState()
 
 	    // Cached list-path set (derived from listConfigs) for txn index evidence recording.
-	    // - undefined => no list traits; keep recordPatch overhead at ~0 for non-list modules.
+	    // - undefined => no list fields; keep recordPatch overhead at ~0 for non-list modules.
 	    let listPathSet: ReadonlySet<string> | undefined = undefined
 
 	    let externalOwnedFieldPaths: ReadonlyArray<FieldPath> = []
@@ -240,7 +283,7 @@ export const make = <S, A, R = never>(
       moduleId,
       instanceId,
       getFieldPathIdRegistry: () => {
-        const convergeIr: any = (traitState.program as any)?.convergeIr
+        const convergeIr: any = (fieldState.program as any)?.convergeIr
         if (!convergeIr || convergeIr.configError) return undefined
         return convergeIr.fieldPathIdRegistry
       },
@@ -248,14 +291,14 @@ export const make = <S, A, R = never>(
 
     // StateTransaction context:
     // - Maintain a single active transaction per ModuleRuntime;
-    // - Aggregate state writes from all entrypoints on this instance (dispatch / Traits / source-refresh, etc.);
+    // - Aggregate state writes from all entrypoints on this instance (dispatch / field refresh / source-refresh, etc.);
     // - New entrypoints (e.g. service writebacks / devtools operations) must also go through the same context + queue.
 	    const txnContext = StateTransaction.makeContext<S>({
 	      moduleId,
 	      instanceId,
 	      instrumentation,
 	      getFieldPathIdRegistry: () => {
-	        const convergeIr: any = (traitState.program as any)?.convergeIr
+	        const convergeIr: any = (fieldState.program as any)?.convergeIr
 	        if (!convergeIr || convergeIr.configError) return undefined
 	        return convergeIr.fieldPathIdRegistry
 	      },
@@ -267,7 +310,7 @@ export const make = <S, A, R = never>(
       reason,
       from,
       to,
-      traitNodeId,
+      fieldNodeId,
       stepId,
     ): void => {
       if (externalOwnedFieldPaths.length > 0) {
@@ -317,7 +360,7 @@ export const make = <S, A, R = never>(
               `owned=${ownedPath}\n` +
               `path=${resolvedPath}\n` +
               `reason=${String(reason)}\n` +
-              'Fix: do not write external-owned fields via reducers/$.state.*; use StateTrait.externalStore to own the field, and avoid setState/state.update (root writes) on modules with external-owned fields.',
+              'Fix: do not write external-owned fields via reducers/$.state.*; use FieldKernel.externalStore to own the field, and avoid setState/state.update (root writes) on modules with external-owned fields.',
           )
           err.name = 'ExternalOwnedWriteError'
           err._tag = 'ExternalOwnedWriteError'
@@ -335,7 +378,7 @@ export const make = <S, A, R = never>(
           return input
         }
 
-        if (reason === 'trait-external-store') {
+        if (reason === 'field-external-store') {
           const resolvedFieldPath = ensureFieldPath(resolved)
           const key = toKey(resolvedFieldPath)
           if (!externalOwnedFieldPathKeys.has(key)) {
@@ -351,7 +394,7 @@ export const make = <S, A, R = never>(
         }
       }
 
-      StateTransaction.recordPatch(txnContext, path, reason, from, to, traitNodeId, stepId)
+      StateTransaction.recordPatch(txnContext, path, reason, from, to, fieldNodeId, stepId)
     }
 
     const updateDraft: RuntimeInternals['txn']['updateDraft'] = (nextState): void => {
@@ -359,21 +402,23 @@ export const make = <S, A, R = never>(
       StateTransaction.updateDraft(txnContext, nextState as S)
     }
 
-    const traitConvergeTimeSlicingSignal = yield* Queue.unbounded<void>()
-    const traitConvergeTimeSlicingState: {
+    const fieldConvergeTimeSlicingSignal = yield* Queue.unbounded<void>()
+    const fieldConvergeTimeSlicingState: {
       readonly signal: Queue.Queue<void>
       readonly backlogDirtyPaths: Set<StateTransaction.StatePatchPath>
+      readonly backlogDeferredStepIds: Array<number>
       readonly ensureWorkerStarted: () => Effect.Effect<void, never, never>
       workerFiber: Fiber.Fiber<void, never> | undefined
       backlogDirtyAllReason?: DirtyAllReason
       firstPendingAtMs: number | undefined
       lastTouchedAtMs: number | undefined
-      latestConvergeConfig: ResolvedTraitConvergeConfig | undefined
+      latestConvergeConfig: ResolvedFieldConvergeConfig | undefined
       capturedContext: CapturedTxnRuntimeScope | undefined
     } = {
-      signal: traitConvergeTimeSlicingSignal,
+      signal: fieldConvergeTimeSlicingSignal,
       backlogDirtyPaths: new Set(),
-      ensureWorkerStarted: () => ensureTraitConvergeTimeSlicingWorkerStarted(),
+      backlogDeferredStepIds: [],
+      ensureWorkerStarted: () => ensureFieldConvergeTimeSlicingWorkerStarted(),
       workerFiber: undefined,
       backlogDirtyAllReason: undefined,
       firstPendingAtMs: undefined,
@@ -382,13 +427,9 @@ export const make = <S, A, R = never>(
       capturedContext: undefined,
     }
 
-    const moduleTraitsState: {
-      frozen: boolean
-      contributions: Array<ModuleTraits.TraitContribution>
-      snapshot: ModuleTraits.ModuleTraitsSnapshot | undefined
+    const moduleFieldsState: {
+      snapshot: ModuleFields.ModuleFieldsSnapshot | undefined
     } = {
-      frozen: false,
-      contributions: [],
       snapshot: undefined,
     }
 
@@ -559,7 +600,13 @@ export const make = <S, A, R = never>(
     )
 
     const runtimeStoreOpt = yield* Effect.serviceOption(
-      RuntimeStoreTag as unknown as ServiceMap.Key<any, { registerModuleInstance: (args: unknown) => void; unregisterModuleInstance: (key: string) => void }>,
+      RuntimeStoreTag as unknown as ServiceMap.Key<
+        any,
+        {
+          registerModuleInstance: (args: unknown) => void
+          unregisterModuleInstance: (key: string) => void
+        }
+      >,
     )
     if (Option.isSome(runtimeStoreOpt)) {
       runtimeStoreOpt.value.registerModuleInstance({
@@ -567,6 +614,7 @@ export const make = <S, A, R = never>(
         instanceId,
         moduleInstanceKey,
         initialState: initialSnapshot,
+        hotLifecycle,
       })
     }
 
@@ -678,13 +726,13 @@ export const make = <S, A, R = never>(
               yield* selectorGraph.onCommit(
                 state,
                 meta,
-                transaction.dirty,
+                transaction.dirtyPlan,
                 diagnosticsLevel,
                 scheduler
-                  ? (selectorId) => {
+                  ? (selectorFingerprint) => {
                       scheduler.onSelectorChanged({
                         moduleInstanceKey,
-                        selectorId,
+                        selectorFingerprint,
                         priority: meta.priority,
                       })
                     }
@@ -722,24 +770,24 @@ export const make = <S, A, R = never>(
         enqueueTransaction,
         runOperation,
         txnContext,
-        traitConvergeTimeSlicing: traitConvergeTimeSlicingState,
-	        traitRuntime: {
-	          getProgram: () => traitState.program,
-	          getConvergeStaticIrDigest: () => traitState.convergeStaticIrDigest,
-	          getConvergePlanCache: () => traitState.convergePlanCache,
-	          getConvergeGeneration: () => traitState.convergeGeneration,
-	          getPendingCacheMissReason: () => traitState.pendingCacheMissReason,
-	          getPendingCacheMissReasonCount: () => traitState.pendingCacheMissReasonCount,
+        fieldConvergeTimeSlicing: fieldConvergeTimeSlicingState,
+	        fieldRuntime: {
+	          getProgram: () => fieldState.program,
+	          getConvergeStaticIrDigest: () => fieldState.convergeStaticIrDigest,
+	          getConvergePlanCache: () => fieldState.convergePlanCache,
+	          getConvergeGeneration: () => fieldState.convergeGeneration,
+	          getPendingCacheMissReason: () => fieldState.pendingCacheMissReason,
+	          getPendingCacheMissReasonCount: () => fieldState.pendingCacheMissReasonCount,
 	          setPendingCacheMissReason: (next) => {
-	            traitState.pendingCacheMissReason = next
+	            fieldState.pendingCacheMissReason = next
 	            if (next == null) {
-	              traitState.pendingCacheMissReasonCount = 0
+	              fieldState.pendingCacheMissReasonCount = 0
 	            }
 	          },
 	          rowIdStore,
-	          getListConfigs: () => traitState.listConfigs,
+	          getListConfigs: () => fieldState.listConfigs,
 	        },
-        resolveTraitConvergeConfig,
+        resolveFieldConvergeConfig,
         isDevEnv,
         txnHistory,
         txnById,
@@ -772,6 +820,7 @@ export const make = <S, A, R = never>(
       readonly dirtyAllReason?: DirtyAllReason
       readonly lane: 'urgent' | 'nonUrgent'
       readonly slice?: { readonly start: number; readonly end: number; readonly total: number }
+      readonly deferredStepIds?: Int32Array
       readonly captureOpSeq?: boolean
       readonly emitLaneEvidence?: (anchor: {
         readonly txnSeq: number
@@ -792,20 +841,24 @@ export const make = <S, A, R = never>(
         details.sliceEnd = args.slice.end
         details.sliceTotal = args.slice.total
       }
+      if (args.deferredStepIds && args.deferredStepIds.length > 0) {
+        details.deferredStepCount = args.deferredStepIds.length
+        details.deferredStepIds = Array.from(args.deferredStepIds)
+      }
 
       return enqueueTransaction(
         args.lane,
         runOperation(
           'lifecycle',
-          'trait:deferredConvergeFlush',
+          'field:deferredConvergeFlush',
           {
             payload: { dirtyPathCount: args.dirtyPathsSnapshot.length },
             meta: { moduleId, instanceId },
           },
           runWithStateTransaction(
             {
-              kind: 'trait:deferred_flush',
-              name: 'trait:deferredConvergeFlush',
+              kind: 'field:deferred_flush',
+              name: 'field:deferredConvergeFlush',
               details,
             },
             () =>
@@ -848,31 +901,31 @@ export const make = <S, A, R = never>(
     }
 
     // 043: time-slicing scheduler for deferred converge (debounce + maxLag); triggered by in-txn signals and enqueued outside the txn.
-    const runTraitConvergeTimeSlicingWorker = Effect.gen(function* () {
+    const runFieldConvergeTimeSlicingWorker = Effect.gen(function* () {
       try {
         while (true) {
           while (true) {
-            const config = traitConvergeTimeSlicingState.latestConvergeConfig?.traitConvergeTimeSlicing
+            const config = fieldConvergeTimeSlicingState.latestConvergeConfig?.fieldConvergeTimeSlicing
             if (!config?.enabled) {
-              traitConvergeTimeSlicingState.backlogDirtyPaths.clear()
-              traitConvergeTimeSlicingState.backlogDirtyAllReason = undefined
-              traitConvergeTimeSlicingState.firstPendingAtMs = undefined
-              traitConvergeTimeSlicingState.lastTouchedAtMs = undefined
+              fieldConvergeTimeSlicingState.backlogDirtyPaths.clear()
+              fieldConvergeTimeSlicingState.backlogDeferredStepIds.length = 0
+              fieldConvergeTimeSlicingState.backlogDirtyAllReason = undefined
+              fieldConvergeTimeSlicingState.firstPendingAtMs = undefined
+              fieldConvergeTimeSlicingState.lastTouchedAtMs = undefined
               return
             }
 
             const hasBacklog =
-              traitConvergeTimeSlicingState.backlogDirtyPaths.size > 0 ||
-              traitConvergeTimeSlicingState.backlogDirtyAllReason != null
+              hasFieldConvergeTimeSlicingBacklog(fieldConvergeTimeSlicingState)
             if (!hasBacklog) {
               return
             }
 
             const now = Date.now()
-            const firstPendingAtMs = traitConvergeTimeSlicingState.firstPendingAtMs ?? now
-            traitConvergeTimeSlicingState.firstPendingAtMs = firstPendingAtMs
+            const firstPendingAtMs = fieldConvergeTimeSlicingState.firstPendingAtMs ?? now
+            fieldConvergeTimeSlicingState.firstPendingAtMs = firstPendingAtMs
 
-            const captured = traitConvergeTimeSlicingState.capturedContext
+            const captured = fieldConvergeTimeSlicingState.capturedContext
             const txnLanePolicy = yield* (captured?.overrides
               ? Effect.provideService(
                   resolveTxnLanePolicy(),
@@ -883,7 +936,7 @@ export const make = <S, A, R = never>(
 
             const debounceMs = txnLanePolicy.enabled ? txnLanePolicy.debounceMs : config.debounceMs
             const maxLagMs = txnLanePolicy.enabled ? txnLanePolicy.maxLagMs : config.maxLagMs
-            const lastTouchedAtMs = traitConvergeTimeSlicingState.lastTouchedAtMs ?? firstPendingAtMs
+            const lastTouchedAtMs = fieldConvergeTimeSlicingState.lastTouchedAtMs ?? firstPendingAtMs
             const quietMs = Math.max(0, now - lastTouchedAtMs)
             const lagMs = Math.max(0, now - firstPendingAtMs)
 
@@ -901,24 +954,26 @@ export const make = <S, A, R = never>(
             }
           }
 
-          const dirtyPathsSnapshot = Array.from(traitConvergeTimeSlicingState.backlogDirtyPaths)
-          traitConvergeTimeSlicingState.backlogDirtyPaths.clear()
-          const dirtyAllReasonSnapshot = traitConvergeTimeSlicingState.backlogDirtyAllReason
-          traitConvergeTimeSlicingState.backlogDirtyAllReason = undefined
-          const firstPendingAtMsForRun = traitConvergeTimeSlicingState.firstPendingAtMs
-          traitConvergeTimeSlicingState.firstPendingAtMs = undefined
-          traitConvergeTimeSlicingState.lastTouchedAtMs = undefined
+          const dirtyPathsSnapshot = Array.from(fieldConvergeTimeSlicingState.backlogDirtyPaths)
+          fieldConvergeTimeSlicingState.backlogDirtyPaths.clear()
+          const deferredStepIdsSnapshot = Int32Array.from(fieldConvergeTimeSlicingState.backlogDeferredStepIds)
+          fieldConvergeTimeSlicingState.backlogDeferredStepIds.length = 0
+          const dirtyAllReasonSnapshot = fieldConvergeTimeSlicingState.backlogDirtyAllReason
+          fieldConvergeTimeSlicingState.backlogDirtyAllReason = undefined
+          const firstPendingAtMsForRun = fieldConvergeTimeSlicingState.firstPendingAtMs
+          fieldConvergeTimeSlicingState.firstPendingAtMs = undefined
+          fieldConvergeTimeSlicingState.lastTouchedAtMs = undefined
 
-          if (dirtyPathsSnapshot.length === 0 && !dirtyAllReasonSnapshot) {
+          if (dirtyPathsSnapshot.length === 0 && deferredStepIdsSnapshot.length === 0 && !dirtyAllReasonSnapshot) {
             return
           }
 
-          const program = traitState.program
+          const program = fieldState.program
           if (!program?.convergeExecIr || program.convergeExecIr.topoOrderDeferredInt32.length === 0) {
             return
           }
 
-          const captured = traitConvergeTimeSlicingState.capturedContext
+          const captured = fieldConvergeTimeSlicingState.capturedContext
           const txnLanePolicy = yield* captured?.overrides
             ? Effect.provideService(resolveTxnLanePolicy(), StateTransactionOverridesTag, captured.overrides)
             : resolveTxnLanePolicy()
@@ -978,7 +1033,7 @@ export const make = <S, A, R = never>(
                               ...(typeof anchor.opSeq === 'number' ? { opSeq: anchor.opSeq } : {}),
                             },
                             lane: 'urgent',
-                            kind: 'trait:deferred_flush',
+                            kind: 'field:deferred_flush',
                             policy: txnLanePolicy,
                             backlog: {
                               pendingCount: 0,
@@ -996,15 +1051,15 @@ export const make = <S, A, R = never>(
             )
 
             const hasPending =
-              traitConvergeTimeSlicingState.backlogDirtyPaths.size > 0 ||
-              traitConvergeTimeSlicingState.backlogDirtyAllReason != null
+              hasFieldConvergeTimeSlicingBacklog(fieldConvergeTimeSlicingState)
             if (!hasPending) {
               return
             }
             continue
           }
 
-          const totalSteps = program.convergeExecIr.topoOrderDeferredInt32.length
+          const totalSteps =
+            deferredStepIdsSnapshot.length > 0 ? deferredStepIdsSnapshot.length : program.convergeExecIr.topoOrderDeferredInt32.length
 
           let cursor = 0
           const initialChunkSize = txnLanePolicy.budgetMs <= 1 ? 1 : 32
@@ -1042,6 +1097,9 @@ export const make = <S, A, R = never>(
                   dirtyAllReason: dirtyAllReasonSnapshot,
                   lane: 'nonUrgent',
                   slice: { start: sliceStart, end: sliceEnd, total: totalSteps },
+                  ...(deferredStepIdsSnapshot.length > 0
+                    ? { deferredStepIds: deferredStepIdsSnapshot.subarray(sliceStart, sliceEnd) }
+                    : null),
                   captureOpSeq: shouldEmitLaneEvidence,
                 })
                 const sliceDurationMs = Math.max(0, Date.now() - sliceStartedAtMs)
@@ -1052,8 +1110,7 @@ export const make = <S, A, R = never>(
             cursor = sliceEnd
 
             const hasPending =
-              traitConvergeTimeSlicingState.backlogDirtyPaths.size > 0 ||
-              traitConvergeTimeSlicingState.backlogDirtyAllReason != null
+              hasFieldConvergeTimeSlicingBacklog(fieldConvergeTimeSlicingState)
             const willCoalesce = txnLanePolicy.allowCoalesce && !lagExceeded && hasPending
 
             const elapsedSinceLastYieldMs = Math.max(0, Date.now() - lastYieldAtMs)
@@ -1088,7 +1145,7 @@ export const make = <S, A, R = never>(
                       ...(typeof anchor.opSeq === 'number' ? { opSeq: anchor.opSeq } : {}),
                     },
                     lane: 'nonUrgent',
-                    kind: 'trait:deferred_flush',
+                    kind: 'field:deferred_flush',
                     policy: txnLanePolicy,
                     backlog: {
                       pendingCount: Math.max(0, totalSteps - sliceEnd),
@@ -1139,7 +1196,7 @@ export const make = <S, A, R = never>(
                           ...(typeof anchor.opSeq === 'number' ? { opSeq: anchor.opSeq } : {}),
                         },
                         lane: 'nonUrgent',
-                        kind: 'trait:deferred_flush',
+                        kind: 'field:deferred_flush',
                         policy: txnLanePolicy,
                         backlog: {
                           pendingCount: Math.max(0, totalSteps - cursor),
@@ -1180,35 +1237,34 @@ export const make = <S, A, R = never>(
           }
 
           const hasPending =
-            traitConvergeTimeSlicingState.backlogDirtyPaths.size > 0 ||
-            traitConvergeTimeSlicingState.backlogDirtyAllReason != null
+            hasFieldConvergeTimeSlicingBacklog(fieldConvergeTimeSlicingState)
           if (!hasPending) {
             return
           }
         }
       } finally {
-        traitConvergeTimeSlicingState.workerFiber = undefined
+        fieldConvergeTimeSlicingState.workerFiber = undefined
       }
     })
 
-    const ensureTraitConvergeTimeSlicingWorkerStarted = () =>
+    const ensureFieldConvergeTimeSlicingWorkerStarted = () =>
       Effect.gen(function* () {
-        if (traitConvergeTimeSlicingState.workerFiber) {
+        if (fieldConvergeTimeSlicingState.workerFiber) {
           return
         }
-        const fiber = yield* runTraitConvergeTimeSlicingWorker.pipe(
+        const fiber = yield* runFieldConvergeTimeSlicingWorker.pipe(
           Effect.provideService(TaskRunner.inSyncTransactionFiber, false),
           Effect.forkDetach({ startImmediately: true }),
         )
-        traitConvergeTimeSlicingState.workerFiber = fiber
+        fieldConvergeTimeSlicingState.workerFiber = fiber
       })
 
     lifecycle.registerDestroy(
       Effect.suspend(() => {
-        const fiber = traitConvergeTimeSlicingState.workerFiber
+        const fiber = fieldConvergeTimeSlicingState.workerFiber
         return fiber ? Fiber.interrupt(fiber).pipe(Effect.asVoid) : Effect.void
       }),
-      { name: 'traitConvergeTimeSlicing' },
+      { name: 'fieldConvergeTimeSlicing' },
     )
 
     const declaredActionTags = (() => {
@@ -1233,6 +1289,16 @@ export const make = <S, A, R = never>(
       )
       for (const [tag, hub] of topicHubEntries) {
         actionTagHubsByTag.set(tag, hub)
+        if (hotLifecycle) {
+          hotLifecycle.register({
+            resourceId: `${hotLifecycle.owner.ownerId}::subscription:${moduleInstanceKey}:action:${tag}`,
+            category: 'subscription',
+            moduleId,
+            moduleInstanceId: instanceId,
+            cleanup: () =>
+              PubSub.shutdown(hub).pipe(Effect.catchCause(() => Effect.void)) as Effect.Effect<void, never, never>,
+          })
+        }
       }
     }
 
@@ -1380,7 +1446,52 @@ export const make = <S, A, R = never>(
       },
     } as const
 
-    const runtime: PublicModuleRuntime<S, A> = {
+    const retainReadQueryTopic: InternalReadQueryTopicRetainer<S>['retainReadQueryTopic'] = (input) => {
+      const compiled: ReadQuery.ReadQueryCompiled<S, any> = ReadQuery.isReadQueryCompiled<S, any>(input)
+        ? input
+        : ReadQuery.compile(input)
+
+      if (compiled.lane !== 'static') {
+        return Effect.die(
+          new Error(
+            '[Logix] retainReadQueryTopic only accepts static ReadQuery selectors; rejected dynamic selector route.',
+          ),
+        ) as Effect.Effect<ReadQueryTopicRetainLease, never, Scope.Scope>
+      }
+
+      return Effect.gen(function* () {
+        const lease = yield* selectorGraph.retainEntry(compiled, 'topic')
+        yield* Effect.addFinalizer(() => lease.release)
+
+        let scheduler = tickSchedulerCached
+        if (!scheduler) {
+          scheduler = yield* refreshTickSchedulerFromEnv()
+        }
+        if (!scheduler) {
+          const fromRoot = readTickSchedulerFromRootContext(rootContext)
+          if (fromRoot) {
+            scheduler = fromRoot
+            tickSchedulerCached = fromRoot
+          }
+        }
+        if (scheduler) {
+          yield* scheduler.flushNow
+          scheduler.onSelectorChanged({
+            moduleInstanceKey,
+            selectorFingerprint: lease.selectorFingerprint,
+            priority: 'normal',
+          })
+          yield* scheduler.flushNow
+        }
+
+        return {
+          selectorFingerprint: lease.selectorFingerprint,
+          selectorId: lease.selectorId,
+        }
+      })
+    }
+
+    const runtime: PublicModuleRuntime<S, A> & InternalReadQueryTopicRetainer<S> = {
       // Expose moduleId on the runtime so React / Devtools can correlate module information at the view layer.
       moduleId,
       instanceId,
@@ -1401,6 +1512,8 @@ export const make = <S, A, R = never>(
           value: selector(value),
           meta,
         })),
+      retainReadQueryTopic,
+      __internalSelectorGraphHasEntries: () => selectorGraph.hasAnyEntries(),
       changesReadQueryWithMeta: <V>(input: ReadQuery.ReadQueryInput<S, V>) => {
         const compiled: ReadQuery.ReadQueryCompiled<S, V> = ReadQuery.isReadQueryCompiled<S, V>(input)
           ? input
@@ -1463,14 +1576,8 @@ export const make = <S, A, R = never>(
 
         return Stream.unwrap(
           Effect.gen(function* () {
-            const entry = yield* selectorGraph.ensureEntry(compiled)
-            entry.subscriberCount += 1
-
-            yield* Effect.addFinalizer(() =>
-              Effect.sync(() => {
-                selectorGraph.releaseEntry(compiled.selectorId)
-              }),
-            )
+            const lease = yield* selectorGraph.retainEntry(compiled, 'stream')
+            const entry = lease.entry
 
             if (!entry.hasValue) {
               const current = yield* readState
@@ -1483,7 +1590,7 @@ export const make = <S, A, R = never>(
               }
             }
 
-            return Stream.fromPubSub(entry.hub) as Stream.Stream<StateChangeWithMeta<V>>
+            return Stream.fromPubSub(lease.hub) as Stream.Stream<StateChangeWithMeta<V>>
           }),
         )
       },
@@ -1586,8 +1693,56 @@ export const make = <S, A, R = never>(
     // - Only store ModuleToken -> ModuleRuntime mappings.
     // - Never capture the whole Context into ModuleRuntime (avoid leaking root/base services by accident).
     const importsMap = new Map<ServiceMap.Key<any, PublicModuleRuntime<any, any>>, PublicModuleRuntime<any, any>>()
+    const seenImportedModuleIds = new Map<string, number>()
 
     for (const imported of options.imports ?? []) {
+      const importedModuleId =
+        imported && (typeof imported === 'object' || typeof imported === 'function') && typeof (imported as any).id === 'string'
+          ? ((imported as any).id as string)
+          : undefined
+
+      if (importedModuleId) {
+        const nextCount = (seenImportedModuleIds.get(importedModuleId) ?? 0) + 1
+        seenImportedModuleIds.set(importedModuleId, nextCount)
+
+        if (nextCount > 1) {
+          const fix = isDevEnv()
+            ? [
+                '- Keep one ModuleTag binding per parent scope.',
+                '- Split the two child variants into different parent scopes.',
+                '- Or wrap one variant behind another host/module boundary so it gets a different ModuleTag.',
+              ]
+            : []
+
+          const err = new Error(
+            isDevEnv()
+              ? [
+                  '[DuplicateImportedModuleBindingError] One parent scope cannot bind the same ModuleTag twice.',
+                  '',
+                  `tokenId: ${importedModuleId}`,
+                  'entrypoint: runtime.imports-scope',
+                  'mode: strict',
+                  `startScope: moduleId=${String(options.moduleId ?? '<unknown>')}, instanceId=${instanceId}`,
+                  '',
+                  'fix:',
+                  ...fix,
+                ].join('\n')
+              : '[DuplicateImportedModuleBindingError] duplicate imported module binding',
+          )
+
+          ;(err as any).tokenId = importedModuleId
+          ;(err as any).entrypoint = 'runtime.imports-scope'
+          ;(err as any).mode = 'strict'
+          ;(err as any).startScope = {
+            moduleId: String(options.moduleId ?? '<unknown>'),
+            instanceId,
+          }
+          ;(err as any).fix = fix
+          err.name = 'DuplicateImportedModuleBindingError'
+          throw err
+        }
+      }
+
       const maybe = yield* Effect.serviceOption(imported)
       if (Option.isSome(maybe)) {
         importsMap.set(imported, maybe.value)
@@ -1598,6 +1753,19 @@ export const make = <S, A, R = never>(
       kind: 'imports-scope',
       get: (module) => importsMap.get(module),
     }
+    if (hotLifecycle) {
+      hotLifecycle.register({
+        resourceId: `${hotLifecycle.owner.ownerId}::imports-scope:${moduleInstanceKey}`,
+        category: 'imports-scope',
+        moduleId,
+        moduleInstanceId: instanceId,
+        cleanup: () =>
+          Effect.sync(() => {
+            importsMap.clear()
+            seenImportedModuleIds.clear()
+          }),
+      })
+    }
 
     const instanceKey = options.moduleId != null ? `${options.moduleId}::${instanceId}` : undefined
 
@@ -1605,162 +1773,36 @@ export const make = <S, A, R = never>(
       registerRuntimeByInstanceKey(instanceKey, runtime as PublicModuleRuntime<any, any>)
     }
 
-    const registerStateTraitProgram = (
-      program: any,
-      registerOptions?: { readonly bumpReason?: any; readonly exportStaticIr?: boolean },
-    ): void => {
-      const nextIr = (program as any).convergeIr
-      const nextKeys = nextIr
-        ? {
-            writersKey: nextIr.writersKey,
-            depsKey: nextIr.depsKey,
-          }
-        : undefined
+    const registerFieldProgram = makeRegisterFieldProgram({
+      fieldState,
+      moduleId: options.moduleId ?? 'unknown',
+      instanceId,
+      convergePlanCacheCapacity,
+      setListPathSet: (next) => {
+        listPathSet = next
+      },
+      setExternalOwnedFieldPaths: (next) => {
+        externalOwnedFieldPaths = next
+      },
+      setExternalOwnedFieldPathKeys: (next) => {
+        externalOwnedFieldPathKeys = next
+      },
+      registerConvergeStaticIr: registerConvergeStaticIr as any,
+    })
 
-      const requestedBumpReason = registerOptions?.bumpReason
-      let bumpReason: any
-
-      if (traitState.lastConvergeIrKeys && nextKeys) {
-        if (requestedBumpReason) {
-          bumpReason = requestedBumpReason
-        } else if (traitState.lastConvergeIrKeys.writersKey !== nextKeys.writersKey) {
-          bumpReason = 'writers_changed'
-        } else if (traitState.lastConvergeIrKeys.depsKey !== nextKeys.depsKey) {
-          bumpReason = 'deps_changed'
-        }
-      } else if (traitState.lastConvergeIrKeys && !nextKeys) {
-        bumpReason = requestedBumpReason ?? 'unknown'
-      }
-
-      if (bumpReason) {
-        const nextGeneration = traitState.convergeGeneration.generation + 1
-        const nextBumpCount = (traitState.convergeGeneration.generationBumpCount ?? 0) + 1
-        traitState.convergeGeneration = {
-          generation: nextGeneration,
-          generationBumpCount: nextBumpCount,
-          lastBumpReason: bumpReason,
-	        }
-	
-	        traitState.pendingCacheMissReason = 'generation_bumped'
-	        traitState.pendingCacheMissReasonCount = (traitState.pendingCacheMissReasonCount ?? 0) + 1
-	        traitState.convergePlanCache = new StateTraitConverge.ConvergePlanCache(convergePlanCacheCapacity)
-	      }
-
-      traitState.lastConvergeIrKeys = nextKeys
-
-      const convergeIr = nextIr
-        ? {
-            ...nextIr,
-            generation: traitState.convergeGeneration.generation,
-          }
-        : undefined
-
-      const prevConvergeIr = (traitState.program as any)?.convergeIr as any | undefined
-      const canPreserveInlinePlanCache =
-        !!prevConvergeIr &&
-        !!nextIr &&
-        prevConvergeIr.writersKey === (nextIr as any).writersKey &&
-        prevConvergeIr.depsKey === (nextIr as any).depsKey
-
-      const prevConvergeExecIr = (traitState.program as any)?.convergeExecIr as ReturnType<typeof makeConvergeExecIr>
-        | undefined
-
-      const convergeExecIr =
-        convergeIr && !(convergeIr as any).configError ? makeConvergeExecIr(convergeIr as any) : undefined
-
-      if (convergeExecIr && prevConvergeExecIr) {
-        // Preserve hot-path perf hints across generation bumps (forward-only; no compatibility layer).
-        // This keeps auto mode stable under frequent register/bump cycles (e.g. graphChangeInvalidation perf boundary).
-        convergeExecIr.perf.fullCommitEwmaOffMs = prevConvergeExecIr.perf.fullCommitEwmaOffMs
-        convergeExecIr.perf.fullCommitLastTxnSeqOff = prevConvergeExecIr.perf.fullCommitLastTxnSeqOff
-        convergeExecIr.perf.fullCommitMinOffMs = prevConvergeExecIr.perf.fullCommitMinOffMs
-        convergeExecIr.perf.fullCommitSampleCountOff = prevConvergeExecIr.perf.fullCommitSampleCountOff
-        convergeExecIr.perf.recentPlanMissHash1 = prevConvergeExecIr.perf.recentPlanMissHash1
-        convergeExecIr.perf.recentPlanMissHash2 = prevConvergeExecIr.perf.recentPlanMissHash2
-
-        // Reuse per-instance scratch draft across rebuilds (avoids per-txn allocations on shallow graphs).
-        const nextScratch: any = convergeExecIr.scratch as any
-        const prevScratch: any = prevConvergeExecIr.scratch as any
-        nextScratch.shallowInPlaceDraft = prevScratch.shallowInPlaceDraft
-
-        // Inline plan micro-cache is safe to preserve only when the converge graph keys are unchanged.
-        if (canPreserveInlinePlanCache) {
-          nextScratch.inlinePlanCacheHash1 = prevScratch.inlinePlanCacheHash1
-          nextScratch.inlinePlanCacheSize1 = prevScratch.inlinePlanCacheSize1
-          nextScratch.inlinePlanCachePlan1 = prevScratch.inlinePlanCachePlan1
-          nextScratch.inlinePlanCacheHash2 = prevScratch.inlinePlanCacheHash2
-          nextScratch.inlinePlanCacheSize2 = prevScratch.inlinePlanCacheSize2
-          nextScratch.inlinePlanCachePlan2 = prevScratch.inlinePlanCachePlan2
-          nextScratch.inlinePlanCacheRecentMissHash1 = prevScratch.inlinePlanCacheRecentMissHash1
-          nextScratch.inlinePlanCacheRecentMissHash2 = prevScratch.inlinePlanCacheRecentMissHash2
-        }
-      }
-
-      traitState.convergeStaticIrDigest =
-        convergeIr && !(convergeIr as any).configError ? getConvergeStaticIrDigest(convergeIr as any) : undefined
-
-	      traitState.program = {
-	        ...(program as any),
-	        convergeIr,
-	        convergeExecIr,
-	      }
-	      traitState.listConfigs = RowId.collectListConfigs((program as any).spec)
-	      listPathSet = (() => {
-	        const configs = traitState.listConfigs
-	        if (!Array.isArray(configs) || configs.length === 0) return undefined
-	        const set = new Set<string>()
-	        for (const cfg of configs as ReadonlyArray<any>) {
-	          const p = cfg?.path
-	          if (typeof p === 'string' && p.length > 0) set.add(p)
-	        }
-	        return set.size > 0 ? set : undefined
-	      })()
-	      const owned: FieldPath[] = ((program as any)?.entries ?? [])
-	        .filter((e: any) => e && e.kind === 'externalStore' && typeof e.fieldPath === 'string')
-	        .map((e: any) => normalizeFieldPath(e.fieldPath))
-	        .filter((p: any): p is FieldPath => p != null)
-        .sort(compareFieldPath)
-      externalOwnedFieldPaths = owned
-      externalOwnedFieldPathKeys = new Set(owned.map((p) => toKey(p)))
-
-      if (!traitState.convergePlanCache) {
-        traitState.convergePlanCache = new StateTraitConverge.ConvergePlanCache(convergePlanCacheCapacity)
-      }
-
-      const exportStaticIrEnabled = registerOptions?.exportStaticIr !== false
-
-      if (exportStaticIrEnabled && convergeIr && !(convergeIr as any).configError) {
-        if (convergeStaticIrCollectors.length > 0) {
-          registerConvergeStaticIr(
-            exportConvergeStaticIr({
-              ir: convergeIr,
-              moduleId: options.moduleId ?? 'unknown',
-              instanceId,
-            }),
-          )
-        }
-      }
+    if (!fieldState.program) {
+      yield* installSchemaBackedFieldProgram({
+        stateSchema: (options.tag as any)?.stateSchema as unknown,
+        registerFieldProgram,
+      })
     }
 
-    // 065: even if the module declares no traits, it must still have a schema-backed Static IR table (FieldPathIdRegistry),
-    // otherwise reducer patchPaths / ReadQuery(static lane) cannot be mapped and will degrade to dirtyAll.
-    if (!traitState.program) {
-      const stateSchema = (options.tag as any)?.stateSchema as unknown
-      if (stateSchema) {
-        try {
-          registerStateTraitProgram(StateTraitBuild.build(stateSchema as any, {} as any), { exportStaticIr: false })
-        } catch {
-          // best-effort: keep trait program undefined and fall back to dirtyAll scheduling when registry is missing.
-        }
-      }
-    }
-
-    const enqueueStateTraitValidateRequest = (request: StateTraitValidate.ScopedValidateRequest): void => {
+    const enqueueFieldValidateRequest = (request: FieldValidate.ScopedValidateRequest): void => {
       if (!txnContext.current) return
       const current: any = txnContext.current
-      const list: Array<StateTraitValidate.ScopedValidateRequest> = current.stateTraitValidateRequests ?? []
+      const list: Array<FieldValidate.ScopedValidateRequest> = current.fieldValidateRequests ?? []
       list.push(request)
-      current.stateTraitValidateRequests = list
+      current.fieldValidateRequests = list
     }
 
     const recordReplayEvent = (event: unknown): void => {
@@ -1839,6 +1881,7 @@ export const make = <S, A, R = never>(
       moduleId: options.moduleId,
       instanceId,
       stateSchema,
+      hotLifecycle,
       lifecycle: {
         registerInitRequired: (eff, options) => {
           lifecycle.registerInitRequired(eff, options)
@@ -1882,28 +1925,29 @@ export const make = <S, A, R = never>(
       txnLanes: {
         resolveTxnLanePolicy,
       },
-      traits: {
+      fields: {
         rowIdStore,
-        getListConfigs: () => traitState.listConfigs as ReadonlyArray<unknown>,
+        getListConfigs: () => fieldState.listConfigs as ReadonlyArray<unknown>,
         registerSourceRefresh: (fieldPath, handler) => {
           sourceRefreshRegistry.set(fieldPath, handler)
         },
+        forkSourceRefresh: (fieldPath, handler, state) =>
+          Effect.gen(function* () {
+            yield* Effect.forkIn(
+              handler(state).pipe(
+                Effect.provideService(Scope.Scope, runtimeScope),
+                Effect.provideService(TaskRunner.inSyncTransactionFiber, false),
+                Effect.catchCause(() => Effect.void),
+              ),
+              runtimeScope,
+            )
+          }).pipe(Effect.asVoid),
         getSourceRefreshHandler: (fieldPath) => sourceRefreshRegistry.get(fieldPath),
-        registerStateTraitProgram: registerStateTraitProgram as any,
-        enqueueStateTraitValidateRequest: enqueueStateTraitValidateRequest as any,
-        registerModuleTraitsContribution: (contribution) => {
-          if (moduleTraitsState.frozen) {
-            throw new Error('[ModuleTraitsFrozen] Cannot register traits contribution after finalize/freeze.')
-          }
-          moduleTraitsState.contributions.push(contribution)
-        },
-        freezeModuleTraits: () => {
-          moduleTraitsState.frozen = true
-        },
-        getModuleTraitsContributions: () => moduleTraitsState.contributions,
-        getModuleTraitsSnapshot: () => moduleTraitsState.snapshot,
-        setModuleTraitsSnapshot: (snapshot) => {
-          moduleTraitsState.snapshot = snapshot
+        registerFieldProgram: registerFieldProgram as any,
+        enqueueFieldValidateRequest: enqueueFieldValidateRequest as any,
+        getModuleFieldsSnapshot: () => moduleFieldsState.snapshot,
+        setModuleFieldsSnapshot: (snapshot) => {
+          moduleFieldsState.snapshot = snapshot
         },
       },
       effects: {
@@ -1919,6 +1963,7 @@ export const make = <S, A, R = never>(
     yield* Effect.addFinalizer(() =>
       Effect.sync(() => {
         importsMap.clear()
+        seenImportedModuleIds.clear()
       }),
     )
 
@@ -2027,5 +2072,5 @@ export const make = <S, A, R = never>(
     return runtime
   })
 
-  return program as Effect.Effect<PublicModuleRuntime<S, A>, never, Scope.Scope | R>
+  return program as unknown as Effect.Effect<PublicModuleRuntime<S, A>, never, Scope.Scope | R>
 }

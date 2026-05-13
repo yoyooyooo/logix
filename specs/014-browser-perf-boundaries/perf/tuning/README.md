@@ -4,8 +4,8 @@
 
 ## 最短闭环（你只想要结论）
 
-1) 运行 017 一键推荐：`pnpm perf tuning:best`  
-2) 打开人类可读结论：`specs/014-browser-perf-boundaries/perf/tuning/recommendation.latest.md`  
+1) 运行 017 一键推荐：`pnpm perf tuning:best`
+2) 打开人类可读结论：`specs/014-browser-perf-boundaries/perf/tuning/recommendation.latest.md`
 3) 若准备把推荐值升为默认：再用 014 的 Before/After 跑道做一次对比验证（见 `specs/014-browser-perf-boundaries/perf/README.md`）
 
 ## 这里会出现哪些文件
@@ -17,7 +17,7 @@
 
 ## recommendation.latest.md 怎么解读（只看 3 块）
 
-1) `Winner`：推荐默认值（可以直接复制到 Runtime/Provider 配置里）。  
+1) `Winner`：推荐默认值（可以直接复制到 Runtime/Provider 配置里）。
 2) `评分`：
    - `worstMaxLevel`：所有切片里“最差”的可通过上限（越大越稳健）。
    - `sumMaxLevel`：所有切片上限之和（越大越整体更好）。
@@ -29,8 +29,8 @@
 
 推荐值的最佳实践是“先局部，再全局”：
 
-1) **先局部止血/试探**：优先用模块级或 Provider 子树级覆盖，不要一上来改全局默认。  
-2) **再做 Before/After**：确认无回归、硬门通过后，再把推荐值升为 Runtime 默认。  
+1) **先局部止血/试探**：优先用模块级或 Provider 子树级覆盖，不要一上来改全局默认。
+2) **再做 Before/After**：确认无回归、硬门通过后，再把推荐值升为 Runtime 默认。
 
 用户视角的配置与覆盖优先级说明见：`apps/docs/content/docs/guide/advanced/converge-control-plane.md`。
 

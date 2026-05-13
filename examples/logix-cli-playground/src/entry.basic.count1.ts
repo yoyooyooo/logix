@@ -1,6 +1,8 @@
-import { Counter } from './entry.basic.js'
+import * as Logix from '@logixjs/core'
 
-export const AppRoot = Counter.implement({
+import { Counter, CounterLogic } from './entry.basic.js'
+
+export const AppRoot = Logix.Program.make(Counter, {
   initial: { count: 1 },
-  logics: [],
+  logics: [CounterLogic],
 })

@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer } from 'effect'
@@ -8,20 +9,20 @@ describe('DebugSink record (diagnostics off)', () => {
     Effect.gen(function* () {
       const captured: Array<unknown> = []
 
-      const sink: Logix.Debug.Sink = {
+      const sink: CoreDebug.Sink = {
         record: (event) =>
           Effect.sync(() => {
             captured.push(event)
           }),
       }
 
-      const layer = Layer.mergeAll(Logix.Debug.replace([sink]), Logix.Debug.diagnosticsLevel('off')) as Layer.Layer<
+      const layer = Layer.mergeAll(CoreDebug.replace([sink]), CoreDebug.diagnosticsLevel('off')) as Layer.Layer<
         any,
         never,
         any
       >
 
-      yield* Logix.Debug.record({
+      yield* CoreDebug.record({
         type: 'state:update',
         moduleId: 'M',
         instanceId: 'i',

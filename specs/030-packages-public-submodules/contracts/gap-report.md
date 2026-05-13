@@ -1,7 +1,7 @@
 # Contract: Gap Report（现状 vs 目标结构差异）
 
-**Branch**: `030-packages-public-submodules`  
-**Date**: 2025-12-25  
+**Branch**: `030-packages-public-submodules`
+**Date**: 2025-12-25
 **Spec**: `specs/030-packages-public-submodules/spec.md`
 
 > 目的：把“现状漂移”显式化，给后续重构提供可交接路线图（按包×按阶段推进）。
@@ -48,7 +48,7 @@
 **Gap Items**：
 
 - **C**：`exports["./*"] = "./src/*.tsx"` 导致 `DevtoolsHooks.tsx` 这类非概念文件可被 `@logixjs/devtools-react/DevtoolsHooks` 直接依赖（需收敛为概念入口或 internal）。
-- **B/C**：实现目录（`ui/**`、`state/**`、`theme.css` 等）未形成明确 internal 边界；应通过概念入口（`LogixDevtools/DevtoolsLayer/StateTraitGraphView`）对外暴露。
+- **B/C**：实现目录（`ui/**`、`state/**`、`theme.css` 等）未形成明确 internal 边界；应通过概念入口（`LogixDevtools/DevtoolsLayer/FieldGraphView`）对外暴露。
 
 ### `@logixjs/sandbox`（B）
 
@@ -68,7 +68,7 @@
 **Gap Items**：
 
 - **C**：`exports["./*"] = "./src/*.ts"` + root 低层文件（`form.impl.ts`、`types.ts`、`validators.ts` 等）导致实现细节被当作 public subpath（例如 `@logixjs/form/form.impl`）——必须消除。
-- **B**：核心概念已通过 barrel 暴露为 `Rule/Error/Trait/Path/...` 等命名空间，但源文件命名为 lowercase（`rule.ts` 等），与“概念入口 PascalCase”不一致。
+- **B**：核心概念已通过 barrel 暴露为 `Rule/Error/Field/Path/...` 等命名空间，但源文件命名为 lowercase（`rule.ts` 等），与“概念入口 PascalCase”不一致。
 
 ### `@logixjs/query`（C）
 

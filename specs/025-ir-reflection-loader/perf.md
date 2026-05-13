@@ -1,6 +1,6 @@
 # Perf: IR Reflection Loader（Trial Run 开销基线）
 
-本文件记录 025 的最小性能证据：`Observability.trialRunModule` 在“启动 + 受控窗口 + scope close”链路上的 wall time 基线。
+本文件记录 025 的最小性能证据：`Runtime.trial` 在“启动 + 受控窗口 + scope close”链路上的 wall time 基线。
 
 ## 目标
 

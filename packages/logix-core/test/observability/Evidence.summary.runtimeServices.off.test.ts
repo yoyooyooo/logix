@@ -2,6 +2,7 @@ import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
+import { trialRunModule } from '../../src/internal/observability/trialRunModule.js'
 
 describe('Evidence.summary (runtime services, diagnostics off)', () => {
   it.effect('should not export summary.runtime.services when diagnosticsLevel=off', () =>
@@ -11,9 +12,9 @@ describe('Evidence.summary (runtime services, diagnostics off)', () => {
         actions: {},
       })
 
-      const program = Root.implement({ initial: undefined, logics: [] })
+      const program = Logix.Program.make(Root, { initial: undefined, logics: [] })
 
-      const report = yield* Logix.Observability.trialRunModule(program, {
+      const report = yield* trialRunModule(program as any, {
         runId: 'run:test:evidence-summary-runtime-services-off',
         buildEnv: { hostKind: 'node', config: {} },
         diagnosticsLevel: 'off',

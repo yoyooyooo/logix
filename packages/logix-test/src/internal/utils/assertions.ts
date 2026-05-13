@@ -2,8 +2,8 @@ import { Effect, Equal } from 'effect'
 import type * as Logix from '@logixjs/core'
 
 export const assertState = <Sh extends Logix.AnyModuleShape>(
-  actual: Logix.StateOf<Sh>,
-  predicate: (s: Logix.StateOf<Sh>) => boolean,
+  actual: Logix.Module.StateOf<Sh>,
+  predicate: (s: Logix.Module.StateOf<Sh>) => boolean,
   message?: string,
 ): Effect.Effect<void, Error> => {
   return Effect.suspend(() => {

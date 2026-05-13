@@ -76,7 +76,7 @@ export function useRuntime(options?: UseRuntimeOptions): ManagedRuntime.ManagedR
     ) {
       // eslint-disable-next-line no-console
       console.warn(
-        '[RuntimeProvider] useRuntime received a new layers reference. Memoize the layers array with useMemo to avoid rebuilding Layers on every render (performance jitter).',
+        '[ReactHostAdapter] useRuntime received a new layers reference. Memoize the layers array with useMemo to avoid rebuilding subtree layers on every render (performance jitter).',
       )
     }
     lastLayersRef.current = options?.layers ?? null

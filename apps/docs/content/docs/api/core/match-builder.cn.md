@@ -1,35 +1,29 @@
 ---
-title: MatchBuilder
-description: 一个轻量的 fluent match DSL，用于值匹配与 `_tag` 联合类型匹配。
+title: Match builder
+description: 在 logic 中通过 fluent match DSL 处理值匹配和 tagged union 匹配。
 ---
 
-MatchBuilder 提供一个小巧的 fluent API，用于做值匹配（或基于 `_tag` 的联合类型匹配），避免深层的 `if/else` 链。
+match builder 提供一套轻量的 fluent DSL，用于结构化匹配。
 
-## `MatchBuilder.makeMatch(value)`
+常见入口有两条：
 
-```ts
-import * as Logix from '@logixjs/core'
+- `$.match(value)`
+- `$.matchTag(value)`
 
-const result = Logix.MatchBuilder.makeMatch(n)
-  .with((x) => x < 0, () => 'negative')
-  .with((x) => x === 0, () => 'zero')
-  .otherwise(() => 'positive')
-```
-
-## `MatchBuilder.makeMatchTag(value)`
+## 用法
 
 ```ts
-import * as Logix from '@logixjs/core'
-import { Effect } from 'effect'
-
-const program = Logix.MatchBuilder.makeMatchTag(action)
-  .with('increment', () => Effect.void)
-  .with('decrement', () => Effect.void)
+yield* $.matchTag(action)
+  .with("increment", () => Effect.void)
+  .with("decrement", () => Effect.void)
   .exhaustive()
 ```
 
-`exhaustive()` 会返回一个 Effect：如果没有任何分支匹配，会直接 die（便于尽早暴露“漏处理分支”）。
+## 说明
 
-## 延伸阅读
+- 对带 `_tag` 的联合类型，使用 `matchTag`
+- 对一般值匹配，使用 `match`
 
-- [/api-reference](/api-reference)
+## 相关页面
+
+- [Bound API ($)](./bound-api)

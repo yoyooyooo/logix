@@ -38,7 +38,7 @@ const RegionActionMap = {
   'region/init': Schema.Void,
 }
 
-type RegionShape = Logix.Shape<typeof RegionStateSchema, typeof RegionActionMap>
+type RegionShape = Logix.Module.Shape<typeof RegionStateSchema, typeof RegionActionMap>
 
 // ---------------------------------------------------------------------------
 // 2. Service Definition (Mock)
@@ -57,7 +57,7 @@ export class RegionService extends ServiceMap.Service<
 // 3. Module Definition
 // ---------------------------------------------------------------------------
 
-export const RegionDef = Logix.Module.make('RegionModule', {
+export const Region = Logix.Module.make('RegionModule', {
   state: RegionStateSchema,
   actions: RegionActionMap,
 })
@@ -68,7 +68,7 @@ export const RegionDef = Logix.Module.make('RegionModule', {
 
 import { runCascadePattern } from '../patterns/cascade.js'
 
-export const RegionLogic = RegionDef.logic<RegionService>(($) =>
+export const RegionLogic = Region.logic<RegionService>('region-logic', ($) =>
   Effect.gen(function* () {
     // -----------------------------------------------------------------------
     // 联动逻辑 1：省份变化 -> 重置市/区 -> 加载城市 (使用 Pattern)
@@ -130,10 +130,10 @@ export const RegionLogic = RegionDef.logic<RegionService>(($) =>
 )
 
 // ---------------------------------------------------------------------------
-// 5. Live Layer
+// 5. Program
 // ---------------------------------------------------------------------------
 
-export const RegionModule = RegionDef.implement({
+export const RegionProgram = Logix.Program.make(Region, {
   initial: {
     province: undefined,
     city: undefined,

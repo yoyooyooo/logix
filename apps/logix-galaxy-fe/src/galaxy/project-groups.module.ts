@@ -1,9 +1,9 @@
 import { Effect, Exit, Schema, Stream } from 'effect'
 import * as Logix from '@logixjs/core'
 import { galaxyApi } from '../galaxy-api/client'
-import { AuthDef, AuthImpl } from './auth.module'
+import { AuthDef, AuthProgram } from './auth.module'
 import { ProjectRoleKeySchema } from './permissions'
-import { ProjectsDef, ProjectsImpl } from './projects.module'
+import { ProjectsDef, ProjectsProgram } from './projects.module'
 
 const GroupsStateSchema = Schema.Struct({
   groups: Schema.Array(Schema.Any),
@@ -64,7 +64,7 @@ export const ProjectGroupsDef = Logix.Module.make('GalaxyProjectGroups', {
   },
 })
 
-export const ProjectGroupsLogic = ProjectGroupsDef.logic(($) => {
+export const ProjectGroupsLogic = ProjectGroupsDef.logic('project-groups', ($) => {
   const clearAll = Effect.gen(function* () {
     yield* $.dispatchers.setGroups([])
     yield* $.dispatchers.setGroupsError(null)
@@ -316,7 +316,7 @@ export const ProjectGroupsLogic = ProjectGroupsDef.logic(($) => {
   }
 })
 
-export const ProjectGroupsModule = ProjectGroupsDef.implement({
+export const ProjectGroupsProgram = Logix.Program.make(ProjectGroupsDef, {
   initial: {
     groups: [],
     groupsLoading: false,
@@ -326,8 +326,8 @@ export const ProjectGroupsModule = ProjectGroupsDef.implement({
     membersLoading: false,
     membersError: null,
   } satisfies ProjectGroupsState,
-  imports: [AuthImpl, ProjectsImpl],
+  capabilities: {
+    imports: [AuthProgram, ProjectsProgram],
+  },
   logics: [ProjectGroupsLogic],
 })
-
-export const ProjectGroupsImpl = ProjectGroupsModule.impl

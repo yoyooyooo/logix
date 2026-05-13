@@ -1,15 +1,16 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { describe, it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
 import * as Logix from '../../src/index.js'
-import * as EffectOp from '../../src/EffectOp.js'
-import * as Middleware from '../../src/Middleware.js'
+import * as EffectOp from '../../src/internal/effect-op.js'
+import * as Middleware from '../../src/internal/middleware.js'
 
 describe('Middleware.DebugObserver', () => {
   it('should emit trace:effectop Debug events with slim EffectOp data (no effect closure) for all core kinds', async () => {
-    const events: Array<Logix.Debug.Event> = []
+    const events: Array<CoreDebug.Event> = []
 
-    const sink: Logix.Debug.Sink = {
-      record: (event: Logix.Debug.Event) =>
+    const sink: CoreDebug.Sink = {
+      record: (event: CoreDebug.Event) =>
         Effect.sync(() => {
           events.push(event)
         }),
@@ -30,7 +31,7 @@ describe('Middleware.DebugObserver', () => {
       }),
     )
 
-    const program = Effect.provideService(Effect.forEach(ops, (op) => EffectOp.run(op, stack) as Effect.Effect<number, never, never>, { discard: true }), Logix.Debug.internal.currentDebugSinks as any, [sink])
+    const program = Effect.provideService(Effect.forEach(ops, (op) => EffectOp.run(op, stack) as Effect.Effect<number, never, never>, { discard: true }), CoreDebug.internal.currentDebugSinks as any, [sink])
 
     await Effect.runPromise(program)
 
@@ -52,10 +53,10 @@ describe('Middleware.DebugObserver', () => {
   })
 
   it('should project trace:effectop payload/meta into JsonValue (full) and enforce truncation budgets', async () => {
-    const events: Array<Logix.Debug.Event> = []
+    const events: Array<CoreDebug.Event> = []
 
-    const sink: Logix.Debug.Sink = {
-      record: (event: Logix.Debug.Event) =>
+    const sink: CoreDebug.Sink = {
+      record: (event: CoreDebug.Event) =>
         Effect.sync(() => {
           events.push(event)
         }),
@@ -86,16 +87,16 @@ describe('Middleware.DebugObserver', () => {
       },
     })
 
-    const program = Effect.provideService(EffectOp.run(op, stack) as Effect.Effect<number, never, never>, Logix.Debug.internal.currentDebugSinks as any, [sink])
+    const program = Effect.provideService(EffectOp.run(op, stack) as Effect.Effect<number, never, never>, CoreDebug.internal.currentDebugSinks as any, [sink])
 
     await Effect.runPromise(program)
 
-    const traceEvent = events.find((e) => e.type === 'trace:effectop') as Logix.Debug.Event | undefined
+    const traceEvent = events.find((e) => e.type === 'trace:effectop') as CoreDebug.Event | undefined
 
     expect(traceEvent).toBeDefined()
     if (!traceEvent) return
 
-    const ref: any = Logix.Debug.internal.toRuntimeDebugEventRef(traceEvent, {
+    const ref: any = CoreDebug.internal.toRuntimeDebugEventRef(traceEvent, {
       diagnosticsLevel: 'full',
     })
 
@@ -116,10 +117,10 @@ describe('Middleware.DebugObserver', () => {
   })
 
   it('should propagate txnId from EffectOp meta into RuntimeDebugEventRef', async () => {
-    const events: Array<Logix.Debug.Event> = []
+    const events: Array<CoreDebug.Event> = []
 
-    const sink: Logix.Debug.Sink = {
-      record: (event: Logix.Debug.Event) =>
+    const sink: CoreDebug.Sink = {
+      record: (event: CoreDebug.Event) =>
         Effect.sync(() => {
           events.push(event)
         }),
@@ -137,7 +138,7 @@ describe('Middleware.DebugObserver', () => {
       },
     })
 
-    const program = Effect.provideService(EffectOp.run(op, stack) as Effect.Effect<number, never, never>, Logix.Debug.internal.currentDebugSinks as any, [sink])
+    const program = Effect.provideService(EffectOp.run(op, stack) as Effect.Effect<number, never, never>, CoreDebug.internal.currentDebugSinks as any, [sink])
 
     await Effect.runPromise(program)
 
@@ -145,8 +146,8 @@ describe('Middleware.DebugObserver', () => {
     expect(traceEvents.length).toBeGreaterThan(0)
 
     const runtimeRefs = traceEvents
-      .map((event) => Logix.Debug.internal.toRuntimeDebugEventRef(event))
-      .filter((ref): ref is Logix.Debug.RuntimeDebugEventRef => ref != null)
+      .map((event) => CoreDebug.internal.toRuntimeDebugEventRef(event))
+      .filter((ref): ref is CoreDebug.RuntimeDebugEventRef => ref != null)
 
     expect(runtimeRefs.length).toBeGreaterThan(0)
     const last = runtimeRefs[runtimeRefs.length - 1]
@@ -156,10 +157,10 @@ describe('Middleware.DebugObserver', () => {
   })
 
   it('should allow disabling observer behavior via op.meta.policy.disableObservers', async () => {
-    const events: Array<Logix.Debug.Event> = []
+    const events: Array<CoreDebug.Event> = []
 
-    const sink: Logix.Debug.Sink = {
-      record: (event: Logix.Debug.Event) =>
+    const sink: CoreDebug.Sink = {
+      record: (event: CoreDebug.Event) =>
         Effect.sync(() => {
           events.push(event)
         }),
@@ -177,7 +178,7 @@ describe('Middleware.DebugObserver', () => {
       },
     })
 
-    const program = Effect.provideService(EffectOp.run(op, stack) as Effect.Effect<number, never, never>, Logix.Debug.internal.currentDebugSinks as any, [sink])
+    const program = Effect.provideService(EffectOp.run(op, stack) as Effect.Effect<number, never, never>, CoreDebug.internal.currentDebugSinks as any, [sink])
 
     await Effect.runPromise(program)
 
@@ -188,7 +189,7 @@ describe('Middleware.DebugObserver', () => {
     const instanceId = 'i-1'
     const moduleId = 'ReactRenderModule'
 
-    const stateEvent: Logix.Debug.Event = {
+    const stateEvent: CoreDebug.Event = {
       type: 'state:update',
       moduleId,
       state: { count: 1 },
@@ -197,7 +198,7 @@ describe('Middleware.DebugObserver', () => {
       runtimeLabel: 'TestRuntime',
     }
 
-    const renderEvent: Logix.Debug.Event = {
+    const renderEvent: CoreDebug.Event = {
       type: 'trace:react-render',
       moduleId,
       instanceId,
@@ -209,8 +210,8 @@ describe('Middleware.DebugObserver', () => {
       },
     }
 
-    const stateRef = Logix.Debug.internal.toRuntimeDebugEventRef(stateEvent)!
-    const renderRef = Logix.Debug.internal.toRuntimeDebugEventRef(renderEvent)!
+    const stateRef = CoreDebug.internal.toRuntimeDebugEventRef(stateEvent)!
+    const renderRef = CoreDebug.internal.toRuntimeDebugEventRef(renderEvent)!
 
     expect(stateRef.kind).toBe('state')
     expect(stateRef.txnId).toBe('txn-render-001')
@@ -230,7 +231,7 @@ describe('Middleware.DebugObserver', () => {
     const instanceId = 'i-selector-1'
     const moduleId = 'ReactSelectorModule'
 
-    const stateEvent: Logix.Debug.Event = {
+    const stateEvent: CoreDebug.Event = {
       type: 'state:update',
       moduleId,
       state: { count: 1 },
@@ -240,7 +241,7 @@ describe('Middleware.DebugObserver', () => {
       runtimeLabel: 'TestRuntime',
     }
 
-    const selectorEvent: Logix.Debug.Event = {
+    const selectorEvent: CoreDebug.Event = {
       type: 'trace:react-selector',
       moduleId,
       instanceId,
@@ -257,8 +258,8 @@ describe('Middleware.DebugObserver', () => {
       },
     }
 
-    const stateRef = Logix.Debug.internal.toRuntimeDebugEventRef(stateEvent)!
-    const selectorRef = Logix.Debug.internal.toRuntimeDebugEventRef(selectorEvent)!
+    const stateRef = CoreDebug.internal.toRuntimeDebugEventRef(stateEvent)!
+    const selectorRef = CoreDebug.internal.toRuntimeDebugEventRef(selectorEvent)!
 
     expect(stateRef.kind).toBe('state')
     expect(stateRef.txnId).toBe('txn-selector-001')
@@ -287,7 +288,7 @@ describe('Middleware.DebugObserver', () => {
     const moduleId = 'TxnLaneModule'
     const txnSeq = 7
 
-    const laneEvent: Logix.Debug.Event = {
+    const laneEvent: CoreDebug.Event = {
       type: 'trace:txn-lane',
       moduleId,
       instanceId,
@@ -298,7 +299,7 @@ describe('Middleware.DebugObserver', () => {
         evidence: {
           anchor: { moduleId, instanceId, txnSeq, opSeq: 12 },
           lane: 'nonUrgent',
-          kind: 'trait:deferred_flush',
+          kind: 'field:deferred_flush',
           policy: {
             enabled: true,
             configScope: 'builtin',
@@ -316,9 +317,9 @@ describe('Middleware.DebugObserver', () => {
       },
     }
 
-    const ref = Logix.Debug.internal.toRuntimeDebugEventRef(laneEvent, { diagnosticsLevel: 'light' })!
+    const ref = CoreDebug.internal.toRuntimeDebugEventRef(laneEvent, { diagnosticsLevel: 'light' })!
     expect(ref.kind).toBe('txn-lane')
-    expect(ref.label).toBe('trait:deferred_flush')
+    expect(ref.label).toBe('field:deferred_flush')
     expect(ref.txnSeq).toBe(txnSeq)
 
     const meta = ref.meta as any

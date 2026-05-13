@@ -1,8 +1,8 @@
 # Feature Specification: 可序列化诊断与稳定身份（Observability Hardening）
 
-**Feature Branch**: `[016-serializable-diagnostics-and-identity]`  
-**Created**: 2025-12-18  
-**Status**: Draft  
+**Feature Branch**: `[016-serializable-diagnostics-and-identity]`
+**Created**: 2025-12-18
+**Status**: Draft
 **Input**: User description: "把 005/011/013 的横切问题收敛：诊断事件必须可序列化、锚点必须稳定且单一事实源（instanceId），避免双锚点/cause:unknown 污染证据包与跨宿主链路。"
 
 ## User Scenarios & Testing *(mandatory)*
@@ -66,8 +66,8 @@
 - **FR-001**: 系统必须定义“宿主内原始事件”与“可导出/跨宿主事件”的边界：导出形态必须满足协议层 JSON 硬门（以 `specs/005-unify-observability-protocol/contracts/schemas/json-value.schema.json` 为准）。
 - **FR-002**: 系统必须为错误原因提供统一的可序列化摘要（`SerializableErrorSummary`），并规定降级标记（不可序列化/超大/未知）。
 - **FR-003**: 系统必须将 `instanceId` 作为唯一实例锚点：导出/跨宿主事件必须包含 `moduleId + instanceId`；禁止出现“第二锚点字段”（不提供兼容读取）。
-- **FR-004**: 系统必须把该边界与锚点规则同步到相关 specs 与文档：至少包含 005（协议 schemas）、011（生命周期错误上下文与 onError 桥）、013（trait:converge 证据锚点口径）。
-- **FR-005**: 系统必须提供一条可执行的“序列化硬门”验收路径：至少对 EvidencePackage 做 `JSON.stringify` 断言，并覆盖 `lifecycle:error` / `diagnostic` / `trait:*` 事件类型。
+- **FR-004**: 系统必须把该边界与锚点规则同步到相关 specs 与文档：至少包含 005（协议 schemas）、011（生命周期错误上下文与 onError 桥）、013（field:converge 证据锚点口径）。
+- **FR-005**: 系统必须提供一条可执行的“序列化硬门”验收路径：至少对 EvidencePackage 做 `JSON.stringify` 断言，并覆盖 `lifecycle:error` / `diagnostic` / `field:*` 事件类型。
 - **FR-006**: 系统必须对齐稳定标识模型（参照 `specs/009-txn-patch-dirtyset/spec.md`）：可导出事件必须满足 `moduleId + instanceId + txnId`（或可确定性重建的等价集合，例如 `txnSeq`），并保证 `eventId/txnId` 不以随机/时间作为默认来源。
 - **FR-007**: 系统必须将 `$.lifecycle.*` 固化为 setup-only 注册 API：run 段调用必须产生可导出的 `logic::invalid_phase` 诊断事件（Slim + 可序列化 + 含 `instanceId`），并暴露可序列化的 `LifecycleStatus.initProgress` 以诊断初始化卡住。
 

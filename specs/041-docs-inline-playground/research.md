@@ -1,6 +1,6 @@
 # Research: 文档内联教学 Playground
 
-**Date**: 2025-12-26  
+**Date**: 2025-12-26
 **Feature**: [041-docs-inline-playground](./plan.md)
 
 ## Decision 1: 作者标记方式采用“显式 MDX 组件”

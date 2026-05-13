@@ -20,7 +20,7 @@ title: 测试策略手册（分层 + 命令闭环）
 - L4：provider/scope/imports 边界明确，不串实例。
 - L5：核心改动具备 before/after 证据与可复现命令。
 
-## 3) 命令闭环（目标项目）
+## 3) 命令闭环
 
 1. `pnpm typecheck`
 2. `pnpm lint`
@@ -37,6 +37,7 @@ title: 测试策略手册（分层 + 命令闭环）
 - 优先 `@effect/vitest` 风格（`it.effect/it.scoped/it.layer`）覆盖 Effect-heavy 场景。
 - 断言优先行为与语义，不只快照。
 - 并发用例至少包含 happy path + 取消/中断 + 失败路径。
+- Harness/proof/fixture/support 资产按 `docs/standards/harness-and-proof-assets-standard.md` 命名和存放。测试文件名表达最终行为、边界或合同，编号只留在 metadata、注释或 spec notes。
 
 ## 5) 典型反模式
 
@@ -50,10 +51,10 @@ title: 测试策略手册（分层 + 命令闭环）
 - 新增语义必须有可回归测试锚点。
 - 核心路径改动必须附诊断与性能结论。
 - 结果可被下一位维护者复现，不依赖口头记忆。
+- 新增 retained harness 必须有 owner、verification command、notes/verification 记录和 production source hygiene sweep。
 
 ## 7) 延伸阅读（Skill 内）
 
 - `references/llms/07-testing-basics.md`
 - `references/llms/04-runtime-transaction-rules.md`
 - `references/llms/06-diagnostics-perf-basics.md`
-- `references/llms/99-project-anchor-template.md`（可选）

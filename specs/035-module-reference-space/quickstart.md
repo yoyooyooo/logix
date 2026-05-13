@@ -1,8 +1,8 @@
 # Quickstart: Module Reference Space（035：给画布/编辑器/Agent 的引用空间事实源）
 
-**Date**: 2025-12-26  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/035-module-reference-space/spec.md`  
-**Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/035-module-reference-space/plan.md`
+**Date**: 2025-12-26
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/035-module-reference-space/spec.md`
+**Plan**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/035-module-reference-space/plan.md`
 
 ## 0) 目标一句话
 

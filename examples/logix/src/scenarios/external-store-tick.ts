@@ -1,12 +1,12 @@
 /**
- * @scenario ExternalStore + Tick（Route/State/Query-like chain）
+ * @scenario Runtime External Input Seam + Tick（Route/State/Query-like chain）
  * @description
- *   用最少代码演示 “外部输入 → state.inputs → computed(queryKey) → 订阅观测” 的链路，
- *   并覆盖本次能力的四种 sugar：
- *   - `ExternalStore.fromService`（宿主注入，例如 router/session/flags）
- *   - `ExternalStore.fromSubscriptionRef`（同步纯读的 SubscriptionRef）
- *   - `ExternalStore.fromStream`（必须提供 initial/current）
- *   - `ExternalStore.fromModule`（Module-as-Source：IR 可识别的跨模块输入）
+ *   用最少代码演示 “外部输入 seam → state.inputs → computed(queryKey) → 订阅观测” 的链路，
+ *   当前统一使用更窄的 runtime seam owner：
+ *   - `RuntimeContracts.ExternalInput.fromService`：宿主注入，例如 router/session/flags
+ *   - `RuntimeContracts.ExternalInput.fromSubscriptionRef`：同步纯读的 SubscriptionRef
+ *   - `RuntimeContracts.ExternalInput.fromStream`：必须提供 initial/current
+ *   - `RuntimeContracts.ExternalInput.fromModule`：Module-as-Source，依赖 selector input 语义
  *
  *   最后用 `tickSeq` 作为观测锚点展示 “一次 batch 内的多次外部信号 → 同一次 tick flush”。
  *
@@ -14,6 +14,8 @@
  *   pnpm -C examples/logix exec tsx src/scenarios/external-store-tick.ts
  */
 import { Effect, Layer, Queue, Schema, ServiceMap, Stream, SubscriptionRef } from 'effect'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import * as Logix from '@logixjs/core'
 
 export class UsersRepo extends ServiceMap.Service<UsersRepo, {}>()('Accounts/UsersRepo') {}
@@ -26,7 +28,7 @@ const makeSignalStore = <T>(initial: T) => {
   let current = initial
   const listeners = new Set<Listener>()
 
-  const store: Logix.ExternalStore.ExternalStore<T> = {
+  const store: RuntimeContracts.ExternalInput.ExternalStore<T> = {
     getSnapshot: () => current,
     subscribe: (listener: Listener) => {
       listeners.add(listener)
@@ -46,7 +48,7 @@ const makeSignalStore = <T>(initial: T) => {
 const LocationStore = makeSignalStore({ pathname: '/' })
 
 type DemoHostService = {
-  readonly location: Logix.ExternalStore.ExternalStore<{ readonly pathname: string }>
+  readonly location: RuntimeContracts.ExternalInput.ExternalStore<{ readonly pathname: string }>
 }
 
 class DemoHostServiceTag extends ServiceMap.Service<DemoHostServiceTag, DemoHostService>()('ExternalStoreTickDemoHost') { }
@@ -61,16 +63,16 @@ const main = Effect.scoped(
     const flagQueue = yield* Queue.unbounded<string>()
     const flag$ = Stream.fromQueue(flagQueue)
 
-    const LocationExternalStore = Logix.ExternalStore.fromService(DemoHostServiceTag, (svc) => svc.location)
-    const UserIdExternalStore = Logix.ExternalStore.fromSubscriptionRef({
+    const LocationInput = RuntimeContracts.ExternalInput.fromService(DemoHostServiceTag, (svc) => svc.location)
+    const UserIdInput = RuntimeContracts.ExternalInput.fromSubscriptionRef({
       get: SubscriptionRef.get(userIdRef),
       changes: SubscriptionRef.changes(userIdRef),
     })
-    const FeatureFlagExternalStore = Logix.ExternalStore.fromStream(flag$, { initial: 'flag:off' })
+    const FeatureFlagInput = RuntimeContracts.ExternalInput.fromStream(flag$, { initial: 'flag:off' })
 
     const SourceState = Schema.Struct({ value: Schema.Number })
 
-    const SourceDef = Logix.Module.make('ExternalStoreTickSource', {
+    const Source = Logix.Module.make('ExternalStoreTickSource', {
       state: SourceState,
       actions: { setValue: Schema.Number },
       reducers: {
@@ -80,11 +82,11 @@ const main = Effect.scoped(
       },
     })
 
-    const SourceModule = SourceDef.implement({
+    const SourceProgram = Logix.Program.make(Source, {
       initial: { value: 0 },
     })
 
-    const SourceValueReadQuery = Logix.ReadQuery.make({
+    const SourceValueSelector = RuntimeContracts.Selector.make({
       selectorId: 'rq_external_store_tick_source_value',
       debugKey: 'ExternalStoreTickSource.value',
       reads: ['value'],
@@ -103,59 +105,69 @@ const main = Effect.scoped(
       queryKey: Schema.String,
     })
 
-    const DemoDef = Logix.Module.make('ExternalStoreTickDemo', {
+    const Demo = Logix.Module.make('ExternalStoreTickDemo', {
       state: State,
       actions: {},
-      traits: Logix.StateTrait.from(State)({
-        'inputs.pathname': Logix.StateTrait.externalStore({
-          store: LocationExternalStore,
-          select: (snap) => snap.pathname,
-        }),
-        'inputs.userId': Logix.StateTrait.externalStore({
-          store: UserIdExternalStore,
-        }),
-        'inputs.featureFlag': Logix.StateTrait.externalStore({
-          store: FeatureFlagExternalStore,
-        }),
-        'inputs.sourceValue': Logix.StateTrait.externalStore({
-          store: Logix.ExternalStore.fromModule(SourceDef, SourceValueReadQuery),
-        }),
-        routeKey: Logix.StateTrait.computed({
-          deps: ['inputs.pathname'],
-          get: (pathname) => `route:${pathname}`,
-        }),
-        queryKey: Logix.StateTrait.computed({
-          deps: ['routeKey', 'inputs.userId', 'inputs.featureFlag', 'inputs.sourceValue'],
-          get: (routeKey, userId, featureFlag, sourceValue) =>
-            `${routeKey}?user=${userId}&flag=${featureFlag}&source=${sourceValue}`,
-        }),
+    })
+
+    const DemoFields = FieldContracts.fieldFrom(State)({
+      'inputs.pathname': FieldContracts.fieldExternalStore({
+        store: LocationInput,
+        select: (snap) => snap.pathname,
+      }),
+      'inputs.userId': FieldContracts.fieldExternalStore({
+        store: UserIdInput,
+      }),
+      'inputs.featureFlag': FieldContracts.fieldExternalStore({
+        store: FeatureFlagInput,
+      }),
+      'inputs.sourceValue': FieldContracts.fieldExternalStore({
+        store: RuntimeContracts.ExternalInput.fromModule(Source, SourceValueSelector),
+      }),
+      routeKey: FieldContracts.fieldComputed({
+        deps: ['inputs.pathname'],
+        get: (pathname) => `route:${pathname}`,
+      }),
+      queryKey: FieldContracts.fieldComputed({
+        deps: ['routeKey', 'inputs.userId', 'inputs.featureFlag', 'inputs.sourceValue'],
+        get: (routeKey, userId, featureFlag, sourceValue) =>
+          `${routeKey}?user=${userId}&flag=${featureFlag}&source=${sourceValue}`,
       }),
     })
 
-    const DemoModule = DemoDef.implement({
+    const DemoFieldsLogic = Demo.logic('external-store-tick-fields', ($) => {
+      $.fields(DemoFields)
+      return Effect.void
+    })
+
+    const DemoProgram = Logix.Program.make(Demo, {
       initial: {
         inputs: { pathname: '/', userId: 'u1', featureFlag: 'flag:off', sourceValue: 0 },
         routeKey: 'route:/',
         queryKey: 'route:/?user=u1&flag=flag:off&source=0',
       },
-      logics: [],
-      imports: [SourceModule.impl],
+      logics: [DemoFieldsLogic],
+      capabilities: {
+        imports: [SourceProgram],
+      },
     })
 
-    const RootDef = Logix.Module.make('ExternalStoreTickRoot', {
+    const Root = Logix.Module.make('ExternalStoreTickRoot', {
       state: Schema.Void,
       actions: {},
     })
 
-    const RootImpl = RootDef.implement({
+    const RootProgram = Logix.Program.make(Root, {
       initial: undefined,
-      imports: [DemoModule.impl],
+      capabilities: {
+        imports: [DemoProgram],
+      },
     })
 
-    const runtime = Logix.Runtime.make(RootImpl, { layer: DemoHostLive })
-    const runtimeStore: any = Logix.InternalContracts.getRuntimeStore(runtime as any)
+    const runtime = Logix.Runtime.make(RootProgram, { layer: DemoHostLive })
+    const runtimeStore: any = RuntimeContracts.getRuntimeStore(runtime as any)
 
-    const QueryKeyReadQuery = Logix.ReadQuery.make({
+    const QueryKeySelector = RuntimeContracts.Selector.make({
       selectorId: 'rq_demo_queryKey',
       debugKey: 'ExternalStoreTickDemo.queryKey',
       reads: ['queryKey'],
@@ -167,15 +179,19 @@ const main = Effect.scoped(
       yield* Effect.promise(() =>
         runtime.runPromise(
           Effect.gen(function* () {
-            const demo: any = yield* Effect.service(DemoDef.tag).pipe(Effect.orDie)
-            const source: any = Logix.InternalContracts.getImportsScope(demo as any).get(SourceDef.tag)
+            const demo: any = yield* Effect.service(Demo.tag).pipe(Effect.orDie)
+            const source: any = RuntimeContracts.getImportsScope(demo as any).get(Source.tag)
             if (!source) {
-              return yield* Effect.die(new Error('[external-store-tick] Missing Source import: DemoModule must include SourceModule.impl in `imports` for Module-as-Source.'))
+              return yield* Effect.die(
+                new Error(
+                  '[external-store-tick] Missing Source import: DemoProgram must include SourceProgram in `capabilities.imports` for Module-as-Source.',
+                ),
+              )
             }
 
             const demoModuleInstanceKey = `${demo.moduleId}::${demo.instanceId}`
             const sourceModuleInstanceKey = `${source.moduleId}::${source.instanceId}`
-            const selectorTopicKey = `${demoModuleInstanceKey}::rq:${QueryKeyReadQuery.selectorId}`
+            const selectorTopicKey = `${demoModuleInstanceKey}::rq:${QueryKeySelector.selectorId}`
 
             const logSnapshot = (label: string) => {
               const tickSeq = runtimeStore.getTickSeq()

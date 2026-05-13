@@ -1,6 +1,6 @@
 # Implementation Plan: 088 Async Action Coordinator（统一异步链路协调面）
 
-**Branch**: `088-async-action-coordinator` | **Date**: 2026-01-10 | **Spec**: `specs/088-async-action-coordinator/spec.md`  
+**Branch**: `088-async-action-coordinator` | **Date**: 2026-01-10 | **Spec**: `specs/088-async-action-coordinator/spec.md`
 **Input**: Feature specification from `specs/088-async-action-coordinator/spec.md`
 
 ## Summary
@@ -21,19 +21,19 @@
 ## Existing Foundations（直接复用）
 
 - 稳定锚点与事务标识：`packages/logix-core/src/internal/runtime/core/StateTransaction.ts`、`docs/specs/drafts/topics/runtime-v3-core/01-transaction-identity-and-trace.md`
-- Debug/Devtools 事件模型（Slim/JsonValue）：`packages/logix-core/src/Debug.ts`、`packages/logix-core/src/internal/runtime/core/DebugSink.record.ts`
+- Debug/Devtools 事件模型（Slim/JsonValue）：`packages/logix-core/src/internal/debug-api.ts`、`packages/logix-core/src/internal/runtime/core/DebugSink.record.ts`
 - React 侧订阅与优先级通知：`packages/logix-react/src/internal/store/RuntimeExternalStore.ts`、`packages/logix-react/src/internal/provider/RuntimeProvider.tsx`
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、`@logixjs/react`、`@logixjs/devtools-react`  
-**Storage**: N/A（运行期纯内存；证据落盘到 `specs/088-async-action-coordinator/perf/*`）  
-**Testing**: Vitest（Effect-heavy 用 `@effect/vitest`；React 行为/集成用 Vitest；必要时补 browser 覆盖）  
-**Target Platform**: Node.js 20+ + modern browsers（headless）  
-**Project Type**: pnpm workspace（packages + apps + examples）  
-**Performance Goals**: 新增 action 协调能力在核心路径（dispatch/commit/notify）的 p95/alloc 不得显著回归；诊断开启/关闭的差异必须可度量  
-**Constraints**: 稳定标识去随机化；事务窗口禁 IO；诊断事件 Slim/可序列化；React 无 tearing；forward-only（无兼容层）  
+**Language/Version**: TypeScript 5.9.x（ESM）
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、`@logixjs/react`、`@logixjs/devtools-react`
+**Storage**: N/A（运行期纯内存；证据落盘到 `specs/088-async-action-coordinator/perf/*`）
+**Testing**: Vitest（Effect-heavy 用 `@effect/vitest`；React 行为/集成用 Vitest；必要时补 browser 覆盖）
+**Target Platform**: Node.js 20+ + modern browsers（headless）
+**Project Type**: pnpm workspace（packages + apps + examples）
+**Performance Goals**: 新增 action 协调能力在核心路径（dispatch/commit/notify）的 p95/alloc 不得显著回归；诊断开启/关闭的差异必须可度量
+**Constraints**: 稳定标识去随机化；事务窗口禁 IO；诊断事件 Slim/可序列化；React 无 tearing；forward-only（无兼容层）
 **Scale/Scope**: 覆盖 core + core-ng（契约一致），至少落地：Runtime action run + React hooks + Devtools 事件/视图入口
 
 ## Constitution Check
@@ -57,7 +57,7 @@ _GATE: 必须在进入实现前通过；并在实现后用 perf evidence + devto
 ## Perf Evidence Plan（MUST）
 
 > 若本特性触及 Logix Runtime 核心路径 / 渲染关键路径 / 对外性能边界：此节必须填写；否则标注 `N/A`。
-> 详细口径见：`.codex/skills/logix-perf-evidence/references/perf-evidence.md`
+> 详细口径见：`packages/logix-perf-evidence/references/perf-evidence.md`
 
 - Baseline 语义：代码前后（before/after）
 - envId：darwin-arm64.node20.chrome-headless（以实际采集机为准；必须保持 before/after 一致）

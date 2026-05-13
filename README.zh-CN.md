@@ -18,7 +18,7 @@ Logix 是一个 **Effect-native 的前端状态与业务逻辑运行时**。
 
 - **Module**：业务边界单元（身份 + State/Actions 形状）。
 - **Logic**：通过绑定 API `$` 监听 Actions / State 变化的 Effect 程序。
-- **Runtime**：托管模块实例，运行 Logic/Processes，并注入依赖 Layer。
+- **Runtime**：托管 Program 实例，运行 Program 装配的 Logic，并注入依赖 Layer。
 
 ## 最小示例
 
@@ -37,10 +37,12 @@ export const CounterLogic = CounterDef.logic(($) =>
   }),
 )
 
-export const CounterModule = CounterDef.implement({
+export const CounterProgram = Logix.Program.make(CounterDef, {
   initial: { count: 0 },
   logics: [CounterLogic],
 })
+
+export const CounterRuntime = Logix.Runtime.make(CounterProgram)
 ```
 
 ## 快速开始（从本仓库跑起来）

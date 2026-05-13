@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { expect, test } from 'vitest'
 import React from 'react'
 import { render } from 'vitest-browser-react'
@@ -5,7 +6,7 @@ import { Effect, Layer } from 'effect'
 import * as Logix from '@logixjs/core'
 import matrix from '@logixjs/perf-evidence/assets/matrix.json'
 import { RuntimeProvider } from '../../../src/RuntimeProvider.js'
-import { useModule } from '../../../src/Hooks.js'
+import { useModule, useSelector } from '../../../src/Hooks.js'
 import { makePerfCounterIncWatchersLogic, makePerfCounterModule } from '../../../src/internal/store/perfWorkloads.js'
 import { emitPerfReport, type PerfReport } from './protocol.js'
 import {
@@ -31,7 +32,7 @@ const nextFrame = (): Promise<void> =>
 
 const PerfApp: React.FC = () => {
   const perf = useModule(PerfModule.tag)
-  const value = useModule(perf, (s: unknown) => (s as { value: number }).value)
+  const value = useSelector(perf, (s: unknown) => (s as { value: number }).value)
 
   return (
     <div>
@@ -191,7 +192,7 @@ test(
       const diagWarmupDiscard = 0
       const perfKernelLayer = makePerfKernelLayer()
 
-      const impl = PerfModule.implement({
+      const program = Logix.Program.make(PerfModule, {
         initial: { value: 0 },
         logics: [makePerfCounterIncWatchersLogic(PerfModule, watcherCount)],
       })
@@ -204,11 +205,11 @@ test(
           const scenario = params.scenario as string
           expect(scenario).toBe('watchers.clickToPaint')
           const instrumentation = diagnosticsLevel === 'full' ? 'full' : 'light'
-          const debugLayer = Logix.Debug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
+          const debugLayer = CoreDebug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
             diagnosticsLevel,
           }) as Layer.Layer<any, never, never>
 
-          const runtime = Logix.Runtime.make(impl, {
+          const runtime = Logix.Runtime.make(program, {
             stateTransaction: {
               instrumentation,
             },

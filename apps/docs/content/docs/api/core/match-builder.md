@@ -1,35 +1,29 @@
 ---
-title: MatchBuilder
-description: A small fluent match DSL for values and tagged unions.
+title: Match builder
+description: Use a fluent match DSL for values and tagged unions inside logic.
 ---
 
-MatchBuilder provides a small fluent API for matching values (or `_tag`-based tagged unions) without deeply nested `if/else` chains.
+The match builder provides a small fluent DSL for structured matching.
 
-## `MatchBuilder.makeMatch(value)`
+Two common routes are:
 
-```ts
-import * as Logix from '@logixjs/core'
+- `$.match(value)`
+- `$.matchTag(value)`
 
-const result = Logix.MatchBuilder.makeMatch(n)
-  .with((x) => x < 0, () => 'negative')
-  .with((x) => x === 0, () => 'zero')
-  .otherwise(() => 'positive')
-```
-
-## `MatchBuilder.makeMatchTag(value)`
+## Usage
 
 ```ts
-import * as Logix from '@logixjs/core'
-import { Effect } from 'effect'
-
-const program = Logix.MatchBuilder.makeMatchTag(action)
-  .with('increment', () => Effect.void)
-  .with('decrement', () => Effect.void)
+yield* $.matchTag(action)
+  .with("increment", () => Effect.void)
+  .with("decrement", () => Effect.void)
   .exhaustive()
 ```
 
-`exhaustive()` returns an Effect that dies if nothing matched.
+## Notes
+
+- use `matchTag` for tagged unions with `_tag`
+- use `match` for generic value matching
 
 ## See also
 
-- [/api-reference](/api-reference)
+- [Bound API ($)](./bound-api)

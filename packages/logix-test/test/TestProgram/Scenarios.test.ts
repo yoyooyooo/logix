@@ -2,9 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { Duration, Effect, Layer, Schema, ServiceMap } from 'effect'
 import { TestClock } from 'effect/testing'
 import * as Logix from '@logixjs/core'
-import { runTest } from '../../src/TestRuntime.js'
-import * as Execution from '../../src/Execution.js'
-import * as TestProgram from '../../src/TestProgram.js'
+import { TestProgram } from '../../src/index.js'
 
 // ---------------------------------------------------------------------------
 // Capability: service-integration + optimistic update
@@ -26,7 +24,7 @@ const ToggleModule = Logix.Module.make('ToggleModule', {
   },
 })
 
-const ToggleLogic = ToggleModule.logic<ToggleService>((api) =>
+const ToggleLogic = ToggleModule.logic<ToggleService>('toggle-logic', (api) =>
   Effect.gen(function* () {
     yield* api.onAction('toggle').run((action) =>
       Effect.gen(function* () {
@@ -74,7 +72,7 @@ const LocationModule = Logix.Module.make('LocationModule', {
   },
 })
 
-const LocationLogic = LocationModule.logic((api) =>
+const LocationLogic = LocationModule.logic('location-logic', (api) =>
   Effect.gen(function* () {
     yield* Effect.all(
       [
@@ -112,7 +110,7 @@ const TaskModule = Logix.Module.make('TaskModule', {
   },
 })
 
-const TaskLogic = TaskModule.logic((api) =>
+const TaskLogic = TaskModule.logic('task-logic', (api) =>
   Effect.gen(function* () {
     yield* Effect.all(
       [
@@ -158,7 +156,7 @@ const BatchModule = Logix.Module.make('BatchModule', {
   },
 })
 
-const BatchLogic = BatchModule.logic((api) =>
+const BatchLogic = BatchModule.logic('batch-logic', (api) =>
   Effect.gen(function* () {
     yield* api.onAction('processAll').run(() =>
       Effect.gen(function* () {
@@ -215,7 +213,7 @@ const BulkModule = Logix.Module.make('BulkModule', {
   },
 })
 
-const BulkLogic = BulkModule.logic((api) =>
+const BulkLogic = BulkModule.logic('bulk-logic', (api) =>
   Effect.gen(function* () {
     yield* Effect.all(
       [
@@ -279,7 +277,7 @@ const DerivedStateModule = Logix.Module.make('DerivedStateModule', {
   },
 })
 
-const DerivedStateLogic = DerivedStateModule.logic((api) =>
+const DerivedStateLogic = DerivedStateModule.logic('derived-state-logic', (api) =>
   Effect.gen(function* () {
     yield* Effect.all(
       [
@@ -317,7 +315,7 @@ const DirtyFormModule = Logix.Module.make('DirtyFormModule', {
   },
 })
 
-const DirtyFormLogic = DirtyFormModule.logic((api) =>
+const DirtyFormLogic = DirtyFormModule.logic('dirty-form-logic', (api) =>
   Effect.gen(function* () {
     yield* Effect.all(
       [
@@ -365,7 +363,7 @@ const SearchModule = Logix.Module.make('SearchModule', {
   },
 })
 
-const SearchLogic = SearchModule.logic(($) =>
+const SearchLogic = SearchModule.logic('search-logic', ($) =>
   Effect.gen(function* () {
     // Map the setKeyword action to the `keyword` field as the driving source for fromState.
     yield* $.onAction('setKeyword').run((action) =>
@@ -407,14 +405,14 @@ const SearchLogic = SearchModule.logic(($) =>
 
 describe('@logixjs/test · TestProgram capability scenarios', () => {
   it('Optimistic Update: TestProgram + ExecutionResult should capture rollback', async () => {
-    const program = ToggleModule.implement({
+    const program = Logix.Program.make(ToggleModule, {
       initial: { flags: { 'feature-a': false } },
       logics: [ToggleLogic],
     })
 
-    const result = await runTest(
+    const result = await TestProgram.runTest(
       TestProgram.runProgram(
-        program.impl,
+        program,
         ($) =>
           Effect.gen(function* () {
             yield* $.dispatch({
@@ -426,18 +424,18 @@ describe('@logixjs/test · TestProgram capability scenarios', () => {
         { layer: ToggleFailingServiceLayer as any },
       ),
     )
-    Execution.expectActionTag(result, 'toggle', { times: 1 })
-    Execution.expectNoError(result)
+    TestProgram.expectActionTag(result, 'toggle', { times: 1 })
+    TestProgram.expectNoError(result)
   })
 
   it('Cascading Selects: TestProgram should observe derived state changes', async () => {
-    const program = LocationModule.implement({
+    const program = Logix.Program.make(LocationModule, {
       initial: { province: '', city: '', cities: [] },
       logics: [LocationLogic],
     })
 
-    const result = await runTest(
-      TestProgram.runProgram(program.impl, ($) =>
+    const result = await TestProgram.runTest(
+      TestProgram.runProgram(program, ($) =>
         Effect.gen(function* () {
           yield* $.dispatch({
             _tag: 'selectProvince',
@@ -455,18 +453,18 @@ describe('@logixjs/test · TestProgram capability scenarios', () => {
         }),
       ),
     )
-    Execution.expectActionTag(result, 'selectProvince', { times: 1 })
-    Execution.expectNoError(result)
+    TestProgram.expectActionTag(result, 'selectProvince', { times: 1 })
+    TestProgram.expectNoError(result)
   })
 
   it('Async Flow: TestProgram should work with polling + TestClock', async () => {
-    const program = TaskModule.implement({
+    const program = Logix.Program.make(TaskModule, {
       initial: { status: 'IDLE' },
       logics: [TaskLogic],
     })
 
-    const result = await runTest(
-      TestProgram.runProgram(program.impl, ($) =>
+    const result = await TestProgram.runTest(
+      TestProgram.runProgram(program, ($) =>
         Effect.gen(function* () {
           yield* $.dispatch({ _tag: 'start', payload: undefined })
           yield* $.assert.state((s) => s.status === 'PENDING')
@@ -476,27 +474,27 @@ describe('@logixjs/test · TestProgram capability scenarios', () => {
         }),
       ),
     )
-    Execution.expectActionTag(result, 'start', { times: 1 })
-    Execution.expectActionTag(result, 'externalDone', { times: 1 })
-    Execution.expectNoError(result)
+    TestProgram.expectActionTag(result, 'start', { times: 1 })
+    TestProgram.expectActionTag(result, 'externalDone', { times: 1 })
+    TestProgram.expectNoError(result)
   })
 
   it('Batch: TestProgram should collect all state transitions via virtual time', async () => {
-    const program = BatchModule.implement({
+    const program = Logix.Program.make(BatchModule, {
       initial: { items: ['a', 'b', 'c'], processed: [] },
       logics: [BatchLogic],
     })
 
-    const result = await runTest(
-      TestProgram.runProgram(program.impl, ($) =>
+    const result = await TestProgram.runTest(
+      TestProgram.runProgram(program, ($) =>
         Effect.gen(function* () {
           yield* $.dispatch({ _tag: 'processAll', payload: undefined })
           yield* $.advance('20 millis')
         }),
       ),
     )
-    Execution.expectActionTag(result, 'processAll', { times: 1 })
-    Execution.expectNoError(result)
+    TestProgram.expectActionTag(result, 'processAll', { times: 1 })
+    TestProgram.expectNoError(result)
   })
 
   it('Bulk operations: should apply operation to selected ids and record message', async () => {
@@ -519,16 +517,16 @@ describe('@logixjs/test · TestProgram capability scenarios', () => {
         }),
     })
 
-    const program = BulkModule.implement({
+    const program = Logix.Program.make(BulkModule, {
       initial: { operation: 'archive', lastCount: 0, lastMessage: undefined },
       logics: [BulkLogic],
     })
 
     const runtimeLayer = Layer.mergeAll(selectionLayer as any, bulkLayer as any, notificationLayer as any) as any
 
-    const result = await runTest(
+    const result = await TestProgram.runTest(
       TestProgram.runProgram(
-        program.impl,
+        program,
         ($) =>
           Effect.gen(function* () {
             yield* $.dispatch({ _tag: 'bulk/run', payload: undefined })
@@ -536,19 +534,19 @@ describe('@logixjs/test · TestProgram capability scenarios', () => {
         { layer: runtimeLayer },
       ),
     )
-    Execution.expectActionTag(result, 'bulk/run', { times: 1 })
-    Execution.expectNoError(result)
+    TestProgram.expectActionTag(result, 'bulk/run', { times: 1 })
+    TestProgram.expectNoError(result)
     // Do not assert notification content here; verify it in higher-level unit tests or dedicated scenarios.
   })
 
   it('Derived state via Fluent DSL should keep hasResults in sync', async () => {
-    const program = DerivedStateModule.implement({
+    const program = Logix.Program.make(DerivedStateModule, {
       initial: { results: [], hasResults: false },
       logics: [DerivedStateLogic],
     })
 
-    const result = await runTest(
-      TestProgram.runProgram(program.impl, ($) =>
+    const result = await TestProgram.runTest(
+      TestProgram.runProgram(program, ($) =>
         Effect.gen(function* () {
           yield* $.dispatch({
             _tag: 'setResults',
@@ -564,18 +562,18 @@ describe('@logixjs/test · TestProgram capability scenarios', () => {
         }),
       ),
     )
-    Execution.expectActionTag(result, 'setResults')
-    Execution.expectNoError(result)
+    TestProgram.expectActionTag(result, 'setResults')
+    TestProgram.expectNoError(result)
   })
 
   it('Dirty form via onAction should update value and isDirty correctly', async () => {
-    const program = DirtyFormModule.implement({
+    const program = Logix.Program.make(DirtyFormModule, {
       initial: { value: '', isDirty: false },
       logics: [DirtyFormLogic],
     })
 
-    const result = await runTest(
-      TestProgram.runProgram(program.impl, ($) =>
+    const result = await TestProgram.runTest(
+      TestProgram.runProgram(program, ($) =>
         Effect.gen(function* () {
           yield* $.dispatch({
             _tag: 'input/change',
@@ -591,9 +589,9 @@ describe('@logixjs/test · TestProgram capability scenarios', () => {
         }),
       ),
     )
-    Execution.expectActionTag(result, 'input/change', { times: 1 })
-    Execution.expectActionTag(result, 'input/reset', { times: 1 })
-    Execution.expectNoError(result)
+    TestProgram.expectActionTag(result, 'input/change', { times: 1 })
+    TestProgram.expectActionTag(result, 'input/reset', { times: 1 })
+    TestProgram.expectNoError(result)
   })
 
   it('Search with debounce + runLatest should keep only latest results', async () => {
@@ -601,14 +599,14 @@ describe('@logixjs/test · TestProgram capability scenarios', () => {
       search: (keyword: string) => Effect.succeed([`${keyword}-1`, `${keyword}-2`] as ReadonlyArray<string>),
     })
 
-    const program = SearchModule.implement({
+    const program = Logix.Program.make(SearchModule, {
       initial: { keyword: '', results: [], isLoading: false },
       logics: [SearchLogic],
     })
 
-    const result = await runTest(
+    const result = await TestProgram.runTest(
       TestProgram.runProgram(
-        program.impl,
+        program,
         ($) =>
           Effect.gen(function* () {
             yield* $.dispatch({ _tag: 'setKeyword', payload: 'foo' })
@@ -620,7 +618,7 @@ describe('@logixjs/test · TestProgram capability scenarios', () => {
         { layer: mockSearchLayer as any },
       ),
     )
-    Execution.expectActionTag(result, 'setKeyword')
-    Execution.expectNoError(result)
+    TestProgram.expectActionTag(result, 'setKeyword')
+    TestProgram.expectNoError(result)
   })
 })

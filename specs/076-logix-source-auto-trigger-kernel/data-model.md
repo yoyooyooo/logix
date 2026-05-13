@@ -2,7 +2,7 @@
 
 ## 1) Source Auto-Trigger Policy（对外契约）
 
-目标：用最小参数描述受限控制律，避免把通用 Flow 塞回 trait meta。
+目标：用最小参数描述受限控制律，避免把通用 Flow 塞回 field meta。
 
 建议形态（概念）：
 

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://intent-flow.local/specs/013-auto-converge-planner/schemas/converge-static-ir-evidence.schema.json",
+  "$id": "https://logix.local/specs/013-auto-converge-planner/schemas/converge-static-ir-evidence.schema.json",
   "title": "ConvergeStaticIREvidence",
   "type": "object",
   "additionalProperties": false,

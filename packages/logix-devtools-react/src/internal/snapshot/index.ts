@@ -1,28 +1,29 @@
+import * as CoreEvidence from '@logixjs/core/repo-internal/evidence-api'
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import * as Logix from '@logixjs/core'
 import { Effect, Layer, PubSub, ServiceMap, Stream } from 'effect'
 
 /**
  * Notes:
- * - Since 003-trait-txn-lifecycle, DevtoolsHub has been moved down into @logixjs/core (global singleton).
+ * - Since the field/txn/devtools cutover, DevtoolsHub has been moved down into @logixjs/core (global singleton).
  * - This file is only a thin adapter layer:
  *   - Still exports DevtoolsSnapshotStore / devtoolsSnapshotLayer for DevtoolsModule.
- *   - Still exports devtoolsLayer as a legacy compatibility entry (deprecated).
  */
 
-export type DevtoolsSnapshot = Logix.Debug.DevtoolsSnapshot
+export type DevtoolsSnapshot = CoreDebug.DevtoolsSnapshot
 
 export const clearDevtoolsEvents = (): void => {
-  Logix.Debug.clearDevtoolsEvents()
+  CoreDebug.clearDevtoolsEvents()
   notify()
 }
-export const setInstanceLabel = Logix.Debug.setInstanceLabel
-export const getInstanceLabel = Logix.Debug.getInstanceLabel
+export const setInstanceLabel = CoreDebug.setInstanceLabel
+export const getInstanceLabel = CoreDebug.getInstanceLabel
 
-export type SnapshotToken = Logix.Debug.SnapshotToken
+export type SnapshotToken = CoreDebug.SnapshotToken
 
 export type DevtoolsSnapshotOverrideInfo = {
   readonly kind: 'evidence'
-  readonly evidence: Logix.Observability.EvidencePackage
+  readonly evidence: CoreEvidence.EvidencePackage
 }
 
 let snapshotOverride: DevtoolsSnapshot | undefined
@@ -94,7 +95,7 @@ const notify = (): void => {
 
 const ensureCoreSubscribed = (): void => {
   if (unsubscribeCore) return
-  unsubscribeCore = Logix.Debug.subscribeDevtoolsSnapshot(() => {
+  unsubscribeCore = CoreDebug.subscribeDevtoolsSnapshot(() => {
     // When in "offline/imported" mode, ignore live snapshot updates to avoid overwriting the imported view.
     if (snapshotOverride) return
     notify()
@@ -119,7 +120,7 @@ export const clearDevtoolsSnapshotOverride = (): void => {
   notify()
 }
 
-export const getDevtoolsSnapshot = (): DevtoolsSnapshot => snapshotOverride ?? Logix.Debug.getDevtoolsSnapshot()
+export const getDevtoolsSnapshot = (): DevtoolsSnapshot => snapshotOverride ?? CoreDebug.getDevtoolsSnapshot()
 
 /**
  * SnapshotToken (safe for external subscription):
@@ -142,17 +143,6 @@ export const subscribeDevtoolsSnapshot = (listener: () => void): (() => void) =>
 }
 
 export const subscribeDevtoolsSnapshotToken = subscribeDevtoolsSnapshot
-
-/**
- * devtoolsLayer（deprecated）：
- * - Older versions required explicit Layer.replace(DebugSinks); now the core Hub appends sinks.
- * - Prefer Runtime.make(..., { devtools: true }).
- */
-export const devtoolsLayer: Layer.Layer<any, never, never> = Logix.Debug.devtoolsHubLayer() as Layer.Layer<
-  any,
-  never,
-  never
->
 
 export interface DevtoolsSnapshotService {
   readonly get: Effect.Effect<DevtoolsSnapshot>

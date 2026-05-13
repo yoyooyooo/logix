@@ -2,7 +2,7 @@
 
 本目录用于归档可对比的 `PerfReport` / `PerfDiff`（before/after/diff），作为本特性性能预算与回归门禁的证据落点。
 
-> 口径：`.codex/skills/logix-perf-evidence/references/perf-evidence.md`
+> 口径：`packages/logix-perf-evidence/references/perf-evidence.md`
 
 ## 环境元信息（硬结论必填）
 
@@ -106,8 +106,8 @@
 
 为避免只看 `runtime.txnCommitMs` 造成“无法解释 auto/full ratio”的盲点，`converge-steps` 已新增最小证据字段（不会引入新 budgets）：
 
-- `converge.executionDurationMs`：单次 converge pass 的执行耗时（**不含** commit/通知），用于判断“是否 converge 本体变慢”。  
-- `converge.decisionDurationMs`：auto 模式的决策耗时（`notApplicable` 于 full/dirty）。  
+- `converge.executionDurationMs`：单次 converge pass 的执行耗时（**不含** commit/通知），用于判断“是否 converge 本体变慢”。
+- `converge.decisionDurationMs`：auto 模式的决策耗时（`notApplicable` 于 full/dirty）。
 - `converge.requestedMode / converge.executedMode / converge.reasons`：解释“为什么这次 auto 走 full/dirty（near_full/cache_hit/...）”。
 
 同时 073 已对 `convergeMode=auto` 做最小修复：在高 dirtyRootsRatio/大 steps 的 slice 上更早切到 full，避免 auto 在“接近 full 的 workload”下因 dirty-plan/cache 路径抖动导致 `auto<=full*1.05` 失守。

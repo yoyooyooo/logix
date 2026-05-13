@@ -1,8 +1,9 @@
 ---
 title: Watcher 模式与生命周期
+description: 把常见 watcher 写法映射到 Scope 所有权与触发调度语义。
 ---
 
-本节从“业务写法”的角度，说明在 Logix 中几种常见 watcher 写法的差异，以及它们与 Scope / 生命周期的关系。
+Watcher 写法主要沿两个维度分化：重复触发如何调度，以及 watcher 挂在哪个 Scope 上。下面的章节把常见写法映射到这两个维度。
 
 ## 1. 先想清楚两个维度
 
@@ -19,9 +20,9 @@ Logix 的 DSL 是围绕这两条轴来设计的：
 在多数业务场景里，你只需要记住一条经验法则：
 
 - **挂长期 watcher**：用 `yield* $.onAction(...).runFork(...)` 或其它 `run*Fork` 变体；
-- **一次性的 Flow / 流水线**：直接用 `run` / `runLatest` 等作为这一段 Logic 的主体。
+- **一次性的反应路径**：直接用 `run` / `runLatest` 等作为这一段 Logic 的主体。
 
-下面的所有示例都可以在 React 集成场景下照搬，细节见《React 集成指南》。
+同样的模式在 React 集成中也成立，区别只在最终由哪一层宿主管理 Scope。
 
 ## 2. 三种常见 watcher 写法
 
@@ -64,7 +65,7 @@ Logix 的 DSL 是围绕这两条轴来设计的：
 
 需要特别说明的是：
 
-- 当前实现中，`Flow.run` / `IntentBuilder.run` 已经改为 **默认串行**，不再是“隐式无界并发”；
+- 当前实现中，默认的 run helpers 已经改为 **默认串行**，不再是“隐式无界并发”；
 - 真正需要高吞吐时，应该显式使用 `runParallel` / `runParallelFork`，并在文档/代码层写清楚意图。
 
 ## 4. IntentBuilder.run 与 EffectOp 总线
@@ -72,7 +73,7 @@ Logix 的 DSL 是围绕这两条轴来设计的：
 在实现层面，所有 `run*` 系列 API 都会被统一提升为 EffectOp，并通过 MiddlewareStack 执行：
 
 - `run` / `runLatest` / `runExhaust` / `runParallel`：
-  - 语义上是“把 Action/State 流通过某种策略交给 Effect Flow 执行”；
+  - 语义上是“把 Action/State 反应通过某种策略交给 Effect 执行”；
   - 当前实现中，它们最终都走 `flowApi.run*`，并在外层构造 `kind = "flow"` 的 EffectOp，附带必要的 meta；
 - `runFork` / `runParallelFork`：
   - 内部近似于 `Effect.forkScoped(flowApi.run*(...))`，但会通过 EffectOp 总线与 Scope 一并封装；
@@ -81,7 +82,7 @@ Logix 的 DSL 是围绕这两条轴来设计的：
 对业务来说，这意味着：
 
 - 你可以放心在 Logic 内部使用这些高层 API，而不用每次手动加 try/catch 或埋点；
-- 如果需要统一的日志、埋点、告警，只需要在 Engine 层或 ModuleImpl 上挂 MiddlewareStack，而不是在每个 watcher 里重复写；
+- 如果需要统一的日志、埋点、告警，只需要在 Engine 层或 Program 装配层挂 MiddlewareStack，而不是在每个 watcher 里重复写；
 - 复杂逻辑推荐始终写在 `Effect.gen` 里，通过 `$.use` 获取 Service、通过 `$.state.mutate` 更新状态（默认优先），再通过合适的 `run*`/`run*Fork` 组合选择并发模型。
 
 ### 4.1 `Effect.all` vs `Effect.gen`：多条 `runFork` watcher 的等价写法
@@ -143,13 +144,13 @@ const AppCounterLogic = AppCounterModule.logic(($) =>
 
 - **Module 级 Scope**：
   - 每一棵 `ModuleRuntime` 实例都有自己的 Scope；
-  - 不论是通过应用级 Runtime（`Logix.Runtime.make`）、`ModuleImpl.layer` 还是 React `useModule` 构建，这个 Scope 都会在“模块销毁”时统一关闭；
-  - 通过 `Flow.run*` / `runFork` 启动的 watcher，都挂在这棵 Scope 上。
+  - 不论是通过应用级 Runtime（`Logix.Runtime.make`）还是 React `useModule` 构建，这个 Scope 都会在“模块销毁”时统一关闭；
+  - 通过 run helpers / `runFork` 启动的 watcher，都挂在这棵 Scope 上。
 - **Effect.fork vs runFork**：
   - 如果在 Logic 里写 `yield* Effect.fork($.onAction("...").run(...))`，fork 出来的 Fiber 会附着在当前 Logic 所在的 Scope 上；
   - 使用 `runFork` 则在语义上更明确：它就是“模块级 watcher”，由引擎统一负责安全包装与生命周期托管。
 - **React 场景**：
-  - Tag 模式（`useModule(Module)`）下，所有 watcher 挂在 App 级 Runtime 的 Scope 上，随着 Runtime 的生命周期一起存在；
+  - Tag 模式（`useModule(ModuleTag)`）下，所有 watcher 挂在 App 级 Runtime 的 Scope 上，随着 Runtime 的生命周期一起存在；
   - Impl 模式（`useModule(Impl)`）下，每个组件的局部 Module 实例都有自己的 Scope，组件卸载时：
     - React 适配层会关闭该 Scope；
     - 所有挂在其上的 watcher（包括 runFork）都会被中断。

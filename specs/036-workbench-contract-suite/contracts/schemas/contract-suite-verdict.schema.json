@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://intent-flow.local/specs/036-workbench-contract-suite/schemas/contract-suite-verdict.schema.json",
+  "$id": "https://logix.local/specs/036-workbench-contract-suite/schemas/contract-suite-verdict.schema.json",
   "title": "ContractSuiteVerdict",
   "type": "object",
   "additionalProperties": false,

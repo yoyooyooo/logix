@@ -106,4 +106,94 @@ preflight('perf contracts: schema surface sanity', () => {
   expect((perfDiffSchema as any).$defs?.SuiteDiff).toBeTruthy()
 
   expect((perfDiffSchema as any).$defs?.Budget?.$ref).toBe('./perf-report.schema.json#/$defs/Budget')
+  expect((perfReportSchema as any).$defs?.EvidenceResult?.properties?.unit?.enum).toContain('ms')
+  expect((perfDiffSchema as any).$defs?.EvidenceUnit?.enum).toContain('ms')
+})
+
+preflight('perf contracts: 171 live bridge disabled overhead suite exists', () => {
+  const suites = (matrix as any).suites as ReadonlyArray<any>
+  const suite = suites.find((s) => s.id === 'liveBridge.disabledOverhead.txnCommit')
+
+  expect(suite).toBeTruthy()
+  expect(suite.primaryAxis).toBe('stateWidth')
+  expect(suite.axes.bridgeMode).toEqual(['noBridge', 'disabled', 'adapterInactive'])
+  expect(suite.metrics).toContain('runtime.txnCommitMs')
+  expect(suite.requiredEvidence).toEqual(
+    expect.arrayContaining([
+      'liveBridge.captureBufferAllocations',
+      'liveBridge.transportAllocations',
+      'liveBridge.operationRequests',
+      'liveBridge.transactionWindowIoCount',
+    ]),
+  )
+  expect(suite.budgets).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'disabled<=noBridge+0.05ms-or-1pct',
+        type: 'relative',
+        maxRatio: 1.01,
+        minDeltaMs: 0.05,
+        numeratorRef: 'bridgeMode=disabled',
+        denominatorRef: 'bridgeMode=noBridge',
+      }),
+      expect.objectContaining({
+        id: 'adapterInactive<=noBridge+0.05ms-or-1pct',
+        type: 'relative',
+        maxRatio: 1.01,
+        minDeltaMs: 0.05,
+        numeratorRef: 'bridgeMode=adapterInactive',
+        denominatorRef: 'bridgeMode=noBridge',
+      }),
+    ]),
+  )
+})
+
+preflight('perf contracts: dispatch shell A/B evidence stays harness-only', () => {
+  const suites = (matrix as any).suites as ReadonlyArray<any>
+  const suite = suites.find((s) => s.id === 'dispatchShell.fixedCost')
+
+  expect(suite).toBeTruthy()
+  expect(suite.requiredEvidence).toEqual(
+    expect.arrayContaining([
+      'runtime.shellMode',
+      'runtime.shellMode.source',
+      'runtime.resolveScopeMsPerDispatch',
+      'runtime.txnPhase.bodyShellMs',
+      'runtime.txnPhase.commitPublishCommitMs',
+    ]),
+  )
+})
+
+preflight('perf contracts: dispatch shell fixed-cost evidence supports tax migration report', () => {
+  const suites = (matrix as any).suites as ReadonlyArray<any>
+  const suite = suites.find((s) => s.id === 'dispatchShell.fixedCost')
+
+  expect(suite).toBeTruthy()
+  expect(suite.budgets).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'reuseScope<=12ms',
+        type: 'absolute',
+        metric: 'runtime.txnCommitMs',
+      }),
+      expect.objectContaining({
+        id: 'resolveEach<=reuseScope*1.25',
+        type: 'relative',
+        metric: 'runtime.txnCommitMs',
+        numeratorRef: 'entrypointMode=resolveEach',
+        denominatorRef: 'entrypointMode=reuseScope',
+      }),
+    ]),
+  )
+  expect(suite.requiredEvidence).toEqual(
+    expect.arrayContaining([
+      'runtime.txnPhase.traceCount',
+      'runtime.txnPhase.bodyShellMs',
+      'runtime.txnPhase.commitTotalMs',
+      'runtime.txnPhase.commitPublishCommitMs',
+      'runtime.txnPhase.commitStateUpdateDebugRecordMs',
+      'runtime.txnPhase.commitOnCommitBeforeStateUpdateMs',
+      'runtime.txnPhase.commitOnCommitAfterStateUpdateMs',
+    ]),
+  )
 })

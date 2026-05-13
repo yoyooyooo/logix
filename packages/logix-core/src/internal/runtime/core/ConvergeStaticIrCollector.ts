@@ -1,5 +1,5 @@
 import { Effect, Layer, ServiceMap } from 'effect'
-import type { ConvergeStaticIrExport } from '../../state-trait/converge-ir.js'
+import type { ConvergeStaticIrExport } from '../../field-kernel/converge-ir.js'
 
 /**
  * ConvergeStaticIrCollector：

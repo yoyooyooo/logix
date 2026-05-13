@@ -1,6 +1,6 @@
 # Implementation Plan: Logix Runes（Svelte-like 赋值驱动状态语法糖）
 
-**Branch**: `072-logix-runes-dx` | **Date**: 2026-01-03 | **Spec**: [spec.md](./spec.md)  
+**Branch**: `072-logix-runes-dx` | **Date**: 2026-01-03 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `specs/072-logix-runes-dx/spec.md`
 
 > 本 plan 作为“可复查的设计备忘录 + 风险登记簿”，允许暂不进入实现；未来每次 Logix DX/运行时演进时可回来看是否仍成立。
@@ -17,12 +17,12 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.8.2（workspace）  
-**Primary Dependencies**: Vite（项目侧）+ React 19 + effect v3（3.19.13）+ `@logixjs/core` / `@logixjs/react`  
-**Storage**: N/A  
-**Testing**: Vitest（node/happy-dom）+（可选）浏览器集成测试在后续阶段再引入  
-**Target Platform**: 现代浏览器（Vite dev/build）  
-**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）  
+**Language/Version**: TypeScript 5.8.2（workspace）
+**Primary Dependencies**: Vite（项目侧）+ React 19 + effect v3（3.19.13）+ `@logixjs/core` / `@logixjs/react`
+**Storage**: N/A
+**Testing**: Vitest（node/happy-dom）+（可选）浏览器集成测试在后续阶段再引入
+**Target Platform**: 现代浏览器（Vite dev/build）
+**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）
 **Performance Goals**:
 
 - transform 未启用：零运行时成本（仅是普通 JS/TS）。
@@ -85,23 +85,23 @@
 
 > 这部分是未来反复审视时的检查清单：每次扩展语义前先过一遍。
 
-1. **编译链路耦合 + source map**：不做 source map 会显著降低 DX（调试/报错定位）。  
+1. **编译链路耦合 + source map**：不做 source map 会显著降低 DX（调试/报错定位）。
    Mitigation：transform 必须产出稳定的 source map；错误消息必须指向原始源码位置。
-2. **Invalid hook call**（最常见灾难）：任何误把普通函数当组件注入 hook 都会直接炸。  
+2. **Invalid hook call**（最常见灾难）：任何误把普通函数当组件注入 hook 都会直接炸。
    Mitigation：强制显式 opt-in；对 `$state` 的可用位置做静态校验并构建期报错。
-3. **闭包旧值导致丢更新**：`count += 1` 不能改写成 `set(count + 1)`。  
+3. **闭包旧值导致丢更新**：`count += 1` 不能改写成 `set(count + 1)`。
    Mitigation：`+=/++/--` 使用 op-based 更新；必要时引入 `update(key, f)` 但要限制 `f` 的可序列化性。
-4. **`++/--` 返回值语义**：JS 语义很细，容易“看似对但其实错”。  
+4. **`++/--` 返回值语义**：JS 语义很细，容易“看似对但其实错”。
    Mitigation：MVP 禁止在表达式中使用自增/自减；只支持独立语句。
-5. **shadowing/作用域**：同名变量遮蔽会导致错误改写。  
+5. **shadowing/作用域**：同名变量遮蔽会导致错误改写。
    Mitigation：transform 必须做作用域追踪；MVP 只在受限形态下启用（其余报错）。
-6. **深层属性写入**：很容易产生“写了但不触发/不进 trace”的隐蔽 bug。  
+6. **深层属性写入**：很容易产生“写了但不触发/不进 trace”的隐蔽 bug。
    Mitigation：明确拒绝并提示替代写法；后续若要支持，必须先定义可诊断的语义模型。
-7. **Devtools 噪声与性能**：每次赋值都产生事件会刷爆时间线。  
+7. **Devtools 噪声与性能**：每次赋值都产生事件会刷爆时间线。
    Mitigation：诊断协议与 UI 必须有折叠/聚合；diagnostics off 时必须接近零成本。
-8. **字段级 evidence 退化（dirtyAll）**：若状态 schema 无法提供稳定 fieldPathId，可能退化为 dirtyAll。  
+8. **字段级 evidence 退化（dirtyAll）**：若状态 schema 无法提供稳定 fieldPathId，可能退化为 dirtyAll。
    Mitigation：MVP 先接受“局部状态小而可接受”的退化；若要优化，考虑生成 Struct schema 或引入专用 evidence 映射。
-9. **批处理语义**：一个 handler 内多次写入若各自提交，可能带来多次渲染与重算。  
+9. **批处理语义**：一个 handler 内多次写入若各自提交，可能带来多次渲染与重算。
    Mitigation：后续设计显式 `batch` 或同 tick 合并，但必须把语义写进 spec/plan 并可诊断。
 
 ## Constitution Check

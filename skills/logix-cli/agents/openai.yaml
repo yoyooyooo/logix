@@ -1,0 +1,4 @@
+interface:
+  display_name: "Logix CLI"
+  short_description: "Run Logix CLI verification and live tasks"
+  default_prompt: "Use $logix-cli to run Logix check/trial and live evidence handoff for this Program entry."

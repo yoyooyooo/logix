@@ -5,7 +5,7 @@ export type {
   RuntimeDebugEventKind,
   RuntimeDebugEventRef,
   Sink,
-  TraitConvergeDiagnosticsSamplingConfig,
+  FieldConvergeDiagnosticsSamplingConfig,
   TriggerRef,
   TxnLaneEvidence,
   TxnLaneEvidenceReason,

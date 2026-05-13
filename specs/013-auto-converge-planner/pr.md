@@ -10,7 +10,7 @@
 
 > 本 PR 的可落地内容已完全被下列文档收编；本文件不再重复列举明细，避免产生第二份口径。
 
-- 控制面契约与证据字段：`specs/013-auto-converge-planner/contracts/schemas/trait-converge-data.schema.json`
+- 控制面契约与证据字段：`specs/013-auto-converge-planner/contracts/schemas/field-converge-data.schema.json`
 - A/B 复现与覆盖策略（Provider/module override）：`specs/013-auto-converge-planner/quickstart.md`
 - 范围边界与再评估裁决：`specs/013-auto-converge-planner/spec.md`
 

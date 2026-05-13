@@ -1,6 +1,6 @@
 # Tasks: 015 Devtools Converge Performance Pane
 
-**Input**: `specs/015-devtools-converge-performance/{spec.md,plan.md}`  
+**Input**: `specs/015-devtools-converge-performance/{spec.md,plan.md}`
 **Prerequisites**: 005 的数据源/聚合输出可在 devtools-react 消费；013 converge evidence 字段稳定
 
 **Note**:

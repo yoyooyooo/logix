@@ -4,7 +4,7 @@
 
 ## 1) 选择矩阵与运行档位
 
-- 矩阵 SSoT：`@logixjs/perf-evidence/assets/matrix.json`（物理：`.codex/skills/logix-perf-evidence/assets/matrix.json`）
+- 矩阵 SSoT：`@logixjs/perf-evidence/assets/matrix.json`（物理：`packages/logix-perf-evidence/assets/matrix.json`）
 - 默认 runs/warmup/timeout 与稳定性阈值：见 `matrix.json.defaults`
 
 ## 2) 运行浏览器集成测试（主跑道）

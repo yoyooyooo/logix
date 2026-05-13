@@ -1,8 +1,8 @@
 # Feature Specification: IR Reflection Loader（IR 反射与试运行提取）
 
-**Feature Branch**: `025-ir-reflection-loader`  
-**Created**: 2025-12-23  
-**Status**: Draft  
+**Feature Branch**: `025-ir-reflection-loader`
+**Created**: 2025-12-23
+**Status**: Draft
 **Input**: 通过“运行时反射 + 受控试运行”提取多类 IR（Manifest / Runtime / Construction），服务 Studio/CI/Agent；并要求 Logix 内核在不影响运行性能的前提下尽可能提前提供支撑。
 
 ## Clarifications
@@ -32,7 +32,7 @@
 
 **Acceptance Scenarios**:
 
-1. **Given** 一个用户导出模块对象（可能由工厂函数/trait 组合生成），**When** 运行 Manifest 提取，**Then** 得到一份可序列化输出，包含模块身份、可见 Schema/Slots/Meta/Source 等结构信息（Meta 仅允许稳定、可复现元信息），且不依赖源码 AST。
+1. **Given** 一个用户导出模块对象（可能由工厂函数/field 组合生成），**When** 运行 Manifest 提取，**Then** 得到一份可序列化输出，包含模块身份、可见 Schema/Slots/Meta/Source 等结构信息（Meta 仅允许稳定、可复现元信息），且不依赖源码 AST。
 2. **Given** 同一模块在两个版本中发生变更，**When** 对比前后 Manifest，**Then** 能识别结构层面的破坏性变更（例如 schema key 丢失/slot 消失/action key 删除/logic slot kind 变化），供 CI 失败或告警使用（meta 变化默认 RISKY、source 变化默认 INFO，均不作为 breaking；meta 可通过 allowlist 降噪）。
 
 ---
@@ -71,7 +71,7 @@
 
 ### Edge Cases
 
-- 模块通过多层工厂/trait/配置组合生成：反射应读取“最终对象形状”，而不是依赖静态源码。
+- 模块通过多层工厂/field/配置组合生成：反射应读取“最终对象形状”，而不是依赖静态源码。
 - 同一入口导出多个模块/多个候选对象：提取工具需要可选择性导出，并能在输出中区分各对象。
 - Schema/slot/meta/source 缺失：应降级输出（字段为空或省略），但保持格式稳定。
 - meta 含非确定性字段（时间戳/随机/机器特异信息）：视为禁止；不得进入 Manifest（避免破坏确定性与 CI diff 噪音）。

@@ -1,10 +1,10 @@
 # Data Model: SchemaAST 分层能力升级（040：Schema Registry / schemaRef / schemaDiff）
 
-**Date**: 2025-12-26  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/040-schemaast-layered-upgrade/spec.md`  
-**Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/040-schemaast-layered-upgrade/plan.md`
+**Date**: 2025-12-26
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/040-schemaast-layered-upgrade/spec.md`
+**Plan**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/040-schemaast-layered-upgrade/plan.md`
 
-> 本文件固化 040 的“协议/工件层”数据模型：用于 Devtools/Workbench/CI/离线回放解释。  
+> 本文件固化 040 的“协议/工件层”数据模型：用于 Devtools/Workbench/CI/离线回放解释。
 > 不规定具体 UI 实现与内部代码结构（实现细节在 tasks 阶段落地）。
 
 ## Design Principles

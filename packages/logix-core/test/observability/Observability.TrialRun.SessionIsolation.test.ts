@@ -1,9 +1,12 @@
 import { describe, it, expect } from '@effect/vitest'
-import {Effect, Exit, Layer, Schema, ServiceMap } from 'effect'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
+import { Effect, Exit, Layer, Schema, ServiceMap } from 'effect'
 import { TestClock } from 'effect/testing'
 import * as Logix from '../../src/index.js'
+import * as RuntimeContracts from '../../src/internal/runtime-contracts.js'
+import { trialRun } from '../../src/internal/verification/trialRun.js'
 
-describe('Observability.TrialRun (US4)', () => {
+describe('trialRun backing (US4)', () => {
   it.effect(
     'parallel RunSession trial runs should not leak runId/events/IR across sessions',
     () =>
@@ -23,33 +26,34 @@ describe('Observability.TrialRun (US4)', () => {
         }
 
         const makeModule = (options: { readonly moduleId: string; readonly deps: string }) => {
-          const M = Logix.Module.make(options.moduleId, {
-            state: State,
-            actions: Actions,
-            reducers: { noop: (s: any) => s },
-            traits: Logix.StateTrait.from(State)({
-              derived: Logix.StateTrait.computed({
+          const M = FieldContracts.withModuleFieldDeclarations(Logix.Module.make(options.moduleId, {
+  state: State,
+  actions: Actions,
+  reducers: { noop: (s: any) => s }
+}), FieldContracts.fieldFrom(State)({
+              derived: FieldContracts.fieldComputed({
                 deps: [options.deps] as any,
                 get: (x: any) => x + 1,
               }),
-            }),
-          })
+            }))
 
-          const impl = M.implement({
+          const program = Logix.Program.make(M, {
             initial: { a: 0, b: 0, c: 0, d: 0, e: 0, f: 0, derived: 1 },
             logics: [],
           })
 
-          return { M, impl }
+          return { M, program }
         }
 
         const runOnce = (options: { readonly runId: string; readonly module: ReturnType<typeof makeModule> }) =>
-          Logix.Observability.trialRun(
+          trialRun(
             Effect.gen(function* () {
-              const ctx = yield* options.module.impl.impl.layer.pipe(Layer.build)
+              const ctx = yield* RuntimeContracts.getProgramRuntimeBlueprint(options.module.program).layer.pipe(
+                Layer.build,
+              )
               const runtime = ServiceMap.get(ctx, options.module.M.tag) as any
 
-              // Give background logic/traits installation a chance to run so static IR registration and evidence collection can complete.
+              // Give background logic/field installation a chance to run so static IR registration and evidence collection can complete.
               yield* TestClock.adjust('1 millis')
 
               return runtime.instanceId as string

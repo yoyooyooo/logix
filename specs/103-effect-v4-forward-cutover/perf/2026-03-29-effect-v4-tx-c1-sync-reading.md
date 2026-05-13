@@ -19,8 +19,8 @@
 passed:
 
 - `pnpm -C packages/logix-core typecheck:test`
-- `pnpm -C packages/logix-core exec vitest run test/internal/StateTrait/StateTrait.RefList.ChangedIndicesFromTxnEvidence.test.ts`
-- `pnpm -C packages/logix-core exec vitest run test/internal/StateTrait/StateTrait.ExternalStoreTrait.Runtime.test.ts -t "committed transaction patches stay stable across later transactions"`
+- `pnpm -C packages/logix-core exec vitest run test/internal/FieldKernel/FieldKernel.RefList.ChangedIndicesFromTxnEvidence.test.ts`
+- `pnpm -C packages/logix-core exec vitest run test/internal/FieldKernel/FieldKernel.ExternalStoreTrait.Runtime.test.ts -t "committed transaction patches stay stable across later transactions"`
 - `pnpm -C packages/logix-core exec vitest run test/internal/Runtime/ModuleRuntime/ModuleRuntime.test.ts -t 'snapshot dirtyPathIds|infer dirty evidence for whole-state replace|skip replace inference'`
 
 note:

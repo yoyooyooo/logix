@@ -7,7 +7,7 @@
     "directory": "packages/logix-test"
   },
   "license": "Apache-2.0",
-  "description": "Testing utilities for Logix v3",
+  "description": "Testing utilities for the current Logix runtime",
   "files": [
     "dist/**"
   ],
@@ -18,11 +18,6 @@
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
-    "./TestRuntime": "./src/TestRuntime.ts",
-    "./TestProgram": "./src/TestProgram.ts",
-    "./Execution": "./src/Execution.ts",
-    "./Assertions": "./src/Assertions.ts",
-    "./Vitest": "./src/Vitest.ts",
     "./internal/*": null
   },
   "publishConfig": {
@@ -34,31 +29,6 @@
         "import": "./dist/index.js",
         "require": "./dist/index.cjs"
       },
-      "./TestRuntime": {
-        "types": "./dist/TestRuntime.d.ts",
-        "import": "./dist/TestRuntime.js",
-        "require": "./dist/TestRuntime.cjs"
-      },
-      "./TestProgram": {
-        "types": "./dist/TestProgram.d.ts",
-        "import": "./dist/TestProgram.js",
-        "require": "./dist/TestProgram.cjs"
-      },
-      "./Execution": {
-        "types": "./dist/Execution.d.ts",
-        "import": "./dist/Execution.js",
-        "require": "./dist/Execution.cjs"
-      },
-      "./Assertions": {
-        "types": "./dist/Assertions.d.ts",
-        "import": "./dist/Assertions.js",
-        "require": "./dist/Assertions.cjs"
-      },
-      "./Vitest": {
-        "types": "./dist/Vitest.d.ts",
-        "import": "./dist/Vitest.js",
-        "require": "./dist/Vitest.cjs"
-      },
       "./internal/*": null
     },
     "main": "./dist/index.cjs",
@@ -69,7 +39,7 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc -p tsconfig.test.json --noEmit",
-    "test": "vitest",
+    "test": "vitest run",
     "test:changed": "vitest run --changed",
     "test:cache": "vitest run --cache"
   },

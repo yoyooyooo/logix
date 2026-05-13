@@ -6,7 +6,7 @@ import type { WaitUntilOptions } from '../utils/waitUntil.js'
 
 export interface TestApi<Sh extends Logix.AnyModuleShape> {
   readonly ctx: ProgramRunContext<Sh>
-  readonly dispatch: (action: Logix.ActionOf<Sh>) => Effect.Effect<void>
+  readonly dispatch: (action: Logix.Module.ActionOf<Sh>) => Effect.Effect<void>
   /**
    * Advances the test clock (must run under TestContext).
    *
@@ -18,7 +18,7 @@ export interface TestApi<Sh extends Logix.AnyModuleShape> {
   readonly advance: (duration: Duration.Input) => Effect.Effect<void, never, TestClock.TestClock>
   readonly assert: {
     readonly state: (
-      predicate: (s: Logix.StateOf<Sh>) => boolean,
+      predicate: (s: Logix.Module.StateOf<Sh>) => boolean,
       options?: WaitUntilOptions,
     ) => Effect.Effect<void, Error, TestClock.TestClock>
     readonly signal: (

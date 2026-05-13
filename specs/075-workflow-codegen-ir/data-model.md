@@ -52,7 +52,7 @@ type WorkflowPolicyV1 = {
 
 ### 1.2 输入映射 DSL（InputExprV1）
 
-仅允许引用触发输入与纯结构组合；禁止读取 state/traits；禁止条件/循环/算术；禁止引用 call 返回值。
+仅允许引用触发输入与纯结构组合；禁止读取 state/fields；禁止条件/循环/算术；禁止引用 call 返回值。
 
 ```ts
 type InputExprV1 =

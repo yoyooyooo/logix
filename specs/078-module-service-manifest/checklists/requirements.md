@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Module↔Service 关系纳入 Manifest IR（平台可诊断/可回放）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2026-01-09  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2026-01-09
 **Feature**: `specs/078-module-service-manifest/spec.md`
 
 ## Content Quality

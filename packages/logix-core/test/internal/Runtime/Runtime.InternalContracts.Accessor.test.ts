@@ -65,18 +65,15 @@ const makeInternals = (instanceId: string): RuntimeInternals => ({
     recordReplayEvent: () => {},
     applyTransactionSnapshot: () => Effect.void,
   },
-  traits: {
+  fields: {
     rowIdStore: {},
     getListConfigs: () => [],
     registerSourceRefresh: () => {},
     getSourceRefreshHandler: () => undefined,
-    registerStateTraitProgram: () => {},
-    enqueueStateTraitValidateRequest: () => {},
-    registerModuleTraitsContribution: () => {},
-    freezeModuleTraits: () => {},
-    getModuleTraitsContributions: () => [],
-    getModuleTraitsSnapshot: () => undefined,
-    setModuleTraitsSnapshot: () => {},
+    registerFieldProgram: () => {},
+    enqueueFieldValidateRequest: () => {},
+    getModuleFieldsSnapshot: () => undefined,
+    setModuleFieldsSnapshot: () => {},
   },
   effects: {
     registerEffect: () => Effect.succeed({ sourceKey: 'unknown::h1', duplicate: false }),

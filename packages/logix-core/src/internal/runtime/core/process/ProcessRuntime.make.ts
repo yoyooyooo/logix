@@ -571,7 +571,7 @@ export const make = (options?: {
                 '',
                 'fix:',
                 '- Provide the missing module implementation(s) in the same scope via imports.',
-                `  Example: RootModule.implement({ imports: [${missing[0]}.implement(...).impl], processes: [...] })`,
+                `  Example: assemble the missing child via capabilities.imports, then install process runtime on an internal app assembly path.`,
                 '- Do not rely on cross-scope fallbacks / guessing instances.',
               ].join('\n')
             : undefined

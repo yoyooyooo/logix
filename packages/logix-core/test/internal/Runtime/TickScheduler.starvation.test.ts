@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
@@ -10,7 +11,7 @@ import { flushAllHostScheduler, makeTestHostScheduler } from '../testkit/hostSch
 describe('TickScheduler (anti-starvation)', () => {
   it.effect('microtaskChainDepth: should yield-to-host and start the next tick on a macrotask boundary', () =>
     Effect.gen(function* () {
-      Logix.Debug.clearDevtoolsEvents()
+      CoreDebug.clearDevtoolsEvents()
 
       const store = makeRuntimeStore()
       const queue = makeJobQueue()
@@ -55,7 +56,7 @@ describe('TickScheduler (anti-starvation)', () => {
 
         yield* flushAllHostScheduler(hostScheduler)
 
-        const events = Logix.Debug.getDevtoolsSnapshot().events
+        const events = CoreDebug.getDevtoolsSnapshot().events
         const starts = events
           .filter((e) => e.label === 'trace:tick')
           .map((e) => (e.meta ?? {}) as any)
@@ -76,8 +77,8 @@ describe('TickScheduler (anti-starvation)', () => {
         unsubscribe()
       }
     }).pipe(
-      Effect.provideService(Logix.Debug.internal.currentDiagnosticsLevel as any, 'light'),
-      Effect.provide(Logix.Debug.devtoolsHubLayer({ bufferSize: 512 })),
+      Effect.provideService(CoreDebug.internal.currentDiagnosticsLevel as any, 'light'),
+      Effect.provide(CoreDebug.devtoolsHubLayer({ bufferSize: 512 })),
     ),
   )
 })

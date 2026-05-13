@@ -1,5 +1,5 @@
 import { Effect } from 'effect'
-import * as Debug from '../../src/Debug.js'
+import * as Debug from '../../src/internal/debug-api.js'
 
 export const makeEventCollectorSink = () => {
   const events: Debug.Event[] = []

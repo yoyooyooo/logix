@@ -1,7 +1,9 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import * as Logix from '@logixjs/core'
 import type { DevtoolsSnapshot } from '../snapshot/index.js'
 import type { DevtoolsSettings, DevtoolsState, OperationSummary, TimelineEntry } from './model.js'
 import { defaultSettings, emptyDevtoolsState, type DevtoolsSelectionOverride } from './model.js'
+import { deriveWorkbenchHostViewModel, normalizeLiveSnapshot, type WorkbenchHostViewModel } from './workbench/index.js'
 
 // A simple path reader for Devtools internal use:
 // - Only supports nested field paths separated by ".", e.g. "profile.name".
@@ -48,9 +50,9 @@ const gateDirtyRootPathsByDigest = (meta: unknown): unknown => {
 }
 
 // Snapshot.events are already RuntimeDebugEventRef; timestamp always exists (core falls back to Date.now).
-const getEventTimestamp = (event: Logix.Debug.RuntimeDebugEventRef): number => event.timestamp
+const getEventTimestamp = (event: CoreDebug.RuntimeDebugEventRef): number => event.timestamp
 
-type TraitConvergeStep = {
+type FieldConvergeStep = {
   stepId: string
   kind: 'computed' | 'link'
   fieldPath: string
@@ -59,7 +61,7 @@ type TraitConvergeStep = {
   txnId?: string
 }
 
-type TraitConvergeWindow = {
+type FieldConvergeWindow = {
   txnCount: number
   outcomes: {
     Converged: number
@@ -74,10 +76,10 @@ type TraitConvergeWindow = {
   totalDurationMs: number
   executedSteps: number
   changedSteps: number
-  top3: Array<TraitConvergeStep>
+  top3: Array<FieldConvergeStep>
 }
 
-const emptyTraitConvergeWindow = (): TraitConvergeWindow => ({
+const emptyFieldConvergeWindow = (): FieldConvergeWindow => ({
   txnCount: 0,
   outcomes: {
     Converged: 0,
@@ -95,19 +97,19 @@ const emptyTraitConvergeWindow = (): TraitConvergeWindow => ({
   top3: [],
 })
 
-const pushTop3 = (window: TraitConvergeWindow, step: TraitConvergeStep): void => {
+const pushTop3 = (window: FieldConvergeWindow, step: FieldConvergeStep): void => {
   const next = [...window.top3, step].sort((a, b) => b.durationMs - a.durationMs).slice(0, 3)
   window.top3 = next
 }
 
-const collectTraitConverge = (window: TraitConvergeWindow, event: Logix.Debug.RuntimeDebugEventRef): void => {
+const collectFieldConverge = (window: FieldConvergeWindow, event: CoreDebug.RuntimeDebugEventRef): void => {
   if (event.kind !== 'state' || event.label !== 'state:update') return
 
   const meta = event.meta as any
-  const traitSummary = meta && typeof meta === 'object' ? (meta as any).traitSummary : undefined
-  if (!traitSummary || typeof traitSummary !== 'object') return
+  const fieldSummary = meta && typeof meta === 'object' ? (meta as any).fieldSummary : undefined
+  if (!fieldSummary || typeof fieldSummary !== 'object') return
 
-  const converge = (traitSummary as any).converge
+  const converge = (fieldSummary as any).converge
   if (!converge || typeof converge !== 'object') return
 
   window.txnCount += 1
@@ -161,7 +163,7 @@ const collectTraitConverge = (window: TraitConvergeWindow, event: Logix.Debug.Ru
     if (!fieldPath) continue
     if (typeof durationMs !== 'number' || !Number.isFinite(durationMs)) continue
 
-    const step: TraitConvergeStep = {
+    const step: FieldConvergeStep = {
       stepId: typeof (s as any).stepId === 'string' ? ((s as any).stepId as string) : `${kind}:${fieldPath}`,
       kind,
       fieldPath,
@@ -174,7 +176,7 @@ const collectTraitConverge = (window: TraitConvergeWindow, event: Logix.Debug.Ru
 }
 
 const groupEventsIntoOperationWindows = (
-  events: ReadonlyArray<Logix.Debug.RuntimeDebugEventRef>,
+  events: ReadonlyArray<CoreDebug.RuntimeDebugEventRef>,
   settings: DevtoolsSettings,
 ): ReadonlyArray<OperationSummary> => {
   const windowMs = settings.operationWindowMs ?? 1000
@@ -187,14 +189,14 @@ const groupEventsIntoOperationWindows = (
         eventCount: number
         renderCount: number
         txnIds: Set<string>
-        traitConverge: TraitConvergeWindow
+        fieldConverge: FieldConvergeWindow
       }
     | undefined
 
   const flush = () => {
     if (!current) return
     const durationMs = Math.max(0, current.endedAt - current.startedAt)
-    const traitConverge = current.traitConverge.txnCount > 0 ? current.traitConverge : undefined
+    const fieldConverge = current.fieldConverge.txnCount > 0 ? current.fieldConverge : undefined
     summaries.push({
       startedAt: current.startedAt,
       endedAt: current.endedAt,
@@ -202,7 +204,7 @@ const groupEventsIntoOperationWindows = (
       eventCount: current.eventCount,
       renderCount: current.renderCount,
       txnCount: current.txnIds.size,
-      traitConverge: traitConverge as any,
+      fieldConverge: fieldConverge as any,
     })
     current = undefined
   }
@@ -219,9 +221,9 @@ const groupEventsIntoOperationWindows = (
         eventCount: 1,
         renderCount: ref.kind === 'react-render' ? 1 : 0,
         txnIds: new Set(ref.txnId ? [ref.txnId] : []),
-        traitConverge: emptyTraitConvergeWindow(),
+        fieldConverge: emptyFieldConvergeWindow(),
       }
-      collectTraitConverge(current.traitConverge, ref)
+      collectFieldConverge(current.fieldConverge, ref)
       continue
     }
 
@@ -235,9 +237,9 @@ const groupEventsIntoOperationWindows = (
         eventCount: 1,
         renderCount: ref.kind === 'react-render' ? 1 : 0,
         txnIds: new Set(ref.txnId ? [ref.txnId] : []),
-        traitConverge: emptyTraitConvergeWindow(),
+        fieldConverge: emptyFieldConvergeWindow(),
       }
-      collectTraitConverge(current.traitConverge, ref)
+      collectFieldConverge(current.fieldConverge, ref)
       continue
     }
 
@@ -249,11 +251,69 @@ const groupEventsIntoOperationWindows = (
     if (ref.txnId) {
       current.txnIds.add(ref.txnId)
     }
-    collectTraitConverge(current.traitConverge, ref)
+    collectFieldConverge(current.fieldConverge, ref)
   }
 
   flush()
   return summaries
+}
+
+const selectExistingOrFirst = <T extends { readonly id: string }>(
+  items: ReadonlyArray<T>,
+  preferred: string | undefined,
+): string | undefined => {
+  if (preferred && items.some((item) => item.id === preferred)) {
+    return preferred
+  }
+  return items[0]?.id
+}
+
+const selectWorkbenchState = (
+  workbench: WorkbenchHostViewModel,
+  base: DevtoolsState,
+  overrides: DevtoolsSelectionOverride,
+): Pick<
+  DevtoolsState,
+  'selectedScopeId' | 'selectedSessionId' | 'selectedFindingId' | 'selectedArtifactKey' | 'selectedDrilldown'
+> => {
+  const hasScopeOverride = Object.prototype.hasOwnProperty.call(overrides, 'selectedScopeId')
+  const preferredScopeId = hasScopeOverride ? overrides.selectedScopeId : (base as any).selectedScopeId
+  const selectedScopeId = selectExistingOrFirst(workbench.scopes, preferredScopeId)
+
+  const scopedSessions = selectedScopeId
+    ? workbench.sessions.filter((session) => session.scopeId === selectedScopeId)
+    : workbench.sessions
+  const hasSessionOverride = Object.prototype.hasOwnProperty.call(overrides, 'selectedSessionId')
+  const preferredSessionId = hasSessionOverride ? overrides.selectedSessionId : (base as any).selectedSessionId
+  const selectedSessionId = selectExistingOrFirst(scopedSessions, preferredSessionId)
+
+  const sessionFindings = selectedSessionId
+    ? workbench.findings.filter((finding) => finding.sessionId === selectedSessionId || finding.sessionId === undefined)
+    : workbench.findings
+  const hasFindingOverride = Object.prototype.hasOwnProperty.call(overrides, 'selectedFindingId')
+  const preferredFindingId = hasFindingOverride ? overrides.selectedFindingId : (base as any).selectedFindingId
+  const selectedFindingId = selectExistingOrFirst(sessionFindings, preferredFindingId)
+
+  const finding = workbench.findings.find((item) => item.id === selectedFindingId)
+  const hasArtifactOverride = Object.prototype.hasOwnProperty.call(overrides, 'selectedArtifactKey')
+  const preferredArtifactKey = hasArtifactOverride ? overrides.selectedArtifactKey : (base as any).selectedArtifactKey
+  const selectedArtifactKey =
+    preferredArtifactKey && finding?.artifacts.some((artifact) => artifact.artifactKey === preferredArtifactKey)
+      ? preferredArtifactKey
+      : finding?.artifacts[0]?.artifactKey
+
+  const hasDrilldownOverride = Object.prototype.hasOwnProperty.call(overrides, 'selectedDrilldown')
+  const selectedDrilldown = hasDrilldownOverride
+    ? overrides.selectedDrilldown
+    : ((base as any).selectedDrilldown ?? workbench.defaultDrilldown)
+
+  return {
+    selectedScopeId,
+    selectedSessionId,
+    selectedFindingId,
+    selectedArtifactKey,
+    selectedDrilldown,
+  }
 }
 
 export const computeDevtoolsState = (
@@ -263,6 +323,9 @@ export const computeDevtoolsState = (
 ): DevtoolsState => {
   const base = prev ?? emptyDevtoolsState
   const baseSettings: DevtoolsSettings = (base as any).settings ?? defaultSettings
+  const workbench = deriveWorkbenchHostViewModel(normalizeLiveSnapshot(snapshot))
+  const workbenchSelection = selectWorkbenchState(workbench, base, overrides)
+  const selectedWorkbenchSession = workbench.sessions.find((session) => session.id === workbenchSelection.selectedSessionId)
 
   // 1) Build Runtime / Module / Instance views from Debug events
   const runtimeOrder: string[] = []
@@ -318,8 +381,8 @@ export const computeDevtoolsState = (
       moduleId: string
       count: number
       instances: string[]
-      hasTraitBlueprint: boolean
-      hasTraitRuntime: boolean
+      hasFieldBlueprint: boolean
+      hasFieldRuntime: boolean
     }[]
   }[] = []
   for (const runtimeLabel of runtimeOrder) {
@@ -330,21 +393,21 @@ export const computeDevtoolsState = (
       moduleId: string
       count: number
       instances: string[]
-      hasTraitBlueprint: boolean
-      hasTraitRuntime: boolean
+      hasFieldBlueprint: boolean
+      hasFieldRuntime: boolean
     }[] = []
     for (const [moduleId, ids] of byModule) {
       const instances = Array.from(ids).sort()
-      const traits = Logix.Debug.getModuleTraitsById(moduleId)
-      const hasTraitBlueprint = Boolean(traits?.program)
-      const hasTraitRuntime = hasTraitBlueprint && instances.length > 0
+      const fieldProgram = CoreDebug.getModuleFieldProgramById(moduleId)
+      const hasFieldBlueprint = Boolean(fieldProgram?.program)
+      const hasFieldRuntime = hasFieldBlueprint && instances.length > 0
 
       modules.push({
         moduleId,
         count: instances.length,
         instances,
-        hasTraitBlueprint,
-        hasTraitRuntime,
+        hasFieldBlueprint,
+        hasFieldRuntime,
       })
     }
     modules.sort((a, b) => a.moduleId.localeCompare(b.moduleId))
@@ -403,21 +466,21 @@ export const computeDevtoolsState = (
         moduleId: string
         count: number
         instances: string[]
-        hasTraitBlueprint: boolean
-        hasTraitRuntime: boolean
+        hasFieldBlueprint: boolean
+        hasFieldRuntime: boolean
       }[] = []
       for (const [moduleId, ids] of byModule) {
         const instances = Array.from(ids).sort()
-        const traits = Logix.Debug.getModuleTraitsById(moduleId)
-        const hasTraitBlueprint = Boolean(traits?.program)
-        const hasTraitRuntime = hasTraitBlueprint && instances.length > 0
+        const fieldProgram = CoreDebug.getModuleFieldProgramById(moduleId)
+        const hasFieldBlueprint = Boolean(fieldProgram?.program)
+        const hasFieldRuntime = hasFieldBlueprint && instances.length > 0
 
         modules.push({
           moduleId,
           count: instances.length,
           instances,
-          hasTraitBlueprint,
-          hasTraitRuntime,
+          hasFieldBlueprint,
+          hasFieldRuntime,
         })
       }
       modules.sort((a, b) => a.moduleId.localeCompare(b.moduleId))
@@ -428,13 +491,19 @@ export const computeDevtoolsState = (
   const runtimeLabels = runtimeViews.map((r) => r.runtimeLabel)
 
   // 2) Select Runtime / Module / Instance (with tolerance)
-  const preferRuntime = overrides.selectedRuntime !== undefined ? overrides.selectedRuntime : base.selectedRuntime
+  const preferRuntime =
+    overrides.selectedRuntime !== undefined
+      ? overrides.selectedRuntime
+      : (selectedWorkbenchSession?.coordinate.runtimeLabel ?? base.selectedRuntime)
   const selectedRuntime = preferRuntime && runtimeLabels.includes(preferRuntime) ? preferRuntime : runtimeLabels[0]
 
   const runtimeView = runtimeViews.find((r) => r.runtimeLabel === selectedRuntime)
   const modulesForRuntime = runtimeView?.modules ?? []
 
-  const preferModule = overrides.selectedModule !== undefined ? overrides.selectedModule : base.selectedModule
+  const preferModule =
+    overrides.selectedModule !== undefined
+      ? overrides.selectedModule
+      : (selectedWorkbenchSession?.coordinate.moduleId ?? base.selectedModule)
   const selectedModule =
     modulesForRuntime.length === 0
       ? undefined
@@ -445,7 +514,10 @@ export const computeDevtoolsState = (
   const moduleView = modulesForRuntime.find((m) => m.moduleId === selectedModule)
   const instancesForModule = moduleView?.instances ?? []
 
-  const preferInstance = overrides.selectedInstance !== undefined ? overrides.selectedInstance : base.selectedInstance
+  const preferInstance =
+    overrides.selectedInstance !== undefined
+      ? overrides.selectedInstance
+      : (selectedWorkbenchSession?.coordinate.instanceId ?? base.selectedInstance)
   const selectedInstance =
     instancesForModule.length === 0
       ? undefined
@@ -502,7 +574,7 @@ export const computeDevtoolsState = (
       }
 
       if (event.kind === 'state' && event.label === 'state:update') {
-        const gatedEvent: Logix.Debug.RuntimeDebugEventRef = {
+        const gatedEvent: CoreDebug.RuntimeDebugEventRef = {
           ...event,
           meta: gateDirtyRootPathsByDigest(event.meta),
         } as any
@@ -540,7 +612,7 @@ export const computeDevtoolsState = (
   const operationSummary = (() => {
     if (timeline.length === 0) return undefined
     const summaries = groupEventsIntoOperationWindows(
-      timeline.map((e) => e.event as Logix.Debug.RuntimeDebugEventRef),
+      timeline.map((e) => e.event as CoreDebug.RuntimeDebugEventRef),
       baseSettings,
     )
     return summaries.length > 0 ? summaries[summaries.length - 1] : undefined
@@ -587,11 +659,10 @@ export const computeDevtoolsState = (
 
   const open = overrides.open !== undefined ? overrides.open : base.open
   const theme = overrides.theme !== undefined ? overrides.theme : base.theme
-  const timelineRange = (base as any).timelineRange
-  const timeTravel = (base as any).timeTravel
-
   return {
     open,
+    ...workbenchSelection,
+    workbench,
     selectedRuntime,
     selectedModule,
     selectedInstance,
@@ -603,8 +674,6 @@ export const computeDevtoolsState = (
     activeState,
     layout,
     theme,
-    timelineRange,
-    timeTravel,
     settings: baseSettings,
   }
 }

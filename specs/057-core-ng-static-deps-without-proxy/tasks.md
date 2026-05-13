@@ -28,7 +28,7 @@
 - [x] T005 定义 strict gate 配置入口（mode + requireStatic.selectorIds + denyFallbackReasons）`packages/logix-core/src/Runtime.ts`
 - [x] T006 对齐 DebugSink 的 react-selector 投影字段（light/full Slim、可序列化）`packages/logix-core/src/internal/runtime/core/DebugSink.ts`
 - [x] T007 对齐 DebugSink 的 react-selector txn 对齐策略（优先用显式 txn；缺失时允许用 lastTxnByInstance 兜底对齐）`packages/logix-core/src/internal/runtime/core/DebugSink.ts`
-- [x] T008 对齐 FlowRuntime.fromState：支持 ReadQuery/SelectorSpec 输入（函数 selector 仍作为语法糖）`packages/logix-core/src/internal/runtime/core/FlowRuntime.ts`、`packages/logix-core/src/Flow.ts`
+- [x] T008 对齐 FlowRuntime.fromState：支持 ReadQuery/SelectorSpec 输入（函数 selector 仍作为语法糖）`packages/logix-core/src/internal/runtime/core/FlowRuntime.ts`、`packages/logix-core/src/internal/runtime/core/FlowRuntime.ts`
 - [x] T009 [P] FlowRuntime.fromState 的 ReadQuery 分支语义测试 `packages/logix-core/test/Flow/FlowRuntime.fromState.ReadQuery.test.ts`
 
 ---

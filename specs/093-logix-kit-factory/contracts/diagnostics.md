@@ -22,7 +22,7 @@ Kit 约束：
 
 - 触发：`ExternalStore.fromModule` 无法从入参解析 moduleId
 - 行为：抛出 `ExternalStoreRuntimeError`（code=`external_store::unresolvable_module_id`）
-- 修复：传入 ModuleTag/Module/ModuleImpl/ModuleRuntime（而不是只读 handle）
+- 修复：传入 ModuleTag/Module/ProgramRuntimeBlueprint/ModuleRuntime（而不是只读 handle）
 
 ### 1.3 Module-as-Source 未解析到唯一源模块实例（imports 缺失/不唯一）
 
@@ -30,7 +30,7 @@ Kit 约束：
 - 行为：必须 fail-fast，并在错误信息中同时包含：
   - “Fix: include the source ModuleTag in module imports”
   - “`Kit.forModule` 不支持运行时动态选择某个 instance；如需动态选择请改为数据建模 + ReadQuery/Logic 侧选择”
-- 事实源：`packages/logix-core/src/internal/state-trait/external-store.ts`（Module-as-Source install）
+- 事实源：`packages/logix-core/src/internal/state-field/external-store.ts`（Module-as-Source install）
 
 ## 2) 诊断事件（v1）
 

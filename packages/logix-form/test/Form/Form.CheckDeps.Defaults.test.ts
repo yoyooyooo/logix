@@ -2,6 +2,7 @@ import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
+import { materializeExtendedHandle } from '../support/form-harness.js'
 
 const waitForAsync = Effect.promise(
   () =>
@@ -10,7 +11,7 @@ const waitForAsync = Effect.promise(
     }),
 )
 
-describe('Form traits check deps defaults', () => {
+describe('Form field check deps defaults', () => {
   it.effect('deps is optional; self validate still runs when deps excludes self', () =>
     Effect.gen(function* () {
       const ValuesSchema = Schema.Struct({
@@ -19,33 +20,27 @@ describe('Form traits check deps defaults', () => {
       })
 
       type Values = Schema.Schema.Type<typeof ValuesSchema>
-
-      const module = Form.make('Form.CheckDeps.Defaults', {
-        values: ValuesSchema,
-        initialValues: { a: '', b: false } satisfies Values,
-        validateOn: ['onChange'],
-        reValidateOn: ['onChange'],
-        traits: Form.traits(ValuesSchema)({
-          a: {
-            check: {
-              requiredWhenB: {
-                deps: ['b'],
-                validate: (value, ctx) => {
-                  if (ctx.state.b !== true) return undefined
-                  return value.trim() ? undefined : 'a_required'
-                },
-              },
+      const module = Form.make(
+        'Form.CheckDeps.Defaults',
+        {
+          values: ValuesSchema,
+          initialValues: { a: '', b: false } satisfies Values,
+          validateOn: ['onChange'],
+          reValidateOn: ['onChange'],
+        },
+        (form) => {
+          form.field('a').rule({
+            deps: ['b'],
+            validate: (value, ctx: any) => {
+              if ((ctx.state as any).b !== true) return undefined
+              return String(value ?? '').trim() ? undefined : 'a_required'
             },
-          },
-          b: {
-            check: {
-              noop: {
-                validate: () => undefined,
-              },
-            },
-          },
-        }),
-      })
+          })
+          form.field('b').rule({
+            validate: () => undefined,
+          })
+        },
+      )
 
       const runtime = Logix.Runtime.make(module, {
         layer: Layer.empty as Layer.Layer<any, never, never>,
@@ -53,7 +48,7 @@ describe('Form traits check deps defaults', () => {
 
       const program = Effect.gen(function* () {
         const rt = yield* Effect.service(module.tag).pipe(Effect.orDie)
-        const form = module.controller.make(rt)
+        const form = materializeExtendedHandle(module.tag, rt) as any
         yield* waitForAsync
 
         // b change => validates b, and should pull in a check via deps:["b"]

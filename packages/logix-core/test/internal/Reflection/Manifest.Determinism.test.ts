@@ -1,3 +1,4 @@
+import * as CoreReflection from '@logixjs/core/repo-internal/reflection-api'
 import { describe, it, expect } from '@effect/vitest'
 import { Effect, Schema } from 'effect'
 import * as Logix from '../../../src/index.js'
@@ -13,10 +14,10 @@ describe('Reflection.extractManifest determinism (US2)', () => {
       actions: { ping: Schema.Number } as const,
     })
 
-    const impl = Root.implement({ initial: { value: 0 }, logics: [] })
+    const program = Logix.Program.make(Root, { initial: { value: 0 }, logics: [] })
 
-    const a = Logix.Reflection.extractManifest(impl)
-    const b = Logix.Reflection.extractManifest(impl)
+    const a = CoreReflection.extractManifest(program)
+    const b = CoreReflection.extractManifest(program)
 
     expect(utf8Bytes(a)).toEqual(utf8Bytes(b))
     expect(a).toEqual(b)
@@ -39,10 +40,10 @@ describe('Reflection.extractManifest determinism (US2)', () => {
       },
     })
 
-    const impl = Root.implement({ initial: { value: 0 }, logics: [] })
+    const program = Logix.Program.make(Root, { initial: { value: 0 }, logics: [] })
 
-    const a = Logix.Reflection.extractManifest(impl)
-    const b = Logix.Reflection.extractManifest(impl)
+    const a = CoreReflection.extractManifest(program)
+    const b = CoreReflection.extractManifest(program)
 
     expect(utf8Bytes(a)).toEqual(utf8Bytes(b))
     expect(a).toEqual(b)
@@ -67,5 +68,32 @@ describe('Reflection.extractManifest determinism (US2)', () => {
       ).toBe(true)
     }
   })
-})
 
+  it('keeps runtime reflection manifest digest byte-stable for the same Program input', () => {
+    const State = Schema.Struct({ value: Schema.Number })
+
+    const Root = Logix.Module.make('Reflection.RuntimeManifest.Determinism', {
+      state: State,
+      actions: {
+        a: Schema.Number,
+        b: Schema.String,
+      } as const,
+    })
+
+    const program = Logix.Program.make(Root, { initial: { value: 0 }, logics: [] })
+
+    const a = CoreReflection.extractRuntimeReflectionManifest(program, {
+      programId: 'runtime-manifest-determinism.program',
+      sourceRefs: [{ kind: 'source', path: '/src/logic/runtime-manifest.logic.ts', digest: 'source:1' }],
+    })
+    const b = CoreReflection.extractRuntimeReflectionManifest(program, {
+      programId: 'runtime-manifest-determinism.program',
+      sourceRefs: [{ kind: 'source', path: '/src/logic/runtime-manifest.logic.ts', digest: 'source:1' }],
+    })
+
+    expect(utf8Bytes(a)).toEqual(utf8Bytes(b))
+    expect(a).toEqual(b)
+    expect(a.digest).toBe(b.digest)
+    expect(a.digest).toMatch(/^runtime-manifest:/)
+  })
+})

@@ -3,13 +3,13 @@ title: Pagination loading
 description: Implement pagination and infinite scrolling with Logix.
 ---
 
-Pagination is a foundational pattern for list-like UIs. This page shows two common approaches: cursor-based and offset-based pagination.
+Pagination in Logix usually lands in one of two shapes: cursor-based and offset-based loading.
 
 ## Core idea
 
 1. **State shape**: `items[]` + `cursor/page` + `hasMore` + `isLoading`
 2. **Action**: `loadMore` triggers loading
-3. **Flow**: prevent duplicate requests (`runExhaust`), append data after the request finishes
+3. **Reaction policies**: prevent duplicate requests (`runExhaust`), append data after the request finishes
 
 ## Cursor-based pagination
 
@@ -84,7 +84,7 @@ const state = Schema.Struct({
 
 ```tsx
 function ItemList() {
-  const list = useModule(ListModule)
+  const list = useModule(ListDef.tag)
   const { items, hasMore, isLoading } = useSelector(list, (s) => s)
   const dispatch = useDispatch(list)
 
@@ -115,8 +115,7 @@ function ItemList() {
 - [Optimistic update](./optimistic-update)
 - [Search + detail linkage](./search-detail)
 
-## Runnable examples
+## Example code
 
-- Index: [Runnable examples](../recipes/runnable-examples)
 - Tutorial: [Complex list tutorial](../get-started/tutorial-complex-list)
-- Code: `examples/logix-react/src/modules/querySearchDemo.ts`
+- `examples/logix-react/src/modules/querySearchDemo.ts`

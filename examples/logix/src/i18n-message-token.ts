@@ -1,22 +1,26 @@
 /**
  * @scenario I18n · Message Token（可回放）+ 语言切换演示
  * @description
- *   - Module Logic 通过 `$.root.resolve(I18nTag)` 拿到 tree-scoped I18n service；
- *   - 产出 message token 写入 state（可序列化/可回放）；展示边界再翻译成最终字符串；
+ *   - Module Logic 产出 message token 写入 state（可序列化/可回放）；
+ *   - 展示边界通过 `service.render(...)` 生成最终字符串；
  *   - 切换语言后，token 不变，但展示结果随语言变化更新。
+ *   - 脚本末尾直接从当前 runtime scope 读取 `I18nTag`，验证 runtime 内的 service 读取与渲染链路。
  */
 
 import * as Logix from '@logixjs/core'
-import { Effect, Layer, Schema, SubscriptionRef } from 'effect'
-import { I18n, I18nTag, type I18nDriver, type I18nMessageToken } from '@logixjs/i18n'
+import { Effect, Schema, SubscriptionRef } from 'effect'
+import { I18n, I18nTag, token, type I18nMessageToken } from '@logixjs/i18n'
 
 type Resources = Readonly<Record<string, Readonly<Record<string, string>>>>
+type DriverEvent = 'initialized' | 'languageChanged'
+type DriverHandler = (...args: ReadonlyArray<unknown>) => void
+type LocalI18nDriver = Parameters<typeof I18n.layer>[0]
 
-const createDriver = (resources: Resources, initialLanguage: string): I18nDriver => {
+const createDriver = (resources: Resources, initialLanguage: string): LocalI18nDriver => {
   let language = initialLanguage
-  const handlers = {
-    initialized: new Set<(...args: any[]) => void>(),
-    languageChanged: new Set<(...args: any[]) => void>(),
+  const handlers: Record<DriverEvent, Set<DriverHandler>> = {
+    initialized: new Set<DriverHandler>(),
+    languageChanged: new Set<DriverHandler>(),
   }
 
   return {
@@ -24,14 +28,10 @@ const createDriver = (resources: Resources, initialLanguage: string): I18nDriver
       return language
     },
     isInitialized: true,
-    t: (key: string, options?: unknown) => {
+    t: (key: string) => {
       const table = resources[language] ?? {}
       const hit = table[key]
-
-      const defaultValue = options && typeof options === 'object' ? (options as any).defaultValue : undefined
-
       if (typeof hit === 'string') return hit
-      if (typeof defaultValue === 'string') return defaultValue
       return key
     },
     changeLanguage: (next: string) => {
@@ -40,18 +40,16 @@ const createDriver = (resources: Resources, initialLanguage: string): I18nDriver
         h(next)
       }
     },
-    on: (event, handler) => {
+    on: (event: DriverEvent, handler: DriverHandler) => {
       handlers[event].add(handler)
     },
-    off: (event, handler) => {
+    off: (event: DriverEvent, handler: DriverHandler) => {
       handlers[event].delete(handler)
     },
   }
 }
 
-const renderToken = (driver: I18nDriver, token: I18nMessageToken): string => driver.t(token.key, token.options)
-
-const DemoDef = Logix.Module.make('demo.I18nMessageToken', {
+const Demo = Logix.Module.make('demo.I18nMessageToken', {
   state: Schema.Struct({
     token: Schema.optional(Schema.Any),
   }),
@@ -60,16 +58,11 @@ const DemoDef = Logix.Module.make('demo.I18nMessageToken', {
   },
 })
 
-const DemoLogic = DemoDef.logic(($) =>
+const DemoLogic = Demo.logic('demo-logic', ($) =>
   Effect.gen(function* () {
-    const i18n = yield* $.root.resolve(I18nTag)
-
     const writeToken = () =>
       $.state.mutate((draft) => {
-        ;(draft as any).token = i18n.token('form.required', {
-          field: 'name',
-          defaultValue: 'Required',
-        })
+        ;(draft as any).token = token('form.required', { field: 'name' })
       })
 
     yield* $.onAction('setRequiredToken').runFork(writeToken)
@@ -77,10 +70,10 @@ const DemoLogic = DemoDef.logic(($) =>
   }),
 )
 
-const DemoImpl = DemoDef.implement({
+const DemoProgram = Logix.Program.make(Demo, {
   initial: { token: undefined },
   logics: [DemoLogic],
-}).impl
+})
 
 const resources: Resources = {
   en: { 'form.required': 'Required' },
@@ -88,24 +81,25 @@ const resources: Resources = {
 }
 
 const driver = createDriver(resources, 'en')
-const runtime = Logix.Runtime.make(DemoImpl, {
+const runtime = Logix.Runtime.make(DemoProgram, {
   layer: I18n.layer(driver),
 })
 
 const program = Effect.scoped(
   Effect.gen(function* () {
-    const svc = yield* Logix.Root.resolve(I18nTag)
-    const demo = yield* Effect.service(DemoDef.tag).pipe(Effect.orDie)
+    const svc = yield* Effect.service(I18nTag).pipe(Effect.orDie)
+    const demo = yield* Effect.service(Demo.tag).pipe(Effect.orDie)
 
     const token0 = (yield* demo.getState as any).token as I18nMessageToken
     console.log('[en] token:', JSON.stringify(token0))
-    console.log('[en] render:', renderToken(svc.instance, token0))
+    console.log('[en] render:', svc.render(token0, { fallback: 'Required' }))
 
     yield* svc.changeLanguage('zh')
 
     const token1 = (yield* demo.getState as any).token as I18nMessageToken
     console.log('[zh] token:', JSON.stringify(token1))
-    console.log('[zh] render:', renderToken(svc.instance, token1))
+    console.log('[zh] render:', svc.render(token1, { fallback: 'Required' }))
+    console.log('[token-stable]', JSON.stringify(token0) === JSON.stringify(token1))
 
     // 展示边界也可以选择订阅快照变化来触发重渲染
     const latestSnap = yield* SubscriptionRef.get(svc.snapshot)

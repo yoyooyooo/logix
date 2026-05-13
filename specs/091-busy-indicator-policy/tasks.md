@@ -1,7 +1,7 @@
 # Tasks: 091 Busy Indicator Policy
 
-**Input**: `specs/091-busy-indicator-policy/spec.md`, `specs/091-busy-indicator-policy/plan.md`  
-**Prerequisites**: `specs/088-async-action-coordinator/`（ActionRun pending 作为事实源）  
+**Input**: `specs/091-busy-indicator-policy/spec.md`, `specs/091-busy-indicator-policy/plan.md`
+**Prerequisites**: `specs/088-async-action-coordinator/`（ActionRun pending 作为事实源）
 **Tests**: UI 行为与时间语义必须有自动化覆盖（避免回归与手写计时器复发）。
 
 ## Phase 1: Setup（文档与默认参数）

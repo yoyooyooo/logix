@@ -1,7 +1,7 @@
 # Tasks: 066 logix-galaxy 项目管理与 RBAC（成员/角色/权限/成员组）
 
-**Input**: 设计文档来自 `specs/066-galaxy-project-rbac/`  
-**Prerequisites**: `specs/066-galaxy-project-rbac/spec.md`、`specs/066-galaxy-project-rbac/plan.md`  
+**Input**: 设计文档来自 `specs/066-galaxy-project-rbac/`
+**Prerequisites**: `specs/066-galaxy-project-rbac/spec.md`、`specs/066-galaxy-project-rbac/plan.md`
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -146,6 +146,6 @@
 - [x] T041 Fix FE Logix watcher startup concurrency (avoid action handlers being skipped) in `apps/logix-galaxy-fe/src/galaxy/auth.module.ts`, `apps/logix-galaxy-fe/src/galaxy/projects.module.ts`, `apps/logix-galaxy-fe/src/galaxy/project-members.module.ts`, `apps/logix-galaxy-fe/src/galaxy/project-groups.module.ts`
 - [x] T042 Fix FE strict `$.use(...)` module imports wiring (avoid MissingModuleRuntimeError, ensure actions can trigger effects) in `apps/logix-galaxy-fe/src/galaxy/projects.module.ts`, `apps/logix-galaxy-fe/src/galaxy/project-members.module.ts`, `apps/logix-galaxy-fe/src/galaxy/project-groups.module.ts`
 - [x] T043 Map Debug browser console output to diagnostic severity (warn/info/error) so missing imports is visible by default in `packages/logix-core/src/internal/runtime/core/DebugSink.ts`, `packages/logix-core/test/DebugSink.browserConsole.test.ts`
-- [x] T044 Add dev diagnostic-only browser console mode (`devConsole: 'diagnostic'`) and use it in FE runtime in `packages/logix-core/src/Debug.ts`, `packages/logix-core/src/internal/runtime/core/DebugSink.ts`, `apps/logix-galaxy-fe/src/RuntimeProvider.tsx`
-- [x] T045 Fold diagnosticsLevel into Debug.layer options (reduce debug layers in app code) in `packages/logix-core/src/Debug.ts`, `packages/logix-core/test/Debug/Debug.test.ts`
+- [x] T044 Add dev diagnostic-only browser console mode (`devConsole: 'diagnostic'`) and use it in FE runtime in `packages/logix-core/src/internal/debug-api.ts`, `packages/logix-core/src/internal/runtime/core/DebugSink.ts`, `apps/logix-galaxy-fe/src/RuntimeProvider.tsx`
+- [x] T045 Fold diagnosticsLevel into Debug.layer options (reduce debug layers in app code) in `packages/logix-core/src/internal/debug-api.ts`, `packages/logix-core/test/Debug/Debug.test.ts`
 - [x] T046 Fold Debug console + Devtools shipping into `Runtime.make` options (debug/devtools passthrough), keep manual layers opt-in in `packages/logix-core/src/Runtime.ts`, `apps/logix-galaxy-fe/src/RuntimeProvider.tsx`

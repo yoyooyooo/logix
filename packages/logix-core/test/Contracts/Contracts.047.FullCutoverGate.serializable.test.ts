@@ -1,3 +1,5 @@
+import * as CoreKernel from '@logixjs/core/repo-internal/kernel-api'
+import * as CoreReflection from '@logixjs/core/repo-internal/reflection-api'
 import { describe, expect, it } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
@@ -15,7 +17,7 @@ describe('contracts (047): Full Cutover Gate (serializable)', () => {
           },
         })
 
-        const program = Root.implement({
+        const program = Logix.Program.make(Root, {
           initial: { count: 0 },
           logics: [],
         })
@@ -28,15 +30,15 @@ describe('contracts (047): Full Cutover Gate (serializable)', () => {
         const after = {
           runId: 'run:test:047:after',
           layer: Layer.mergeAll(
-            Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logixjs/core-ng' }),
-            Logix.Kernel.runtimeDefaultServicesOverridesLayer({
-              txnQueue: { implId: 'core-ng', notes: 'test: force fallback for serializable gate' },
+            CoreKernel.experimentalLayer(),
+            CoreKernel.runtimeDefaultServicesOverridesLayer({
+              txnQueue: { implId: '__missing__', notes: 'test: force fallback for serializable gate' },
             }),
           ) as Layer.Layer<any, never, never>,
           interaction: (rt: any) => rt.dispatch({ _tag: 'inc', payload: undefined } as any),
         }
 
-        const result = yield* Logix.Reflection.verifyFullCutoverGate(program, {
+        const result = yield* CoreReflection.verifyFullCutoverGate(program, {
           before,
           after,
           diagnosticsLevel: 'off',
@@ -49,7 +51,7 @@ describe('contracts (047): Full Cutover Gate (serializable)', () => {
         expect(() => JSON.stringify(result)).not.toThrow()
 
         expect(result.gate).toBeDefined()
-        expect(result.gate.requestedKernelId).toBe('core-ng')
+        expect(result.gate.requestedKernelId).toBe('core')
         expect(Array.isArray(result.gate.missingServiceIds)).toBe(true)
         expect(typeof result.gate.anchor.moduleId).toBe('string')
         expect(typeof result.gate.anchor.instanceId).toBe('string')

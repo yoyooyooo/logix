@@ -1,7 +1,7 @@
 # Specification Quality Checklist: 运行时可观测性加固（事务链路贯穿 + Devtools 事件聚合器性能/内存 + 快照订阅契约）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-23  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-23
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality

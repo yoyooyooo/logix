@@ -6,7 +6,7 @@
 
 - envId: `TBD`
 - profile: `default`
-- matrix: `.codex/skills/logix-perf-evidence/assets/matrix.json`（以 diff 产物内 `meta.matrixId/matrixHash` 为准）
+- matrix: `packages/logix-perf-evidence/assets/matrix.json`（以 diff 产物内 `meta.matrixId/matrixHash` 为准）
 
 ## Evidence Files
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
-import * as ModuleRuntime from '../../../../src/internal/runtime/ModuleRuntime.js'
+import * as ModuleRuntime from '../../../../src/internal/runtime/core/ModuleRuntime.js'
 import * as RuntimeKernel from '../../../../src/internal/runtime/core/RuntimeKernel.js'
 
 describe('RuntimeKernel.InstanceOverrideIsolation (US2)', () => {

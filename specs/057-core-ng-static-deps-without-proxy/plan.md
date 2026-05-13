@@ -1,6 +1,6 @@
 # Implementation Plan: 057 ReadQuery/SelectorSpec + SelectorGraph（静态 deps / 无 Proxy）
 
-**Branch**: `057-core-ng-static-deps-without-proxy` | **Date**: 2025-12-28 | **Spec**: `specs/057-core-ng-static-deps-without-proxy/spec.md`  
+**Branch**: `057-core-ng-static-deps-without-proxy` | **Date**: 2025-12-28 | **Spec**: `specs/057-core-ng-static-deps-without-proxy/spec.md`
 **Input**: Feature specification from `specs/057-core-ng-static-deps-without-proxy/spec.md`
 
 ## Summary
@@ -41,24 +41,24 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.8.x（ESM）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、`@logixjs/react`、Devtools/Sandbox（消费证据）  
-**Storage**: N/A（内存态）  
-**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`；禁止 watch）  
-**Target Platform**: Node.js 20+ + modern browsers  
-**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）  
+**Language/Version**: TypeScript 5.8.x（ESM）
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、`@logixjs/react`、Devtools/Sandbox（消费证据）
+**Storage**: N/A（内存态）
+**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`；禁止 watch）
+**Target Platform**: Node.js 20+ + modern browsers
+**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）
 **Performance Goals**:
 
 - 读状态默认路径不再依赖 Proxy 逐次读取追踪；commit 侧可复用 dirty-set 做精准通知与缓存（证据裁决）
 - `diagnostics=off` 下新增诊断能力接近零成本；`light/full` 下事件 Slim 且可序列化
 
-**Constraints**: 统一最小 IR（Static IR + Dynamic Trace）+ 稳定锚点；事务窗口禁 IO；`diagnostics=off` 近零成本  
+**Constraints**: 统一最小 IR（Static IR + Dynamic Trace）+ 稳定锚点；事务窗口禁 IO；`diagnostics=off` 近零成本
 **Scope**: 优先覆盖 `useSelector` / `FlowRuntime.fromState` 的常见读状态模式；AOT 插件作为可选加速器，不作为可用性的前置条件
 
 ## Perf Evidence Plan（MUST）
 
 - Baseline 语义：before=变更前（未引入 SelectorGraph/struct memo 默认化），after=变更后（本特性落地）；必须同机同配置、同 profile。
-- Matrix SSoT：`.codex/skills/logix-perf-evidence/assets/matrix.json`（当前 `priority=P1`：`watchers.clickToPaint`、`converge.txnCommit`）。
+- Matrix SSoT：`packages/logix-perf-evidence/assets/matrix.json`（当前 `priority=P1`：`watchers.clickToPaint`、`converge.txnCommit`）。
 - Hard conclusion：`profile=default`（`quick` 仅线索；需要更稳可用 `soak` 复核）。
 - 采集隔离：before/after/diff 必须在独立 `git worktree/单独目录` 中采集；混杂工作区结果仅作线索不得用于宣称 Gate PASS。
 

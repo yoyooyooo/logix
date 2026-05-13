@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Deferred, Effect } from 'effect'
@@ -5,11 +6,11 @@ import * as Logix from '../../../../src/index.js'
 import * as LifecycleCore from '../../../../src/internal/runtime/core/Lifecycle.js'
 
 const makeRuntimeRefCollector = () => {
-  const refs: Logix.Debug.RuntimeDebugEventRef[] = []
-  const sink: Logix.Debug.Sink = {
+  const refs: CoreDebug.RuntimeDebugEventRef[] = []
+  const sink: CoreDebug.Sink = {
     record: (event) =>
       Effect.sync(() => {
-        const ref = Logix.Debug.internal.toRuntimeDebugEventRef(event, {
+        const ref = CoreDebug.internal.toRuntimeDebugEventRef(event, {
           diagnosticsLevel: 'full',
         })
         if (ref) {
@@ -34,7 +35,7 @@ describe('Lifecycle diagnostics serialization', () => {
 
       const { refs, sink } = makeRuntimeRefCollector()
 
-      yield* Effect.exit(Effect.provideService(manager.runInitRequired, Logix.Debug.internal.currentDebugSinks as any, [sink]))
+      yield* Effect.exit(Effect.provideService(manager.runInitRequired, CoreDebug.internal.currentDebugSinks as any, [sink]))
 
       expect(refs.some((r) => r.kind === 'lifecycle')).toBe(true)
       for (const ref of refs) {
@@ -66,7 +67,7 @@ describe('Lifecycle diagnostics serialization', () => {
 
       const { refs, sink } = makeRuntimeRefCollector()
 
-      yield* Effect.provideService(manager.runStart, Logix.Debug.internal.currentDebugSinks as any, [sink])
+      yield* Effect.provideService(manager.runStart, CoreDebug.internal.currentDebugSinks as any, [sink])
 
       yield* Deferred.await(onErrorSeen)
 
@@ -97,7 +98,7 @@ describe('Lifecycle diagnostics serialization', () => {
 
       const { refs, sink } = makeRuntimeRefCollector()
 
-      yield* Effect.provideService(manager.runDestroy, Logix.Debug.internal.currentDebugSinks as any, [sink])
+      yield* Effect.provideService(manager.runDestroy, CoreDebug.internal.currentDebugSinks as any, [sink])
 
       expect(refs.some((r) => r.kind === 'lifecycle')).toBe(true)
       for (const ref of refs) {

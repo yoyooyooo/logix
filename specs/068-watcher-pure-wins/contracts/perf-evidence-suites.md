@@ -1,6 +1,6 @@
 # Contracts: Perf Evidence Suites (068)
 
-**Spec**: `specs/068-watcher-pure-wins/spec.md`  
+**Spec**: `specs/068-watcher-pure-wins/spec.md`
 **Plan**: `specs/068-watcher-pure-wins/plan.md`
 
 本文件定义本 spec 必须新增/复用的 perf suites（Node + Browser），用于满足 `NFR-001` 与 `SC-001~SC-005` 的“可复现、可对比、可判定”要求。

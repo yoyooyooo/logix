@@ -137,3 +137,105 @@ export const updateArrayAtPath = (
   const next = update(items)
   return setAtPath(state, path, next)
 }
+
+// Internal-only path helpers for Form error/ui overlays.
+// These helpers deliberately live under internal/form so `@logixjs/form` does not expose
+// a public Form.Path family or schema-path mapping route.
+export type FormValuePath = string
+export type FormPatternPath = string
+export type FormListPath = string
+export type FormErrorsPath = string
+export type FormUiPath = string
+export type FormFieldPath = ReadonlyArray<string>
+
+const isNumericPathSegment = (segment: string): boolean => /^[0-9]+$/.test(segment)
+
+const splitFormPath = (path: string): ReadonlyArray<string> => {
+  if (!path) return []
+  const parts = path.split('.').filter((part) => part.length > 0)
+  const segments: Array<string> = []
+
+  for (const part of parts) {
+    if (!part) continue
+    if (part.endsWith('[]')) {
+      const base = part.slice(0, -2)
+      if (base) segments.push(base)
+      segments.push('[]')
+      continue
+    }
+    const bracket = /^(.+)\[(\d+)\]$/.exec(part)
+    if (bracket) {
+      const base = bracket[1]!
+      if (base) segments.push(base)
+      segments.push(bracket[2]!)
+      continue
+    }
+    segments.push(part)
+  }
+
+  return segments
+}
+
+export const toPatternPath = (valuePath: FormValuePath): FormPatternPath => {
+  if (!valuePath) return valuePath
+  const segments = splitFormPath(valuePath)
+  const out: Array<string> = []
+
+  for (const segment of segments) {
+    if (segment === '[]' || isNumericPathSegment(segment)) {
+      if (out.length === 0) continue
+      const last = out[out.length - 1]!
+      if (!last.endsWith('[]')) out[out.length - 1] = `${last}[]`
+      continue
+    }
+    out.push(segment)
+  }
+
+  return out.join('.')
+}
+
+export const toListPath = (valuePath: FormValuePath): FormListPath | undefined => {
+  const segments = splitFormPath(valuePath)
+  const firstIndex = segments.findIndex((segment) => segment === '[]' || isNumericPathSegment(segment))
+  if (firstIndex <= 0) return undefined
+  return segments.slice(0, firstIndex).join('.')
+}
+
+export const toErrorsPath = (valuePath: FormValuePath): FormErrorsPath => {
+  if (!valuePath) return 'errors'
+  const segments = splitFormPath(valuePath)
+  const out: Array<string> = []
+
+  for (const segment of segments) {
+    if (isNumericPathSegment(segment)) {
+      out.push('rows', segment)
+      continue
+    }
+    if (segment === '[]') continue
+    out.push(segment)
+  }
+
+  return `errors.${out.join('.')}`
+}
+
+export const toManualErrorsPath = (valuePath: FormValuePath): FormErrorsPath => {
+  const base = toErrorsPath(valuePath)
+  return base === 'errors' ? 'errors.$manual' : base.replace(/^errors\./, 'errors.$manual.')
+}
+
+export const toSchemaErrorsPath = (valuePath: FormValuePath): FormErrorsPath => {
+  const base = toErrorsPath(valuePath)
+  return base === 'errors' ? 'errors.$schema' : base.replace(/^errors\./, 'errors.$schema.')
+}
+
+export const toUiPath = (valuePath: FormValuePath): FormUiPath => (valuePath ? `ui.${valuePath}` : 'ui')
+
+export const toFieldPath = (path: FormValuePath | FormPatternPath): FormFieldPath => {
+  const segments = splitFormPath(path)
+  const out: Array<string> = []
+  for (const segment of segments) {
+    if (segment === '[]' || isNumericPathSegment(segment)) continue
+    out.push(segment)
+  }
+  return out.length > 0 ? out : ['$root']
+}

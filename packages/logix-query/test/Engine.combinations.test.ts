@@ -1,17 +1,22 @@
 import { describe, it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
-import * as EffectOp from '@logixjs/core/EffectOp'
+import * as EffectOp from '@logixjs/core/repo-internal/effect-op'
 import type { Engine as QueryEngine } from '../src/Engine.js'
 import * as Query from '../src/index.js'
+import { engine as tanstackEngine } from '../src/internal/engine/tanstack.js'
 
 describe('Query.Engine combinations (layer × middleware)', () => {
   it.effect('should follow the 2×2 semantics', () =>
     Effect.gen(function* () {
+      expect(typeof Query.Engine.layer).toBe('function')
+      expect(typeof Query.Engine.middleware).toBe('function')
+      expect(typeof tanstackEngine).toBe('function')
+
       const keyHash = 'kh:demo'
       let loadCalls = 0
 
       const op = EffectOp.make<string, never, never>({
-        kind: 'trait-source',
+        kind: 'field-source',
         name: 'demo/op',
         effect: Effect.sync(() => {
           loadCalls += 1

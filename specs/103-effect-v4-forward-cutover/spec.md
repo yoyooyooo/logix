@@ -1,9 +1,9 @@
 # Feature Specification: Effect v4 前向式全仓迁移主线（v4-only）
 
-**Feature Branch**: `103-effect-v4-forward-cutover`  
-**Created**: 2026-03-01  
-**Updated**: 2026-03-07  
-**Status**: Active  
+**Feature Branch**: `103-effect-v4-forward-cutover`
+**Created**: 2026-03-01
+**Updated**: 2026-03-07
+**Status**: Active
 **Input**: 用户最初目标是“彻底迁移到 Effect v4，即使当前仍是 beta 也接受 forward-only 重构”；当前文档在 2026-03-07 做定位校正：`103` 继续作为全仓迁移主线 spec，runtime-core truthful closure 只是其中一个已完成阶段，而不是最终定位。
 
 ## 定位校正（2026-03-07）

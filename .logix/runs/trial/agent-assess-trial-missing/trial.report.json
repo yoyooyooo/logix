@@ -1,0 +1,92 @@
+{
+  "artifacts": [
+    {
+      "digest": "selector-quality:startup:959bd634",
+      "kind": "SelectorQualityArtifact",
+      "outputKey": "selector-quality:startup"
+    }
+  ],
+  "dependencyCauses": [
+    {
+      "errorCode": "MissingDependency",
+      "focusRef": {
+        "declSliceId": "service:BusinessService"
+      },
+      "kind": "service",
+      "ownerCoordinate": "service:BusinessService",
+      "phase": "startup-boot",
+      "providerSource": "runtime-overlay"
+    }
+  ],
+  "environment": {
+    "configKeys": [],
+    "entry": {
+      "exportName": "MissingServiceProgram",
+      "modulePath": "packages/logix-cli/test/fixtures/MissingServiceProgram.ts"
+    },
+    "host": "node",
+    "missingConfigKeys": [],
+    "missingServices": [
+      "BusinessService"
+    ],
+    "runId": "agent-assess-trial-missing",
+    "tagIds": [
+      "BusinessService"
+    ],
+    "trialMode": "startup"
+  },
+  "errorCode": "MissingDependency",
+  "findings": [
+    {
+      "code": "MissingDependency",
+      "focusRef": {
+        "declSliceId": "service:BusinessService"
+      },
+      "kind": "dependency",
+      "ownerCoordinate": "service:BusinessService",
+      "summary": "service dependency missing during startup-boot"
+    }
+  ],
+  "kind": "VerificationControlPlaneReport",
+  "lifecycle": {
+    "artifactOutputKeys": [],
+    "closeSummary": null,
+    "phase": "startup-boot",
+    "primaryFailure": "Service not found: BusinessService (defined at <anonymous> (/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/packages/logix-cli/test/fixtures/MissingServiceProgram.ts:4:42))"
+  },
+  "mode": "startup",
+  "nextRecommendedStage": "trial",
+  "repairHints": [
+    {
+      "canAutoRetry": false,
+      "code": "MissingDependency",
+      "focusRef": {
+        "declSliceId": "service:BusinessService"
+      },
+      "reason": "service dependency missing at service:BusinessService",
+      "suggestedAction": "provide the missing dependency through the appropriate runtime capability and rerun runtime.trial",
+      "upgradeToStage": "trial"
+    }
+  ],
+  "repeatability": {
+    "ignoredFields": [
+      "environment.runId",
+      "environment.file",
+      "environment.outDir",
+      "artifacts[].file"
+    ],
+    "normalizedInputDigest": "verify-input:c1329ae8",
+    "reportDigest": "verify-report:c1329ae8",
+    "stableFields": [
+      "verdict",
+      "errorCode",
+      "artifactKeys",
+      "artifactDigests",
+      "nextRecommendedStage"
+    ]
+  },
+  "schemaVersion": 1,
+  "stage": "trial",
+  "summary": "Service not found: BusinessService (defined at <anonymous> (/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/packages/logix-cli/test/fixtures/MissingServiceProgram.ts:4:42))",
+  "verdict": "FAIL"
+}

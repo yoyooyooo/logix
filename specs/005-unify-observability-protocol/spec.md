@@ -13,7 +13,7 @@
 - “时间旅行/回放”只作用于可回放的运行时状态；不承诺回滚外部副作用（网络、存储、第三方系统）。
 - 观测负载策略可配置（抽样、摘要、按需细节）；默认保留原始值（不脱敏、不做风险提示），但对已知高成本字段/超大 payload 强制摘要；deep 模式可选择包含原始值。
 - 平台会逐步引入需求侧锚点（例如「场景（Scenario）/步骤（Step）」），用于把运行证据映射回需求意图；是否在某个前端 Playground 中展示不影响本特性的成立。
-- **视觉交互标准**：Timeline/Flamegraph 的交互体验必须对标 Chrome DevTools（Performance/Network）的交互标准（Canvas 渲染、Brush/Zoom/Pan、Flamegraph 深度查看），以支撑高频事件流下的可用性（防止 DOM 爆炸）；但语义模型以 Logix（txn/trait/EffectOp）为准，不追求与 Chrome trace 语义一一对应。
+- **视觉交互标准**：Timeline/Flamegraph 的交互体验必须对标 Chrome DevTools（Performance/Network）的交互标准（Canvas 渲染、Brush/Zoom/Pan、Flamegraph 深度查看），以支撑高频事件流下的可用性（防止 DOM 爆炸）；但语义模型以 Logix（txn/field/EffectOp）为准，不追求与 Chrome trace 语义一一对应。
 
 ## Out of Scope
 
@@ -26,7 +26,7 @@
 
 - 运行环境能够产生基础观测信号（至少包含错误、关键事件、执行轨迹或等价证据），否则无法支撑一致视图与对齐。
 - 运行环境能够为同一运行会话提供权威的事件顺序信息（主排序键），否则无法保证跨宿主导出/导入后的顺序稳定复现。
-- 在 `007-unify-trait-system` 落地后，Logix Runtime 已具备 `StateTransaction/txnId`、`DebugSink.Event`（`state:update`/`diagnostic`/`trace:*`）与 `ReplayLog` 等基础能力；本 spec 的协议与聚合层应以这些信号为优先输入，并在跨宿主/导出场景中做可序列化降级。
+- 在 `007-unify-field-system` 落地后，Logix Runtime 已具备 `StateTransaction/txnId`、`DebugSink.Event`（`state:update`/`diagnostic`/`trace:*`）与 `ReplayLog` 等基础能力；本 spec 的协议与聚合层应以这些信号为优先输入，并在跨宿主/导出场景中做可序列化降级。
 - 平台能够提供场景/步骤等需求侧锚点信息（或等价结构），以便把运行证据映射回需求侧结构。
 - 浏览器扩展在目标浏览器安全模型允许的范围内与当前页面建立连接；若受限，需要提供可用的降级体验。
 
@@ -42,7 +42,7 @@
 
 ### Session 2025-12-14
 
-- Q: Timeline 视图的 Span 建模选型是什么？ → A: 双层：顶层 Span = `StateTransaction/Operation Window`（txn）；子层 Span = trace/trait steps（仅 deep/按需）。
+- Q: Timeline 视图的 Span 建模选型是什么？ → A: 双层：顶层 Span = `StateTransaction/Operation Window`（txn）；子层 Span = trace/field steps（仅 deep/按需）。
 - Q: Devtools 的 “Record/Stop” 在协议层怎么定义更合适？ → A: 双模：优先发协议命令（支持则降低开销），不支持则退化为 UI 本地缓冲开关。
 - Q: “对标 Chrome DevTools”的范围要定到哪一档？ → A: 对标交互体验（Timeline/Brush/Flamegraph），语义模型以 Logix 为准，不追求与 Chrome trace 语义一一对应。
 - Q: 证据包里 `payload`（尤其 state snapshot/大对象）的默认保留策略是什么？ → A: 分级默认：默认保留原始（不脱敏），但对已知高成本字段/超大 payload 强制摘要；deep 模式可选择包含原始。
@@ -165,8 +165,8 @@
   - **Recording Window**: 证据包允许只包含录制窗口内事件；`seq` 必须保留原值，且接收端不得假设 `seq` 从 1 开始或连续。
 - **FR-004**: 系统必须支持在不同宿主中以一致方式呈现核心 Devtools 视图集合：运行对象列表、事件时间线、概览指标、错误/诊断视图、详情查看（事件/轨迹/状态）。
   - **Visual Standard**: 必须采用 **Timeline Overview + Detail Box** 的双层布局；Overview 必须支持 **Brush (框选)** 交互以控制 Detail 视图的时间窗口。
-  - **Lane Model**: Overview 必须至少渲染 Operation Window（txn）跨度与事件标记；trace/trait 的子层跨度仅在 deep/按需开启时渲染。
-  - **Chrome Alignment Scope**: 对标范围仅限交互体验与可用性标准；语义解释以 Logix 为准（txn/trait/EffectOp），不得为了“像 Chrome”而补造不存在的语义层级。
+  - **Lane Model**: Overview 必须至少渲染 Operation Window（txn）跨度与事件标记；trace/field 的子层跨度仅在 deep/按需开启时渲染。
+  - **Chrome Alignment Scope**: 对标范围仅限交互体验与可用性标准；语义解释以 Logix 为准（txn/field/EffectOp），不得为了“像 Chrome”而补造不存在的语义层级。
   - **Golden Reference**: 实现必须对标本 spec 的「Timeline Rendering Engine」章节（整合自 `design-timeline-rendering.md`）及配套的 [Layout](./assets/devtools-layout.png) / [Interaction](./assets/devtools-interaction.png) 视觉标准。
   - **Flamegraph Capability**: 针对 Detail 视图，必须支持 [Flamegraph](./assets/devtools-flamegraph.png) 形式的深度调用栈展示（Flow -> Effect -> Service -> Resource），以解释复杂因果。
 - **FR-005**: 系统必须支持将需求锚点（例如场景/步骤）与运行证据关联，并支持基于观测证据包计算覆盖情况；查看器应支持从锚点追溯到关联证据。
@@ -233,7 +233,7 @@ _支持高精度火焰图，还原 Flow -> Effect -> Resource 的调用深度与
 - **Main Flow Lane（Span）**：展示 top-level 的长耗时任务/关键收敛窗口，使用 `[startedAt, endedAt]` 绘制跨度
 - **Event Signal Lane（Dots/Ticks）**：展示瞬时事件（Action / React Render / Diagnostic）；密度过高时退化为 heatmap
 
-> 对齐决策（post-007）：采用双层 Span——顶层 Span = **StateTransaction / Operation Window**（`txnId` 分组）；子层 Span = trace/trait steps（仅 deep/按需）；`action:dispatch` / `trace:react-render` / `diagnostic` 等作为 Signal Lane。
+> 对齐决策（post-007）：采用双层 Span——顶层 Span = **StateTransaction / Operation Window**（`txnId` 分组）；子层 Span = trace/field steps（仅 deep/按需）；`action:dispatch` / `trace:react-render` / `diagnostic` 等作为 Signal Lane。
 
 #### 交互模型（Brush & Viewport Sync）
 

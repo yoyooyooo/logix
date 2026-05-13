@@ -1,12 +1,13 @@
 import { describe } from '@effect/vitest'
+import * as RuntimeContracts from '../../src/internal/runtime-contracts.js'
 import { it, expect } from '@effect/vitest'
 import * as Logix from '../../src/index.js'
 
 describe('ReadQuery.compile', () => {
   it('parses simple path selector', () => {
     const selector = (s: { count: number }) => s.count
-    const a = Logix.ReadQuery.compile(selector)
-    const b = Logix.ReadQuery.compile(selector)
+    const a = RuntimeContracts.Selector.compile(selector)
+    const b = RuntimeContracts.Selector.compile(selector)
 
     expect(a.lane).toBe('static')
     expect(a.producer).toBe('jit')
@@ -31,8 +32,8 @@ describe('ReadQuery.compile', () => {
       return s.count
     }
 
-    const a = Logix.ReadQuery.compile(selectCount)
-    const b = Logix.ReadQuery.compile(selectCount)
+    const a = RuntimeContracts.Selector.compile(selectCount)
+    const b = RuntimeContracts.Selector.compile(selectCount)
 
     expect(a.lane).toBe('static')
     expect(a.producer).toBe('jit')
@@ -48,7 +49,7 @@ describe('ReadQuery.compile', () => {
       return { count: s.count, age: s.age }
     }
 
-    const rq = Logix.ReadQuery.compile(selectStruct)
+    const rq = RuntimeContracts.Selector.compile(selectStruct)
 
     expect(rq.lane).toBe('static')
     expect(rq.producer).toBe('jit')
@@ -59,7 +60,7 @@ describe('ReadQuery.compile', () => {
 
   it('parses struct selector and marks shallowStruct', () => {
     const selector = (s: { count: number; age: number }) => ({ count: s.count, age: s.age })
-    const rq = Logix.ReadQuery.compile(selector)
+    const rq = RuntimeContracts.Selector.compile(selector)
 
     expect(rq.lane).toBe('static')
     expect(rq.producer).toBe('jit')
@@ -70,7 +71,7 @@ describe('ReadQuery.compile', () => {
 
   it('falls back to dynamic lane when unsupported', () => {
     const selector = (s: { count: number }) => (s.count > 0 ? s.count : 0)
-    const rq = Logix.ReadQuery.compile(selector)
+    const rq = RuntimeContracts.Selector.compile(selector)
 
     expect(rq.lane).toBe('dynamic')
     expect(rq.producer).toBe('dynamic')

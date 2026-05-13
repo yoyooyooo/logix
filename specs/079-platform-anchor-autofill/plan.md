@@ -1,7 +1,8 @@
 # Implementation Plan: 079 保守自动补全 Platform-Grade 锚点声明（单一真相源）
 
-**Branch**: `079-platform-anchor-autofill` | **Date**: 2026-01-09 | **Spec**: `specs/079-platform-anchor-autofill/spec.md`  
+**Branch**: `079-platform-anchor-autofill` | **Date**: 2026-01-09 | **Spec**: `specs/079-platform-anchor-autofill/spec.md`
 **Input**: Feature specification from `specs/079-platform-anchor-autofill/spec.md`
+**Status**: Frozen historical plan. It is not a current implementation target and is not wired into the current CLI public surface.
 
 ## Summary
 
@@ -36,14 +37,14 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript（ESM；以仓库配置为准）  
-**Primary Dependencies**: `effect` v3、`@logixjs/core`（锚点字段权威）、Node-only：`@logixjs/anchor-engine`（081/082 产物与工具链）、`ts-morph`（经 081/082 闭包引入；禁止引入 runtime）  
-**Storage**: N/A（写回源码；报告以 JSON 输出）  
-**Testing**: Vitest（如需新增测试，优先覆盖“识别/补全/幂等/跳过原因”）  
-**Target Platform**: Node.js 20+（用于 CLI/CI/本地补全）  
-**Project Type**: pnpm workspace（`packages/*` + `examples/*` + `scripts/*`）  
-**Performance Goals**: 工具链执行确定性与可复跑优先；对大仓库按“按需扫描 + 早停”控制耗时  
-**Constraints**: 单一真相源；宁可漏不乱补；输出 Slim/可序列化；不引入运行时常驻成本  
+**Language/Version**: TypeScript（ESM；以仓库配置为准）
+**Primary Dependencies**: `effect` v3、`@logixjs/core`（锚点字段权威）、Node-only：`@logixjs/anchor-engine`（081/082 产物与工具链）、`ts-morph`（经 081/082 闭包引入；禁止引入 runtime）
+**Storage**: N/A（写回源码；报告以 JSON 输出）
+**Testing**: Vitest（如需新增测试，优先覆盖“识别/补全/幂等/跳过原因”）
+**Target Platform**: Node.js 20+（用于 CLI/CI/本地补全）
+**Project Type**: pnpm workspace（`packages/*` + `examples/*` + `scripts/*`）
+**Performance Goals**: 工具链执行确定性与可复跑优先；对大仓库按“按需扫描 + 早停”控制耗时
+**Constraints**: 单一真相源；宁可漏不乱补；输出 Slim/可序列化；不引入运行时常驻成本
 **Scale/Scope**: 首要补全 `ModuleDef.services`；次要补全 `dev.source`；装配锚点按可确定性分阶段交付
 
 ## Constitution Check
@@ -167,16 +168,16 @@ docs/specs/sdd-platform/
 
 ### 4) 装配依赖锚点（imports / assembly）分阶段
 
-装配锚点通常出现在 `ModuleImpl.implement({ imports: [...] })` 侧，而不是 `Module.make` 的定义侧；其“可确定性”普遍更弱（跨文件/跨模块组合）。
+装配锚点通常出现在 `ProgramRuntimeBlueprint.implement({ imports: [...] })` 侧，而不是 `Module.make` 的定义侧；其“可确定性”普遍更弱（跨文件/跨模块组合）。
 
 交付策略：
 
 - Phase 1：先做 **report-only**（发现缺失/潜在不一致），不自动写回。
-- Phase 2：仅对可确定的直连形态开放写回（例如同文件内明确引用的 ModuleImpl / Layer 常量），并保持默认关闭。
+- Phase 2：仅对可确定的直连形态开放写回（例如同文件内明确引用的 ProgramRuntimeBlueprint / Layer 常量），并保持默认关闭。
 
 ### 5) 可选：TrialRun 校验（不作为写回依据）
 
-在 report-only 或写回后，可选对目标模块执行 `Observability.trialRunModule`：
+在 report-only 或写回后，可选对目标模块执行 `Runtime.trial`：
 
 - 用于验证“missingServices/missingConfigKeys”是否收敛；
 - 用于输出 `environment.tagIds` 等 evidence 辅助解释；

@@ -1,27 +1,36 @@
+import * as CoreKernel from '@logixjs/core/repo-internal/kernel-api'
 import { describe, it, expect } from 'vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
+import { EXPERIMENTAL_KERNEL_IMPL_ID } from '../../src/internal/runtime/core/RuntimeServices.impls.experimental.js'
 
 describe('Runtime (048): no implicit fallback', () => {
-  it('should fail by default (fullCutover) when requested impl registry is missing (no silent fallback)', async () => {
+  it('should fail by default (fullCutover) when experimental overrides fall back implicitly', async () => {
     const Root = Logix.Module.make('Runtime.048.NoImplicitFallback', {
       state: Schema.Struct({ count: Schema.Number }),
       actions: { noop: Schema.Void },
       reducers: { noop: (s: any) => s },
     })
 
-    const program = Root.implement({
+    const program = Logix.Program.make(Root, {
       initial: { count: 0 },
       logics: [],
     })
 
     const runtime = Logix.Runtime.make(program, {
       layer: Layer.mergeAll(
-        Logix.Kernel.kernelLayer({ kernelId: 'core-ng', packageName: '@logixjs/core-ng' }),
-        Logix.Kernel.runtimeServicesRegistryLayer({ implsByServiceId: {} }),
-        Logix.Kernel.runtimeDefaultServicesOverridesLayer(
+        CoreKernel.kernelLayer({
+          kernelId: 'core',
+          packageName: '@logixjs/core',
+          capabilities: ['experimental'],
+        }),
+        CoreKernel.runtimeServicesRegistryLayer({ implsByServiceId: {} }),
+        CoreKernel.runtimeDefaultServicesOverridesLayer(
           Object.fromEntries(
-            Logix.Kernel.CutoverCoverageMatrix.requiredServiceIds.map((serviceId) => [serviceId, { implId: 'core-ng' }]),
+            CoreKernel.CutoverCoverageMatrix.requiredServiceIds.map((serviceId) => [
+              serviceId,
+              { implId: EXPERIMENTAL_KERNEL_IMPL_ID },
+            ]),
           ),
         ),
       ) as Layer.Layer<any, never, never>,
@@ -42,9 +51,9 @@ describe('Runtime (048): no implicit fallback', () => {
       expect(failure).toBeDefined()
       const text = String(failure)
       expect(text).toContain('FullCutoverGateFailed')
-      expect(text).toContain('reason: missing_and_fallback')
+      expect(text).toContain('reason: fallback_bindings_detected')
       expect(text).toContain(
-        `requiredServiceCount: ${Logix.Kernel.CutoverCoverageMatrix.requiredServiceIds.length.toString()}`,
+        `requiredServiceCount: ${CoreKernel.CutoverCoverageMatrix.requiredServiceIds.length.toString()}`,
       )
     } finally {
       await runtime.dispose()
@@ -58,15 +67,15 @@ describe('Runtime (048): no implicit fallback', () => {
       reducers: { noop: (s: any) => s },
     })
 
-    const program = Root.implement({
+    const program = Logix.Program.make(Root, {
       initial: { count: 0 },
       logics: [],
     })
 
     const runtime = Logix.Runtime.make(program, {
       layer: Layer.mergeAll(
-        Logix.Kernel.kernelLayer({ kernelId: 'core', packageName: '@logixjs/core' }),
-        Logix.Kernel.runtimeDefaultServicesOverridesLayer({
+        CoreKernel.kernelLayer({ kernelId: 'core', packageName: '@logixjs/core' }),
+        CoreKernel.runtimeDefaultServicesOverridesLayer({
           txnQueue: { implId: '__missing__', notes: 'test: force fallback on core' },
         }),
       ) as Layer.Layer<any, never, never>,
@@ -99,16 +108,16 @@ describe('Runtime (048): no implicit fallback', () => {
       reducers: { noop: (s: any) => s },
     })
 
-    const program = Root.implement({
+    const program = Logix.Program.make(Root, {
       initial: { count: 0 },
       logics: [],
     })
 
     const runtime = Logix.Runtime.make(program, {
       layer: Layer.mergeAll(
-        Logix.Kernel.fullCutoverGateModeLayer('trial'),
-        Logix.Kernel.kernelLayer({ kernelId: 'core', packageName: '@logixjs/core' }),
-        Logix.Kernel.runtimeDefaultServicesOverridesLayer({
+        CoreKernel.fullCutoverGateModeLayer('trial'),
+        CoreKernel.kernelLayer({ kernelId: 'core', packageName: '@logixjs/core' }),
+        CoreKernel.runtimeDefaultServicesOverridesLayer({
           txnQueue: { implId: '__missing__', notes: 'test: trial fallback allowed' },
         }),
       ) as Layer.Layer<any, never, never>,
@@ -116,8 +125,8 @@ describe('Runtime (048): no implicit fallback', () => {
 
     const boot = Effect.gen(function* () {
       const moduleRuntime = yield* Effect.service(Root.tag).pipe(Effect.orDie)
-      const runtimeServicesEvidence = Logix.Kernel.getRuntimeServicesEvidence(moduleRuntime)
-      const gate = Logix.Kernel.evaluateFullCutoverGate({
+      const runtimeServicesEvidence = CoreKernel.getRuntimeServicesEvidence(moduleRuntime)
+      const gate = CoreKernel.evaluateFullCutoverGate({
         mode: 'trial',
         requestedKernelId: 'core',
         runtimeServicesEvidence,
@@ -142,15 +151,15 @@ describe('Runtime (048): no implicit fallback', () => {
       reducers: { noop: (s: any) => s },
     })
 
-    const program = Root.implement({
+    const program = Logix.Program.make(Root, {
       initial: { count: 0 },
       logics: [],
     })
 
     const runtime = Logix.Runtime.make(program, {
       layer: Layer.mergeAll(
-        Logix.Kernel.kernelLayer({ kernelId: 'core', packageName: '@logixjs/core' }),
-        Logix.Kernel.runtimeDefaultServicesOverridesLayer({
+        CoreKernel.kernelLayer({ kernelId: 'core', packageName: '@logixjs/core' }),
+        CoreKernel.runtimeDefaultServicesOverridesLayer({
           txnQueue: { implId: 'trace', notes: 'test: explicit non-builtin core binding' },
         }),
       ) as Layer.Layer<any, never, never>,
@@ -158,8 +167,8 @@ describe('Runtime (048): no implicit fallback', () => {
 
     const boot = Effect.gen(function* () {
       const moduleRuntime = yield* Effect.service(Root.tag).pipe(Effect.orDie)
-      const runtimeServicesEvidence = Logix.Kernel.getRuntimeServicesEvidence(moduleRuntime)
-      const gate = Logix.Kernel.evaluateFullCutoverGate({
+      const runtimeServicesEvidence = CoreKernel.getRuntimeServicesEvidence(moduleRuntime)
+      const gate = CoreKernel.evaluateFullCutoverGate({
         mode: 'fullCutover',
         requestedKernelId: 'core',
         runtimeServicesEvidence,

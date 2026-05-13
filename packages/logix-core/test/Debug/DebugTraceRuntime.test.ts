@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Layer, Schema } from 'effect'
@@ -5,21 +6,21 @@ import * as Logix from '../../src/index.js'
 
 describe('Debug trace events', () => {
   it('should route trace:* Debug events to a DebugSink provided via FiberRef', async () => {
-    const events: Logix.Debug.Event[] = []
+    const events: CoreDebug.Event[] = []
 
-    const sink: Logix.Debug.Sink = {
-      record: (event: Logix.Debug.Event) =>
+    const sink: CoreDebug.Sink = {
+      record: (event: CoreDebug.Event) =>
         Effect.sync(() => {
           events.push(event)
         }),
     }
 
     await Effect.runPromise(
-      Effect.provideService(Logix.Debug.record({
+      Effect.provideService(CoreDebug.record({
         type: 'trace:inc',
         moduleId: 'DebugTraceCounter',
         data: { source: 'DebugTraceRuntime.test' },
-      }), Logix.Debug.internal.currentDebugSinks as any, [sink]),
+      }), CoreDebug.internal.currentDebugSinks as any, [sink]),
     )
 
     // Verify trace:* events are delivered to the caller via DebugSink.

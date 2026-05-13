@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 // @vitest-environment happy-dom
 import { renderHook, act, waitFor } from '@testing-library/react'
 import * as Logix from '@logixjs/core'
 import { Schema, Effect, ManagedRuntime, Layer } from 'effect'
-import { useModule } from '../../src/Hooks.js'
+import { useModule, useSelector } from '../../src/Hooks.js'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
 import React from 'react'
 
@@ -17,7 +18,7 @@ const Counter = Logix.Module.make('Counter', {
 })
 
 const makeRuntime = (layer: Layer.Layer<any, any, any>) => {
-  const tickServicesLayer = Logix.InternalContracts.tickServicesLayer as Layer.Layer<any, never, never>
+  const tickServicesLayer = RuntimeContracts.tickServicesLayer as Layer.Layer<any, never, never>
   const runtimeLayer = Layer.mergeAll(tickServicesLayer, Layer.provide(layer, tickServicesLayer)) as Layer.Layer<any, any, never>
   return ManagedRuntime.make(runtimeLayer)
 }
@@ -27,7 +28,7 @@ describe('useModule', () => {
     // Create a runtime with the Counter module
     const layer = Counter.live(
       { count: 0 },
-      Counter.logic<never>((api) =>
+      Counter.logic<never>('counter-logic', (api) =>
         Effect.gen(function* () {
           yield* api.onAction('increment').run(() => api.state.update((s) => ({ count: s.count + 1 })))
         }),
@@ -42,8 +43,8 @@ describe('useModule', () => {
 
     const { result } = renderHook(
       () => {
-        const counter = useModule(Counter)
-        const count = useModule(Counter, (s) => s.count)
+        const counter = useModule(Counter.tag)
+        const count = useSelector(Counter.tag, (s) => s.count)
         return { counter, count }
       },
       { wrapper },
@@ -69,13 +70,13 @@ describe('useModule', () => {
       actions: { inc: Schema.Void },
     })
 
-    const InstrCounterImpl = InstrCounter.implement({
+    const InstrCounterProgram = Logix.Program.make(InstrCounter, {
       initial: { value: 0 },
       logics: [],
     })
 
     // Runtime-level config: instrumentation = "light"
-    const runtime = Logix.Runtime.make(InstrCounterImpl, {
+    const runtime = Logix.Runtime.make(InstrCounterProgram, {
       layer: Layer.empty as Layer.Layer<any, never, never>,
       stateTransaction: { instrumentation: 'light' },
     })
@@ -84,7 +85,7 @@ describe('useModule', () => {
     const directInstr = await runtime.runPromise(
       Effect.gen(function* () {
         const rt = yield* Effect.service(InstrCounter.tag).pipe(Effect.orDie)
-        return Logix.InternalContracts.getStateTransactionInstrumentation(rt as any)
+        return RuntimeContracts.getStateTransactionInstrumentation(rt as any)
       }) as Effect.Effect<string, never, any>,
     )
 
@@ -97,8 +98,8 @@ describe('useModule', () => {
 
     const { result } = renderHook(
       () => {
-        const rt = useModule(InstrCounter)
-        return Logix.InternalContracts.getStateTransactionInstrumentation(rt.runtime as any)
+        const rt = useModule(InstrCounter.tag)
+        return RuntimeContracts.getStateTransactionInstrumentation(rt.runtime as any)
       },
       { wrapper },
     )

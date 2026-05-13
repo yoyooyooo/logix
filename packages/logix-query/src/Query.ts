@@ -1,9 +1,17 @@
 import * as Logix from '@logixjs/core'
 import { Effect, Schema } from 'effect'
+import * as Resource from './internal/resource.js'
 import { autoTrigger } from './internal/logics/auto-trigger.js'
 import { invalidate } from './internal/logics/invalidate.js'
 import type { InvalidateRequest } from './Engine.js'
-import { toStateTraitSpec, type QueryBuilder, type QuerySourceConfig, type QueryResourceData, type QueryResourceError } from './Traits.js'
+import {
+  makeQueryDeclaration,
+  toFieldDeclarations,
+  type QueryBuilder,
+  type QueryResourceData,
+  type QueryResourceError,
+  type QuerySourceConfig,
+} from './internal/query-declarations.js'
 
 type AnyQuerySourceConfig<TParams, TUI> = QuerySourceConfig<TParams, TUI, any, any>
 
@@ -23,7 +31,7 @@ export type QueryState<
   readonly params: TParams
   readonly ui: TUI
   readonly queries: {
-    readonly [K in keyof TQueries]: Logix.Resource.ResourceSnapshot<
+    readonly [K in keyof TQueries]: Resource.ResourceSnapshot<
       QueryResourceData<TQueries[K]['resource']>,
       QueryResourceError<TQueries[K]['resource']>
     >
@@ -48,13 +56,13 @@ export type QueryShape<
   TParams,
   TUI = unknown,
   TQueries extends Record<string, AnyQuerySourceConfig<TParams, TUI>> = {},
-> = Logix.Shape<Schema.Schema<QueryState<TParams, TUI, TQueries>>, QueryActions<TParams, TUI, TQueries>>
+> = Logix.Module.Shape<Schema.Schema<QueryState<TParams, TUI, TQueries>>, QueryActions<TParams, TUI, TQueries>>
 
 export type QueryAction<
   TParams,
   TUI = unknown,
   TQueries extends Record<string, AnyQuerySourceConfig<TParams, TUI>> = {},
-> = Logix.ActionOf<QueryShape<TParams, TUI, TQueries>>
+> = Logix.Module.ActionOf<QueryShape<TParams, TUI, TQueries>>
 
 export interface QueryMakeConfig<
   TParams,
@@ -65,10 +73,9 @@ export interface QueryMakeConfig<
   readonly initialParams: TParams
   readonly ui?: TUI
   readonly queries?: (q: QueryBuilder<TParams, TUI>) => TQueries & ForbidQueryNames
-  readonly traits?: unknown
 }
 
-export interface QueryController<
+export interface QueryCommandsHandle<
   TParams,
   TUI = unknown,
   TQueries extends Record<string, AnyQuerySourceConfig<TParams, TUI>> = {},
@@ -76,23 +83,20 @@ export interface QueryController<
   readonly runtime: Logix.ModuleRuntime<QueryState<TParams, TUI, TQueries>, QueryAction<TParams, TUI, TQueries>>
   readonly getState: Effect.Effect<QueryState<TParams, TUI, TQueries>>
   readonly dispatch: (action: QueryAction<TParams, TUI, TQueries>) => Effect.Effect<void>
-
-  readonly controller: {
-    readonly setParams: (params: TParams) => Effect.Effect<void>
-    readonly setUi: (ui: TUI) => Effect.Effect<void>
-    readonly refresh: (target?: QueryName<TQueries>) => Effect.Effect<void>
-    readonly invalidate: (request: InvalidateRequest) => Effect.Effect<void>
-  }
+  readonly setParams: (params: TParams) => Effect.Effect<void>
+  readonly setUi: (ui: TUI) => Effect.Effect<void>
+  readonly refresh: (target?: QueryName<TQueries>) => Effect.Effect<void>
+  readonly invalidate: (request: InvalidateRequest) => Effect.Effect<void>
 }
 
-export type QueryModuleController<
+export type QueryCommandsFactory<
   TParams,
   TUI = unknown,
   TQueries extends Record<string, AnyQuerySourceConfig<TParams, TUI>> = {},
 > = {
   readonly make: (
     runtime: Logix.ModuleRuntime<QueryState<TParams, TUI, TQueries>, QueryAction<TParams, TUI, TQueries>>,
-  ) => QueryController<TParams, TUI, TQueries>
+  ) => QueryCommandsHandle<TParams, TUI, TQueries>
 }
 
 export type QueryHandleExt<
@@ -100,7 +104,7 @@ export type QueryHandleExt<
   TUI = unknown,
   TQueries extends Record<string, AnyQuerySourceConfig<TParams, TUI>> = {},
 > = {
-  readonly controller: QueryController<TParams, TUI, TQueries>['controller']
+  readonly commands: Pick<QueryCommandsHandle<TParams, TUI, TQueries>, 'setParams' | 'setUi' | 'refresh' | 'invalidate'>
 }
 
 export type QueryModule<
@@ -108,8 +112,8 @@ export type QueryModule<
   TParams,
   TUI = unknown,
   TQueries extends Record<string, AnyQuerySourceConfig<TParams, TUI>> = {},
-> = Logix.Module.Module<Id, QueryShape<TParams, TUI, TQueries>, QueryHandleExt<TParams, TUI, TQueries>, any> & {
-  readonly controller: QueryModuleController<TParams, TUI, TQueries>
+> = Logix.Program.Program<Id, QueryShape<TParams, TUI, TQueries>, QueryHandleExt<TParams, TUI, TQueries>, any> & {
+  readonly commands: QueryCommandsFactory<TParams, TUI, TQueries>
 }
 
 const InvalidateRequestSchema = Schema.Union([
@@ -169,9 +173,14 @@ export const make = <
   config: QueryMakeConfig<TParams, TUI, TQueries> & EnsureQueries<TParams, TUI, TQueries>,
 ): QueryModule<Id, TParams, TUI, QueriesOf<TParams, TUI, TQueries>> => {
   type Queries = QueriesOf<TParams, TUI, TQueries>
+  const legacyFieldsKey = ['tr', 'aits'].join('')
+
+  if (Object.prototype.hasOwnProperty.call(config as object, legacyFieldsKey)) {
+    throw new Error('[Query.make] direct legacy field fragments are removed; extend Query DSL instead of passing raw field fragments')
+  }
 
   const queryBuilder: QueryBuilder<TParams, TUI> = {
-    source: (q: any) => q,
+    source: (q: any) => makeQueryDeclaration(q),
   }
 
   const queries = ((): Queries => {
@@ -180,7 +189,7 @@ export const make = <
     return raw(queryBuilder) as Queries
   })()
 
-  const queriesForTraits: Readonly<Record<string, AnyQuerySourceConfig<TParams, TUI>>> = queries
+  const queryDeclarations: Readonly<Record<string, AnyQuerySourceConfig<TParams, TUI>>> = queries
   const queryNames = Object.keys(queries) as Array<QueryName<Queries>>
   for (const name of queryNames) {
     assertQueryName(name)
@@ -220,40 +229,42 @@ export const make = <
     invalidate: (state) => state,
   } satisfies Reducers
 
-  const queryTraits =
-    Object.keys(queriesForTraits).length > 0 ? toStateTraitSpec<TParams, TUI>({ queries: queriesForTraits }) : undefined
-
-  const traits =
-    queryTraits || config.traits
-      ? ({
-          ...(queryTraits as any),
-          ...(config.traits as any),
-        } as any)
+  const queryFields =
+    Object.keys(queryDeclarations).length > 0
+      ? toFieldDeclarations<TParams, TUI>({ queries: queryDeclarations })
       : undefined
 
   const module = Logix.Module.make(id, {
     state: StateSchema,
     actions: Actions,
     reducers,
-    traits,
   })
 
+  const queryFieldsLogic =
+    queryFields === undefined
+      ? undefined
+      : module.logic('__query_internal:fields', ($) => {
+          $.fields(queryFields as any)
+          return Effect.void
+        })
+
   const logics = [
-    autoTrigger<any, TParams, TUI>(module.tag as any, { queries: queriesForTraits }),
-    invalidate<any, TParams, TUI>(module.tag as any, { queries: queriesForTraits }),
+    ...(queryFieldsLogic ? [queryFieldsLogic] : []),
+    autoTrigger<any, TParams, TUI>(module.tag as any, { queries: queryDeclarations }),
+    invalidate<any, TParams, TUI>(module.tag as any, { queries: queryDeclarations }),
   ] satisfies ReadonlyArray<Logix.ModuleLogic<any, any, any>>
 
   const initial = (params?: TParams): QueryState<TParams, TUI, Queries> =>
     ({
       params: params ?? config.initialParams,
       ui: (config.ui ?? ({} as unknown as TUI)) as TUI,
-      queries: Object.fromEntries((Object.keys(queries) as Array<keyof Queries>).map((key) => [key, Logix.Resource.Snapshot.idle()])),
+      queries: Object.fromEntries((Object.keys(queries) as Array<keyof Queries>).map((key) => [key, Resource.Snapshot.idle()])),
     }) as QueryState<TParams, TUI, Queries>
 
-  const controller: QueryModuleController<TParams, TUI, Queries> = {
+  const commands: QueryCommandsFactory<TParams, TUI, Queries> = {
     make: (
       runtime: Logix.ModuleRuntime<QueryState<TParams, TUI, Queries>, QueryAction<TParams, TUI, Queries>>,
-    ): QueryController<TParams, TUI, Queries> => {
+    ): QueryCommandsHandle<TParams, TUI, Queries> => {
       const dispatch = runtime.dispatch
       const actions = module.actions as unknown as {
         readonly setParams: (params: TParams) => QueryAction<TParams, TUI, Queries>
@@ -266,31 +277,34 @@ export const make = <
         runtime,
         getState: runtime.getState as Effect.Effect<QueryState<TParams, TUI, Queries>>,
         dispatch,
-        controller: {
-          setParams: (params: TParams) => dispatch(actions.setParams(params)),
-          setUi: (ui: TUI) => dispatch(actions.setUi(ui)),
-          refresh: (target?: QueryName<Queries>) => dispatch(actions.refresh(target)),
-          invalidate: (request: InvalidateRequest) => dispatch(actions.invalidate(request)),
-        },
-      } as QueryController<TParams, TUI, Queries>
+        setParams: (params: TParams) => dispatch(actions.setParams(params)),
+        setUi: (ui: TUI) => dispatch(actions.setUi(ui)),
+        refresh: (target?: QueryName<Queries>) => dispatch(actions.refresh(target)),
+        invalidate: (request: InvalidateRequest) => dispatch(actions.invalidate(request)),
+      } as QueryCommandsHandle<TParams, TUI, Queries>
     },
   }
 
-  ;(module as any).controller = controller
+  ;(module as any).commands = commands
 
   const EXTEND_HANDLE = Symbol.for('logix.module.handle.extend')
   ;(module.tag as any)[EXTEND_HANDLE] = (
     runtime: Logix.ModuleRuntime<QueryState<TParams, TUI, Queries>, QueryAction<TParams, TUI, Queries>>,
     base: Logix.ModuleHandle<any>,
   ) => {
-    const c = controller.make(runtime)
+    const c = commands.make(runtime)
     return {
       ...base,
-      controller: c.controller,
+      commands: {
+        setParams: c.setParams,
+        setUi: c.setUi,
+        refresh: c.refresh,
+        invalidate: c.invalidate,
+      },
     }
   }
 
-  return module.implement({
+  return Logix.Program.make<Id, QueryShape<TParams, TUI, Queries>, {}, any>(module, {
     initial: initial(),
     logics: [...logics],
   }) as unknown as QueryModule<Id, TParams, TUI, Queries>

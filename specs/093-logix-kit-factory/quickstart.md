@@ -1,15 +1,15 @@
 # Quickstart：Kit Factory（语法糖机器）
 
-> 目标：用最少代码展示 “造糖（定义 kit）→ 吃糖（traits/logic/workflow 使用）” 的统一写法。
+> 目标：用最少代码展示 “造糖（定义 kit）→ 吃糖（fields/logic/workflow 使用）” 的统一写法。
 > 本文以拟定 API 为准（实现按 `tasks.md` 推进）。
 
 ## 0) 心智模型（30 秒）
 
 - Kit 只做组合（macro-like）：**不订阅、不 fork、不建 Scope**。
-- 读侧：用 `ExternalStore → StateTrait.externalStore` 把外部快照写回状态图（external-owned）。
+- 读侧：用 `ExternalStore → FieldKernel.externalStore` 把外部快照写回状态图（external-owned）。
 - 写侧：用显式 command/service port（Effect）在事务外执行，状态变化再通过 ExternalStore 写回。
 - Workflow：只用 `Workflow.call/callById`，serviceId 规则不复制。
-- meta：只承诺“可被裁剪为 Slim JSON 并进入 Root IR”（白名单裁剪见 `packages/logix-core/src/internal/state-trait/meta.ts` 的 `sanitize`）。推荐开发期用 `Kit.validateMeta(meta)` 自检（或依赖 dev warn），避免“写了但没进 Root IR”的困惑。
+- meta：只承诺“可被裁剪为 Slim JSON 并进入 Root IR”（白名单裁剪见 `packages/logix-core/src/internal/state-field/meta.ts` 的 `sanitize`）。推荐开发期用 `Kit.validateMeta(meta)` 自检（或依赖 dev warn），避免“写了但没进 Root IR”的困惑。
 
 ### 导入方式（Kit vs KitWorkflow）
 
@@ -18,7 +18,7 @@ Kit 与 Workflow sugar 分层（便于 tree-shaking）：
 ```ts
 import * as Logix from "@logixjs/core"
 
-// 组合糖（Trait/Logic/Input）
+// 组合糖（Field/Logic/Input）
 Logix.Kit
 
 // Workflow sugar（薄封装：委托 Workflow.call/callById）
@@ -36,7 +36,7 @@ Logix.KitWorkflow
 ### 0.5.2 `Kit.forModule` 不支持“运行时动态选择某个 instance”
 
 - `forModule` 只覆盖：imports 可解析到**唯一**源模块实例的 Module-as-Source
-- 如果你需要动态选择：把 `instanceKey/rowId` 等显式建模为数据，用 `ReadQuery/Logic` 侧做选择；不要把动态选择伪装成静态 ExternalStore trait
+- 如果你需要动态选择：把 `instanceKey/rowId` 等显式建模为数据，用 `ReadQuery/Logic` 侧做选择；不要把动态选择伪装成静态 ExternalStore field
 
 ### 0.5.3 Workflow stepKey 必须稳定（不要手写随意字符串）
 
@@ -56,7 +56,7 @@ import * as Logix from "@logixjs/core"
 export type RouteSnapshot = { readonly pathname: string }
 
 export type RouterPort = {
-  readonly locationStore: Logix.ExternalStore.ExternalStore<RouteSnapshot>
+  readonly locationStore: CoreReadContracts.ExternalStore.ExternalStore<RouteSnapshot>
   readonly navigate: (to: string) => Effect.Effect<void, never, any>
 }
 
@@ -75,9 +75,9 @@ const RouteInput = Router.input((svc) => svc.locationStore)
 ```ts
 import { Layer } from "effect"
 
-const RouteStore = Logix.ExternalStore.fromService(RouterPortTag, (svc) => svc.locationStore)
+const RouteStore = CoreReadContracts.ExternalStore.fromService(RouterPortTag, (svc) => svc.locationStore)
 
-const RouteTrait = Logix.StateTrait.externalStore({
+const RouteTrait = Logix.FieldKernel.externalStore({
   store: RouteStore,
   select: (snap) => snap.pathname,
 })
@@ -86,10 +86,10 @@ const useRouter = ($) => $.use(RouterPortTag)
 const provideRouter = (svc) => Layer.succeed(RouterPortTag, svc)
 ```
 
-### 1.3 吃糖：traits/logic 里使用
+### 1.3 吃糖：fields/logic 里使用
 
 ```ts
-traits: Logix.StateTrait.from(State)({
+fields: Logix.FieldKernel.from(State)({
   "route.pathname": RouteInput.externalTrait({
     select: (snap) => snap.pathname,
     meta: {
@@ -115,19 +115,19 @@ const RouterWf = Logix.KitWorkflow.forService(RouterPortTag)
 const steps = [
   RouterWf.call({
     key: Logix.Kit.makeStepKey("router", "navigate"),
-    input: Logix.Workflow.object({ to: Logix.Workflow.constValue("/me") }),
+    input: OrchestrationWorkflowApi.object({ to: OrchestrationWorkflowApi.constValue("/me") }),
     onSuccess: [],
     onFailure: [],
   }),
 ]
 ```
 
-等价展开：`RouterWf.call(...)` ⇔ `Logix.Workflow.call({ service: RouterPortTag, ... })`（serviceId 规则以 `Workflow` 为单点真相源）。
+等价展开：`RouterWf.call(...)` ⇔ `OrchestrationWorkflowApi.call({ service: RouterPortTag, ... })`（serviceId 规则以 `Workflow` 为单点真相源）。
 
 ## 2) Module-as-Source（跨模块输入）
 
 ```ts
-const SelectedUserId = Logix.ReadQuery.make({
+const SelectedUserId = CoreReadContracts.ReadQuery.make({
   selectorId: "rq_users.selectedUserId",
   reads: ["selectedUserId"],
   select: (s) => s.selectedUserId,
@@ -136,7 +136,7 @@ const SelectedUserId = Logix.ReadQuery.make({
 
 const UserIdInput = Logix.Kit.forModule(UsersDef, SelectedUserId)
 
-traits: Logix.StateTrait.from(State)({
+fields: Logix.FieldKernel.from(State)({
   "inputs.userId": UserIdInput.externalTrait(),
 })
 ```
@@ -144,9 +144,9 @@ traits: Logix.StateTrait.from(State)({
 #### 2.1 等价展开（de-sugared view）
 
 ```ts
-const Store = Logix.ExternalStore.fromModule(UsersDef, SelectedUserId)
-traits: Logix.StateTrait.from(State)({
-  "inputs.userId": Logix.StateTrait.externalStore({ store: Store }),
+const Store = CoreReadContracts.ExternalStore.fromModule(UsersDef, SelectedUserId)
+fields: Logix.FieldKernel.from(State)({
+  "inputs.userId": Logix.FieldKernel.externalStore({ store: Store }),
 })
 ```
 

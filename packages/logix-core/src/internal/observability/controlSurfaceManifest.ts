@@ -1,5 +1,5 @@
 import { fnv1a32, stableStringify } from '../digest.js'
-import type { JsonValue } from './jsonValue.js'
+import type { JsonValue } from '../protocol/jsonValue.js'
 import type { WorkflowStaticIrV1 } from '../workflow/model.js'
 
 export type ControlSurfaceVersion = 1
@@ -17,7 +17,7 @@ export type EffectTrigger =
 
 export type SliceRef = { readonly digest: Digest }
 
-export type WorkflowSurfaceRefV1 = SliceRef
+export type ControlProgramSurfaceRefV1 = SliceRef
 
 export type ControlEffectIndexEntryV1 =
   | {
@@ -40,12 +40,14 @@ export type ControlSurfaceManifestV1 = {
   readonly digest: Digest
   readonly modules: ReadonlyArray<{
     readonly moduleId: ModuleId
-    readonly workflowSurface?: WorkflowSurfaceRefV1
+    readonly controlProgramSurface?: ControlProgramSurfaceRefV1
     readonly effectsIndex: ReadonlyArray<ControlEffectIndexEntryV1>
     readonly effectsIndexDigest?: Digest
   }>
   readonly meta?: { readonly generator?: JsonValue }
 }
+
+export type ControlSurfaceManifestModuleEntryV1 = ControlSurfaceManifestV1['modules'][number]
 
 export type ControlSurfaceManifest = ControlSurfaceManifestV1
 
@@ -54,12 +56,12 @@ const makeDigest = (value: unknown): string => `control_surface_v1:${fnv1a32(sta
 export const exportEffectsIndexDigest = (entries: ReadonlyArray<ControlEffectIndexEntryV1>): Digest =>
   `effects_index_v1:${fnv1a32(stableStringify(entries))}`
 
-export const exportWorkflowEffectsIndex = (args: {
+export const exportControlProgramEffectsIndex = (args: {
   readonly moduleId: string
-  readonly workflowSurface: ReadonlyArray<WorkflowStaticIrV1>
+  readonly controlProgramSurface: ReadonlyArray<WorkflowStaticIrV1>
 }): ReadonlyArray<ControlEffectIndexEntryV1> => {
   const moduleId = args.moduleId
-  return Array.from(args.workflowSurface)
+  return Array.from(args.controlProgramSurface)
     .sort((a, b) => (a.programId < b.programId ? -1 : a.programId > b.programId ? 1 : 0))
     .map((ir) => {
       const localId = ir.programId.startsWith(`${moduleId}.`) ? ir.programId.slice(moduleId.length + 1) : ir.programId

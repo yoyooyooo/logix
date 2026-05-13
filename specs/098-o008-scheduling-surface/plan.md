@@ -1,6 +1,6 @@
 # Implementation Plan: O-008 调度平面统一（Scheduling Surface）
 
-**Branch**: `098-o008-scheduling-surface` | **Date**: 2026-02-25 | **Spec**: `specs/098-o008-scheduling-surface/spec.md`  
+**Branch**: `098-o008-scheduling-surface` | **Date**: 2026-02-25 | **Spec**: `specs/098-o008-scheduling-surface/spec.md`
 **Input**: Feature specification from `specs/098-o008-scheduling-surface/spec.md`
 
 ## Summary
@@ -24,12 +24,12 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.8.2（workspace）  
-**Primary Dependencies**: effect v3.19.13、`@logixjs/core`、`@effect/vitest`、Vitest 4  
-**Storage**: N/A（运行时内存与诊断事件）  
-**Testing**: `vitest run`（core 单测 + Effect tests）  
-**Target Platform**: Node.js 20+（CI） + modern browsers（诊断消费侧）  
-**Project Type**: pnpm workspace（packages/apps/examples）  
+**Language/Version**: TypeScript 5.8.2（workspace）
+**Primary Dependencies**: effect v3.19.13、`@logixjs/core`、`@effect/vitest`、Vitest 4
+**Storage**: N/A（运行时内存与诊断事件）
+**Testing**: `vitest run`（core 单测 + Effect tests）
+**Target Platform**: Node.js 20+（CI） + modern browsers（诊断消费侧）
+**Project Type**: pnpm workspace（packages/apps/examples）
 **Performance Goals**:
 
 - 调度热路径（enqueue + tick flush + policy resolve）在 diagnostics=off 下开销回归 ≤ 5%
@@ -119,7 +119,7 @@ packages/logix-core/test/internal/Runtime/
 └── TickScheduler.*.test.ts
 
 apps/docs/content/docs/guide/advanced/
-└── concurrency-control-plane.cn.md
+└── concurrency-policy.cn.md
 ```
 
 **Structure Decision**:

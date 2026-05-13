@@ -14,7 +14,7 @@
 ## 3) 下一步做什么？
 
 - 按 `specs/050-core-ng-integer-bridge/tasks.md` 推进契约放宽与执行链路改造，并落盘证据。
-- 证据口径以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为 SSoT；交付结论必须 `profile=default`（或 `soak`），且 `pnpm perf diff` 满足 `comparable=true && regressions==0`。
+- 证据口径以 `packages/logix-perf-evidence/assets/matrix.json` 为 SSoT；交付结论必须 `profile=default`（或 `soak`），且 `pnpm perf diff` 满足 `comparable=true && regressions==0`。
 - perf evidence 允许在 dev 工作区（git dirty）采集，但必须确保 `matrix/config/env` 一致，并在 diff 中保留 `git.dirty.*` warnings；若出现 `stabilityWarning` 或结论存疑，必须复测（必要时升级到 `profile=soak`）。
 - 零分配收口与 diagnostics=off 全局闸门分别由 `specs/051-core-ng-txn-zero-alloc/`、`specs/052-core-ng-diagnostics-off-gate/` 收口（避免在 050 重复投入）。
 

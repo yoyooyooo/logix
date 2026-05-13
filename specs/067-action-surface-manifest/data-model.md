@@ -1,7 +1,7 @@
 # Data Model: Action Surface（actions/dispatchers/reducers/effects）与 Manifest
 
-**Feature**: `specs/067-action-surface-manifest/spec.md`  
-**Created**: 2026-01-01  
+**Feature**: `specs/067-action-surface-manifest/spec.md`
+**Created**: 2026-01-01
 **Updated**: 2026-01-02
 
 > 说明：本特性不涉及持久化存储；此处的 “Data Model” 指平台/运行时/Devtools 之间传输与对齐的可序列化 IR（Static）与事件引用（Dynamic Trace）。
@@ -162,7 +162,7 @@
 
 ### A) 反射提取：Module → ModuleManifest
 
-- **Input**: `AnyModule | ModuleImpl`（Loader/CI/试运行环境可动态 import）
+- **Input**: `Module | Program`（Loader/CI/试运行环境可动态 import）
 - **Transition**: 从 actions map / reducers map / effects map / dev.source 提取结构摘要，按 budget 裁剪；必要时通过受控试运行补齐 setup 注册的 reducers/effects keys
 - **Output**: deterministic JSON（`ModuleManifest`）
 

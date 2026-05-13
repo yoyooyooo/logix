@@ -2,6 +2,7 @@ import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Schema } from 'effect'
 import * as Logix from '../../src/index.js'
+import type { Draft } from '../../src/Logic.js'
 
 describe('Module.make extend def (actions/reducers)', () => {
   it.effect('merges base + extension actions/reducers', () => {
@@ -11,7 +12,7 @@ describe('Module.make extend def (actions/reducers)', () => {
     const BaseActions = { inc: Schema.Void } as const
 
     const baseReducers = {
-      inc: Logix.Module.Reducer.mutate((draft: Logix.Logic.Draft<S>) => {
+      inc: Logix.Module.Reducer.mutate((draft: Draft<S>) => {
         draft.count += 1
       }),
     } satisfies Logix.ReducersFromMap<typeof State, typeof BaseActions>
@@ -21,7 +22,7 @@ describe('Module.make extend def (actions/reducers)', () => {
     const extend = {
       actions: ExtActions,
       reducers: {
-        dec: Logix.Module.Reducer.mutate((draft: Logix.Logic.Draft<S>) => {
+        dec: Logix.Module.Reducer.mutate((draft: Draft<S>) => {
           draft.count -= 1
         }),
       },
@@ -61,14 +62,14 @@ describe('Module.make extend def (actions/reducers)', () => {
         state: State,
         actions: Actions,
         reducers: {
-          inc: Logix.Module.Reducer.mutate((draft: Logix.Logic.Draft<S>) => {
+          inc: Logix.Module.Reducer.mutate((draft: Draft<S>) => {
             draft.count += 1
           }),
         },
       },
       {
         reducers: {
-          inc: Logix.Module.Reducer.mutate((draft: Logix.Logic.Draft<S>) => {
+          inc: Logix.Module.Reducer.mutate((draft: Draft<S>) => {
             draft.count += 2
           }),
         },

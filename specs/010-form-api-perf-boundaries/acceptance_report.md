@@ -16,7 +16,7 @@
 
 ## 2. 交付物验收 (Deliverables Check)
 
-- [x] `packages/logix-core/src/internal/state-trait/validate.ts` (Core Logic)
+- [x] `packages/logix-core/src/internal/state-field/validate.ts` (Core Logic)
 - [x] `packages/logix-form/src/form.ts` (Controller & Reducers)
 - [x] `packages/logix-form/src/logics/install.ts` (Wiring & Triggers)
 - [x] `packages/logix-form/src/path.ts` (Path Mapping)
@@ -32,7 +32,7 @@
 
 1.  **架构分层清晰**: 核心的 list-scope 扫描、Graph 推导与 ReverseClosure 都在 `logix-core` 实现，`@logixjs/form` 极轻量，仅负责 Path 映射与 Wiring。
 2.  **Schema/Rules 统一**: `handleSubmit` 与 `controller.validate` 均实现了 Schema + Rules 的合并语义，且 `$list/rows[]` 错误树结构统一。
-3.  **可诊断性**: `trait:check` 事件在 `validate.ts` 中实现了 Slim 摘要，且包含 `ruleId`、`trigger` 与 `affectedRows`，完全符合 FR-005。
+3.  **可诊断性**: `field:check` 事件在 `validate.ts` 中实现了 Slim 摘要，且包含 `ruleId`、`trigger` 与 `affectedRows`，完全符合 FR-005。
 
 ### ⚠️ Issues / Smells
 

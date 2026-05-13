@@ -1,14 +1,14 @@
 # Data Model: Module（定义对象）+ ModuleTag（身份锚点）
 
-**Date**: 2025-12-21  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/022-module/spec.md`
+**Date**: 2025-12-21
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/022-module/spec.md`
 
 ## 命名矩阵（本特性裁决）
 
-- `ModuleDef`：`Logix.Module.make(...)` 返回；带 `.tag`；可 `.logic(...)` 产出逻辑值；`.implement(...)` 产出 `Module`；不带 `.impl`。
-- `Module`：wrap module（通常由 `ModuleDef.implement(...)` 或领域工厂返回）；带 `.tag` + `.impl`；支持 `withLogic/withLayers`；`.logic(...)` 仍只产出逻辑值。
+- `Module`：`Logix.Module.make(...)` 返回；带 `.tag`；可 `.logic(...)` 产出逻辑值；不带 `.impl`。
+- `Program`：`Logix.Program.make(Module, config)` 返回；支持 `withLogic/withLayers`；作为装配期业务单元进入 Runtime 与 React 局部实例入口。
 - `ModuleTag`：身份锚点（Context.Tag）；用于 Env 注入与“全局实例”解析。
-- `ModuleImpl`：装配蓝图（`layer` + imports/processes 等）；用于创建局部实例。
+- `Program`：装配对象；通过内部 runtime blueprint 承接 layer/imports 等实现细节；用于创建局部实例。
 - `ModuleRuntime`：运行时实例（真正的“实例”语义）。
 - `ModuleHandle`：`yield* $.use(...)` 返回的只读句柄（可含 controller 等扩展）。
 - `ModuleRef`：React `useModule(...)` 返回的 ref（含 state/actions/dispatch + 扩展）。
@@ -20,7 +20,7 @@
 表示“一个可被运行与消费的领域模块对象”，用于承载：
 
 - 模块身份（复用既有 ModuleTag identity）
-- 可装配蓝图（ModuleImpl）
+- 可装配蓝图（Program）
 - 可选领域扩展（例如 controller/policies/descriptor）
 - fluent 组合能力（追加逻辑/注入依赖，且不可变返回新实例）
 
@@ -30,8 +30,8 @@
   - 语义：领域模块 id（例如 `"UserForm"` / `"OrderCrud"`），用于诊断与可读性。
 - `tag`（ModuleTag）
   - 语义：复用既有模块身份锚点（Context.Tag）；用于 `$.use(...)` 与 Env 注入。
-- `impl`（ModuleImpl）
-  - 语义：可装配蓝图（Layer + imports/processes 等），供 React/Runtime 消费。
+- `program`（Program）
+  - 语义：由 `Program.make(Module, config)` 生成的装配对象，供 React/Runtime 消费。
 - `schemas`（可选）
   - 语义：显式 Schema 反射（reflection），用于 Studio/Devtools/脚本在运行时直接读取结构信息（免静态分析）。
   - 约束：必须是可安全导出/可控大小的结构；若需序列化，推荐由平台侧 loader 将其转换为 JSON Schema（不在运行时热路径中做重计算）。
@@ -58,9 +58,9 @@
 **Relationships**:
 
 - `ModuleFactory` → 生成 `ModuleDef/Module`
-- `Module` → 持有 `ModuleTag` 与 `ModuleImpl`
+- `Module` → 持有 `ModuleTag` 与 `Program`
 - `Module` → 生成“逻辑侧句柄”（通过 `$.use(module)`）
-- `Module` → 统一消费入口做 unwrap：逻辑侧 `$.use(module)` 解析 `module.tag`；装配/运行侧 `Runtime.make(module)` 使用 `module.impl`；React `useModule(module)` 默认使用 `module.impl`（局部），全局实例显式用 `module.tag`（ModuleTag）；对 `ModuleDef`，React `useModule(moduleDef)` 等价于 `useModule(moduleDef.tag)`。
+- `Module` → 逻辑侧 `$.use(module.tag)` 或 `$.self` 解析既有实例；装配/运行侧通过 `Program.make(module, config)` 生成 Program；React 局部实例使用 `useModule(program)`，全局实例显式用 `useModule(module.tag)`。
 
 **Validation Rules**:
 

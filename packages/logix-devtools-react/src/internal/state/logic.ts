@@ -1,4 +1,5 @@
-import * as Logix from '@logixjs/core'
+import * as CoreEvidence from '@logixjs/core/repo-internal/evidence-api'
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { Effect, Queue, Stream } from 'effect'
 import {
   clearDevtoolsEvents,
@@ -24,7 +25,7 @@ const asFiniteNumber = (value: unknown): number | undefined =>
 
 type ConvergeFieldPathsByDigest = ReadonlyMap<string, ReadonlyArray<ReadonlyArray<string>>>
 
-const normalizeRuntimeDebugEventRef = (value: unknown): Logix.Debug.RuntimeDebugEventRef | null => {
+const normalizeRuntimeDebugEventRef = (value: unknown): CoreDebug.RuntimeDebugEventRef | null => {
   if (!isRecord(value)) return null
 
   const kind = asNonEmptyString(value.kind)
@@ -37,7 +38,7 @@ const normalizeRuntimeDebugEventRef = (value: unknown): Logix.Debug.RuntimeDebug
     return null
   }
 
-  return { ...(value as any), instanceId } as Logix.Debug.RuntimeDebugEventRef
+  return { ...(value as any), instanceId } as CoreDebug.RuntimeDebugEventRef
 }
 
 const readConvergeFieldPathsByDigest = (summary: unknown): ConvergeFieldPathsByDigest => {
@@ -132,9 +133,9 @@ const stripRootPathsField = (value: Record<string, unknown>): Record<string, unk
   return rest
 }
 
-const stripLegacyDirtyRootPathsFromEvent = (
-  event: Logix.Debug.RuntimeDebugEventRef,
-): Logix.Debug.RuntimeDebugEventRef => {
+const stripHistoricalDirtyRootPathsFromEvent = (
+  event: CoreDebug.RuntimeDebugEventRef,
+): CoreDebug.RuntimeDebugEventRef => {
   const meta = isRecord(event.meta) ? (event.meta as Record<string, unknown>) : undefined
   if (!meta) return event
 
@@ -147,10 +148,10 @@ const stripLegacyDirtyRootPathsFromEvent = (
         ...(meta as any),
         dirtySet: stripRootPathsField(dirtySet),
       },
-    } as Logix.Debug.RuntimeDebugEventRef
+    } as CoreDebug.RuntimeDebugEventRef
   }
 
-  if (event.kind === 'trait:converge') {
+  if (event.kind === 'field:converge') {
     const dirty = isRecord((meta as any).dirty) ? ((meta as any).dirty as Record<string, unknown>) : undefined
     if (!dirty || !Object.prototype.hasOwnProperty.call(dirty, 'rootPaths')) return event
     return {
@@ -159,16 +160,16 @@ const stripLegacyDirtyRootPathsFromEvent = (
         ...(meta as any),
         dirty: stripRootPathsField(dirty),
       },
-    } as Logix.Debug.RuntimeDebugEventRef
+    } as CoreDebug.RuntimeDebugEventRef
   }
 
   return event
 }
 
 const materializeDirtyRootPathsFromCanonical = (args: {
-  readonly event: Logix.Debug.RuntimeDebugEventRef
+  readonly event: CoreDebug.RuntimeDebugEventRef
   readonly fieldPathsByDigest: ConvergeFieldPathsByDigest
-}): Logix.Debug.RuntimeDebugEventRef => {
+}): CoreDebug.RuntimeDebugEventRef => {
   if (args.fieldPathsByDigest.size === 0) return args.event
 
   const meta = isRecord(args.event.meta) ? args.event.meta : undefined
@@ -196,10 +197,10 @@ const materializeDirtyRootPathsFromCanonical = (args: {
           rootPaths,
         },
       },
-    } as Logix.Debug.RuntimeDebugEventRef
+    } as CoreDebug.RuntimeDebugEventRef
   }
 
-  if (args.event.kind === 'trait:converge') {
+  if (args.event.kind === 'field:converge') {
     const dirty = isRecord((meta as any).dirty) ? ((meta as any).dirty as Record<string, unknown>) : undefined
     if (!dirty) return args.event
     const rootPaths = resolveRootPaths({ ids: (dirty as any).rootIds, fieldPaths })
@@ -214,7 +215,7 @@ const materializeDirtyRootPathsFromCanonical = (args: {
           rootPaths,
         },
       },
-    } as Logix.Debug.RuntimeDebugEventRef
+    } as CoreDebug.RuntimeDebugEventRef
   }
 
   return args.event
@@ -232,24 +233,17 @@ const fromDomEvent = <K extends keyof WindowEventMap>(event: K): Stream.Stream<W
     }),
   )
 
-export const DevtoolsLogic = DevtoolsModule.logic<DevtoolsSnapshotStore>(($) => ({
-  setup: $.lifecycle.onStart(
-    Effect.gen(function* () {
-      const snapshotStore = yield* $.use(DevtoolsSnapshotStore)
-
-      // Initialization: sync once with the current snapshot.
-      const initialSnapshot = yield* snapshotStore.get
-      yield* $.state.update((prev) =>
-        computeDevtoolsState(prev as DevtoolsState | undefined, initialSnapshot, {
-          userSelectedEvent: false,
-        }),
-      )
-    }),
-  ),
-
+export const DevtoolsLogic = DevtoolsModule.logic<DevtoolsSnapshotStore>('devtools-logic', ($) => {
   // run section: initialize snapshot subscription + register all onAction watchers and dragging logic.
-  run: Effect.gen(function* () {
+  return Effect.gen(function* () {
     const snapshotStore = yield* $.use(DevtoolsSnapshotStore)
+
+    const initialSnapshot = yield* snapshotStore.get
+    yield* $.state.update((prev) =>
+      computeDevtoolsState(prev as DevtoolsState | undefined, initialSnapshot, {
+        userSelectedEvent: false,
+      }),
+    )
 
     // Subscribe to Snapshot changes: recompute DevtoolsState on every Snapshot update.
     yield* $.on(snapshotStore.changes).runFork((snapshot) =>
@@ -366,16 +360,16 @@ export const DevtoolsLogic = DevtoolsModule.logic<DevtoolsSnapshotStore>(($) => 
           return
         }
 
-        const evidence = Logix.Observability.importEvidencePackage(parsed)
+        const evidence = CoreEvidence.importEvidencePackage(parsed)
         const fieldPathsByDigest = readConvergeFieldPathsByDigest(evidence.summary)
 
-        const events: Logix.Debug.RuntimeDebugEventRef[] = []
+        const events: CoreDebug.RuntimeDebugEventRef[] = []
         for (const envelope of evidence.events) {
           if (envelope.type !== 'debug:event') continue
           const payload = envelope.payload as unknown
           const normalized = normalizeRuntimeDebugEventRef(payload)
           if (!normalized) continue
-          const canonicalEvent = stripLegacyDirtyRootPathsFromEvent(normalized)
+          const canonicalEvent = stripHistoricalDirtyRootPathsFromEvent(normalized)
           events.push(materializeDirtyRootPathsFromCanonical({ event: canonicalEvent, fieldPathsByDigest }))
         }
 
@@ -384,7 +378,7 @@ export const DevtoolsLogic = DevtoolsModule.logic<DevtoolsSnapshotStore>(($) => 
           instances: new Map(),
           events,
           latestStates: new Map(),
-          latestTraitSummaries: new Map(),
+          latestFieldSummaries: new Map(),
           exportBudget: { dropped: 0, oversized: 0 },
         }
 
@@ -394,10 +388,7 @@ export const DevtoolsLogic = DevtoolsModule.logic<DevtoolsSnapshotStore>(($) => 
           const next = computeDevtoolsState(prev as DevtoolsState | undefined, snapshot, {
             userSelectedEvent: false,
           })
-          return {
-            ...(next as DevtoolsState),
-            timeTravel: undefined,
-          }
+          return next as DevtoolsState
         })
       }),
     )
@@ -416,67 +407,9 @@ export const DevtoolsLogic = DevtoolsModule.logic<DevtoolsSnapshotStore>(($) => 
           const next = computeDevtoolsState(prev as DevtoolsState | undefined, snapshot, {
             userSelectedEvent: false,
           })
-          return {
-            ...(next as DevtoolsState),
-            timeTravel: undefined,
-          }
+          return next as DevtoolsState
         })
       }),
     )
-
-    // Time travel: trigger Runtime.applyTransactionSnapshot from Devtools.
-    yield* $.onAction('timeTravelBefore').runFork((action) =>
-      Effect.gen(function* () {
-        const payload = (action as any).payload as {
-          moduleId: string
-          instanceId: string
-          txnId: string
-        }
-        yield* Logix.Runtime.applyTransactionSnapshot(payload.moduleId, payload.instanceId, payload.txnId, 'before')
-      }),
-    )
-
-    yield* $.onAction('timeTravelAfter').runFork((action) =>
-      Effect.gen(function* () {
-        const payload = (action as any).payload as {
-          moduleId: string
-          instanceId: string
-          txnId: string
-        }
-        yield* Logix.Runtime.applyTransactionSnapshot(payload.moduleId, payload.instanceId, payload.txnId, 'after')
-      }),
-    )
-
-    yield* $.onAction('timeTravelLatest').runFork((action) =>
-      Effect.gen(function* () {
-        const payload = (action as any).payload as {
-          moduleId: string
-          instanceId: string
-        }
-
-        const snapshot = yield* snapshotStore.get
-        let baseTxnId: string | undefined
-
-        for (const event of snapshot.events) {
-          if (event.kind !== 'state' || event.label !== 'state:update') continue
-          if (event.moduleId !== payload.moduleId) continue
-          if (event.instanceId !== payload.instanceId) continue
-          const txnId = event.txnId
-          if (!txnId) continue
-          const metaAny = event.meta as any
-          const originKind =
-            metaAny && typeof metaAny === 'object' ? ((metaAny as any).originKind as string | undefined) : undefined
-          // Use only non-devtools transactions as the baseline for the "latest business state".
-          if (originKind === 'devtools') continue
-          baseTxnId = txnId
-        }
-
-        if (!baseTxnId) {
-          return
-        }
-
-        yield* Logix.Runtime.applyTransactionSnapshot(payload.moduleId, payload.instanceId, baseTxnId, 'after')
-      }),
-    )
-  }),
-}))
+  })
+})

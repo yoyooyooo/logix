@@ -15,7 +15,7 @@ const asNonNegativeInt = (value: unknown): number | undefined => {
   return n >= 0 ? n : undefined
 }
 
-const readTraitConvergeRef = (
+const readFieldConvergeRef = (
   event: unknown,
 ):
   | {
@@ -30,7 +30,7 @@ const readTraitConvergeRef = (
     }
   | undefined => {
   if (!isRecord(event)) return undefined
-  if (event.kind !== 'trait:converge') return undefined
+  if (event.kind !== 'field:converge') return undefined
 
   const moduleId = asNonEmptyString(event.moduleId)
   const instanceId = asNonEmptyString(event.instanceId)
@@ -92,7 +92,7 @@ export const extractConvergeTxnRows = (
       continue
     }
 
-    const ref = readTraitConvergeRef(timeline[index]?.event)
+    const ref = readFieldConvergeRef(timeline[index]?.event)
     if (!ref) continue
 
     if (options?.moduleId && ref.moduleId !== options.moduleId) continue

@@ -1,7 +1,7 @@
 # Tasks: O-007 Logic 执行语义收敛（淘汰多重兼容分支）
 
-**Input**: Design documents from `specs/097-o007-logic-semantics/`  
-**Prerequisites**: `plan.md`（required）, `spec.md`（required）, `research.md`, `data-model.md`, `contracts/*`, `quickstart.md`  
+**Input**: Design documents from `specs/097-o007-logic-semantics/`
+**Prerequisites**: `plan.md`（required）, `spec.md`（required）, `research.md`, `data-model.md`, `contracts/*`, `quickstart.md`
 **Tests**: REQUIRED（至少覆盖 setup/run 相位边界、三类 logic 输入回归、phase 诊断解释性）
 
 ## Format: `[ID] [P?] [Story] Description with file path`

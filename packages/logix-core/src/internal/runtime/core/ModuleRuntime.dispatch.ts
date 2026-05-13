@@ -78,7 +78,7 @@ export const makeDispatchOps = <S, A>(args: {
     reason: StateTransaction.PatchReason,
     from?: unknown,
     to?: unknown,
-    traitNodeId?: string,
+    fieldNodeId?: string,
     stepId?: number,
   ) => void
   readonly actionHub: PubSub.PubSub<A>
@@ -420,23 +420,26 @@ export const makeDispatchOps = <S, A>(args: {
       const unknownAction = declaredActionTags ? !declaredActionTags.has(analysis.actionTagNormalized) : false
       const current: any = txnContext.current
       const phaseTimingEnabled = current?.dispatchPhaseTimingEnabled === true
+      const diagnosticsLevel = current?.dispatchDiagnosticsLevel as Debug.DiagnosticsLevel | undefined
 
       // Record action dispatch (for Devtools/diagnostics).
-      const actionRecordStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
-      yield* Debug.record({
-        type: 'action:dispatch',
-        moduleId: optionsModuleId,
-        action,
-        actionTag: analysis.actionTagNormalized,
-        ...(unknownAction ? { unknownAction: true } : {}),
-        instanceId,
-        txnSeq: txnContext.current?.txnSeq,
-        txnId: txnContext.current?.txnId,
-      })
-      if (phaseTimingEnabled) {
-        current.dispatchActionRecordMs =
-          (typeof current.dispatchActionRecordMs === 'number' ? current.dispatchActionRecordMs : 0) +
-          Math.max(0, readClockMs() - actionRecordStartedAtMs)
+      if (diagnosticsLevel !== 'off') {
+        const actionRecordStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
+        yield* Debug.record({
+          type: 'action:dispatch',
+          moduleId: optionsModuleId,
+          action,
+          actionTag: analysis.actionTagNormalized,
+          ...(unknownAction ? { unknownAction: true } : {}),
+          instanceId,
+          txnSeq: txnContext.current?.txnSeq,
+          txnId: txnContext.current?.txnId,
+        })
+        if (phaseTimingEnabled) {
+          current.dispatchActionRecordMs =
+            (typeof current.dispatchActionRecordMs === 'number' ? current.dispatchActionRecordMs : 0) +
+            Math.max(0, readClockMs() - actionRecordStartedAtMs)
+        }
       }
 
       // actionsWithMeta$: provides stable txnSeq/txnId anchors for higher-level subscriptions (e.g. Process).

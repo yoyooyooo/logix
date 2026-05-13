@@ -1,6 +1,5 @@
 import { Schema } from 'effect'
 import * as Logix from '@logixjs/core'
-import type { LogEntry, TraceSpan, SandboxErrorInfo } from '@logixjs/sandbox'
 
 // ============================================================================
 // Data Schemas
@@ -72,8 +71,6 @@ export const LogEntrySchema = Schema.Struct({
 })
 
 export type LogEntryState = Schema.Schema.Type<typeof LogEntrySchema>
-// 确保与 @logixjs/sandbox 中的 LogEntry 形状兼容
-type _LogEntryCompat = LogEntry extends LogEntryState ? true : never
 
 export const TraceSpanSchema = Schema.Struct({
   spanId: Schema.String,
@@ -93,7 +90,6 @@ export const TraceSpanSchema = Schema.Struct({
 })
 
 export type TraceSpanState = Schema.Schema.Type<typeof TraceSpanSchema>
-type _TraceSpanCompat = TraceSpan extends TraceSpanState ? true : never
 
 const SandboxErrorCodeSchema = Schema.Union([
   Schema.Literal('INIT_FAILED'),
@@ -109,7 +105,6 @@ export const SandboxErrorInfoSchema = Schema.Struct({
 })
 
 export type SandboxErrorInfoState = Schema.Schema.Type<typeof SandboxErrorInfoSchema>
-type _SandboxErrorInfoCompat = SandboxErrorInfo extends SandboxErrorInfoState ? true : never
 
 export const SandboxState = Schema.Struct({
   // Runtime State

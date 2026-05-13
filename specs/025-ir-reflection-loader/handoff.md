@@ -1,14 +1,14 @@
 # Handoff: 025 IR Reflection Loader（IR 反射与试运行提取）
 
-**Date**: 2025-12-25  
+**Date**: 2025-12-25
 **Spec**: `specs/025-ir-reflection-loader/spec.md`
 
 ## 交付物（What shipped）
 
 - `@logixjs/core`：
-  - `Reflection.extractManifest` / `Reflection.exportStaticIr`：导出可序列化、可 diff 的 `ModuleManifest` / `StaticIR`（不读 AST）。
-  - `Reflection.diffManifest`：结构化 diff（CI gate 与 UI 共享口径，含 verdict + changes[]）。
-  - `Observability.trialRunModule`：在 BuildEnv 中对 module 做受控试跑，导出 `TrialRunReport`（Environment IR + 控制面证据 + 可选事件序列）。
+  - `CoreReflection.extractManifest` / `CoreReflection.exportStaticIr`：导出可序列化、可 diff 的 `ModuleManifest` / `StaticIR`（不读 AST）。
+  - `CoreReflection.diffManifest`：结构化 diff（CI gate 与 UI 共享口径，含 verdict + changes[]）。
+  - `Runtime.trial`：在 BuildEnv 中对 module 做受控试跑，导出 `TrialRunReport`（Environment IR + 控制面证据 + 可选事件序列）。
 - PoC UI（demo）：
   - `examples/logix-sandbox-mvp` 新增 `/ir`：展示 Manifest/Diff/StaticIR/TrialRunReport/ControlPlane/Timeline，并支持 Import + presets + 一键重跑。
 - 脚本与证据：
@@ -28,8 +28,8 @@
 ## 使用入口（How to use）
 
 - Inspect（推荐载体）：`specs/025-ir-reflection-loader/quickstart.md` 的 “0) inspect program module”。
-- 试跑 API：`Logix.Observability.trialRunModule(AppRoot, { runId, buildEnv, ... })`。
-- CI diff：`Logix.Reflection.diffManifest(before, after)`。
+- 试跑 API：`Logix.Runtime.trial(AppRoot, { runId, buildEnv, ... })`。
+- CI diff：`CoreReflection.diffManifest(before, after)`。
 
 ## 已知注意点（Notes）
 

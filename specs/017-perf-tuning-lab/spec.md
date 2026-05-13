@@ -1,8 +1,8 @@
 # Feature Specification: 017 调参实验场（基于 014 跑道，消费 013 控制面）
 
-**Feature Branch**: `[017-perf-tuning-lab]`  
-**Created**: 2025-12-20  
-**Status**: Active（P1 已落地；持续扩展中）  
+**Feature Branch**: `[017-perf-tuning-lab]`
+**Created**: 2025-12-20
+**Status**: Active（P1 已落地；持续扩展中）
 **Input**: User description: "直接把 调参实验场寻找最佳默认值加入到 014 作为 US"
 
 > 实施落点与使用方式见：

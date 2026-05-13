@@ -1,7 +1,7 @@
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect, Ref, Stream } from 'effect'
-import * as FlowRuntime from '../../../../src/internal/runtime/FlowRuntime.js'
+import * as FlowRuntime from '../../../../src/internal/runtime/core/FlowRuntime.js'
 
 describe('ConcurrencyPolicy (US1): FlowRuntime.runParallel should be bounded by default', () => {
   it('in-flight should not exceed 16 (default)', async () => {

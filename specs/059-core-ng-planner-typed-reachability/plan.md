@@ -1,13 +1,13 @@
 # Implementation Plan: 059 Planner Typed Reachability（TypedArray 极致化）
 
-**Branch**: `059-core-ng-planner-typed-reachability` | **Date**: 2025-12-31 | **Spec**: `specs/059-core-ng-planner-typed-reachability/spec.md`  
+**Branch**: `059-core-ng-planner-typed-reachability` | **Date**: 2025-12-31 | **Spec**: `specs/059-core-ng-planner-typed-reachability/spec.md`
 **Input**: Feature specification from `specs/059-core-ng-planner-typed-reachability/spec.md`
 
 ## Summary
 
 目标：把 Planner/Reachability（“dirty roots → 受影响 steps → plan”）的关键热路径进一步极致化为 **纯内存算法**（TypedArray + bitset + queue + scratch reuse），尽可能减少 Map/Set 与对象分配税，并为 054（Wasm Planner）提供可对照的 JS baseline。
 
-本 spec 的“reachability”主要落在 StateTrait converge 的 plan 计算链路：它是 converge/txnCommit、watchers、以及 exec VM 命中路径的共同前置成本。
+本 spec 的“reachability”主要落在 FieldKernel converge 的 plan 计算链路：它是 converge/txnCommit、watchers、以及 exec VM 命中路径的共同前置成本。
 
 ## Deepening Notes
 
@@ -20,11 +20,11 @@
 
 - **语言/版本**：TypeScript（ESM）+ pnpm workspace
 - **核心落点（当前实现）**：
-  - plan 计算与 reachability 判定：`packages/logix-core/src/internal/state-trait/converge.ts`
+  - plan 计算与 reachability 判定：`packages/logix-core/src/internal/state-field/converge.ts`
     - `computePlanStepIds` / `shouldRunStepById` / `hasAnyDirtyPrefix` / `addPathPrefixes`
-  - 静态/执行 IR：`packages/logix-core/src/internal/state-trait/converge-ir.ts`、`packages/logix-core/src/internal/state-trait/converge-exec-ir.ts`
+  - 静态/执行 IR：`packages/logix-core/src/internal/state-field/converge-ir.ts`、`packages/logix-core/src/internal/state-field/converge-exec-ir.ts`
     - 已有 TypedArray tables：`prefixOffsetsByPathId`、`prefixFieldPathIdsByPathId`、`stepDepsOffsetsByStepId`、`stepDepsFieldPathIds`、`topoOrder*Int32`
-  - bitset：`packages/logix-core/src/internal/state-trait/bitset.ts`（`DenseIdBitSet`）
+  - bitset：`packages/logix-core/src/internal/state-field/bitset.ts`（`DenseIdBitSet`）
   - dirtyPaths→rootIds：`packages/logix-core/src/internal/field-path.ts`（`dirtyPathsToRootIds`）
 - **perf suites（复用现成跑道）**：
   - Browser P1：`packages/logix-react/test/browser/watcher-browser-perf.test.tsx`、`packages/logix-react/test/browser/perf-boundaries/converge-steps.test.tsx`、`packages/logix-react/test/browser/perf-boundaries/txn-lanes.test.tsx`
@@ -41,7 +41,7 @@
 
 ## Perf Evidence Plan（MUST）
 
-- Matrix SSoT：`.codex/skills/logix-perf-evidence/assets/matrix.json`（至少覆盖 `priority=P1`）
+- Matrix SSoT：`packages/logix-perf-evidence/assets/matrix.json`（至少覆盖 `priority=P1`）
 - Kernel：`core-ng`（并固定 execVmMode，避免把开关噪声混入结论）
   - Node：`LOGIX_PERF_KERNEL_ID=core-ng LOGIX_CORE_NG_EXEC_VM_MODE=on`
   - Browser：`VITE_LOGIX_PERF_KERNEL_ID=core-ng VITE_LOGIX_CORE_NG_EXEC_VM_MODE=on`
@@ -76,7 +76,7 @@ specs/059-core-ng-planner-typed-reachability/
 ### Source Code (implementation targets)
 
 ```text
-packages/logix-core/src/internal/state-trait/
+packages/logix-core/src/internal/state-field/
 ├── converge.ts              # reachability + plan compute
 ├── converge-ir.ts           # Static IR（generation）
 ├── converge-exec-ir.ts      # Exec IR tables（TypedArray 化）

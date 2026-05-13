@@ -123,6 +123,7 @@ fi
 docs=()
 
 # Always check these optional docs
+[[ -f "$FEATURE_DIR/discussion.md" ]] && docs+=("discussion.md")
 [[ -f "$RESEARCH" ]] && docs+=("research.md")
 [[ -f "$DATA_MODEL" ]] && docs+=("data-model.md")
 
@@ -155,6 +156,7 @@ else
     echo "AVAILABLE_DOCS:"
     
     # Show status of each potential document
+    check_file "$FEATURE_DIR/discussion.md" "discussion.md"
     check_file "$RESEARCH" "research.md"
     check_file "$DATA_MODEL" "data-model.md"
     check_dir "$CONTRACTS_DIR" "contracts/"

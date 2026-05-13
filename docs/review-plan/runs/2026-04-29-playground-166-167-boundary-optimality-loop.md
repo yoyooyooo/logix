@@ -1,0 +1,340 @@
+# Playground 166/167 Boundary Review Ledger
+
+## Meta
+
+- target: `specs/166-playground-driver-scenario-surface/discussion.md`
+- targets:
+  - `specs/166-playground-driver-scenario-surface/discussion.md`
+  - `specs/167-runtime-reflection-manifest/discussion.md`
+  - `specs/166-playground-driver-scenario-surface/spec.md`
+  - `specs/166-playground-driver-scenario-surface/plan.md`
+  - `specs/166-playground-driver-scenario-surface/tasks.md`
+  - `specs/167-runtime-reflection-manifest/spec.md`
+  - `specs/167-runtime-reflection-manifest/plan.md`
+  - `specs/167-runtime-reflection-manifest/tasks.md`
+  - `docs/ssot/runtime/17-playground-product-workbench.md`
+- source_kind: file-plan
+- reviewer_count: 4
+- reviewer_model: `gpt-5.4`
+- reviewer_reasoning: `xhigh`
+- challenge_scope: open
+- consensus_status: closed
+
+## Bootstrap
+
+- target_complete: true
+- alignment_gate:
+  - policy: auto
+  - status: inferred
+  - resolved_points:
+    - artifact_kind: implementation-plan
+    - review_goal: implementation-ready
+    - target_claim: `166` and `167` should be implementation-ready as a pair: 166 owns the Playground product workbench and real Runtime consumption, while 167 owns shared reflection, payload and observability interpretation without public API leakage or second authority.
+    - challenge_scope: open
+    - scope_fence: 166/167 boundary, execution authority, reflection authority, lifecycle law, payload validation ownership, 165 bridge classification, UI pressure gates and public surface leakage are challengeable; implementation code is out of scope.
+    - stop_condition: consensus, max 4 rounds
+    - write_policy: main agent may update the two discussion files and this ledger; spec/plan/tasks patches require adopted findings from the loop.
+  - open_questions: none
+  - confirmation_basis: user explicitly asked to write the risk points into 166/167 discussion files and run `$plan-optimality-loop`.
+- review_contract:
+  - artifact_kind: implementation-plan
+  - review_goal: implementation-ready
+  - target_claim: current 166/167 planning should close the high-risk and fuzzy boundaries enough for implementation without reintroducing simulation, private schemas, or product metadata leakage into core reflection.
+  - target_refs:
+    - `specs/166-playground-driver-scenario-surface/discussion.md`
+    - `specs/167-runtime-reflection-manifest/discussion.md`
+    - `specs/166-playground-driver-scenario-surface/spec.md`
+    - `specs/166-playground-driver-scenario-surface/plan.md`
+    - `specs/166-playground-driver-scenario-surface/tasks.md`
+    - `specs/167-runtime-reflection-manifest/spec.md`
+    - `specs/167-runtime-reflection-manifest/plan.md`
+    - `specs/167-runtime-reflection-manifest/tasks.md`
+    - `docs/ssot/runtime/17-playground-product-workbench.md`
+  - non_default_overrides:
+    - reviewer_count: 4
+    - active_A4: true
+    - reason: open scope touches architecture, shared internal contract, public surface guard and long-term governance.
+    - write_policy: only discussion files and ledger are writable during the first synthesis pass unless the adopted candidate requires spec/plan/tasks edits.
+- review_object_manifest:
+  - source_inputs: existing 166/167 spec-kit artifacts, product SSoT and newly materialized discussion files
+  - materialized_targets:
+    - `specs/166-playground-driver-scenario-surface/discussion.md`
+    - `specs/167-runtime-reflection-manifest/discussion.md`
+  - authority_target: `specs/166-playground-driver-scenario-surface/discussion.md`
+  - bound_docs:
+    - `specs/167-runtime-reflection-manifest/discussion.md`
+    - `specs/166-playground-driver-scenario-surface/spec.md`
+    - `specs/166-playground-driver-scenario-surface/plan.md`
+    - `specs/166-playground-driver-scenario-surface/tasks.md`
+    - `specs/167-runtime-reflection-manifest/spec.md`
+    - `specs/167-runtime-reflection-manifest/plan.md`
+    - `specs/167-runtime-reflection-manifest/tasks.md`
+    - `docs/ssot/runtime/17-playground-product-workbench.md`
+  - derived_scope: paired implementation-plan boundary review for 166 and 167
+  - allowed_classes:
+    - risk
+    - ambiguity
+    - invalidity
+    - controversy
+    - boundary gap
+    - proof obligation
+    - public surface leak
+    - second authority
+    - lifecycle gap
+  - blocker_classes:
+    - simulation path survives as production success
+    - private shared schema
+    - product metadata enters core reflection authority
+    - runtime observability becomes second truth
+    - async stale result can mutate current state
+    - public API leakage
+    - untestable UI pressure contract
+  - ledger_target: `docs/review-plan/runs/2026-04-29-playground-166-167-boundary-optimality-loop.md`
+- challenge_scope: open
+- reviewer_set:
+  - A1: structure purity
+  - A2: token economy and duplicate contracts
+  - A3: dominance alternatives and second-authority detection
+  - A4: target-function challenge
+- active_advisors: none
+- activation_reason: default A4 is sufficient for architecture and contract challenge
+- max_reviewer_count: 4
+- kernel_council:
+  - Ramanujan
+  - Kolmogorov
+  - Godel
+- dominance_axes:
+  - concept-count
+  - public-surface
+  - compat-budget
+  - migration-cost
+  - proof-strength
+  - future-headroom
+- stop_rule:
+  - adopted candidate must reduce ambiguity or proof gaps without expanding public surface
+  - core axes `concept-count / public-surface / compat-budget` must not get worse overall
+  - no new second authority, second workflow, second runtime, second manifest schema or unexplained contradiction
+- reopen_bar:
+  - reopen only with a proposal that strictly dominates the adopted candidate on dominance axes or materially improves proof-strength/future-headroom without worsening core axes
+- ledger_path: `docs/review-plan/runs/2026-04-29-playground-166-167-boundary-optimality-loop.md`
+- writable: true
+
+## Assumptions
+
+- A-01:
+  - summary: 166 can own `RuntimeExecutionAdapter` safely if it is bounded to source bundling, transport and existing Runtime face invocation.
+  - status: open
+  - resolution_basis: pending reviewer challenge
+- A-02:
+  - summary: 167 can own reflection manifest and observability batch in one spec without creating a second runtime truth.
+  - status: open
+  - resolution_basis: pending reviewer challenge
+- A-03:
+  - summary: 166 can close before full 167 if the minimum manifest slice replaces regex as primary action authority.
+  - status: open
+  - resolution_basis: pending reviewer challenge
+- A-04:
+  - summary: Driver, Scenario and Service Source Files can remain product metadata while still producing evidence usable by 165 through adapters.
+  - status: open
+  - resolution_basis: pending reviewer challenge
+- A-05:
+  - summary: Visual pressure cases are sufficient if converted into deterministic fixtures and layout gates.
+  - status: open
+  - resolution_basis: pending reviewer challenge
+
+## Round 1
+
+### Phase
+
+- challenge
+
+### Input Residual
+
+- initial high-risk and fuzzy boundary lists in the two discussion files
+
+### Findings
+
+- F1 `critical` `invalidity`:
+  - summary: `RuntimeExecutionAdapter` is too broad and can become a hidden second runtime.
+  - evidence: A1 and A3 both flagged the adapter as owning too many concerns.
+  - status: adopted
+- F2 `critical` `invalidity`:
+  - summary: 166 can define a manifest-like action DTO parallel to 167 minimum manifest.
+  - evidence: A1 identified overlapping `ReflectedActionManifest` and `MinimumProgramActionManifest` shapes.
+  - status: adopted
+- F3 `high` `ambiguity`:
+  - summary: Session lifecycle lacks a commit predicate for stale async completions.
+  - evidence: A1, A3 and A4 all requested a `(projectId, revision, sessionId, opSeq)` receive rule.
+  - status: adopted
+- F4 `high` `ambiguity`:
+  - summary: 165 bridge classification is too open and can admit product metadata as truth.
+  - evidence: A1, A3 and A4 requested an explicit bridge classification matrix.
+  - status: adopted
+- F5 `high` `controversy`:
+  - summary: 167 immediate closure and terminal reflection scope are mixed.
+  - evidence: A2, A3 and A4 found full manifest, payload validation, observability, CLI/Devtools and bridge work bound to one closure.
+  - status: adopted
+- F6 `high` `ambiguity`:
+  - summary: UI pressure and runtime proof can be confused as one Playground closure.
+  - evidence: A4 identified professional UI, Monaco and visual pressure as mixed with runtime authority proof.
+  - status: adopted
+- F7 `medium` `ambiguity`:
+  - summary: Payload parse and schema validation ownership can lead to duplicate validation issue schemas.
+  - evidence: A1, A2 and A4 requested a payload ownership law.
+  - status: adopted
+- F8 `medium` `ambiguity`:
+  - summary: Driver/Scenario enter the main path too early and can leak product metadata into core reflection or 165 truth.
+  - evidence: A1 and A4 requested product quarantine and staged gates.
+  - status: adopted
+- F9 `medium` `ambiguity`:
+  - summary: Discussion files originally duplicated spec and SSoT boundary text, risking second fact sources.
+  - evidence: A2 requested thinner risk ledgers and law references.
+  - status: adopted
+
+### Counter Proposals
+
+- P1:
+  - summary: Replace wide execution adapter with `ProjectSnapshotRuntimeInvoker` boundary and bounded output classes.
+  - why_better: Prevents source bundling host code from becoming action, payload or operation authority.
+  - overturns_assumptions: A-01
+  - resolves_findings: F1
+  - supersedes_proposals: A1-EXEC-PORTS, A3-ALT-03
+  - dominance: dominates
+  - axis_scores:
+    - concept-count: partial
+    - public-surface: improves
+    - compat-budget: improves
+    - migration-cost: improves
+    - proof-strength: improves
+    - future-headroom: improves
+  - status: adopted
+- P2:
+  - summary: 166 Runtime Proof First gate matrix.
+  - why_better: Stops UI pressure, Monaco and layout work from substituting for real Runtime execution proof.
+  - overturns_assumptions: A-05
+  - resolves_findings: F3, F6
+  - supersedes_proposals: A4-ALT-01, A4-ALT-04
+  - dominance: dominates
+  - axis_scores:
+    - concept-count: improves
+    - public-surface: improves
+    - compat-budget: improves
+    - migration-cost: improves
+    - proof-strength: improves
+    - future-headroom: improves
+  - status: adopted
+- P3:
+  - summary: 167A/167B split.
+  - why_better: Lets 166 depend only on minimum manifest and consumption law while preserving terminal reflection work as later closure.
+  - overturns_assumptions: A-02, A-03
+  - resolves_findings: F5
+  - supersedes_proposals: A2-ALT-3, A3-ALT-01, A4-ALT-02
+  - dominance: dominates
+  - axis_scores:
+    - concept-count: improves
+    - public-surface: improves
+    - compat-budget: improves
+    - migration-cost: improves
+    - proof-strength: improves
+    - future-headroom: improves
+  - status: adopted
+- P4:
+  - summary: Cross-tool Consumption Law plus bridge classification matrix.
+  - why_better: Replaces a broad shared DTO with explicit categories and prevents product metadata from entering truth classes.
+  - overturns_assumptions: A-04
+  - resolves_findings: F2, F4, F8
+  - supersedes_proposals: A1-BRIDGE-FIVE-CLASS-ALGEBRA, A3-ALT-02
+  - dominance: dominates
+  - axis_scores:
+    - concept-count: improves
+    - public-surface: improves
+    - compat-budget: improves
+    - migration-cost: neutral
+    - proof-strength: improves
+    - future-headroom: improves
+  - status: adopted
+- P5:
+  - summary: Payload Ownership Law.
+  - why_better: Keeps JSON text parsing local while preserving 167 as sole owner of stable schema validation issues.
+  - overturns_assumptions: none
+  - resolves_findings: F7
+  - supersedes_proposals: A1 payload pipeline, A2 F6, A4 F5
+  - dominance: dominates
+  - axis_scores:
+    - concept-count: improves
+    - public-surface: improves
+    - compat-budget: improves
+    - migration-cost: neutral
+    - proof-strength: improves
+    - future-headroom: improves
+  - status: adopted
+
+### Resolution Delta
+
+- Rewrote `specs/166-playground-driver-scenario-surface/discussion.md` as a gate matrix and thin risk ledger.
+- Rewrote `specs/167-runtime-reflection-manifest/discussion.md` as 167A/167B split, cross-tool consumption law, event law, payload law and bridge matrix.
+- Round 2 converge found the discussion changes insufficient without implementation-entry writeback.
+- Applied adopted laws into:
+  - `specs/166-playground-driver-scenario-surface/spec.md`
+  - `specs/166-playground-driver-scenario-surface/plan.md`
+  - `specs/166-playground-driver-scenario-surface/tasks.md`
+  - `specs/166-playground-driver-scenario-surface/data-model.md`
+  - `specs/166-playground-driver-scenario-surface/contracts/README.md`
+  - `specs/166-playground-driver-scenario-surface/checklists/requirements.md`
+  - `specs/167-runtime-reflection-manifest/spec.md`
+  - `specs/167-runtime-reflection-manifest/plan.md`
+  - `specs/167-runtime-reflection-manifest/tasks.md`
+  - `specs/167-runtime-reflection-manifest/data-model.md`
+  - `specs/167-runtime-reflection-manifest/contracts/README.md`
+  - `specs/167-runtime-reflection-manifest/checklists/requirements.md`
+  - `docs/ssot/runtime/17-playground-product-workbench.md`
+
+## Adoption
+
+- adopted_candidate: Runtime Proof First plus 167A minimum reflection split.
+- lineage: P1 + P2 + P3 + P4 + P5 synthesized from A1/A2/A3/A4 Round 1 alternatives.
+- rejected_alternatives:
+  - keep broad `RuntimeExecutionAdapter`
+  - keep 167 full manifest, observability collection and CLI/Devtools work as one immediate closure
+  - use UI pressure as part of runtime proof closure
+  - allow 166 manifest-like DTO as long as it references 167 authority
+  - keep generic `convertible into 165 authority bundle` wording as the main bridge rule
+- rejection_reason: each rejected alternative either preserved a second-authority risk, increased closure size, or allowed proof substitution across layers.
+- dominance_verdict: adopted candidate improves proof-strength, public-surface control and future-headroom without increasing public API or compatibility budget.
+- freeze_record:
+  - adopted_summary: 166 closes real Runtime execution first; 167A supplies minimum manifest and consumption law; wider UI, Driver/Scenario and terminal reflection work are gated by explicit classification laws.
+  - kernel_verdict: accepted by Ramanujan/Kolmogorov/Godel because it reduces authority objects, shortens closure, and removes second truth routes.
+  - frozen_decisions:
+    - 166 G0 Runtime Proof gates product closure before UI pressure.
+    - `ProjectSnapshotRuntimeInvoker` is the planning boundary for snapshot-to-runtime execution.
+    - 166 only owns `ActionPanelViewModel`, not manifest authority.
+    - `(projectId, revision, sessionId, opSeq)` is the lifecycle commit predicate.
+    - Driver/Scenario are quarantined product metadata.
+    - 167A is the only immediate dependency for 166 Action Workbench.
+    - first cross-tool categories are `authority`, `contextRef`, `debugEvidence`, `hostViewState`, `evidenceGap`.
+    - first event vocabulary is `operation.accepted`, `operation.completed`, `operation.failed`, `evidence.gap`.
+  - non_goals:
+    - no implementation code in this loop
+    - no public `Logix.Reflection`
+    - no public `Runtime.playground`, `Runtime.driver` or `Runtime.scenario`
+    - no Driver/Scenario authoring API
+    - no UI pressure as runtime proof
+  - allowed_reopen_surface:
+    - evidence that 166 cannot consume 167A without a public export
+    - evidence that event law must include more than four first-version event names
+    - evidence that `ProjectSnapshotRuntimeInvoker` cannot prove run/openProgram/check/trial without a wider adapter
+  - proof_obligations:
+    - negative sweeps for fake runner, regex primary authority and public API leakage are now represented in tasks and verification plans
+    - stale lifecycle tests for old revision/session results are now represented in 166 tasks and contracts
+    - bridge classification tests or contract examples are now represented in 167 tasks and contracts
+  - delta_from_previous_round: discussion files changed from broad risk essays to gate/law ledgers, then bound spec/plan/tasks/data-model/contracts were updated.
+
+## Consensus
+
+- status: closed
+- round_count: 3
+- unresolved_findings: none
+- residual_risk:
+  - This loop only closed planning artifacts. Implementation must still prove the boundaries through negative sweeps, typecheck and tests.
+  - 166 UI-local view models, migration tasks and fixture paths must be watched so they do not grow back into private manifest schema or second authority.
+  - UI and terminal reflection work remain large after G0/167A, but they no longer block immediate Runtime proof closure.

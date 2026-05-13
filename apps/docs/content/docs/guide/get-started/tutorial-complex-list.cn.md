@@ -1,332 +1,116 @@
 ---
 title: 教程：复杂列表查询
-description: 构建一个包含筛选、分页、加载状态和自动重置的复杂列表页面。
+description: 构建一个包含筛选、分页、刷新和 latest-only 加载的列表切片。
 ---
 
-在后台管理系统中，查询列表是最常见的场景。本教程将带你构建一个生产级的列表页面，包含以下特性：
+这个教程构建一个列表查询切片，包含：
 
-1.  **多源触发**：点击查询、切换分页、手动刷新均可触发加载。
-2.  **竞态处理**：快速切换条件时，自动取消旧请求。
-3.  **自动重置**：修改筛选条件时，自动重置页码到第一页。
-4.  **状态管理**：完整管理 Loading、Error 和 Data 状态。
+- 筛选条件变化
+- 分页
+- 手动刷新
+- 页码自动重置
+- latest-only 加载
 
-### 适合谁
+## 状态与动作
 
-- 已经熟悉基本 Module / Logic 写法，希望在真实业务中实践 Logix 的流式能力；
-- 负责后台列表、报表等复杂筛选场景，希望得到一份“生产级”的参考实现。
-
-### 前置知识
-
-- 完成过前面的“可取消搜索”教程，或对 `$.onState / $.onAction` 有实战经验；
-- 了解 Flow 的基本执行策略（`run / runLatest` 等），可参考 [Flows & Effects](../essentials/flows-and-effects)。
-
-### 读完你将获得
-
-- 一套支持多源触发、竞态处理和自动重置的列表页实现模板；
-- 对“把复杂交互拆成多个 Flow，再用 Stream 合流”的模式有清晰认识；
-- 能够在自己的业务中识别哪些逻辑适合做成单独 Flow，哪些适合合并。
-
-## 1. 定义数据结构 (Schema)
-
-首先，我们定义列表页的状态结构。
-
-创建 `src/features/users/schema.ts`：
-
-```typescript
-import { Schema } from 'effect'
-import * as Logix from '@logixjs/core'
-
-// 1. 定义用户实体
-const User = Schema.Struct({
-  id: Schema.String,
-  name: Schema.String,
-  role: Schema.String,
-  status: Schema.String,
-})
-
-// 2. 定义状态
+```ts
 export const UserListState = Schema.Struct({
-  // 筛选条件
   filters: Schema.Struct({
     keyword: Schema.String,
     role: Schema.optional(Schema.String),
   }),
-  // 分页信息
   pagination: Schema.Struct({
     page: Schema.Number,
     pageSize: Schema.Number,
     total: Schema.Number,
   }),
-  // 列表数据
   list: Schema.Array(User),
-  // 元数据
   meta: Schema.Struct({
     isLoading: Schema.Boolean,
     error: Schema.optional(Schema.String),
   }),
 })
 
-// 3. 定义动作
 export const UserListActions = {
   setFilter: Schema.Struct({ key: Schema.String, value: Schema.Any }),
   setPage: Schema.Number,
   refresh: Schema.Void,
 }
-
-// 4. 定义 ModuleDef
-export const UserListDef = Logix.Module.make('UserList', {
-  state: UserListState,
-  actions: UserListActions,
-})
 ```
 
-## 2. 编写业务逻辑 (Logic)
+## Logic
 
-这是本教程的核心。我们将使用 Logix 的流式编程能力，将复杂的交互逻辑简化为几条清晰的管道。
+列表 logic 通常包含两条 flow：
 
-创建 `src/features/users/logic.ts`：
+1. 筛选变化时重置页码
+2. 汇聚多个加载触发源，只执行最新一次加载
 
-```typescript tab="Logic DSL"
-import { Effect, Stream } from 'effect'
-import { UserListDef } from './schema'
-import { UserApi } from '../../services/UserApi'
-
-export const UserListLogic = UserListDef.logic(($) =>
+```ts
+export const UserListLogic = UserListDef.logic("user-list-logic", ($) =>
   Effect.gen(function* () {
-    // --- setup-only：定义生命周期 ---
     const loadEffect = Effect.gen(function* () {
-      // ...（省略加载逻辑，与之前相同）...
       const { filters, pagination } = yield* $.state.read
-      yield* $.state.mutate((d) => {
-        d.meta.isLoading = true
-        d.meta.error = undefined
+
+      yield* $.state.mutate((draft) => {
+        draft.meta.isLoading = true
+        draft.meta.error = undefined
       })
+
       const api = yield* $.use(UserApi)
       const result = yield* Effect.tryPromise(() =>
         api.fetchUsers({ ...filters, page: pagination.page, size: pagination.pageSize }),
       ).pipe(Effect.either)
-      yield* $.state.mutate((d) => {
-        d.meta.isLoading = false
-        if (result._tag === 'Left') d.meta.error = '加载失败'
-        else {
-          d.list = result.right.items
-          d.pagination.total = result.right.total
+
+      yield* $.state.mutate((draft) => {
+        draft.meta.isLoading = false
+        if (result._tag === "Left") {
+          draft.meta.error = "加载失败"
+        } else {
+          draft.list = result.right.items
+          draft.pagination.total = result.right.total
         }
       })
     })
 
-    $.lifecycle.onInit(loadEffect)
+    $.lifecycle.onInitRequired(loadEffect)
 
-    // --- 1) 定义触发源（Stream）---
     const filters$ = $.onState((s) => s.filters).toStream()
     const pagination$ = $.onState((s) => s.pagination).toStream()
-    const refresh$ = $.onAction('refresh').toStream()
+    const refresh$ = $.onAction("refresh").toStream()
 
-    // --- 2) 汇聚加载信号 ---
-    const loadTrigger$ = Stream.mergeAll([filters$, pagination$, refresh$], { concurrency: 'unbounded' })
+    const loadTrigger$ = Stream.mergeAll([filters$, pagination$, refresh$], { concurrency: "unbounded" })
 
-    // --- 3) 挂载 flows ---
     yield* Effect.all(
       [
-        // 当 filters 变化时自动重置页码。
         $.onState((s) => s.filters).run(() =>
-          $.state.mutate((d) => {
-            d.pagination.page = 1
+          $.state.mutate((draft) => {
+            draft.pagination.page = 1
           }),
         ),
-
-        // 执行加载逻辑（防抖 + latest wins）。
         $.on(loadTrigger$).debounce(50).runLatest(loadEffect),
       ],
-      { concurrency: 'unbounded' },
+      { concurrency: "unbounded" },
     )
   }),
 )
 ```
 
-```typescript tab="Flow API"
-import { Effect, Stream } from 'effect'
-import { UserListDef } from './schema'
-import { UserApi } from '../../services/UserApi'
+## React
 
-export const UserListLogic = UserListDef.logic(($) =>
-  Effect.gen(function* () {
-    const loadEffect = Effect.gen(function* () {
-      // ... loadEffect 同上 ...
-      const { filters, pagination } = yield* $.state.read
-      yield* $.state.mutate((d) => {
-        d.meta.isLoading = true
-        d.meta.error = undefined
-      })
-      const api = yield* $.use(UserApi)
-      const result = yield* Effect.tryPromise(() =>
-        api.fetchUsers({ ...filters, page: pagination.page, size: pagination.pageSize }),
-      ).pipe(Effect.either)
-      yield* $.state.mutate((d) => {
-        d.meta.isLoading = false
-        if (result._tag === 'Left') d.meta.error = '加载失败'
-        else {
-          d.list = result.right.items
-          d.pagination.total = result.right.total
-        }
-      })
-    })
+React 侧继续保持简单：
 
-    $.lifecycle.onInit(loadEffect)
+- 读取 filters、pagination、list 和 loading state
+- 派发筛选和分页动作
+- 不把编排逻辑搬回组件
 
-    const filters$ = $.flow.fromState((s) => s.filters)
-    const pagination$ = $.flow.fromState((s) => s.pagination)
-    const refresh$ = $.flow.fromAction((a): a is { _tag: 'refresh' } => (a as any)._tag === 'refresh')
+## 说明
 
-    const loadTrigger$ = Stream.mergeAll([filters$, pagination$, refresh$], { concurrency: 'unbounded' })
+- 筛选变化与刷新不需要由组件分别持有加载编排
+- 页码重置继续留在 logic 中，而不是 UI 胶水
+- 加载 flow 继续保持显式、latest-only
 
-    yield* Effect.all(
-      [
-        filters$.pipe(
-          $.flow.run(() =>
-            $.state.mutate((d) => {
-              d.pagination.page = 1
-            }),
-          ),
-        ),
-        loadTrigger$.pipe($.flow.debounce(50), $.flow.runLatest(loadEffect)),
-      ],
-      { concurrency: 'unbounded' },
-    )
-  }),
-)
-```
+## 下一步
 
-```typescript tab="Raw Effect"
-import { Effect, Stream } from 'effect'
-import { UserListDef } from './schema'
-import { UserApi } from '../../services/UserApi'
-
-export const UserListLogic = UserListDef.logic(($) =>
-  Effect.gen(function* () {
-    const loadEffect = Effect.gen(function* () {
-      // ... loadEffect 同上 ...
-      const { filters, pagination } = yield* $.state.read
-      yield* $.state.mutate((d) => {
-        d.meta.isLoading = true
-        d.meta.error = undefined
-      })
-      const api = yield* $.use(UserApi)
-      const result = yield* Effect.tryPromise(() =>
-        api.fetchUsers({ ...filters, page: pagination.page, size: pagination.pageSize }),
-      ).pipe(Effect.either)
-      yield* $.state.mutate((d) => {
-        d.meta.isLoading = false
-        if (result._tag === 'Left') d.meta.error = '加载失败'
-        else {
-          d.list = result.right.items
-          d.pagination.total = result.right.total
-        }
-      })
-    })
-
-    $.lifecycle.onInit(loadEffect)
-
-    const filters$ = $.flow.fromState((s) => s.filters)
-    const pagination$ = $.flow.fromState((s) => s.pagination)
-    const refresh$ = $.flow.fromAction((a): a is { _tag: 'refresh' } => (a as any)._tag === 'refresh')
-
-    const loadTrigger$ = Stream.mergeAll([filters$, pagination$, refresh$], { concurrency: 'unbounded' })
-
-    yield* Effect.all(
-      [
-        // filters 变化时重置页码。
-        filters$.pipe(
-          Stream.runForEach(() =>
-            $.state.mutate((d) => {
-              d.pagination.page = 1
-            }),
-          ),
-        ),
-
-        // 防抖 + switch(latest) 执行 loadEffect。
-        loadTrigger$.pipe(
-          Stream.debounce('50 millis'),
-          Stream.flatMap(() => Stream.fromEffect(loadEffect), { switch: true }),
-          Stream.runDrain,
-        ),
-      ],
-      { concurrency: 'unbounded' },
-    )
-  }),
-)
-```
-
-## 3. 组装 Module
-
-```typescript
-	import { UserListDef } from './schema'
-	import { UserListLogic } from './logic'
-
-	export const UserListModule = UserListDef.implement({
-	  initial: {
-	    filters: { keyword: '' },
-	    pagination: { page: 1, pageSize: 10, total: 0 },
-	    list: [],
-	    meta: { isLoading: false },
-	  },
-	  logics: [UserListLogic],
-	})
-````
-
-## 4. UI 实现
-
-UI 层变得非常简单，只需要负责渲染和触发简单的状态变更。
-
-```tsx
-	import { useModule, useSelector } from '@logixjs/react'
-	import { UserListModule } from './module'
-
-	export function UserListPage() {
-	  const list = useModule(UserListModule)
-	  const state = useSelector(list, (s) => s)
-	  const actions = list.actions
-
-  return (
-    <div>
-      {/* 筛选区 */}
-      <div className="filters">
-        <input
-          placeholder="搜索用户..."
-          value={state.filters.keyword}
-          onChange={(e) => actions.setFilter({ key: 'keyword', value: e.target.value })}
-        />
-        <button onClick={() => actions.refresh()}>刷新</button>
-      </div>
-
-      {/* 列表区 */}
-      {state.meta.isLoading && <div>加载中...</div>}
-      {state.meta.error && <div className="error">{state.meta.error}</div>}
-
-      <ul>
-        {state.list.map((user) => (
-          <li key={user.id}>
-            {user.name} - {user.role}
-          </li>
-        ))}
-      </ul>
-
-      {/* 分页区 */}
-      <div className="pagination">
-        <span>共 {state.pagination.total} 条</span>
-        <button disabled={state.pagination.page === 1} onClick={() => actions.setPage(state.pagination.page - 1)}>
-          上一页
-        </button>
-        <span>第 {state.pagination.page} 页</span>
-        <button onClick={() => actions.setPage(state.pagination.page + 1)}>下一页</button>
-      </div>
-    </div>
-  )
-}
-```
-
-## 关键点回顾
-
-1.  **声明式流**: 我们没有在 `useEffect` 中手动检查依赖，而是声明了 `filters$` 和 `pagination$` 流。
-2.  **自动竞态处理**: `runLatest` 确保了如果用户快速点击下一页，旧的请求会被自动取消，永远只展示最新的结果。
-3.  **逻辑内聚**: 所有的加载逻辑、重置逻辑都封装在 `Logic` 中，UI 组件完全解耦。
+- [Modules & State](../essentials/modules-and-state)
+- [Flows & Effects](../essentials/flows-and-effects)
+- [React integration recipe](../recipes/react-integration)

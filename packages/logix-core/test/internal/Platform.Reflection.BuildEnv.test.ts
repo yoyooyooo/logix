@@ -1,3 +1,5 @@
+import * as CoreReflection from '@logixjs/core/repo-internal/reflection-api'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { describe, expect, it } from '@effect/vitest'
 import { Cause, Config, Effect, Exit, Option, Schema, ServiceMap } from 'effect'
 import * as BuildEnv from '../../src/internal/platform/BuildEnv.js'
@@ -18,38 +20,43 @@ describe('Platform.Reflection.BuildEnv', () => {
         const host = yield* Effect.service(RuntimeHost).pipe(Effect.orDie)
         const enableExperimental = yield* Config.boolean('ENABLE_EXPERIMENTAL_TRAIT').pipe(Config.withDefault(false))
 
-        const traits = Logix.StateTrait.from(State)({
-          derivedA: Logix.StateTrait.node({
-            meta: {
-              label: enableExperimental ? 'derivedA (exp)' : 'derivedA',
-              description: enableExperimental ? 'experimental computed field' : 'stable computed field',
-              docsUrl: 'https://example.invalid/derivedA',
-              tags: enableExperimental ? ['experimental'] : ['stable'],
-              annotations: {
-                'x-phantom-source': enableExperimental ? 'on' : 'off',
-              },
-            },
-            computed: Logix.StateTrait.computed({
-              deps: ['a'],
-              get: (a) => a + 1,
-            }),
-          }),
-        })
-
         const module = Logix.Module.make('ReflectBuildEnvModule', {
           state: State,
           actions: Actions,
           reducers: { noop: (s: any) => s },
-          traits,
         })
 
-        const debug = Logix.Debug.getModuleTraits(module as any)
-        const program = debug.program
-        if (!program) {
-          throw new Error('expected StateTraitProgram to exist')
-        }
+        const fieldsLogic = module.logic('__reflect_build_env:fields', ($) => {
+          $.fields({
+            derivedA: FieldContracts.fieldNode({
+              meta: {
+                label: enableExperimental ? 'derivedA (exp)' : 'derivedA',
+                description: enableExperimental ? 'experimental computed field' : 'stable computed field',
+                docsUrl: 'https://example.invalid/derivedA',
+                tags: enableExperimental ? ['experimental'] : ['stable'],
+                annotations: {
+                  'x-phantom-source': enableExperimental ? 'on' : 'off',
+                },
+              },
+              computed: $.fields.computed({
+                deps: ['a'],
+                get: (a) => a + 1,
+              }),
+            }),
+          })
 
-        const ir = Logix.StateTrait.exportStaticIr(program, module.id)
+          return Effect.void
+        })
+
+        const program = Logix.Program.make(module, {
+          initial: { a: 0, derivedA: 0 },
+          logics: [fieldsLogic],
+        })
+
+        const ir = CoreReflection.exportStaticIr(program)
+        if (!ir) {
+          throw new Error('expected Static IR to exist')
+        }
         const derivedNode = ir.nodes.find((n) => n.nodeId === 'computed:derivedA')
 
         return {

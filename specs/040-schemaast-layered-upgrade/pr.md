@@ -10,10 +10,10 @@
 
 ### 1) SchemaAST 是 TypeIR 的上游实现材料，不是平台事实源
 
-- 平台的“引用空间事实源”仍是 035：`@logixjs/module.portSpec@v1` / `@logixjs/module.typeIr@v1`。  
+- 平台的“引用空间事实源”仍是 035：`@logixjs/module.portSpec@v1` / `@logixjs/module.typeIr@v1`。
 - SchemaAST 可以用于 **生成/投影** TypeIR、以及更好的解释/错误消息，但 SchemaAST 本体不应该被平台当作可引用空间真相源，否则会产生并行真相源与漂移。
 
-现有代码先例：`packages/logix-core/src/internal/state-trait/converge.ts` 已使用 `effect/SchemaAST` 做路径静态判定与诊断（递归/union/transform 的降级策略可复用到 TypeIR 投影）。
+现有代码先例：`packages/logix-core/src/internal/state-field/converge.ts` 已使用 `effect/SchemaAST` 做路径静态判定与诊断（递归/union/transform 的降级策略可复用到 TypeIR 投影）。
 
 ### 2) registry pack 应走 031 artifacts 槽位，进入同一条 IR 链路
 

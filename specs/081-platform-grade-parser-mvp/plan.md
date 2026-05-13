@@ -1,6 +1,6 @@
 # Implementation Plan: Platform-Grade Parser MVP（081）
 
-**Branch**: `081-platform-grade-parser-mvp` | **Date**: 2026-01-09 | **Spec**: [spec.md](./spec.md)  
+**Branch**: `081-platform-grade-parser-mvp` | **Date**: 2026-01-09 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `specs/081-platform-grade-parser-mvp/spec.md`
 
 ## Summary
@@ -33,13 +33,13 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript（workspace：5.8.2；以 `package.json` 为准）  
-**Primary Dependencies**: `effect` v3、Node-only：`ts-morph`（TypeScript Program + AST）、（可选）`swc`（辅助 parse/print/降级分析）  
-**Storage**: N/A（输出为 JSON 工件；可选落盘）  
-**Testing**: Vitest（建议为 AnchorIndex 的确定性/降级 reason codes 增加单元测试；集成测试由 085 CLI 承担）  
-**Target Platform**: Node.js 20+  
-**Project Type**: pnpm workspace（packages）  
-**Performance Goals**: N/A（解析器不在 runtime 热路径；但必须提供可解释的输入规模/耗时摘要的生成方式，且默认不影响确定性）  
+**Language/Version**: TypeScript（workspace：5.8.2；以 `package.json` 为准）
+**Primary Dependencies**: `effect` v3、Node-only：`ts-morph`（TypeScript Program + AST）、（可选）`swc`（辅助 parse/print/降级分析）
+**Storage**: N/A（输出为 JSON 工件；可选落盘）
+**Testing**: Vitest（建议为 AnchorIndex 的确定性/降级 reason codes 增加单元测试；集成测试由 085 CLI 承担）
+**Target Platform**: Node.js 20+
+**Project Type**: pnpm workspace（packages）
+**Performance Goals**: N/A（解析器不在 runtime 热路径；但必须提供可解释的输入规模/耗时摘要的生成方式，且默认不影响确定性）
 **Constraints**: 单一真相源、宁可错过不可乱补、输出确定性/可序列化/可 diff、子集外必须显式 Raw Mode
 
 ## Constitution Check

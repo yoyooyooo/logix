@@ -5,15 +5,6 @@
     "module",
     "handle",
     "bound-api",
-    "flow",
-    "match-builder",
-    "read-query",
-    "state-trait",
-    "link",
-    "process",
-    "external-store",
-    "debug",
-    "observability",
-    "inspection"
+    "match-builder"
   ]
 }

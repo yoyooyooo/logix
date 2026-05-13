@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "gen:monaco:types": "tsx scripts/generate-monaco-type-bundle.ts",
+    "gen:monaco:types": "node --import tsx scripts/generate-monaco-type-bundle.ts",
     "predev": "pnpm gen:monaco:types",
     "dev": "vite",
     "prebuild": "pnpm gen:monaco:types",

@@ -1,12 +1,15 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import { makePerfKernelLayer, silentDebugLayer } from './harness.js'
 
 export type DispatchShellEntrypointMode = 'reuseScope' | 'resolveEach'
-export type DispatchShellDiagnosticsLevel = Logix.Debug.DiagnosticsLevel
+export type DispatchShellDiagnosticsLevel = CoreDebug.DiagnosticsLevel
+export type DispatchShellShellMode = 'baseline' | 'fastPath'
 
 export type DispatchShellControlPlane = {
   readonly tuningId?: string
+  readonly shellMode: DispatchShellShellMode
 }
 
 export type DispatchShellTxnPhaseTiming = {
@@ -22,7 +25,7 @@ export type DispatchShellTxnPhaseTiming = {
   readonly dispatchActionCount?: number
   readonly bodyShellMs?: number
   readonly asyncEscapeGuardMs?: number
-  readonly traitConvergeMs?: number
+  readonly fieldConvergeMs?: number
   readonly scopedValidateMs?: number
   readonly sourceSyncMs?: number
   readonly commitTotalMs?: number
@@ -32,6 +35,122 @@ export type DispatchShellTxnPhaseTiming = {
   readonly commitOnCommitBeforeStateUpdateMs?: number
   readonly commitOnCommitAfterStateUpdateMs?: number
   readonly traceCount: number
+}
+
+export type DispatchShellABSample = {
+  readonly shellMode: DispatchShellShellMode
+  readonly totalMs: number
+  readonly phaseTiming?: DispatchShellTxnPhaseTiming
+}
+
+export type DispatchShellABPhaseDelta = {
+  readonly name: string
+  readonly group: 'scope' | 'queue/lane' | 'body' | 'commit' | 'diagnostics' | 'noop-phase' | 'other'
+  readonly baselineMs?: number
+  readonly fastPathMs?: number
+  readonly deltaMs?: number
+}
+
+export type DispatchShellABComparison = {
+  readonly baselineMode: DispatchShellShellMode
+  readonly fastPathMode: DispatchShellShellMode
+  readonly total: {
+    readonly baselineMs: number
+    readonly fastPathMs: number
+    readonly deltaMs: number
+  }
+  readonly phaseDeltas: ReadonlyArray<DispatchShellABPhaseDelta>
+  readonly migratedCost: boolean
+  readonly migratedRisks: ReadonlyArray<DispatchShellABPhaseDelta>
+}
+
+export const dispatchShellSameCommitABModes = ['baseline', 'fastPath'] as const
+
+export const parseDispatchShellShellModeEnv = (raw: string | undefined): DispatchShellShellMode => {
+  const value = raw?.trim()
+  if (value === '1' || value === 'fastPath') return 'fastPath'
+  return 'baseline'
+}
+
+export const dispatchShellShellModeEvidence = (
+  shellMode: DispatchShellShellMode,
+): Record<string, string> => ({
+  'runtime.shellMode': shellMode,
+  'runtime.shellMode.source': 'test-only:same-commit-ab',
+})
+
+const phaseDeltaFields: ReadonlyArray<{
+  readonly name: keyof DispatchShellTxnPhaseTiming
+  readonly group: DispatchShellABPhaseDelta['group']
+}> = [
+  { name: 'txnPreludeMs', group: 'other' },
+  { name: 'queueContextLookupMs', group: 'queue/lane' },
+  { name: 'queueResolvePolicyMs', group: 'queue/lane' },
+  { name: 'queueBackpressureMs', group: 'queue/lane' },
+  { name: 'queueEnqueueBookkeepingMs', group: 'queue/lane' },
+  { name: 'queueWaitMs', group: 'queue/lane' },
+  { name: 'queueStartHandoffMs', group: 'queue/lane' },
+  { name: 'dispatchActionRecordMs', group: 'diagnostics' },
+  { name: 'dispatchActionCommitHubMs', group: 'commit' },
+  { name: 'bodyShellMs', group: 'body' },
+  { name: 'asyncEscapeGuardMs', group: 'body' },
+  { name: 'fieldConvergeMs', group: 'noop-phase' },
+  { name: 'scopedValidateMs', group: 'noop-phase' },
+  { name: 'sourceSyncMs', group: 'noop-phase' },
+  { name: 'commitTotalMs', group: 'commit' },
+  { name: 'commitRowIdSyncMs', group: 'commit' },
+  { name: 'commitPublishCommitMs', group: 'commit' },
+  { name: 'commitStateUpdateDebugRecordMs', group: 'diagnostics' },
+  { name: 'commitOnCommitBeforeStateUpdateMs', group: 'commit' },
+  { name: 'commitOnCommitAfterStateUpdateMs', group: 'commit' },
+]
+
+const numberField = (timing: DispatchShellTxnPhaseTiming | undefined, name: keyof DispatchShellTxnPhaseTiming): number | undefined => {
+  const value = timing?.[name]
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+}
+
+export const compareDispatchShellABSamples = (
+  baseline: DispatchShellABSample,
+  fastPath: DispatchShellABSample,
+  options?: { readonly epsilonMs?: number },
+): DispatchShellABComparison => {
+  const epsilonMs = options?.epsilonMs ?? 0
+  const phaseDeltas = phaseDeltaFields.map((field): DispatchShellABPhaseDelta => {
+    const baselineMs = numberField(baseline.phaseTiming, field.name)
+    const fastPathMs = numberField(fastPath.phaseTiming, field.name)
+    const deltaMs =
+      baselineMs !== undefined && fastPathMs !== undefined
+        ? fastPathMs - baselineMs
+        : undefined
+    return {
+      name: field.name,
+      group: field.group,
+      baselineMs,
+      fastPathMs,
+      deltaMs,
+    }
+  })
+
+  const migratedRisks = phaseDeltas.filter(
+    (delta) =>
+      delta.deltaMs !== undefined &&
+      delta.deltaMs > epsilonMs &&
+      (delta.group === 'queue/lane' || delta.group === 'commit' || delta.group === 'diagnostics'),
+  )
+
+  return {
+    baselineMode: baseline.shellMode,
+    fastPathMode: fastPath.shellMode,
+    total: {
+      baselineMs: baseline.totalMs,
+      fastPathMs: fastPath.totalMs,
+      deltaMs: fastPath.totalMs - baseline.totalMs,
+    },
+    phaseDeltas,
+    migratedCost: fastPath.totalMs < baseline.totalMs && migratedRisks.length > 0,
+    migratedRisks,
+  }
 }
 
 const summarizeTxnPhaseTimings = (
@@ -65,7 +184,7 @@ const summarizeTxnPhaseTimings = (
     dispatchActionCount: numericField((trace) => trace?.dispatchActionCount),
     bodyShellMs: numericField((trace) => trace?.bodyShellMs),
     asyncEscapeGuardMs: numericField((trace) => trace?.asyncEscapeGuardMs),
-    traitConvergeMs: numericField((trace) => trace?.traitConvergeMs),
+    fieldConvergeMs: numericField((trace) => trace?.fieldConvergeMs),
     scopedValidateMs: numericField((trace) => trace?.scopedValidateMs),
     sourceSyncMs: numericField((trace) => trace?.sourceSyncMs),
     commitTotalMs: numericField((trace) => trace?.commit?.totalMs),
@@ -84,11 +203,17 @@ const readDispatchShellControlPlaneFromEnv = (): DispatchShellControlPlane => ({
     import.meta.env.VITE_LOGIX_PERF_TUNING_ID.trim().length > 0
       ? import.meta.env.VITE_LOGIX_PERF_TUNING_ID.trim()
       : undefined,
+  shellMode: parseDispatchShellShellModeEnv(
+    typeof (import.meta.env as Record<string, string | undefined>).VITE_LOGIX_TXN_SHELL_FASTPATH === 'string'
+      ? (import.meta.env as Record<string, string | undefined>).VITE_LOGIX_TXN_SHELL_FASTPATH
+      : undefined,
+  ),
 })
 
 export type DispatchShellRuntime = {
   readonly module: any
   readonly runtime: ReturnType<typeof Logix.Runtime.make>
+  readonly shellMode: DispatchShellShellMode
   readonly clearTxnPhaseTimings: () => void
   readonly getTxnPhaseTimingSummary: () => DispatchShellTxnPhaseTiming | undefined
 }
@@ -135,7 +260,7 @@ export const makeDispatchShellRuntime = (
     initial[`f${i}`] = 0
   }
 
-  const impl = M.implement({
+  const program = Logix.Program.make(M, {
     initial: initial as any,
     logics: [],
   })
@@ -147,7 +272,7 @@ export const makeDispatchShellRuntime = (
   }
   const getTxnPhaseTimingSummary = (): DispatchShellTxnPhaseTiming | undefined => summarizeTxnPhaseTimings(phaseTraces)
 
-  const captureTxnPhaseLayer = Logix.Debug.replace([
+  const captureTxnPhaseLayer = CoreDebug.replace([
     {
       record: (event) => {
         if (event.type === 'trace:txn-phase') {
@@ -158,7 +283,7 @@ export const makeDispatchShellRuntime = (
     },
   ])
 
-  const runtime = Logix.Runtime.make(impl, {
+  const runtime = Logix.Runtime.make(program, {
     stateTransaction: {
       instrumentation: 'light',
     },
@@ -177,6 +302,7 @@ export const makeDispatchShellRuntime = (
   return {
     module: M as any,
     runtime,
+    shellMode: controlPlane.shellMode,
     clearTxnPhaseTimings,
     getTxnPhaseTimingSummary,
   }
@@ -209,7 +335,7 @@ export const runDispatchShellSampleWithDiagnosticsLevel = (
   diagnosticsLevel: DispatchShellDiagnosticsLevel,
 ): Effect.Effect<void, never, any> =>
   runDispatchShellSample(rt, entrypointMode, iterations).pipe(
-    (effect) => Effect.provideService(effect, Logix.Debug.internal.currentDiagnosticsLevel, diagnosticsLevel),
+    (effect) => Effect.provideService(effect, CoreDebug.internal.currentDiagnosticsLevel, diagnosticsLevel),
   )
 
 export const runDispatchShellSampleWithBreakdown = (

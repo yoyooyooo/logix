@@ -1,6 +1,6 @@
 import { describe, it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
-import * as EffectOp from '../../src/EffectOp.js'
+import * as EffectOp from '../../src/internal/effect-op.js'
 
 describe('EffectOp core', () => {
   it('composeMiddleware should apply middlewares in stack order', async () => {

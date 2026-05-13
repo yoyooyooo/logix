@@ -21,11 +21,44 @@ import {
   type HostScheduler,
 } from './runtime/core/HostScheduler.js'
 import type { RuntimeStore } from './runtime/core/RuntimeStore.js'
-import { getRuntimeInternals } from './runtime/core/runtimeInternalsAccessor.js'
+import { getBoundInternals, getModuleFieldsProgram, getRuntimeInternals } from './runtime/core/runtimeInternalsAccessor.js'
+import { installModuleFieldsExpertPath } from './runtime/core/moduleFieldsExpertPath.js'
 import * as ProcessRuntime from './runtime/core/process/ProcessRuntime.js'
+import * as BoundApiRuntime from './runtime/core/BoundApiRuntime.js'
+import * as HotLifecycle from './runtime/core/hotLifecycle/index.js'
 import type * as ProcessProtocol from './runtime/core/process/protocol.js'
-import { currentExecVmMode, execVmModeLayer as execVmModeLayerInternal } from './state-trait/exec-vm-mode.js'
+import * as ProcessMeta from './runtime/core/process/meta.js'
+import { currentExecVmMode, execVmModeLayer as execVmModeLayerInternal } from './field-kernel/exec-vm-mode.js'
+import { FieldSourceRegistryTag, type FieldSourceRegistry } from './field-source-registry.js'
 import type { PatchReason } from './field-path.js'
+import { build as buildFieldProgramInternal } from './field-kernel/build.js'
+import {
+  computed as fieldComputedInternal,
+  externalStore as fieldExternalStoreInternal,
+  from as fieldFromInternal,
+  link as fieldLinkInternal,
+  list as fieldListInternal,
+  node as fieldNodeInternal,
+  source as fieldSourceInternal,
+  $root as fieldRootInternal,
+} from './field-kernel/dsl.js'
+import type { StateAtPath, StateFieldPath } from './field-kernel/field-path.js'
+import { exportStaticIr as exportFieldStaticIrInternal } from './field-kernel/ir.js'
+import * as FieldRuntimeInternal from './field-runtime/index.js'
+import { install as installFieldProgramInternal } from './field-kernel/install.js'
+import type { StaticIr as FieldStaticIr } from './field-kernel/ir.js'
+import type {
+  CheckRule,
+  FieldEntry,
+  FieldGraph,
+  FieldList,
+  FieldNode,
+  FieldPlan,
+  FieldProgram,
+  FieldSpec,
+} from './field-kernel/model.js'
+import type { FieldMeta } from './field-kernel/meta.js'
+import type { CleanupRequest, ExecuteRequest, FieldRef, ValidateMode, ValidateRequest } from './field-runtime/model.js'
 import type { TickSchedulerConfig } from './runtime/core/TickScheduler.js'
 
 export * as BuildEnv from './platform/BuildEnv.js'
@@ -33,8 +66,55 @@ export * as RuntimeHost from './platform/RuntimeHost.js'
 export * as ConstructionGuard from './platform/ConstructionGuard.js'
 export { normalizeFieldPath } from './field-path.js'
 export type { DirtyAllReason, DirtySet, FieldPath, FieldPathId } from './field-path.js'
-export { makeEnqueueTransaction } from './runtime/ModuleRuntime.txnQueue.js'
+export type { FieldSourceRegistry }
+export { makeEnqueueTransaction } from './runtime/core/ModuleRuntime.txnQueue.js'
+export {
+  createHotLifecycleOwner,
+  createHotLifecycleResourceRegistry,
+  makeHotLifecycleEvidence,
+  makeHotLifecycleObservationEnvelope,
+  makeHotLifecycleEventId,
+  makeHotLifecycleCleanupId,
+  runtimeHotLifecycleOwnerLayer,
+  getCurrentRuntimeHotLifecycleOwner,
+  makeRuntimeHotLifecycleContext,
+  normalizeHotLifecycleDecision,
+} from './runtime/core/hotLifecycle/index.js'
+export type {
+  HostBindingCleanupCategory,
+  HostBindingCleanupSummary,
+  HotLifecycleDecision,
+  HotLifecycleEvidence,
+  HotLifecycleReason,
+  HotLifecycleResourceRegistry,
+  RuntimeHotLifecycleOwner,
+  RuntimeHotLifecycleContext,
+  RuntimeHotLifecycleTransition,
+  RuntimeResourceCategory,
+  RuntimeResourceRef,
+  RuntimeResourceSummary,
+} from './runtime/core/hotLifecycle/index.js'
+export { FieldSourceRegistryTag }
 export * as ReplayLog from './runtime/core/ReplayLog.js'
+export type {
+  CheckRule,
+  FieldEntry,
+  FieldGraph,
+  FieldList,
+  FieldMeta,
+  FieldNode,
+  FieldPlan,
+  FieldProgram,
+  FieldRef,
+  FieldSpec,
+  FieldStaticIr,
+  StateAtPath,
+  StateFieldPath,
+  CleanupRequest as FieldCleanupRequest,
+  ExecuteRequest as FieldExecuteRequest,
+  ValidateMode as FieldValidateMode,
+  ValidateRequest as FieldValidateRequest,
+}
 
 /**
  * InternalContracts: the internal contract access entrypoint for in-repo integrators.
@@ -47,6 +127,37 @@ export * as ReplayLog from './runtime/core/ReplayLog.js'
 export const getImportsScope = (runtime: object): ImportsScope => {
   return getRuntimeInternals(runtime).imports
 }
+
+const RUNTIME_HOT_LIFECYCLE_OWNER_CACHE = new WeakMap<object, HotLifecycle.RuntimeHotLifecycleOwner>()
+
+export const getOrCreateRuntimeHotLifecycleOwner = (
+  runtime: object,
+  options: {
+    readonly ownerId: string
+    readonly runtimeInstanceId?: string
+    readonly cleanup?: () => Effect.Effect<void, never, never>
+  },
+): HotLifecycle.RuntimeHotLifecycleOwner => {
+  const cached = RUNTIME_HOT_LIFECYCLE_OWNER_CACHE.get(runtime)
+  if (cached) return cached
+
+  const owner = HotLifecycle.createHotLifecycleOwner({
+    ownerId: options.ownerId,
+    runtimeInstanceId: options.runtimeInstanceId ?? options.ownerId,
+    cleanup: options.cleanup,
+  })
+  RUNTIME_HOT_LIFECYCLE_OWNER_CACHE.set(runtime, owner)
+  return owner
+}
+
+export const bindRuntimeHotLifecycleOwner = (
+  runtime: object,
+  owner: HotLifecycle.RuntimeHotLifecycleOwner,
+): void => {
+  RUNTIME_HOT_LIFECYCLE_OWNER_CACHE.set(runtime, owner)
+}
+
+export const provideRuntimeHotLifecycleOwner = HotLifecycle.runtimeHotLifecycleOwnerLayer
 
 const RUNTIME_STORE_CACHE = new WeakMap<object, RuntimeStore>()
 
@@ -98,17 +209,80 @@ export const tickServicesLayer: Layer.Layer<any, never, never> = Layer.provideMe
 export const getStateTransactionInstrumentation = (runtime: object): StateTransactionInstrumentation =>
   getRuntimeInternals(runtime).txn.instrumentation
 
-export const getRowIdStore = (runtime: object): unknown => getRuntimeInternals(runtime).traits.rowIdStore
+export const getRowIdStore = (runtime: object): unknown => getRuntimeInternals(runtime).fields.rowIdStore
 
-export const getStateTraitListConfigs = (runtime: object): ReadonlyArray<unknown> =>
-  getRuntimeInternals(runtime).traits.getListConfigs()
+export const getFieldListConfigs = (runtime: object): ReadonlyArray<unknown> =>
+  getRuntimeInternals(runtime).fields.getListConfigs()
 
-export const registerStateTraitProgram = (
+export const fieldRoot = fieldRootInternal
+export const fieldFrom = fieldFromInternal
+export const fieldNode = fieldNodeInternal
+export const fieldList = fieldListInternal
+export const fieldComputed = fieldComputedInternal
+export const fieldSource = fieldSourceInternal
+export const fieldExternalStore = fieldExternalStoreInternal
+export const fieldLink = fieldLinkInternal
+export const buildFieldProgram = buildFieldProgramInternal
+export const installFieldProgram = installFieldProgramInternal
+export const exportFieldStaticIr = (
+  programOrArgs:
+    | FieldProgram<any>
+    | {
+        readonly program: FieldProgram<any>
+        readonly moduleId: string
+        readonly version?: string
+      },
+  moduleId?: string,
+  options?: {
+    readonly version?: string
+  },
+): FieldStaticIr => {
+  if (moduleId === undefined && typeof programOrArgs === 'object' && programOrArgs !== null && 'program' in programOrArgs) {
+    return exportFieldStaticIrInternal(programOrArgs as {
+      readonly program: FieldProgram<any>
+      readonly moduleId: string
+      readonly version?: string
+    })
+  }
+
+  return exportFieldStaticIrInternal({
+    program: programOrArgs as FieldProgram<any>,
+    moduleId: moduleId as string,
+    version: options?.version,
+  })
+}
+
+export const fieldRef = FieldRuntimeInternal.Ref
+export const fieldScopedValidate = FieldRuntimeInternal.scopedValidate
+export const fieldScopedExecute = FieldRuntimeInternal.scopedExecute
+export const fieldCleanup = FieldRuntimeInternal.cleanup
+export const makeFieldSourceWiring = FieldRuntimeInternal.makeSourceWiring
+export const makeBound = BoundApiRuntime.make
+
+export const withModuleFieldDeclarations = <M extends { readonly id: string; readonly tag: any; readonly stateSchema: any }>(
+  module: M,
+  fields: unknown,
+): M => {
+  if (!fields || typeof fields !== 'object') {
+    return module
+  }
+
+  installModuleFieldsExpertPath({
+    id: module.id,
+    moduleTag: module.tag,
+    stateSchema: module.stateSchema,
+    fields: fields as any,
+  })
+
+  return module
+}
+
+export const registerFieldProgram = (
   runtime: object,
   program: unknown,
   registerOptions?: { readonly bumpReason?: unknown },
 ): void => {
-  getRuntimeInternals(runtime).traits.registerStateTraitProgram(program, registerOptions as any)
+  getRuntimeInternals(runtime).fields.registerFieldProgram(program, registerOptions as any)
 }
 
 export const recordStatePatch = (
@@ -117,10 +291,10 @@ export const recordStatePatch = (
   reason: PatchReason,
   from?: unknown,
   to?: unknown,
-  traitNodeId?: string,
+  fieldNodeId?: string,
   stepId?: number,
 ): void => {
-  getRuntimeInternals(runtime).txn.recordStatePatch(path, reason, from, to, traitNodeId, stepId)
+  getRuntimeInternals(runtime).txn.recordStatePatch(path, reason, from, to, fieldNodeId, stepId)
 }
 
 export const runWithStateTransaction = <E, R>(
@@ -129,6 +303,23 @@ export const runWithStateTransaction = <E, R>(
   body: () => Effect.Effect<void, E, R>,
 ): Effect.Effect<void, E, R> =>
   getRuntimeInternals(runtime).txn.runWithStateTransaction(origin as any, body as any) as any
+
+export const runWithBoundStateTransaction = <E, R>(
+  bound: object,
+  origin: { readonly kind: string; readonly name?: string; readonly details?: unknown },
+  body: () => Effect.Effect<void, E, R>,
+): Effect.Effect<void, E, R> =>
+  getBoundInternals(bound).txn.runWithStateTransaction(origin as any, body as any) as any
+
+export const registerBoundStart = (
+  bound: object,
+  effect: Effect.Effect<void, never, any>,
+  options?: { readonly name?: string; readonly fatalOnFailure?: boolean },
+): void => {
+  getBoundInternals(bound).lifecycle.registerStart(effect, options)
+}
+
+export { getModuleFieldsProgram }
 
 export const applyTransactionSnapshot = (
   runtime: object,
@@ -139,11 +330,11 @@ export const applyTransactionSnapshot = (
 export const withCurrentLinkId = <A, E, R>(effect: Effect.Effect<A, E, R>, linkId: string): Effect.Effect<A, E, R> =>
   Effect.provideService(effect, EffectOpCore.currentLinkId, linkId)
 
-/** 049: Exec VM (core-ng) switch: enable the Exec VM hot path within the current Effect scope. */
+/** 049: Exec VM experimental switch: enable the Exec VM hot path within the current Effect scope. */
 export const withExecVmMode = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   Effect.provideService(effect, currentExecVmMode, true)
 
-/** 049: Exec VM (core-ng) switch: enable/disable the Exec VM hot path within the current runtime scope. */
+/** 049: Exec VM experimental switch: enable/disable the Exec VM hot path within the current runtime scope. */
 export const execVmModeLayer = (enabled: boolean): Layer.Layer<any, never, never> =>
   execVmModeLayerInternal(enabled) as Layer.Layer<any, never, never>
 
@@ -211,4 +402,13 @@ export const installProcess = <E, R>(
   Effect.gen(function* () {
     const rt = yield* Effect.service(ProcessRuntime.ProcessRuntimeTag)
     return yield* rt.install(process, options)
+  })
+
+export const makeProcess = <E, R>(
+  definition: ProcessProtocol.ProcessDefinition,
+  effect: Effect.Effect<void, E, R>,
+): Effect.Effect<void, E, R> =>
+  ProcessMeta.attachMeta(effect, {
+    definition,
+    kind: 'process',
   })

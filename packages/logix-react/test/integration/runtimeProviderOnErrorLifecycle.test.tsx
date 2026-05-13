@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 // @vitest-environment happy-dom
 
 import React, { useEffect } from 'react'
@@ -14,8 +15,8 @@ describe('RuntimeProvider.onError (lifecycle/diagnostic bridge)', () => {
       state: Schema.Void,
       actions: {},
     })
-    const brokenLogic = Broken.logic(() => Effect.die(new Error('boom')))
-    const BrokenImpl = Broken.implement({
+    const brokenLogic = Broken.logic('broken-logic', () => Effect.die(new Error('boom')))
+    const BrokenProgram = Logix.Program.make(Broken, {
       initial: undefined,
       logics: [brokenLogic],
     })
@@ -24,12 +25,14 @@ describe('RuntimeProvider.onError (lifecycle/diagnostic bridge)', () => {
       state: Schema.Void,
       actions: {},
     })
-    const RootImpl = Root.implement({
+    const RootProgram = Logix.Program.make(Root, {
       initial: undefined,
-      imports: [BrokenImpl.impl],
+      capabilities: {
+        imports: [BrokenProgram],
+      },
     })
 
-    const runtime = Logix.Runtime.make(RootImpl, {
+    const runtime = Logix.Runtime.make(RootProgram, {
       layer: Layer.empty as Layer.Layer<any, never, never>,
     })
 
@@ -48,7 +51,7 @@ describe('RuntimeProvider.onError (lifecycle/diagnostic bridge)', () => {
       </RuntimeProvider>
     )
 
-    renderHook(() => useModule(BrokenImpl), { wrapper })
+    renderHook(() => useModule(BrokenProgram), { wrapper })
 
     await waitFor(() => {
       expect(
@@ -77,7 +80,7 @@ describe('RuntimeProvider.onError (lifecycle/diagnostic bridge)', () => {
       state: Schema.Void,
       actions: {},
     })
-    const runtime = Logix.Runtime.make(Root.implement({ initial: undefined }), {
+    const runtime = Logix.Runtime.make(Logix.Program.make(Root, { initial: undefined }), {
       layer: Layer.empty as Layer.Layer<any, never, never>,
     })
 
@@ -100,7 +103,7 @@ describe('RuntimeProvider.onError (lifecycle/diagnostic bridge)', () => {
       const rt = useRuntime()
       useEffect(() => {
         rt.runFork(
-          Logix.Debug.record({
+          CoreDebug.record({
             type: 'diagnostic',
             moduleId: 'DiagnosticModule',
             instanceId: 'instance-1',

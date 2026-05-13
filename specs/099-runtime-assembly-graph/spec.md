@@ -1,8 +1,8 @@
 # Feature Specification: O-006 Runtime Assembly Graph
 
-**Feature Branch**: `[099-runtime-assembly-graph]`  
-**Created**: 2026-02-25  
-**Status**: Planned  
+**Feature Branch**: `[099-runtime-assembly-graph]`
+**Created**: 2026-02-25
+**Status**: Planned
 **Input**: User description: "O-006 Runtime 装配链路减层：去掉过深 Layer/FiberRef patch 体操，用显式 assembly graph 替代多段 build/merge/patch，RootContext ready/merge 流程显式化；验收是冷启动路径可视化且 boot 失败定位更快。"
 
 ## North Stars & Kill Features Traceability _(optional)_

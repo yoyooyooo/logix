@@ -1,7 +1,7 @@
 # Implementation Plan: O-014 文档-实现双向收敛机制固化
 
-**Branch**: `pr/o014-doc-impl-bidirectional-convergence`  
-**Date**: 2026-02-26  
+**Branch**: `pr/o014-doc-impl-bidirectional-convergence`
+**Date**: 2026-02-26
 **Spec**: `specs/102-o014-doc-impl-bidirectional-convergence/spec.md`
 
 ## Summary

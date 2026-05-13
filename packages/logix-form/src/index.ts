@@ -1,19 +1,12 @@
-// Public barrel for @logixjs/form
-// Recommended usage:
+// Public barrel for @logixjs/form.
+// Single-track canonical usage:
 //   import * as Form from "@logixjs/form"
-// Then Form exposes namespaces like make / traits / node / list / Rule / Error / Path.
+// This root exposes only the frozen form domain surface. Path/schema mapping
+// helpers remain internal implementation details, not public subpaths.
 
 export { make } from './Form.js'
 export type * from './Form.js'
 
-export { fromValues as from } from './Form.js'
-export { derived, list, node, rules, traits } from './Form.js'
-
-export * as FormView from './FormView.js'
 export * as Rule from './Rule.js'
 export * as Error from './Error.js'
-export * as Trait from './Trait.js'
-export { computed, link, source } from './Trait.js'
-export * as Path from './Path.js'
-export * as SchemaPathMapping from './SchemaPathMapping.js'
-export * as SchemaErrorMapping from './SchemaErrorMapping.js'
+export * as Companion from './Companion.js'

@@ -1,8 +1,8 @@
 # Quickstart: SchemaAST 分层能力升级（040：schemaId + registry pack）
 
-**Date**: 2025-12-26  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/040-schemaast-layered-upgrade/spec.md`  
-**Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/040-schemaast-layered-upgrade/plan.md`
+**Date**: 2025-12-26
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/040-schemaast-layered-upgrade/spec.md`
+**Plan**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/040-schemaast-layered-upgrade/plan.md`
 
 ## 0) 目标一句话
 
@@ -16,17 +16,17 @@
 
 ## 2) 最小消费方式（离线解释 / Workbench）
 
-1. 从一次 trial-run / evidence / 导出工件中获取 registry pack（建议作为可选 artifact：`@logixjs/schema.registry@v1`）。  
-2. 在工具侧加载 registry pack，并建立 `schemaId -> SchemaEntry` 的索引。  
-3. 当看到某条事件/IR/协议消息携带 `schemaRef.schemaId` 时：  
-   - 能找到 → 用对应 schema 解释字段含义/约束/注解；  
+1. 从一次 trial-run / evidence / 导出工件中获取 registry pack（建议作为可选 artifact：`@logixjs/schema.registry@v1`）。
+2. 在工具侧加载 registry pack，并建立 `schemaId -> SchemaEntry` 的索引。
+3. 当看到某条事件/IR/协议消息携带 `schemaRef.schemaId` 时：
+   - 能找到 → 用对应 schema 解释字段含义/约束/注解；
    - 找不到 → 降级为“安全摘要 + 缺失原因提示”，但仍可展示原始 JsonValue。
 
 ## 3) Sandbox 协议的最小收益（可解释失败）
 
-- 对 Host↔Worker 的消息，在边界解码时做 schema 校验：  
-  - 合法 → 继续处理；  
-  - 非法 → 产出结构化错误事件（字段路径 + 分类 + 最小上下文），并保持会话继续可用。  
+- 对 Host↔Worker 的消息，在边界解码时做 schema 校验：
+  - 合法 → 继续处理；
+  - 非法 → 产出结构化错误事件（字段路径 + 分类 + 最小上下文），并保持会话继续可用。
 - 版本不兼容必须在握手阶段明确拒绝（携带双方版本与兼容性结论）。
 
 ## 4) 迁移/演进原则（不做兼容层）

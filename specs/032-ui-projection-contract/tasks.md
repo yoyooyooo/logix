@@ -4,7 +4,7 @@ description: "Task list for 032-ui-projection-contract (PresentationState / Bind
 
 # Tasks: UI Projection Contract（032：语义编排与 UI 投影解耦）
 
-**Input**: `specs/032-ui-projection-contract/spec.md`  
+**Input**: `specs/032-ui-projection-contract/spec.md`
 **Prerequisites**: `specs/032-ui-projection-contract/plan.md`（required）, `specs/032-ui-projection-contract/research.md`, `specs/032-ui-projection-contract/data-model.md`, `specs/032-ui-projection-contract/contracts/`, `specs/032-ui-projection-contract/quickstart.md`
 
 **Tests**: 本特性以“协议与校验”为主（不触及 runtime 热路径），但会被 036 Contract Suite 与后续 Workbench/Agent 强依赖；至少需要 contracts/schema 预检 + 关键校验规则的纯函数单测，避免平台与 CI 漂移。
@@ -40,7 +40,7 @@ description: "Task list for 032-ui-projection-contract (PresentationState / Bind
 
 ## Phase 3: User Story 1 - UI 无状态化：展示态由语义层驱动（Priority: P1）🎯 MVP
 
-**Goal**: UI 仅渲染绑定模块状态并派发事件/动作；不维护展示态真相源。  
+**Goal**: UI 仅渲染绑定模块状态并派发事件/动作；不维护展示态真相源。
 **Independent Test**: 一个含 overlay/stack 的最小场景：UI 仅靠 state 渲染即可开/关/回填（无本地 UI state）。
 
 - [ ] T010 [US1] 增加一个最小 PresentationState 模块（overlay/stack）样例到 `examples/logix-sandbox-mvp/src/stage/presentation/PresentationModule.ts`
@@ -52,7 +52,7 @@ description: "Task list for 032-ui-projection-contract (PresentationState / Bind
 
 ## Phase 4: User Story 2 - 画布编排的是语义模型，不是界面像素（Priority: P2）
 
-**Goal**: 语义蓝图与 UI 投影解耦：改 UiBlueprint 不引入语义漂移。  
+**Goal**: 语义蓝图与 UI 投影解耦：改 UiBlueprint 不引入语义漂移。
 **Independent Test**: 仅修改 UiBlueprint（布局/组件选择）时，语义蓝图（033）不变；试跑行为不变。
 
 - [ ] T014 [US2] 为 Workbench 增加 UiBlueprint 的稳定归一化（排序/去噪）以便 diff 审阅到 `packages/logix-sandbox/src/workbench/ui-projection/normalizeUiBlueprint.ts`
@@ -63,7 +63,7 @@ description: "Task list for 032-ui-projection-contract (PresentationState / Bind
 
 ## Phase 5: User Story 3 - 禁止跨模块读取：UI 只读自身模块状态（Priority: P3）
 
-**Goal**: UI 表达式/绑定不允许跨实例读写；跨模块展示必须由语义层聚合/镜像。  
+**Goal**: UI 表达式/绑定不允许跨实例读写；跨模块展示必须由语义层聚合/镜像。
 **Independent Test**: 尝试绑定到别的 instanceId 的 PortAddress 会被静态校验拒绝并给出修复建议。
 
 - [ ] T017 [US3] 将 035 PortSpec/TypeIR 作为校验输入：BindingSchema 只能引用“自身 instanceId 对应模块”的 PortAddress 到 `packages/logix-sandbox/src/workbench/ui-projection/validateBindingSchema.ts`

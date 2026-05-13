@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "intent-flow://specs/041-docs-inline-playground/contracts/playground-block.schema.json",
+  "$id": "logix://specs/041-docs-inline-playground/contracts/playground-block.schema.json",
   "title": "PlaygroundBlock",
   "type": "object",
   "additionalProperties": false,

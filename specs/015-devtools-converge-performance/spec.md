@@ -1,8 +1,8 @@
 # Feature Specification: 015 Devtools Converge Performance Pane
 
-**Feature Branch**: `015-devtools-converge-performance`  
-**Created**: 2025-12-17  
-**Status**: Draft  
+**Feature Branch**: `015-devtools-converge-performance`
+**Created**: 2025-12-17
+**Status**: Draft
 **Input**: User description: "为 converge 提供类似浏览器性能面板的深挖视图：多行时间轴 + Audits（可操作建议）+ 可复制代码片段（Provider override 优先）"
 
 ## Assumptions

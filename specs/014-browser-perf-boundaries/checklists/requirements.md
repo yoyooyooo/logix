@@ -1,33 +1,33 @@
 # Specification Quality Checklist: 014 浏览器压测基线与性能边界地图
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-16  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-16
 **Feature**: `specs/014-browser-perf-boundaries/spec.md`
 
 ## Content Quality
 
-- [x] 仅包含必要的实现跑道约束（`vitest` browser mode），不绑定运行时代码实现细节  
-- [x] Focused on user value and business needs  
-- [x] Written for non-technical stakeholders  
-- [x] All mandatory sections completed  
+- [x] 仅包含必要的实现跑道约束（`vitest` browser mode），不绑定运行时代码实现细节
+- [x] Focused on user value and business needs
+- [x] Written for non-technical stakeholders
+- [x] All mandatory sections completed
 
 ## Requirement Completeness
 
-- [x] No [NEEDS CLARIFICATION] markers remain  
-- [x] Requirements are testable and unambiguous  
-- [x] Success criteria are measurable  
-- [x] Success criteria 可对比且口径稳定（允许固定 browser mode 跑道）  
-- [x] All acceptance scenarios are defined  
-- [x] Edge cases are identified  
-- [x] Scope is clearly bounded  
-- [x] Dependencies and assumptions identified  
+- [x] No [NEEDS CLARIFICATION] markers remain
+- [x] Requirements are testable and unambiguous
+- [x] Success criteria are measurable
+- [x] Success criteria 可对比且口径稳定（允许固定 browser mode 跑道）
+- [x] All acceptance scenarios are defined
+- [x] Edge cases are identified
+- [x] Scope is clearly bounded
+- [x] Dependencies and assumptions identified
 
 ## Feature Readiness
 
-- [x] All functional requirements have clear acceptance criteria  
-- [x] User scenarios cover primary flows  
-- [x] Feature meets measurable outcomes defined in Success Criteria  
-- [x] 仅暴露必要的“测试跑道/报告契约”约束（避免与运行时代码实现耦合）  
+- [x] All functional requirements have clear acceptance criteria
+- [x] User scenarios cover primary flows
+- [x] Feature meets measurable outcomes defined in Success Criteria
+- [x] 仅暴露必要的“测试跑道/报告契约”约束（避免与运行时代码实现耦合）
 
 ## Notes
 

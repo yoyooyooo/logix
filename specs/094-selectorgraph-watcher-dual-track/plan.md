@@ -1,6 +1,6 @@
 # Implementation Plan: SelectorGraph Watcher Dual Track（O-001）
 
-**Branch**: `094-selectorgraph-watcher-dual-track` | **Date**: 2026-02-25 | **Spec**: `specs/094-selectorgraph-watcher-dual-track/spec.md`  
+**Branch**: `094-selectorgraph-watcher-dual-track` | **Date**: 2026-02-25 | **Spec**: `specs/094-selectorgraph-watcher-dual-track/spec.md`
 **Input**: `specs/094-selectorgraph-watcher-dual-track/spec.md`
 
 ## Summary
@@ -14,14 +14,14 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: `effect` v3、`@logixjs/core` runtime internals（FlowRuntime/ReadQuery）  
-**Storage**: N/A  
-**Testing**: Vitest + `@effect/vitest`  
-**Target Platform**: Node.js 20+（核心包单测）  
-**Project Type**: pnpm workspace（packages/*）  
-**Performance Goals**: 保持 hot-path 回归可控；Flow 仅增加一次编译判定与静态流映射，不引入额外事务成本  
-**Constraints**: forward-only、统一最小 IR、稳定标识、事务窗口禁 IO、诊断 slim 可序列化  
+**Language/Version**: TypeScript 5.9.x（ESM）
+**Primary Dependencies**: `effect` v3、`@logixjs/core` runtime internals（FlowRuntime/ReadQuery）
+**Storage**: N/A
+**Testing**: Vitest + `@effect/vitest`
+**Target Platform**: Node.js 20+（核心包单测）
+**Project Type**: pnpm workspace（packages/*）
+**Performance Goals**: 保持 hot-path 回归可控；Flow 仅增加一次编译判定与静态流映射，不引入额外事务成本
+**Constraints**: forward-only、统一最小 IR、稳定标识、事务窗口禁 IO、诊断 slim 可序列化
 **Scale/Scope**: 第一阶段只改 `FlowRuntime.fromState` 与 `Flow` 相关测试
 
 ## Constitution Check

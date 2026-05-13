@@ -1,6 +1,6 @@
 # Implementation Plan: TrialRun Artifacts（031：artifacts 槽位 + RulesManifest 首用例）
 
-**Branch**: `031-trialrun-artifacts` | **Date**: 2025-12-26 | **Spec**: `specs/031-trialrun-artifacts/spec.md`  
+**Branch**: `031-trialrun-artifacts` | **Date**: 2025-12-26 | **Spec**: `specs/031-trialrun-artifacts/spec.md`
 **Input**: `specs/031-trialrun-artifacts/spec.md`
 
 ## Summary
@@ -14,12 +14,12 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.x（ESM）  
-**Primary Dependencies**: `effect` v3、`@logixjs/core`、`@logixjs/form`、`@logixjs/sandbox`  
-**Storage**: N/A（以可序列化 JSON 工件为主，可导出/存档）  
-**Testing**: Vitest（必要时使用 `@effect/vitest`）  
-**Target Platform**: Node.js（CI/脚本）+ 现代浏览器（Sandbox Workbench）  
-**Project Type**: pnpm workspace（`packages/*` + `examples/*`）  
+**Language/Version**: TypeScript 5.x（ESM）
+**Primary Dependencies**: `effect` v3、`@logixjs/core`、`@logixjs/form`、`@logixjs/sandbox`
+**Storage**: N/A（以可序列化 JSON 工件为主，可导出/存档）
+**Testing**: Vitest（必要时使用 `@effect/vitest`）
+**Target Platform**: Node.js（CI/脚本）+ 现代浏览器（Sandbox Workbench）
+**Project Type**: pnpm workspace（`packages/*` + `examples/*`）
 **Performance Goals**:
 - 不触及热路径：artifacts 仅在 trial-run/inspection 入口按需计算（默认不分配、不录制）。
 - 默认预算：每个 artifact ≤ 50KB；超限必须截断并显式标注（不允许静默丢失）。

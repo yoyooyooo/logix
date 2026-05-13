@@ -1,0 +1,405 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-05-02T11:21:22.963Z",
+    "from": {
+      "file": "specs/171-agent-live-runtime-bridge/perf/before.worktree.local.live-bridge.default.json",
+      "commit": "8938efd2f325ce55e6b391bd0a5a1dc04c6f3c3e"
+    },
+    "to": {
+      "file": "specs/171-agent-live-runtime-bridge/perf/after.worktree.local.live-bridge.default.json",
+      "commit": "8938efd2f325ce55e6b391bd0a5a1dc04c6f3c3e"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.before=true",
+        "git.dirty.after=true"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 0,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "liveBridge.disabledOverhead.txnCommit",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "budget.cutOffCount",
+          "unit": "count",
+          "scope": "whereSlices",
+          "before": {
+            "ok": 3,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 3,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "budget.cutOffCount(whereSlices) unit=count: before[value=0 ok=3 unavailable=0 missing=0] after[value=0 ok=3 unavailable=0 missing=0]"
+        },
+        {
+          "name": "liveBridge.bridgeMode",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 9,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "adapterInactive"
+          },
+          "after": {
+            "ok": 9,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "adapterInactive"
+          },
+          "message": "liveBridge.bridgeMode(points) unit=count: before[value=adapterInactive ok=9 unavailable=0 missing=0] after[value=adapterInactive ok=9 unavailable=0 missing=0]"
+        },
+        {
+          "name": "liveBridge.captureBufferAllocations",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 9,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 9,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "liveBridge.captureBufferAllocations(points) unit=count: before[value=0 ok=9 unavailable=0 missing=0] after[value=0 ok=9 unavailable=0 missing=0]"
+        },
+        {
+          "name": "liveBridge.operationRequests",
+          "unit": "ratio",
+          "scope": "points",
+          "before": {
+            "ok": 9,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 9,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "liveBridge.operationRequests(points) unit=ratio: before[value=0 ok=9 unavailable=0 missing=0] after[value=0 ok=9 unavailable=0 missing=0]"
+        },
+        {
+          "name": "liveBridge.transactionWindowIoCount",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 9,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 9,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "liveBridge.transactionWindowIoCount(points) unit=count: before[value=0 ok=9 unavailable=0 missing=0] after[value=0 ok=9 unavailable=0 missing=0]"
+        },
+        {
+          "name": "liveBridge.transportAllocations",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 9,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 9,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "liveBridge.transportAllocations(points) unit=count: before[value=0 ok=9 unavailable=0 missing=0] after[value=0 ok=9 unavailable=0 missing=0]"
+        },
+        {
+          "name": "module.stateWidth",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 9,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 128
+          },
+          "after": {
+            "ok": 9,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 128
+          },
+          "message": "module.stateWidth(points) unit=count: before[value=128 ok=9 unavailable=0 missing=0] after[value=128 ok=9 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.dispatchesPerSample",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 9,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 100
+          },
+          "after": {
+            "ok": 9,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 100
+          },
+          "message": "runtime.dispatchesPerSample(points) unit=count: before[value=100 ok=9 unavailable=0 missing=0] after[value=100 ok=9 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 9,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 9,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=9 unavailable=0 missing=0] after[value=core ok=9 unavailable=0 missing=0]"
+        }
+      ],
+      "metricDeltas": [
+        {
+          "metric": "runtime.txnCommitMs",
+          "unit": "ms",
+          "compared": 9,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [
+            {
+              "params": {
+                "stateWidth": 1,
+                "bridgeMode": "noBridge"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.6920000004768372,
+                "p95Ms": 0.7179999995231628
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.665,
+                "p95Ms": 0.7379999995231629
+              },
+              "deltaMs": {
+                "medianMs": -0.02700000047683715,
+                "p95Ms": 0.020000000000000018
+              },
+              "ratio": {
+                "median": 0.9609826582973523,
+                "p95": 1.0278551532218418
+              }
+            },
+            {
+              "params": {
+                "stateWidth": 1,
+                "bridgeMode": "disabled"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.6920000004768372,
+                "p95Ms": 0.7179999995231628
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.665,
+                "p95Ms": 0.7379999995231629
+              },
+              "deltaMs": {
+                "medianMs": -0.02700000047683715,
+                "p95Ms": 0.020000000000000018
+              },
+              "ratio": {
+                "median": 0.9609826582973523,
+                "p95": 1.0278551532218418
+              }
+            },
+            {
+              "params": {
+                "stateWidth": 1,
+                "bridgeMode": "adapterInactive"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.6920000004768372,
+                "p95Ms": 0.7179999995231628
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.665,
+                "p95Ms": 0.7379999995231629
+              },
+              "deltaMs": {
+                "medianMs": -0.02700000047683715,
+                "p95Ms": 0.020000000000000018
+              },
+              "ratio": {
+                "median": 0.9609826582973523,
+                "p95": 1.0278551532218418
+              }
+            },
+            {
+              "params": {
+                "stateWidth": 128,
+                "bridgeMode": "noBridge"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.7070000004768372,
+                "p95Ms": 0.745
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.7059999990463257,
+                "p95Ms": 0.755
+              },
+              "deltaMs": {
+                "medianMs": -0.001000001430511488,
+                "p95Ms": 0.010000000000000009
+              },
+              "ratio": {
+                "median": 0.9985855708205983,
+                "p95": 1.0134228187919463
+              }
+            },
+            {
+              "params": {
+                "stateWidth": 128,
+                "bridgeMode": "disabled"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.7070000004768372,
+                "p95Ms": 0.745
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.7059999990463257,
+                "p95Ms": 0.755
+              },
+              "deltaMs": {
+                "medianMs": -0.001000001430511488,
+                "p95Ms": 0.010000000000000009
+              },
+              "ratio": {
+                "median": 0.9985855708205983,
+                "p95": 1.0134228187919463
+              }
+            }
+          ],
+          "topImprovements": [
+            {
+              "params": {
+                "stateWidth": 512,
+                "bridgeMode": "noBridge"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.7139999985694885,
+                "p95Ms": 0.7759999990463257
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.7120000004768372,
+                "p95Ms": 0.7590000009536744
+              },
+              "deltaMs": {
+                "medianMs": -0.0019999980926512784,
+                "p95Ms": -0.01699999809265129
+              },
+              "ratio": {
+                "median": 0.9971988822175654,
+                "p95": 0.9780927859361551
+              }
+            },
+            {
+              "params": {
+                "stateWidth": 512,
+                "bridgeMode": "disabled"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.7139999985694885,
+                "p95Ms": 0.7759999990463257
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.7120000004768372,
+                "p95Ms": 0.7590000009536744
+              },
+              "deltaMs": {
+                "medianMs": -0.0019999980926512784,
+                "p95Ms": -0.01699999809265129
+              },
+              "ratio": {
+                "median": 0.9971988822175654,
+                "p95": 0.9780927859361551
+              }
+            },
+            {
+              "params": {
+                "stateWidth": 512,
+                "bridgeMode": "adapterInactive"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.7139999985694885,
+                "p95Ms": 0.7759999990463257
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.7120000004768372,
+                "p95Ms": 0.7590000009536744
+              },
+              "deltaMs": {
+                "medianMs": -0.0019999980926512784,
+                "p95Ms": -0.01699999809265129
+              },
+              "ratio": {
+                "median": 0.9971988822175654,
+                "p95": 0.9780927859361551
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

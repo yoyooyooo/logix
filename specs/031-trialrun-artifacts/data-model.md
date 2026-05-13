@@ -1,8 +1,8 @@
 # Data Model: TrialRun Artifacts（031：artifacts 槽位）
 
-**Date**: 2025-12-26  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/031-trialrun-artifacts/spec.md`  
-**Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/031-trialrun-artifacts/plan.md`
+**Date**: 2025-12-26
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/031-trialrun-artifacts/spec.md`
+**Plan**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/031-trialrun-artifacts/plan.md`
 
 > 本文件固化 031 的“artifacts 槽位”数据模型（协议层），不规定具体导出实现。
 
@@ -16,7 +16,7 @@
 
 ## Entity: ArtifactKey
 
-**Purpose**：唯一标识一个版本化 artifact 协议（长期可存储、可 diff）。  
+**Purpose**：唯一标识一个版本化 artifact 协议（长期可存储、可 diff）。
 **Shape**：`"@scope/name@vN"`，其中 `name` 可包含 `.` 用于表达概念域（例如 `form.rulesManifest`）。
 
 Examples：
@@ -27,7 +27,7 @@ Examples：
 
 ## Entity: ArtifactEnvelope
 
-**Purpose**：以统一形态表达 artifact 的可用性、截断与失败原因（不让消费者猜）。  
+**Purpose**：以统一形态表达 artifact 的可用性、截断与失败原因（不让消费者猜）。
 **Canonical schema**：`specs/031-trialrun-artifacts/contracts/schemas/artifact-envelope.schema.json`
 
 Fields（概要）：
@@ -44,7 +44,7 @@ Fields（概要）：
 
 ## Entity: TrialRunArtifacts
 
-**Purpose**：TrialRunReport 的 artifacts 槽位承载：`Record<ArtifactKey, ArtifactEnvelope>`。  
+**Purpose**：TrialRunReport 的 artifacts 槽位承载：`Record<ArtifactKey, ArtifactEnvelope>`。
 **Canonical schema**：`specs/031-trialrun-artifacts/contracts/schemas/trial-run-artifacts.schema.json`
 
 语义：
@@ -55,7 +55,7 @@ Fields（概要）：
 
 ## Artifact: `@logixjs/form.rulesManifest@v1`
 
-**Purpose**：Form rules 的 Supplemental Static IR（规则清单 + warnings）。  
+**Purpose**：Form rules 的 Supplemental Static IR（规则清单 + warnings）。
 **Canonical schema**：`specs/031-trialrun-artifacts/contracts/schemas/form-rules-manifest-artifact.schema.json`
 
 Payload：

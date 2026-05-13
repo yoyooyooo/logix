@@ -9,7 +9,9 @@ let mermaidModulePromise: Promise<any> | null = null
 let mermaidRenderQueue: Promise<unknown> = Promise.resolve()
 
 async function loadMermaid() {
-  mermaidModulePromise ??= import('mermaid').then((mod) => (mod as any).default ?? mod)
+  if (!mermaidModulePromise) {
+    mermaidModulePromise = import('mermaid').then((mod) => (mod as any).default ?? mod)
+  }
   return mermaidModulePromise
 }
 
@@ -39,14 +41,14 @@ function resolveCssColor(value: string): string | undefined {
   if (typeof document === 'undefined') return undefined
   if (!document.body) return undefined
 
-  const probe = document.createElement('span')
-  probe.style.position = 'absolute'
-  probe.style.visibility = 'hidden'
-  probe.style.pointerEvents = 'none'
-  probe.style.color = value
-  document.body.appendChild(probe)
-  const resolved = getComputedStyle(probe).color.trim()
-  probe.remove()
+  const sample = document.createElement('span')
+  sample.style.position = 'absolute'
+  sample.style.visibility = 'hidden'
+  sample.style.pointerEvents = 'none'
+  sample.style.color = value
+  document.body.appendChild(sample)
+  const resolved = getComputedStyle(sample).color.trim()
+  sample.remove()
   if (!resolved) return undefined
   return normalizeColorForMermaid(resolved)
 }
@@ -79,7 +81,7 @@ function labToMermaidColor(color: string): string | undefined {
   const body = match[1].trim()
   const [channelsPart, alphaPart] = body.split('/')
   const parts = channelsPart
-    .replaceAll(',', ' ')
+    .replace(/,/g, ' ')
     .trim()
     .split(/\s+/)
     .filter(Boolean)
@@ -184,7 +186,7 @@ function parseRgba(color: string): RGBA | undefined {
     const body = rgbMatch[1].trim()
     const [channelsPart, alphaPart] = body.split('/')
     const parts = channelsPart
-      .replaceAll(',', ' ')
+      .replace(/,/g, ' ')
       .trim()
       .split(/\s+/)
       .filter(Boolean)
@@ -401,7 +403,7 @@ export function Mermaid(props: {
       const mermaid = await loadMermaid()
 
       const id = `mmd-${reactId.replace(/[^a-zA-Z0-9_-]/g, '-')}`
-      const normalized = chart.replaceAll('\\n', '\n').trim()
+      const normalized = chart.replace(/\\n/g, '\n').trim()
       const renderText = colorize ? applyAutoNodeFillPalette(normalized, theme) : normalized
 
       const docBackground = resolveCssColor('var(--color-background)') ?? '#ffffff'

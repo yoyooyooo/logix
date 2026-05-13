@@ -1,0 +1,208 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-05-08T15:50:25.607Z",
+    "generator": "packages/logix-perf-evidence/scripts/collect.ts",
+    "matrixId": "logix-browser-perf-matrix-v1",
+    "matrixUpdatedAt": "2026-03-12",
+    "matrixHash": "9da7633b5c605f7a7dfe2694ecbfcaa8fe19d72d740c2c997d81a33a4571763e",
+    "git": {
+      "branch": "next-api",
+      "commit": "4abe977bd968cd2a45d3dbe1a0f24d8b67605b3e",
+      "dirty": true
+    },
+    "config": {
+      "runs": 25,
+      "warmupDiscard": 5,
+      "timeoutMs": 15000,
+      "headless": true,
+      "profile": "quick",
+      "stability": {
+        "maxP95DeltaRatio": 0.1,
+        "maxP95DeltaMs": 5
+      },
+      "controlPlane": {}
+    },
+    "env": {
+      "os": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M2 Max",
+      "memoryGb": 64,
+      "node": "v22.22.0",
+      "pnpm": "9.15.9",
+      "vitest": "4.0.15",
+      "playwright": "1.57.0",
+      "browser": {
+        "name": "chromium",
+        "headless": true,
+        "version": "143.0.7499.4"
+      }
+    }
+  },
+  "suites": [
+    {
+      "id": "converge.timeSlicing.txnCommit",
+      "title": "converge: time-slicing txn commit (dirtyAll) on/off",
+      "priority": "P1",
+      "primaryAxis": "steps",
+      "budgets": [
+        {
+          "id": "timeSlicing.on<=off*0.5",
+          "type": "relative",
+          "metric": "runtime.txnCommitMs",
+          "maxRatio": 0.5,
+          "numeratorRef": "timeSlicing=on",
+          "denominatorRef": "timeSlicing=off"
+        }
+      ],
+      "metricCategories": {
+        "runtime.txnCommitMs": "runtime"
+      },
+      "points": [
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "immediateRatio": 0.1,
+            "dirtyMode": "dirtyAll",
+            "timeSlicing": "off",
+            "steps": 2000,
+            "immediateSteps": 200,
+            "mutateRoots": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 3.240000009536743,
+                "p95Ms": 3.459999990463257
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "converge.timeSlicing.deferredDirtyPathCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 1800
+            },
+            {
+              "name": "converge.timeSlicing.deferredStepCount",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "missing"
+            },
+            {
+              "name": "converge.timeSlicing.immediateStepCount",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "missing"
+            },
+            {
+              "name": "converge.timeSlicing.scope",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "missing"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "params": {
+            "convergeMode": "dirty",
+            "immediateRatio": 0.1,
+            "dirtyMode": "dirtyAll",
+            "timeSlicing": "on",
+            "steps": 2000,
+            "immediateSteps": 200,
+            "mutateRoots": 1
+          },
+          "status": "ok",
+          "metrics": [
+            {
+              "name": "runtime.txnCommitMs",
+              "unit": "ms",
+              "status": "ok",
+              "stats": {
+                "n": 20,
+                "medianMs": 0.6,
+                "p95Ms": 0.8799999713897705
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "name": "converge.timeSlicing.deferredDirtyPathCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 1800
+            },
+            {
+              "name": "converge.timeSlicing.deferredStepCount",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "missing"
+            },
+            {
+              "name": "converge.timeSlicing.immediateStepCount",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "missing"
+            },
+            {
+              "name": "converge.timeSlicing.scope",
+              "unit": "count",
+              "status": "unavailable",
+              "unavailableReason": "missing"
+            },
+            {
+              "name": "runtime.kernelId",
+              "unit": "string",
+              "status": "ok",
+              "value": "core"
+            },
+            {
+              "name": "budget.cutOffCount",
+              "unit": "count",
+              "status": "ok",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "thresholds": [
+        {
+          "budget": {
+            "id": "timeSlicing.on<=off*0.5",
+            "type": "relative",
+            "metric": "runtime.txnCommitMs",
+            "maxRatio": 0.5,
+            "numeratorRef": "timeSlicing=on",
+            "denominatorRef": "timeSlicing=off"
+          },
+          "where": {
+            "convergeMode": "dirty",
+            "immediateRatio": 0.1,
+            "dirtyMode": "dirtyAll"
+          },
+          "maxLevel": 2000,
+          "firstFailLevel": null
+        }
+      ]
+    }
+  ]
+}

@@ -1,3 +1,5 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { test } from 'vitest'
 import { Effect } from 'effect'
 import * as Logix from '@logixjs/core'
@@ -179,15 +181,15 @@ test('browser negative boundaries: dirty-pattern adversarial scenarios', { timeo
             const moduleScope = (yield* cached.module.tag) as any
 
             if (patternKind === 'graphChangeInvalidation' && iteration > 0 && iteration % 10 === 0) {
-              const program = Logix.Debug.getModuleTraits(cached.module as any).program
+              const program = CoreDebug.getModuleFieldProgram(cached.module as any).program
               if (program) {
-                Logix.InternalContracts.registerStateTraitProgram(moduleScope, program, {
+                FieldContracts.registerFieldProgram(moduleScope, program, {
                   bumpReason: 'imports_changed',
                 })
               }
             }
 
-            yield* Logix.InternalContracts.runWithStateTransaction(
+            yield* FieldContracts.runWithStateTransaction(
               moduleScope,
               { kind: 'perf', name: 'negativeBoundaries.dirtyPattern' },
               () =>
@@ -198,7 +200,7 @@ test('browser negative boundaries: dirty-pattern adversarial scenarios', { timeo
 
                   for (const idx of indices) {
                     const path = patternKind === 'listIndexExplosion' ? `b${idx}[${iteration}]` : `b${idx}`
-                    Logix.InternalContracts.recordStatePatch(moduleScope, path, 'perf')
+                    FieldContracts.recordStatePatch(moduleScope, path, 'perf')
                   }
                 }),
             )

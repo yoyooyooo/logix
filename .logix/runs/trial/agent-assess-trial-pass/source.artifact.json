@@ -1,0 +1,12 @@
+{
+  "authority": "provenance-only",
+  "entry": {
+    "exportName": "BasicProgram",
+    "modulePath": "packages/logix-cli/test/fixtures/BasicProgram.ts"
+  },
+  "kind": "CliSourceArtifact",
+  "producer": "cli-source",
+  "schemaVersion": 1,
+  "sourceDigest": "sha256:0e59cebb5cd846cd5c54477f25d9ab56536634314b09190d4c00f17c56d9db40",
+  "sourceRef": "packages/logix-cli/test/fixtures/BasicProgram.ts"
+}

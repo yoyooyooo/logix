@@ -1,7 +1,7 @@
 # Specification Quality Checklist: 090 Suspense Resource/Query
 
-**Purpose**: Validate specification completeness and quality before proceeding to execution  
-**Created**: 2026-01-10  
+**Purpose**: Validate specification completeness and quality before proceeding to execution
+**Created**: 2026-01-10
 **Feature**: `specs/090-suspense-resource-query/spec.md`
 
 ## Content Quality

@@ -1,8 +1,8 @@
 # Feature Specification: Workflow/Process 统一内核第一阶段（O-003）
 
-**Feature Branch**: `096-unified-workflow-process-engine`  
-**Created**: 2026-02-25  
-**Status**: Planned  
+**Feature Branch**: `096-unified-workflow-process-engine`
+**Created**: 2026-02-25
+**Status**: Planned
 **Input**: 用户要求在不破坏 DSL/API 的前提下，抽取 WorkflowRuntime 与 ProcessRuntime 的可复用调度/诊断共核片段，并补齐行为一致性测试与最小验证。
 
 ## North Stars & Kill Features Traceability _(optional)_
@@ -16,12 +16,12 @@
 
 作为 Runtime 维护者，我希望 Workflow/Process 在“调度边界 + 诊断元数据”上有可复用的最小共核，以降低重复并避免后续策略演进时出现行为漂移。
 
-**Why this priority**: 这是本阶段核心目标；不先收敛共核，后续策略统一会持续放大维护成本。  
+**Why this priority**: 这是本阶段核心目标；不先收敛共核，后续策略统一会持续放大维护成本。
 **Independent Test**: 不改对外 DSL 的情况下，Workflow 与 Process 的既有并发策略测试应保持通过。
 
 **Acceptance Scenarios**:
 
-1. **Given** WorkflowRuntime 的 runBoundary 调用点存在重复元数据拼装，**When** 抽取共核 helper，**Then** 运行行为不变且元数据字段不丢失。  
+1. **Given** WorkflowRuntime 的 runBoundary 调用点存在重复元数据拼装，**When** 抽取共核 helper，**Then** 运行行为不变且元数据字段不丢失。
 2. **Given** ProcessRuntime 的 triggerSeq/预算/onDrop 接线分散，**When** 抽取共核 helper，**Then** 并发策略语义保持一致。
 
 ---
@@ -30,7 +30,7 @@
 
 作为评审者，我希望至少有一组跨 workflow/process 的策略行为对齐测试，证明“同类策略”在两条执行链路上的外部可观察语义一致。
 
-**Why this priority**: 第一阶段重构必须可验证；没有对齐测试就无法证明“只重构不改语义”。  
+**Why this priority**: 第一阶段重构必须可验证；没有对齐测试就无法证明“只重构不改语义”。
 **Independent Test**: 新增/调整的策略对齐测试在本地可单独运行并稳定通过。
 
 **Acceptance Scenarios**:
@@ -43,7 +43,7 @@
 
 作为平台 owner，我希望本次核心路径改动附带最小可复现性能基线命令与诊断约束说明，避免“重构后不可解释”。
 
-**Why this priority**: 核心路径改动必须有可复现证据与诊断口径。  
+**Why this priority**: 核心路径改动必须有可复现证据与诊断口径。
 **Independent Test**: 能执行既定 baseline 命令并产出可留档结果；诊断 `off` 路径无新增必需事件。
 
 **Acceptance Scenarios**:
@@ -89,8 +89,8 @@
 
 ### Measurable Outcomes
 
-- **SC-001**: `specs/096-unified-workflow-process-engine/spec.md`、`specs/096-unified-workflow-process-engine/plan.md`、`specs/096-unified-workflow-process-engine/tasks.md` 三件套完整存在且无模板占位符。  
-- **SC-002**: Workflow 与 Process 各至少完成 1 处共核抽取，且不引入 DSL/API 变更。  
-- **SC-003**: 至少 1 组策略行为对齐测试通过（例如 workflow `exhaust` vs process `drop`）。  
-- **SC-004**: 最小验证命令（相关测试 + 必要类型检查）可运行并给出明确结果。  
+- **SC-001**: `specs/096-unified-workflow-process-engine/spec.md`、`specs/096-unified-workflow-process-engine/plan.md`、`specs/096-unified-workflow-process-engine/tasks.md` 三件套完整存在且无模板占位符。
+- **SC-002**: Workflow 与 Process 各至少完成 1 处共核抽取，且不引入 DSL/API 变更。
+- **SC-003**: 至少 1 组策略行为对齐测试通过（例如 workflow `exhaust` vs process `drop`）。
+- **SC-004**: 最小验证命令（相关测试 + 必要类型检查）可运行并给出明确结果。
 - **SC-005**: 可复现性能基线命令可执行并可留档（命令、输出、时间戳、环境）。

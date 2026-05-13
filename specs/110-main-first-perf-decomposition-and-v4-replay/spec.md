@@ -1,8 +1,8 @@
 # Feature Specification: Main-first 性能控制线与 v4 replay 主路线
 
-**Feature Branch**: `110-main-first-perf-decomposition-and-v4-replay`  
-**Created**: 2026-03-27  
-**Status**: Active  
+**Feature Branch**: `110-main-first-perf-decomposition-and-v4-replay`
+**Created**: 2026-03-27
+**Status**: Active
 **Input**: 用户裁决：性能主线先以 `main` 做收益控制线，先把每个性能点在 `main` 上拆开验证，再把仅有硬证据的正收益 cut replay 到 `v4-perf`，最后再判断 `v4` 剩余差额。
 
 ## Background

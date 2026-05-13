@@ -12,7 +12,7 @@
 
 - `services`：模块输入服务依赖锚点声明（`ModuleDef.services`）
 - `dev.source`：定位锚点元数据（`module.dev.source` / `actionToken.source` 等）
-- `imports`：装配依赖锚点声明（`ModuleImpl.implement({ imports })` 等；默认先 report-only）
+- `imports`：装配依赖锚点声明（`ProgramRuntimeBlueprint.implement({ imports })` 等；默认先 report-only）
 
 ### AnchorAutofillDecision
 

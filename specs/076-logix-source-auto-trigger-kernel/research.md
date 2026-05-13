@@ -7,7 +7,7 @@
 - `packages/logix-query/src/internal/logics/auto-trigger.ts`
   - 监听 `setParams/setUi/refresh` action
   - 自行维护 debounce fibers / lastKeyHash
-  - 反向依赖 trait/source contract（当前通过 `$.traits.source.refresh`；目标口径是 `callById('logix/kernel/sourceRefresh')`；`call(KernelPorts.sourceRefresh)` 仅作为 TS sugar）
+  - 反向依赖 field/source contract（当前通过 `$.fields.source.refresh`；目标口径是 `callById('logix/kernel/sourceRefresh')`；`call(KernelPorts.sourceRefresh)` 仅作为 TS sugar）
 
 问题：
 
@@ -15,10 +15,10 @@
 - debounce/计时器在业务层实现，容易形成影子时间线；
 - 触发条件来自 action，而不是来自 state 的真实 dirtyPaths（抽象层级偏上，难以统一治理）。
 
-### 2) Core：TraitLifecycle.makeSourceWiring（反射式解释）
+### 2) Core：FieldLifecycle.makeSourceWiring（反射式解释）
 
-- `packages/logix-core/src/internal/trait-lifecycle/index.ts#makeSourceWiring`
-  - 读取 trait program entries
+- `packages/logix-core/src/internal/field-lifecycle/index.ts#makeSourceWiring`
+  - 读取 field program entries
   - 依赖 `meta.triggers/meta.deps`
   - `refreshOnKeyChange(changedPath)` 对 `sourceOnKeyChange` 做线性扫描 + deps 匹配
 
@@ -32,12 +32,12 @@
 
 ### A) 保留 triggers/debounceMs，但把 wiring 下沉到 runtime
 
-优点：迁移成本小。  
-缺点：仍把动态语义埋在 trait meta，语义集合难以扩展（delay/retry/timeout 仍无处安放），且容易继续漂移。
+优点：迁移成本小。
+缺点：仍把动态语义埋在 field meta，语义集合难以扩展（delay/retry/timeout 仍无处安放），且容易继续漂移。
 
 ### B) 移除 triggers/debounceMs，把所有触发策略交给 Workflow（075）
 
-优点：分层最纯粹；所有时间算子进入 Π。  
+优点：分层最纯粹；所有时间算子进入 Π。
 缺点：Query/Form 的默认体验变差（每个 source 都要写 Program），且会把“绑定语义”过度外包到业务层。
 
 ### C) 折中：将 `Π_source` 作为内核受限控制律，复杂工作流升级到 Workflow

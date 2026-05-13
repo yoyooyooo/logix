@@ -4,6 +4,7 @@ import * as Form from '@logixjs/form'
 // Rules 可组合性示例（Decl DSL only）：
 // - 把 rules 拆成多个“规则片段”（按领域/子模块划分）
 // - 最终通过 `z(fragment1, fragment2, ...)` 合并成一个 FormRulesSpec
+// - 再通过 `logic: $.logic({ rules })` 收口到 canonical authoring path
 // - 同一路径重复声明会稳定失败；若要“叠加校验”，应组合到同一个 ruleInput 的 validate 里
 
 export const LineItemSchema = Schema.Struct({
@@ -26,20 +27,15 @@ export const RulesCompositionValuesSchema = Schema.Struct({
 export type RulesCompositionValues = Schema.Schema.Type<typeof RulesCompositionValuesSchema>
 export type LineItem = Schema.Schema.Type<typeof LineItemSchema>
 
-const $ = Form.from(RulesCompositionValuesSchema)
-const z = $.rules
-
-type Z = typeof z
+type Z = any
 
 // ---------------------------------------------------------------------------
 // 1) 规则片段：contact（字段规则 + 对象级 $self 规则）
 // ---------------------------------------------------------------------------
 
 const EmailRule = {
-  required: '邮箱必填',
-  validate: {
-    format: (email: string) => (String(email ?? '').includes('@') ? undefined : '邮箱格式不正确'),
-  },
+  required: true,
+  email: true,
 } as const
 
 const PhoneRule = {
@@ -117,14 +113,22 @@ const rootRules = (z: Z) =>
 // 4) 合并：z(...) 支持直接传入“数组片段”
 // ---------------------------------------------------------------------------
 
-export const RulesCompositionForm = Form.make('FormRulesComposition', {
-  values: RulesCompositionValuesSchema,
-  initialValues: {
-    contact: { email: '', preferredChannel: 'email', phone: '' },
-    items: [],
-    note: '',
+const rulesCompositionDefine = (form: any): void => {
+  const z = form.dsl as any
+  form.rules(z(contactRules(z), itemsRules(z), rootRules(z)))
+}
+
+export const RulesCompositionForm = Form.make(
+  'FormRulesComposition',
+  {
+    values: RulesCompositionValuesSchema,
+    initialValues: {
+      contact: { email: '', preferredChannel: 'email', phone: '' },
+      items: [],
+      note: '',
+    },
+    validateOn: ['onSubmit'],
+    reValidateOn: ['onChange'],
   },
-  validateOn: ['onSubmit'],
-  reValidateOn: ['onChange'],
-  rules: z(contactRules(z), itemsRules(z), rootRules(z)),
-})
+  rulesCompositionDefine,
+)

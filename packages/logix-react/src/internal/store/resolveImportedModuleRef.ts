@@ -1,6 +1,7 @@
 import { Effect } from 'effect'
 import type { ManagedRuntime } from 'effect'
 import * as Logix from '@logixjs/core'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 import { isDevEnv } from '../provider/env.js'
 import { makeModuleActions, makeModuleDispatchers, type ModuleRef, type ModuleRefOfTag } from './ModuleRef.js'
 
@@ -24,7 +25,7 @@ const cacheByRuntime = new WeakMap<
 export const resolveImportedModuleRef = <Id extends string, Sh extends Logix.AnyModuleShape>(
   runtime: ManagedRuntime.ManagedRuntime<any, any>,
   parentRuntime: Logix.ModuleRuntime<any, any>,
-  module: Logix.ModuleTagType<Id, Sh>,
+  module: Logix.Module.ModuleTag<Id, Sh>,
 ): ModuleRefOfTag<Id, Sh> => {
   const byParent = getOrCreateWeakMap(
     cacheByRuntime,
@@ -41,24 +42,24 @@ export const resolveImportedModuleRef = <Id extends string, Sh extends Logix.Any
     return cached as ModuleRefOfTag<Id, Sh>
   }
 
-  const importsScope = Logix.InternalContracts.getImportsScope(parentRuntime as any)
+  const importsScope = RuntimeContracts.getImportsScope(parentRuntime as any)
   const childRuntime = importsScope.get(module as any)
   if (childRuntime) {
     const dispatch = Object.assign(
-      (action: Logix.ActionOf<Sh>) => {
-        runtime.runFork((childRuntime.dispatch as (a: Logix.ActionOf<Sh>) => Effect.Effect<void, any, any>)(action))
+      (action: Logix.Module.ActionOf<Sh>) => {
+        runtime.runFork((childRuntime.dispatch as (a: Logix.Module.ActionOf<Sh>) => Effect.Effect<void, any, any>)(action))
       },
       {
-        batch: (actions: ReadonlyArray<Logix.ActionOf<Sh>>) => {
+        batch: (actions: ReadonlyArray<Logix.Module.ActionOf<Sh>>) => {
           runtime.runFork(
-            (childRuntime.dispatchBatch as (a: ReadonlyArray<Logix.ActionOf<Sh>>) => Effect.Effect<void, any, any>)(
+            (childRuntime.dispatchBatch as (a: ReadonlyArray<Logix.Module.ActionOf<Sh>>) => Effect.Effect<void, any, any>)(
               actions,
             ),
           )
         },
-        lowPriority: (action: Logix.ActionOf<Sh>) => {
+        lowPriority: (action: Logix.Module.ActionOf<Sh>) => {
           runtime.runFork(
-            (childRuntime.dispatchLowPriority as (a: Logix.ActionOf<Sh>) => Effect.Effect<void, any, any>)(action),
+            (childRuntime.dispatchLowPriority as (a: Logix.Module.ActionOf<Sh>) => Effect.Effect<void, any, any>)(action),
           )
         },
       },
@@ -74,7 +75,7 @@ export const resolveImportedModuleRef = <Id extends string, Sh extends Logix.Any
       actions,
       dispatchers,
       imports: {
-        get: <Id2 extends string, Sh2 extends Logix.AnyModuleShape>(m: Logix.ModuleTagType<Id2, Sh2>) =>
+        get: <Id2 extends string, Sh2 extends Logix.AnyModuleShape>(m: Logix.Module.ModuleTag<Id2, Sh2>) =>
           resolveImportedModuleRef(runtime, childRuntime, m),
       },
       getState: childRuntime.getState,
@@ -96,11 +97,10 @@ export const resolveImportedModuleRef = <Id extends string, Sh extends Logix.Any
   const fix = isDevEnv()
     ? [
         '- Ensure the child is imported in the same scope.',
-        `  Example: ${parentId}.implement({ imports: [${tokenId}.impl], ... })`,
-        '- Ensure parentRuntime is an instance scope (not a ModuleTag singleton).',
-        '  Example: useModule(ParentImpl, { key }) / useModule(ParentImpl) / useLocalModule(ParentModule, ...)',
+        '  Example: Program.make(Parent, { capabilities: { imports: [ChildProgram] }, ... })',
+        '- Ensure parentRuntime comes from a real parent instance scope.',
+        '  Example: useModule(ParentProgram, { key })',
         '- If you intentionally want a singleton (not an imported child), use useModule(Child.tag) (ModuleTag) in the current React runtime environment.',
-        '- If you intentionally want the root provider singleton (ignore RuntimeProvider.layer overrides), use runtime.runSync(Root.resolve(Child.tag)).',
       ]
     : []
 
@@ -109,7 +109,7 @@ export const resolveImportedModuleRef = <Id extends string, Sh extends Logix.Any
       ? [
           '[MissingImportedModuleError] Cannot resolve imported module from parent imports scope.',
           '',
-          `tokenId: ${tokenId}`,
+          `childModuleId: ${tokenId}`,
           'entrypoint: react.useImportedModule/imports.get',
           'mode: strict',
           `startScope: moduleId=${parentId}, instanceId=${parentInstanceId}`,

@@ -1,10 +1,10 @@
 # Research: SchemaAST 分层能力升级（040：Schema Registry + schemaId 引用）
 
-**Date**: 2025-12-26  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/040-schemaast-layered-upgrade/spec.md`  
-**Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/040-schemaast-layered-upgrade/plan.md`
+**Date**: 2025-12-26
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/040-schemaast-layered-upgrade/spec.md`
+**Plan**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/040-schemaast-layered-upgrade/plan.md`
 
-> 本文件只固化“关键裁决/权衡”，避免实现细节漂移为某个宿主/工具的特殊规则。  
+> 本文件只固化“关键裁决/权衡”，避免实现细节漂移为某个宿主/工具的特殊规则。
 > 诊断事件口径以 runtime SSoT 为准：`docs/ssot/runtime/logix-core/observability/09-debugging.md`
 
 ## Decisions

@@ -1,7 +1,7 @@
 # Tasks: 060 Txn Lanes（事务后续工作优先级调度 / 可解释调度）
 
-**Input**: Design documents from `specs/060-react-priority-scheduling/`  
-**Prerequisites**: `specs/060-react-priority-scheduling/plan.md`, `specs/060-react-priority-scheduling/spec.md`  
+**Input**: Design documents from `specs/060-react-priority-scheduling/`
+**Prerequisites**: `specs/060-react-priority-scheduling/plan.md`, `specs/060-react-priority-scheduling/spec.md`
 **Tests**: 本特性触及 runtime 核心路径与调度语义，测试与 perf evidence 视为必需（除非在任务中显式写明理由）。
 
 ## Phase 1: Setup（规格与落点对齐）
@@ -29,7 +29,7 @@
 
 - [x] T008 [US1] 将 043 的 deferred converge flush 入队标记为 non-urgent，并支持合并/取消中间态 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.ts`
 - [x] T009 [US1] 实现 non-urgent work loop：按 budget 分片执行，并在片间让路给 urgent `packages/logix-core/src/internal/runtime/core/ModuleRuntime.ts`
-- [x] T009a [US1] 增加 microbench（work loop slicing 开销/粒度）：验证“让路”收益不被调度开销吞噬，并把结果落盘到 060 perf 目录（before/after/diff）`.codex/skills/logix-perf-evidence/package.json`、`.codex/skills/logix-perf-evidence/scripts/060-react-priority-scheduling.txn-lanes-workloop.ts`、`specs/060-react-priority-scheduling/perf/*`
+- [x] T009a [US1] 增加 microbench（work loop slicing 开销/粒度）：验证“让路”收益不被调度开销吞噬，并把结果落盘到 060 perf 目录（before/after/diff）`packages/logix-perf-evidence/package.json`、`packages/logix-perf-evidence/scripts/060-react-priority-scheduling.txn-lanes-workloop.ts`、`specs/060-react-priority-scheduling/perf/*`
 - [x] T010 [US1] 为 non-urgent work loop 增加饥饿保护（maxLag 超界触发可解释升档/强制追平）`packages/logix-core/src/internal/runtime/core/ModuleRuntime.ts`
 - [x] T011 [US1] 单测：验证 urgent 事务可优先于已排队的 non-urgent flush（且 non-urgent 不会永久饿死）`packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.txnQueue.Lanes.test.ts`
 - [x] T012 [US1] 单测：验证 043 deferred flush 在 lanes 开启时不再堵塞后续 urgent dispatch `packages/logix-core/test/internal/Runtime/ModuleRuntime/ModuleRuntime.TimeSlicing.Lanes.test.ts`

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "intent-flow://specs/060-react-priority-scheduling/contracts/schemas/txn-lane-policy.schema.json",
+  "$id": "logix://specs/060-react-priority-scheduling/contracts/schemas/txn-lane-policy.schema.json",
   "title": "TxnLanePolicy",
   "type": "object",
   "additionalProperties": false,

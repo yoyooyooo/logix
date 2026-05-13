@@ -4,7 +4,7 @@ import type { CustomerSearchShape } from '../customerSearch.def.js'
 import type { CustomerSummary } from '../model.js'
 import { CustomerApiTag } from '../service.js'
 
-export const runAutoTriggerSearch = <R>($: Logix.BoundApi<CustomerSearchShape, R>) =>
+export const runAutoTriggerSearch = <R>($: Logix.Module.BoundApi<CustomerSearchShape, R>) =>
   Effect.gen(function* () {
     yield* $.onState((s) => s.keyword).debounce(300).runLatestTask({
       pending: (keyword) =>

@@ -8,7 +8,7 @@
 配置入口（显式 trial）：
 
 ```ts
-Logix.Kernel.fullCutoverGateModeLayer('trial')
+CoreKernel.fullCutoverGateModeLayer('trial')
 ```
 
 ## 2. 判定语义

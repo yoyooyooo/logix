@@ -1,6 +1,7 @@
 import * as Logix from '@logixjs/core'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { Duration, Effect, Fiber } from 'effect'
-import type { FormShape } from '../../Form.js'
+import type { FormShape } from './impl.js'
 
 export type FormValidateOn = 'onSubmit' | 'onChange' | 'onBlur'
 
@@ -34,28 +35,41 @@ type InstallActionMap = {
  * - Default domain wiring: maps UI events (setValue/blur) to scopedValidate (ReverseClosure is guaranteed by the kernel).
  * - UI subtree writes (dirty/touched) are synchronously committed by the reducer to avoid tearing.
  * - By default, avoids scattering useEffect triggers on the React side.
+ * - semantic-owner boundary: this bridge only schedules admitted runtime work.
+ * - field(path).source(...) exact act stays in Form and never moves into install-time helpers.
  */
 export const install = <TValues extends object>(
-  module: Logix.ModuleTagType<any, FormShape<TValues>>,
+  module: Logix.Module.ModuleTag<any, FormShape<TValues>>,
   config?: FormInstallConfig,
 ): Logix.ModuleLogic<FormShape<TValues>, any, never> =>
-  module.logic(($) => {
+  module.logic('module-logic', ($) => {
     const validateOn = config?.validateOn ?? ['onSubmit']
     const reValidateOn = config?.reValidateOn ?? ['onChange']
     const rulesValidateOn = config?.rulesValidateOn ?? []
     const debounceMs = config?.debounceMs
-    const sourceWiring = Logix.TraitLifecycle.makeSourceWiring($, module)
+    const sourceWiring = FieldContracts.makeFieldSourceWiring($, module)
+    const fieldProgram = FieldContracts.getModuleFieldsProgram(module as any) as
+      | {
+          readonly entries?: ReadonlyArray<{
+            readonly kind?: string
+            readonly fieldPath?: string
+          }>
+        }
+      | undefined
+    const hasCompanionWriters =
+      fieldProgram?.entries?.some((entry) => entry?.kind === 'computed' && (entry as any)?.meta?._formCompanion === true) ??
+      false
 
-    const validate = (trigger: Logix.TraitLifecycle.ValidateMode, path: string): Effect.Effect<void, never, any> =>
-      Logix.TraitLifecycle.scopedValidate($, {
+    const validate = (trigger: FieldContracts.FieldValidateMode, path: string): Effect.Effect<void, never, any> =>
+      FieldContracts.fieldScopedValidate($, {
         mode: trigger,
-        target: Logix.TraitLifecycle.Ref.fromValuePath(path),
+        target: FieldContracts.fieldRef.fromValuePath(path),
       })
 
     const validateRoot = (): Effect.Effect<void, never, any> =>
-      Logix.TraitLifecycle.scopedValidate($, {
+      FieldContracts.fieldScopedValidate($, {
         mode: 'submit',
-        target: Logix.TraitLifecycle.Ref.root(),
+        target: FieldContracts.fieldRef.root(),
       })
 
     const pending = new Map<string, Fiber.Fiber<void, never>>()
@@ -106,9 +120,39 @@ export const install = <TValues extends object>(
       return typeof v === 'number' && Number.isFinite(v) ? v : 0
     }
 
-    const setup = sourceWiring.setup
+    const refreshArraySourcesAndMaybeValidate = (path: string): Effect.Effect<void, never, any> =>
+      Effect.gen(function* () {
+        yield* sourceWiring.refreshOnKeyChange(path)
+        if (!wantsChange) return
+        const state = yield* $.state.read
+        const submitCount = readSubmitCount(state)
+        if (!shouldValidateNow(submitCount, 'onChange')) return
+        yield* FieldContracts.fieldScopedValidate($, {
+          mode: 'valueChange',
+          target: FieldContracts.fieldRef.list(path),
+        })
+      })
 
-    const run = Effect.gen(function* () {
+    sourceWiring.registerOnMount()
+
+    if (hasCompanionWriters) {
+      FieldContracts.registerBoundStart(
+        $ as any,
+        FieldContracts.runWithBoundStateTransaction(
+          $ as any,
+          {
+            kind: 'field',
+            name: 'startupConverge',
+            details: { target: 'companion' },
+          },
+          () => Effect.void,
+        ),
+        { name: 'form:startupConverge' },
+      )
+    }
+
+    return Effect.gen(function* () {
+
       // blur: trigger scoped validation if required by the current phase or rule allowlist.
       if (wantsBlur) {
         yield* $.onAction('blur').runFork((action) =>
@@ -156,71 +200,28 @@ export const install = <TValues extends object>(
 
       // Array structural changes: refresh if they affect source deps.
       yield* $.onAction('arrayAppend').runFork((action) =>
-        Effect.gen(function* () {
-          yield* sourceWiring.refreshOnKeyChange(action.payload.path)
-          if (!wantsChange) return
-          const state = yield* $.state.read
-          const submitCount = readSubmitCount(state)
-          if (!shouldValidateNow(submitCount, 'onChange')) return
-          yield* Logix.TraitLifecycle.scopedValidate($, {
-            mode: 'valueChange',
-            target: Logix.TraitLifecycle.Ref.list(action.payload.path),
-          })
-        }),
+        refreshArraySourcesAndMaybeValidate(action.payload.path),
       )
       yield* $.onAction('arrayPrepend').runFork((action) =>
-        Effect.gen(function* () {
-          yield* sourceWiring.refreshOnKeyChange(action.payload.path)
-          if (!wantsChange) return
-          const state = yield* $.state.read
-          const submitCount = readSubmitCount(state)
-          if (!shouldValidateNow(submitCount, 'onChange')) return
-          yield* Logix.TraitLifecycle.scopedValidate($, {
-            mode: 'valueChange',
-            target: Logix.TraitLifecycle.Ref.list(action.payload.path),
-          })
-        }),
+        refreshArraySourcesAndMaybeValidate(action.payload.path),
+      )
+      yield* $.onAction('arrayInsert').runFork((action) =>
+        refreshArraySourcesAndMaybeValidate(action.payload.path),
+      )
+      yield* $.onAction('arrayUpdate').runFork((action) =>
+        refreshArraySourcesAndMaybeValidate(action.payload.path),
+      )
+      yield* $.onAction('arrayReplace').runFork((action) =>
+        refreshArraySourcesAndMaybeValidate(action.payload.path),
       )
       yield* $.onAction('arrayRemove').runFork((action) =>
-        Effect.gen(function* () {
-          yield* sourceWiring.refreshOnKeyChange(action.payload.path)
-          if (!wantsChange) return
-          const state = yield* $.state.read
-          const submitCount = readSubmitCount(state)
-          if (!shouldValidateNow(submitCount, 'onChange')) return
-          yield* Logix.TraitLifecycle.scopedValidate($, {
-            mode: 'valueChange',
-            target: Logix.TraitLifecycle.Ref.list(action.payload.path),
-          })
-        }),
+        refreshArraySourcesAndMaybeValidate(action.payload.path),
       )
       yield* $.onAction('arraySwap').runFork((action) =>
-        Effect.gen(function* () {
-          yield* sourceWiring.refreshOnKeyChange(action.payload.path)
-          if (!wantsChange) return
-          const state = yield* $.state.read
-          const submitCount = readSubmitCount(state)
-          if (!shouldValidateNow(submitCount, 'onChange')) return
-          yield* Logix.TraitLifecycle.scopedValidate($, {
-            mode: 'valueChange',
-            target: Logix.TraitLifecycle.Ref.list(action.payload.path),
-          })
-        }),
+        refreshArraySourcesAndMaybeValidate(action.payload.path),
       )
       yield* $.onAction('arrayMove').runFork((action) =>
-        Effect.gen(function* () {
-          yield* sourceWiring.refreshOnKeyChange(action.payload.path)
-          if (!wantsChange) return
-          const state = yield* $.state.read
-          const submitCount = readSubmitCount(state)
-          if (!shouldValidateNow(submitCount, 'onChange')) return
-          yield* Logix.TraitLifecycle.scopedValidate($, {
-            mode: 'valueChange',
-            target: Logix.TraitLifecycle.Ref.list(action.payload.path),
-          })
-        }),
+        refreshArraySourcesAndMaybeValidate(action.payload.path),
       )
     }).pipe(Effect.asVoid)
-
-    return { setup, run }
   }) as Logix.ModuleLogic<FormShape<TValues>, any, never>

@@ -1,8 +1,8 @@
 # Feature Specification: 限定 scope 的全局：路由 Host(imports) 弹框 keepalive + ModuleScope
 
-**Feature Branch**: `[037-route-scope-eviction]`  
-**Created**: 2025-12-26  
-**Status**: Complete  
+**Feature Branch**: `[037-route-scope-eviction]`
+**Created**: 2025-12-26
+**Status**: Complete
 **Input**: User description: "实现真实业务里的“限定 scope 的全局”：同一路由内多个弹框模块 keepalive（反复打开/关闭不丢状态），离开路由后统一销毁；补齐由浅入深的用户文档，并提供可复用的 Scope 工具减少 props 透传。"
 
 ## Assumptions
@@ -25,7 +25,7 @@
   IMPORTANT: User stories should be PRIORITIZED as user journeys ordered by importance.
   Each user story/journey must be INDEPENDENTLY TESTABLE - meaning if you implement just ONE of them,
   you should still have a viable MVP (Minimum Viable Product) that delivers value.
-  
+
   Assign priorities (P1, P2, P3, etc.) to each story, where P1 is the most critical.
   Think of each story as a standalone slice of functionality that can be:
   - Developed independently

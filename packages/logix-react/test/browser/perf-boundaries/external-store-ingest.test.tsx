@@ -1,3 +1,6 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 import { expect, test } from 'vitest'
 import { Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
@@ -44,7 +47,7 @@ const forceGc = async (): Promise<void> => {
 const makeManualStore = <T,>(initial: T) => {
   let current = initial
   const listeners = new Set<() => void>()
-  const store: Logix.ExternalStore.ExternalStore<T> = {
+  const store: RuntimeContracts.ExternalInput.ExternalStore<T> = {
     getSnapshot: () => current,
     subscribe: (listener) => {
       listeners.add(listener)
@@ -113,7 +116,7 @@ test(
         if (cached) return cached
 
         const instrumentation = args.diagnosticsLevel === 'full' ? 'full' : 'light'
-        const debugLayer = Logix.Debug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
+        const debugLayer = CoreDebug.devtoolsHubLayer(silentDebugLayer as Layer.Layer<any, never, never>, {
           diagnosticsLevel: args.diagnosticsLevel,
         }) as Layer.Layer<any, never, never>
 
@@ -121,27 +124,32 @@ test(
         const manualStores = Array.from({ length: moduleCount }, (_, i) => makeManualStore(i))
 
         const moduleDefs = Array.from({ length: moduleCount }, (_, i) =>
-          Logix.Module.make(`PerfExternalStoreIngest.M${i}`, {
-            state: State,
-            actions: {},
-            traits: Logix.StateTrait.from(State)({
-              value: Logix.StateTrait.externalStore({ store: manualStores[i]!.store }),
-            }),
-          }),
+          FieldContracts.withModuleFieldDeclarations(Logix.Module.make(`PerfExternalStoreIngest.M${i}`, {
+  state: State,
+  actions: {}
+}), FieldContracts.fieldFrom(State)({
+              value: FieldContracts.fieldExternalStore({ store: manualStores[i]!.store }),
+            })),
         )
-        const moduleImpls = moduleDefs.map((m, i) =>
-          m.implement({
+        const modulePrograms = moduleDefs.map((m, i) =>
+          Logix.Program.make(m, {
             initial: { value: i },
-            imports: [],
+            capabilities: {
+              imports: [],
+            },
             logics: [],
-          }).impl,
+          }),
         )
 
+        const rootProgram = Logix.Program.make(Root, {
+          initial: undefined,
+          capabilities: {
+            imports: modulePrograms,
+          },
+        })
+
         const runtime = Logix.Runtime.make(
-          Root.implement({
-            initial: undefined,
-            imports: moduleImpls,
-          }),
+          rootProgram,
           {
             stateTransaction: { instrumentation },
             layer: Layer.mergeAll(debugLayer, perfKernelLayer) as Layer.Layer<any, never, never>,
@@ -337,10 +345,16 @@ test(
           },
         })
 
-        const impl = M.implement({ initial: { value: 0 } })
+        const program = Logix.Program.make(M, { initial: { value: 0 } })
         const Root = Logix.Module.make('PerfExternalStoreIngest.HeapGate.Root', { state: Schema.Void, actions: {} })
         const perfKernelLayer = makePerfKernelLayer()
-        const runtime = Logix.Runtime.make(Root.implement({ initial: undefined, imports: [impl.impl] }), {
+        const rootProgram = Logix.Program.make(Root, {
+          initial: undefined,
+          capabilities: {
+            imports: [program],
+          },
+        })
+        const runtime = Logix.Runtime.make(rootProgram, {
           layer: Layer.mergeAll(silentDebugLayer as Layer.Layer<any, never, never>, perfKernelLayer) as Layer.Layer<
             any,
             never,
@@ -354,7 +368,7 @@ test(
 
           const selectorCount = 200
           const readQueries = Array.from({ length: selectorCount }, (_, i) =>
-            Logix.ReadQuery.make({
+            RuntimeContracts.Selector.make({
               selectorId: `rq_perf_retained_${i}`,
               debugKey: `PerfExternalStoreIngest.HeapGate.value#${i}`,
               reads: ['value'],
@@ -364,7 +378,12 @@ test(
           )
 
           const stores = readQueries.map((rq) =>
-            getRuntimeReadQueryExternalStore(runtime as any, moduleRuntime, rq as any),
+            getRuntimeReadQueryExternalStore(
+              runtime as any,
+              moduleRuntime,
+              rq as any,
+              RuntimeContracts.Selector.route(RuntimeContracts.Selector.compile(rq as any)),
+            ),
           )
           const unsubs = stores.map((s) => s.subscribe(() => {}))
           for (const s of stores) s.getSnapshot()
@@ -378,7 +397,12 @@ test(
           expect(s0).toBeDefined()
           expect(rq0).toBeDefined()
           if (s0 && rq0) {
-            const s1 = getRuntimeReadQueryExternalStore(runtime as any, moduleRuntime, rq0 as any)
+            const s1 = getRuntimeReadQueryExternalStore(
+              runtime as any,
+              moduleRuntime,
+              rq0 as any,
+              RuntimeContracts.Selector.route(RuntimeContracts.Selector.compile(rq0 as any)),
+            )
             expect(s1).not.toBe(s0)
           }
 

@@ -1,8 +1,8 @@
 # Feature Specification: Runtime-Scoped Observability for Diagnostics Hot Path
 
-**Feature Branch**: `[097-runtime-scoped-observability]`  
-**Created**: 2026-02-25  
-**Status**: Planned  
+**Feature Branch**: `[097-runtime-scoped-observability]`
+**Created**: 2026-02-25
+**Status**: Planned
 **Input**: User description: "O-004 观测链路去全局单例：改为 runtime-scoped 事件总线 + 分层编码；每 runtime 独立 ring/buffer；热路径仅写 slim envelope；重投影与大对象裁剪异步化按需化；验收是 diagnostics 开启后事务主链附加耗时显著降低。"
 
 ## North Stars & Kill Features Traceability _(optional)_

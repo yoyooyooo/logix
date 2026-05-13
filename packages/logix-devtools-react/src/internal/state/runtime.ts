@@ -12,12 +12,12 @@ const initial = {
   settings: loadSettingsFromStorage() ?? emptyDevtoolsState.settings,
 }
 
-const DevtoolsImpl = DevtoolsModule.implement({
+const DevtoolsProgram = Logix.Program.make(DevtoolsModule, {
   initial,
   logics: [DevtoolsLogic],
 })
 
-export const devtoolsRuntime = Logix.Runtime.make(DevtoolsImpl, {
+export const devtoolsRuntime = Logix.Runtime.make(DevtoolsProgram, {
   // Provides DevtoolsSnapshotStore Service for DevtoolsModule,
   // so Logic can subscribe to Snapshot changes via Tag.
   layer: devtoolsSnapshotLayer as Layer.Layer<any, never, never>,

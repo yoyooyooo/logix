@@ -1,7 +1,7 @@
 # Tasks: Workflow/Process 统一内核第一阶段（O-003）
 
-**Input**: `specs/096-unified-workflow-process-engine/plan.md`, `specs/096-unified-workflow-process-engine/spec.md`  
-**Prerequisites**: `plan.md`、`spec.md`  
+**Input**: `specs/096-unified-workflow-process-engine/plan.md`, `specs/096-unified-workflow-process-engine/spec.md`
+**Prerequisites**: `plan.md`、`spec.md`
 **Tests**: REQUIRED（至少一组 workflow/process 调度策略一致性）
 
 **Organization**: 按 user story 分组，优先完成“可验证共核抽取”，避免激进重写。

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.local/specs/013-auto-converge-planner/schemas/field-converge-event.schema.json",
+  "title": "TraceEvent (field:converge)",
+  "description": "A Spec 009 DynamicTrace event whose kind is `field:converge`. Use level-specific schemas to enforce light/full payload constraints.",
+  "oneOf": [
+    { "$ref": "./field-converge-event.light.schema.json" },
+    { "$ref": "./field-converge-event.sampled.schema.json" },
+    { "$ref": "./field-converge-event.full.schema.json" }
+  ]
+}

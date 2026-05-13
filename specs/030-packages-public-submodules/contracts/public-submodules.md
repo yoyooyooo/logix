@@ -1,7 +1,7 @@
 # Contract: Public Submodules（packages/* 对外概念裁决清单）
 
-**Branch**: `030-packages-public-submodules`  
-**Date**: 2025-12-24  
+**Branch**: `030-packages-public-submodules`
+**Date**: 2025-12-24
 **Spec**: `specs/030-packages-public-submodules/spec.md`
 
 ## 1) 目的
@@ -57,8 +57,8 @@
 
 | Exception | Scope | Reason | Expiry | Mitigation |
 |----------|-------|--------|--------|------------|
-| `@logixjs/core/InternalContracts` | package | 仓库内协作契约需要统一入口，便于替代散落的 `runtime.__*` 魔法字段 | null | 标注为 repo-only/experimental；禁止在业务文档中作为推荐入口；必要时通过 gate 扫描阻止业务包依赖 |
-| `@logixjs/core/Reflection` | package | 平台/CI/Agent 需要 IR/试跑入口，但稳定性与依赖面需受控 | null | 标注为 experimental；限制依赖面（仅工具链/CI）；对外 import 形态在清单中显式裁决 |
+| `@logixjs/core/repo-internal/* contracts` | package | 仓库内协作契约需要统一入口，便于替代散落的 `runtime.__*` 魔法字段 | null | 标注为 repo-only/experimental；禁止在业务文档中作为推荐入口；必要时通过 gate 扫描阻止业务包依赖 |
+| `@logixjs/core/repo-internal/reflection-api` | package | 平台/CI/Agent 需要 IR/试跑入口，但稳定性与依赖面需受控 | null | 标注为 experimental；限制依赖面（仅工具链/CI）；对外 import 形态在清单中显式裁决 |
 | `@logixjs/form/react` / `@logixjs/sandbox/vite` | repo | 生态惯例（React/Vite）倾向使用 lower-case 子路径；同时现有文档/示例大量使用 | null | 视为 Independent Entry Points（独立契约），必须非空壳、必须登记边界；长期可选迁移到独立包形态 |
 | `global.d.ts` | repo | TS 声明文件需要在包内可见，且不应被当作概念入口 | null | root 白名单；verify gate 允许但不计入 Public Submodule |
 
@@ -86,7 +86,7 @@
   - `Flow` / `Link` / `Logic` / `MatchBuilder`
   - `Middleware`
   - `Module` / `ModuleTag` / `Observability` / `Platform` / `Resource`
-  - `Root` / `Runtime` / `State` / `StateTrait` / `TraitLifecycle`
+  - `Root` / `Runtime` / `State` / `FieldKernel` / `FieldLifecycle`
 
 **用户视角分层（推荐依赖面）**：
 
@@ -96,7 +96,7 @@
   - `MatchBuilder`（业务匹配/分支 DSL，若只用 Flow 的高层语法糖可不直接依赖）
 - 领域/框架扩展作者（写 `packages/logix-form|logix-query|i18n|domain` 等）：
   - `ModuleTag`（ModuleTag/ModuleRuntime 等核心类型与工厂）
-  - `StateTrait` / `TraitLifecycle` / `Resource`（traits/资源/生命周期下沉）
+  - `FieldKernel` / `FieldLifecycle` / `Resource`（fields/资源/生命周期下沉）
   - `EffectOp` / `Middleware`（受控的跨域接管点；默认业务侧不直接依赖）
   - `Platform` / `Env` / `Root`（平台接线与 root 解析；偏集成侧能力）
 - 平台/工具链（Devtools/Sandbox/CI/Agent）：
@@ -126,24 +126,24 @@
 | (root barrel) | `packages/logix-core/src/index.ts` | `.` |
 | Actions | `packages/logix-core/src/Actions.ts` | `./Actions` |
 | Bound | `packages/logix-core/src/Bound.ts` | `./Bound` |
-| Debug | `packages/logix-core/src/Debug.ts` | `./Debug` |
+| Debug | `packages/logix-core/src/internal/debug-api.ts` | `./Debug` |
 | EffectOp | `packages/logix-core/src/EffectOp.ts` | `./EffectOp` |
 | Env | `packages/logix-core/src/Env.ts` | `./Env` |
-| Flow | `packages/logix-core/src/Flow.ts` | `./Flow` |
-| Link | `packages/logix-core/src/Link.ts` | `./Link` |
+| Flow | `packages/logix-core/src/internal/runtime/core/FlowRuntime.ts` | `./Flow` |
+| Link | `packages/logix-core/src/internal/runtime/ModuleFactory.ts` | `./Link` |
 | Logic | `packages/logix-core/src/Logic.ts` | `./Logic` |
 | MatchBuilder | `packages/logix-core/src/MatchBuilder.ts` | `./MatchBuilder` |
 | Middleware | `packages/logix-core/src/Middleware.ts` | `./Middleware` |
 | Module | `packages/logix-core/src/Module.ts` | `./Module` |
 | ModuleTag | `packages/logix-core/src/ModuleTag.ts` | `./ModuleTag` |
-| Observability | `packages/logix-core/src/Observability.ts` | `./Observability` |
+| Observability | `packages/logix-core/src/internal/evidence-api.ts` | `./Observability` |
 | Platform | `packages/logix-core/src/Platform.ts` | `./Platform` |
 | Resource | `packages/logix-core/src/Resource.ts` | `./Resource` |
 | Root | `packages/logix-core/src/Root.ts` | `./Root` |
 | Runtime | `packages/logix-core/src/Runtime.ts` | `./Runtime` |
 | State | `packages/logix-core/src/State.ts` | `./State` |
-| StateTrait | `packages/logix-core/src/StateTrait.ts` | `./StateTrait` |
-| TraitLifecycle | `packages/logix-core/src/TraitLifecycle.ts` | `./TraitLifecycle` |
+| FieldKernel | `packages/logix-core/src/FieldKernel.ts` | `./FieldKernel` |
+| FieldLifecycle | `packages/logix-core/src/FieldLifecycle.ts` | `./FieldLifecycle` |
 
 **Root-only (barrel namespace) Concepts（不提供 subpath export）**：
 
@@ -191,13 +191,13 @@
 
 - UI：渲染 runtime 的诊断/证据（快照、图、时间线）并提供交互入口。
 - 集成：通过 `DevtoolsLayer`/label 等最小 API 与 `@logixjs/core` 的 Debug/Observability 对接。
-- 视图组件：`StateTraitGraphView` 等独立视图以 Public Submodule 形式对外暴露，避免实现目录成为事实 API。
+- 视图组件：`FieldGraphView` 等独立视图以 Public Submodule 形式对外暴露，避免实现目录成为事实 API。
 
 **Public Submodules（建议）**：
 
 - `LogixDevtools`（主 UI 入口）
 - `DevtoolsLayer`（与 runtime 集成相关的最小 API：layer/label 等）
-- `StateTraitGraphView`（可选：独立图组件）
+- `FieldGraphView`（可选：独立图组件）
 
 **Forbidden (internal-only)**:
 
@@ -214,7 +214,7 @@
 | (root barrel) | `packages/logix-devtools-react/src/index.tsx` | `.` |
 | LogixDevtools | `packages/logix-devtools-react/src/LogixDevtools.tsx` | `./LogixDevtools`（via `./*` or explicit） |
 | DevtoolsLayer | `packages/logix-devtools-react/src/DevtoolsLayer.tsx` | `./DevtoolsLayer`（via `./*` or explicit） |
-| StateTraitGraphView | `packages/logix-devtools-react/src/StateTraitGraphView.tsx` | `./StateTraitGraphView`（via `./*` or explicit） |
+| FieldGraphView | `packages/logix-devtools-react/src/FieldGraphView.tsx` | `./FieldGraphView`（via `./*` or explicit） |
 
 ### `@logixjs/sandbox`（infra / Alignment Lab）
 
@@ -293,15 +293,15 @@
 
 **Core Chain（核心链路摘要）**：
 
-- 领域目标：在不改变 core IR/事务语义的前提下，提供表单领域的概念 DSL 与 Trait 下沉接口。
+- 领域目标：在不改变 core IR/事务语义的前提下，提供表单领域的概念 DSL 与 Field 下沉接口。
 - Form 入口：`Form.make`/controller 等概念入口，驱动状态、校验、派发与订阅投影。
-- Rule/Trait/Path：以概念模块承载规则、字段能力（Trait）、路径与错误模型。
+- Rule/Field/Path：以概念模块承载规则、字段能力（Field）、路径与错误模型。
 - React 入口：`@logixjs/form/react` 仅做“订阅投影 + DOM 事件适配”的薄层（底层仍是 `@logixjs/react`）。
 
 **Public Submodules（建议，与 runtime SSoT 约定一致）**：
 
 - `Form`（`make` / controller 等领域入口）
-- `Rule` / `Error` / `Trait` / `Path`
+- `Rule` / `Error` / `Field` / `Path`
 - `SchemaPathMapping` / `SchemaErrorMapping`
 - `FormView`（如确认其作为稳定概念；否则应 internal 并避免出现在对外类型签名中）
 
@@ -322,7 +322,7 @@
 | Form | `packages/logix-form/src/Form.ts` | `./Form`（via `./*`） |
 | Rule | `packages/logix-form/src/Rule.ts` | `./Rule`（via `./*`） |
 | Error | `packages/logix-form/src/Error.ts` | `./Error`（via `./*`） |
-| Trait | `packages/logix-form/src/Trait.ts` | `./Trait`（via `./*`） |
+| Field | `packages/logix-form/src/Field.ts` | `./Field`（via `./*`） |
 | Path | `packages/logix-form/src/Path.ts` | `./Path`（via `./*`） |
 | FormView | `packages/logix-form/src/FormView.ts` | `./FormView`（via `./*`） |
 | SchemaPathMapping | `packages/logix-form/src/SchemaPathMapping.ts` | `./SchemaPathMapping`（via `./*`） |
@@ -338,7 +338,7 @@
 
 **Core Chain（核心链路摘要）**：
 
-- 领域目标：把“查询/缓存/失效”能力收敛为可注入 Engine（Tag/Layer）与 Traits 规则。
+- 领域目标：把“查询/缓存/失效”能力收敛为可注入 Engine（Tag/Layer）与 Fields 规则。
 - Engine：定义最小查询执行契约（含 invalidate），并提供 layer 装配入口。
 - Middleware：在 `EffectOp`/runtime 边界注入查询相关的拦截与证据采集（若需要）。
 - TanStack：作为集成子域对外暴露观察/桥接入口（必须以概念模块封装实现目录）。
@@ -346,7 +346,7 @@
 **Public Submodules（建议）**：
 
 - `Query`（`make` / blueprint）
-- `Traits`（降解到 StateTrait 的规则入口）
+- `Fields`（降解到 FieldKernel 的规则入口）
 - `Engine`（Tag + Layer）
 - `Middleware`（EffectOp 接管点）
 - `TanStack`（engine/observe 等集成入口）
@@ -366,7 +366,7 @@
 | (root barrel) | `packages/logix-query/src/index.ts` | `.` |
 | Query | `packages/logix-query/src/Query.ts` | `./Query`（via `./*`） |
 | Engine | `packages/logix-query/src/Engine.ts` | `./Engine`（via `./*`） |
-| Traits | `packages/logix-query/src/Traits.ts` | `./Traits`（via `./*`） |
+| Fields | `packages/logix-query/src/Fields.ts` | `./Fields`（via `./*`） |
 | Middleware | `packages/logix-query/src/Middleware.ts` | `./Middleware`（via `./*`） |
 | TanStack | `packages/logix-query/src/TanStack.ts` | `./TanStack`（via `./*`） |
 

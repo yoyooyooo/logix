@@ -1,7 +1,7 @@
 # Specification Quality Checklist: 015 Devtools Converge Performance Pane
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-17  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-17
 **Feature**: `specs/015-devtools-converge-performance/spec.md`
 
 ## Content Quality

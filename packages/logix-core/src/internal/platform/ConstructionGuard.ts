@@ -57,7 +57,7 @@ export const guardBuildTime = <A, E, R>(
             message: `[ConstructionGuardError] Build-time dependency violation: service "${missing}" is not available in Build Env.`,
             hint:
               'Build-time (Reflection) can only depend on a small set of mockable primitives (e.g. Config/RuntimeHost). ' +
-              'Move business service access to runtime (e.g. Trait handler / Logic run section) or isolate it via explicit injection.',
+              'Move business service access to runtime (e.g. field handler / Logic run section) or isolate it via explicit injection.',
           }),
         )
       }

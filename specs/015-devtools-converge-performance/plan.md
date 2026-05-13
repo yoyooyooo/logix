@@ -1,6 +1,6 @@
 # Implementation Plan: 015 Devtools Converge Performance Pane
 
-**Branch**: `015-devtools-converge-performance` | **Date**: 2025-12-18 | **Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/015-devtools-converge-performance/spec.md`  
+**Branch**: `015-devtools-converge-performance` | **Date**: 2025-12-18 | **Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/015-devtools-converge-performance/spec.md`
 **Input**: Feature specification from `/specs/015-devtools-converge-performance/spec.md`
 
 ## Summary
@@ -14,14 +14,14 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.x（pnpm workspace）  
-**Primary Dependencies**: `@logixjs/devtools-react`、`@logixjs/core`、`effect` v3；依赖统一观测协议/聚合底座（Spec 005）  
-**Storage**: N/A（内存聚合；离线证据包导入/导出由底座提供）  
-**Testing**: Vitest（UI 回归 + 纯函数 Audits 测试）  
-**Target Platform**: modern browsers（内嵌面板 + 离线导入）  
-**Project Type**: monorepo（packages + apps + specs）  
-**Performance Goals**: 常用交互（筛选/选择/缩放）在常规规模证据包下 200ms 内可见结果；高密度/大包进入可预测降级（目标与测量口径复用 005）  
-**Constraints**: 面板展示与 Audits 不读取运行时内部状态；证据缺字段必须显式降级；排序必须确定性可复现（缺少全局排序键时退回实例内单调序号）  
+**Language/Version**: TypeScript 5.x（pnpm workspace）
+**Primary Dependencies**: `@logixjs/devtools-react`、`@logixjs/core`、`effect` v3；依赖统一观测协议/聚合底座（Spec 005）
+**Storage**: N/A（内存聚合；离线证据包导入/导出由底座提供）
+**Testing**: Vitest（UI 回归 + 纯函数 Audits 测试）
+**Target Platform**: modern browsers（内嵌面板 + 离线导入）
+**Project Type**: monorepo（packages + apps + specs）
+**Performance Goals**: 常用交互（筛选/选择/缩放）在常规规模证据包下 200ms 内可见结果；高密度/大包进入可预测降级（目标与测量口径复用 005）
+**Constraints**: 面板展示与 Audits 不读取运行时内部状态；证据缺字段必须显式降级；排序必须确定性可复现（缺少全局排序键时退回实例内单调序号）
 **Scale/Scope**: 以 converge 证据为中心的单面板；不承担通用 Devtools 时间轴替代；不强制扩展面板实时一致性
 
 ## Constitution Check

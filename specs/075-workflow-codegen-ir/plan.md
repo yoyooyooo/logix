@@ -1,6 +1,6 @@
 # Implementation Plan: Workflow Codegen IR（出码层：Canonical AST + Static IR）
 
-**Branch**: `075-workflow-codegen-ir` | **Date**: 2026-01-05 | **Spec**: `specs/075-workflow-codegen-ir/spec.md`  
+**Branch**: `075-workflow-codegen-ir` | **Date**: 2026-01-05 | **Spec**: `specs/075-workflow-codegen-ir/spec.md`
 **Input**: Feature specification from `specs/075-workflow-codegen-ir/spec.md`
 
 **Note**: This template is copied into `specs/[###-feature-name]/plan.md` by
@@ -42,14 +42,14 @@
 - **Service 身份单一真相源**：`call`（原 `serviceCall`）走 Tag-only API；Static IR/Trace/Tape 中只存 `serviceId: string`，并按 `specs/078-module-service-manifest/contracts/service-id.md` 的算法从 Tag 派生（必须单点 helper，禁止各处自写）。
 - **分支是图，不是约定**：`onSuccess/onFailure` 允许作为 authoring sugar，但编译后必须显式落到 IR 的节点/边（包含 success/failure 边），用于解释链路与 diff。
 - **时间语义进 IR**：`timeout/retry/delay` 等时间算子必须进入 tick 参考系；其中 `timeout/retry` 不得只作为运行时黑盒参数，必须体现在可导出的 Static IR 中。
-- **入口收敛**：推荐入口为 `Module.withWorkflows(programs)`（平台/AI 出码）与 `Module.withWorkflow(program)`（人类/小规模）；`program.install(Module.tag)` 仅作为高级装配接口保留。
+- **入口收敛**：推荐入口统一为 `Program.make(Module, { workflows: [...] })`；`program.install(Module.tag)` 仅作为高级装配接口保留。
 
 ### Hard Decisions（v1 硬裁决）
 
 与 `spec.md#Hard Decisions` 保持一致，本计划实现时以以下硬裁决为门槛（fail-fast）：
 
 - `call` v1 不提供结果数据流：只表达控制流（success/failure）与策略；基于结果的 payload/分支下沉到 service 或拆分多个 Program。
-- 输入映射 DSL v1：仅 `payload/payload.path/const/object/merge`；不读 state/traits；无条件/循环/算术。
+- 输入映射 DSL v1：仅 `payload/payload.path/const/object/merge`；不读 state/fields；无条件/循环/算术。
 - Canonical AST 强制 `stepKey` 必填：缺失即 validate/export 失败；禁止顺序派生。
 - 分支必须显式结构：禁止邻接推断作为真相源。
 - `nodeId` 主锚点用稳定 hash；可读性通过 `source(stepKey/fragmentId)` 提供。
@@ -127,7 +127,7 @@
 
 - `WorkflowRuntime.mountAll(programs[]) -> Logic`：一次性挂载并内部做 `actionTag -> workflows[]` 索引
 - `program.install(moduleTag)` 仍保留，但实现上应委托给 `mountAll`（把单个 program 装配到同一个 registry，而不是每个 program 单独起 watcher）
-- 对外推荐入口：`Module.withWorkflows(programs)`（平台/AI 出码）与 `Module.withWorkflow(program)`（人类/小规模），最终都应落到同一条 actions$ 订阅与同一套路由机制
+- 对外推荐入口：`Program.make(Module, { workflows: [...] })`，最终落到同一条 actions$ 订阅与同一套路由机制
 
 > 这一条是性能门槛：否则平台/AI 出码“很多 program”会线性放大 PubSub 广播与 Stream.filter 成本。
 
@@ -202,14 +202,14 @@ v1 的解释器只需要处理：
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.9.x（ESM）  
-**Primary Dependencies**: `effect` v3，`@logixjs/core`（FlowRuntime/EffectOp），依赖 073 的 tick/contracts  
-**Storage**: N/A  
-**Testing**: Vitest（涉及 tick/时间语义的测试优先 `@effect/vitest`）  
-**Target Platform**: Node.js + browsers  
-**Project Type**: pnpm workspace（`packages/*`）  
-**Performance Goals**: timer 触发 + watcher 运行的 tick overhead 不得显著回归（需 perf evidence）  
-**Constraints**: 统一最小 IR（Static IR + Dynamic Trace）；标识去随机化；事务窗口禁 IO；no shadow time  
+**Language/Version**: TypeScript 5.9.x（ESM）
+**Primary Dependencies**: `effect` v3，`@logixjs/core`（FlowRuntime/EffectOp），依赖 073 的 tick/contracts
+**Storage**: N/A
+**Testing**: Vitest（涉及 tick/时间语义的测试优先 `@effect/vitest`）
+**Target Platform**: Node.js + browsers
+**Project Type**: pnpm workspace（`packages/*`）
+**Performance Goals**: timer 触发 + watcher 运行的 tick overhead 不得显著回归（需 perf evidence）
+**Constraints**: 统一最小 IR（Static IR + Dynamic Trace）；标识去随机化；事务窗口禁 IO；no shadow time
 **Scale/Scope**: 面向“典型业务工作流”（提交/跳转/刷新/重试），不追求全量 BPMN
 
 ## Constitution Check
@@ -218,17 +218,17 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - Answers（已复核，按 075 终态口径）：
   - Intent → Flow/Logix → Code → Runtime
-    - 口径：平台/AI/LLM 出码产物为 `WorkflowDefV1`（Canonical AST，纯 JSON）→ 冷路径编译 `compileWorkflowStaticIrV1` 得到可导出 Π slice（`WorkflowStaticIrV1`/`workflowSurface`）→ 运行期由 `WorkflowRuntime` 预编译 runtime plan 并挂载（单订阅 action 路由）→ 执行通过 EffectOp/TaskRunner/txn 管理 → Root IR（`ControlSurfaceManifest`）+ Slim Trace 形成可解释链路。
-    - Refs：`specs/075-workflow-codegen-ir/contracts/public-api.md`、`specs/075-workflow-codegen-ir/contracts/ir.md`、`packages/logix-core/src/Workflow.ts`、`packages/logix-core/src/internal/workflow/compiler.ts`、`packages/logix-core/src/internal/runtime/core/WorkflowRuntime.ts`、`packages/logix-core/src/internal/observability/controlSurfaceManifest.ts`
+    - 口径：平台/AI/LLM 出码产物为 `WorkflowDefV1`（Canonical AST，纯 JSON）→ 冷路径编译 `compileWorkflowStaticIrV1` 得到可导出 Π slice（`WorkflowStaticIrV1`/`controlProgramSurface`）→ 运行期由 `WorkflowRuntime` 预编译 runtime plan 并挂载（单订阅 action 路由）→ 执行通过 EffectOp/TaskRunner/txn 管理 → Root IR（`ControlSurfaceManifest`）+ Slim Trace 形成可解释链路。
+    - Refs：`specs/075-workflow-codegen-ir/contracts/public-api.md`、`specs/075-workflow-codegen-ir/contracts/ir.md`、`packages/logix-core/src/internal/runtime/core/WorkflowRuntime.ts`、`packages/logix-core/src/internal/workflow/compiler.ts`、`packages/logix-core/src/internal/runtime/core/WorkflowRuntime.ts`、`packages/logix-core/src/internal/observability/controlSurfaceManifest.ts`
   - 依赖/修改的 specs（docs-first & SSoT）
     - 依赖：073 tick 参考系/观测锚点、067 control surface/manifest 口径、078 serviceId（Tag-only）派生口径（仅复用既有裁决，不新增并行真相源）。
     - 已同步：平台侧裁决落在 `docs/ssot/platform/contracts/*`；runtime 侧补齐术语与“可合并性 rationale”，见 `docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.11-workflow-and-control-surface.md`。
   - Effect/Logix contract 变更
-    - 新增：Workflow authoring + mount（`Workflow`/`Module.withWorkflow(s)`）与 Root IR 导出入口（`Reflection.exportControlSurface`）。
+    - 新增：Workflow authoring + mount（`Workflow`/`Program.make(..., { workflows })`）与 Root IR 导出入口（`Reflection.exportControlSurface`）。
     - runtime 口径：见 `docs/ssot/runtime/logix-core/concepts/10-runtime-glossary.11-workflow-and-control-surface.md`（与本 spec 的 contracts 对齐）。
   - IR & anchors（统一最小 IR / Platform-Grade subset）
     - Static IR：`WorkflowStaticIrV1`（version+digest+nodes/edges/source）作为可导出 Π slice；Root IR：`ControlSurfaceManifestV1` 仅持 digest+最小索引，slices 按需加载（禁止把执行成本转嫁给 Root）。
-    - Refs：`docs/ssot/platform/contracts/03-control-surface-manifest.md`、`specs/075-workflow-codegen-ir/contracts/ir.md`、`packages/logix-core/src/internal/observability/workflowSurface.ts`
+    - Refs：`docs/ssot/platform/contracts/03-control-surface-manifest.md`、`specs/075-workflow-codegen-ir/contracts/ir.md`、`packages/logix-core/src/internal/observability/controlProgramSurface.ts`
   - Deterministic identity（稳定可复现）
     - 稳定锚点：沿用 073 的 `instanceId/txnSeq/opSeq/tickSeq` 参考系；本特性新增的静态 digest 使用 `stableStringify + fnv1a32`，并确保所有进入 digest/IR 的排序均与 locale 无关（消除 `localeCompare` 漂移风险）。
     - Refs：`docs/ssot/platform/contracts/03-control-surface-manifest.md`、`packages/logix-core/src/internal/digest.ts`
@@ -254,7 +254,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
   - Breaking changes（forward-only）
     - 本特性为 forward-only：已完成历史命名清理，统一对外口径为 `Workflow*`，无兼容层；迁移说明见 `specs/075-workflow-codegen-ir/contracts/migration.md`。
   - Public submodules / exports topology
-    - 已遵守：`packages/logix-core/src/Workflow.ts` 为 public submodule；实现下沉到 `packages/logix-core/src/internal/**`；exports 不暴露 internals。
+    - 已遵守：`packages/logix-core/src/internal/runtime/core/WorkflowRuntime.ts` 为 public submodule；实现下沉到 `packages/logix-core/src/internal/**`；exports 不暴露 internals。
   - Large modules/files（decomposition）
     - N/A：本次未引入 ≥1000 LOC 的单体文件；新增核心实现已放入 `src/internal/runtime/core/**` 分层。
   - Quality gates（merge 前门禁）
@@ -263,7 +263,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 ## Perf Evidence Plan（MUST）
 
 > 若本特性触及 Logix Runtime 核心路径 / 渲染关键路径 / 对外性能边界：此节必须填写；否则标注 `N/A`。
-> 详细口径见：`.codex/skills/logix-perf-evidence/references/perf-evidence.md`
+> 详细口径见：`packages/logix-perf-evidence/references/perf-evidence.md`
 
 Baseline 语义（MUST-1）：
 
@@ -321,7 +321,7 @@ specs/075-workflow-codegen-ir/
 packages/logix-core/
 ├── src/
 │   ├── Workflow.ts                            # NEW: public module (DSL + types)
-│   ├── Module.ts                              # UPDATE: add `Module.withWorkflow(program)` sugar (canonical install entry)
+│   ├── Module.ts                              # UPDATE: add workflow sugar；当前 canonical install entry 已收敛到 `Program.make(..., { workflows })`
 │   └── internal/
 │       └── runtime/core/
 │           ├── WorkflowRuntime.ts             # NEW: compiler + mount (uses FlowRuntime/EffectOp)

@@ -39,7 +39,7 @@
 
 验收口径：
 
-- 默认路径（仅当前内核）不回归：以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为 SSoT；交付结论必须 `profile=default`（或 `soak`），且 `pnpm perf diff` 满足 `comparable=true && regressions==0`。
+- 默认路径（仅当前内核）不回归：以 `packages/logix-perf-evidence/assets/matrix.json` 为 SSoT；交付结论必须 `profile=default`（或 `soak`），且 `pnpm perf diff` 满足 `comparable=true && regressions==0`。
 - 引入契约/装配点后，事务/收敛热循环不得出现“每步动态分发/额外分配”
 
 ## 5) 常见失败信号（实现阶段应可解释）
@@ -50,4 +50,4 @@
 
 ## 6) 下一步（045 之后的主线）
 
-- 打开 `specs/046-core-ng-roadmap/quickstart.md`，按路线图优先推进 M1：`specs/039-trait-converge-int-exec-evidence/`（当前内核够硬 + 证据达标）。
+- 打开 `specs/046-core-ng-roadmap/quickstart.md`，按路线图优先推进 M1：`specs/039-field-converge-int-exec-evidence/`（当前内核够硬 + 证据达标）。

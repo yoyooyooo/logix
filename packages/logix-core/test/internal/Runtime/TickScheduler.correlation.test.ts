@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { describe } from '@effect/vitest'
 import { it, expect } from '@effect/vitest'
 import { Effect } from 'effect'
@@ -10,7 +11,7 @@ import { makeTickScheduler } from '../../../src/internal/runtime/core/TickSchedu
 describe('TickScheduler (tickSeq correlation)', () => {
   it.effect('trace:tick anchors should correlate tickSeq with txnSeq/opSeq', () =>
     Effect.gen(function* () {
-      Logix.Debug.clearDevtoolsEvents()
+      CoreDebug.clearDevtoolsEvents()
 
       const store = makeRuntimeStore()
       const queue = makeJobQueue()
@@ -34,13 +35,13 @@ describe('TickScheduler (tickSeq correlation)', () => {
       })
       queue.markTopicDirty(key, 'normal')
 
-      yield* Effect.provideService(scheduler.flushNow, Logix.Debug.internal.currentDiagnosticsLevel as any, 'light').pipe(
-        Effect.provide(Logix.Debug.devtoolsHubLayer({ bufferSize: 64 })),
+      yield* Effect.provideService(scheduler.flushNow, CoreDebug.internal.currentDiagnosticsLevel as any, 'light').pipe(
+        Effect.provide(CoreDebug.devtoolsHubLayer({ bufferSize: 64 })),
       )
 
       expect(store.getTickSeq()).toBe(1)
 
-      const settled = Logix.Debug.getDevtoolsSnapshot().events
+      const settled = CoreDebug.getDevtoolsSnapshot().events
         .filter((e) => e.label === 'trace:tick')
         .map((e) => (e.meta ?? {}) as any)
         .find((m) => m.phase === 'settled' && m.tickSeq === 1)
@@ -55,7 +56,7 @@ describe('TickScheduler (tickSeq correlation)', () => {
 
   it.effect('scheduling diagnostics should emit degrade/recover with policy scope aligned to tick backlog', () =>
     Effect.gen(function* () {
-      const ring = Logix.Debug.makeRingBufferSink(128)
+      const ring = CoreDebug.makeRingBufferSink(128)
       const store = makeRuntimeStore()
       const queue = makeJobQueue()
       const scheduler = makeTickScheduler({
@@ -103,8 +104,8 @@ describe('TickScheduler (tickSeq correlation)', () => {
 
       const withDiagnostics = <A, E>(eff: Effect.Effect<A, E, never>) =>
         Effect.provideService(
-          Effect.provideService(eff, Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any]),
-          Logix.Debug.internal.currentDiagnosticsLevel as any,
+          Effect.provideService(eff, CoreDebug.internal.currentDebugSinks as any, [ring.sink as any]),
+          CoreDebug.internal.currentDiagnosticsLevel as any,
           'light',
         )
 
@@ -132,7 +133,7 @@ describe('TickScheduler (tickSeq correlation)', () => {
 
   it.effect('scheduling diagnostics should clear degrade state on stable tick even when diagnostics are disabled', () =>
     Effect.gen(function* () {
-      const ring = Logix.Debug.makeRingBufferSink(128)
+      const ring = CoreDebug.makeRingBufferSink(128)
       const store = makeRuntimeStore()
       const queue = makeJobQueue()
       const scheduler = makeTickScheduler({
@@ -180,15 +181,15 @@ describe('TickScheduler (tickSeq correlation)', () => {
 
       const withDiagnostics = <A, E>(eff: Effect.Effect<A, E, never>) =>
         Effect.provideService(
-          Effect.provideService(eff, Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any]),
-          Logix.Debug.internal.currentDiagnosticsLevel as any,
+          Effect.provideService(eff, CoreDebug.internal.currentDebugSinks as any, [ring.sink as any]),
+          CoreDebug.internal.currentDiagnosticsLevel as any,
           'light',
         )
 
       const withoutDiagnostics = <A, E>(eff: Effect.Effect<A, E, never>) =>
         Effect.provideService(
-          Effect.provideService(eff, Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any]),
-          Logix.Debug.internal.currentDiagnosticsLevel as any,
+          Effect.provideService(eff, CoreDebug.internal.currentDebugSinks as any, [ring.sink as any]),
+          CoreDebug.internal.currentDiagnosticsLevel as any,
           'off',
         )
 
@@ -221,7 +222,7 @@ describe('TickScheduler (tickSeq correlation)', () => {
 
   it.effect('scheduling diagnostics should emit degrade once for a continuous unstable window', () =>
     Effect.gen(function* () {
-      const ring = Logix.Debug.makeRingBufferSink(128)
+      const ring = CoreDebug.makeRingBufferSink(128)
       const store = makeRuntimeStore()
       const queue = makeJobQueue()
       const scheduler = makeTickScheduler({
@@ -281,8 +282,8 @@ describe('TickScheduler (tickSeq correlation)', () => {
 
       const withDiagnostics = <A, E>(eff: Effect.Effect<A, E, never>) =>
         Effect.provideService(
-          Effect.provideService(eff, Logix.Debug.internal.currentDebugSinks as any, [ring.sink as any]),
-          Logix.Debug.internal.currentDiagnosticsLevel as any,
+          Effect.provideService(eff, CoreDebug.internal.currentDebugSinks as any, [ring.sink as any]),
+          CoreDebug.internal.currentDiagnosticsLevel as any,
           'light',
         )
 

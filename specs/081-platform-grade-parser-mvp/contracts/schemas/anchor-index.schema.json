@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://intent-flow.local/specs/081/anchor-index.schema.json",
+  "$id": "https://logix.local/specs/081/anchor-index.schema.json",
   "title": "AnchorIndex@v1",
   "type": "object",
   "additionalProperties": false,

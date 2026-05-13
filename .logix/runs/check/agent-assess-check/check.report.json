@@ -1,0 +1,57 @@
+{
+  "artifacts": [
+    {
+      "digest": "manifest:067:af0956b8",
+      "kind": "ModuleManifest",
+      "outputKey": "module-manifest"
+    },
+    {
+      "digest": "selector-quality:static:ded9d6ab",
+      "kind": "SelectorQualityArtifact",
+      "outputKey": "selector-quality:static"
+    }
+  ],
+  "environment": {
+    "declarationDigest": "manifest:067:af0956b8",
+    "entry": {
+      "exportName": "BasicProgram",
+      "modulePath": "packages/logix-cli/test/fixtures/BasicProgram.ts"
+    },
+    "host": "node",
+    "runId": "agent-assess-check"
+  },
+  "errorCode": null,
+  "findings": [
+    {
+      "code": "CHECK_STAGE_PASS_ONLY",
+      "kind": "pass-boundary",
+      "ownerCoordinate": "runtime.check",
+      "summary": "PASS covers only the check stage."
+    }
+  ],
+  "kind": "VerificationControlPlaneReport",
+  "mode": "static",
+  "nextRecommendedStage": "trial",
+  "repairHints": [],
+  "repeatability": {
+    "ignoredFields": [
+      "environment.runId",
+      "environment.file",
+      "environment.outDir",
+      "artifacts[].file"
+    ],
+    "normalizedInputDigest": "verify-input:a6e15730",
+    "reportDigest": "verify-report:a6e15730",
+    "stableFields": [
+      "verdict",
+      "errorCode",
+      "artifactKeys",
+      "artifactDigests",
+      "nextRecommendedStage"
+    ]
+  },
+  "schemaVersion": 1,
+  "stage": "check",
+  "summary": "runtime.check passed",
+  "verdict": "PASS"
+}

@@ -1,24 +1,21 @@
 ---
 title: useLocalModule
-description: API Reference for useLocalModule hook
+description: Create a component-local module instance in React.
 ---
 
-`useLocalModule` creates a “local module instance” inside a component (one instance per component instance). It’s typically used to host UI state that only belongs to the component/page (as an alternative to `useState` / `useReducer`).
+`useLocalModule` creates a component-local module instance.
 
-Properties:
+This is an advanced route.
+Use it when one component instance should own one local runtime instance and no cross-component sharing is required.
 
-- **Synchronous creation**: does not trigger React Suspense, and is not governed by `RuntimeProvider`’s `policy.mode`.
-- **Lifecycle bound to the component**: created on mount, disposed automatically on unmount (Scope/resources are closed together).
-- **No cross-component sharing**: even with the same `key`, different components will not reuse the same instance.
-
-## Usage (recommended: ModuleTag form)
+## Usage
 
 ```tsx
-import * as Logix from '@logixjs/core'
-import { useDispatch, useLocalModule, useSelector } from '@logixjs/react'
-import { Schema } from 'effect'
+import * as Logix from "@logixjs/core"
+import { useDispatch, useLocalModule, useSelector } from "@logixjs/react"
+import { Schema } from "effect"
 
-const LocalForm = Logix.Module.make('LocalForm', {
+const LocalForm = Logix.Module.make("LocalForm", {
   state: Schema.Struct({ text: Schema.String }),
   actions: { change: Schema.String },
   reducers: {
@@ -27,30 +24,40 @@ const LocalForm = Logix.Module.make('LocalForm', {
 })
 
 export function LocalFormComponent() {
-  const form = useLocalModule(LocalForm, { initial: { text: '' } })
+  const form = useLocalModule(LocalForm, { initial: { text: "" } })
   const text = useSelector(form, (s) => s.text)
   const dispatch = useDispatch(form)
 
-  return <input value={text} onChange={(e) => dispatch({ _tag: 'change', payload: e.target.value })} />
+  return <input value={text} onChange={(e) => dispatch({ _tag: "change", payload: e.target.value })} />
 }
 ```
 
-## API
+## Properties
 
-### `useLocalModule(module, options)`
+- synchronous construction
+- lifecycle bound to the component
+- no cross-component sharing
 
-- `module`: the return value of `Logix.Module.make(...)` (or its `.tag`)
-- `options.initial` (required): initial state
-- `options.logics` (optional): extra `ModuleLogic` list to install
-- `options.deps` (optional): dependency array used to “invalidate and rebuild the instance” (prefer primitives only)
-- `options.key` (optional): distinguish multiple local instances within the same component / for diagnostics; not shared across components
+## Options
 
-### `useLocalModule(factory, deps?)`
+`useLocalModule(module, options)` accepts:
 
-- `factory`: `() => Effect<ModuleRuntime, ...>` (must be synchronously constructible; do not do I/O here)
-- `deps`: same as `options.deps`
+- `initial`
+- `logics`
+- `deps`
+- `key`
 
-## When not to use useLocalModule
+`useLocalModule(factory, deps?)` accepts a synchronous factory route.
 
-- **You need async initialization / want defer+preload**: use `useModule(Impl)` or `useModuleRuntime(Tag)` and let `RuntimeProvider` policy handle it (configure `logix.react.init_timeout_ms` as a safety net).
-- **You need to share one instance across components**: use `useModule(Impl, { key })` (or lift instance creation to a route/root component and pass the handle down).
+## When not to use it
+
+Prefer `useModule(Program, options?)` when:
+
+- async initialization is needed
+- keyed reuse is needed
+- one instance should be shared across components
+
+## See also
+
+- [useModule](./use-module)
+- [useSelector](./use-selector)

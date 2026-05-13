@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@effect/vitest'
-import { getFieldArrayItemId, getTrackByForListPath } from '../../src/internal/form/rowid.js'
+import { getFieldArrayItemId, getRowIdStore, getTrackByForListPath } from '../../src/internal/form/rowid.js'
 
 const RUNTIME_INTERNALS = Symbol.for('@logixjs/core/runtimeInternals')
 
@@ -17,7 +17,7 @@ describe('Form internal rowId helpers', () => {
     const runtime: any = { moduleId: 'FormRowIdTest', instanceId: 'i-1' }
     const internals = {
       instanceId: 'i-1',
-      traits: {
+      fields: {
         getListConfigs: () => [
           { path: 'items', trackBy: 'id' },
           { path: 'rows', trackBy: 'meta.key' },
@@ -69,7 +69,7 @@ describe('Form internal rowId helpers', () => {
         listPath: 'items',
         item: {},
         index: 1,
-        rowIdStore: { getRowId: () => 'r2' },
+        rowIdStore: { getRowId: () => 'r2', getIndex: () => 1 } as any,
       }),
     ).toBe('r2')
 
@@ -80,5 +80,24 @@ describe('Form internal rowId helpers', () => {
         index: 2,
       }),
     ).toBe('2')
+  })
+
+  it('reads row index from rowIdStore for byRowId routing', () => {
+    const runtime: any = { moduleId: 'FormRowIdTest', instanceId: 'i-1' }
+    const internals = {
+      instanceId: 'i-1',
+      fields: {
+        rowIdStore: {
+          getRowId: () => 'row-1',
+          getIndex: (_listPath: string, rowId: string) => (rowId === 'row-1' ? 1 : undefined),
+        },
+        getListConfigs: () => [{ path: 'items', trackBy: 'id' }],
+      },
+    }
+    setRuntimeInternals(runtime, internals)
+
+    const store: any = getRowIdStore(runtime)
+    expect(typeof store?.getIndex).toBe('function')
+    expect(store?.getIndex('items', 'row-1')).toBe(1)
   })
 })

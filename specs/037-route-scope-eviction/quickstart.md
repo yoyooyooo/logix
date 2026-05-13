@@ -4,9 +4,9 @@
 
 ## 0. 你需要记住的四句话
 
-1) **路由 scope = 一个 Host 实例**：把“路由范围的共享状态”锚定在一个 Host 模块实例上。  
-2) **弹框模块要挂在 Host.imports**：弹框 UI 反复卸载/挂载不应影响模块实例；组件只从 `host.imports.get(Modal.tag)` 拿句柄。  
-3) **关闭弹框 ≠ 销毁状态**：别用组件级默认 key 承载“希望保留的状态”。  
+1) **路由 scope = 一个 Host 实例**：把“路由范围的共享状态”锚定在一个 Host 模块实例上。
+2) **弹框模块要挂在 Host.imports**：弹框 UI 反复卸载/挂载不应影响模块实例；组件只从 `host.imports.get(Modal.tag)` 拿句柄。
+3) **关闭弹框 ≠ 销毁状态**：别用组件级默认 key 承载“希望保留的状态”。
 4) **离开路由必须结束 scope**：路由 unmount 自动结束；keep-alive/离开但不卸载场景，需要通过“卸载/替换边界 Provider 或切换稳定 scopeId”显式结束 scope。
 
 > 说明：下文默认你已经在更外层挂了 `@logixjs/react` 的 `RuntimeProvider`（即：有一个 app runtime）。
@@ -17,14 +17,14 @@
 
 概念形态：
 
-- 定义一个 RouteHost 模块，并 `imports: [ModalA.impl, ModalB.impl]`；
-- 路由组件创建 Host 实例（建议提供稳定 scopeId，并设置 `gcTime: 0` 以确保卸载后立即释放）；
+- 定义一个 RouteHost Program，并 `capabilities.imports: [ModalAProgram, ModalBProgram]`；
+- 路由组件创建 Host Program 实例（建议提供稳定 scopeId，并设置 `gcTime: 0` 以确保卸载后立即释放）；
 - 弹框组件通过 `host.imports.get(ModalA.tag)` 解析到“属于这个 host 实例”的子模块句柄并渲染。
 
 关键点：
 
 - UI 千万不要直接 `useModule(ModalA.tag)`（那是“Provider 环境单例”，不绑定到 host scope）。
-- UI 也不要直接 `useModule(ModalA)` / `useModule(ModalA.impl)`（那会创建“独立实例”，关闭弹框后会按 gcTime 回收，无法做到“跟随 Host keepalive”）。
+- UI 也不要直接 `useModule(ModalAProgram)`（那会创建“独立实例”，关闭弹框后会按 gcTime 回收，无法做到“跟随 Host keepalive”）。
 
 ## 2) 避免 props 透传：用 ModuleScope（推荐，树内）
 
@@ -32,7 +32,7 @@
 
 概念形态：
 
-- `const RouteHostScope = ModuleScope.make(RouteHost.impl, { gcTime: 0 })`
+- `const RouteHostScope = ModuleScope.make(RouteHostProgram, { gcTime: 0 })`
 - 路由页挂：`<RouteHostScope.Provider options={{ scopeId: routeKey }}> ... </RouteHostScope.Provider>`
 - 弹框里：`const host = RouteHostScope.use()`，再 `host.imports.get(ModalA.tag)`
 - 更常见：弹框里直接：`const modalA = RouteHostScope.useImported(ModalA.tag)`（语法糖）
@@ -54,7 +54,7 @@
 
 ### 3.1 前提条件（必须满足）
 
-1) **Provider 必须提供 stable scopeId**：`<RouteHostScope.Provider options={{ scopeId: routeKey }}>`  
+1) **Provider 必须提供 stable scopeId**：`<RouteHostScope.Provider options={{ scopeId: routeKey }}>`
    没有 `scopeId` 就不会注册，Bridge 一定找不到。
 2) **两棵 React root 必须共享同一个 app runtime**：两棵树各自挂 `RuntimeProvider`，但传入同一个 `runtime` 对象（同一个 runtime tree）。
 3) Provider 先挂载（或至少同一时刻存在）：Bridge 在缺注册时会直接抛错（避免静默串用/拿到错误实例）。
@@ -64,7 +64,7 @@
 路由树（A root）负责创建 scope 并注册（owner）：
 
 ```tsx
-export const RouteHostScope = ModuleScope.make(RouteHost.impl, { gcTime: 0 })
+export const RouteHostScope = ModuleScope.make(RouteHostProgram, { gcTime: 0 })
 
 export function RouteRoot({ routeKey }: { routeKey: string }) {
   return (
@@ -130,7 +130,7 @@ function ModalAView() {
   - 确认 Host 的 `gcTime` 是否为 0（或足够小）。
   - keep-alive/离开但不卸载：确认边界 Provider 是否真的被卸载/替换，或 key 是否发生了切换。
 - “弹框状态没保住”：
-  - 是否在弹框里误用了 `useModule(Modal.impl)`（创建了独立实例）？
+  - 是否在弹框里误用了 `useModule(ModalProgram)`（创建了独立实例）？
   - 是否把弹框模块当成 Provider 单例 `useModule(Modal.tag)` 读了？
 - “Bridge 报 not registered / disposed”：
   - 确认路由树的 `<RouteHostScope.Provider options={{ scopeId }}>` 是否已挂载且 scopeId 一致；

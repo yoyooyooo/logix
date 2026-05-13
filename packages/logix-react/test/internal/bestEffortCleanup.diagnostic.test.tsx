@@ -1,3 +1,4 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 // @vitest-environment happy-dom
 
 import React from 'react'
@@ -13,19 +14,19 @@ const Root = Logix.Module.make('BestEffortCleanupRoot', {
   actions: { noop: Schema.Void },
 })
 
-const RootImpl = Root.implement({ initial: { ok: true } })
+const RootImpl = Logix.Program.make(Root, { initial: { ok: true }, logics: [] })
 
 describe('best-effort cleanup diagnostics', () => {
   it('ModuleCache should not silently swallow Scope.close / Debug.record defects in dev/test', async () => {
     const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {})
 
-    const failingSink: Logix.Debug.Sink = {
+    const failingSink: CoreDebug.Sink = {
       record: (event) =>
         (event as any)?.type === 'trace:react.module-instance' ? Effect.die(new Error('debug sink boom')) : Effect.void,
     }
 
     const failingDebugLayer = Layer.succeed(
-      Logix.Debug.internal.currentDebugSinks,
+      CoreDebug.internal.currentDebugSinks,
       [failingSink],
     ) as unknown as Layer.Layer<any, never, never>
 
@@ -80,7 +81,7 @@ describe('best-effort cleanup diagnostics', () => {
     await runtime.dispose()
   })
 
-  it('RuntimeProvider should not silently swallow Scope.close defects in dev/test', async () => {
+  it('React host adapter should not silently swallow Scope.close defects in dev/test', async () => {
     const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {})
 
     const baseRuntime = ManagedRuntime.make(Layer.empty as Layer.Layer<any, never, never>)
@@ -101,7 +102,7 @@ const failingFinalizerLayer = Layer.effectDiscard(
     expect(
       debugSpy.mock.calls.some(
         (call) =>
-          String(call[0]).includes('[RuntimeProvider]') &&
+          String(call[0]).includes('[ReactHostAdapter]') &&
           String(call[0]).includes('Scope.close failed') &&
           typeof call[1] === 'string',
       ),

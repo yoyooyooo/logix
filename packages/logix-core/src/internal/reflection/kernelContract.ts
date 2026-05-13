@@ -1,9 +1,10 @@
 import { Effect, Exit, Layer, ServiceMap } from 'effect'
-import type { ModuleImpl, AnyModuleShape } from '../runtime/core/module.js'
+import type { ProgramRuntimeBlueprint, AnyModuleShape } from '../runtime/core/module.js'
+import { getProgramRuntimeBlueprint, isProgram, type AnyProgram } from '../program.js'
 import type { ModuleRuntime } from '../runtime/core/module.js'
-import { trialRun } from '../observability/trialRun.js'
-import type { EvidencePackage } from '../observability/evidence.js'
-import type { JsonValue } from '../observability/jsonValue.js'
+import { runProofKernel } from '../verification/proofKernel.js'
+import type { EvidencePackage } from '../verification/evidence.js'
+import type { JsonValue } from '../protocol/jsonValue.js'
 import { fnv1a32, stableStringify } from '../digest.js'
 import type { Middleware } from '../effect-op.js'
 import * as Debug from '../runtime/core/DebugSink.js'
@@ -12,14 +13,16 @@ import * as KernelRef from '../runtime/core/KernelRef.js'
 import type * as RuntimeKernel from '../runtime/core/RuntimeKernel.js'
 import * as RuntimeKernelCore from '../runtime/core/RuntimeKernel.js'
 
-type AnyModuleLike = { readonly impl: ModuleImpl<any, AnyModuleShape, any> }
+type RootLike<Sh extends AnyModuleShape> = ProgramRuntimeBlueprint<any, Sh, any> | AnyProgram
 
-type RootLike<Sh extends AnyModuleShape> = ModuleImpl<any, Sh, any> | AnyModuleLike
-
-const resolveRootImpl = <Sh extends AnyModuleShape>(root: RootLike<Sh>): ModuleImpl<any, Sh, any> =>
-  ((root as any)?._tag === 'ModuleImpl'
-    ? (root as ModuleImpl<any, Sh, any>)
-    : ((root as any)?.impl as ModuleImpl<any, Sh, any>)) satisfies ModuleImpl<any, Sh, any>
+const resolveRootBlueprint = <Sh extends AnyModuleShape>(root: RootLike<Sh>): ProgramRuntimeBlueprint<any, Sh, any> =>
+  (isProgram(root)
+    ? getProgramRuntimeBlueprint<Sh>(root)
+    : (root as any)?._tag === 'ProgramRuntimeBlueprint'
+    ? (root as ProgramRuntimeBlueprint<any, Sh, any>)
+    : (() => {
+        throw new Error('[Logix] Kernel contract verification expected a Program.')
+      })()) satisfies ProgramRuntimeBlueprint<any, Sh, any>
 
 export type KernelContractVerdict = 'PASS' | 'FAIL'
 
@@ -286,7 +289,7 @@ const diffKernelContractTraceOps = (
 const VERSION = 'v1'
 
 const runOnce = <Sh extends AnyModuleShape>(
-  rootImpl: ModuleImpl<any, Sh, any>,
+  rootBlueprint: ProgramRuntimeBlueprint<any, Sh, any>,
   run: KernelContractRunOptions<Sh> | undefined,
   options: Pick<VerifyKernelContractOptions<Sh>, 'diagnosticsLevel' | 'maxEvents'>,
 ): Effect.Effect<
@@ -300,8 +303,8 @@ const runOnce = <Sh extends AnyModuleShape>(
   Effect.gen(function* () {
     const interaction = run?.interaction
     const program = Effect.gen(function* () {
-      const ctx = yield* rootImpl.layer.pipe(Layer.build)
-      const runtime = ServiceMap.get(ctx, rootImpl.module)
+      const ctx = yield* rootBlueprint.layer.pipe(Layer.build)
+      const runtime = ServiceMap.get(ctx, rootBlueprint.module)
       if (interaction) {
         yield* interaction(runtime)
       }
@@ -322,7 +325,7 @@ const runOnce = <Sh extends AnyModuleShape>(
       ? (Layer.mergeAll(traceLayer, run.layer, contractGateLayer) as Layer.Layer<any, any, any>)
       : (Layer.mergeAll(traceLayer, contractGateLayer) as Layer.Layer<any, any, any>)
 
-    const result = yield* trialRun(program as any, {
+    const result = yield* runProofKernel(program as any, {
       runId: run?.runId,
       diagnosticsLevel: options.diagnosticsLevel ?? 'light',
       maxEvents: options.maxEvents,
@@ -364,14 +367,14 @@ export const verifyKernelContract = <Sh extends AnyModuleShape>(
   options?: VerifyKernelContractOptions<Sh>,
 ): Effect.Effect<KernelContractVerificationResult, never, any> =>
   Effect.gen(function* () {
-    const rootImpl = resolveRootImpl(root)
+    const rootBlueprint = resolveRootBlueprint(root)
 
-    const beforeRun = yield* runOnce(rootImpl, options?.before, {
+    const beforeRun = yield* runOnce(rootBlueprint, options?.before, {
       diagnosticsLevel: options?.diagnosticsLevel,
       maxEvents: options?.maxEvents,
     })
 
-    const afterRun = yield* runOnce(rootImpl, options?.after, {
+    const afterRun = yield* runOnce(rootBlueprint, options?.after, {
       diagnosticsLevel: options?.diagnosticsLevel,
       maxEvents: options?.maxEvents,
     })

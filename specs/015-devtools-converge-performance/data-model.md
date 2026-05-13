@@ -1,7 +1,7 @@
 # Data Model: 015 Devtools Converge Performance Pane
 
-**Feature**: `015-devtools-converge-performance`  
-**Date**: 2025-12-18  
+**Feature**: `015-devtools-converge-performance`
+**Date**: 2025-12-18
 
 > 本数据模型描述 Devtools 侧的“聚合视图与输出结构”，不定义运行时 converge 的内部实现。
 

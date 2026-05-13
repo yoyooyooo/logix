@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "intent-flow://specs/092-e2e-latency-trace/contracts/schemas/e2e-trace-segment-event.schema.json",
+  "$id": "logix://specs/092-e2e-latency-trace/contracts/schemas/e2e-trace-segment-event.schema.json",
   "title": "E2ETraceSegmentEvent",
   "allOf": [
     {

@@ -15,7 +15,7 @@
 
 - 013（控制面语义与证据字段）：`specs/013-auto-converge-planner/`
 - 014（跑道/矩阵/PerfReport & PerfDiff 口径）：`specs/014-browser-perf-boundaries/`
-- 用户视角的“止血/调参”说明：`apps/docs/content/docs/guide/advanced/converge-control-plane.md`
+- 用户视角的“止血/调参”说明：`apps/docs/content/docs/guide/advanced/field-convergence-policy.md`
 
 ## 最短闭环（维护者视角）
 
@@ -23,7 +23,7 @@
 2. 将 winner 作为候选默认值，进入 014 的 Before/After 对比跑道，确认“无回归 + 通过硬门”
 3. 需要止血时，优先用模块级/子树级覆盖（不影响全局默认），稳定后再回收
 
-> 产物目录怎么读：`specs/014-browser-perf-boundaries/perf/tuning/README.md`  
+> 产物目录怎么读：`specs/014-browser-perf-boundaries/perf/tuning/README.md`
 > Before/After 跑道怎么跑：`specs/014-browser-perf-boundaries/perf/README.md`
 >
 > 文档规范化（原 019）已吸纳到 017：以 014 的 `perf/README.md` + `perf/tuning/README.md` 作为统一入口。

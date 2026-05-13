@@ -23,11 +23,11 @@
 > - `maxLagMs` 初期建议与 043 对齐：`200ms`（见 `packages/logix-core/src/internal/runtime/core/ModuleRuntime.traitConvergeConfig.ts` 的 builtin 默认值）。该值对应“交互仍高频时尽量让路、但空闲后尽快追平”的用户预期。
 > - 对不同 Follow-up Work，可进一步细分默认上界（不扩展 public lane 枚举）：以 `TxnWorkKind` 作为分类键提供 `maxLagMsByKind`（可选 override）。例如：
 >   - `notify:lowPriority`：建议 `≤50ms`（对齐 `packages/logix-react/src/internal/store/ModuleRuntimeExternalStore.ts` 的 lowPriorityMaxDelayMs 默认）；
->   - `trait:deferred_flush`：建议 `200ms`（对齐 043 的 time-slicing maxLag 默认）。
+>   - `field:deferred_flush`：建议 `200ms`（对齐 043 的 time-slicing maxLag 默认）。
 
 ### TxnWorkKind
 
-- `trait:deferred_flush`：043 deferred converge flush（首个落地的 nonUrgent Follow-up Work）
+- `field:deferred_flush`：043 deferred converge flush（首个落地的 nonUrgent Follow-up Work）
 - `notify:lowPriority`：低优先级通知 flush（保持与现有 `meta.priority` 协同）
 - `custom`：未来扩展（例如 selector graph 重算、watcher flush），但不得引入并行真相源
 
@@ -58,4 +58,4 @@
 
 - TxnLanePolicy 影响 lane-aware queue 与 Work loop：决定 nonUrgent 的预算/合并/上界策略。
 - TxnBacklogState 是 per-instance 的内部状态，但其摘要必须可被 TxnLaneEvidence 解释（在 diagnostics=light/sampled/full 下）。
-- TxnLaneEvidence 必须与统一锚点体系对齐（016）：能用 `moduleId/instanceId/txnSeq/opSeq` 关联到 `state:update` 与 trait converge trace。
+- TxnLaneEvidence 必须与统一锚点体系对齐（016）：能用 `moduleId/instanceId/txnSeq/opSeq` 关联到 `state:update` 与 field converge trace。

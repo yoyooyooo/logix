@@ -18,8 +18,8 @@
   - 交付：显式 deps 的静态 selector 组合器（static lane / readsDigest），为 topic 分片与 watcher 降税打地基
 - 068 `specs/068-watcher-pure-wins/`
   - 交付：watcher fan-out / state 通知链路的纯赚优化（无关触达降到 O(k)，可解释回退）
-- 006 `specs/006-optimize-traits/`
-  - 交付：Trait converge 性能上限提升（依赖图/增量/预算/降级）+ 可回归证据
+- 006 `specs/006-optimize-fields/`
+  - 交付：Field converge 性能上限提升（依赖图/增量/预算/降级）+ 可回归证据
 - 075 `specs/075-workflow-codegen-ir/`
   - 交付：Workflow 出码 IR（AI/平台专属 DSL：Canonical AST → Static IR；时间算子进入证据链）
 - 076 `specs/076-logix-source-auto-trigger-kernel/`

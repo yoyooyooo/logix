@@ -1,4 +1,5 @@
 import { Schema } from 'effect'
+import { emptyWorkbenchHostViewModel, type WorkbenchDrilldownSelector, type WorkbenchHostViewModel } from './workbench/index.js'
 
 export const TimelineEntrySchema = Schema.Struct({
   event: Schema.Any,
@@ -13,7 +14,7 @@ export const OperationSummarySchema = Schema.Struct({
   eventCount: Schema.Number,
   renderCount: Schema.Number,
   txnCount: Schema.Number,
-  traitConverge: Schema.optional(
+  fieldConverge: Schema.optional(
     Schema.Struct({
       txnCount: Schema.Number,
       outcomes: Schema.Struct({
@@ -51,10 +52,8 @@ export const TriggerLayoutSchema = Schema.Struct({
 })
 
 export const DevtoolsSettingsSchema = Schema.Struct({
-  mode: Schema.Literals(['basic', 'deep']),
-  showTraitEvents: Schema.Boolean,
+  showFieldEvents: Schema.Boolean,
   showReactRenderEvents: Schema.Boolean,
-  enableTimeTravelUI: Schema.Boolean,
   operationWindowMs: Schema.Number,
   overviewThresholds: Schema.Struct({
     txnPerSecondWarn: Schema.Number,
@@ -77,27 +76,13 @@ export const DevtoolsStateSchema = Schema.Struct({
   selectedModule: Schema.optional(Schema.String),
   selectedInstance: Schema.optional(Schema.String),
   selectedEventIndex: Schema.optional(Schema.Number),
-  // Selected field filter path: set by Graph node click; used to correlate/filter events in the Timeline by field.
   selectedFieldPath: Schema.optional(Schema.String),
-  // Timeline filter range (inclusive index interval [start, end]),
-  // set by views like OverviewStrip to focus a time window in high-noise scenarios.
-  timelineRange: Schema.optional(
-    Schema.Struct({
-      start: Schema.Number,
-      end: Schema.Number,
-    }),
-  ),
-  // Whether the current instance is in time-travel mode:
-  // - Only set by Devtools controls when enableTimeTravelUI = true.
-  // - mode = "before"|"after" indicates which side of the transaction to view.
-  timeTravel: Schema.optional(
-    Schema.Struct({
-      moduleId: Schema.String,
-      instanceId: Schema.String,
-      txnId: Schema.String,
-      mode: Schema.Literals(['before', 'after']),
-    }),
-  ),
+  selectedScopeId: Schema.optional(Schema.String),
+  selectedSessionId: Schema.optional(Schema.String),
+  selectedFindingId: Schema.optional(Schema.String),
+  selectedArtifactKey: Schema.optional(Schema.String),
+  selectedDrilldown: Schema.optional(Schema.Any),
+  workbench: Schema.Any,
   runtimes: Schema.Array(
     Schema.Struct({
       runtimeLabel: Schema.String,
@@ -106,10 +91,10 @@ export const DevtoolsStateSchema = Schema.Struct({
           moduleId: Schema.String,
           count: Schema.Number,
           instances: Schema.Array(Schema.String),
-          // Whether a StateTraitProgram exists (blueprint layer):
-          hasTraitBlueprint: Schema.Boolean,
+          // Whether a FieldProgram exists (blueprint layer):
+          hasFieldBlueprint: Schema.Boolean,
           // Whether there is at least one runtime instance with a TraitProgram:
-          hasTraitRuntime: Schema.Boolean,
+          hasFieldRuntime: Schema.Boolean,
         }),
       ),
     }),
@@ -137,11 +122,16 @@ export interface DevtoolsSelectionOverride {
   readonly selectedInstance?: string
   readonly selectedEventIndex?: number
   /**
-   * When the user triggers filtering from a StateTraitGraph node, record the selected fieldPath:
+   * When the user triggers filtering from a FieldGraph node, record the selected fieldPath:
    * - Timeline building can prioritize events related to this field.
    * - When cleared, set to undefined to restore the full view.
    */
   readonly selectedFieldPath?: string
+  readonly selectedScopeId?: string
+  readonly selectedSessionId?: string
+  readonly selectedFindingId?: string
+  readonly selectedArtifactKey?: string
+  readonly selectedDrilldown?: WorkbenchDrilldownSelector
   /**
    * Marks whether this change comes from "user explicitly clicked an event":
    * - true: Inspector should prefer the event's own stateAfter.
@@ -153,10 +143,8 @@ export interface DevtoolsSelectionOverride {
 }
 
 export const defaultSettings: DevtoolsSettings = {
-  mode: 'deep',
-  showTraitEvents: true,
+  showFieldEvents: true,
   showReactRenderEvents: true,
-  enableTimeTravelUI: true,
   operationWindowMs: 1000,
   overviewThresholds: {
     txnPerSecondWarn: 50,
@@ -186,8 +174,12 @@ export const emptyDevtoolsState: DevtoolsState = {
   selectedInstance: undefined,
   selectedEventIndex: undefined,
   selectedFieldPath: undefined,
-  timelineRange: undefined,
-  timeTravel: undefined,
+  selectedScopeId: undefined,
+  selectedSessionId: undefined,
+  selectedFindingId: undefined,
+  selectedArtifactKey: undefined,
+  selectedDrilldown: undefined,
+  workbench: emptyWorkbenchHostViewModel as WorkbenchHostViewModel,
   runtimes: [],
   timeline: [],
   operationSummary: undefined,

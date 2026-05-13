@@ -6,8 +6,8 @@
 
 - 统一观测协议与证据包：`specs/005-unify-observability-protocol/contracts/`
 - 可序列化诊断与稳定身份：`specs/016-serializable-diagnostics-and-identity/contracts/`
-- 043 Trait converge time-slicing：`specs/043-trait-converge-time-slicing/spec.md`
-- 044 采样诊断口径：`specs/044-trait-converge-diagnostics-sampling/spec.md`
+- 043 Field converge time-slicing：`specs/043-field-converge-time-slicing/spec.md`
+- 044 采样诊断口径：`specs/044-field-converge-diagnostics-sampling/spec.md`
 - Read Lanes（读状态车道）meta 产出：`specs/057-core-ng-static-deps-without-proxy/`（060 负责统一 Lanes 证据投影与 Devtools 汇总视图）
 
 ## 本特性新增/固化的契约点

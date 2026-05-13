@@ -1,8 +1,8 @@
 # Feature Specification: core-ng 线性执行 VM（Exec VM）
 
-**Feature Branch**: `049-core-ng-linear-exec-vm`  
-**Created**: 2025-12-27  
-**Status**: Done  
+**Feature Branch**: `049-core-ng-linear-exec-vm`
+**Created**: 2025-12-27
+**Status**: Done
 **Input**: User description: "继续添加 049：把 core-ng 的 runtime-only NG 路线（线性指令流/Exec VM）做成一眼可见、全方位可执行的规格与规划（先完善文档，不进入实现阶段）。"
 
 ## Terminology
@@ -17,7 +17,7 @@
 - `specs/046-core-ng-roadmap/`（路线总控：P1 runtime-only NG）
 - `specs/045-dual-kernel-contract/`（Kernel Contract + 对照验证跑道）
 - `specs/047-core-ng-full-cutover-gate/`（Full Cutover Gate：禁止 fallback 的门槛）
-- `specs/039-trait-converge-int-exec-evidence/`（当前内核热路径整型化与 guardrails，可复用口径拦截负优化）
+- `specs/039-field-converge-int-exec-evidence/`（当前内核热路径整型化与 guardrails，可复用口径拦截负优化）
 - `docs/specs/drafts/topics/logix-ng-architecture/`（NG 架构探索：线性指令流/flat memory/toolchain）
 
 ## Clarifications
@@ -30,7 +30,7 @@
 
 ### Session 2025-12-28
 
-- AUTO: Q: 本特性的 perf evidence 预算口径是什么？ → A: 以 `.codex/skills/logix-perf-evidence/assets/matrix.json` 为唯一 SSoT；交付结论必须 `profile=default`（或 `soak`）并满足 `pnpm perf diff` 输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`；before/after 必须 `meta.matrixId/matrixHash` 一致。
+- AUTO: Q: 本特性的 perf evidence 预算口径是什么？ → A: 以 `packages/logix-perf-evidence/assets/matrix.json` 为唯一 SSoT；交付结论必须 `profile=default`（或 `soak`）并满足 `pnpm perf diff` 输出 `meta.comparability.comparable=true` 且 `summary.regressions==0`；before/after 必须 `meta.matrixId/matrixHash` 一致。
 - AUTO: Q: perf evidence 采集是否允许在 dev 工作区（git dirty）完成？ → A: 允许（当前阶段）；但必须确保 `matrix/config/env` 一致，并在 diff 中保留 `git.dirty.*` warnings；若出现 `stabilityWarning` 或结论存疑，必须复测（必要时升级到 `profile=soak`）。
 - AUTO: Q: Perf Gate 必须覆盖哪些诊断档位？ → A: P1 suites 的 Gate baseline 以 `diagnostics=off` 为准；light/full 仅用于开销曲线与可解释链路验证，不作为默认 Gate baseline。
 - AUTO: Q: Exec IR/Exec VM 无法生成或缺少能力时的默认策略？ → A: 允许显式降级到保守路径，但必须证据化 `reasonCode`；在 047/Full Cutover Gate 覆盖场景中降级视为 FAIL（必须先补齐能力/证据化再切默认）。

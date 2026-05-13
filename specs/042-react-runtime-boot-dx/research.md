@@ -1,7 +1,7 @@
 # Research: React 集成冷启动/同步阻塞点与策略空间
 
-**Feature**: `042-react-runtime-boot-dx`  
-**Created**: 2025-12-27  
+**Feature**: `042-react-runtime-boot-dx`
+**Created**: 2025-12-27
 **Scope**: `@logixjs/react`（RuntimeProvider / useModule / ModuleCache / perf-boundaries）
 
 ## 1. 目标复盘（面向 DX）
@@ -45,10 +45,10 @@
 - 对当前实现而言，`ModuleCache` 的构造只使用 `gcTime`（`new ModuleCache(runtime, config.gcTime)`），因此 **`gcTime` 是唯一 critical 字段**；
 - `initTimeoutMs` / `lowPriorityDelayMs` / `lowPriorityMaxDelayMs` 等应作为 **live 配置** 可刷新，但不应触发 cache dispose。
 
-### 2.2 `useModule`（ModuleImpl）：`sync` vs `suspend` 已经存在
+### 2.2 `useModule`（ProgramRuntimeBlueprint）：`sync` vs `suspend` 已经存在
 
 - 入口：`packages/logix-react/src/internal/hooks/useModule.ts`
-- 关键行为（ModuleImpl 路径）：
+- 关键行为（ProgramRuntimeBlueprint 路径）：
   - 默认：`ModuleCache.readSync(...)`（同步，不触发 Suspense）
   - `options.suspend === true`：`ModuleCache.read(...)`（Suspense，render 阶段抛 Promise）
   - `suspend:true` 在 dev/test 环境要求显式 `options.key`（否则抛可读错误）。
@@ -77,7 +77,7 @@
 - 代表性用例：
   - `converge-steps.test.tsx`：测 runtime.txnCommitMs / decisionMs（偏 converge runtime）。
   - 其他：诊断开销、StrictMode/Suspense jitter 等。
-- 结论：需要新增针对 **React boot/resolve** 的 perf boundary（Provider/configSnapshot、ModuleTag resolve、ModuleImpl init）。
+- 结论：需要新增针对 **React boot/resolve** 的 perf boundary（Provider/configSnapshot、ModuleTag resolve、ProgramRuntimeBlueprint init）。
 
 ## 3. `suspend:true` 能解决吗？（边界）
 
@@ -96,7 +96,7 @@
 > 以下是“可能在渲染关键路径发生”的同步点；不保证都慢，但都需要治理与可观测。
 
 1. Provider 级：`RuntimeProvider` 初次 render 的 `runSync(ReactRuntimeConfigSnapshot.load)`。
-2. ModuleImpl sync：`ModuleCache.readSync` 内 `runtime.runSync(Scope.make())` + `runtime.runSync(factory(scope))`。
+2. ProgramRuntimeBlueprint sync：`ModuleCache.readSync` 内 `runtime.runSync(Scope.make())` + `runtime.runSync(factory(scope))`。
 3. ModuleTag resolve：`useModuleRuntime` 内的 `runtime.runSync(tag)`。
 4. Suspense init（仍可能同步）：`ModuleCache.read` 内的 `runtime.runPromise(factory(scope))`。
 5. Selector snapshot：`ModuleRuntimeExternalStore.getSnapshot` 内的 `runtime.runSync(moduleRuntime.getState)`（通常应很轻，但仍需纳入预算/诊断开关，避免误用）。
@@ -116,7 +116,7 @@
    - `mode: sync | async`
    - `syncBudgetMs`：超预算必须回退 async，并记录诊断事件（避免继续卡住）。
 
-2. Module 解析策略（ModuleImpl/ModuleTag）
+2. Module 解析策略（ProgramRuntimeBlueprint/ModuleTag）
    - `mode: sync | suspend`（defer 通过 Provider preload+gating 交付）
    - 明确每种模式的约束（是否要求显式 key / 是否允许异步 Layer / 缺失 preload 时的默认行为）。
 
@@ -138,7 +138,7 @@
 
 理由（面向本特性目标）：
 
-- B 直击根因：解决“即使 suspend:true，`runPromise` 仍可能先同步跑很久”的主线程阻塞风险，且同一套机制可覆盖 ModuleImpl init 与 ModuleTag resolve。
+- B 直击根因：解决“即使 suspend:true，`runPromise` 仍可能先同步跑很久”的主线程阻塞风险，且同一套机制可覆盖 ProgramRuntimeBlueprint init 与 ModuleTag resolve。
 - A 提升一致性：收敛业务侧样板（Suspense/fallback 形态），但不消灭同步重活；更适合作为 B 落地后的默认体验增强。
 - C 的实现必须收敛：避免引入“返回半初始化句柄”的新 hook 语义；优先通过 Provider 级 gating + preload 交付延后能力，把复杂度封在 Provider 内，避免业务侧组合爆炸。
 
@@ -149,7 +149,7 @@
 
 ### 方案 B：cooperative yield（直击“suspend 但仍卡”）
 
-- 做法：为 ModuleImpl init / ModuleTag resolve 引入可配置 yield，使异步路径尽早 pending。
+- 做法：为 ProgramRuntimeBlueprint init / ModuleTag resolve 引入可配置 yield，使异步路径尽早 pending。
 - 风险：yield 可能让“原本同步可用”的模块短暂进入 pending（UI 闪烁/时序抖动）；需明确默认值与迁移说明。
 - 缓解：默认优先采用 microtask（`Effect.yieldNow()`）并提供可配置策略（none/microtask/macrotask），让业务在“响应性/确定性”之间做显式取舍；同时在 dev/test 提供 render 阶段超阈值同步阻塞告警（DX guardrails）。
 
@@ -165,5 +165,5 @@
 
 1. Provider 的“配置快照同步点”先策略化（sync/async + budget + 诊断 + 回退）。
 2. ModuleTag resolve 纳入策略入口（做到可 suspend，并配套缓存与 yield；defer 通过 Provider preload+gating 交付）。
-3. ModuleImpl 初始化补齐 yield 策略，让 `suspend:true` 真正能覆盖同步重活场景。
+3. ProgramRuntimeBlueprint 初始化补齐 yield 策略，让 `suspend:true` 真正能覆盖同步重活场景。
 4. 新增 browser perf-boundaries 覆盖 boot/resolve 并设置阈值 gate，防止回归。

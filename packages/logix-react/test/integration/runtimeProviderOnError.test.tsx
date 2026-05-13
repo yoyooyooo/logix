@@ -14,7 +14,7 @@ describe('RuntimeProvider.onError (integration)', () => {
       actions: {},
     })
 
-    const runtime = Logix.Runtime.make(Root.implement({ initial: undefined }), {
+    const runtime = Logix.Runtime.make(Logix.Program.make(Root, { initial: undefined }), {
       layer: Layer.empty as Layer.Layer<any, never, never>,
     })
 

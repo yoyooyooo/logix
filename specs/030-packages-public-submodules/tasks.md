@@ -1,6 +1,6 @@
 # Tasks: Packages 对外子模块裁决与结构治理
 
-**Input**: `specs/030-packages-public-submodules/`（spec/plan/research/contracts/quickstart）  
+**Input**: `specs/030-packages-public-submodules/`（spec/plan/research/contracts/quickstart）
 **Scope**: 做到“概念裁决 + 目录结构 + internal 分区”一次收敛：结构治理 + 对外边界收口 + `src/internal/**` 的按概念重组；不引入新的运行时语义；允许 breaking，以迁移说明替代兼容层。
 
 ## Format: `[ID] [P?] [Story] Description`
@@ -56,12 +56,12 @@
 
 ### Domain packages（建议优先）
 
-- [x] T015 [P] [US2] `@logixjs/form`：重命名 public 概念入口为 PascalCase（`form.ts -> Form.ts`、`rule.ts -> Rule.ts`、`error.ts -> Error.ts`、`trait.ts -> Trait.ts`、`path.ts -> Path.ts`、`form-view.ts -> FormView.ts`、`schema-path-mapping.ts -> SchemaPathMapping.ts`、`schema-error-mapping.ts -> SchemaErrorMapping.ts`）并更新全量引用：`packages/logix-form/src`
+- [x] T015 [P] [US2] `@logixjs/form`：重命名 public 概念入口为 PascalCase（`form.ts -> Form.ts`、`rule.ts -> Rule.ts`、`error.ts -> Error.ts`、`field.ts -> Field.ts`、`path.ts -> Path.ts`、`form-view.ts -> FormView.ts`、`schema-path-mapping.ts -> SchemaPathMapping.ts`、`schema-error-mapping.ts -> SchemaErrorMapping.ts`）并更新全量引用：`packages/logix-form/src`
 - [x] T016 [P] [US2] `@logixjs/form`：下沉非概念实现到 internal（`dsl/**`、`logics/**`、`validators.ts`、`types.ts` 等）并保证 `src/index.ts` 仅通过概念入口对外暴露：`packages/logix-form/src/index.ts`
 - [x] T017 [US2] `@logixjs/form`：对齐 exports-policy（优先保留 effect 风格通配 `./* -> ./src/*.ts`，并通过“src 根目录治理不变量 + gate”确保不泄漏；同时保留 `./react` 子入口；继续屏蔽 `./internal/*`）：`packages/logix-form/package.json`
 
 - [x] T018 [P] [US2] `@logixjs/query`：删除空壳 `@logixjs/query/react`（`packages/logix-query/src/react/index.ts` + `package.json#exports["./react"]`）：`packages/logix-query/package.json`
-- [x] T019 [P] [US2] `@logixjs/query`：重命名 public 概念入口为 PascalCase（`query.ts -> Query.ts`、`engine.ts -> Engine.ts`、`middleware.ts -> Middleware.ts`、`traits.ts -> Traits.ts`）并更新全量引用：`packages/logix-query/src`
+- [x] T019 [P] [US2] `@logixjs/query`：重命名 public 概念入口为 PascalCase（`query.ts -> Query.ts`、`engine.ts -> Engine.ts`、`middleware.ts -> Middleware.ts`、`fields.ts -> Fields.ts`）并更新全量引用：`packages/logix-query/src`
 - [x] T020 [P] [US2] `@logixjs/query`：下沉非概念实现到 internal（`logics/**`、`tanstack/**`），并把 `typecheck.ts` 移出 `src/` 根目录（建议迁到 `test/typecheck.ts`）：`packages/logix-query/src/typecheck.ts`
 - [x] T021 [US2] `@logixjs/query`：新增概念入口 `TanStack`（`src/TanStack.ts`）并由 `src/index.ts` 聚合导出：`packages/logix-query/src/index.ts`
 - [x] T022 [US2] `@logixjs/query`：对齐 exports-policy（优先保留 effect 风格通配 `./* -> ./src/*.ts`，并通过“src 根目录治理不变量 + gate”确保不泄漏；继续屏蔽 `./internal/*`）：`packages/logix-query/package.json`
@@ -88,7 +88,7 @@
 - [x] T034 [US2] `@logixjs/react`：对齐 exports-policy（可保留 `./* -> ./src/*.ts`，但必须先把 root 收敛为 PascalCase 概念入口文件；并确保 `publishConfig.exports` 与开发态一致；屏蔽 `./internal/*`）：`packages/logix-react/package.json`
 - [x] T035 [US2] `@logixjs/react`：更新 tsup entry（确保 dist 产物覆盖新增入口）：`packages/logix-react/tsup.config.ts`
 
-- [x] T036 [P] [US2] `@logixjs/devtools-react`：将 `ui/**`、`state/**`、`theme.css`、`snapshot.ts`、`state.ts` 下沉到 `src/internal/**`，新增概念入口 `LogixDevtools`/`DevtoolsLayer`/`StateTraitGraphView`：`packages/logix-devtools-react/src/index.tsx`
+- [x] T036 [P] [US2] `@logixjs/devtools-react`：将 `ui/**`、`state/**`、`theme.css`、`snapshot.ts`、`state.ts` 下沉到 `src/internal/**`，新增概念入口 `LogixDevtools`/`DevtoolsLayer`/`FieldGraphView`：`packages/logix-devtools-react/src/index.tsx`
 - [x] T037 [US2] `@logixjs/devtools-react`：对齐 exports-policy（当前 `./* -> ./src/*.tsx` 使非概念入口可被 subpath import；需先收敛 root 概念入口后再决定保留通配或改显式；并确保 `publishConfig.exports` 与开发态一致）：`packages/logix-devtools-react/package.json`
 - [x] T038 [US2] `@logixjs/devtools-react`：更新 tsup entry（确保 dist 产物覆盖新增入口）：`packages/logix-devtools-react/tsup.config.ts`
 
@@ -161,10 +161,10 @@
 
 - [x] T076 在验证门中加入“测试目录治理”最小检查（禁止 `src/**` 下出现测试；internal 用例收口到 `test/internal/**`；对启用 Vitest `browser` project 的包，`test/browser/**` 视为保留路径：不得改名/迁出，且 unit 项目必须 exclude）：`scripts/public-submodules/verify.ts`
 - [x] T077 [P] `@logixjs/core`：把 `packages/logix-core/test/*.test.ts` 按 `Module/Runtime/Logic/Flow/...` 分组迁入对应子目录，并确保 `tsconfig.test.json`/Vitest include 仍能覆盖：`packages/logix-core/test`
-- [x] T078 [P] `@logixjs/form`：把 `packages/logix-form/test/Form.*` 迁入 `packages/logix-form/test/Form/**`（`Rule/Trait/Path` 同理），并把 `Internal.*` 收敛到 `packages/logix-form/test/internal/**`：`packages/logix-form/test`
-- [x] T079 [P] `@logixjs/query`：把 `packages/logix-query/test/Query.*` 迁入 `packages/logix-query/test/Query/**`（`Engine/TanStack/Middleware/Traits` 同理）：`packages/logix-query/test`
+- [x] T078 [P] `@logixjs/form`：把 `packages/logix-form/test/Form.*` 迁入 `packages/logix-form/test/Form/**`（`Rule/Field/Path` 同理），并把 `Internal.*` 收敛到 `packages/logix-form/test/internal/**`：`packages/logix-form/test`
+- [x] T079 [P] `@logixjs/query`：把 `packages/logix-query/test/Query.*` 迁入 `packages/logix-query/test/Query/**`（`Engine/TanStack/Middleware/Fields` 同理）：`packages/logix-query/test`
 - [x] T080 [P] `@logixjs/react`：对齐概念目录命名（例如 `packages/logix-react/test/hooks -> packages/logix-react/test/Hooks`），补齐 `RuntimeProvider/Platform/...` 分组；保留 `test/integration`/`test/browser`/`test/perf` 语义分组，且 `test/browser/**` 目录名不得改动（browser project include 固定 `test/browser/**/*.test.tsx|ts`）：`packages/logix-react/test`
-- [x] T081 [P] `@logixjs/devtools-react`：按 `LogixDevtools/DevtoolsLayer/StateTraitGraphView` 分组迁移用例，并把内部实现相关用例收敛到 `packages/logix-devtools-react/test/internal/**`：`packages/logix-devtools-react/test`
+- [x] T081 [P] `@logixjs/devtools-react`：按 `LogixDevtools/DevtoolsLayer/FieldGraphView` 分组迁移用例，并把内部实现相关用例收敛到 `packages/logix-devtools-react/test/internal/**`：`packages/logix-devtools-react/test`
 - [x] T082 [P] `@logixjs/sandbox`：把用例按 `Client/Service/Protocol/Types` 分组（浏览器用例保持 `test/browser/**`，保留 `msw/__screenshots__` 等资源目录），内部语义收敛到 `packages/logix-sandbox/test/internal/**`：`packages/logix-sandbox/test`
 - [x] T083 [P] `@logixjs/test`：按 `TestProgram/TestRuntime/Execution/Assertions/Vitest` 分组迁移用例，并把实现细节相关用例收敛到 `packages/logix-test/test/internal/**`：`packages/logix-test/test`
 - [x] T084 [P] `@logixjs/i18n`：按 `I18n/I18nModule/Token` 分组迁移用例，并把 driver/token/module 语义收敛到 `packages/i18n/test/internal/**`：`packages/i18n/test`

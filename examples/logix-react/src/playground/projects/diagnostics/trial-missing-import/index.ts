@@ -1,0 +1,40 @@
+import { defineDiagnosticsDemoProject } from '../shared'
+
+const mainProgramSource = [
+  'import { Effect, Schema } from "effect"',
+  'import * as Logix from "@logixjs/core"',
+  '',
+  'const Child = Logix.Module.make("Diagnostics.TrialMissingImport.Child", {',
+  '  state: Schema.Struct({ value: Schema.Number }),',
+  '  actions: {},',
+  '})',
+  '',
+  'const Parent = Logix.Module.make("Diagnostics.TrialMissingImport.Parent", {',
+  '  state: Schema.Void,',
+  '  actions: {},',
+  '})',
+  '',
+  'export const Program = Logix.Program.make(Parent, {',
+  '  initial: undefined,',
+  '  logics: [',
+  '    Parent.logic("read-child-on-startup", ($) => {',
+  '      $.readyAfter(Effect.service(Child.tag).pipe(Effect.orDie) as any, { id: "read-child" })',
+  '      return Effect.void',
+  '    }),',
+  '  ],',
+  '})',
+  '',
+  'export const main = () => Effect.succeed({ trialDemo: "missing-import" })',
+].join('\n')
+
+export const logixReactTrialMissingImportDiagnosticsProject = defineDiagnosticsDemoProject({
+  id: 'logix-react.diagnostics.trial-missing-import',
+  demoId: 'trial-missing-import',
+  authorityClass: 'runtime-trial-report',
+  title: 'Trial missing import diagnostics',
+  mainProgramSource,
+  expectedCodes: ['MissingDependency'],
+  expectedAuthorities: ['runtime.trial/startup'],
+  expectedEvidence: ['Program.capabilities.imports:Diagnostics.TrialMissingImport.Child'],
+  expectedTrialDependencyKinds: ['program-import'],
+})

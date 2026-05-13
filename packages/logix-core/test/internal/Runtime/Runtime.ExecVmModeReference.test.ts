@@ -4,7 +4,7 @@ import {
   currentExecVmMode,
   execVmModeLayer,
   withExecVmMode,
-} from '../../../src/internal/state-trait/exec-vm-mode.js'
+} from '../../../src/internal/field-kernel/exec-vm-mode.js'
 
 describe('ExecVmMode reference', () => {
   it.effect('defaults to false and can be locally overridden', () =>

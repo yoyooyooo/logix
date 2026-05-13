@@ -1,6 +1,6 @@
 # Implementation Plan: Module Stage Blueprints（033：Module 舞台语义蓝图）
 
-**Branch**: `033-module-stage-blueprints` | **Date**: 2025-12-26 | **Spec**: `specs/033-module-stage-blueprints/spec.md`  
+**Branch**: `033-module-stage-blueprints` | **Date**: 2025-12-26 | **Spec**: `specs/033-module-stage-blueprints/spec.md`
 **Input**: `specs/033-module-stage-blueprints/spec.md`
 
 ## Summary
@@ -23,12 +23,12 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.x（ESM）  
-**Primary Dependencies**: `effect` v3、`@logixjs/core`、`@logixjs/react`、`@logixjs/form`、`@logixjs/sandbox`  
-**Storage**: N/A（蓝图与资产作为可序列化 JSON，可由平台决定落盘方式）  
-**Testing**: Vitest（协议/归一化/diff 建议以纯函数 + 单测为主）  
-**Target Platform**: Node.js（codegen/CI）+ 现代浏览器（Workbench/Studio）  
-**Project Type**: pnpm workspace（`packages/*` + `examples/*`）  
+**Language/Version**: TypeScript 5.x（ESM）
+**Primary Dependencies**: `effect` v3、`@logixjs/core`、`@logixjs/react`、`@logixjs/form`、`@logixjs/sandbox`
+**Storage**: N/A（蓝图与资产作为可序列化 JSON，可由平台决定落盘方式）
+**Testing**: Vitest（协议/归一化/diff 建议以纯函数 + 单测为主）
+**Target Platform**: Node.js（codegen/CI）+ 现代浏览器（Workbench/Studio）
+**Project Type**: pnpm workspace（`packages/*` + `examples/*`）
 **Performance Goals**:
 - 运行时热路径零成本：蓝图只在编辑/出码/验收路径被消费（NFR-001）
 **Constraints**:

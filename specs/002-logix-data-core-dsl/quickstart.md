@@ -1,8 +1,8 @@
 # Quickstart: 从模块作者视角使用 `@logixjs/core` + `@logixjs/data`（隶属已归档 spec，仅供参考）
 
-> 提示：本 Quickstart 隶属于已归档的 `specs/002-logix-data-core-dsl` 特性，描述的是早期「Module DSL ↔ `@logixjs/data`」集成路径。当前主线已由 StateTrait / `@logixjs/core` 统一承载字段能力，新示例请参考 `specs/000-module-traits-runtime/quickstart.md`。
+> 提示：本 Quickstart 隶属于已归档的 `specs/002-logix-data-core-dsl` 特性，描述的是早期「Module DSL ↔ `@logixjs/data`」集成路径。当前主线已由 FieldKernel / `@logixjs/core` 统一承载字段能力，新示例请参考 `specs/000-module-fields-runtime/quickstart.md`。
 
-**目标读者**：模块作者 / 业务开发者  
+**目标读者**：模块作者 / 业务开发者
 **前提**：已在仓库中安装并配置好 `@logixjs/core` 与 `@logixjs/data`，并使用 TypeScript + Effect v3。
 
 本 Quickstart 以“计数器模块 + 远程 Profile 资源”为例，展示模块作者如何在 **同一个 Module 定义中** 同时使用 core 和 data：
@@ -56,8 +56,8 @@ export const CounterWithProfileModule = Logix.Module.make("CounterWithProfile", 
 
 从用户视角要点：
 
-- 我只需要记得：**所有字段能力的声明，都跟模块定义待在一起**；  
-- 我不用自己琢磨 Field / FieldCapability / StateGraph 的内部结构，只要通过 DSL 表达“这是 Computed / Source / Link”；  
+- 我只需要记得：**所有字段能力的声明，都跟模块定义待在一起**；
+- 我不用自己琢磨 Field / FieldCapability / StateGraph 的内部结构，只要通过 DSL 表达“这是 Computed / Source / Link”；
 - IDE 会基于 State Schema 给我字段路径和类型提示（例如在 `Link.to` 里能点出 `profileResource.name`）。
 
 ---
@@ -81,7 +81,7 @@ const runtime = Logix.Runtime.make(CounterWithProfileModule /*, { layer: ... } *
 
 从用户视角要点：
 
-- 我不需要显式调用任何 `@logixjs/data` 的 API 来“挂载能力”——Runtime 会在内部自动调用 `@logixjs/data` 的扫描和 Plan；  
+- 我不需要显式调用任何 `@logixjs/data` 的 API 来“挂载能力”——Runtime 会在内部自动调用 `@logixjs/data` 的扫描和 Plan；
 - 我只要用好 `Module` 和 Runtime / React hook 即可。
 
 ---
@@ -113,7 +113,7 @@ const graph = makeStateGraph({
 
 从用户视角要点：
 
-- 字段能力与 StateGraph 是“顺带获得”的：只要按 DSL 写模块，工具就能还原出清晰的数据流图；  
+- 字段能力与 StateGraph 是“顺带获得”的：只要按 DSL 写模块，工具就能还原出清晰的数据流图；
 - 即使不开 Devtools，我也可以通过简单脚本打印或检查 graph，以确认 Computed / Source / Link 的声明是否合适。
 
 ---
@@ -122,6 +122,6 @@ const graph = makeStateGraph({
 
 站在模块作者 / 业务开发的角度，这一波改造完成后，希望你能用下面几句话概括 data + core 的结合方式：
 
-1. **写模块还是用 `Logix.Module.make`，只是多了“字段能力”的声明入口**；  
-2. **字段能力只描述「这个字段是什么能力」，具体怎么算 / 怎么拉数据交给 Runtime 和 data 去合作处理**；  
+1. **写模块还是用 `Logix.Module.make`，只是多了“字段能力”的声明入口**；
+2. **字段能力只描述「这个字段是什么能力」，具体怎么算 / 怎么拉数据交给 Runtime 和 data 去合作处理**；
 3. **运行时挂载与 Devtools 图形化都是在 Module 定义的基础上自动衍生出来的**，不需要你手动维护多份配置。

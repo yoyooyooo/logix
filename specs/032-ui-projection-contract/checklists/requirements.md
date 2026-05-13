@@ -1,7 +1,7 @@
 # Specification Quality Checklist: UI Projection Contract（语义编排与 UI 投影解耦）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-12-25  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2025-12-25
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality

@@ -1,6 +1,11 @@
 import * as Logix from '@logixjs/core'
-import { Effect, Fiber, Stream } from 'effect'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
+import { Effect, Fiber } from 'effect'
 import type { ManagedRuntime } from 'effect'
+import {
+  registerRuntimeExternalStoreDisposer,
+  unregisterRuntimeExternalStoreDisposer,
+} from './RuntimeExternalStore.hotLifecycle.js'
 
 export interface ExternalStore<S> {
   readonly getSnapshot: () => S
@@ -23,6 +28,12 @@ type RuntimeStore = {
   readonly subscribeTopic: (topicKey: TopicKey, listener: () => void) => () => void
 }
 
+type ReadQueryTopicRetainer<S> = {
+  readonly retainReadQueryTopic: <V>(
+    selectorReadQuery: RuntimeContracts.Selector.ReadQueryCompiled<S, V>,
+  ) => Effect.Effect<unknown, never, any>
+}
+
 type Cancel = () => void
 
 type HostScheduler = {
@@ -43,14 +54,14 @@ const getStoreMapForRuntime = (runtime: object): Map<TopicKey, ExternalStore<any
 
 const makeModuleInstanceKey = (moduleId: string, instanceId: string): ModuleInstanceKey => `${moduleId}::${instanceId}`
 
-const makeReadQueryTopicKey = (moduleInstanceKey: ModuleInstanceKey, selectorId: string): TopicKey =>
-  `${moduleInstanceKey}::rq:${selectorId}`
+const makeReadQueryTopicKey = (moduleInstanceKey: ModuleInstanceKey, selectorFingerprint: string): TopicKey =>
+  `${moduleInstanceKey}::rq:${selectorFingerprint}`
 
 const getRuntimeStore = (runtime: ManagedRuntime.ManagedRuntime<any, any>): RuntimeStore =>
-  Logix.InternalContracts.getRuntimeStore(runtime as any) as RuntimeStore
+  RuntimeContracts.getRuntimeStore(runtime as any) as RuntimeStore
 
 const getHostScheduler = (runtime: ManagedRuntime.ManagedRuntime<any, any>): HostScheduler =>
-  Logix.InternalContracts.getHostScheduler(runtime as any) as HostScheduler
+  RuntimeContracts.getHostScheduler(runtime as any) as HostScheduler
 
 const getOrCreateStore = <S>(
   runtime: ManagedRuntime.ManagedRuntime<any, any>,
@@ -81,6 +92,8 @@ const makeTopicExternalStore = <S>(args: {
   readonly options?: ExternalStoreOptions
   readonly onFirstListener?: () => void
   readonly onLastListener?: () => void
+  readonly invalidateSnapshotOnFirstListener?: boolean
+  readonly notifyAfterFirstListenerInvalidation?: boolean
 }): ExternalStore<S> => {
   const { runtime, runtimeStore, topicKey } = args
   const hostScheduler = getHostScheduler(runtime)
@@ -225,6 +238,30 @@ const makeTopicExternalStore = <S>(args: {
     }
 
     removeStore(runtime, topicKey)
+    unregisterRuntimeExternalStoreDisposer(runtime as unknown as object, topicKey)
+  }
+
+  const disposeForHotLifecycle = (): void => {
+    listeners.clear()
+    teardownScheduled = false
+    teardownToken += 1
+
+    try {
+      args.onLastListener?.()
+    } catch {
+      // ignore best-effort failures
+    }
+
+    const unsub = unsubscribeFromRuntimeStore
+    unsubscribeFromRuntimeStore = undefined
+    cancelLow()
+
+    try {
+      unsub?.()
+    } finally {
+      removeStore(runtime, topicKey)
+      unregisterRuntimeExternalStoreDisposer(runtime as unknown as object, topicKey)
+    }
   }
 
   const scheduleTeardown = (): void => {
@@ -242,21 +279,44 @@ const makeTopicExternalStore = <S>(args: {
     cancelScheduledTeardown()
     const isFirst = listeners.size === 0
     listeners.add(listener)
-    ensureSubscription()
-    refreshSnapshotIfStale()
     if (isFirst) {
       try {
         args.onFirstListener?.()
       } catch {
         // ignore best-effort failures
       }
+      if (args.invalidateSnapshotOnFirstListener) {
+        const hadSnapshot = hasSnapshot
+        const previousSnapshot = currentSnapshot
+        hasSnapshot = false
+        currentVersion = undefined
+        currentSnapshot = undefined
+        if (args.notifyAfterFirstListenerInvalidation) {
+          try {
+            const nextVersion = runtimeStore.getTopicVersion(topicKey)
+            const nextSnapshot = args.readSnapshot()
+            currentVersion = nextVersion
+            hasSnapshot = true
+            currentSnapshot = nextSnapshot
+            if (!hadSnapshot || !Object.is(previousSnapshot, nextSnapshot)) {
+              scheduleNotify('normal')
+            }
+          } catch {
+            scheduleNotify('normal')
+          }
+        }
+      }
     }
+    ensureSubscription()
+    refreshSnapshotIfStale()
     return () => {
       listeners.delete(listener)
       if (listeners.size > 0) return
       scheduleTeardown()
     }
   }
+
+  registerRuntimeExternalStoreDisposer(runtime as unknown as object, topicKey, disposeForHotLifecycle)
 
   return { getSnapshot, getServerSnapshot: getSnapshot, subscribe }
 }
@@ -287,13 +347,14 @@ export const getRuntimeModuleExternalStore = <S>(
 export const getRuntimeReadQueryExternalStore = <S, V>(
   runtime: ManagedRuntime.ManagedRuntime<any, any>,
   moduleRuntime: Logix.ModuleRuntime<S, any>,
-  selectorReadQuery: Logix.ReadQuery.ReadQueryCompiled<S, V>,
+  selectorReadQuery: RuntimeContracts.Selector.ReadQueryCompiled<S, V>,
+  route: RuntimeContracts.Selector.SelectorRouteDecision,
   options?: ExternalStoreOptions,
 ): ExternalStore<V> => {
   const moduleInstanceKey = makeModuleInstanceKey(moduleRuntime.moduleId, moduleRuntime.instanceId)
-  const topicKey = makeReadQueryTopicKey(moduleInstanceKey, selectorReadQuery.selectorId)
+  const topicKey = makeReadQueryTopicKey(moduleInstanceKey, route.selectorFingerprint.value)
   const runtimeStore = getRuntimeStore(runtime)
-  let readQueryDrainFiber: Fiber.Fiber<void, any> | undefined
+  let readQueryRetainFiber: Fiber.Fiber<void, any> | undefined
 
   return getOrCreateStore(runtime, topicKey, () =>
     makeTopicExternalStore({
@@ -307,14 +368,19 @@ export const getRuntimeReadQueryExternalStore = <S, V>(
       },
       options,
       onFirstListener: () => {
-        if (readQueryDrainFiber) return
-        const effect = Stream.runDrain((moduleRuntime as any).changesReadQueryWithMeta(selectorReadQuery) as any)
-        readQueryDrainFiber = runtime.runFork(effect)
+        if (readQueryRetainFiber) return
+        const retainer = moduleRuntime as unknown as ReadQueryTopicRetainer<S>
+        const effect = Effect.scoped(
+          Effect.flatMap(retainer.retainReadQueryTopic(selectorReadQuery), () => Effect.never),
+        ) as Effect.Effect<void, never, any>
+        readQueryRetainFiber = runtime.runFork(effect)
       },
+      invalidateSnapshotOnFirstListener: true,
+      notifyAfterFirstListenerInvalidation: true,
       onLastListener: () => {
-        const fiber = readQueryDrainFiber
+        const fiber = readQueryRetainFiber
         if (!fiber) return
-        readQueryDrainFiber = undefined
+        readQueryRetainFiber = undefined
         runtime.runFork(Fiber.interrupt(fiber))
       },
     }),

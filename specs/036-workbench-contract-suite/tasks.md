@@ -4,7 +4,7 @@ description: "Task list for 036-workbench-contract-suite (Contract Suite / Integ
 
 # Tasks: Workbench Contract Suite（036：031-035 统一验收入口 + Agent 工具面）
 
-**Input**: `specs/036-workbench-contract-suite/spec.md`  
+**Input**: `specs/036-workbench-contract-suite/spec.md`
 **Prerequisites**: `specs/036-workbench-contract-suite/plan.md`（required）, `specs/036-workbench-contract-suite/research.md`, `specs/036-workbench-contract-suite/data-model.md`, `specs/036-workbench-contract-suite/contracts/`, `specs/036-workbench-contract-suite/quickstart.md`
 
 **Tests**: 本特性会引入治理层纯函数（normalize/verdict/context-pack）并被 Workbench/CI/Agent 复用；至少补齐 contracts/schema 预检 + verdict/降级规则单测，避免两套口径漂移。
@@ -39,7 +39,7 @@ description: "Task list for 036-workbench-contract-suite (Contract Suite / Integ
 
 ## Phase 3: User Story 1 - 一键集成验收（Priority: P1）🎯 MVP
 
-**Goal**: 一键触发 trial-run → 归一化 → verdict，并能导出工件。  
+**Goal**: 一键触发 trial-run → 归一化 → verdict，并能导出工件。
 **Independent Test**: 代表性模块跑通（允许降级），产出可序列化工件与可解释 verdict。
 
 - [ ] T009 [US1] 在 Workbench 增加 “Contract Suite” 入口：触发 trial-run + normalize + verdict 到 `examples/logix-sandbox-mvp/src/contract-suite/index.tsx`
@@ -50,7 +50,7 @@ description: "Task list for 036-workbench-contract-suite (Contract Suite / Integ
 
 ## Phase 4: User Story 2 - 版本化治理与 diff（Priority: P2）
 
-**Goal**: 两版本工件可稳定 diff，输出 breaking/risky 结论，供 CI gate。  
+**Goal**: 两版本工件可稳定 diff，输出 breaking/risky 结论，供 CI gate。
 **Independent Test**: 同一输入重复导出确定性；两版本对比输出稳定且可审阅。
 
 - [ ] T012 [US2] 在 CI 侧提供统一入口（Node 脚本或 package API）：产出/存档工件 + gate 到 `scripts/contract-suite/run.ts`
@@ -61,7 +61,7 @@ description: "Task list for 036-workbench-contract-suite (Contract Suite / Integ
 
 ## Phase 5: User Story 3 - Workbench 可迁移（Priority: P3）
 
-**Goal**: Workbench 只消费 JSON 工件（可替换宿主/模块集合），不读取 runtime 私有结构。  
+**Goal**: Workbench 只消费 JSON 工件（可替换宿主/模块集合），不读取 runtime 私有结构。
 **Independent Test**: 用离线 JSON 工件也能渲染 verdict 与原因（不依赖 worker/session）。
 
 - [ ] T015 [US3] 支持从本地 JSON 工件导入并渲染（不触发 trial-run）到 `examples/logix-sandbox-mvp/src/contract-suite/ImportArtifacts.tsx`

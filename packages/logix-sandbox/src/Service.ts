@@ -33,7 +33,7 @@ export interface SandboxClientService {
     readonly strict?: boolean
     readonly allowFallback?: boolean
   }) => Effect.Effect<RunResult, unknown>
-  readonly trialRunModule: (options: {
+  readonly trial: (options: {
     readonly moduleCode: string
     readonly moduleExport?: string
     readonly runId?: string
@@ -95,13 +95,32 @@ export const SandboxClientLayer = (config?: SandboxClientConfig) =>
       const events = Stream.fromPubSub(pubsub)
 
       return {
-        init: () => Effect.tryPromise(() => sandboxClient.init()),
+        init: () =>
+          Effect.tryPromise({
+            try: () => sandboxClient.init(),
+            catch: (error) => error,
+          }),
         listKernels: () => Effect.sync(() => sandboxClient.listKernels()),
         compile: (code, filename, mockManifest, options) =>
-          Effect.tryPromise(() => sandboxClient.compile(code, filename, mockManifest, options)),
-        run: (options) => Effect.tryPromise(() => sandboxClient.run(options)),
-        trialRunModule: (options) => Effect.tryPromise(() => sandboxClient.trialRunModule(options)),
-        uiCallback: (payload) => Effect.tryPromise(() => sandboxClient.uiCallback(payload)),
+          Effect.tryPromise({
+            try: () => sandboxClient.compile(code, filename, mockManifest, options),
+            catch: (error) => error,
+          }),
+        run: (options) =>
+          Effect.tryPromise({
+            try: () => sandboxClient.run(options),
+            catch: (error) => error,
+          }),
+        trial: (options) =>
+          Effect.tryPromise({
+            try: () => sandboxClient.trial(options),
+            catch: (error) => error,
+          }),
+        uiCallback: (payload) =>
+          Effect.tryPromise({
+            try: () => sandboxClient.uiCallback(payload),
+            catch: (error) => error,
+          }),
         terminate: () =>
           Effect.sync(() => {
             unsubscribe()

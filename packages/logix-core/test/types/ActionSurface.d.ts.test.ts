@@ -20,7 +20,7 @@ const M = Logix.Module.make('Types.ActionSurface', {
   } as const,
 })
 
-M.logic(($) =>
+M.logic('m-logic', ($) =>
   Effect.gen(function* () {
     const a1 = $.actions.add(1)
     const e1 = $.dispatchers.add(1)
@@ -28,6 +28,15 @@ M.logic(($) =>
     type _a1_is_action = Expect<Equal<typeof a1, { readonly _tag: 'add'; readonly payload: number }>>
     type _a1_not_effect = Expect<NotEffect<typeof a1>>
     type _e1_is_effect = Expect<IsEffect<typeof e1>>
+
+    // @ts-expect-error root ActionOf is removed from the public carry-over support surface
+    type _root_action_of = Logix.ActionOf<typeof M.shape>
+    // @ts-expect-error root StateOf is removed from the public carry-over support surface
+    type _root_state_of = Logix.StateOf<typeof M.shape>
+    // @ts-expect-error root BoundApi is removed from the public carry-over support surface
+    type _root_bound_api = Logix.BoundApi<typeof M.shape>
+    // @ts-expect-error root ModuleTagType is removed from the public carry-over support surface
+    type _root_module_tag = Logix.ModuleTagType<'Types.ActionSurface', typeof M.shape>
 
     // @ts-expect-error payload type should be inferred from schema (number)
     $.actions.add('x')

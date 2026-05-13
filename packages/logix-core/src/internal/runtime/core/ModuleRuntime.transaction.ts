@@ -1,20 +1,20 @@
 import { Cause, Effect, Exit, Fiber, Option, PubSub, Queue, SubscriptionRef } from 'effect'
 import type { StateChangeWithMeta, StateCommitMeta, StateCommitMode, StateCommitPriority } from './module.js'
 import type {
-  StateTraitProgram,
-  TraitConvergeGenerationEvidence,
-  TraitConvergePlanCacheEvidence,
-} from '../../state-trait/model.js'
+  FieldProgram,
+  FieldConvergeGenerationEvidence,
+  FieldConvergePlanCacheEvidence,
+} from '../../field-kernel/model.js'
 import type { DirtyAllReason, DirtySet, FieldPathIdRegistry } from '../../field-path.js'
 import * as Debug from './DebugSink.js'
 import * as StateTransaction from './StateTransaction.js'
 import * as TaskRunner from './TaskRunner.js'
-import * as StateTraitConverge from '../../state-trait/converge.js'
-import * as StateTraitValidate from '../../state-trait/validate.js'
-import * as StateTraitSource from '../../state-trait/source.js'
-import * as RowId from '../../state-trait/rowid.js'
+import * as FieldKernelConverge from '../../field-kernel/converge.js'
+import * as FieldValidate from '../../field-kernel/validate.js'
+import * as FieldSource from '../../field-kernel/source.js'
+import type * as RowId from '../../field-kernel/rowid.js'
 import type { RunOperation } from './ModuleRuntime.operation.js'
-import type { ResolvedTraitConvergeConfig } from './ModuleRuntime.traitConvergeConfig.js'
+import type { ResolvedFieldConvergeConfig } from './ModuleRuntime.fieldConvergeConfig.js'
 import {
   currentTxnQueuePhaseTiming,
   type CapturedTxnRuntimeScope,
@@ -23,6 +23,7 @@ import {
 } from './ModuleRuntime.txnQueue.js'
 import { StateTransactionOverridesTag, type StateTransactionOverrides } from './env.js'
 import { runSyncExitWithServices } from './runner/SyncEffectRunner.js'
+import { readClockMs, runPostCommitPhases, type TxnPostCommitPhaseTiming } from './ModuleRuntime.postCommit.js'
 
 const DIRTY_ALL_SET_STATE_HINT = Symbol.for('@logixjs/core/dirtyAllSetStateHint')
 const ASYNC_ESCAPE_DIAGNOSTIC_CODE = 'state_transaction::async_escape'
@@ -49,7 +50,9 @@ const findAsyncEscapeFiber = (cause: unknown): Fiber.Fiber<unknown, unknown> | u
   return typeof value.id === 'number' && typeof value._yielded === 'function' ? (value as Fiber.Fiber<unknown, unknown>) : undefined
 }
 
-const readDeferredFlushSlice = (details: unknown): { readonly start: number; readonly end: number } | undefined => {
+const readDeferredFlushSlice = (
+  details: unknown,
+): { readonly start: number; readonly end: number; readonly deferredStepIds?: Int32Array } | undefined => {
   if (!details || typeof details !== 'object') return undefined
   const raw = details as any
   const start = raw.sliceStart
@@ -59,16 +62,13 @@ const readDeferredFlushSlice = (details: unknown): { readonly start: number; rea
   const s = Math.floor(start)
   const e = Math.floor(end)
   if (s < 0 || e <= s) return undefined
-  return { start: s, end: e }
-}
-
-type TxnPostCommitPhaseTiming = {
-  readonly totalMs: number
-  readonly rowIdSyncMs: number
-  readonly publishCommitMs: number
-  readonly stateUpdateDebugRecordMs: number
-  readonly onCommitBeforeStateUpdateMs: number
-  readonly onCommitAfterStateUpdateMs: number
+  const deferredStepIds =
+    Array.isArray(raw.deferredStepIds) && raw.deferredStepIds.length > 0
+      ? Int32Array.from(
+          raw.deferredStepIds.filter((value: unknown): value is number => typeof value === 'number' && Number.isFinite(value)),
+        )
+      : undefined
+  return { start: s, end: e, ...(deferredStepIds ? { deferredStepIds } : null) }
 }
 
 type TxnPhaseTraceData = {
@@ -84,18 +84,10 @@ type TxnPhaseTraceData = {
   readonly dispatchActionCount: number
   readonly bodyShellMs: number
   readonly asyncEscapeGuardMs: number
-  readonly traitConvergeMs: number
+  readonly fieldConvergeMs: number
   readonly scopedValidateMs: number
   readonly sourceSyncMs: number
   readonly commit: TxnPostCommitPhaseTiming
-}
-
-const readClockMs = (): number => {
-  const perf = globalThis.performance
-  if (perf && typeof perf.now === "function") {
-    return perf.now()
-  }
-  return Date.now()
 }
 
 export type RunWithStateTransaction = <E>(
@@ -109,32 +101,51 @@ export type SetStateInternal<S> = (
   reason: StateTransaction.PatchReason,
   from?: unknown,
   to?: unknown,
-  traitNodeId?: string,
+  fieldNodeId?: string,
   stepId?: number,
 ) => Effect.Effect<void>
 
-export type TraitRuntimeAccess = {
-  readonly getProgram: () => StateTraitProgram<any> | undefined
+export type FieldRuntimeAccess = {
+  readonly getProgram: () => FieldProgram<any> | undefined
   readonly getConvergeStaticIrDigest: () => string | undefined
-  readonly getConvergePlanCache: () => StateTraitConverge.ConvergePlanCache | undefined
-  readonly getConvergeGeneration: () => TraitConvergeGenerationEvidence
-  readonly getPendingCacheMissReason: () => TraitConvergePlanCacheEvidence['missReason'] | undefined
+  readonly getConvergePlanCache: () => FieldKernelConverge.ConvergePlanCache | undefined
+  readonly getConvergeGeneration: () => FieldConvergeGenerationEvidence
+  readonly getPendingCacheMissReason: () => FieldConvergePlanCacheEvidence['missReason'] | undefined
   readonly getPendingCacheMissReasonCount: () => number
-  readonly setPendingCacheMissReason: (next: TraitConvergePlanCacheEvidence['missReason'] | undefined) => void
+  readonly setPendingCacheMissReason: (next: FieldConvergePlanCacheEvidence['missReason'] | undefined) => void
   readonly rowIdStore: RowId.RowIdStore
   readonly getListConfigs: () => ReadonlyArray<RowId.ListConfig>
 }
 
-export type TraitConvergeTimeSlicingState = {
+export type FieldConvergeTimeSlicingState = {
   readonly signal: Queue.Queue<void>
   readonly backlogDirtyPaths: Set<StateTransaction.StatePatchPath>
+  readonly backlogDeferredStepIds: Array<number>
   readonly ensureWorkerStarted: () => Effect.Effect<void, never, never>
   backlogDirtyAllReason?: DirtyAllReason
   firstPendingAtMs: number | undefined
   lastTouchedAtMs: number | undefined
-  latestConvergeConfig: ResolvedTraitConvergeConfig | undefined
+  latestConvergeConfig: ResolvedFieldConvergeConfig | undefined
   capturedContext: CapturedTxnRuntimeScope | undefined
 }
+
+export const hasFieldConvergeTimeSlicingBacklog = (
+  state: Pick<FieldConvergeTimeSlicingState, 'backlogDeferredStepIds' | 'backlogDirtyPaths' | 'backlogDirtyAllReason'>,
+): boolean =>
+  state.backlogDeferredStepIds.length > 0 ||
+  state.backlogDirtyPaths.size > 0 ||
+  state.backlogDirtyAllReason != null
+
+const hasConvergeWriters = (fieldProgram: FieldProgram<any> | undefined): boolean => {
+  const steps = fieldProgram?.convergeIr?.stepsById
+  return Array.isArray(steps) && steps.length > 0
+}
+
+const hasSourceAssets = (fieldProgram: FieldProgram<any> | undefined): boolean =>
+  Array.isArray(fieldProgram?.sourceDepIr?.sourcesById) && fieldProgram.sourceDepIr.sourcesById.length > 0
+
+const hasValidateAssets = (fieldProgram: FieldProgram<any> | undefined): boolean =>
+  Array.isArray(fieldProgram?.validateIr?.checkEntries) && fieldProgram.validateIr.checkEntries.length > 0
 
 export const makeTransactionOps = <S>(args: {
   readonly moduleId: string
@@ -148,7 +159,7 @@ export const makeTransactionOps = <S>(args: {
     reason: StateTransaction.PatchReason,
     from?: unknown,
     to?: unknown,
-    traitNodeId?: string,
+    fieldNodeId?: string,
     stepId?: number,
   ) => void
   readonly onCommit?: (args: {
@@ -160,9 +171,9 @@ export const makeTransactionOps = <S>(args: {
   readonly enqueueTransaction: EnqueueTransaction
   readonly runOperation: RunOperation
   readonly txnContext: StateTransaction.StateTxnContext<S>
-  readonly traitConvergeTimeSlicing: TraitConvergeTimeSlicingState
-  readonly traitRuntime: TraitRuntimeAccess
-  readonly resolveTraitConvergeConfig: () => Effect.Effect<ResolvedTraitConvergeConfig, never, never>
+  readonly fieldConvergeTimeSlicing: FieldConvergeTimeSlicingState
+  readonly fieldRuntime: FieldRuntimeAccess
+  readonly resolveFieldConvergeConfig: () => Effect.Effect<ResolvedFieldConvergeConfig, never, never>
   readonly isDevEnv: () => boolean
   readonly txnHistory: {
     readonly buffer: Array<StateTransaction.StateTransaction<S> | undefined>
@@ -189,9 +200,9 @@ export const makeTransactionOps = <S>(args: {
     enqueueTransaction,
     runOperation,
     txnContext,
-    traitConvergeTimeSlicing,
-    traitRuntime,
-    resolveTraitConvergeConfig,
+    fieldConvergeTimeSlicing,
+    fieldRuntime,
+    resolveFieldConvergeConfig,
     isDevEnv,
     txnHistory,
     txnById,
@@ -208,235 +219,6 @@ export const makeTransactionOps = <S>(args: {
     if (inTxn && current) return current.draft
     return yield* SubscriptionRef.get(stateRef)
   })
-
-  const runPostCommitPhases = (args: {
-    readonly txn: StateTransaction.StateTransaction<S>
-    readonly nextState: S
-    readonly replayEvent: unknown
-    readonly commitMode: StateCommitMode
-    readonly priority: StateCommitPriority
-    readonly fieldPathIdRegistry: FieldPathIdRegistry | undefined
-    readonly dirtyAllSetStateHint: boolean
-    readonly traitSummary: unknown
-    readonly phaseTimingEnabled: boolean
-  }): Effect.Effect<TxnPostCommitPhaseTiming | undefined> =>
-    Effect.gen(function* () {
-      const {
-        txn,
-        nextState,
-        replayEvent,
-        commitMode,
-        priority,
-        fieldPathIdRegistry,
-        dirtyAllSetStateHint,
-        traitSummary,
-        phaseTimingEnabled,
-      } = args
-      const phaseStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
-      let rowIdSyncMs = 0
-      let publishCommitMs = 0
-      let stateUpdateDebugRecordMs = 0
-      let onCommitBeforeStateUpdateMs = 0
-      let onCommitAfterStateUpdateMs = 0
-      const shouldWarnDirtyAllSetState =
-        dirtyAllSetStateHint || (txn.origin.kind === 'state' && txn.origin.name === 'setState')
-
-      if (shouldWarnDirtyAllSetState && isDevEnv() && txn.dirty.dirtyAll === true) {
-        yield* Debug.record({
-          type: 'diagnostic',
-          moduleId: optionsModuleId,
-          instanceId,
-          txnSeq: txn.txnSeq,
-          txnId: txn.txnId,
-          trigger: txn.origin,
-          code: 'state_transaction::dirty_all_fallback',
-          severity: 'warning',
-          message:
-            'setState/state.update did not provide field-level dirty-set evidence; falling back to dirtyAll scheduling.',
-          hint: 'Prefer $.state.mutate(...) or Logix.Module.Reducer.mutate(...) to produce field-level patchPaths; otherwise converge/validate degrades to full-path scheduling.',
-          kind: 'dirty_all_fallback:set_state',
-        })
-      }
-
-      // Record txn history: only for dev/test or explicit full instrumentation (devtools/debugging).
-      // In production (default light), keep zero retention to avoid turning "txn history" into an implicit memory tax.
-      if (isDevEnv() || txnContext.config.instrumentation === 'full') {
-        txnById.set(txn.txnId, txn)
-        const cap = txnHistory.capacity
-        if (cap > 0) {
-          const buf = txnHistory.buffer
-          if (txnHistory.size < cap) {
-            buf[(txnHistory.start + txnHistory.size) % cap] = txn
-            txnHistory.size += 1
-          } else {
-            const evicted = buf[txnHistory.start]
-            buf[txnHistory.start] = txn
-            txnHistory.start = (txnHistory.start + 1) % cap
-            if (evicted) {
-              txnById.delete(evicted.txnId)
-            }
-          }
-        }
-      }
-
-      // RowID virtual identity layer: align mappings after each observable commit
-      // so in-flight gates and cache reuse remain stable under insert/remove/reorder.
-      const listConfigs = traitRuntime.getListConfigs()
-      if (listConfigs.length > 0) {
-        const rowIdSyncStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
-        const shouldSyncRowIds = RowId.shouldReconcileListConfigsByDirtyEvidence({
-          dirty: txn.dirty,
-          listConfigs,
-          fieldPathIdRegistry,
-        })
-        if (shouldSyncRowIds) {
-          traitRuntime.rowIdStore.updateAll(nextState as any, listConfigs)
-        }
-        if (phaseTimingEnabled) {
-          rowIdSyncMs = Math.max(0, readClockMs() - rowIdSyncStartedAtMs)
-        }
-      }
-
-      const meta: StateCommitMeta = {
-        txnSeq: txn.txnSeq,
-        txnId: txn.txnId,
-        commitMode,
-        priority,
-        originKind: txn.origin.kind,
-        originName: txn.origin.name,
-      }
-
-      // Always publish:
-      // - PubSub already optimizes for 0 subscribers.
-      // - Skipping here can drop the first commit due to subscription start races (strictGate/process triggers/tests).
-      const publishCommitStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
-      yield* PubSub.publish(commitHub, {
-        value: nextState,
-        meta,
-      })
-      if (phaseTimingEnabled) {
-        publishCommitMs = Math.max(0, readClockMs() - publishCommitStartedAtMs)
-      }
-
-      // Perf-sensitive ordering:
-      // - In diagnostics=off mode (default for production/perf runs), allow selectorGraph notifications to be published
-      //   before state:update debug recording so React external store subscribers can start flushing earlier.
-      // - When traceMode=off (production default), treat it as a perf mode even under diagnostics=light/full:
-      //   publish onCommit before state:update so TickScheduler can schedule the tick flush earlier (yieldMicrotask),
-      //   reducing end-to-end latency and full/off variance on externalStore ingest workloads.
-      // - When traceMode=on, keep the original ordering so any selector eval trace stays after state:update
-      //   (preserves a more intuitive txn → selector → render causal chain in devtools).
-      const diagnosticsLevel = yield* Effect.service(Debug.currentDiagnosticsLevel).pipe(Effect.orDie)
-      let shouldCommitBeforeStateUpdate = false
-      if (onCommit) {
-        if (diagnosticsLevel === 'off') {
-          shouldCommitBeforeStateUpdate = true
-        } else {
-          const traceMode = yield* Effect.service(Debug.currentTraceMode).pipe(Effect.orDie)
-          shouldCommitBeforeStateUpdate = traceMode === 'off'
-        }
-      }
-
-      if (onCommit && shouldCommitBeforeStateUpdate) {
-        const onCommitStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
-        yield* onCommit({
-          state: nextState,
-          meta,
-          transaction: txn,
-          diagnosticsLevel,
-        })
-        if (phaseTimingEnabled) {
-          onCommitBeforeStateUpdateMs = Math.max(0, readClockMs() - onCommitStartedAtMs)
-        }
-      }
-
-      const debugSinks = yield* Effect.service(Debug.currentDebugSinks).pipe(Effect.orDie)
-      const shouldRecordStateUpdate = debugSinks.length > 0 && !Debug.isErrorOnlyOnlySinks(debugSinks)
-
-      if (shouldRecordStateUpdate) {
-        const stateUpdateDebugRecordStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
-        const shouldComputeEvidence = diagnosticsLevel !== 'off'
-
-        const staticIrDigest = shouldComputeEvidence ? traitRuntime.getConvergeStaticIrDigest() : undefined
-
-        const dirtySetEvidence = shouldComputeEvidence
-          ? (() => {
-              const pathIdsTopK = diagnosticsLevel === 'full' ? 32 : 3
-
-              if (txn.dirty.dirtyAll) {
-                return {
-                  dirtyAll: true,
-                  reason: txn.dirty.dirtyAllReason ?? 'unknownWrite',
-                  pathIds: [],
-                  pathCount: 0,
-                  keySize: 0,
-                  keyHash: 0,
-                  pathIdsTruncated: false,
-                }
-              }
-
-              const fullPathIds = txn.dirty.dirtyPathIds
-              const topK = fullPathIds.slice(0, pathIdsTopK)
-              return {
-                dirtyAll: false,
-                // Keep diff anchors (count/hash/size) for the full set; only truncate the pathIds payload.
-                pathIds: topK,
-                pathCount: fullPathIds.length,
-                keySize: txn.dirty.dirtyPathsKeySize,
-                keyHash: txn.dirty.dirtyPathsKeyHash,
-                pathIdsTruncated: fullPathIds.length > pathIdsTopK,
-              }
-            })()
-          : undefined
-
-        yield* Debug.record({
-          type: 'state:update',
-          moduleId: optionsModuleId,
-          state: nextState,
-          instanceId,
-          txnSeq: txn.txnSeq,
-          txnId: txn.txnId,
-          staticIrDigest,
-          dirtySet: dirtySetEvidence,
-          patchCount: txn.patchCount,
-          patchesTruncated: txn.patchesTruncated,
-          ...(txn.patchesTruncated ? { patchesTruncatedReason: txn.patchesTruncatedReason } : null),
-          commitMode,
-          priority,
-          originKind: txn.origin.kind,
-          originName: txn.origin.name,
-          traitSummary,
-          replayEvent: replayEvent as any,
-        })
-        if (phaseTimingEnabled) {
-          stateUpdateDebugRecordMs = Math.max(0, readClockMs() - stateUpdateDebugRecordStartedAtMs)
-        }
-      }
-
-      if (onCommit && !shouldCommitBeforeStateUpdate) {
-        const onCommitStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
-        yield* onCommit({
-          state: nextState,
-          meta,
-          transaction: txn,
-          diagnosticsLevel,
-        })
-        if (phaseTimingEnabled) {
-          onCommitAfterStateUpdateMs = Math.max(0, readClockMs() - onCommitStartedAtMs)
-        }
-      }
-
-      return phaseTimingEnabled
-        ? {
-            totalMs: Math.max(0, readClockMs() - phaseStartedAtMs),
-            rowIdSyncMs,
-            publishCommitMs,
-            stateUpdateDebugRecordMs,
-            onCommitBeforeStateUpdateMs,
-            onCommitAfterStateUpdateMs,
-          }
-        : undefined
-    })
 
   /**
    * runWithStateTransaction：
@@ -457,10 +239,11 @@ export const makeTransactionOps = <S>(args: {
 
       StateTransaction.beginTransaction(txnContext, origin, baseState)
       const txnCurrent: any = txnContext.current
-      txnCurrent.stateTraitValidateRequests = []
+      txnCurrent.fieldValidateRequests = []
       txnCurrent.commitMode = 'normal' as StateCommitMode
       txnCurrent.priority = 'normal' as StateCommitPriority
       txnCurrent.dispatchPhaseTimingEnabled = phaseTimingEnabled
+      txnCurrent.dispatchDiagnosticsLevel = phaseDiagnosticsLevel
       txnCurrent.dispatchActionRecordMs = 0
       txnCurrent.dispatchActionCommitHubMs = 0
       txnCurrent.dispatchActionCount = 0
@@ -481,10 +264,10 @@ export const makeTransactionOps = <S>(args: {
         exit = yield* Effect.exit(
           Effect.provideService(
             Effect.gen(function* () {
-              // Trait summary inside the transaction window (for devtools/diagnostics).
-              let traitSummary: unknown | undefined
+              // Field summary inside the transaction window (for devtools/diagnostics).
+              let fieldSummary: unknown | undefined
     
-              // Execute logic inside the transaction window (reducer / watcher writeback / traits, etc.).
+              // Execute logic inside the transaction window (reducer / watcher writeback / field updates, etc.).
               // Contract: no IO/await/sleep/promises inside the transaction window.
               //
               // Fail-fast when async escapes the window (even in production), without blocking on cleanup.
@@ -530,22 +313,22 @@ export const makeTransactionOps = <S>(args: {
               }
               const bodyShellMs = phaseTimingEnabled ? Math.max(0, readClockMs() - bodyShellStartedAtMs) : 0
 
-              const stateTraitProgram = traitRuntime.getProgram()
-              let traitConvergeMs = 0
+              const fieldProgram = fieldRuntime.getProgram()
+              let fieldConvergeMs = 0
               let scopedValidateMs = 0
               let sourceSyncMs = 0
     
-              // StateTrait: converge derived fields (computed/link, etc.) before commit to ensure 0/1 commit per window.
-              if (stateTraitProgram && txnContext.current) {
-                const convergeConfig = yield* resolveTraitConvergeConfig()
-                traitConvergeTimeSlicing.latestConvergeConfig = convergeConfig
-                const timeSlicingConfig = convergeConfig.traitConvergeTimeSlicing
-                const isDeferredFlushTxn = origin.kind === 'trait:deferred_flush'
+              // Field-kernel: converge derived fields (computed/link, etc.) before commit to ensure 0/1 commit per window.
+              if (fieldProgram && txnContext.current && hasConvergeWriters(fieldProgram)) {
+                const convergeConfig = yield* resolveFieldConvergeConfig()
+                fieldConvergeTimeSlicing.latestConvergeConfig = convergeConfig
+                const timeSlicingConfig = convergeConfig.fieldConvergeTimeSlicing
+                const isDeferredFlushTxn = origin.kind === 'field:deferred_flush'
                 const hasDeferredSteps =
-                  stateTraitProgram.convergeExecIr != null &&
-                  stateTraitProgram.convergeExecIr.topoOrderDeferredInt32.length > 0
+                  fieldProgram.convergeExecIr != null &&
+                  fieldProgram.convergeExecIr.topoOrderDeferredInt32.length > 0
                 const canTimeSlice = timeSlicingConfig.enabled === true && hasDeferredSteps
-                const schedulingScope: StateTraitConverge.ConvergeContext<any>['schedulingScope'] = isDeferredFlushTxn
+                const schedulingScope: FieldKernelConverge.ConvergeContext<any>['schedulingScope'] = isDeferredFlushTxn
                   ? 'deferred'
                   : canTimeSlice
                     ? 'immediate'
@@ -553,17 +336,20 @@ export const makeTransactionOps = <S>(args: {
     
                 const deferredSlice = isDeferredFlushTxn ? readDeferredFlushSlice(origin.details) : undefined
                 const deferredScopeStepIds =
-                  deferredSlice && stateTraitProgram.convergeExecIr
-                    ? stateTraitProgram.convergeExecIr.topoOrderDeferredInt32.subarray(
+                  deferredSlice?.deferredStepIds
+                    ? deferredSlice.deferredStepIds
+                    : deferredSlice && fieldProgram.convergeExecIr
+                      ? fieldProgram.convergeExecIr.topoOrderDeferredInt32.subarray(
                         deferredSlice.start,
                         deferredSlice.end,
                       )
-                    : undefined
-    
-                const traitConvergeStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
+                      : undefined
+                const dirtyBeforeConverge = StateTransaction.readDirtyPlanSnapshot(txnContext)
+
+                const fieldConvergeStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
                 const convergeExit = yield* Effect.exit(
-                  StateTraitConverge.convergeInTransaction(
-                    stateTraitProgram as any,
+                  FieldKernelConverge.convergeInTransaction(
+                    fieldProgram as any,
                     {
                       moduleId: optionsModuleId,
                       instanceId,
@@ -571,38 +357,39 @@ export const makeTransactionOps = <S>(args: {
                       txnId,
                       configScope: convergeConfig.configScope,
                       now: txnContext.config.now,
-                      budgetMs: convergeConfig.traitConvergeBudgetMs,
-                      decisionBudgetMs: convergeConfig.traitConvergeDecisionBudgetMs,
-                      requestedMode: isDeferredFlushTxn ? 'full' : convergeConfig.traitConvergeMode,
+                      budgetMs: convergeConfig.fieldConvergeBudgetMs,
+                      decisionBudgetMs: convergeConfig.fieldConvergeDecisionBudgetMs,
+                      requestedMode: isDeferredFlushTxn ? 'full' : convergeConfig.fieldConvergeMode,
                       schedulingScope,
+                      ...(dirtyBeforeConverge ? { dirtyPlan: dirtyBeforeConverge } : null),
                       ...(deferredScopeStepIds ? { schedulingScopeStepIds: deferredScopeStepIds } : {}),
                       dirtyAllReason: (txnContext.current as any)?.dirtyAllReason,
                       dirtyPaths: txnContext.current?.dirtyPathIds,
-                      dirtyPathsKeyHash: (txnContext.current as any)?.dirtyPathIdsKeyHash,
-                      dirtyPathsKeySize: (txnContext.current as any)?.dirtyPathIdsKeySize,
+                      dirtyPathsKeyHash: (txnContext.current as any)?.dirtyPathsKeyHash,
+                      dirtyPathsKeySize: (txnContext.current as any)?.dirtyPathsKeySize,
                       getBaseState: () => txnContext.current!.baseState as any,
                       allowInPlaceDraft:
                         txnContext.current != null &&
                         !Object.is(txnContext.current.draft, txnContext.current.baseState),
-    	                        planCache: traitRuntime.getConvergePlanCache(),
-    	                        generation: traitRuntime.getConvergeGeneration(),
-    	                        cacheMissReasonHint: traitRuntime.getPendingCacheMissReason(),
-    	                        cacheMissReasonHintCount: traitRuntime.getPendingCacheMissReasonCount(),
+    	                        planCache: fieldRuntime.getConvergePlanCache(),
+    	                        generation: fieldRuntime.getConvergeGeneration(),
+    	                        cacheMissReasonHint: fieldRuntime.getPendingCacheMissReason(),
+    	                        cacheMissReasonHintCount: fieldRuntime.getPendingCacheMissReasonCount(),
     	                        getDraft: () => txnContext.current!.draft as any,
     	                        setDraft: (next) => {
     	                          StateTransaction.updateDraft(txnContext, next as any)
     	                        },
-                      recordPatch: (path, reason, from, to, traitNodeId, stepId) =>
-                        recordStatePatch(path, reason, from, to, traitNodeId, stepId),
-                    } as StateTraitConverge.ConvergeContext<any>,
+                      recordPatch: (path, reason, from, to, fieldNodeId, stepId) =>
+                        recordStatePatch(path, reason, from, to, fieldNodeId, stepId),
+                    } as FieldKernelConverge.ConvergeContext<any>,
                   ),
                 )
                 if (phaseTimingEnabled) {
-                  traitConvergeMs = Math.max(0, readClockMs() - traitConvergeStartedAtMs)
+                  fieldConvergeMs = Math.max(0, readClockMs() - fieldConvergeStartedAtMs)
                 }
     
-                if (traitRuntime.getPendingCacheMissReason() === 'generation_bumped') {
-                  traitRuntime.setPendingCacheMissReason(undefined)
+                if (fieldRuntime.getPendingCacheMissReason() === 'generation_bumped') {
+                  fieldRuntime.setPendingCacheMissReason(undefined)
                 }
     
                 if (convergeExit._tag === 'Failure') {
@@ -610,8 +397,8 @@ export const makeTransactionOps = <S>(args: {
                     .filter((reason) => Cause.isFailReason(reason) || Cause.isDieReason(reason))
                     .map((reason) => (Cause.isFailReason(reason) ? reason.error : reason.defect))
                   const configError = errors.find(
-                    (err): err is StateTraitConverge.StateTraitConfigError =>
-                      err instanceof StateTraitConverge.StateTraitConfigError,
+                    (err): err is FieldKernelConverge.FieldKernelConfigError =>
+                      err instanceof FieldKernelConverge.FieldKernelConfigError,
                   )
     
                   if (configError) {
@@ -623,14 +410,14 @@ export const makeTransactionOps = <S>(args: {
                       txnSeq,
                       txnId,
                       trigger: origin,
-                      code: 'state_trait::config_error',
+                      code: 'field_kernel::config_error',
                       severity: 'error',
                       message: configError.message,
                       hint:
                         configError.code === 'CYCLE_DETECTED'
                           ? `computed/link graph has a cycle: ${fields.join(', ')}`
                           : `multiple writers detected for the same field: ${fields.join(', ')}`,
-                      kind: `state_trait_config_error:${configError.code}`,
+                      kind: `field_kernel_config_error:${configError.code}`,
                     })
                   }
     
@@ -650,18 +437,22 @@ export const makeTransactionOps = <S>(args: {
                   !isDeferredFlushTxn &&
                   outcome._tag !== 'Degraded' &&
                   (dirtyAllReasonForDeferred != null ||
+                    (outcome.deferredReachableStepIds != null && outcome.deferredReachableStepIds.length > 0) ||
                     (dirtyPathIdsForDeferred != null && dirtyPathIdsForDeferred.size > 0))
                 ) {
                   const nowMs = Date.now()
-                  traitConvergeTimeSlicing.firstPendingAtMs = traitConvergeTimeSlicing.firstPendingAtMs ?? nowMs
-                  traitConvergeTimeSlicing.lastTouchedAtMs = nowMs
+                  fieldConvergeTimeSlicing.firstPendingAtMs = fieldConvergeTimeSlicing.firstPendingAtMs ?? nowMs
+                  fieldConvergeTimeSlicing.lastTouchedAtMs = nowMs
     
                   if (dirtyAllReasonForDeferred != null) {
-                    traitConvergeTimeSlicing.backlogDirtyAllReason = dirtyAllReasonForDeferred
-                    traitConvergeTimeSlicing.backlogDirtyPaths.clear()
-                  } else if (!traitConvergeTimeSlicing.backlogDirtyAllReason && dirtyPathIdsForDeferred) {
+                    fieldConvergeTimeSlicing.backlogDirtyAllReason = dirtyAllReasonForDeferred
+                    fieldConvergeTimeSlicing.backlogDirtyPaths.clear()
+                    fieldConvergeTimeSlicing.backlogDeferredStepIds.length = 0
+                  } else if (outcome.deferredReachableStepIds && outcome.deferredReachableStepIds.length > 0) {
+                    fieldConvergeTimeSlicing.backlogDeferredStepIds.push(...outcome.deferredReachableStepIds)
+                  } else if (!fieldConvergeTimeSlicing.backlogDirtyAllReason && dirtyPathIdsForDeferred) {
                     for (const p of dirtyPathIdsForDeferred) {
-                      traitConvergeTimeSlicing.backlogDirtyPaths.add(p)
+                      fieldConvergeTimeSlicing.backlogDirtyPaths.add(p)
                     }
                   }
     
@@ -671,17 +462,17 @@ export const makeTransactionOps = <S>(args: {
                   const overridesOpt = yield* Effect.serviceOption(StateTransactionOverridesTag)
                   const overrides = Option.isSome(overridesOpt) ? overridesOpt.value : undefined
     
-                  traitConvergeTimeSlicing.capturedContext = {
+                  fieldConvergeTimeSlicing.capturedContext = {
                     runtimeLabel,
                     diagnosticsLevel,
                     debugSinks,
                     overrides,
                   }
     
-                  yield* traitConvergeTimeSlicing.ensureWorkerStarted()
+                  yield* fieldConvergeTimeSlicing.ensureWorkerStarted()
                 }
     
-                traitSummary = outcome.decision ? { converge: outcome.decision } : undefined
+                fieldSummary = outcome.decision ? { converge: outcome.decision } : undefined
     
                 if (outcome._tag === 'Degraded') {
                   yield* Debug.record({
@@ -689,36 +480,36 @@ export const makeTransactionOps = <S>(args: {
                     moduleId: optionsModuleId,
                     instanceId,
                     txnSeq,
-                    code: outcome.reason === 'budget_exceeded' ? 'trait::budget_exceeded' : 'trait::runtime_error',
+                    code: outcome.reason === 'budget_exceeded' ? 'field::budget_exceeded' : 'field::runtime_error',
                     severity: 'warning',
                     message:
                       outcome.reason === 'budget_exceeded'
-                        ? 'Trait converge exceeded budget; derived fields are frozen for this operation window.'
-                        : 'Trait converge failed at runtime; derived fields are frozen for this operation window.',
+                        ? 'Field converge exceeded budget; derived fields are frozen for this operation window.'
+                        : 'Field converge failed at runtime; derived fields are frozen for this operation window.',
                     hint:
                       outcome.reason === 'budget_exceeded'
                         ? 'Check whether computed/check contains heavy computation; move it to source/task or split into cacheable derived pieces.'
                         : 'Check computed/link/check for invalid inputs or impure logic; add equals or guards if needed.',
-                    kind: 'trait_degraded',
+                    kind: 'field_degraded',
                   })
                 }
               }
     
-              // TraitLifecycle scoped validate: flush after converge so validation reads the latest derived state.
-              if (stateTraitProgram && txnContext.current) {
+              // Field scoped validate: flush after converge so validation reads the latest derived state.
+              if (fieldProgram && txnContext.current && hasValidateAssets(fieldProgram)) {
                 const dedupeScopedValidateRequests = (
-                  requests: ReadonlyArray<StateTraitValidate.ScopedValidateRequest>,
-                ): ReadonlyArray<StateTraitValidate.ScopedValidateRequest> => {
+                  requests: ReadonlyArray<FieldValidate.ScopedValidateRequest>,
+                ): ReadonlyArray<FieldValidate.ScopedValidateRequest> => {
                   if (requests.length <= 1) return requests
     
-                  const priorities: Record<StateTraitValidate.ValidateMode, number> = {
+                  const priorities: Record<FieldValidate.ValidateMode, number> = {
                     submit: 4,
                     blur: 3,
                     valueChange: 2,
                     manual: 1,
                   }
     
-                  let bestMode: StateTraitValidate.ValidateMode = 'manual'
+                  let bestMode: FieldValidate.ValidateMode = 'manual'
                   let bestP = priorities[bestMode]
                   let hasRoot = false
     
@@ -737,7 +528,7 @@ export const makeTransactionOps = <S>(args: {
                     return [{ mode: bestMode, target: { kind: 'root' } }]
                   }
     
-                  const makeKey = (target: StateTraitValidate.ValidateTarget): string => {
+                  const makeKey = (target: FieldValidate.ValidateTarget): string => {
                     switch (target.kind) {
                       case 'field':
                         return `field:${target.path}`
@@ -751,7 +542,7 @@ export const makeTransactionOps = <S>(args: {
                   }
     
                   const order: Array<string> = []
-                  const byKey = new Map<string, StateTraitValidate.ScopedValidateRequest>()
+                  const byKey = new Map<string, FieldValidate.ScopedValidateRequest>()
     
                   for (const req of requests) {
                     const key = makeKey(req.target)
@@ -769,31 +560,32 @@ export const makeTransactionOps = <S>(args: {
                   return order.map((k) => byKey.get(k)!).filter(Boolean)
                 }
     
-                const pending = (txnContext.current as any).stateTraitValidateRequests as
-                  | ReadonlyArray<StateTraitValidate.ScopedValidateRequest>
+                const pending = (txnContext.current as any).fieldValidateRequests as
+                  | ReadonlyArray<FieldValidate.ScopedValidateRequest>
                   | undefined
-    
+
                 if (pending && pending.length > 0) {
+                  const dirtyBeforeValidate = StateTransaction.readDirtyPlanSnapshot(txnContext)
                   const scopedValidateStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
                   const deduped = dedupeScopedValidateRequests(pending)
-                  yield* StateTraitValidate.validateInTransaction(
-    	                      stateTraitProgram as any,
-    	                      {
-    	                        moduleId: optionsModuleId,
-    	                        instanceId,
-    	                        txnSeq: txnContext.current!.txnSeq,
-    	                        txnId: txnContext.current!.txnId,
-    	                        origin: txnContext.current!.origin,
-    	                        rowIdStore: traitRuntime.rowIdStore,
-    	                        listConfigs: traitRuntime.getListConfigs(),
-    	                        txnDirtyEvidence: StateTransaction.readDirtyEvidence(txnContext),
-    	                        getDraft: () => txnContext.current!.draft as any,
-    	                        setDraft: (next) => {
-    	                          StateTransaction.updateDraft(txnContext, next as any)
-    	                        },
-                      recordPatch: (path, reason, from, to, traitNodeId, stepId) =>
-                        recordStatePatch(path, reason, from, to, traitNodeId, stepId),
-                    } as StateTraitValidate.ValidateContext<any>,
+                  yield* FieldValidate.validateInTransaction(
+                    fieldProgram as any,
+                    {
+                      moduleId: optionsModuleId,
+                      instanceId,
+                      txnSeq: txnContext.current!.txnSeq,
+                      txnId: txnContext.current!.txnId,
+                      origin: txnContext.current!.origin,
+                      rowIdStore: fieldRuntime.rowIdStore,
+                      listConfigs: fieldRuntime.getListConfigs(),
+                      ...(dirtyBeforeValidate ? { dirtyPlan: dirtyBeforeValidate } : null),
+                      getDraft: () => txnContext.current!.draft as any,
+                      setDraft: (next) => {
+                        StateTransaction.updateDraft(txnContext, next as any)
+                      },
+                      recordPatch: (path, reason, from, to, fieldNodeId, stepId) =>
+                        recordStatePatch(path, reason, from, to, fieldNodeId, stepId),
+                    } as FieldValidate.ValidateContext<any>,
                     deduped,
                   )
                   if (phaseTimingEnabled) {
@@ -803,20 +595,22 @@ export const makeTransactionOps = <S>(args: {
               }
 
               // If a source key becomes empty, synchronously recycle it back to idle (avoid tearing / ghost data).
-              if (stateTraitProgram && txnContext.current) {
+              if (fieldProgram && txnContext.current && hasSourceAssets(fieldProgram)) {
+                const dirtyBeforeSource = StateTransaction.readDirtyPlanSnapshot(txnContext)
                 const sourceSyncStartedAtMs = phaseTimingEnabled ? readClockMs() : 0
-                yield* StateTraitSource.syncIdleInTransaction(
-                  stateTraitProgram as any,
+                yield* FieldSource.syncIdleInTransaction(
+                  fieldProgram as any,
                   {
                     moduleId: optionsModuleId,
                     instanceId,
+                    ...(dirtyBeforeSource ? { dirtyPlan: dirtyBeforeSource } : null),
                     getDraft: () => txnContext.current!.draft as any,
                     setDraft: (next) => {
                       StateTransaction.updateDraft(txnContext, next as any)
                     },
-                    recordPatch: (path, reason, from, to, traitNodeId, stepId) =>
-                      recordStatePatch(path, reason, from, to, traitNodeId, stepId),
-                  } as StateTraitSource.SourceSyncContext<any>,
+                    recordPatch: (path, reason, from, to, fieldNodeId, stepId) =>
+                      recordStatePatch(path, reason, from, to, fieldNodeId, stepId),
+                  } as FieldSource.SourceSyncContext<any>,
                 )
                 if (phaseTimingEnabled) {
                   sourceSyncMs = Math.max(0, readClockMs() - sourceSyncStartedAtMs)
@@ -856,6 +650,16 @@ export const makeTransactionOps = <S>(args: {
 
                   if (commitResult) {
                     const commitPhaseTiming = yield* runPostCommitPhases({
+                      moduleId: optionsModuleId,
+                      instanceId,
+                      isDevEnv,
+                      txnContext,
+                      txnHistory,
+                      txnById,
+                      fieldRuntime,
+                      commitHub,
+                      shouldPublishCommitHub,
+                      onCommit,
                       txn: commitResult.transaction,
                       nextState: commitResult.finalState,
                       replayEvent,
@@ -863,7 +667,7 @@ export const makeTransactionOps = <S>(args: {
                       priority,
                       fieldPathIdRegistry,
                       dirtyAllSetStateHint,
-                      traitSummary,
+                      fieldSummary,
                       phaseTimingEnabled,
                     })
 
@@ -881,7 +685,7 @@ export const makeTransactionOps = <S>(args: {
                         dispatchActionCount: dispatchPhaseTiming?.dispatchActionCount ?? 0,
                         bodyShellMs,
                         asyncEscapeGuardMs,
-                        traitConvergeMs,
+                        fieldConvergeMs,
                         scopedValidateMs,
                         sourceSyncMs,
                         commit: commitPhaseTiming,
@@ -917,7 +721,7 @@ export const makeTransactionOps = <S>(args: {
   /**
    * setStateInternal：
    * - Inside an active transaction: only update the draft and record patches (whole-State granularity), without writing to the underlying Ref.
-   * - Outside a transaction: keep legacy behavior, write to SubscriptionRef directly and emit a state:update Debug event.
+   * - Outside a transaction: keep current default behavior, write to SubscriptionRef directly and emit a state:update Debug event.
    *
    * Notes:
    * - When path="*" and field-level evidence is missing, the transaction attempts a best-effort commit-time inference
@@ -931,7 +735,7 @@ export const makeTransactionOps = <S>(args: {
     reason: StateTransaction.PatchReason,
     from?: unknown,
     to?: unknown,
-    traitNodeId?: string,
+    fieldNodeId?: string,
     stepId?: number,
   ): Effect.Effect<void> =>
     Effect.gen(function* () {
@@ -951,7 +755,7 @@ export const makeTransactionOps = <S>(args: {
           return
         }
 
-        recordStatePatch(path, reason, from, to, traitNodeId, stepId)
+        recordStatePatch(path, reason, from, to, fieldNodeId, stepId)
 
         if (path === '*') {
           current[DIRTY_ALL_SET_STATE_HINT] = true
@@ -977,7 +781,7 @@ export const makeTransactionOps = <S>(args: {
               Effect.sync(() => {
                 // baseState is injected by runWithStateTransaction at txn start; we only need to update the draft here.
                 StateTransaction.updateDraft(txnContext, next)
-                recordStatePatch(path, reason, from, to, traitNodeId, stepId)
+                recordStatePatch(path, reason, from, to, fieldNodeId, stepId)
               }),
           ),
         ),
@@ -985,11 +789,11 @@ export const makeTransactionOps = <S>(args: {
     })
 
   const getExecVmAssemblyEvidence = (): unknown => {
-    const digest = traitRuntime.getConvergeStaticIrDigest()
+    const digest = fieldRuntime.getConvergeStaticIrDigest()
     if (!digest) return undefined
     return {
       convergeStaticIrDigest: digest,
-      convergeGeneration: traitRuntime.getConvergeGeneration().generation,
+      convergeGeneration: fieldRuntime.getConvergeGeneration().generation,
     }
   }
 

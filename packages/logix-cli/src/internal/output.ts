@@ -31,7 +31,7 @@ export const writeJsonFile = (outDir: string, fileName: string, value: unknown):
           cause,
         }),
     })
-    return fileName
+    return filePath
   })
 
 export const readJsonFile = (filePath: string): Effect.Effect<unknown, unknown> =>

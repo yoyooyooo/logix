@@ -1,8 +1,8 @@
 # Feature Specification: 018 定期自校准（库侧默认值审计 + 用户侧运行时自校准）
 
-**Feature Branch**: `[018-periodic-self-calibration]`  
-**Created**: 2025-12-20  
-**Status**: Draft  
+**Feature Branch**: `[018-periodic-self-calibration]`
+**Created**: 2025-12-20
+**Status**: Draft
 **Input**: User description: "创建个 spec做这这个“定期自校准”"
 
 ## User Scenarios & Testing *(mandatory)*
@@ -11,7 +11,7 @@
   IMPORTANT: User stories should be PRIORITIZED as user journeys ordered by importance.
   Each user story/journey must be INDEPENDENTLY TESTABLE - meaning if you implement just ONE of them,
   you should still have a viable MVP (Minimum Viable Product) that delivers value.
-  
+
   Assign priorities (P1, P2, P3, etc.) to each story, where P1 is the most critical.
   Think of each story as a standalone slice of functionality that can be:
   - Developed independently
@@ -98,7 +98,7 @@
 - 库侧默认值更新不做“自动写入并发布”的黑盒策略：审计只产出可审查建议；是否采纳由维护者决策并通过常规发布流程完成。
 - 本期审计/自校准的参数范围仅覆盖 013 控制面中与 converge 直接相关的旋钮（requestedMode 与预算），不扩展到其他缺少证据字段与语义口径的内置参数。
 - 审计/校准结论只对“被校准的工作负载集合”负责；不同业务场景/设备环境可能存在不同最优值，系统必须显式呈现其适用范围与不确定性。
-- 依赖：可复用的工作负载定义与对比跑道（014/017），以及可解释的 converge 证据字段（如 `traitSummary.converge`）。
+- 依赖：可复用的工作负载定义与对比跑道（014/017），以及可解释的 converge 证据字段（如 `fieldSummary.converge`）。
 - 依赖：converge synthetic workload 目前仍在 `packages/logix-react/test/browser/perf-boundaries/converge-runtime.ts` 与 `examples/logix-react/src/demos/PerfTuningLabLayout.tsx` 存在重复定义，需要抽取为可复用的 workload fixtures（收口到 `packages/logix-react/src/internal/perfWorkloads.ts`），以便在 Node/browser/Worker 复用并避免口径漂移（018/017/014 共用同一事实源）。
 
 ### Non-Functional Requirements (Performance & Diagnosability)

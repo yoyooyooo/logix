@@ -1,7 +1,10 @@
 # Specification Quality Checklist: Logix CLI（Node-only 基础能力与集成验证跑道）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2026-01-09  
+> Superseded background only. This checklist validates the old 085 specification, not current CLI authority.
+> Current CLI authority is [../../160-cli-agent-first-control-plane-cutover/spec.md](../../160-cli-agent-first-control-plane-cutover/spec.md) and [../../../docs/ssot/runtime/15-cli-agent-first-control-plane.md](../../../docs/ssot/runtime/15-cli-agent-first-control-plane.md).
+
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2026-01-09
 **Feature**: `specs/085-logix-cli-node-only/spec.md`
 
 ## Content Quality

@@ -6,7 +6,7 @@ type RequestedMode = 'auto' | 'full' | 'dirty'
 type Select<T extends string> = T | 'inherit'
 
 type StateTransactionOverrides = Parameters<typeof Logix.Runtime.stateTransactionOverridesLayer>[0]
-type ModuleOverridesById = NonNullable<StateTransactionOverrides['traitConvergeOverridesByModuleId']>
+type ModuleOverridesById = NonNullable<StateTransactionOverrides['fieldConvergeOverridesByModuleId']>
 
 let nextRowKey = 0
 
@@ -50,11 +50,11 @@ export const ConvergeControlPlanePanel: React.FC<{
   const overrides = React.useMemo<StateTransactionOverrides | undefined>(() => {
     const provider: Record<string, unknown> = {}
 
-    if (providerMode !== 'inherit') provider.traitConvergeMode = providerMode
+    if (providerMode !== 'inherit') provider.fieldConvergeMode = providerMode
     const decisionBudgetMs = parsePositiveNumber(providerDecisionBudgetMs)
-    if (decisionBudgetMs != null) provider.traitConvergeDecisionBudgetMs = decisionBudgetMs
+    if (decisionBudgetMs != null) provider.fieldConvergeDecisionBudgetMs = decisionBudgetMs
     const budgetMs = parsePositiveNumber(providerBudgetMs)
-    if (budgetMs != null) provider.traitConvergeBudgetMs = budgetMs
+    if (budgetMs != null) provider.fieldConvergeBudgetMs = budgetMs
 
     const byId: Record<string, unknown> = {}
     for (const r of rows) {
@@ -62,14 +62,14 @@ export const ConvergeControlPlanePanel: React.FC<{
       if (!moduleId) continue
 
       const patch: Record<string, unknown> = {}
-      if (r.mode !== 'inherit') patch.traitConvergeMode = r.mode
+      if (r.mode !== 'inherit') patch.fieldConvergeMode = r.mode
       const d = parsePositiveNumber(r.decisionBudgetMs)
       if (d != null) {
-        patch.traitConvergeDecisionBudgetMs = d
+        patch.fieldConvergeDecisionBudgetMs = d
       }
       const b = parsePositiveNumber(r.budgetMs)
       if (b != null) {
-        patch.traitConvergeBudgetMs = b
+        patch.fieldConvergeBudgetMs = b
       }
 
       if (Object.keys(patch).length === 0) continue
@@ -78,7 +78,7 @@ export const ConvergeControlPlanePanel: React.FC<{
 
     const out: Record<string, unknown> = {
       ...provider,
-      ...(Object.keys(byId).length > 0 ? { traitConvergeOverridesByModuleId: byId } : null),
+      ...(Object.keys(byId).length > 0 ? { fieldConvergeOverridesByModuleId: byId } : null),
     }
 
     return Object.keys(out).length > 0 ? (out as unknown as StateTransactionOverrides) : undefined
@@ -109,21 +109,21 @@ export const ConvergeControlPlanePanel: React.FC<{
   }, [providerMode, providerDecisionBudgetMs, providerBudgetMs])
 
   const moduleSummary = React.useMemo(() => {
-    if (!overrides?.traitConvergeOverridesByModuleId) return '（无）'
-    const entries = Object.entries(overrides.traitConvergeOverridesByModuleId)
+    if (!overrides?.fieldConvergeOverridesByModuleId) return '（无）'
+    const entries = Object.entries(overrides.fieldConvergeOverridesByModuleId)
     if (entries.length === 0) return '（无）'
     return entries
       .map(([moduleId, patch]) => {
         const parts: string[] = []
-        if (patch.traitConvergeMode) parts.push(`mode=${patch.traitConvergeMode}`)
-        if (typeof patch.traitConvergeDecisionBudgetMs === 'number')
-          parts.push(`decisionBudgetMs=${String(patch.traitConvergeDecisionBudgetMs)}`)
-        if (typeof patch.traitConvergeBudgetMs === 'number')
-          parts.push(`budgetMs=${String(patch.traitConvergeBudgetMs)}`)
+        if (patch.fieldConvergeMode) parts.push(`mode=${patch.fieldConvergeMode}`)
+        if (typeof patch.fieldConvergeDecisionBudgetMs === 'number')
+          parts.push(`decisionBudgetMs=${String(patch.fieldConvergeDecisionBudgetMs)}`)
+        if (typeof patch.fieldConvergeBudgetMs === 'number')
+          parts.push(`budgetMs=${String(patch.fieldConvergeBudgetMs)}`)
         return `${moduleId}: ${parts.length > 0 ? parts.join(', ') : '（空 patch）'}`
       })
       .join('；')
-  }, [overrides?.traitConvergeOverridesByModuleId])
+  }, [overrides?.fieldConvergeOverridesByModuleId])
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 space-y-4">
@@ -155,7 +155,7 @@ export const ConvergeControlPlanePanel: React.FC<{
           </select>
           <div className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
             auto/dirty/full 是 <span className="font-mono">requestedMode</span>；在 Devtools 的{' '}
-            <span className="font-mono">traitSummary.converge</span> 可看到实际{' '}
+            <span className="font-mono">fieldSummary.converge</span> 可看到实际{' '}
             <span className="font-mono">executedMode</span>。
           </div>
         </div>

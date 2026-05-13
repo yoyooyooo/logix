@@ -1,6 +1,6 @@
 # Data Model: 001-effectop-unify-boundaries
 
-**Feature**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/001-effectop-unify-boundaries/spec.md`  
+**Feature**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/001-effectop-unify-boundaries/spec.md`
 **Date**: 2025-12-12
 
 > 说明：本特性的数据模型用于约束“边界操作统一总线”的结构化上下文，供 middleware 做观测/运行策略/守卫决策使用。

@@ -2,6 +2,7 @@ import { describe, it, expect } from '@effect/vitest'
 import { Effect, Layer } from 'effect'
 import * as Logix from '@logixjs/core'
 import { makeFormModule } from '../fixtures/listScopeCheck.js'
+import { materializeExtendedHandle } from '../support/form-harness.js'
 
 describe('Form list-scope uniqueWarehouse (onChange, no submit)', () => {
   it.effect('writes cross-row errors into $list/rows[] and keeps them in sync', () =>
@@ -18,30 +19,30 @@ describe('Form list-scope uniqueWarehouse (onChange, no submit)', () => {
 
       const program = Effect.gen(function* () {
         const rt = yield* Effect.service(form.tag).pipe(Effect.orDie)
-        const controller = form.controller.make(rt)
+        const handle = materializeExtendedHandle(form.tag, rt) as any
 
         // Initial: no errors
-        const s0: any = yield* controller.getState
+        const s0: any = yield* handle.getState
         const rows0: any[] = s0.errors?.items?.rows ?? []
         expect(rows0[0]).toBeUndefined()
         expect(rows0[1]).toBeUndefined()
 
         // Empty values: do not participate in cross-row conflicts (requiredness is expressed by a separate rule).
-        yield* controller.field('items.0.warehouseId').set('')
-        yield* controller.field('items.1.warehouseId').set('')
+        yield* handle.field('items.0.warehouseId').set('')
+        yield* handle.field('items.1.warehouseId').set('')
         yield* Effect.sleep('20 millis')
 
-        const sEmpty: any = yield* controller.getState
+        const sEmpty: any = yield* handle.getState
         const rowsEmpty: any[] = sEmpty.errors?.items?.rows ?? []
         expect(rowsEmpty[0]).toBeUndefined()
         expect(rowsEmpty[1]).toBeUndefined()
 
         // Create duplicates: rows 0/1 should be marked invalid immediately (no submit required).
-        yield* controller.field('items.0.warehouseId').set('WH-DUP')
-        yield* controller.field('items.1.warehouseId').set('WH-DUP')
+        yield* handle.field('items.0.warehouseId').set('WH-DUP')
+        yield* handle.field('items.1.warehouseId').set('WH-DUP')
         yield* Effect.sleep('20 millis')
 
-        const s1: any = yield* controller.getState
+        const s1: any = yield* handle.getState
         const rows1: any[] = s1.errors?.items?.rows ?? []
         expect(rows1[0]?.warehouseId).toBe('仓库选择需跨行互斥（当前重复）')
         expect(rows1[1]?.warehouseId).toBe('仓库选择需跨行互斥（当前重复）')
@@ -49,10 +50,10 @@ describe('Form list-scope uniqueWarehouse (onChange, no submit)', () => {
         expect(rows1[1]?.$rowId).toBe(s1.items?.[1]?.id)
 
         // Remove duplication: after row 1 becomes unique again, both errors should be cleared in sync.
-        yield* controller.field('items.1.warehouseId').set('WH-001')
+        yield* handle.field('items.1.warehouseId').set('WH-001')
         yield* Effect.sleep('20 millis')
 
-        const s2: any = yield* controller.getState
+        const s2: any = yield* handle.getState
         const rows2: any[] = s2.errors?.items?.rows ?? []
         expect(rows2[0]).toBeUndefined()
         expect(rows2[1]).toBeUndefined()

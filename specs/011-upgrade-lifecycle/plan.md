@@ -1,6 +1,6 @@
 # Implementation Plan: Lifecycle 全面升级
 
-**Branch**: `[011-upgrade-lifecycle]` | **Date**: 2025-12-16 | **Spec**: [spec.md](./spec.md)  
+**Branch**: `[011-upgrade-lifecycle]` | **Date**: 2025-12-16 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/specs/011-upgrade-lifecycle/spec.md`
 
 **Note**: This template is copied into `specs/[###-feature-name]/plan.md` by
@@ -65,14 +65,14 @@
   the iteration process.
 -->
 
-**Language/Version**: TypeScript 5.8.2（ESM） + Node.js 20+  
-**Primary Dependencies**: effect v3（`effect@^3.19.8`）、`@logixjs/core`、`@logixjs/react`、Vitest（含 `@effect/vitest` 风格用例）  
-**Storage**: 内存态（Effect Context/Scope + Ref/SubscriptionRef），无持久化存储  
-**Testing**: Vitest 4 + `@effect/vitest`（Effect-heavy）、React 侧使用 Testing Library（按既有用例）  
-**Target Platform**: Node.js 20+；React 19（适配层）；Devtools 事件以进程内聚合为主（后续可桥接到 Sandbox）  
-**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）  
-**Performance Goals**: 以“模块实例创建/初始化门禁/终止清理”为测量路径；相对基线：p95 创建/终止增量 ≤ 5%，诊断关闭时增量 ≤ 1%  
-**Constraints**: 稳定标识（无随机/时间默认 id）、事务窗口禁止 IO/await、诊断事件 slim 且可序列化、默认诊断近零成本  
+**Language/Version**: TypeScript 5.8.2（ESM） + Node.js 20+
+**Primary Dependencies**: effect v3（`effect@^3.19.8`）、`@logixjs/core`、`@logixjs/react`、Vitest（含 `@effect/vitest` 风格用例）
+**Storage**: 内存态（Effect Context/Scope + Ref/SubscriptionRef），无持久化存储
+**Testing**: Vitest 4 + `@effect/vitest`（Effect-heavy）、React 侧使用 Testing Library（按既有用例）
+**Target Platform**: Node.js 20+；React 19（适配层）；Devtools 事件以进程内聚合为主（后续可桥接到 Sandbox）
+**Project Type**: pnpm workspace（`packages/*` + `apps/*` + `examples/*`）
+**Performance Goals**: 以“模块实例创建/初始化门禁/终止清理”为测量路径；相对基线：p95 创建/终止增量 ≤ 5%，诊断关闭时增量 ≤ 1%
+**Constraints**: 稳定标识（无随机/时间默认 id）、事务窗口禁止 IO/await、诊断事件 slim 且可序列化、默认诊断近零成本
 **Scale/Scope**: 单进程内可并行多实例（同模块多 key / 多会话）；Devtools ring buffer 默认 500 条事件窗口
 
 ## Constitution Check

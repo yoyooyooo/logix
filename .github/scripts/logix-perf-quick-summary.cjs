@@ -30,15 +30,15 @@ const artifactName = process.env.PERF_ARTIFACT_NAME || ''
 
 const beforePath = baseShort && envId ? path.join(perfDir, `before.${baseShort}.${envId}.${profile}.json`) : null
 const afterPath = headShort && envId ? path.join(perfDir, `after.${headShort}.${envId}.${profile}.json`) : null
-const afterProbePath = headShort && envId ? path.join(perfDir, `after.probe.${headShort}.${envId}.${profile}.json`) : null
+const afterCapacityPath = headShort && envId ? path.join(perfDir, `after.capacity.${headShort}.${envId}.${profile}.json`) : null
 const diffPath =
   baseShort && headShort && envId
     ? path.join(perfDir, `diff.${baseShort}__${headShort}.${envId}.${profile}.json`)
     : null
-const autoProbeBasePath =
-  baseShort && envId ? path.join(perfDir, `steps-probe.base.${baseShort}.${envId}.${profile}.json`) : null
-const autoProbeHeadPath =
-  headShort && envId ? path.join(perfDir, `steps-probe.head.${headShort}.${envId}.${profile}.json`) : null
+const autoCollectBasePath =
+  baseShort && envId ? path.join(perfDir, `steps-collect.base.${baseShort}.${envId}.${profile}.json`) : null
+const autoCollectHeadPath =
+  headShort && envId ? path.join(perfDir, `steps-collect.head.${headShort}.${envId}.${profile}.json`) : null
 const capacityLatestPath = path.join(perfDir, 'capacity-latest.json')
 const debugTimelinePath = process.env.PERF_DEBUG_TIMELINE_FILE || path.join(perfDir, 'debug.timeline.log')
 const tailRecheckPlanPath = path.join(perfDir, 'tail-recheck-plan.json')
@@ -86,7 +86,7 @@ const loadCurveHistoryReports = (dir, maxRuns) => {
     } catch {
       continue
     }
-    const afterFile = files.find((file) => file.startsWith('after.') && !file.startsWith('after.probe.') && file.endsWith('.json'))
+    const afterFile = files.find((file) => file.startsWith('after.') && !file.startsWith('after.capacity.') && file.endsWith('.json'))
     if (!afterFile) continue
     const report = safeReadJson(path.join(entry.fullPath, afterFile))
     if (!report || !Array.isArray(report.suites)) continue
@@ -101,11 +101,11 @@ const loadCurveHistoryReports = (dir, maxRuns) => {
 
 const beforeReport = beforePath && fs.existsSync(beforePath) ? safeReadJson(beforePath) : null
 const afterReport = afterPath && fs.existsSync(afterPath) ? safeReadJson(afterPath) : null
-const afterProbeReport = afterProbePath && fs.existsSync(afterProbePath) ? safeReadJson(afterProbePath) : null
-const headSignalReport = afterProbeReport || afterReport
+const afterCapacityReport = afterCapacityPath && fs.existsSync(afterCapacityPath) ? safeReadJson(afterCapacityPath) : null
+const headSignalReport = afterCapacityReport || afterReport
 const diff = diffPath && fs.existsSync(diffPath) ? safeReadJson(diffPath) : null
-const autoProbeBase = autoProbeBasePath && fs.existsSync(autoProbeBasePath) ? safeReadJson(autoProbeBasePath) : null
-const autoProbeHead = autoProbeHeadPath && fs.existsSync(autoProbeHeadPath) ? safeReadJson(autoProbeHeadPath) : null
+const autoCollectBase = autoCollectBasePath && fs.existsSync(autoCollectBasePath) ? safeReadJson(autoCollectBasePath) : null
+const autoCollectHead = autoCollectHeadPath && fs.existsSync(autoCollectHeadPath) ? safeReadJson(autoCollectHeadPath) : null
 const capacityLatest = fs.existsSync(capacityLatestPath) ? safeReadJson(capacityLatestPath) : null
 const tailRecheckPlan = fs.existsSync(tailRecheckPlanPath) ? safeReadJson(tailRecheckPlanPath) : null
 const tailRecheckSummary = fs.existsSync(tailRecheckSummaryPath) ? safeReadJson(tailRecheckSummaryPath) : null
@@ -624,11 +624,11 @@ const toSortedUniqueNumericList = (values) =>
     ),
   ).sort((a, b) => a - b)
 
-const resolveAutoProbeDataSufficiency = (probe) => {
-  if (probe?.dataSufficiency && typeof probe.dataSufficiency === 'object') {
-    return probe.dataSufficiency
+const resolveAutoCollectDataSufficiency = (collect) => {
+  if (collect?.dataSufficiency && typeof collect.dataSufficiency === 'object') {
+    return collect.dataSufficiency
   }
-  const iterations = Array.isArray(probe?.iterations) ? probe.iterations : []
+  const iterations = Array.isArray(collect?.iterations) ? collect.iterations : []
   const lastIteration = iterations[iterations.length - 1]
   if (lastIteration?.dataSufficiency && typeof lastIteration.dataSufficiency === 'object') {
     return lastIteration.dataSufficiency
@@ -636,8 +636,8 @@ const resolveAutoProbeDataSufficiency = (probe) => {
   return null
 }
 
-const collectAutoProbeLevelGeneration = (probe) => {
-  const iterations = Array.isArray(probe?.iterations) ? probe.iterations : []
+const collectAutoCollectLevelGeneration = (collect) => {
+  const iterations = Array.isArray(collect?.iterations) ? collect.iterations : []
   const refinedInsertions = []
   const topExtensions = []
   for (const iteration of iterations) {
@@ -656,8 +656,8 @@ const collectAutoProbeLevelGeneration = (probe) => {
   }
 }
 
-const deriveAutoProbeFallbackSummary = (probe) => {
-  const iterations = Array.isArray(probe?.iterations) ? probe.iterations : []
+const deriveAutoCollectFallbackSummary = (collect) => {
+  const iterations = Array.isArray(collect?.iterations) ? collect.iterations : []
   const lastIteration = iterations[iterations.length - 1]
   const rows = Array.isArray(lastIteration?.aggregated?.rows) ? lastIteration.aggregated.rows : []
   if (rows.length === 0) return null
@@ -680,10 +680,10 @@ const deriveAutoProbeFallbackSummary = (probe) => {
   }
 }
 
-const renderAutoProbeSummary = ({ probe, label }) => {
-  if (!probe || typeof probe !== 'object') return ''
-  const autoSummaryRaw = probe.summary && typeof probe.summary === 'object' ? probe.summary : null
-  const autoSummaryFallback = deriveAutoProbeFallbackSummary(probe)
+const renderAutoCollectSummary = ({ collect, label }) => {
+  if (!collect || typeof collect !== 'object') return ''
+  const autoSummaryRaw = collect.summary && typeof collect.summary === 'object' ? collect.summary : null
+  const autoSummaryFallback = deriveAutoCollectFallbackSummary(collect)
   const averageUpper = pickFiniteNumber(autoSummaryRaw?.averageUpperLimit, autoSummaryFallback?.averageUpperLimit)
   const floorMedian = pickFiniteNumber(autoSummaryRaw?.floorMedianMaxLevel, autoSummaryFallback?.floorMedianMaxLevel)
   const p50Median = pickFiniteNumber(autoSummaryRaw?.p50MedianMaxLevel, autoSummaryFallback?.p50MedianMaxLevel)
@@ -691,19 +691,19 @@ const renderAutoProbeSummary = ({ probe, label }) => {
   const p95Median = pickFiniteNumber(autoSummaryRaw?.p95MedianMaxLevel, autoSummaryFallback?.p95MedianMaxLevel)
   const p90Median = pickFiniteNumber(autoSummaryRaw?.p90MedianMaxLevel, autoSummaryFallback?.p90MedianMaxLevel)
   const removed = pickFiniteNumber(autoSummaryRaw?.outlierRemovedCount, autoSummaryFallback?.outlierRemovedCount)
-  const samplesPerIteration = probe.samplesPerIteration
-  const stopReason = probe.stopReason
-  const finalLevels = Array.isArray(probe.finalLevels) ? probe.finalLevels : []
-  const dataSufficiency = resolveAutoProbeDataSufficiency(probe)
+  const samplesPerIteration = collect.samplesPerIteration
+  const stopReason = collect.stopReason
+  const finalLevels = Array.isArray(collect.finalLevels) ? collect.finalLevels : []
+  const dataSufficiency = resolveAutoCollectDataSufficiency(collect)
   const insufficient = dataSufficiency?.hasInsufficientData === true
   const sufficiencyReasonCodes = Array.isArray(dataSufficiency?.reasonCodes)
     ? dataSufficiency.reasonCodes.filter((x) => typeof x === 'string' && x.length > 0)
     : []
   const insufficientDirtyRatios = toSortedUniqueNumericList(dataSufficiency?.insufficientDirtyRatios)
-  const levelGeneration = collectAutoProbeLevelGeneration(probe)
+  const levelGeneration = collectAutoCollectLevelGeneration(collect)
 
   let out = ''
-  out += `- ${label} auto-probe(filtered): avgUpper=${code(
+  out += `- ${label} auto-collect(filtered): avgUpper=${code(
     typeof averageUpper === 'number' && Number.isFinite(averageUpper) ? averageUpper : 'n/a',
   )}, floorMedian=${code(
     typeof floorMedian === 'number' && Number.isFinite(floorMedian) ? floorMedian : 'n/a',
@@ -714,19 +714,19 @@ const renderAutoProbeSummary = ({ probe, label }) => {
   )}, p95Median=${code(
     typeof p95Median === 'number' && Number.isFinite(p95Median) ? p95Median : 'n/a',
   )}, p90Median=${code(typeof p90Median === 'number' && Number.isFinite(p90Median) ? p90Median : 'n/a')}\n`
-  out += `- ${label} auto-probe stats: outliersRemoved=${code(
+  out += `- ${label} auto-collect stats: outliersRemoved=${code(
     typeof removed === 'number' && Number.isFinite(removed) ? removed : 'n/a',
   )}, samples/iter=${code(
     typeof samplesPerIteration === 'number' && Number.isFinite(samplesPerIteration) ? samplesPerIteration : 'n/a',
   )}, stop=${code(stopReason ?? 'n/a')}, levels=${code(
     finalLevels.length > 0 ? formatAxisValues(finalLevels) : 'n/a',
   )}\n`
-  out += `- ${label} auto-probe dataSufficiency: insufficient=${code(insufficient ? '1' : '0')}, reasonCodes=${code(
+  out += `- ${label} auto-collect dataSufficiency: insufficient=${code(insufficient ? '1' : '0')}, reasonCodes=${code(
     sufficiencyReasonCodes.length > 0 ? sufficiencyReasonCodes.join(',') : 'none',
   )}, insufficientRatios=${code(
     insufficientDirtyRatios.length > 0 ? formatAxisValues(insufficientDirtyRatios) : '[]',
   )}\n`
-  out += `- ${label} auto-probe levelGen: refinedInsertions=${code(
+  out += `- ${label} auto-collect levelGen: refinedInsertions=${code(
     levelGeneration.refinedInsertions.length > 0 ? formatAxisValues(levelGeneration.refinedInsertions) : '[]',
   )}, topExtensions=${code(
     levelGeneration.topExtensions.length > 0 ? formatAxisValues(levelGeneration.topExtensions) : '[]',
@@ -798,24 +798,24 @@ const regressionsResolvedByTailRecheck =
   (tailRecheckCounts?.flaky ?? 0) <= 0 &&
   tailRecheckPersistentCount <= 0 &&
   (tailRecheckCounts?.missing ?? 0) <= 0
-const headAutoProbeSufficiency = resolveAutoProbeDataSufficiency(autoProbeHead)
-const headAutoProbeInsufficient = headAutoProbeSufficiency?.hasInsufficientData === true
-const headAutoProbeReasonCodes = Array.isArray(headAutoProbeSufficiency?.reasonCodes)
-  ? headAutoProbeSufficiency.reasonCodes.filter((x) => typeof x === 'string' && x.length > 0)
+const headAutoCollectSufficiency = resolveAutoCollectDataSufficiency(autoCollectHead)
+const headAutoCollectInsufficient = headAutoCollectSufficiency?.hasInsufficientData === true
+const headAutoCollectReasonCodes = Array.isArray(headAutoCollectSufficiency?.reasonCodes)
+  ? headAutoCollectSufficiency.reasonCodes.filter((x) => typeof x === 'string' && x.length > 0)
   : []
-const headAutoProbeInsufficientDirtyRatioCount =
-  typeof headAutoProbeSufficiency?.insufficientDirtyRatioCount === 'number' &&
-  Number.isFinite(headAutoProbeSufficiency.insufficientDirtyRatioCount)
-    ? headAutoProbeSufficiency.insufficientDirtyRatioCount
+const headAutoCollectInsufficientDirtyRatioCount =
+  typeof headAutoCollectSufficiency?.insufficientDirtyRatioCount === 'number' &&
+  Number.isFinite(headAutoCollectSufficiency.insufficientDirtyRatioCount)
+    ? headAutoCollectSufficiency.insufficientDirtyRatioCount
     : 0
-const headAutoProbeHardInsufficient =
-  headAutoProbeInsufficient &&
-  (headAutoProbeInsufficientDirtyRatioCount > 0 || headAutoProbeReasonCodes.includes('insufficient_kept_samples'))
-const headAutoProbeBudgetLimitedReasonCodes = headAutoProbeReasonCodes.filter(
+const headAutoCollectHardInsufficient =
+  headAutoCollectInsufficient &&
+  (headAutoCollectInsufficientDirtyRatioCount > 0 || headAutoCollectReasonCodes.includes('insufficient_kept_samples'))
+const headAutoCollectBudgetLimitedReasonCodes = headAutoCollectReasonCodes.filter(
   (reason) => reason === 'collect_budget_limit' || reason === 'time_budget_limit',
 )
-const headAutoProbeBudgetLimited = headAutoProbeInsufficient && !headAutoProbeHardInsufficient
-const headAutoProbeRecoveredByTailRecheck = headAutoProbeBudgetLimited && tailRecheckEvidenceRecovered
+const headAutoCollectBudgetLimited = headAutoCollectInsufficient && !headAutoCollectHardInsufficient
+const headAutoCollectRecoveredByTailRecheck = headAutoCollectBudgetLimited && tailRecheckEvidenceRecovered
 const agentEnabled = agentResult?.enabled === true
 const agentStatus = typeof agentResult?.status === 'string' && agentResult.status ? agentResult.status : 'not_configured'
 
@@ -827,9 +827,9 @@ const conclusion = (() => {
   if (dynamicHardFailed) return 'head_capacity_dynamic_hard_failed'
   if (capacityFloorViolated) return 'head_capacity_floor_failed'
   if (afterFailures.length > 0) return 'head_budget_exceeded'
-  if (headAutoProbeHardInsufficient) return 'head_auto_probe_insufficient'
-  if (headAutoProbeRecoveredByTailRecheck) return 'head_auto_probe_budget_limited_tail_recheck_resolved'
-  if (headAutoProbeBudgetLimited) return 'head_auto_probe_budget_limited'
+  if (headAutoCollectHardInsufficient) return 'head_auto_collect_insufficient'
+  if (headAutoCollectRecoveredByTailRecheck) return 'head_auto_collect_budget_limited_tail_recheck_resolved'
+  if (headAutoCollectBudgetLimited) return 'head_auto_collect_budget_limited'
   return 'ok'
 })()
 const hasDiff = diff != null
@@ -847,16 +847,16 @@ const humanVerdict = (() => {
     return 'Capacity target not met'
   }
   if (conclusion === 'head_budget_exceeded') return 'Head budget exceeded'
-  if (conclusion === 'head_auto_probe_insufficient') return 'Auto-probe data insufficient'
-  if (conclusion === 'head_auto_probe_budget_limited') {
-    return headAutoProbeBudgetLimitedReasonCodes.length > 0
-      ? 'Auto-probe budget-limited'
-      : 'Auto-probe limited/insufficient'
+  if (conclusion === 'head_auto_collect_insufficient') return 'Auto-collect data insufficient'
+  if (conclusion === 'head_auto_collect_budget_limited') {
+    return headAutoCollectBudgetLimitedReasonCodes.length > 0
+      ? 'Auto-collect budget-limited'
+      : 'Auto-collect limited/insufficient'
   }
-  if (conclusion === 'head_auto_probe_budget_limited_tail_recheck_resolved') {
-    return headAutoProbeBudgetLimitedReasonCodes.length > 0
-      ? 'Auto-probe budget-limited, tail recheck resolved'
-      : 'Auto-probe limited/insufficient, tail recheck resolved'
+  if (conclusion === 'head_auto_collect_budget_limited_tail_recheck_resolved') {
+    return headAutoCollectBudgetLimitedReasonCodes.length > 0
+      ? 'Auto-collect budget-limited, tail recheck resolved'
+      : 'Auto-collect limited/insufficient, tail recheck resolved'
   }
   return conclusion
 })()
@@ -894,7 +894,7 @@ md += `\n## Human Readout\n`
 md += `- verdict: ${code(humanVerdict)}\n`
 md += `- primary insight: ${humanPrimaryInsight}\n`
 md += `- comparability: ${code(humanComparableValue)}; diff(regressions=${code(humanRegressionsValue)}, improvements=${code(humanImprovementsValue)})\n`
-md += `- head signal source: ${code(afterProbeReport ? 'probe' : 'anchor')}; head budgetExceeded=${code(afterFailures.length)}\n`
+md += `- head signal source: ${code(afterCapacityReport ? 'capacity' : 'anchor')}; head budgetExceeded=${code(afterFailures.length)}\n`
 if (regressionCount > 0 && regressionsResolvedByTailRecheck) {
   md += `- reconciliation: regressions were resolved by tail recheck evidence\n`
 }
@@ -920,13 +920,13 @@ md += `\n### Conclusion\n`
 md += `- comparable: ${code(String(diff?.meta?.comparability?.comparable ?? '?'))}\n`
 md += `- diff: regressions=${code(regressions)}, improvements=${code(improvements)}\n`
 md += `- head budgetExceeded: ${code(afterFailures.length)}\n`
-md += `- head signal source: ${code(afterProbeReport ? 'probe' : 'anchor')}\n`
-md += `- head auto-probe sufficiency: insufficient=${code(headAutoProbeInsufficient ? '1' : '0')}, strictInsufficient=${code(
-  headAutoProbeHardInsufficient ? '1' : '0',
-)}, budgetLimited=${code(headAutoProbeBudgetLimited ? '1' : '0')}, recoveredByTailRecheck=${code(
-  headAutoProbeRecoveredByTailRecheck ? '1' : '0',
-)}, insufficientDirtyRatios=${code(headAutoProbeInsufficientDirtyRatioCount)}, reasonCodes=${code(
-  headAutoProbeReasonCodes.length > 0 ? headAutoProbeReasonCodes.join(',') : 'none',
+md += `- head signal source: ${code(afterCapacityReport ? 'capacity' : 'anchor')}\n`
+md += `- head auto-collect sufficiency: insufficient=${code(headAutoCollectInsufficient ? '1' : '0')}, strictInsufficient=${code(
+  headAutoCollectHardInsufficient ? '1' : '0',
+)}, budgetLimited=${code(headAutoCollectBudgetLimited ? '1' : '0')}, recoveredByTailRecheck=${code(
+  headAutoCollectRecoveredByTailRecheck ? '1' : '0',
+)}, insufficientDirtyRatios=${code(headAutoCollectInsufficientDirtyRatioCount)}, reasonCodes=${code(
+  headAutoCollectReasonCodes.length > 0 ? headAutoCollectReasonCodes.join(',') : 'none',
 )}\n`
 if (tailRecheckSummary || tailRecheckPlan) {
   md += `- tail recheck: status=${code(tailRecheckStatus)}, mode=${code(
@@ -978,10 +978,10 @@ if (dynamicEvaluation) {
     dynamicEvaluation.anchorSource ?? 'n/a',
   )}, stableRuns=${code(dynamicEvaluation.stableRuns ?? 'n/a')}\n`
 }
-md += renderAutoProbeSummary({ probe: autoProbeBase, label: 'base' })
-md += renderAutoProbeSummary({ probe: autoProbeHead, label: 'head' })
-if (headAutoProbeBudgetLimitedReasonCodes.length > 0) {
-  md += `- head auto-probe budget limits: ${code(headAutoProbeBudgetLimitedReasonCodes.join(','))}\n`
+md += renderAutoCollectSummary({ collect: autoCollectBase, label: 'base' })
+md += renderAutoCollectSummary({ collect: autoCollectHead, label: 'head' })
+if (headAutoCollectBudgetLimitedReasonCodes.length > 0) {
+  md += `- head auto-collect budget limits: ${code(headAutoCollectBudgetLimitedReasonCodes.join(','))}\n`
 }
 md += `- status: ${code(conclusion)}\n`
 if (debugTimelineLines.length > 0) {
@@ -1110,7 +1110,7 @@ if (!diff) {
     md += `\n_Triage-only diff: before/after are not strictly comparable. Treat deltas as hints, not conclusions._\n`
   }
 
-  const matrixPath = '.codex/skills/logix-perf-evidence/assets/matrix.json'
+  const matrixPath = 'packages/logix-perf-evidence/assets/matrix.json'
   const matrix = fs.existsSync(matrixPath) ? safeReadJson(matrixPath) : null
   const suiteSpecById = new Map()
   if (matrix && Array.isArray(matrix.suites)) {

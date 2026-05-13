@@ -1,6 +1,6 @@
 # Tasks: Sandbox 多内核试跑与对照（058）
 
-**Input**: `specs/058-sandbox-multi-kernel/spec.md`、`specs/058-sandbox-multi-kernel/plan.md`、`specs/058-sandbox-multi-kernel/research.md`、`specs/058-sandbox-multi-kernel/data-model.md`、`specs/058-sandbox-multi-kernel/contracts/*`、`specs/058-sandbox-multi-kernel/quickstart.md`  
+**Input**: `specs/058-sandbox-multi-kernel/spec.md`、`specs/058-sandbox-multi-kernel/plan.md`、`specs/058-sandbox-multi-kernel/research.md`、`specs/058-sandbox-multi-kernel/data-model.md`、`specs/058-sandbox-multi-kernel/contracts/*`、`specs/058-sandbox-multi-kernel/quickstart.md`
 **Prerequisites**: `specs/058-sandbox-multi-kernel/plan.md`（required）、`specs/058-sandbox-multi-kernel/spec.md`（required）
 
 **Tests**: 本特性落点在 `packages/logix-sandbox`（logix-* 核心包），默认视为必须补齐测试：覆盖 strict/fallback、内核枚举、RunResult 摘要字段与多 kernel URL 兼容性（含 browser tests 里的 MSW kernel mock）。

@@ -1,6 +1,6 @@
 # Research: 009 事务 IR + Patch/Dirty-set 一等公民
 
-> 本文用于把 `docs/ssot/handbook/reading-room/reviews/03-transactions-and-traits.md`、`docs/ssot/handbook/reading-room/reviews/04-diagnostics-and-devtools.md`、`docs/ssot/handbook/reading-room/reviews/07-platform-full-duplex-and-alignment-lab.md` 与 `docs/ssot/handbook/reading-room/reviews/99-roadmap-and-breaking-changes.md` 的结论，收敛为可落地的裁决与取舍。
+> 本文用于把 `docs/ssot/handbook/reading-room/reviews/03-transactions-and-fields.md`、`docs/ssot/handbook/reading-room/reviews/04-diagnostics-and-devtools.md`、`docs/ssot/handbook/reading-room/reviews/07-platform-full-duplex-and-alignment-lab.md` 与 `docs/ssot/handbook/reading-room/reviews/99-roadmap-and-breaking-changes.md` 的结论，收敛为可落地的裁决与取舍。
 
 ## Decision 1：Dirty-set 永远是调度输入；Patch 是可选的证据载荷
 
@@ -45,7 +45,7 @@
 **Rationale**：
 
 - 列表索引天然不稳定，不能作为依赖收敛/冲突合并的基础键。
-- 归一化稳定后，trait 的 deps 与 selector deps 才能用同一套 overlap 规则计算影响范围。
+- 归一化稳定后，field 的 deps 与 selector deps 才能用同一套 overlap 规则计算影响范围。
 
 **Alternatives considered**：
 
@@ -145,10 +145,10 @@
 
 已完成去随机化/去时间化（NFR-003）：所有默认唯一标识均为确定性派生或单调序号（避免回放/对比漂移）。
 
-- `/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-core/src/internal/runtime/core/StateTransaction.ts`：`txnSeq/opSeq` 单调；`txnId/opId` 由 `instanceId` + 序号确定性派生（并对 `TxnOrigin.details`/snapshots 做序列化收敛）。
-- `/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-core/src/internal/runtime/ModuleRuntime.ts`：`instanceId` 外部注入（提供进程内单调 fallback）；`linkId` 基于 `instanceId` + 单调序号派生。
-- `/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-core/src/EffectOp.ts`：`effectop.id` 默认使用进程内单调序号（如需跨实例对齐由 Runtime/meta 提供锚点）。
-- `/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-core/src/internal/state-trait/rowid.ts`：RowId 使用 `listPath` 前缀 + 单调序号（仍仅作为内部映射；如未来外泄到 IR/协议需再次评审预算与稳定性）。
+- `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/packages/logix-core/src/internal/runtime/core/StateTransaction.ts`：`txnSeq/opSeq` 单调；`txnId/opId` 由 `instanceId` + 序号确定性派生（并对 `TxnOrigin.details`/snapshots 做序列化收敛）。
+- `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/packages/logix-core/src/internal/runtime/ModuleRuntime.ts`：`instanceId` 外部注入（提供进程内单调 fallback）；`linkId` 基于 `instanceId` + 单调序号派生。
+- `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/packages/logix-core/src/EffectOp.ts`：`effectop.id` 默认使用进程内单调序号（如需跨实例对齐由 Runtime/meta 提供锚点）。
+- `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/packages/logix-core/src/internal/state-field/rowid.ts`：RowId 使用 `listPath` 前缀 + 单调序号（仍仅作为内部映射；如未来外泄到 IR/协议需再次评审预算与稳定性）。
 
 对应任务：T006/T011/T012（RowId 是否需要去随机化视其是否进入导出链路，默认先限制“不外泄”）。
 
@@ -156,8 +156,8 @@
 
 已修复：路径统一使用 FieldPath 段数组作为 canonical；拒绝 `path="*"` 哨兵语义（未知写入以 `dirtyAll: true` 表达降级）。
 
-- `/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-core/src/internal/state-trait/converge.ts`：dirty roots 归一化与 `*` 处理
-- `/Users/yoyo/Documents/code/personal/intent-flow/packages/logix-core/src/internal/runtime/core/StateTransaction.ts`：patch/path 形态需要迁移到 FieldPath 段数组
+- `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/packages/logix-core/src/internal/state-field/converge.ts`：dirty roots 归一化与 `*` 处理
+- `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/packages/logix-core/src/internal/runtime/core/StateTransaction.ts`：patch/path 形态需要迁移到 FieldPath 段数组
 
 对应任务：T004/T005/T016/T017。
 

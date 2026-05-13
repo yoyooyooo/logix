@@ -3,13 +3,13 @@ title: Effect DI：把“基础设施”从业务逻辑里拿出去
 description: 用 Tag + Layer 注入依赖，让 Logix Logic 更可复用、更好测试。
 ---
 
-前端业务里常见的痛点是：**逻辑本身很简单，但为了能跑通，你不得不把 API、路由、Toast、埋点等“基础设施”一路透传**，最后组件/Hook 变成了依赖搬运工；或者你退而求其次用全局单例，换来更难测试和更难复用。
+当 API、路由、Toast、埋点这类依赖持续穿过 props 和 hooks 时，业务逻辑会越来越依赖宿主，测试和复用也会变差。Logix 的默认切法是 Tag + Layer + `$.use(...)`。
 
 在 Logix 中，推荐把这些能力抽象成 **Effect Service（Tag）**，在运行时用 **Layer** 注入实现，然后在 Logic 内通过 `$.use(...)` 按需获取。
 
-## 1. 先从 Logix 的写法开始（不需要先懂 Effect）
+## 1. 先切成 service-first
 
-### 1.1 定义“能力”而不是“实现”
+### 1.1 定义能力，不定义实现
 
 ```ts
 import { Context, Effect } from "effect"
@@ -27,7 +27,7 @@ class Toast extends Context.Tag("Toast")<Toast, {
 }>() {}
 ```
 
-### 1.2 在 Logic 中按需使用（不再传参）
+### 1.2 在 Logic 中按需解析
 
 ```ts
 import { Effect } from "effect"
@@ -46,12 +46,12 @@ const loginLogic = Auth.logic(($) =>
 )
 ```
 
-到这里你已经获得了两点收益：
+这会直接带来两点变化：
 
 - Logic 不再依赖具体宿主（Web/小程序/Node），只依赖“能力”；
 - 依赖不再通过参数传递，组件/Hook 不再承担搬运工作。
 
-## 2. 再理解 Effect DI：Layer 就是“注入实现”的地方
+## 2. 用 Layer 提供实现
 
 在应用启动时（或测试时），你需要用 Layer 把 Tag 对应的实现提供出去：
 
@@ -65,7 +65,7 @@ const EnvLayer = Layer.mergeAll(
   Layer.succeed(Toast, { show: (m) => /* ... */ } as any),
 )
 
-const runtime = Logix.Runtime.make(RootImpl, { layer: EnvLayer })
+const runtime = Logix.Runtime.make(RootProgram, { layer: EnvLayer })
 ```
 
 同一套 Logic：
@@ -76,7 +76,7 @@ const runtime = Logix.Runtime.make(RootImpl, { layer: EnvLayer })
 
 业务代码不需要改动。
 
-## 3. 测试时的重构落点（最小闭环）
+## 3. 测试闭环
 
 当你想单测某段 Logic 时，只要提供测试 Layer 即可：
 

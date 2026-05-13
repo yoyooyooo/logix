@@ -1,128 +1,67 @@
 ---
 title: Pattern examples
-description: How to write reusable business logic with BoundApi Patterns and Functional Patterns.
+description: Compare store-agnostic functional patterns with state-aware Bound API patterns.
 ---
 
-This page shows how to use Patterns to write reusable, modular business logic.
+Pattern code in Logix usually falls into two shapes:
 
-### Who is this for?
+- functional patterns
+- Bound API patterns
 
-- Architects/senior engineers who design Pattern/Template/asset systems within a team.
-- You want to turn high-frequency business flows (e.g. “cascading load”, “optimistic update”) into configurable assets.
+## Functional pattern
 
-### Prerequisites
+A functional pattern is store-agnostic and returns an `Effect`:
 
-- Familiar with Effect, Layer, and Service Tags.
-- Understand the relationship between Logix Logic and BoundApi.
-
-### What you’ll get
-
-- A complete recipe of “Pattern asset + Effect implementation + consumption inside Logic”.
-- Guidance on when to use Functional Patterns vs BoundApi Patterns.
-
-## 1. Functional Pattern (utility-style)
-
-A store-agnostic `(config) => Effect` function that acquires dependencies via Services:
-
-```typescript
-// patterns/bulk-operation.ts
-import { Effect, Context } from 'effect'
-
-// Service contract
-class BulkOperationService extends Context.Tag('@svc/BulkOp')<
-  BulkOperationService,
-  { applyToMany: (params: { ids: string[]; operation: string }) => Effect.Effect<void> }
->() {}
-
-// Functional Pattern: does not depend on a specific Store
+```ts
 export const runBulkOperation = (config: { operation: string }) =>
   Effect.gen(function* () {
     const bulk = yield* BulkOperationService
-    const ids = ['1', '2', '3'] // In real code: get from params or a Service
+    const ids = ["1", "2", "3"]
 
     yield* bulk.applyToMany({ ids, operation: config.operation })
     return ids.length
   })
 ```
 
-Characteristics:
+Use this shape when the pattern should stay independent of a specific module.
 
-- Entry is `runXxx(config)` and returns an `Effect`.
-- Reusable across multiple Stores / Runtimes.
+## Bound API pattern
 
-## 2. BoundApi Pattern (state-aware)
+A Bound API pattern is state-aware and accepts `$` explicitly:
 
-A state-aware Pattern that depends on Store state and explicitly accepts `$: BoundApi`:
-
-```typescript
-// patterns/cascade.ts
-import { Effect } from 'effect'
-import * as Logix from '@logixjs/core'
-
-/**
- * @pattern Cascade
- * @description Watch upstream field -> reset downstream -> load data -> update result
- */
+```ts
 export const runCascadePattern = <Sh extends Logix.AnyModuleShape, R, T, Data>(
-  $: Logix.BoundApi<Sh, R>,
+  $: Logix.Module.BoundApi<Sh, R>,
   config: {
-    source: (s: Logix.StateOf<Sh>) => T | undefined | null
-    loader: (val: T) => Logix.Logic.Of<Sh, R, Data, never>
-    onReset: (prev: Logix.StateOf<Sh>) => Logix.StateOf<Sh>
-    onSuccess: (prev: Logix.StateOf<Sh>, data: Data) => Logix.StateOf<Sh>
+    source: (s: Logix.Module.StateOf<Sh>) => T | undefined | null
+    loader: (val: T) => Effect.Effect<Data, never, any>
+    onReset: (draft: unknown) => void
+    onSuccess: (draft: unknown, data: Data) => void
   },
-) => {
-  return $.onState(config.source).runLatest((val) =>
+) =>
+  $.onState(config.source).runLatest((val) =>
     Effect.gen(function* () {
-      yield* $.state.update(config.onReset)
+      yield* $.state.mutate((draft) => {
+        config.onReset(draft)
+      })
       if (val == null) return
 
       const data = yield* config.loader(val)
-      yield* $.state.update((s) => config.onSuccess(s, data))
+      yield* $.state.mutate((draft) => {
+        config.onSuccess(draft, data)
+      })
     }),
   )
-}
 ```
 
-Characteristics:
+Use this shape when the pattern depends on module state, watchers, or local mutation.
 
-- Entry is `runXxxPattern($, config)`, where the first argument is `BoundApi`.
-- Uses module capabilities via `$` (e.g. `$.onState / $.state.update`).
+## Selection
 
-## 3. Consume Patterns inside Logic
+- use a functional pattern when store ownership should stay outside the pattern
+- use a Bound API pattern when the pattern must consume state, watchers, or module-local mutations
 
-```typescript
-// features/address/logic.ts
-import { Effect } from 'effect'
-import { AddressModule } from './module'
-import { runCascadePattern } from '@/patterns/cascade'
+## See also
 
-export const AddressLogic = AddressModule.logic(($) =>
-  Effect.gen(function* () {
-    // Use a BoundApi Pattern
-    yield* runCascadePattern($, {
-      source: (s) => s.provinceId,
-      loader: (provinceId) =>
-        Effect.gen(function* () {
-          const api = yield* $.use(AddressApi)
-          return yield* api.getCities(provinceId)
-        }),
-      onReset: (s) => ({ ...s, cities: [], cityId: null }),
-      onSuccess: (s, cities) => ({ ...s, cities }),
-    })
-  }),
-)
-```
-
-## 4. Naming conventions
-
-| Form       | Naming                    | Example                         |
-| ---------- | ------------------------- | ------------------------------- |
-| Functional | `runXxx(config)`          | `runBulkOperation(config)`      |
-| BoundApi   | `runXxxPattern($, config)`| `runCascadePattern($, config)`  |
-
-## Next
-
-- API reference: [API Reference](../../api/)
-- Core mindset: [Thinking in Logix](../essentials/thinking-in-logix)
-- Back to docs home: [Docs home](../../)
+- [Bound API ($)](../../api/core/bound-api)
+- [Common recipes](./common-patterns)

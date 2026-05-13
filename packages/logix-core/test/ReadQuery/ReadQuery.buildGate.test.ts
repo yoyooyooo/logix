@@ -1,4 +1,5 @@
 import { describe } from '@effect/vitest'
+import * as RuntimeContracts from '../../src/internal/runtime-contracts.js'
 import { it, expect } from '@effect/vitest'
 import * as Logix from '../../src/index.js'
 
@@ -6,7 +7,7 @@ describe('ReadQuery.buildGate', () => {
   it('grades a selector at build time and annotates quality metadata', () => {
     const selector = (s: { count: number }) => (s.count > 0 ? s.count : 0)
 
-    const graded = Logix.ReadQuery.gradeReadQueryAtBuild({
+    const graded = RuntimeContracts.Selector.gradeReadQueryAtBuild({
       moduleId: 'M',
       input: selector,
       strictGate: {
@@ -28,7 +29,7 @@ describe('ReadQuery.buildGate', () => {
     const staticSelector = (s: { count: number }) => s.count
     const dynamicSelector = (s: { count: number }) => (s.count > 0 ? s.count : 0)
 
-    const reportResult = Logix.ReadQuery.buildSelectorQualityReport({
+    const reportResult = RuntimeContracts.Selector.buildSelectorQualityReport({
       moduleId: 'M',
       selectors: [staticSelector, dynamicSelector],
       strictGate: {
@@ -43,7 +44,7 @@ describe('ReadQuery.buildGate', () => {
     expect(report.summary.staticCount).toBe(1)
     expect(report.summary.dynamicCount).toBe(1)
     expect(report.summary.failCount).toBe(1)
-    expect(Logix.ReadQuery.hasBuildGateFailure(report)).toBe(true)
+    expect(RuntimeContracts.Selector.hasBuildGateFailure(report)).toBe(true)
 
     for (const item of graded) {
       expect(item.compiled.quality?.source).toBe('build')

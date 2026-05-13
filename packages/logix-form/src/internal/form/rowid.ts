@@ -1,8 +1,11 @@
 import * as Logix from '@logixjs/core'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 
 export type RowIdStoreLike = {
   readonly getRowId: (listPath: string, index: number) => string | undefined
+  readonly getIndex?: (listPath: string, rowId: string) => number | undefined
   readonly ensureList?: (listPath: string, items: ReadonlyArray<unknown>, trackBy?: string) => ReadonlyArray<string>
+  readonly resetList?: (listPath: string, parentRowId?: string) => void
 }
 
 type ListConfigLike = {
@@ -10,11 +13,16 @@ type ListConfigLike = {
   readonly trackBy?: string
 }
 
+export const makeCleanupSubjectRef = (path: string) => ({
+  kind: 'cleanup' as const,
+  id: path,
+})
+
 export const getRowIdStore = (runtime: unknown): RowIdStoreLike | undefined => {
   if (!runtime || (typeof runtime !== 'object' && typeof runtime !== 'function')) {
     return undefined
   }
-  const store = Logix.InternalContracts.getRowIdStore(runtime as any)
+  const store = FieldContracts.getRowIdStore(runtime as any)
   if (!store || typeof store !== 'object') return undefined
   const getRowId = (store as Record<string, unknown>).getRowId
   if (typeof getRowId !== 'function') return undefined
@@ -25,7 +33,7 @@ export const getTrackByForListPath = (runtime: unknown, listPath: string): strin
   if (!runtime || (typeof runtime !== 'object' && typeof runtime !== 'function')) {
     return undefined
   }
-  const configs = Logix.InternalContracts.getStateTraitListConfigs(runtime as any)
+  const configs = FieldContracts.getFieldListConfigs(runtime as any)
   if (!Array.isArray(configs)) return undefined
 
   for (const cfg of configs as ReadonlyArray<unknown>) {

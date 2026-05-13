@@ -1,16 +1,15 @@
 ---
 title: Task Runner (long chain - pending → IO → writeback)
+description: Split one accepted trigger into visible pending, IO, and writeback stages.
 ---
 
-When you need a “long-chain interaction” (e.g. click → enter loading immediately → wait for request → write back success/failure), prefer the `run*Task` family of APIs.
-
-The goal is: **keep code linear**, while automatically splitting a long chain into multiple commits so the UI can actually observe the `pending` (loading) stage.
+Use the `run*Task` family when one accepted trigger must expose a visible `pending` stage before IO completes. It keeps authoring linear while splitting the lifecycle into observable commits.
 
 ## 1. The typical problem
 
 If you write “loading=true → await IO → loading=false + data” inside a single `run*` handler, the UI often only sees the final result and never sees the intermediate loading state.
 
-This is not because `runLatest` is bad — it’s because a long chain must be split into multiple commits: one for `pending`, and one for result writeback.
+The underlying issue is commit structure: a long chain needs separate commits for `pending` and for the final writeback.
 
 ## 2. Semantics of run*Task
 
@@ -66,4 +65,4 @@ What this achieves:
 ## 4. Usage boundaries
 
 - `run*Task` can only be used at the end of watcher chains like `$.onAction / $.onState / $.on`.
-- Don’t call `run*Task` inside reducers / `trait.run` (synchronous transactional logic).
+- Don’t call `run*Task` inside reducers or synchronous field logic.

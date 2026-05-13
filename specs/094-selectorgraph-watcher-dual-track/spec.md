@@ -1,8 +1,8 @@
 # Feature Specification: SelectorGraph Watcher Dual Track（O-001）
 
-**Feature Branch**: `094-selectorgraph-watcher-dual-track`  
-**Created**: 2026-02-25  
-**Status**: Planned  
+**Feature Branch**: `094-selectorgraph-watcher-dual-track`
+**Created**: 2026-02-25
+**Status**: Planned
 **Input**: O-001（双轨 watcher 优化）：`FlowRuntime.fromState` 不再强制用户显式 `ReadQuery`，显式与非显式 selector 都优先吃到 SelectorGraph 静态收益，并保留保守回退。
 
 ## User Scenarios & Testing _(mandatory)_

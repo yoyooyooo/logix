@@ -1,13 +1,13 @@
 # Feature Specification: Process（长效逻辑与跨模块协同收敛）
 
-**Feature Branch**: `[012-program-api]`  
-**Created**: 2025-12-16  
-**Status**: Draft  
+**Feature Branch**: `[012-program-api]`
+**Created**: 2025-12-16
+**Status**: Draft
 **Input**: User description: "收敛跨模块长效逻辑为 Process，支持应用级/实例级/UI 子树三级作用域安装，统一触发/并发语义、生命周期监督与可观测事件"
 
 ## Terminology
 
-- 本特性使用 **Process** 表示“跨模块协作 + 长效运行”逻辑；用于避免与 `Runtime.runProgram/openProgram` 的 “Program（根模块运行入口）” 以及 `StateTraitProgram` 等既有术语混淆。
+- 本特性使用 **Process** 表示“跨模块协作 + 长效运行”逻辑；用于避免与 `Runtime.runProgram/openProgram` 的 “Program（根模块运行入口）” 以及 `FieldProgram` 等既有术语混淆。
 
 ## Clarifications
 
@@ -120,7 +120,7 @@
 **In Scope（需要迁移到 Process）**:
 
 - 任何“跨模块协作 + 长效运行”的逻辑：统一收敛为 `Process`，并通过 `processes` 作为唯一运行承载（作用域随安装点决定）。
-- `Link.make` 场景：默认以 `linkId` 作为 `processId`，作为应用级 Process 运行（用于 dogfooding 与稳定标识示例）。
+- `orchestration link alias` 场景：默认以 `linkId` 作为 `processId`，作为应用级 Process 运行（用于 dogfooding 与稳定标识示例）。
 - 对外文档/示例中把“长效逻辑”称为 Program 的写法：迁移到 Process（但保留 root runner 的 Program 概念，见下条）。
 
 **Out of Scope（不在本特性内迁移）**:

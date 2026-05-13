@@ -1,6 +1,6 @@
 # Tasks: 文档内联教学 Playground（041）
 
-**Input**: `specs/041-docs-inline-playground/spec.md`、`specs/041-docs-inline-playground/plan.md`、`specs/041-docs-inline-playground/research.md`、`specs/041-docs-inline-playground/data-model.md`、`specs/041-docs-inline-playground/contracts/*`、`specs/041-docs-inline-playground/quickstart.md`  
+**Input**: `specs/041-docs-inline-playground/spec.md`、`specs/041-docs-inline-playground/plan.md`、`specs/041-docs-inline-playground/research.md`、`specs/041-docs-inline-playground/data-model.md`、`specs/041-docs-inline-playground/contracts/*`、`specs/041-docs-inline-playground/quickstart.md`
 **Prerequisites**: `specs/041-docs-inline-playground/plan.md`（required）、`specs/041-docs-inline-playground/spec.md`（required）
 
 **Tests**: 本特性主要落点在 `apps/docs`（文档站点 UI）；默认以 `apps/docs` 的 `types:check` + `build` 作为质量门。若实现过程中需要改动 `packages/logix-sandbox` 的协议/预算/终止语义，则必须补齐对应 Vitest 用例（必要时使用 `@effect/vitest`）。

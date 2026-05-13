@@ -1,5 +1,9 @@
 # Requirements Checklist（085 · CLI 工具箱）
 
+> Superseded background only. This checklist is not current CLI acceptance guidance.
+> Current CLI authority is [../../160-cli-agent-first-control-plane-cutover/spec.md](../../160-cli-agent-first-control-plane-cutover/spec.md) and [../../../docs/ssot/runtime/15-cli-agent-first-control-plane.md](../../../docs/ssot/runtime/15-cli-agent-first-control-plane.md).
+> Old toolbox checklist items are negative-only legacy references for `160`.
+
 > 用于实现/验收自检；裁决来源以 `spec.md/plan.md/contracts/*` 为准。
 
 ## CLI 基础
@@ -11,9 +15,8 @@
 
 ## Oracle（Inspect/Run）
 
-- [ ] `logix ir export` 能导出 Root IR（含 `modules[*].workflowSurface.digest` 等对齐字段）
+- [ ] `logix ir export` 能导出 Root IR（含 `modules[*].controlProgramSurface.digest` 等对齐字段）
 - [ ] `logix trialrun` 受控试跑可导出 TrialRunReport（失败可解释）
-- [ ] `logix anchor index` 能输出 AnchorIndex，并对子集外显式 Raw Mode + reason codes
 
 ## Gate（Validate/Diff）
 
@@ -21,17 +24,12 @@
 - [ ] `logix ir diff` 对两份工件稳定 diff（排序/裁剪口径固定）
 - [ ] 同一输入重复运行输出字节级一致（determinism gate）
 
-## Write-Back（保守回写）
-
-- [ ] `logix anchor autofill` 默认 report-only，`mode=write` 才写回
-- [ ] write-back：expectedFileDigest 竞态防护、最小 diff、幂等（第二次 0 diff）
-- [ ] 子集外形态一律不写回（Raw Mode + reason codes）
-
 ## Transform（可选加速器）
 
 - [ ] `transform module --ops delta.json` 支持 batch ops（单命令多变更）
 - [ ] 默认 `mode=report`（不写回），输出 PatchPlan（可审阅）
 - [ ] `mode=write`：expectedFileDigest 竞态防护、最小 diff、幂等（第二次 0 diff）
+- [ ] 子集外形态一律不写回（reason codes）
 
 ## DX 性能门槛
 

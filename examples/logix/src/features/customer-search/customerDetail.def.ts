@@ -11,9 +11,9 @@ export const CustomerDetailActionMap = {
   'customerDetail/clear': Schema.Void,
 }
 
-export type CustomerDetailShape = Logix.Shape<typeof CustomerDetailStateSchema, typeof CustomerDetailActionMap>
+export type CustomerDetailShape = Logix.Module.Shape<typeof CustomerDetailStateSchema, typeof CustomerDetailActionMap>
 
-export const CustomerDetailDef = Logix.Module.make('CustomerDetail', {
+export const CustomerDetail = Logix.Module.make('CustomerDetail', {
   state: CustomerDetailStateSchema,
   actions: CustomerDetailActionMap,
   immerReducers: {

@@ -1,0 +1,746 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "createdAt": "2026-05-11T08:43:05.331Z",
+    "from": {
+      "file": "specs/211-focused-perf-evidence-and-tax-migration-gate/perf/before.browser.dispatchShell.545c537c3.local.default.json",
+      "commit": "545c537c310624433d8759cf39a30077df73663d"
+    },
+    "to": {
+      "file": "specs/211-focused-perf-evidence-and-tax-migration-gate/perf/after.browser.dispatchShell.dirty-local.local.default.json",
+      "commit": "545c537c310624433d8759cf39a30077df73663d"
+    },
+    "comparability": {
+      "comparable": true,
+      "allowConfigDrift": false,
+      "allowEnvDrift": false,
+      "configMismatches": [],
+      "envMismatches": [],
+      "warnings": [
+        "git.dirty.before=true",
+        "git.dirty.after=true"
+      ]
+    }
+  },
+  "summary": {
+    "regressions": 0,
+    "improvements": 0,
+    "budgetViolations": 0
+  },
+  "suites": [
+    {
+      "id": "dispatchShell.fixedCost",
+      "budgetViolations": [],
+      "evidenceDeltas": [
+        {
+          "name": "module.reducerWriteCount",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1
+          },
+          "message": "module.reducerWriteCount(points) unit=count: before[value=1 ok=12 unavailable=0 missing=0] after[value=1 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "module.stateWidth",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 32
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 32
+          },
+          "message": "module.stateWidth(points) unit=count: before[value=32 ok=12 unavailable=0 missing=0] after[value=32 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "module.traitCount",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "module.traitCount(points) unit=count: before[value=0 ok=12 unavailable=0 missing=0] after[value=0 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.dispatchAwaitMsPerDispatch",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0.060000038146972655
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0.05999999046325684
+          },
+          "message": "runtime.dispatchAwaitMsPerDispatch(points) unit=count: before[value=0.060000038146972655 ok=12 unavailable=0 missing=0] after[value=0.05999999046325684 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.dispatchesPerSample",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 50
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 50
+          },
+          "message": "runtime.dispatchesPerSample(points) unit=count: before[value=50 ok=12 unavailable=0 missing=0] after[value=50 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.entrypointMode",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "resolveEach"
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "resolveEach"
+          },
+          "message": "runtime.entrypointMode(points) unit=count: before[value=resolveEach ok=12 unavailable=0 missing=0] after[value=resolveEach ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.kernelId",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "core"
+          },
+          "message": "runtime.kernelId(points) unit=count: before[value=core ok=12 unavailable=0 missing=0] after[value=core ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.resolveScopeMsPerDispatch",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "runtime.resolveScopeMsPerDispatch(points) unit=count: before[value=0 ok=12 unavailable=0 missing=0] after[value=0 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.shellMode",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "baseline"
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "baseline"
+          },
+          "message": "runtime.shellMode(points) unit=count: before[value=baseline ok=12 unavailable=0 missing=0] after[value=baseline ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.shellMode.source",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "test-only:same-commit-ab"
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": "test-only:same-commit-ab"
+          },
+          "message": "runtime.shellMode.source(points) unit=count: before[value=test-only:same-commit-ab ok=12 unavailable=0 missing=0] after[value=test-only:same-commit-ab ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.txnPhase.asyncEscapeGuardMs",
+          "unit": "ms",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0.019999980926513672
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0.019999980926513672
+          },
+          "message": "runtime.txnPhase.asyncEscapeGuardMs(points) unit=ms: before[value=0.019999980926513672 ok=12 unavailable=0 missing=0] after[value=0.019999980926513672 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.txnPhase.bodyShellMs",
+          "unit": "ms",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0.019999980926513672
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0.019999980926513672
+          },
+          "message": "runtime.txnPhase.bodyShellMs(points) unit=ms: before[value=0.019999980926513672 ok=12 unavailable=0 missing=0] after[value=0.019999980926513672 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.txnPhase.commitOnCommitAfterStateUpdateMs",
+          "unit": "ms",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "runtime.txnPhase.commitOnCommitAfterStateUpdateMs(points) unit=ms: before[value=0 ok=12 unavailable=0 missing=0] after[value=0 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.txnPhase.commitOnCommitBeforeStateUpdateMs",
+          "unit": "ms",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "runtime.txnPhase.commitOnCommitBeforeStateUpdateMs(points) unit=ms: before[value=0 ok=12 unavailable=0 missing=0] after[value=0 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.txnPhase.commitPublishCommitMs",
+          "unit": "ms",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "runtime.txnPhase.commitPublishCommitMs(points) unit=ms: before[value=0 ok=12 unavailable=0 missing=0] after[value=0 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.txnPhase.commitRowIdSyncMs",
+          "unit": "ms",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "runtime.txnPhase.commitRowIdSyncMs(points) unit=ms: before[value=0 ok=12 unavailable=0 missing=0] after[value=0 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.txnPhase.commitStateUpdateDebugRecordMs",
+          "unit": "ms",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "runtime.txnPhase.commitStateUpdateDebugRecordMs(points) unit=ms: before[value=0 ok=12 unavailable=0 missing=0] after[value=0 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.txnPhase.commitTotalMs",
+          "unit": "ms",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0.019999980926513672
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "runtime.txnPhase.commitTotalMs(points) unit=ms: before[value=0.019999980926513672 ok=12 unavailable=0 missing=0] after[value=0 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.txnPhase.dispatchActionCommitHubMs",
+          "unit": "ms",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "runtime.txnPhase.dispatchActionCommitHubMs(points) unit=ms: before[value=0 ok=12 unavailable=0 missing=0] after[value=0 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.txnPhase.dispatchActionCount",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 1
+          },
+          "message": "runtime.txnPhase.dispatchActionCount(points) unit=count: before[value=1 ok=12 unavailable=0 missing=0] after[value=1 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.txnPhase.dispatchActionRecordMs",
+          "unit": "ms",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "runtime.txnPhase.dispatchActionRecordMs(points) unit=ms: before[value=0 ok=12 unavailable=0 missing=0] after[value=0 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.txnPhase.fieldConvergeMs",
+          "unit": "ms",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "runtime.txnPhase.fieldConvergeMs(points) unit=ms: before[value=0 ok=12 unavailable=0 missing=0] after[value=0 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.txnPhase.queueBackpressureMs",
+          "unit": "ms",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "runtime.txnPhase.queueBackpressureMs(points) unit=ms: before[value=0 ok=12 unavailable=0 missing=0] after[value=0 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.txnPhase.queueContextLookupMs",
+          "unit": "ms",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "runtime.txnPhase.queueContextLookupMs(points) unit=ms: before[value=0 ok=12 unavailable=0 missing=0] after[value=0 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.txnPhase.queueEnqueueBookkeepingMs",
+          "unit": "ms",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "runtime.txnPhase.queueEnqueueBookkeepingMs(points) unit=ms: before[value=0 ok=12 unavailable=0 missing=0] after[value=0 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.txnPhase.queueResolvePolicyMs",
+          "unit": "ms",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "runtime.txnPhase.queueResolvePolicyMs(points) unit=ms: before[value=0 ok=12 unavailable=0 missing=0] after[value=0 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.txnPhase.queueStartHandoffMs",
+          "unit": "ms",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "runtime.txnPhase.queueStartHandoffMs(points) unit=ms: before[value=0 ok=12 unavailable=0 missing=0] after[value=0 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.txnPhase.queueWaitMs",
+          "unit": "ms",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "runtime.txnPhase.queueWaitMs(points) unit=ms: before[value=0 ok=12 unavailable=0 missing=0] after[value=0 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.txnPhase.scopedValidateMs",
+          "unit": "ms",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "runtime.txnPhase.scopedValidateMs(points) unit=ms: before[value=0 ok=12 unavailable=0 missing=0] after[value=0 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.txnPhase.sourceSyncMs",
+          "unit": "ms",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "runtime.txnPhase.sourceSyncMs(points) unit=ms: before[value=0 ok=12 unavailable=0 missing=0] after[value=0 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.txnPhase.traceCount",
+          "unit": "count",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 5
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 5
+          },
+          "message": "runtime.txnPhase.traceCount(points) unit=count: before[value=5 ok=12 unavailable=0 missing=0] after[value=5 ok=12 unavailable=0 missing=0]"
+        },
+        {
+          "name": "runtime.txnPhase.txnPreludeMs",
+          "unit": "ms",
+          "scope": "points",
+          "before": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "after": {
+            "ok": 12,
+            "unavailable": 0,
+            "missing": 0,
+            "value": 0
+          },
+          "message": "runtime.txnPhase.txnPreludeMs(points) unit=ms: before[value=0 ok=12 unavailable=0 missing=0] after[value=0 ok=12 unavailable=0 missing=0]"
+        }
+      ],
+      "metricDeltas": [
+        {
+          "metric": "runtime.txnCommitMs",
+          "unit": "ms",
+          "compared": 12,
+          "missing": 0,
+          "unavailable": 0,
+          "topRegressions": [],
+          "topImprovements": [
+            {
+              "params": {
+                "stateWidth": 8,
+                "entrypointMode": "reuseScope"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.5259999990463257,
+                "p95Ms": 0.5420000028610229
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.41200000286102295,
+                "p95Ms": 0.4240000009536743
+              },
+              "deltaMs": {
+                "medianMs": -0.11399999618530271,
+                "p95Ms": -0.1180000019073486
+              },
+              "ratio": {
+                "median": 0.783269968836516,
+                "p95": 0.7822878205083597
+              }
+            },
+            {
+              "params": {
+                "stateWidth": 512,
+                "entrypointMode": "resolveEach"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.5340000009536743,
+                "p95Ms": 0.5619999980926513
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.4319999980926514,
+                "p95Ms": 0.4459999990463257
+              },
+              "deltaMs": {
+                "medianMs": -0.1020000028610229,
+                "p95Ms": -0.11599999904632563
+              },
+              "ratio": {
+                "median": 0.8089887590283513,
+                "p95": 0.7935943070462398
+              }
+            },
+            {
+              "params": {
+                "stateWidth": 8,
+                "entrypointMode": "resolveEach"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.5219999980926514,
+                "p95Ms": 0.5339999961853027
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.4159999990463257,
+                "p95Ms": 0.4219999980926514
+              },
+              "deltaMs": {
+                "medianMs": -0.10599999904632573,
+                "p95Ms": -0.11199999809265132
+              },
+              "ratio": {
+                "median": 0.7969348669853606,
+                "p95": 0.7902621743581693
+              }
+            },
+            {
+              "params": {
+                "stateWidth": 512,
+                "entrypointMode": "reuseScope"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.54,
+                "p95Ms": 0.5519999980926513
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.4340000009536743,
+                "p95Ms": 0.4419999980926514
+              },
+              "deltaMs": {
+                "medianMs": -0.10599999904632573,
+                "p95Ms": -0.10999999999999993
+              },
+              "ratio": {
+                "median": 0.8037037054697672,
+                "p95": 0.8007246369925951
+              }
+            },
+            {
+              "params": {
+                "stateWidth": 32,
+                "entrypointMode": "reuseScope"
+              },
+              "before": {
+                "n": 25,
+                "medianMs": 0.52,
+                "p95Ms": 0.5260000038146972
+              },
+              "after": {
+                "n": 25,
+                "medianMs": 0.41199999809265136,
+                "p95Ms": 0.4219999980926514
+              },
+              "deltaMs": {
+                "medianMs": -0.10800000190734865,
+                "p95Ms": -0.10400000572204587
+              },
+              "ratio": {
+                "median": 0.7923076886397141,
+                "p95": 0.8022813593767888
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

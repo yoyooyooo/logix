@@ -112,7 +112,7 @@
             "eventsLength": 400,
             "instances": 0,
             "latestStates": 0,
-            "latestTraitSummaries": 0,
+            "latestFieldSummaries": 0,
             "exportBudget": {
               "dropped": 100000,
               "oversized": 0
@@ -162,7 +162,7 @@
             "eventsLength": 604,
             "instances": 0,
             "latestStates": 0,
-            "latestTraitSummaries": 0,
+            "latestFieldSummaries": 0,
             "exportBudget": {
               "dropped": 100000,
               "oversized": 0
@@ -214,7 +214,7 @@
             "eventsLength": 1000,
             "instances": 0,
             "latestStates": 0,
-            "latestTraitSummaries": 0,
+            "latestFieldSummaries": 0,
             "exportBudget": {
               "dropped": 100000,
               "oversized": 0
@@ -264,7 +264,7 @@
             "eventsLength": 5700,
             "instances": 0,
             "latestStates": 0,
-            "latestTraitSummaries": 0,
+            "latestFieldSummaries": 0,
             "exportBudget": {
               "dropped": 100000,
               "oversized": 0
@@ -393,7 +393,7 @@
       "snapshotAfter": {
         "instances": 0,
         "latestStates": 0,
-        "latestTraitSummaries": 0
+        "latestFieldSummaries": 0
       }
     }
   },

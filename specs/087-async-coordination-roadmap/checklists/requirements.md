@@ -1,7 +1,7 @@
 # Specification Quality Checklist: 087 Async Coordination Roadmap
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning/execution  
-**Created**: 2026-01-10  
+**Purpose**: Validate specification completeness and quality before proceeding to planning/execution
+**Created**: 2026-01-10
 **Feature**: `specs/087-async-coordination-roadmap/spec.md`
 
 ## Content Quality

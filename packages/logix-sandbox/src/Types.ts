@@ -36,7 +36,7 @@ export type DiagnosticsLevel = 'off' | 'light' | 'sampled' | 'full'
  * Stable identifier for a kernel variant.
  *
  * - Recommended: `[a-z0-9-]+` (lower-kebab)
- * - Recommended reserved names: `core`, `core-ng`
+ * - Recommended reserved name: `core`
  */
 export type KernelId = string
 

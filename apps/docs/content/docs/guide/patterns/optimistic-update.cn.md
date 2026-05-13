@@ -113,10 +113,8 @@ yield*
 - [分页加载](./pagination)
 - [搜索+详情联动](./search-detail)
 
-## 可运行示例
+## 示例代码
 
-- 索引：[可运行示例索引](../recipes/runnable-examples)
-- 代码：
-  - `examples/logix/src/scenarios/optimistic-toggle.ts`
-  - `examples/logix/src/scenarios/optimistic-toggle-from-pattern.ts`
-  - `examples/logix/src/patterns/optimistic-toggle.ts`
+- `examples/logix/src/scenarios/optimistic-toggle.ts`
+- `examples/logix/src/scenarios/optimistic-toggle-from-pattern.ts`
+- `examples/logix/src/patterns/optimistic-toggle.ts`

@@ -1,7 +1,7 @@
 # Specification Quality Checklist: 保守自动补全 Platform-Grade 锚点声明（单一真相源）
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2026-01-09  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2026-01-09
 **Feature**: `specs/079-platform-anchor-autofill/spec.md`
 
 ## Content Quality

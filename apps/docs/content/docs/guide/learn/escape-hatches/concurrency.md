@@ -1,8 +1,9 @@
 ---
 title: Watcher Patterns and Lifecycles
+description: Map common watcher attachment styles to Scope ownership and trigger scheduling.
 ---
 
-This page explains a few common watcher patterns in Logix, and how they relate to Scope and lifecycle (from a “business code” perspective).
+Watcher authoring varies along two axes: how repeated triggers are scheduled, and which Scope owns the watcher. The sections below map common attachment styles to those two axes.
 
 ## 1. Start with two dimensions
 
@@ -21,7 +22,7 @@ In most product code, you only need one rule of thumb:
 - **long-lived watchers**: use `yield* $.onAction(...).runFork(...)` or other `run*Fork` variants;
 - **one-off flows / pipelines**: use `run`, `runLatest`, etc. as the main body of the Logic.
 
-All examples below apply equally in React integration scenarios; see the React integration guide for details.
+The same patterns apply in React integration scenarios; the host only changes who owns the final Scope.
 
 ## 2. Three common watcher patterns
 
@@ -64,7 +65,7 @@ From the DSL perspective, the `run*` family is best understood as “the concurr
 
 One important note:
 
-- In the current implementation, `Flow.run` / `IntentBuilder.run` is **sequential by default**, not “implicitly unbounded concurrency”.
+- In the current implementation, the default run helpers are **sequential by default**, not “implicitly unbounded concurrency”.
 - When you truly need high throughput, use `runParallel` / `runParallelFork` explicitly and document the intent in code/docs.
 
 ## 4. IntentBuilder.run and the EffectOp bus
@@ -72,7 +73,7 @@ One important note:
 Implementation-wise, every `run*` API is promoted into an EffectOp and executed through the MiddlewareStack:
 
 - `run` / `runLatest` / `runExhaust` / `runParallel`:
-  - conceptually: “hand an Action/State stream to the Effect Flow executor with a specific strategy”;
+  - conceptually: “hand an Action/State reaction to the Effect executor with a specific strategy”;
   - in the current implementation, they end up calling `flowApi.run*`, and are wrapped into an EffectOp with `kind = "flow"` plus required metadata.
 - `runFork` / `runParallelFork`:
   - roughly similar to `Effect.forkScoped(flowApi.run*(...))`, but wrapped together with the EffectOp bus and Scope handling;
@@ -81,7 +82,7 @@ Implementation-wise, every `run*` API is promoted into an EffectOp and executed 
 For product code, this means:
 
 - You can safely use these high-level APIs inside Logic without sprinkling try/catch or instrumentation everywhere.
-- If you need uniform logging/metrics/alerts, attach a MiddlewareStack at the engine or ModuleImpl level, instead of repeating it in each watcher.
+- If you need uniform logging/metrics/alerts, attach a MiddlewareStack at the engine or Program assembly level, instead of repeating it in each watcher.
 - For complex logic, keep it inside `Effect.gen`: use `$.use` to get services, `$.state.update/mutate` to update state, and pick a concurrency model via `run*` / `run*Fork`.
 
 ### 4.1 `Effect.all` vs `Effect.gen`: equivalent ways to attach multiple `runFork` watchers
@@ -143,13 +144,13 @@ Combined with the instance-Scope explanation in “ModuleRuntime Instances and L
 
 - **Module-level Scope**:
   - Each `ModuleRuntime` instance has its own Scope.
-  - Whether constructed via app-level Runtime (`Logix.Runtime.make`), `ModuleImpl.layer`, or React `useModule`, that Scope is closed when the module is disposed.
-  - Watchers started via `Flow.run*` / `runFork` are attached to that Scope.
+  - Whether constructed via app-level Runtime (`Logix.Runtime.make`) or React `useModule`, that Scope is closed when the module is disposed.
+  - Watchers started via the run helpers / `runFork` are attached to that Scope.
 - **Effect.fork vs runFork**:
   - If you write `yield* Effect.fork($.onAction("...").run(...))` inside Logic, the forked fiber is attached to the Scope of the current Logic.
   - `runFork` is semantically more explicit: it is the “module-level watcher” API, with safety and lifecycle handled by the engine.
 - **In React**:
-  - In Tag mode (`useModule(Module)`), watchers are attached to the App Runtime Scope and live as long as the runtime.
+  - In Tag mode (`useModule(ModuleTag)`), watchers are attached to the App Runtime Scope and live as long as the runtime.
   - In Impl mode (`useModule(Impl)`), each component-local module instance has its own Scope; on unmount:
     - the React adapter closes the Scope;
     - all watchers attached to it (including runFork) are interrupted.

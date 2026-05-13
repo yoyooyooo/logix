@@ -1,16 +1,19 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import { describe, it, expect } from 'vitest'
 // @vitest-environment happy-dom
 import React from 'react'
 import { act, render, screen } from '@testing-library/react'
 import { Schema } from 'effect'
 import * as Logix from '@logixjs/core'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
-import { useModule } from '../../src/Hooks.js'
+import { useModule, useSelector } from '../../src/Hooks.js'
+import { useProgramRuntimeBlueprint } from '../../src/internal/hooks/useProgramRuntimeBlueprint.js'
 
 const State = Schema.Struct({ count: Schema.Number })
 const Actions = { inc: Schema.Void }
 
-const ImplModule = Logix.Module.make('RuntimeProviderSuspendSyncFastPath.Impl', {
+const ProgramModule = Logix.Module.make('RuntimeProviderSuspendSyncFastPath.Program', {
   state: State,
   actions: Actions,
 })
@@ -19,28 +22,29 @@ const TagModule = Logix.Module.make('RuntimeProviderSuspendSyncFastPath.Tag', {
   actions: Actions,
 })
 
-const ImplModuleImpl = ImplModule.implement({ initial: { count: 0 }, logics: [] }).impl
-const TagModuleImpl = TagModule.implement({ initial: { count: 0 }, logics: [] }).impl
+const LocalProgram = Logix.Program.make(ProgramModule, { initial: { count: 0 }, logics: [] })
+const LocalBlueprint = RuntimeContracts.getProgramRuntimeBlueprint(LocalProgram)
+const TagModuleProgram = Logix.Program.make(TagModule, { initial: { count: 0 }, logics: [] })
 
 const App: React.FC = () => {
-  const impl = useModule(ImplModuleImpl)
-  const implCount = useModule(impl, (s) => (s as { count: number }).count)
+  const local = useProgramRuntimeBlueprint(LocalBlueprint)
+  const localCount = useSelector(local, (s) => (s as { count: number }).count)
 
   const tag = useModule(TagModule.tag)
-  const tagCount = useModule(tag, (s) => (s as { count: number }).count)
+  const tagCount = useSelector(tag, (s) => (s as { count: number }).count)
 
   return (
     <div>
-      <span data-testid="impl">{implCount}</span>
+      <span data-testid="program">{localCount}</span>
       <span data-testid="tag">{tagCount}</span>
     </div>
   )
 }
 
 describe('RuntimeProvider suspend optimistic sync fast-path', () => {
-  it('should render sync ModuleImpl + ModuleTag without entering Suspense fallback', async () => {
-    const runtime = Logix.Runtime.make(TagModuleImpl, {
-      layer: Logix.Debug.noopLayer,
+  it('should render sync Program + ModuleTag without entering Suspense fallback', async () => {
+    const runtime = Logix.Runtime.make(TagModuleProgram, {
+      layer: CoreDebug.noopLayer,
     })
 
     await act(async () => {
@@ -56,7 +60,7 @@ describe('RuntimeProvider suspend optimistic sync fast-path', () => {
     })
 
     expect(screen.queryByTestId('fallback')).toBeNull()
-    expect(screen.getByTestId('impl').textContent).toBe('0')
+    expect(screen.getByTestId('program').textContent).toBe('0')
     expect(screen.getByTestId('tag').textContent).toBe('0')
 
     await act(async () => {
@@ -66,15 +70,15 @@ describe('RuntimeProvider suspend optimistic sync fast-path', () => {
 
 
   it('should skip provider gating fallback in defer+preload when handles are sync-resolvable', async () => {
-    const runtime = Logix.Runtime.make(TagModuleImpl, {
-      layer: Logix.Debug.noopLayer,
+    const runtime = Logix.Runtime.make(TagModuleProgram, {
+      layer: CoreDebug.noopLayer,
     })
 
     await act(async () => {
       render(
         <RuntimeProvider
           runtime={runtime}
-          policy={{ mode: 'defer', syncBudgetMs: 1000, preload: [ImplModuleImpl, TagModule.tag] }}
+          policy={{ mode: 'defer', syncBudgetMs: 1000, preload: [LocalProgram, TagModule.tag] }}
           fallback={<div data-testid="fallback">fallback</div>}
         >
           <App />
@@ -83,7 +87,7 @@ describe('RuntimeProvider suspend optimistic sync fast-path', () => {
     })
 
     expect(screen.queryByTestId('fallback')).toBeNull()
-    expect(screen.getByTestId('impl').textContent).toBe('0')
+    expect(screen.getByTestId('program').textContent).toBe('0')
     expect(screen.getByTestId('tag').textContent).toBe('0')
 
     await act(async () => {
@@ -91,4 +95,3 @@ describe('RuntimeProvider suspend optimistic sync fast-path', () => {
     })
   })
 })
-

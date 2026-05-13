@@ -1,13 +1,13 @@
 # Tasks: Effect v4 全仓迁移主线（当前进度快照）
 
-**Input**: `specs/103-effect-v4-forward-cutover/`  
+**Input**: `specs/103-effect-v4-forward-cutover/`
 **Purpose**: 保持 `103` 作为全仓 Effect v4 迁移主线，同时记录当前已经完成的 runtime-core slice 与主线剩余任务。
 
 ## Completed Closure Tasks
 
 - [x] T009 重新核验 `origin/main` 与 `origin/feat/perf-dynamic-capacity-maxlevel` 的当前关系，并刷新 `GP-1` 证据。
 - [x] T017 审计 `.github/workflows/logix-perf-{quick,sweep}.yml`：确认 strict diff 分流、并发保护、超时保护、pinned matrix 与 normalize 步骤已在当前仓库存在。
-- [x] T018 审计 `.github/scripts/*` 与 `.codex/skills/logix-perf-evidence/scripts/*`：确认 perf 脚本存在且可引用。
+- [x] T018 审计 `.github/scripts/*` 与 `packages/logix-perf-evidence/scripts/*`：确认 perf 脚本存在且可引用。
 - [x] T019 回写 `inventory/perf-prerequisite.md`，将 `GP-1` 从旧快照刷新为 2026-03-07 当前远端事实。
 - [x] T020 落地 Stage 2 的 service/tag registry 第一刀：`serviceId -> tag`、`moduleId -> runtime tag` helper 与对应核心调用点。
 - [x] T021 落地 Stage 2 的 reference 子轨：`execVmMode` 与 `currentLinkId` 改为 `Context.Reference + Effect.provideService`。

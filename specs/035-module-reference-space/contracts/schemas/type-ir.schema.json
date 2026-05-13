@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://intent-flow.local/specs/035-module-reference-space/schemas/type-ir.schema.json",
+  "$id": "https://logix.local/specs/035-module-reference-space/schemas/type-ir.schema.json",
   "title": "TypeIr",
   "type": "object",
   "additionalProperties": false,

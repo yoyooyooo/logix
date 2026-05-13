@@ -1,7 +1,7 @@
 # Research: 015 Devtools Converge Performance Pane
 
-**Feature**: `015-devtools-converge-performance`  
-**Date**: 2025-12-18  
+**Feature**: `015-devtools-converge-performance`
+**Date**: 2025-12-18
 
 本研究聚焦“可落地的确定性约束”，避免在 Devtools 侧引入第二套真相源或补丁式特判。
 

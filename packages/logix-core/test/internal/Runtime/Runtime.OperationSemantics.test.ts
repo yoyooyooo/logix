@@ -1,4 +1,5 @@
 import { describe, it, expect } from '@effect/vitest'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { Cause, Chunk, Effect, Layer, Schema } from 'effect'
 import * as Logix from '../../../src/index.js'
 import * as EffectOp from '../../../src/EffectOp.js'
@@ -22,12 +23,12 @@ describe('Runtime + EffectOp bus semantics', () => {
           events.push(op)
         }).pipe(Effect.flatMap(() => op.effect))
 
-      const impl = M.implement({
+      const programModule = Logix.Program.make(M, {
         initial: { value: 0 },
         logics: [],
       })
 
-      const runtime = Logix.Runtime.make(impl, {
+      const runtime = Logix.Runtime.make(programModule, {
         layer: Layer.empty as Layer.Layer<any, never, never>,
         middleware: [capture],
       })
@@ -71,12 +72,12 @@ describe('Runtime + EffectOp bus semantics', () => {
         return op.effect
       }
 
-      const impl = M.implement({
+      const programModule = Logix.Program.make(M, {
         initial: { value: 0 },
         logics: [],
       })
 
-      const runtime = Logix.Runtime.make(impl, {
+      const runtime = Logix.Runtime.make(programModule, {
         layer: Layer.empty as Layer.Layer<any, never, never>,
         middleware: [guard],
       })
@@ -104,7 +105,7 @@ describe('Runtime + EffectOp bus semantics', () => {
     }),
   )
 
-  it.effect('single dispatch should produce at most one state:update commit (0/1 commit) even with traits', () =>
+  it.effect('single dispatch should produce at most one state:update commit (0/1 commit) even with fields', () =>
     Effect.gen(function* () {
       const events: Array<EffectOp.EffectOp<any, any, any>> = []
 
@@ -113,25 +114,24 @@ describe('Runtime + EffectOp bus semantics', () => {
           events.push(op)
         }).pipe(Effect.flatMap(() => op.effect))
 
-      const TraitState = Schema.Struct({
+      const FieldState = Schema.Struct({
         base: Schema.Number,
         derived: Schema.Number,
       })
 
-      const TraitActions = { bump: Schema.Void }
+      const FieldActions = { bump: Schema.Void }
 
-      const TraitModule = Logix.Module.make('OpSemanticsWithTraits', {
-        state: TraitState,
-        actions: TraitActions,
-        traits: Logix.StateTrait.from(TraitState)({
-          derived: Logix.StateTrait.computed({
+      const FieldModule = FieldContracts.withModuleFieldDeclarations(Logix.Module.make('OpSemanticsWithFields', {
+  state: FieldState,
+  actions: FieldActions
+}), FieldContracts.fieldFrom(FieldState)({
+          derived: FieldContracts.fieldComputed({
             deps: ['base'],
             get: (base) => base + 1,
           }),
-        }),
-      })
+        }))
 
-      const TraitLogic = TraitModule.logic(($) =>
+      const FieldLogic = FieldModule.logic('trait-logic', ($) =>
         Effect.gen(function* () {
           yield* $.onAction('bump').mutate((draft) => {
             draft.base += 1
@@ -139,22 +139,22 @@ describe('Runtime + EffectOp bus semantics', () => {
         }),
       )
 
-      const impl = TraitModule.implement({
+      const programModule = Logix.Program.make(FieldModule, {
         initial: { base: 0, derived: 1 },
-        logics: [TraitLogic],
+        logics: [FieldLogic],
       })
 
-      const runtime = Logix.Runtime.make(impl, {
+      const runtime = Logix.Runtime.make(programModule, {
         layer: Layer.empty as Layer.Layer<any, never, never>,
         middleware: [capture],
       })
 
       const program = Effect.gen(function* () {
-        const rt = yield* Effect.service(TraitModule.tag).pipe(Effect.orDie)
+        const rt = yield* Effect.service(FieldModule.tag).pipe(Effect.orDie)
 
         yield* rt.dispatch({ _tag: 'bump', payload: undefined } as any)
 
-        // Give the traits watcher a chance to complete (the current phase still relies on watcher installation).
+        // Give the fields watcher a chance to complete (the current phase still relies on watcher installation).
         yield* Effect.sleep('10 millis')
 
         const state = yield* rt.getState
@@ -177,7 +177,7 @@ describe('Runtime + EffectOp bus semantics', () => {
   )
 
   it.effect(
-    'single dispatch should produce at most one state:update commit (0/1 commit) with scopedValidate + traits',
+    'single dispatch should produce at most one state:update commit (0/1 commit) with scopedValidate + fields',
     () =>
       Effect.gen(function* () {
         const events: Array<EffectOp.EffectOp<any, any, any>> = []
@@ -187,23 +187,23 @@ describe('Runtime + EffectOp bus semantics', () => {
             events.push(op)
           }).pipe(Effect.flatMap(() => op.effect))
 
-        const TraitState = Schema.Struct({
+        const FieldState = Schema.Struct({
           base: Schema.Number,
           derived: Schema.Number,
           errors: Schema.Any,
         })
 
-        const TraitActions = { bump: Schema.Void }
+        const FieldActions = { bump: Schema.Void }
 
-        const TraitModule = Logix.Module.make('OpSemanticsWithScopedValidate', {
-          state: TraitState,
-          actions: TraitActions,
-          traits: Logix.StateTrait.from(TraitState)({
-            derived: Logix.StateTrait.computed({
+        const FieldModule = FieldContracts.withModuleFieldDeclarations(Logix.Module.make('OpSemanticsWithScopedValidate', {
+  state: FieldState,
+  actions: FieldActions
+}), FieldContracts.fieldFrom(FieldState)({
+            derived: FieldContracts.fieldComputed({
               deps: ['base'],
               get: (base) => base + 1,
             }),
-            base: Logix.StateTrait.node({
+            base: FieldContracts.fieldNode({
               check: {
                 required: {
                   deps: [''],
@@ -211,37 +211,36 @@ describe('Runtime + EffectOp bus semantics', () => {
                 },
               },
             }),
-          }),
-        })
+          }))
 
-        const TraitLogic = TraitModule.logic(($) =>
+        const FieldLogic = FieldModule.logic('trait-logic-2', ($) =>
           Effect.gen(function* () {
             yield* $.onAction('bump').run(() =>
               Effect.gen(function* () {
                 yield* $.state.mutate((draft) => {
                   draft.base += 1
                 })
-                yield* Logix.TraitLifecycle.scopedValidate($ as any, {
+                yield* FieldContracts.fieldScopedValidate($ as any, {
                   mode: 'valueChange',
-                  target: Logix.TraitLifecycle.Ref.field('base'),
+                  target: FieldContracts.fieldRef.field('base'),
                 })
               }),
             )
           }),
         )
 
-        const impl = TraitModule.implement({
+        const programModule = Logix.Program.make(FieldModule, {
           initial: { base: 0, derived: 1, errors: { base: 'preset' } },
-          logics: [TraitLogic],
+          logics: [FieldLogic],
         })
 
-        const runtime = Logix.Runtime.make(impl, {
+        const runtime = Logix.Runtime.make(programModule, {
           layer: Layer.empty as Layer.Layer<any, never, never>,
           middleware: [capture],
         })
 
         const program = Effect.gen(function* () {
-          const rt = yield* Effect.service(TraitModule.tag).pipe(Effect.orDie)
+          const rt = yield* Effect.service(FieldModule.tag).pipe(Effect.orDie)
 
           yield* rt.dispatch({ _tag: 'bump', payload: undefined } as any)
 

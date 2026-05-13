@@ -27,7 +27,7 @@
 
 若以上均不可用，则该 Tag 视为 **不合格**：禁止将其写入 Manifest/IR 的 `ServiceId`。
 
-> `tag.toString()` 仅允许用于 dev 错误信息/诊断展示（human-readable），不得作为 `ServiceId` 的来源。  
+> `tag.toString()` 仅允许用于 dev 错误信息/诊断展示（human-readable），不得作为 `ServiceId` 的来源。
 > 原因：`toString()` 的稳定性无法在运行时被可靠证明，且一旦漂移会破坏回放/对齐/门禁的确定性。
 
 注意：

@@ -1,8 +1,8 @@
 # Feature Specification: core-ng AOT Artifacts（Static IR / Exec IR 工件化）
 
-**Feature Branch**: `053-core-ng-aot-artifacts`  
-**Created**: 2025-12-31  
-**Status**: Frozen  
+**Feature Branch**: `053-core-ng-aot-artifacts`
+**Created**: 2025-12-31
+**Status**: Frozen
 **Input**: 046 registry 条目 `053`（`specs/046-core-ng-roadmap/spec-registry.json`）
 
 ## Summary
@@ -38,5 +38,5 @@
 ## References
 
 - 046 总控：`specs/046-core-ng-roadmap/`
-- Guardrails：`specs/039-trait-converge-int-exec-evidence/`
+- Guardrails：`specs/039-field-converge-int-exec-evidence/`
 - Exec VM：`specs/049-core-ng-linear-exec-vm/`

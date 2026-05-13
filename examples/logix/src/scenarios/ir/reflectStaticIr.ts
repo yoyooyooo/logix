@@ -1,3 +1,5 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
+import * as FieldContracts from '@logixjs/core/repo-internal/field-contracts'
 import { Config, Effect, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 
@@ -10,18 +12,18 @@ const Actions = {
   noop: Schema.Void,
 }
 
-const ImportedDef = Logix.Module.make('ReflectImported', {
+const Imported = Logix.Module.make('ReflectImported', {
   state: Schema.Struct({ value: Schema.Number }),
   actions: { noop: Schema.Void },
   reducers: { noop: (s: any) => s },
 })
 
 const builder = Effect.gen(function* () {
-  const host = yield* Logix.InternalContracts.RuntimeHost.RuntimeHost
+  const host = yield* FieldContracts.RuntimeHost.RuntimeHost
   const enable = yield* Config.boolean('ENABLE_EXPERIMENTAL_TRAIT').pipe(Config.withDefault(false))
 
-  const traits = Logix.StateTrait.from(State)({
-    derivedA: Logix.StateTrait.node({
+  const fieldDeclarations = FieldContracts.fieldFrom(State)({
+    derivedA: FieldContracts.fieldNode({
       meta: {
         label: enable ? 'derivedA (exp)' : 'derivedA',
         description: enable ? 'experimental computed field' : 'stable computed field',
@@ -31,37 +33,49 @@ const builder = Effect.gen(function* () {
           'x-phantom-source': enable ? 'on' : 'off',
         },
       },
-      computed: Logix.StateTrait.computed({
+      computed: FieldContracts.fieldComputed({
         deps: ['a'],
         get: (a) => a + 1,
       }),
     }),
   })
 
-  const ReflectStaticIrDef = Logix.Module.make('ReflectStaticIr', {
+  const ReflectStaticIrModule = Logix.Module.make('ReflectStaticIr', {
     state: State,
     actions: Actions,
     reducers: { noop: (s: any) => s },
-    traits,
   })
 
-  const importedModule = ImportedDef.implement({
+  const importedProgram = Logix.Program.make(Imported, {
     initial: { value: 0 },
     logics: [],
   })
 
-  const imports = enable ? [importedModule.impl] : []
+  const imports = enable ? [importedProgram] : []
+  const fieldsLogic = ReflectStaticIrModule.logic('__reflect_static_ir:fields', ($) => {
+    $.fields(fieldDeclarations as any)
+    return Effect.void
+  })
+  const ReflectStaticIr = Logix.Program.make(ReflectStaticIrModule, {
+    initial: { a: 0, derivedA: 0 },
+    logics: [fieldsLogic],
+    capabilities: { imports },
+  })
 
-  const debug = Logix.Debug.getModuleTraits(ReflectStaticIrDef as any)
+  const debug = CoreDebug.getModuleFieldProgram(ReflectStaticIrModule as any)
   const program = debug.program
-  const ir = program ? Logix.StateTrait.exportStaticIr(program, ReflectStaticIrDef.id) : undefined
+  const ir = program
+    ? FieldContracts.exportFieldStaticIr({
+        program,
+        moduleId: ReflectStaticIr.id,
+      })
+    : undefined
 
   const importedIds = imports
-    .filter((x: any) => x && x._tag === 'ModuleImpl')
-    .map((x: any) => String(x.module?.id ?? 'unknown'))
+    .map((x: any) => String(x?.id ?? x?.module?.id ?? 'unknown'))
 
   return {
-    moduleId: ReflectStaticIrDef.id,
+    moduleId: ReflectStaticIr.id,
     host: host.kind,
     imports: importedIds,
     staticIr: ir,
@@ -70,7 +84,7 @@ const builder = Effect.gen(function* () {
 })
 
 const runOnce = (config: Record<string, any>) =>
-  Logix.InternalContracts.BuildEnv.run(builder, {
+  FieldContracts.BuildEnv.run(builder, {
     runtimeHostKind: 'node',
     config,
   })

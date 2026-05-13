@@ -27,15 +27,7 @@ export type CliProfileDefaults = {
   readonly diagnosticsLevel?: 'off' | 'light' | 'full'
   readonly maxEvents?: number
   readonly timeout?: number
-  readonly baseline?: string
-  readonly inputs?: string
-  readonly packMaxBytes?: number
-  readonly allowWarn?: boolean
   readonly includeTrace?: boolean
-  readonly includeContextPack?: boolean
-  readonly includeUiKitRegistry?: boolean
-  readonly requireRulesManifest?: boolean
-  readonly includeAnchorAutofill?: boolean
   readonly entry?: string
 }
 
@@ -133,15 +125,7 @@ const validateDefaults = (input: unknown, label: string): CliProfileDefaults => 
     'diagnosticsLevel',
     'maxEvents',
     'timeout',
-    'baseline',
-    'inputs',
-    'packMaxBytes',
-    'allowWarn',
     'includeTrace',
-    'includeContextPack',
-    'includeUiKitRegistry',
-    'requireRulesManifest',
-    'includeAnchorAutofill',
     'entry',
   ])
 
@@ -168,34 +152,9 @@ const validateDefaults = (input: unknown, label: string): CliProfileDefaults => 
     })
   }
 
-  const allowWarn = (input as any).allowWarn
-  if (allowWarn !== undefined && typeof allowWarn !== 'boolean') {
-    throw makeCliError({ code: 'CLI_INVALID_INPUT', message: `[Logix][CLI] ${label}.allowWarn 必须是 boolean` })
-  }
-
   const includeTrace = (input as any).includeTrace
   if (includeTrace !== undefined && typeof includeTrace !== 'boolean') {
     throw makeCliError({ code: 'CLI_INVALID_INPUT', message: `[Logix][CLI] ${label}.includeTrace 必须是 boolean` })
-  }
-
-  const includeContextPack = (input as any).includeContextPack
-  if (includeContextPack !== undefined && typeof includeContextPack !== 'boolean') {
-    throw makeCliError({ code: 'CLI_INVALID_INPUT', message: `[Logix][CLI] ${label}.includeContextPack 必须是 boolean` })
-  }
-
-  const includeUiKitRegistry = (input as any).includeUiKitRegistry
-  if (includeUiKitRegistry !== undefined && typeof includeUiKitRegistry !== 'boolean') {
-    throw makeCliError({ code: 'CLI_INVALID_INPUT', message: `[Logix][CLI] ${label}.includeUiKitRegistry 必须是 boolean` })
-  }
-
-  const requireRulesManifest = (input as any).requireRulesManifest
-  if (requireRulesManifest !== undefined && typeof requireRulesManifest !== 'boolean') {
-    throw makeCliError({ code: 'CLI_INVALID_INPUT', message: `[Logix][CLI] ${label}.requireRulesManifest 必须是 boolean` })
-  }
-
-  const includeAnchorAutofill = (input as any).includeAnchorAutofill
-  if (includeAnchorAutofill !== undefined && typeof includeAnchorAutofill !== 'boolean') {
-    throw makeCliError({ code: 'CLI_INVALID_INPUT', message: `[Logix][CLI] ${label}.includeAnchorAutofill 必须是 boolean` })
   }
 
   const budgetBytes = (input as any).budgetBytes
@@ -211,11 +170,6 @@ const validateDefaults = (input: unknown, label: string): CliProfileDefaults => 
   const timeout = (input as any).timeout
   if (timeout !== undefined && asPositiveInt(timeout) === undefined) {
     throw makeCliError({ code: 'CLI_INVALID_INPUT', message: `[Logix][CLI] ${label}.timeout 必须是正整数（ms）` })
-  }
-
-  const packMaxBytes = (input as any).packMaxBytes
-  if (packMaxBytes !== undefined && asPositiveInt(packMaxBytes) === undefined) {
-    throw makeCliError({ code: 'CLI_INVALID_INPUT', message: `[Logix][CLI] ${label}.packMaxBytes 必须是正整数（bytes）` })
   }
 
   const outRoot = (input as any).outRoot
@@ -241,16 +195,6 @@ const validateDefaults = (input: unknown, label: string): CliProfileDefaults => 
     })
   }
 
-  const baseline = (input as any).baseline
-  if (baseline !== undefined && asNonEmptyString(baseline) === undefined) {
-    throw makeCliError({ code: 'CLI_INVALID_INPUT', message: `[Logix][CLI] ${label}.baseline 必须是非空字符串` })
-  }
-
-  const inputs = (input as any).inputs
-  if (inputs !== undefined && asNonEmptyString(inputs) === undefined) {
-    throw makeCliError({ code: 'CLI_INVALID_INPUT', message: `[Logix][CLI] ${label}.inputs 必须是非空字符串` })
-  }
-
   const entry = (input as any).entry
   if (entry !== undefined && asNonEmptyString(entry) === undefined) {
     throw makeCliError({ code: 'CLI_INVALID_INPUT', message: `[Logix][CLI] ${label}.entry 必须是非空字符串` })
@@ -265,15 +209,7 @@ const validateDefaults = (input: unknown, label: string): CliProfileDefaults => 
     ...(diagnosticsLevel !== undefined ? { diagnosticsLevel } : null),
     ...(maxEvents !== undefined ? { maxEvents: asPositiveInt(maxEvents) } : null),
     ...(timeout !== undefined ? { timeout: asPositiveInt(timeout) } : null),
-    ...(baseline !== undefined ? { baseline: asNonEmptyString(baseline) } : null),
-    ...(inputs !== undefined ? { inputs: asNonEmptyString(inputs) } : null),
-    ...(packMaxBytes !== undefined ? { packMaxBytes: asPositiveInt(packMaxBytes) } : null),
-    ...(allowWarn !== undefined ? { allowWarn } : null),
     ...(includeTrace !== undefined ? { includeTrace } : null),
-    ...(includeContextPack !== undefined ? { includeContextPack } : null),
-    ...(includeUiKitRegistry !== undefined ? { includeUiKitRegistry } : null),
-    ...(requireRulesManifest !== undefined ? { requireRulesManifest } : null),
-    ...(includeAnchorAutofill !== undefined ? { includeAnchorAutofill } : null),
     ...(entry !== undefined ? { entry: asNonEmptyString(entry) } : null),
   }
 }
@@ -326,9 +262,6 @@ const toArgvPrefix = (defaults: CliProfileDefaults): ReadonlyArray<string> => {
   if (defaults.diagnosticsLevel) tokens.push('--diagnosticsLevel', defaults.diagnosticsLevel)
   if (defaults.maxEvents) tokens.push('--maxEvents', String(defaults.maxEvents))
   if (defaults.timeout) tokens.push('--timeout', String(defaults.timeout))
-  if (defaults.baseline) tokens.push('--baseline', defaults.baseline)
-  if (defaults.inputs) tokens.push('--inputs', defaults.inputs)
-  if (defaults.packMaxBytes) tokens.push('--packMaxBytes', String(defaults.packMaxBytes))
   if (defaults.entry) tokens.push('--entry', defaults.entry)
 
   const bool = (key: keyof CliProfileDefaults, flag: string): void => {
@@ -337,12 +270,7 @@ const toArgvPrefix = (defaults: CliProfileDefaults): ReadonlyArray<string> => {
     if (value === false) tokens.push(`--no${capitalize(flag)}`)
   }
 
-  bool('allowWarn', 'allowWarn')
   bool('includeTrace', 'includeTrace')
-  bool('includeContextPack', 'includeContextPack')
-  bool('includeUiKitRegistry', 'includeUiKitRegistry')
-  bool('requireRulesManifest', 'requireRulesManifest')
-  bool('includeAnchorAutofill', 'includeAnchorAutofill')
 
   return tokens
 }

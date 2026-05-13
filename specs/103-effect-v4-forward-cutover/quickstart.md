@@ -24,7 +24,7 @@ git log --oneline origin/main -- .github/workflows/logix-perf-sweep.yml | head
 git log --oneline origin/main -- .github/workflows/logix-perf-quick.yml | head
 rg -n "diff_mode|PERF_DIFF_MODE|pnpm perf diff|pnpm perf diff:triage|concurrency:|timeout-minutes|Pin perf matrix|Normalize reports" .github/workflows/logix-perf-quick.yml .github/workflows/logix-perf-sweep.yml
 ls .github/scripts
-ls .codex/skills/logix-perf-evidence/scripts
+ls packages/logix-perf-evidence/scripts
 ```
 
 若核验结果不满足，则暂停性能 gate 推进并将状态记录到 `inventory/perf-prerequisite.md`。

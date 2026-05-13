@@ -1,5 +1,5 @@
 import { Effect, Layer, ServiceMap } from 'effect'
-import type { TraitConvergeRequestedMode } from '../../state-trait/model.js'
+import type { FieldConvergeRequestedMode } from '../../field-kernel/model.js'
 import type { ReadQueryStrictGateConfig } from './ReadQuery.js'
 import { getGlobalHostScheduler, type HostScheduler } from './HostScheduler.js'
 import { makeRuntimeStore, type RuntimeStore } from './RuntimeStore.js'
@@ -37,32 +37,32 @@ export const getDefaultStateTxnInstrumentation = (): StateTransactionInstrumenta
  *
  * Notes:
  * - instrumentation is only a runtime-level default.
- * - Explicit instrumentation in ModuleImpl / ModuleRuntimeOptions has higher priority.
+ * - Explicit instrumentation in ProgramRuntimeBlueprint / ModuleRuntimeOptions has higher priority.
  */
 export interface StateTransactionRuntimeConfig {
   readonly instrumentation?: StateTransactionInstrumentation
   /**
-   * StateTrait derived converge budget (ms):
+   * Field-kernel derived converge budget (ms):
    * - Exceeding the budget triggers a soft degrade (freeze derived fields, preserve base writes and 0/1 commit semantics).
    * - Default is 200ms (aligned with the 007 spec threshold).
    */
-  readonly traitConvergeBudgetMs?: number
+  readonly fieldConvergeBudgetMs?: number
   /**
    * Auto-mode decision budget (ms):
    * - Only used during the decision phase when requestedMode="auto".
    * - Exceeding the budget must immediately fall back to full (and record evidence).
    */
-  readonly traitConvergeDecisionBudgetMs?: number
+  readonly fieldConvergeDecisionBudgetMs?: number
   /**
-   * StateTrait converge scheduling strategy:
+   * Field-kernel converge scheduling strategy:
    * - full: full topo execution (current default; safest).
    * - dirty: minimal triggering based on dirtyPaths + deps in the txn window (requires accurate deps).
    */
-  readonly traitConvergeMode?: TraitConvergeRequestedMode
+  readonly fieldConvergeMode?: FieldConvergeRequestedMode
   /**
-   * 043: Trait converge time-slicing (explicit opt-in). Disabled by default.
+   * 043: Field converge time-slicing (explicit opt-in). Disabled by default.
    */
-  readonly traitConvergeTimeSlicing?: TraitConvergeTimeSlicingPatch
+  readonly fieldConvergeTimeSlicing?: FieldConvergeTimeSlicingPatch
   /**
    * 060: Txn Lanes (priority scheduling for transaction follow-up work). Enabled by default since 062.
    */
@@ -72,7 +72,7 @@ export interface StateTransactionRuntimeConfig {
    * - Only affects converge behavior for the specified moduleId.
    * - Lower priority than Provider overrides.
    */
-  readonly traitConvergeOverridesByModuleId?: Readonly<Record<string, StateTransactionTraitConvergeOverrides>>
+  readonly fieldConvergeOverridesByModuleId?: Readonly<Record<string, StateTransactionFieldConvergeOverrides>>
   /**
    * 060: Txn Lanes runtime_module overrides (hotfix / gradual tuning).
    * - Only affects the specified moduleId.
@@ -113,11 +113,11 @@ export const ReplayModeConfigTag = ReplayModeConfigTagImpl
 export const replayModeLayer = (mode: ReplayMode): Layer.Layer<ReplayModeConfigTagImpl, never, never> =>
   Layer.succeed(ReplayModeConfigTag, { mode })
 
-export interface StateTransactionTraitConvergeOverrides {
-  readonly traitConvergeMode?: TraitConvergeRequestedMode
-  readonly traitConvergeBudgetMs?: number
-  readonly traitConvergeDecisionBudgetMs?: number
-  readonly traitConvergeTimeSlicing?: TraitConvergeTimeSlicingPatch
+export interface StateTransactionFieldConvergeOverrides {
+  readonly fieldConvergeMode?: FieldConvergeRequestedMode
+  readonly fieldConvergeBudgetMs?: number
+  readonly fieldConvergeDecisionBudgetMs?: number
+  readonly fieldConvergeTimeSlicing?: FieldConvergeTimeSlicingPatch
 }
 
 export interface TxnLanesPatch {
@@ -154,7 +154,7 @@ export interface TxnLanesPatch {
   readonly yieldStrategy?: 'baseline' | 'inputPending'
 }
 
-export interface TraitConvergeTimeSlicingPatch {
+export interface FieldConvergeTimeSlicingPatch {
   /**
    * enabled：
    * - false/undefined: disabled (default)
@@ -177,11 +177,11 @@ export interface TraitConvergeTimeSlicingPatch {
  * - Override precedence: provider > runtime_module > runtime_default > builtin.
  */
 export interface StateTransactionOverrides {
-  readonly traitConvergeMode?: TraitConvergeRequestedMode
-  readonly traitConvergeBudgetMs?: number
-  readonly traitConvergeDecisionBudgetMs?: number
-  readonly traitConvergeTimeSlicing?: TraitConvergeTimeSlicingPatch
-  readonly traitConvergeOverridesByModuleId?: Readonly<Record<string, StateTransactionTraitConvergeOverrides>>
+  readonly fieldConvergeMode?: FieldConvergeRequestedMode
+  readonly fieldConvergeBudgetMs?: number
+  readonly fieldConvergeDecisionBudgetMs?: number
+  readonly fieldConvergeTimeSlicing?: FieldConvergeTimeSlicingPatch
+  readonly fieldConvergeOverridesByModuleId?: Readonly<Record<string, StateTransactionFieldConvergeOverrides>>
   /** 060: Txn Lanes provider-level overrides (delta overrides). */
   readonly txnLanes?: TxnLanesPatch
   /** 060: Txn Lanes provider_module overrides (by moduleId). */
@@ -243,18 +243,6 @@ class SchedulingPolicySurfaceOverridesTagImpl extends ServiceMap.Service<
 >()('@logixjs/core/SchedulingPolicySurfaceOverrides') {}
 
 export const SchedulingPolicySurfaceOverridesTag = SchedulingPolicySurfaceOverridesTagImpl
-
-/**
- * Legacy aliases:
- * - Keep old names as pure aliases to support migration without behavior drift.
- * - Canonical naming for new code should use SchedulingPolicySurface*.
- */
-export type ConcurrencyPolicyPatch = SchedulingPolicySurfacePatch
-export type ConcurrencyPolicy = SchedulingPolicySurface
-export type ConcurrencyPolicyOverrides = SchedulingPolicySurfaceOverrides
-
-export const ConcurrencyPolicyTag = SchedulingPolicySurfaceTag
-export const ConcurrencyPolicyOverridesTag = SchedulingPolicySurfaceOverridesTag
 
 // ---- 073: TickScheduler + RuntimeStore (injectable runtime services) ----
 

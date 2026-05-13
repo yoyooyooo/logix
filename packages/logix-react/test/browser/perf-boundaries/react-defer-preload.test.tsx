@@ -3,9 +3,11 @@ import React from 'react'
 import { render } from 'vitest-browser-react'
 import { Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 import matrix from '@logixjs/perf-evidence/assets/matrix.json'
 import { RuntimeProvider } from '../../../src/RuntimeProvider.js'
-import { useModule } from '../../../src/Hooks.js'
+import { useModule, useSelector } from '../../../src/Hooks.js'
+import { useProgramRuntimeBlueprint } from '../../../src/internal/hooks/useProgramRuntimeBlueprint.js'
 import { RuntimeContext } from '../../../src/internal/provider/ReactContext.js'
 import { emitPerfReport, type PerfReport } from './protocol.js'
 import {
@@ -27,12 +29,12 @@ const State = Schema.Struct({ count: Schema.Number })
 const Actions = { inc: Schema.Void }
 
 const Counter = Logix.Module.make('PerfReactDeferPreload.Counter', { state: State, actions: Actions })
-const CounterModule = Counter.implement({ initial: { count: 0 }, logics: [] })
-const CounterImpl = CounterModule.impl
+const CounterProgram = Logix.Program.make(Counter, { initial: { count: 0 }, logics: [] })
+const CounterBlueprint = RuntimeContracts.getProgramRuntimeBlueprint(CounterProgram)
 
 const App: React.FC = () => {
-  const ref = useModule(CounterImpl)
-  const count = useModule(ref, (s) => (s as { count: number }).count)
+  const ref = useProgramRuntimeBlueprint(CounterBlueprint)
+  const count = useSelector(ref, (s) => (s as { count: number }).count)
   return <p>Count: {count}</p>
 }
 
@@ -45,7 +47,7 @@ test('browser react defer+preload: no double fallback/suspend', { timeout: TEST_
       async (params: Params) => {
         const preloadEnabled = params.preloadEnabled as boolean
 
-        const runtime = Logix.Runtime.make(CounterImpl, {
+        const runtime = Logix.Runtime.make(CounterProgram, {
           layer: Layer.mergeAll(silentDebugLayer, perfKernelLayer) as Layer.Layer<any, never, never>,
           label: `perf:reactDeferPreload:${preloadEnabled}`,
         })
@@ -60,7 +62,7 @@ test('browser react defer+preload: no double fallback/suspend', { timeout: TEST_
           return <p>Loading…</p>
         }
 
-        const policy = preloadEnabled ? { mode: 'defer' as const, preload: [CounterImpl] } : { mode: 'defer' as const }
+        const policy = preloadEnabled ? { mode: 'defer' as const, preload: [CounterProgram] } : { mode: 'defer' as const }
 
         const app = (
           <RuntimeProvider runtime={runtime} policy={policy} fallback={<Fallback />}>

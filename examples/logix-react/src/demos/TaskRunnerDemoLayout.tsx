@@ -1,16 +1,18 @@
 import React from 'react'
 import * as Logix from '@logixjs/core'
-import { RuntimeProvider, useDispatch, useModule, useSelector } from '@logixjs/react'
-import { TaskRunnerDemoDef, TaskRunnerDemoModule, type TaskRunnerDemoState } from '../modules/task-runner-demo.js'
+import { RuntimeProvider, fieldValue, useDispatch, useModule, useSelector } from '@logixjs/react'
+import { TaskRunnerDemo, TaskRunnerDemoProgram } from '../modules/task-runner-demo.js'
 
-const runtime = Logix.Runtime.make(TaskRunnerDemoModule, {
+const runtime = Logix.Runtime.make(TaskRunnerDemoProgram, {
   label: 'TaskRunnerDemoRuntime',
   devtools: true,
 })
 
 const TaskRunnerDemoView: React.FC = () => {
-  const handle = useModule(TaskRunnerDemoDef)
-  const state = useSelector(handle) as TaskRunnerDemoState
+  const handle = useModule(TaskRunnerDemo.tag)
+  const latest = useSelector(handle, fieldValue('latest'))
+  const exhaust = useSelector(handle, fieldValue('exhaust'))
+  const logs = useSelector(handle, fieldValue('logs'))
   const dispatch = useDispatch(handle)
 
   const [nextId, setNextId] = React.useState(1)
@@ -83,19 +85,19 @@ const TaskRunnerDemoView: React.FC = () => {
               <span className="text-gray-500 dark:text-gray-400">loading</span>
               <span
                 className={
-                  state.latest.loading ? 'text-amber-600 dark:text-amber-300' : 'text-gray-700 dark:text-gray-200'
+                  latest.loading ? 'text-amber-600 dark:text-amber-300' : 'text-gray-700 dark:text-gray-200'
                 }
               >
-                {String(state.latest.loading)}
+                {String(latest.loading)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">lastRequestId</span>
-              <span className="text-gray-900 dark:text-gray-100">{state.latest.lastRequestId}</span>
+              <span className="text-gray-900 dark:text-gray-100">{latest.lastRequestId}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">lastResult</span>
-              <span className="text-gray-900 dark:text-gray-100">{state.latest.lastResult}</span>
+              <span className="text-gray-900 dark:text-gray-100">{latest.lastResult}</span>
             </div>
           </div>
         </div>
@@ -115,15 +117,15 @@ const TaskRunnerDemoView: React.FC = () => {
               <span className="text-gray-500 dark:text-gray-400">loading</span>
               <span
                 className={
-                  state.exhaust.loading ? 'text-amber-600 dark:text-amber-300' : 'text-gray-700 dark:text-gray-200'
+                  exhaust.loading ? 'text-amber-600 dark:text-amber-300' : 'text-gray-700 dark:text-gray-200'
                 }
               >
-                {String(state.exhaust.loading)}
+                {String(exhaust.loading)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">submitted</span>
-              <span className="text-gray-900 dark:text-gray-100">{state.exhaust.submitted}</span>
+              <span className="text-gray-900 dark:text-gray-100">{exhaust.submitted}</span>
             </div>
           </div>
         </div>
@@ -132,14 +134,14 @@ const TaskRunnerDemoView: React.FC = () => {
       <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">日志</h3>
-          <span className="text-[10px] text-gray-500 dark:text-gray-400 font-mono">{state.logs.length} lines</span>
+          <span className="text-[10px] text-gray-500 dark:text-gray-400 font-mono">{logs.length} lines</span>
         </div>
         <div className="font-mono text-xs bg-gray-50 dark:bg-gray-800 rounded p-3 h-56 overflow-auto">
-          {state.logs.length === 0 ? (
+          {logs.length === 0 ? (
             <div className="text-gray-500 dark:text-gray-400">（空）</div>
           ) : (
             <div className="space-y-1">
-              {state.logs.slice(-200).map((line, idx) => (
+              {logs.slice(-200).map((line, idx) => (
                 <div key={`${idx}-${line}`} className="text-gray-800 dark:text-gray-200">
                   {line}
                 </div>

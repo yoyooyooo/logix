@@ -1,0 +1,45 @@
+import { defineDiagnosticsDemoProject } from '../shared'
+
+const mainProgramSource = [
+  'import { Effect, Schema } from "effect"',
+  'import * as Logix from "@logixjs/core"',
+  '',
+  'const Child = Logix.Module.make("Diagnostics.CheckImports.Child", {',
+  '  state: Schema.Void,',
+  '  actions: {},',
+  '})',
+  '',
+  'const Parent = Logix.Module.make("Diagnostics.CheckImports.Parent", {',
+  '  state: Schema.Void,',
+  '  actions: {},',
+  '})',
+  '',
+  'const ChildProgram = Logix.Program.make(Child, {',
+  '  initial: undefined,',
+  '  logics: [],',
+  '})',
+  '',
+  'export const Program = Logix.Program.make(Parent, {',
+  '  initial: undefined,',
+  '  capabilities: {',
+  '    imports: [ChildProgram, ChildProgram, Parent as any],',
+  '  },',
+  '  logics: [],',
+  '})',
+  '',
+  'export const main = () => Effect.succeed({ checkDemo: "imports" })',
+].join('\n')
+
+export const logixReactCheckImportsDiagnosticsProject = defineDiagnosticsDemoProject({
+  id: 'logix-react.diagnostics.check-imports',
+  demoId: 'check-imports',
+  authorityClass: 'runtime-check-report',
+  title: 'Check imports diagnostics',
+  mainProgramSource,
+  expectedCodes: ['PROGRAM_IMPORT_INVALID', 'PROGRAM_IMPORT_DUPLICATE'],
+  expectedAuthorities: ['runtime.check/static'],
+  expectedEvidence: [
+    'Program.capabilities.imports[2]',
+    'Program.capabilities.imports:Diagnostics.CheckImports.Child',
+  ],
+})

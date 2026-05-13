@@ -1,8 +1,8 @@
 # Feature Specification: StateSchema-first：基于 State Schema 的 Field Ops 派生 Action Surface（actions/dispatchers/reducers）
 
-**Feature Branch**: `[069-schema-first-codegen-action-surface]`  
-**Created**: 2026-01-02  
-**Status**: Draft  
+**Feature Branch**: `[069-schema-first-codegen-action-surface]`
+**Created**: 2026-01-02
+**Status**: Draft
 **Input**: User description: "在 067 token-first 的基础上，日常业务里最模板化的源头是 state 字段：希望只定义 state schema，并在字段上声明可用 op（assign/merge/push/toggle…），由运行时冷路径编译出 actions + reducers，并提供 `$` 上可用的 fields/dispatchers；DX 优先保证从 `$.fields.draft.title.assign(payload)` 能定位回 state schema 里的字段/op 定义点，必要时再退化到生成文件但必须可回链。"
 
 ## Motivation
@@ -27,7 +27,7 @@
   - 为每个 `<statePath, opName>` 派生 reducer（复用现有 mutate/patchPaths 语义）；
   - 在 `$` 上提供 `$.fields.<path>.<op>(payload?)` 的 dispatch 入口（仅当前模块可写；跨模块仍只读 + dispatch）。
 - **CodeGen（后半段，可选）**：提供 deterministic 的 materialize 能力（`.gen.ts`/索引/契约片段），但不复制运行时语义。
-- **对齐 067**：派生 actions 必须与 `Reflection.extractManifest` / ActionRef 语义一致（actionTag 规则、payload 形态、source/anchor 证据等）。
+- **对齐 067**：派生 actions 必须与 `CoreReflection.extractManifest` / ActionRef 语义一致（actionTag 规则、payload 形态、source/anchor 证据等）。
 
 ### Out of Scope（本 spec 不强行交付）
 
@@ -72,7 +72,7 @@
 
 **Why this priority**: 避免并行真相源，保证 full duplex 链路可回放。
 
-**Independent Test**: `Reflection.extractManifest` 能反射出“派生 actions 列表 + payload 形态 + tag 规则”，且与运行时实际派发一致。
+**Independent Test**: `CoreReflection.extractManifest` 能反射出“派生 actions 列表 + payload 形态 + tag 规则”，且与运行时实际派发一致。
 
 **Acceptance Scenarios**:
 
@@ -184,5 +184,5 @@
 - **SC-002**: 只写 state schema + 字段 ops（不写 actions/reducers）即可通过 `pnpm typecheck`（或等价质量门），并能在最小示例中运行。
 - **SC-003**: 从 `$.fields.<path>.<op>(...)` 的 `<path>/<op>` 跳转到定义点：原模块优先；若落到生成文件，也能一跳回链到源 schema 锚点。
 - **SC-004**: 失败策略清晰：unknown key / 不匹配的字段类型 / actionTag 冲突等必须 fail fast，错误可定位且可 diff。
-- **SC-005**: `Reflection.extractManifest` 能稳定反射出派生 actions（含 payload 形态），与运行时实际派发一致。
+- **SC-005**: `CoreReflection.extractManifest` 能稳定反射出派生 actions（含 payload 形态），与运行时实际派发一致。
 - **SC-006**: （可选）对同一输入反复运行 codegen，输出字节级一致（deterministic），且生成边界清晰（不覆盖用户手写逻辑）。

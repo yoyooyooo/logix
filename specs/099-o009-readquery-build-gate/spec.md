@@ -1,8 +1,8 @@
 # Feature Specification: O-009 ReadQuery 严格门禁前移到构建期
 
-**Feature Branch**: `099-o009-readquery-build-gate`  
-**Created**: 2026-02-25  
-**Status**: Active  
+**Feature Branch**: `099-o009-readquery-build-gate`
+**Created**: 2026-02-25
+**Status**: Active
 **Input**: User description: "O-009 ReadQuery 严格门禁前移到构建期：在 module/logic 编译期产出 selector 质量报告与静态约束，运行时仅消费已定级 selector，减少热路径治理分支。"
 
 ## Background

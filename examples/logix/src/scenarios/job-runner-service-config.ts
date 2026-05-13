@@ -1,5 +1,6 @@
 import { Config, Data, Duration, Effect, Layer, Schema, ServiceMap } from 'effect'
 import * as Logix from '@logixjs/core'
+import { programLayer } from '../runtime/programLayer.js'
 
 // ---------------------------------------------------------------------------
 // 1. Schema → Shape：Job 场景的 State / Action
@@ -16,9 +17,9 @@ const JobActionMap = {
   reset: Schema.Void,
 }
 
-export type JobShape = Logix.Shape<typeof JobStateSchema, typeof JobActionMap>
-export type JobState = Logix.StateOf<JobShape>
-export type JobAction = Logix.ActionOf<JobShape>
+export type JobShape = Logix.Module.Shape<typeof JobStateSchema, typeof JobActionMap>
+export type JobState = Logix.Module.StateOf<JobShape>
+export type JobAction = Logix.Module.ActionOf<JobShape>
 
 // ---------------------------------------------------------------------------
 // 2. 错误建模：Tagged Error（对齐 EffectPatterns 推荐）
@@ -67,15 +68,15 @@ export const JobRunnerLive = Layer.effect(
 // 4. Module：定义 Job 模块
 // ---------------------------------------------------------------------------
 
-export const JobDef = Logix.Module.make('JobModule', {
+export const Job = Logix.Module.make('JobModule', {
   state: JobStateSchema,
   actions: JobActionMap,
 })
 
-// 5. Logic：通过 Flow 调用 Service，显式处理 E 通道（通过 Module.logic 注入 $）
+// 5. Logic：通过 Module.logic 调用 Service，显式处理 E 通道
 // ---------------------------------------------------------------------------
 
-export const JobLogic = JobDef.logic<JobRunner>(($: Logix.BoundApi<JobShape, JobRunner>) =>
+export const JobLogic = Job.logic<JobRunner>('job-logic', ($: Logix.Module.BoundApi<JobShape, JobRunner>) =>
   Effect.gen(function* () {
       const runEffect = Effect.gen(function* () {
       const runner = yield* $.use(JobRunner)
@@ -122,10 +123,10 @@ export const JobLogic = JobDef.logic<JobRunner>(($: Logix.BoundApi<JobShape, Job
 )
 
 // ---------------------------------------------------------------------------
-// 6. Impl / Live：组合 State / Action / Logic
+// 6. Program / Layer：组合 State / Action / Logic
 // ---------------------------------------------------------------------------
 
-export const JobModule = JobDef.implement<JobRunner>({
+export const JobProgram = Logix.Program.make(Job, {
   initial: {
     jobId: '',
     status: 'idle',
@@ -134,5 +135,4 @@ export const JobModule = JobDef.implement<JobRunner>({
   logics: [JobLogic],
 })
 
-export const JobImpl = JobModule.impl
-export const JobLive = JobImpl.layer
+export const JobLayer = programLayer(JobProgram)

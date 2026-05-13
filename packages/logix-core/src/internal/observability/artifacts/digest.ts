@@ -1,5 +1,5 @@
 import { fnv1a32, stableStringify } from '../../digest.js'
-import type { JsonValue } from '../jsonValue.js'
+import type { JsonValue } from '../../protocol/jsonValue.js'
 
 export interface JsonValueDigest {
   readonly stableJson: string

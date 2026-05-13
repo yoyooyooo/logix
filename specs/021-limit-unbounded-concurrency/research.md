@@ -1,7 +1,7 @@
 # Research: 并发护栏与预警（限制无上限并发）
 
-**Date**: 2025-12-21  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/021-limit-unbounded-concurrency/spec.md`  
+**Date**: 2025-12-21
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/021-limit-unbounded-concurrency/spec.md`
 **Goal**: 给出“默认安全 + 显式放开 + 可观测/可预警”的实现决策与理由，避免引入第二套口径或隐式协议。
 
 ## Decision 1：并行事件处理默认从 unbounded 收敛为 bounded（默认 16）

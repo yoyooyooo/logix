@@ -1,9 +1,9 @@
 import { Effect, Exit, Schema, Stream } from 'effect'
 import * as Logix from '@logixjs/core'
 import { galaxyApi } from '../galaxy-api/client'
-import { AuthDef, AuthImpl } from './auth.module'
+import { AuthDef, AuthProgram } from './auth.module'
 import { ProjectRoleKeySchema } from './permissions'
-import { ProjectsDef, ProjectsImpl } from './projects.module'
+import { ProjectsDef, ProjectsProgram } from './projects.module'
 
 const MembersStateSchema = Schema.Struct({
   members: Schema.Array(Schema.Any),
@@ -39,7 +39,7 @@ export const ProjectMembersDef = Logix.Module.make('GalaxyProjectMembers', {
   },
 })
 
-export const ProjectMembersLogic = ProjectMembersDef.logic(($) => {
+export const ProjectMembersLogic = ProjectMembersDef.logic('project-members', ($) => {
   const clear = Effect.gen(function* () {
     yield* $.dispatchers.setMembers([])
     yield* $.dispatchers.setError(null)
@@ -178,10 +178,10 @@ export const ProjectMembersLogic = ProjectMembersDef.logic(($) => {
   }
 })
 
-export const ProjectMembersModule = ProjectMembersDef.implement({
+export const ProjectMembersProgram = Logix.Program.make(ProjectMembersDef, {
   initial: { members: [], loading: false, error: null } satisfies ProjectMembersState,
-  imports: [AuthImpl, ProjectsImpl],
+  capabilities: {
+    imports: [AuthProgram, ProjectsProgram],
+  },
   logics: [ProjectMembersLogic],
 })
-
-export const ProjectMembersImpl = ProjectMembersModule.impl

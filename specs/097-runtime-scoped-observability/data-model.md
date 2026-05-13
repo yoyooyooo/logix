@@ -9,7 +9,7 @@
 - `runtimeLabel: string`
 - `events: RuntimeDebugEventRef[]`（该 runtime 的 ring window）
 - `latestStates: Map<string, JsonValue>`（key: `runtimeLabel::moduleId::instanceId`）
-- `latestTraitSummaries: Map<string, JsonValue>`（key: `runtimeLabel::moduleId::instanceId`）
+- `latestFieldSummaries: Map<string, JsonValue>`（key: `runtimeLabel::moduleId::instanceId`）
 - `exportBudget: { dropped: number; oversized: number }`
 
 ### GlobalSnapshotProjection（兼容视图）

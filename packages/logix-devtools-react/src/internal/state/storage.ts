@@ -105,13 +105,12 @@ export const loadSettingsFromStorage = (): DevtoolsSettings | undefined => {
     const parsed = JSON.parse(raw) as Partial<DevtoolsSettings> | null
     if (!parsed || typeof parsed !== 'object') return undefined
 
-    const mode = parsed.mode === 'basic' || parsed.mode === 'deep' ? parsed.mode : defaultSettings.mode
-    const showTraitEvents = typeof parsed.showTraitEvents === 'boolean' ? parsed.showTraitEvents : mode === 'deep'
+    const showFieldEvents =
+      typeof parsed.showFieldEvents === 'boolean' ? parsed.showFieldEvents : defaultSettings.showFieldEvents
     const showReactRenderEvents =
-      typeof parsed.showReactRenderEvents === 'boolean' ? parsed.showReactRenderEvents : mode === 'deep'
-    const enableTimeTravelUI =
-      typeof parsed.enableTimeTravelUI === 'boolean' ? parsed.enableTimeTravelUI : defaultSettings.enableTimeTravelUI
-
+      typeof parsed.showReactRenderEvents === 'boolean'
+        ? parsed.showReactRenderEvents
+        : defaultSettings.showReactRenderEvents
     const operationWindowMs = clampOperationWindowMs(
       (parsed as any).operationWindowMs ?? defaultSettings.operationWindowMs,
     )
@@ -147,10 +146,8 @@ export const loadSettingsFromStorage = (): DevtoolsSettings | undefined => {
         : defaultSettings.sampling.reactRenderSampleRate
 
     return {
-      mode,
-      showTraitEvents,
+      showFieldEvents,
       showReactRenderEvents,
-      enableTimeTravelUI,
       operationWindowMs,
       overviewThresholds,
       overviewHighlightDurationMs,

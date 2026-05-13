@@ -49,7 +49,7 @@ Txn Lanes is enabled by default; you usually only need to tune parameters or exp
 Explicitly disable (back to baseline):
 
 ```ts
-Runtime.make(impl, {
+Runtime.make(RootProgram, {
   stateTransaction: {
     txnLanes: { enabled: false },
   },
@@ -59,7 +59,7 @@ Runtime.make(impl, {
 Tune parameters (keep enabled):
 
 ```ts
-Runtime.make(impl, {
+Runtime.make(RootProgram, {
   stateTransaction: {
     txnLanes: {
       enabled: true,
@@ -101,7 +101,7 @@ When you see anomalies or you need a quick comparison, prefer runtime overrides 
 - `overrideMode: 'forced_off'`: force Txn Lanes off (back to baseline).
 - `overrideMode: 'forced_sync'`: force everything synchronous (ignore non-urgent deferral and time-slicing; useful for comparison).
 
-> Tip: keep evidence output enabled during rollback so you can explain “which mode is active / why we rolled back”.
+Keep evidence output enabled during rollback so you can explain which mode is active and why the rollback happened.
 
 ## Progressive enhancement: `inputPending`
 

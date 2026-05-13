@@ -1,6 +1,6 @@
 # Spec Registry: 080 Full-Duplex Prelude（成员与里程碑门槛）
 
-关系 SSoT：`specs/080-full-duplex-prelude/spec-registry.json`（机器可读）。  
+关系 SSoT：`specs/080-full-duplex-prelude/spec-registry.json`（机器可读）。
 本文件用于“人读阐述”：解释每个成员 spec 的定位、Hard/Spike 风险标记，以及组内里程碑与退出条件。
 
 ## Members（按依赖顺序）
@@ -47,7 +47,7 @@
 
 ### 075 · Workflow/Π Surface（WorkflowDef → Workflow Static IR）
 
-- 定位：把 `Π` 收敛为 `WorkflowDef`（权威输入）与 `workflowSurface`（Π slice，可导出/可对齐），并固化 workflow 的稳定锚点（`programId/stepKey/nodeId`）。
+- 定位：把 `Π` 收敛为 `WorkflowDef`（权威输入）与 `controlProgramSurface`（Π slice，可导出/可对齐），并固化 workflow 的稳定锚点（`programId/stepKey/nodeId`）。
 - 关键门槛：缺失 `stepKey` 视为契约违规（fail-fast）；workflow 调用的 `serviceId` 必须能回链到 `servicePorts`；时间算子无影子时间线（tick 对齐）。
 
 ### 061 · Playground Editor Intellisense（可选增强）
@@ -113,13 +113,13 @@
 
 ## 078–085 落地对照（基于当前代码）
 
-> 目的：把 `080` 的“门槛/顺序”与仓库现实对齐，避免出现“规格写完才发现已有实现/关键缺口在别处”的漂移。  
+> 目的：把 `080` 的“门槛/顺序”与仓库现实对齐，避免出现“规格写完才发现已有实现/关键缺口在别处”的漂移。
 > 更新：2026-01-10（后续实现推进时应持续回写本节）。
 
 ### 已有基础设施（可复用）
 
 - 模块锚点字段已存在：`services` / `meta` / `dev.source`（`packages/logix-core/src/Module.ts`）。
-- Manifest IR 与确定性 digest/diff 已存在（但尚未包含 `servicePorts`）：`packages/logix-core/src/internal/reflection/manifest.ts`、`packages/logix-core/src/internal/reflection/diff.ts`、出口 `packages/logix-core/src/Reflection.ts`。
+- Manifest IR 与确定性 digest/diff 已存在（但尚未包含 `servicePorts`）：`packages/logix-core/src/internal/reflection/manifest.ts`、`packages/logix-core/src/internal/reflection/diff.ts`、出口 `packages/logix-core/src/internal/reflection-api.ts`。
 - TrialRunReport 已能导出 `environment.missingServices` 等（但主要依赖错误文本解析，缺少端口级定位）：`packages/logix-core/src/internal/observability/trialRunModule.ts`。
 - `$.use(...)` 使用点大量存在，且核心实现入口明确（适合作为 Parser/Spy 的锚点）：`packages/logix-core/src/internal/runtime/core/BoundApiRuntime.ts`。
 - Tag→string 的稳定 id 逻辑目前分散在多处：`packages/logix-core/src/internal/root.ts`、`packages/logix-core/src/internal/runtime/AppRuntime.ts`（需要被 078 收敛为 `ServiceId` 单点实现）。
@@ -128,8 +128,8 @@
 
 | Spec | 现状入口（已存在） | 主要缺口（要补的） | 最小验收入口（建议） |
 | ---- | ------------------ | ------------------ | -------------------- |
-| `078` | `ModuleDef.services` 字段已存在；Manifest/Diff/TrialRun 基础链路已存在 | 统一 `ServiceId`；`ModuleManifest.servicePorts` + `manifestVersion` bump；`diffManifest(servicePorts)`；TrialRun 端口级对齐（`moduleId+port+serviceId`） | `Logix.Reflection.extractManifest` 输出包含 `servicePorts` 且 digest/diff 可门禁；TrialRunReport 输出端口级缺失清单 |
-| `075` | 现阶段依赖 `FlowRuntime`/watchers 的手写形态为主 | `WorkflowDef` 权威输入 + `workflowSurface`（Π slice）导出；`stepKey` 必填与可回写；KernelPorts 作为 service ports（对齐 078） | 导出 `workflowSurface` slice，并在 Root IR（ControlSurfaceManifest）中通过 `modules[*].workflowSurface.digest` 回链；缺失/重复 stepKey 可门禁化并可在 Platform-Grade 子集内回写 |
+| `078` | `ModuleDef.services` 字段已存在；Manifest/Diff/TrialRun 基础链路已存在 | 统一 `ServiceId`；`ModuleManifest.servicePorts` + `manifestVersion` bump；`diffManifest(servicePorts)`；TrialRun 端口级对齐（`moduleId+port+serviceId`） | `CoreReflection.extractManifest` 输出包含 `servicePorts` 且 digest/diff 可门禁；TrialRunReport 输出端口级缺失清单 |
+| `075` | 现阶段依赖 `FlowRuntime`/watchers 的手写形态为主 | `WorkflowDef` 权威输入 + `controlProgramSurface`（Π slice）导出；`stepKey` 必填与可回写；KernelPorts 作为 service ports（对齐 078） | 导出 `controlProgramSurface` slice，并在 Root IR（ControlSurfaceManifest）中通过 `modules[*].controlProgramSurface.digest` 回链；缺失/重复 stepKey 可门禁化并可在 Platform-Grade 子集内回写 |
 | `079` | 现阶段没有 `packages/logix-anchor-engine`（Node-only） | AutofillPolicy + reasonCodes + report-only；与 `082` 串联写回；严格“只补未声明/幂等/最小 diff/宁可漏” | `logix anchor autofill --report` 输出 PatchPlan/跳过原因；`--write` 后二次运行 0 diff |
 | `081` | workspace 已具备 `ts-morph`/`tsx` 依赖（Node-only 解析前提 OK） | 新增 `packages/logix-anchor-engine`，产出 `AnchorIndex@v1`（Platform-Grade 子集识别 + RawMode + 缺口点 insertSpan） | 同一 fixture 仓库重复扫描输出一致；RawMode 的 reasonCodes 稳定可门禁 |
 | `082` | 无现成写回引擎 | `PatchPlan@v1` + `WriteBackResult@v1`；支持 `AddObjectProperty` 最小写入；plan→write 竞态 fail-fast；report-only 与 write 等价 | 对 fixture：只新增缺失字段、不重排；重复运行幂等；歧义输入显式失败并给 reasonCodes |
@@ -140,7 +140,7 @@
 ### 建议推进顺序（以最小闭环为目标）
 
 1. `078`：先把 **servicePorts 进入 Manifest + TrialRun 端口级缺失定位** 做到可门禁/可解释（否则后续都缺锚点）。
-2. `075`：把 `Π` 的闭环落成 `WorkflowDef → workflowSurface`，并固化 `stepKey` 锚点与 KernelPorts 口径（否则平台无法解释/回放 workflow）。
+2. `075`：把 `Π` 的闭环落成 `WorkflowDef → controlProgramSurface`，并固化 `stepKey` 锚点与 KernelPorts 口径（否则平台无法解释/回放 workflow）。
 3. `085`（先做 US1）：先提供 **IR 导出 + TrialRun** 的 CLI 验证跑道，作为 M1 的“可复现验收入口”。
 4. `081` → `082` → `079`：打通 M2 的最小可逆闭环（AnchorIndex → PatchPlan → WriteBack → 源码锚点，包含 workflow stepKey）。
 5. `085`（再做 US2/US3）：接入 `anchor index/autofill` 并固化 CI 门禁（exit code + artifacts diff）。
@@ -148,5 +148,5 @@
 
 ### 风险提示（与现状强相关）
 
-- 目前在 `examples/*` 与 `packages/*` 里暂未检索到 `Logix.Module.make(..., { services: ... })` 的显式声明用法；大量依赖通过 `yield* $.use(ServiceTag)` 直接读取 Env。  
+- 目前在 `examples/*` 与 `packages/*` 里暂未检索到 `Logix.Module.make(..., { services: ... })` 的显式声明用法；大量依赖通过 `yield* $.use(ServiceTag)` 直接读取 Env。
   → 因此 **单独实现 `078` 会大量导出空 `servicePorts`**，价值释放需要配合 `079`（或先手工补声明）把“声明缺口”回填到源码。

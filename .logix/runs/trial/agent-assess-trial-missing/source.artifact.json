@@ -1,0 +1,12 @@
+{
+  "authority": "provenance-only",
+  "entry": {
+    "exportName": "MissingServiceProgram",
+    "modulePath": "packages/logix-cli/test/fixtures/MissingServiceProgram.ts"
+  },
+  "kind": "CliSourceArtifact",
+  "producer": "cli-source",
+  "schemaVersion": 1,
+  "sourceDigest": "sha256:685f69b6bce375b12e9ea6aba261e529a23cecc6305ecb5658ff5a61a90fbbb5",
+  "sourceRef": "packages/logix-cli/test/fixtures/MissingServiceProgram.ts"
+}

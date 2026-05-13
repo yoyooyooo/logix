@@ -6,11 +6,16 @@
     "moduleResolution": "bundler",
     "baseUrl": ".",
     "paths": {
-      "@logixjs/perf-evidence/*": [".codex/skills/logix-perf-evidence/*"]
+      "@logixjs/form": ["packages/logix-form/src/index.ts"],
+      "@logixjs/form/*": ["packages/logix-form/src/*"],
+      "@logixjs/i18n": ["packages/i18n/src/index.ts"],
+      "@logixjs/i18n/*": ["packages/i18n/src/*"],
+      "@logixjs/perf-evidence/*": ["packages/logix-perf-evidence/*"]
     },
     "jsx": "react-jsx",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true
-  }
+  },
+  "files": ["tsconfig.root.d.ts"]
 }

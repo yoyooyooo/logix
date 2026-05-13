@@ -1,8 +1,8 @@
 # Feature Specification: Busy Indicator Policy（延迟显示/最短显示/防闪烁）
 
-**Feature Branch**: `091-busy-indicator-policy`  
-**Created**: 2026-01-10  
-**Status**: Draft  
+**Feature Branch**: `091-busy-indicator-policy`
+**Created**: 2026-01-10
+**Status**: Draft
 **Input**: 标准化 Busy Indicator（忙碌指示）策略：定义延迟显示阈值、最短显示时间、避免闪烁/过度反馈的默认规则，并允许按网络速度/交互类型自适应；策略应由框架/设计系统承载，业务只声明动作与期望体验，不再到处手写 spinner/骨架/闪烁兜底。
 
 ## Context

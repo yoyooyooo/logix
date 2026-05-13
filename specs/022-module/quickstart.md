@@ -1,14 +1,14 @@
 # Quickstart: Module（默认定义对象）+ ModuleTag（高级身份锚点）
 
-**Date**: 2025-12-21  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/022-module/spec.md`
+**Date**: 2025-12-21
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/022-module/spec.md`
 
 ## 0) 命名矩阵（本特性裁决）
 
-- `ModuleDef`：`Logix.Module.make(...)` 返回；带 `.tag`；可 `.logic(...)` 产出逻辑值；`.implement(...)` 产出 `Module`；不带 `.impl`。
-- `Module`：wrap module（通常由 `ModuleDef.implement(...)` 或领域工厂返回）；带 `.tag` + `.impl`；支持 `withLogic/withLayers`；`.logic(...)` 仍只产出逻辑值。
+- `Module`：`Logix.Module.make(...)` 返回；带 `.tag`；可 `.logic(...)` 产出逻辑值；不带 `.impl`。
+- `Program`：`Logix.Program.make(Module, config)` 返回；支持 `withLogic/withLayers`；作为装配期业务单元进入 Runtime 与 React 局部实例入口。
 - `ModuleTag`：身份锚点（Context.Tag）；用于 Env 注入与“全局实例”解析。
-- `ModuleImpl`：装配蓝图（`layer` + imports/processes 等）；用于创建局部实例。
+- `Program`：装配对象；通过内部 runtime blueprint 承接 layer/imports 等实现细节；用于创建局部实例。
 - `ModuleRuntime`：运行时实例（真正的“实例”语义）。
 - `ModuleHandle`：`yield* $.use(...)` 返回的只读句柄（可含 controller 等扩展）。
 - `ModuleRef`：React `useModule(...)` 返回的 ref（含 state/actions/dispatch + 扩展）。
@@ -18,7 +18,7 @@
 - Form/CRUD 等“领域工厂”返回同一种形状：`Module`（定义对象）。
 - 你可以在 `Module` 上追加逻辑（`withLogic/withLogics`）与注入依赖（`withLayer/withLayers`），且保持不可变。
 - 逻辑侧可以直接 `$.use(module)` 拿到“模块句柄（含 `actions` dispatchers）+ 领域扩展（如 controller）”（不再显式 `.module`）。
-- 装配/运行侧入口可直接消费 `module`（不再显式 `.impl`），心智模型统一。
+- 装配/运行侧入口消费 `Program`，不读取内部 runtime blueprint。
 - Module 预留 `schemas/meta/services/dev.source` 等反射字段（可选）：供 Studio/Devtools/脚本通过运行时反射读取结构与链路信息（免静态分析）；其中 `dev.source` 预计由构建工具插件（vite/rsbuild/webpack）注入，本特性不实现自动注入（允许手工填写）。
 
 ## 2) 创建与组合（推荐心智模型）
@@ -27,7 +27,7 @@
 - 业务侧负责：用 `logic` 产出可复用逻辑值，用 `withLogic/withLayers` 组合成最终“可运行形态”。
 - 库作者建议通过 `Logix.Module.Manage.make(...)` 产出“模块工厂命名空间对象”（如 `CRUDModule`）：负责生成 Module（定义对象）、生成/暴露依赖 Tag（业务只管提供 Layer）、并统一注入句柄扩展（controller）。
 - 业务开发使用领域工厂模块：`CRUDModule.make(id, spec, extend?)`（`extend.actions` 仅新增；`extend.reducers` 合并且允许覆盖；如 `idField` 等配置建议放进 `spec`），以保留默认能力并支持业务裁决。
-- 业务开发定义普通模块：`Logix.Module.make(id, def, extend?)`（`extend.actions` 仅新增；`extend.reducers` 合并且允许覆盖），再用 `.implement({ initial, logics?, imports?, processes? })` 补齐实现。
+- 业务开发定义普通模块：`Logix.Module.make(id, def, extend?)`（`extend.actions` 仅新增；`extend.reducers` 合并且允许覆盖），再用 `Program.make(Module, { initial, logics?, capabilities? })` 补齐装配。
 - 覆盖默认逻辑：若你想覆盖领域包内置逻辑（例如 CRUD 的 `install`），用同一个 `id` 挂载新逻辑即可（默认 `last-write-wins`；dev 下会有可解释告警/诊断，便于确认覆盖链路是“有意的”）。
 
 ## 3) 在 Logic 中使用 actions/controller
@@ -36,25 +36,24 @@
 - `actions`（dispatchers）与 controller 的可用性必须与 React/装配侧一致（同一入口与语义）。
 - 约束建议：`$.self` 主要用于拿“句柄扩展”（例如 controller）；dispatch 仍优先用 `$.actions.*`，并通过“command/result”分离或去重 guard 避免自触发闭环。
 
-## 4) 在装配/运行侧消费（免拆壳）
+## 4) 在装配/运行侧消费
 
-- React hooks / Runtime 装配入口应允许直接传入 `Module`，由入口统一拆壳到蓝图（`module.impl`）。
+- React hooks / Runtime 装配入口消费 `Program`，由内部 runtime blueprint 完成实例化。
 - 迁移后，示例中不再需要为了挂载逻辑而额外创建“包装 Module”。
 
 ## 4.1) 消费语义矩阵（局部 vs 全局）
 
-- `Logix.Runtime.make(module)`：等价于 `Logix.Runtime.make(module.impl)`（创建一棵新的 Runtime/作用域；该 Runtime 内 `module.tag`（ModuleTag）解析为 root singleton）。
+- `Logix.Runtime.make(program)`：创建一棵新的 Runtime/作用域；该 Runtime 内 `module.tag`（ModuleTag）解析为 root singleton。
 - `yield* $.use(module)`：等价于 `yield* $.use(module.tag)`（从当前 scope 解析既有实例；可能是 root，也可能是 imports 的 child；不负责创建新实例）。
 - `yield* module.tag`：直接解析 `ModuleRuntime`（同样从当前 Env/scope 解析；可能是 root，也可能是 imports 的 child；若需固定 root provider，用 `Logix.Root.resolve(module.tag)`）。
 - `yield* $.self`：仅在 `module.logic(($)=>..., { id? })` 内可用，等价于“对当前 module 做一次 `$.use`”（拿到当前 `ModuleHandle`，含 controller）。
-- React：`useModule(module)`：等价于 `useModule(module.impl)`（默认局部/会话级创建与缓存），并会把模块扩展（如 controller）合并到返回的 ref；若要使用 `RuntimeProvider` 内实例，请显式 `useModule(module.tag)`（ModuleTag，同样会合并扩展）。
-- React：`useModule(moduleDef)`：等价于 `useModule(moduleDef.tag)`（全局实例；前提是 `RuntimeProvider`/Runtime 已提供该 `ModuleTag` 的运行时）。
+- React：`useModule(program)`：默认局部/会话级创建与缓存，并会把模块扩展（如 controller）合并到返回的 ref；若要使用 `RuntimeProvider` 内实例，请显式 `useModule(module.tag)`（ModuleTag，同样会合并扩展）。
 
 ## 5) 迁移要点（旧蓝图 → Module）
 
-- 从“显式 `.module` / `.impl`”迁移到“直接传 module”：
+- 从“显式旧蓝图拆壳”迁移到“Module / Program 主链”：
   - `$.use(old.module)` → `$.use(module)`（等价拆壳）
-  - `useModule(old.impl)` → `useModule(module)`（等价拆壳）
+  - `useModule(oldImpl)` → `useModule(program)`
 - `logic` 仍然只产出逻辑值；需要挂载到领域模块时使用 `withLogic/withLogics`。
 
 ## 5.1) 迁移：把 Module 当 Tag 用的调用点
@@ -68,8 +67,8 @@
 
 ## 5.2) 表单迁移要点（FormBlueprint → Module）
 
-- 旧：`Form.make()` 返回 `FormBlueprint`（含 `module/impl/controller.make(runtime)`），常见用法是 `useForm(blueprint)` 内部 `useModule(blueprint.impl)` 后再 `blueprint.controller.make(moduleRef.runtime)`。
-- 新：`Form.make()` 返回 `Module`（含 `tag/impl/controller`），并支持 `withLogic/withLayers`；React 侧直接 `useModule(formModule)` 即可得到带 controller 的 `FormRef`（可选再提供 `useForm = useModule` 的 type-only alias）。
+- 旧：`Form.make()` 返回 `FormBlueprint`（含旧蓝图/controller.make(runtime)`），常见用法是 `useForm(blueprint)` 内部拆壳后再 `blueprint.controller.make(moduleRef.runtime)`。
+- 新：`Form.make()` 返回 `Module`（含 `tag/controller`），通过 `Program.make(formModule, config)` 装配；React 侧直接 `useModule(formProgram)` 即可得到带 controller 的 `FormRef`（可选再提供 `useForm = useModule` 的 type-only alias）。
 - 逻辑侧迁移：
   - `yield* $.use(formBlueprint.module)` → `yield* $.use(formModule)`；
   - 在 `formModule.logic(($)=>..., { id? })` 内，推荐用 `yield* $.self` 直接拿到带 controller 的句柄。
@@ -78,13 +77,13 @@
 
 > 说明：以下示例用于表达“语义与组合方式”，不锁死具体文件结构；最终以本特性落地后的类型与 API 为准。
 
-### 示例 A：Form Module + 追加逻辑 + 运行（免 `.impl`）
+### 示例 A：Form Module + 追加逻辑 + 运行
 
 ```ts
 const UserForm = Form.make("UserForm", {
   values: UserSchema,
   initialValues,
-  traits,
+  fields,
 })
 
 // `.logic(...)` 只产出逻辑值（可复用）
@@ -100,7 +99,11 @@ const AutoValidate = UserForm.logic(
 // `withLogic(...)` 才把逻辑挂到“可运行形态”（不可变返回新实例）
 const LiveForm = UserForm.withLogic(AutoValidate)
 
-const runtime = Logix.Runtime.make(LiveForm, {
+const UserFormProgram = Logix.Program.make(LiveForm, {
+  initial: initialValues,
+})
+
+const runtime = Logix.Runtime.make(UserFormProgram, {
   label: "UserForm",
   devtools: true,
 })
@@ -124,10 +127,10 @@ const LiveLineItemsForm = LineItemsForm.withLogic(SyncLineItems)
 
 > 迁移：`controller.array(path)` 已重命名为 `controller.fieldArray(path)`（与 `useFieldArray` 对齐）。
 
-### 示例 C：React 侧直接消费 Module（免 `.impl`）
+### 示例 C：React 侧直接消费 Program
 
 ```ts
-const form = useModule(LiveForm) // 返回 ModuleRef + controller（方案B：自动扩展）
+const form = useModule(UserFormProgram) // 返回 ModuleRef + controller（方案B：自动扩展）
 const firstName = useField(form, "firstName")
 ```
 
@@ -135,11 +138,12 @@ const firstName = useField(form, "firstName")
 
 ```ts
 // 旧：显式拆壳
-Logix.Runtime.make(BasicProfileForm.impl)
+Logix.Runtime.make(BasicProfileFormImpl)
 yield* $.use(BasicProfileForm.tag)
 
-// 新：入口直接吃 Module
-Logix.Runtime.make(BasicProfileForm)
+// 新：入口直接吃 Program
+const BasicProfileProgram = Logix.Program.make(BasicProfileForm, { initial })
+Logix.Runtime.make(BasicProfileProgram)
 yield* $.use(BasicProfileForm)
 ```
 
@@ -165,8 +169,7 @@ const Counter = Logix.Module.make("Counter", {
   },
 })
 
-// `.implement(...)` 产出“可运行形态”（Module 里会带 `.impl`）
-export const LiveCounter = Counter.implement({
+export const CounterProgram = Logix.Program.make(Counter, {
   initial: { count: 0 },
 })
 ```

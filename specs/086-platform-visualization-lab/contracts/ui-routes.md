@@ -5,8 +5,8 @@
 ## Routes
 
 - `/platform-viz`：入口页（能力块导航 + pending 清单 + 直达 TrialRun Evidence）
-- `/platform-viz/manifest`：Manifest Inspector（模块选择 → `Reflection.extractManifest`）
-- `/platform-viz/manifest-diff`：Manifest Diff Viewer（模块选择/JSON 粘贴 → `Reflection.diffManifest`）
+- `/platform-viz/manifest`：Manifest Inspector（模块选择 → `CoreReflection.extractManifest`）
+- `/platform-viz/manifest-diff`：Manifest Diff Viewer（模块选择/JSON 粘贴 → `CoreReflection.diffManifest`）
 - `/trial-run-evidence`：复用既有页面（本特性只提供直达入口）
 
 ## Inputs

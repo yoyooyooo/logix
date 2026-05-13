@@ -68,26 +68,26 @@
 ## Cross-Spec Alignment
 
 - `110` 定义 route gate、residual latest 与 `111` 进入门。`111` 不单独改写 perf 主线路线。
-- `013-auto-converge-planner` 与 `specs/013-auto-converge-planner/contracts/schemas/trait-converge-data.schema.json` 是当前 `trait:converge` 契约 baseline。
+- `013-auto-converge-planner` 与 `specs/013-auto-converge-planner/contracts/schemas/field-converge-data.schema.json` 是当前 `field:converge` 契约 baseline。
 - `014-browser-perf-boundaries` 继续承担 heavier local / CI 侧的边界跑道，前提是本地 cheap / focused 证据已稳定。
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.x  
-**Primary Dependencies**: effect v3、@logixjs/core、@logixjs/react  
-**Storage**: 文件系统规格、perf 工件、controller 内存态  
-**Testing**: Vitest、browser perf collect、node traitConverge bench  
-**Target Platform**: Node.js 22 + Chromium  
-**Project Type**: pnpm workspace / packages + specs  
-**Performance Goals**: 降低静态阈值漂移，提高 auto/full/dirty 决策稳定性  
-**Constraints**: 决策必须同步、无 IO；disabled/fallback 开销接近零；先在 `main` 控制线规划和 PoC  
+**Language/Version**: TypeScript 5.x
+**Primary Dependencies**: effect v3、@logixjs/core、@logixjs/react
+**Storage**: 文件系统规格、perf 工件、controller 内存态
+**Testing**: Vitest、browser perf collect、node traitConverge bench
+**Target Platform**: Node.js 22 + Chromium
+**Project Type**: pnpm workspace / packages + specs
+**Performance Goals**: 降低静态阈值漂移，提高 auto/full/dirty 决策稳定性
+**Constraints**: 决策必须同步、无 IO；disabled/fallback 开销接近零；先在 `main` 控制线规划和 PoC
 **Scale/Scope**: 主要涉及 `converge-in-transaction.impl.ts` 及其 telemetry / diagnostics / evidence
 
 ## Constitution Check
 
 - Intent -> Flow -> Code -> Runtime：`111` 只改 converge decision/controller 层，执行层仍保持现有 `full|dirty` 路径与 transaction window 约束。
-- docs-first：先固化 `110/111`，再考虑 shadow / PoC；adaptive 字段若进入 `trait:converge`，必须先回写 `013` contracts 与相关 observability 文档。
-- Contracts / no second truth source：`111` 复用现有 `TraitConvergeDecisionSummary` / `trace:trait:converge`，新增字段只能增量扩展。
+- docs-first：先固化 `110/111`，再考虑 shadow / PoC；adaptive 字段若进入 `field:converge`，必须先回写 `013` contracts 与相关 observability 文档。
+- Contracts / no second truth source：`111` 复用现有 `TraitConvergeDecisionSummary` / `trace:field:converge`，新增字段只能增量扩展。
 - IR / stable ids：不改统一最小 IR；继续使用 `moduleId/instanceId/txnSeq/generation` 作为 controller 与 diagnostics 锚点。
 - Transaction boundary：controller、shadow、探索逻辑都必须同步、无 IO。
 - Performance budget：第一刀是 telemetry-only / shadow，disabled/fallback 额外成本接近零；live candidate 只在 cheap local 和 heavier local 稳定后推进。
@@ -96,7 +96,7 @@
 
 ## Decomposition Brief _(mandatory before any live-candidate or wider hot-path PoC)_
 
-目标文件：`packages/logix-core/src/internal/state-trait/converge-in-transaction.impl.ts`
+目标文件：`packages/logix-core/src/internal/state-field/converge-in-transaction.impl.ts`
 
 - 当前状态：热路径目标文件已超过模块规模门槛。shadow-only additive telemetry 可先按最小边界落地；live candidate 或更大的 controller 语义改造前，必须先定义无损拆分边界。
 - 拆分形态：单一主体 + 同目录平铺子模块。
@@ -109,7 +109,7 @@
   1. 先做无损拆分，不改行为；
   2. 用 typecheck + 现有 converge tests + focused perf smoke 验证拆分等价；
   3. 拆分完成后，才允许 shadow / adaptive 语义改造进入热路径文件。
-- 单向依赖：新子模块只能依赖更深的 state-trait / runtime contracts，禁止反向依赖 `converge-in-transaction.impl.ts`。
+- 单向依赖：新子模块只能依赖更深的 state-field / runtime contracts，禁止反向依赖 `converge-in-transaction.impl.ts`。
 
 ## Proposed Architecture
 
@@ -257,7 +257,7 @@ adaptive 增量字段：
   - `specs/103-effect-v4-forward-cutover/perf/2026-03-28-e1b-clean-scout-reading.md`
 - minimum command bundle:
   1. node residual quick:
-     - `pnpm -C .codex/skills/logix-perf-evidence bench:traitConverge:node -- --matrix specs/103-effect-v4-forward-cutover/perf/2026-03-28-e1-highdirty-node-matrix.json --profile quick --out specs/103-effect-v4-forward-cutover/perf/<date>-traitConverge-node.after.t511-residual-refresh.highdirty.quick.json`
+     - `pnpm -C packages/logix-perf-evidence bench:traitConverge:node -- --matrix specs/103-effect-v4-forward-cutover/perf/2026-03-28-e1-highdirty-node-matrix.json --profile quick --out specs/103-effect-v4-forward-cutover/perf/<date>-traitConverge-node.after.t511-residual-refresh.highdirty.quick.json`
   2. browser residual quick:
      - `VITE_LOGIX_PERF_STEPS_LEVELS=1600,2000 pnpm perf collect -- --profile quick --files test/browser/perf-boundaries/converge-steps.test.tsx --out specs/103-effect-v4-forward-cutover/perf/<date>-converge-steps.after.t511-residual-refresh.browser.quick.json`
      - `pnpm perf diff -- --before specs/103-effect-v4-forward-cutover/perf/2026-03-26-converge-steps.before.currentbest-v4.steps1600-2000.same-node.local.quick.json --after specs/103-effect-v4-forward-cutover/perf/<date>-converge-steps.after.t511-residual-refresh.browser.quick.json --out specs/103-effect-v4-forward-cutover/perf/<date>-converge-steps.currentbest-vs-t511-residual-refresh.browser.quick.diff.json`
@@ -286,10 +286,10 @@ adaptive 增量字段：
   - isolated shadow-only candidate already exists
   - current next gate is cheap local verification, not code entry unblock
 - minimum write scope:
-  1. `packages/logix-core/src/internal/state-trait/converge-in-transaction.impl.ts`
-  2. `packages/logix-core/src/internal/state-trait/model.ts`
+  1. `packages/logix-core/src/internal/state-field/converge-in-transaction.impl.ts`
+  2. `packages/logix-core/src/internal/state-field/model.ts`
   3. only if shadow fields enter the unified contract:
-     - `specs/013-auto-converge-planner/contracts/schemas/trait-converge-data.schema.json`
+     - `specs/013-auto-converge-planner/contracts/schemas/field-converge-data.schema.json`
 - current proven boundary:
   - optional `TraitConvergeDecisionSummary.shadow`
   - live decision branch unchanged

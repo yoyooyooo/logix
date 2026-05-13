@@ -1,6 +1,6 @@
 # Contracts: 014 浏览器压测报告（Perf Report / Diff）
 
-本目录保留 014 spec 对“可对比证据”契约的镜像与说明；契约 SSoT 统一为 `@logixjs/perf-evidence/assets/schemas/*`（物理：`.codex/skills/logix-perf-evidence/assets/schemas/*`）：
+本目录保留 014 spec 对“可对比证据”契约的镜像与说明；契约 SSoT 统一为 `@logixjs/perf-evidence/assets/schemas/*`（物理：`packages/logix-perf-evidence/assets/schemas/*`）：
 
 - `schemas/perf-report.schema.json`：浏览器端边界地图报告（JSON）schema（含 meta / 统计口径 / 维度结果 / 阈值 / unavailable 口径）。
 - `schemas/perf-diff.schema.json`：两份报告的差异摘要 schema（用于回归定位与归因线索）。

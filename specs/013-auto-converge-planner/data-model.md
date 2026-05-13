@@ -20,7 +20,7 @@
 
 ### 1.3 Static IR Digest（事件 → Static IR 的稳定引用）
 
-- `staticIrDigest: string`：用于将 `trait:converge` 事件与其对应的 `ConvergeStaticIR`（EvidencePackage 内去重导出）关联起来的引用标识。
+- `staticIrDigest: string`：用于将 `field:converge` 事件与其对应的 `ConvergeStaticIR`（EvidencePackage 内去重导出）关联起来的引用标识。
 - 定义：`staticIrDigest = instanceId + ":" + generation`。
 
 > 说明：digest 本身不承诺跨 run 稳定（因为包含 `instanceId`）；但在同一 EvidencePackage 内必须稳定且可用作去重 key。
@@ -69,7 +69,7 @@ ConvergeStaticIR 在 build/加载阶段生成；在 `Diagnostics Level=full` 下
 
 ### Entity: DirtyRootsSummary（导出证据，受控体积）
 
-在 `trait:converge.data.dirty` 中导出的受控摘要：
+在 `field:converge.data.dirty` 中导出的受控摘要：
 
 - `dirtyAll: boolean`
 - `rootCount?: number`：本次 canonical roots 的总数（full）。
@@ -133,15 +133,15 @@ ConvergeStaticIR 在 build/加载阶段生成；在 `Diagnostics Level=full` 下
 
 ## 7) Dynamic Trace 扩展事件（Spec 009）
 
-### TraceEvent kind: `trait:converge`
+### TraceEvent kind: `field:converge`
 
 013 以“事件扩展 schema”的形式交付 converge 证据：
 
 - 事件外壳复用 009 的 `DynamicTrace.events[*]`（稳定锚点仍由 `eventSeq/eventId/txnId` 提供）。
-- 当 `kind="trait:converge"` 时，`data` 的 schema 固化为 `ConvergeDecisionSummary`（见 `contracts/schemas/*`）。
-- `Diagnostics Level=off` 下不得产出任何可导出的 `trait:converge` 事件/摘要；仅 `light|full` 允许导出。
+- 当 `kind="field:converge"` 时，`data` 的 schema 固化为 `ConvergeDecisionSummary`（见 `contracts/schemas/*`）。
+- `Diagnostics Level=off` 下不得产出任何可导出的 `field:converge` 事件/摘要；仅 `light|full` 允许导出。
 
 ## 8) EvidencePackage（Spec 005）导出约定（converge 扩展）
 
-- `Diagnostics Level=light`：仅在每条 `trait:converge` 事件中输出 `staticIrDigest`（不导出 `ConvergeStaticIR`）。
+- `Diagnostics Level=light`：仅在每条 `field:converge` 事件中输出 `staticIrDigest`（不导出 `ConvergeStaticIR`）。
 - `Diagnostics Level=full`：除 `staticIrDigest` 外，EvidencePackage 内必须按 `staticIrDigest` 去重导出对应的 `ConvergeStaticIR`（同一 `instanceId:generation` 只出一次），用于离线解释/回放；导出位置约定为 `EvidencePackage.summary.converge.staticIrByDigest`（见 `contracts/schemas/converge-evidence-package-summary.schema.json`）。

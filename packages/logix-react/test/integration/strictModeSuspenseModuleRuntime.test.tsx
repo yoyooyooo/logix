@@ -4,8 +4,10 @@ import React, { Suspense } from 'react'
 import { render, screen, waitFor, fireEvent, renderHook } from '@testing-library/react'
 import { Schema, Effect, Layer, ManagedRuntime } from 'effect'
 import * as Logix from '@logixjs/core'
+import * as RuntimeContracts from '@logixjs/core/repo-internal/runtime-contracts'
 import { RuntimeProvider } from '../../src/RuntimeProvider.js'
-import { useModule } from '../../src/Hooks.js'
+import { useModule, useSelector } from '../../src/Hooks.js'
+import { useProgramRuntimeBlueprint } from '../../src/internal/hooks/useProgramRuntimeBlueprint.js'
 
 const Counter = Logix.Module.make('StrictAsyncCounter', {
   state: Schema.Struct({ value: Schema.Number }),
@@ -14,13 +16,13 @@ const Counter = Logix.Module.make('StrictAsyncCounter', {
   },
 })
 
-const CounterLogic = Counter.logic(($) =>
+const CounterLogic = Counter.logic('counter-logic', ($) =>
   Effect.gen(function* () {
     yield* $.onAction('inc').run($.state.update((s) => ({ ...s, value: s.value + 1 })))
   }),
 )
 
-const AsyncCounterImpl = Counter.implement({
+const AsyncCounterProgram = Logix.Program.make(Counter, {
   initial: { value: 0 },
   logics: [
     Effect.gen(function* () {
@@ -31,6 +33,7 @@ const AsyncCounterImpl = Counter.implement({
     }),
   ] as any,
 })
+const AsyncCounterBlueprint = RuntimeContracts.getProgramRuntimeBlueprint(AsyncCounterProgram)
 
 interface SharedCounterViewProps {
   /** Resource-cache key that determines whether ModuleRuntime is shared */
@@ -40,23 +43,23 @@ interface SharedCounterViewProps {
 }
 
 const SharedCounterView: React.FC<SharedCounterViewProps> = ({ resourceKey, viewId }) => {
-  const counter = useModule(AsyncCounterImpl, {
+  const counter = useProgramRuntimeBlueprint(AsyncCounterBlueprint, {
     suspend: true,
     key: resourceKey,
   })
-  const value = useModule(counter, (s) => (s as { value: number }).value)
+  const value = useSelector(counter, (s) => (s as { value: number }).value)
 
   return (
     <div>
       <span data-testid={`value-${viewId}`}>{value}</span>
-      <button type="button" data-testid={`inc-${viewId}`} onClick={() => counter.actions.inc()}>
+      <button type="button" data-testid={`inc-${viewId}`} onClick={() => counter.dispatchers.inc()}>
         inc
       </button>
     </div>
   )
 }
 
-describe('StrictMode + Suspense integration for ModuleImpl', () => {
+describe('StrictMode + Suspense integration for ProgramRuntimeBlueprint', () => {
   it('should share ModuleRuntime between components with same suspend:true key under StrictMode + Suspense', async () => {
     const runtime = ManagedRuntime.make(Layer.empty as Layer.Layer<any, never, never>)
 
@@ -104,11 +107,11 @@ describe('StrictMode + Suspense integration for ModuleImpl', () => {
     )
 
     const usePair = () => {
-      const left = useModule(AsyncCounterImpl, {
+      const left = useProgramRuntimeBlueprint(AsyncCounterBlueprint, {
         suspend: true,
         key: 'StrictShared:Left',
       })
-      const right = useModule(AsyncCounterImpl, {
+      const right = useProgramRuntimeBlueprint(AsyncCounterBlueprint, {
         suspend: true,
         key: 'StrictShared:Right',
       })

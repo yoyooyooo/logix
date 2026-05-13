@@ -1,6 +1,6 @@
 # Contract: React ModuleScope（Provider + hook + 可选 Bridge）
 
-**Branch**: `037-route-scope-eviction`  
+**Branch**: `037-route-scope-eviction`
 **Source Spec**: `specs/037-route-scope-eviction/spec.md`
 
 > 本契约描述 `@logixjs/react` 对外提供的“Scope 工具”能力：它如何把 Host 实例暴露给深层组件、如何合并 options、以及缺 Provider/缺注册时的错误口径。
@@ -9,7 +9,7 @@
 
 `@logixjs/react` MUST 提供一个稳定的 public API（不得依赖 `./internal/*`）用于创建 scope 组合件：
 
-- 输入：某个 Host `ModuleImpl`（以及可选 defaults）
+- 输入：某个 Host `ProgramRuntimeBlueprint`（以及可选 defaults）
 - 输出：`{ Provider, use, useImported, Context }`（可选：`Bridge`）
 
 契约以形状描述（具体导出名以实现为准）：

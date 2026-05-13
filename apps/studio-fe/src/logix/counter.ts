@@ -16,7 +16,7 @@ export const CounterDef = Logix.Module.make('StudioCounter', {
   actions: CounterActionMap,
 })
 
-export const CounterLogic = CounterDef.logic(($) => ({
+export const CounterLogic = CounterDef.logic('counter', ($) => ({
   setup: Effect.void,
   run: Effect.gen(function* () {
     yield* $.onAction('inc').runParallelFork($.state.update((prev) => ({ ...prev, value: prev.value + 1 })))
@@ -27,9 +27,7 @@ export const CounterLogic = CounterDef.logic(($) => ({
   }),
 }))
 
-export const CounterModule = CounterDef.implement({
+export const CounterProgram = Logix.Program.make(CounterDef, {
   initial: { value: 0 },
   logics: [CounterLogic],
 })
-
-export const CounterImpl = CounterModule.impl

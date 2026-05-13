@@ -1,7 +1,7 @@
 # Quickstart: 如何为 packages/* 新增/重构 Public Submodules
 
-**Branch**: `030-packages-public-submodules`  
-**Date**: 2025-12-24  
+**Branch**: `030-packages-public-submodules`
+**Date**: 2025-12-24
 **Spec**: `specs/030-packages-public-submodules/spec.md`
 
 本 quickstart 面向仓库贡献者：如何在不扩大 public surface 的前提下，为某个 `packages/*` 子包新增或重构对外概念入口。

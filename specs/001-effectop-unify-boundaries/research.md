@@ -1,7 +1,7 @@
 # Research: 001-effectop-unify-boundaries
 
-**Feature**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/001-effectop-unify-boundaries/spec.md`  
-**Plan**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/001-effectop-unify-boundaries/plan.md`  
+**Feature**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/001-effectop-unify-boundaries/spec.md`
+**Plan**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/001-effectop-unify-boundaries/plan.md`
 **Date**: 2025-12-12
 
 ## Decisions
@@ -59,9 +59,9 @@
 - Flow.run / runLatest / runExhaust / runParallel：每次事件处理（payload → handler）
 - Flow.runFork / runParallelFork：fork 的 watcher 入口
 
-### Traits / Services
+### Fields / Services
 
-- trait-computed / trait-link / trait-source：StateTrait.install 触发的更新/传播/刷新
+- field-computed / field-link / field-source：FieldKernel.install 触发的更新/传播/刷新
 - service：资源/请求类边界（若存在统一资源层/查询层）
 
 ### Debug / Observability
@@ -76,25 +76,25 @@
 
 ## 001a 回查（EffectOp / Middleware 对齐结论）
 
-> 目标：对照 `specs/001a-module-traits-runtime/*` 中与 EffectOp/Middleware 相关承诺，给出“已覆盖/需修订/延期”清单，作为后续演进锚点。
+> 目标：对照 `specs/000-module-fields-runtime/*` 中与 EffectOp/Middleware 相关承诺，给出“已覆盖/需修订/延期”清单，作为后续演进锚点。
 >
 > 主要参考：
 >
-> - `specs/001a-module-traits-runtime/spec.md`
-> - `specs/001a-module-traits-runtime/references/effectop-and-middleware.md`
+> - `specs/000-module-fields-runtime/spec.md`
+> - `specs/000-module-fields-runtime/references/effectop-and-middleware.md`
 
 | 条目                    | 001a 承诺（摘要）                                                                                                        | 当前实现（001-effectop-unify-boundaries）                                                                                                                      | 结论                                                                |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------- |
-| 统一总线                | Action / Flow / State / Service / Lifecycle / Trait / Devtools 等边界执行统一提升为 EffectOp，并必经同一 MiddlewareStack | 已通过 `ModuleRuntime.runOperation` + `EffectOpMiddlewareTag` 收口；Flow/Bound/Trait/Debug 等均接线进入总线                                                    | 已覆盖                                                              |
-| MiddlewareStack 注入    | Runtime.make 注入 `EffectOpMiddlewareEnv { stack }`，运行时代码通过 Env 读取同一 stack                                   | 已实现 `EffectOpMiddlewareTag` + `RuntimeOptions.middleware` 注入；StateTrait.install / FlowRuntime 等通过 Env 读取                                            | 已覆盖                                                              |
+| 统一总线                | Action / Flow / State / Service / Lifecycle / Field / Devtools 等边界执行统一提升为 EffectOp，并必经同一 MiddlewareStack | 已通过 `ModuleRuntime.runOperation` + `EffectOpMiddlewareTag` 收口；Flow/Bound/Field/Debug 等均接线进入总线                                                    | 已覆盖                                                              |
+| MiddlewareStack 注入    | Runtime.make 注入 `EffectOpMiddlewareEnv { stack }`，运行时代码通过 Env 读取同一 stack                                   | 已实现 `EffectOpMiddlewareTag` + `RuntimeOptions.middleware` 注入；FieldKernel.install / FlowRuntime 等通过 Env 读取                                            | 已覆盖                                                              |
 | Middleware 组合语义     | `composeMiddleware(stack)` 使用 reduceRight，顺序为 `mw1 -> mw2 -> effect -> mw2 -> mw1`                                 | 已实现并保持 reduceRight 语义；并在测试中验证顺序                                                                                                              | 已覆盖                                                              |
-| Trait → EffectOp        | StateTrait.install 在触发条件满足时构造 EffectOp，并交给 MiddlewareStack 执行（不直接依赖中间件细节）                    | 已实现：Trait 的 computed/link/source 以 EffectOp 形式输出，并通过 Env 中 stack 执行                                                                           | 已覆盖                                                              |
+| Field → EffectOp        | FieldKernel.install 在触发条件满足时构造 EffectOp，并交给 MiddlewareStack 执行（不直接依赖中间件细节）                    | 已实现：Field 的 computed/link/source 以 EffectOp 形式输出，并通过 Env 中 stack 执行                                                                           | 已覆盖                                                              |
 | Guard 显式拒绝          | 需要一个“显式拒绝失败”结果（可区分于成功），拒绝发生在用户 effect 之前且无副作用                                         | 已实现 `OperationRejected` + 运行前拒绝语义（测试覆盖）；并将 `@logixjs/core/EffectOp` 的 Middleware 错误通道允许叠加 `OperationRejected`                        | 已覆盖（但需补文档）                                                |
-| 001a EffectOp 命名/分型 | 001a reference 中对 trait 步骤的示例命名（如 `computed:update` / `link:propagate`）与 kind 归类（state/service）         | 当前实现将 trait 事件分为 `kind = "trait-computed"                                                                                                             | "trait-link"                                                        | "trait-source"`，并在 Devtools 中按 kind 展示；与 001a reference 示例存在差异 | 需修订（以当前实现为准更新 001a reference） |
-| txnId 贯穿 trait 步骤   | 001a FR-023：同一事务内的每个 trait 步骤产生独立 EffectOp 事件，并共享同一 `txnId`（用于 Devtools 重建事务内演进）       | 当前总线能补齐 `txnId`（在 StateTransaction 活跃时），但 Trait 步骤级 EffectOp 目前更偏向用 `linkId` 串联；对“txnId 贯穿每个 trait 步骤”的严格承诺尚未完全固化 | 延期（锚点：003-trait-txn-lifecycle / StateTransaction 可视化完善） |
+| 001a EffectOp 命名/分型 | 001a reference 中对 field 步骤的示例命名（如 `computed:update` / `link:propagate`）与 kind 归类（state/service）         | 当前实现将 field 事件分为 `kind = "field-computed"                                                                                                             | "field-link"                                                        | "field-source"`，并在 Devtools 中按 kind 展示；与 001a reference 示例存在差异 | 需修订（以当前实现为准更新 001a reference） |
+| txnId 贯穿 field 步骤   | 001a FR-023：同一事务内的每个 field 步骤产生独立 EffectOp 事件，并共享同一 `txnId`（用于 Devtools 重建事务内演进）       | 当前总线能补齐 `txnId`（在 StateTransaction 活跃时），但 Field 步骤级 EffectOp 目前更偏向用 `linkId` 串联；对“txnId 贯穿每个 field 步骤”的严格承诺尚未完全固化 | 延期（锚点：003-field-txn-lifecycle / StateTransaction 可视化完善） |
 
 ### 处理结论
 
-- **已覆盖**：统一总线、注入方式、组合语义、Trait 接缝、Guard 拒绝语义。
-- **需修订**：将 001a reference 中关于 trait 步骤的 kind/name 示例更新为当前实现（trait-\* 分型 + 事件命名规则）。
-- **延期**：trait 步骤与 `txnId` 的严格对齐（以及基于 txnId+patch 的事务内演进可视化），归入后续主题集中收敛。
+- **已覆盖**：统一总线、注入方式、组合语义、Field 接缝、Guard 拒绝语义。
+- **需修订**：将 001a reference 中关于 field 步骤的 kind/name 示例更新为当前实现（field-\* 分型 + 事件命名规则）。
+- **延期**：field 步骤与 `txnId` 的严格对齐（以及基于 txnId+patch 的事务内演进可视化），归入后续主题集中收敛。

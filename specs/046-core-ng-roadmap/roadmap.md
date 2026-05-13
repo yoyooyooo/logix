@@ -12,9 +12,9 @@
 - `M0 / 045` 已达标：`specs/045-dual-kernel-contract/quickstart.md`
   - Perf（diff）：`specs/045-dual-kernel-contract/perf/diff.node.worktree.default.json`、`specs/045-dual-kernel-contract/perf/diff.browser.worktree.default.json`
   - Contract harness：`packages/logix-core/src/internal/reflection/kernelContract.ts`
-- `M1 / 039` 已达标：`specs/039-trait-converge-int-exec-evidence/quickstart.md`
-  - Perf（summary）：`specs/039-trait-converge-int-exec-evidence/perf.md`
-  - Perf（diff）：`specs/039-trait-converge-int-exec-evidence/perf/diff.node.worktree.json`、`specs/039-trait-converge-int-exec-evidence/perf/diff.browser.worktree.json`、`specs/039-trait-converge-int-exec-evidence/perf/diff.browser.diagnostics-overhead.worktree.json`
+- `M1 / 039` 已达标：`specs/039-field-converge-int-exec-evidence/quickstart.md`
+  - Perf（summary）：`specs/039-field-converge-int-exec-evidence/perf.md`
+  - Perf（diff）：`specs/039-field-converge-int-exec-evidence/perf/diff.node.worktree.json`、`specs/039-field-converge-int-exec-evidence/perf/diff.browser.worktree.json`、`specs/039-field-converge-int-exec-evidence/perf/diff.browser.diagnostics-overhead.worktree.json`
 - `M3 / 047` 已达标：`specs/047-core-ng-full-cutover-gate/quickstart.md`
   - Perf（diff）：`specs/047-core-ng-full-cutover-gate/perf/diff.node.default.worktree.json`、`specs/047-core-ng-full-cutover-gate/perf/diff.browser.default.worktree.json`
 - `M4 / 048` 已达标（历史迁移 spec；当前 Policy Update 已回退默认 `core`）：`specs/048-core-ng-default-switch-migration/quickstart.md`
@@ -36,7 +36,7 @@
 | Milestone | 目标（做完能得到什么） | 硬门槛（必须可证据化/可重复验证） | 主落点（spec） |
 | --------- | ---------------------- | ---------------------------------- | -------------- |
 | M0        | 045 分支点落地：Kernel Contract + 对照验证跑道可用 | `KernelImplementationRef`/`RuntimeServicesEvidence` 分档位正确；对照验证 harness 可输出结构化 diff；默认路径 Node+Browser 无回归证据 | `specs/045-dual-kernel-contract/` |
-| M1        | 当前内核“够硬”：收敛/事务热路径整型化 + 证据达标 | 039 的 `SC-002/SC-003/SC-005` 达标；Node+Browser before/after/diff 固化；明确阻断“半成品态” | `specs/039-trait-converge-int-exec-evidence/` |
+| M1        | 当前内核“够硬”：收敛/事务热路径整型化 + 证据达标 | 039 的 `SC-002/SC-003/SC-005` 达标；Node+Browser before/after/diff 固化；明确阻断“半成品态” | `specs/039-field-converge-int-exec-evidence/` |
 | M1.5      | 读状态协议化：ReadQuery/SelectorSpec + 车道（AOT/JIT/Dynamic）+ struct memo + Devtools 可解释 | 无插件仍可用（JIT 默认）；dynamic 回退必须可观测且可在 strict 下失败；读依赖能进入统一最小 IR（至少声明 reads/deps） | `specs/057-core-ng-static-deps-without-proxy/` |
 | M1.6      | Txn Lanes 默认开启：从显式 opt-in 切为默认 on（保留回退/对照） | Default Switch Gate 达标（见 060）；`diagnostics=off` 近零成本不回归（052）；Node+Browser before/after/diff（默认路径 off vs default-on，core+core-ng 都需达标） | `specs/062-txn-lanes-default-switch-migration/` |
 | M2        | core-ng 可并行推进：在 trial-run/test/dev 可渐进替换 | core vs core-ng 可被同一对照验证驱动；fallback 必须可解释；请求 core-ng 的 perf 不得显著回归 | `specs/045-dual-kernel-contract/`（US2/US3） |

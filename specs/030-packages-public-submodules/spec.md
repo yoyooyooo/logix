@@ -1,8 +1,8 @@
 # Feature Specification: Packages 对外子模块裁决与结构治理
 
-**Feature Branch**: `[030-packages-public-submodules]`  
-**Created**: 2025-12-24  
-**Status**: Complete  
+**Feature Branch**: `[030-packages-public-submodules]`
+**Created**: 2025-12-24
+**Status**: Complete
 **Input**: User description: "希望所有子包的 src 根目录只承载对外子模块入口；子模块文件名用大写（PascalCase）并与核心概念同名/同前缀；非子模块实现下沉到 src/internal；同时对 packages/* 做一次全面梳理，抽取各包核心链路并裁决真正的对外子模块/概念。"
 
 ## User Scenarios & Testing *(mandatory)*

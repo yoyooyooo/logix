@@ -1,7 +1,7 @@
 # Research: Query 收口到 `@logixjs/query`（与 Form 同形）
 
-**Date**: 2025-12-23  
-**Spec**: `/Users/yoyo/Documents/code/personal/intent-flow/specs/026-unify-query-domain/spec.md`  
+**Date**: 2025-12-23
+**Spec**: `/Users/yoyo/Documents/code/personal/logix.worktrees/next-api/specs/026-unify-query-domain/spec.md`
 **Goal**: 统一 Query 领域入口与协议，消除 `@logixjs/core` 中的历史占位实现，让 Query 只以 `@logixjs/query` 的“领域包形状”存在，并给出可迁移、可测量、可诊断的落地路径。
 
 ## Decision 1：删除 `@logixjs/core/Middleware/Query`，Query 入口只保留 `@logixjs/query`
@@ -11,7 +11,7 @@
 **Rationale**:
 
 - 目前存在两套不兼容的注入 Tag 与语义：历史 `@logixjs/core/Middleware/Query` 的注入口 vs `@logixjs/query` 的 `Query.Engine`，会导致“同名 Query，但不是同一条协议”的隐性踩坑。
-- `@logixjs/query` 已形成明确的领域包边界与契约（参考 `specs/007-unify-trait-system/contracts/query.md`）：module factory + controller 句柄扩展 + traits 降解 + 外部引擎注入 + 失效事件化。
+- `@logixjs/query` 已形成明确的领域包边界与契约（参考 `specs/007-unify-field-system/contracts/query.md`）：module factory + controller 句柄扩展 + fields 降解 + 外部引擎注入 + 失效事件化。
 - `@logixjs/core/Middleware/Query` 的行为包含“静默退化”路径，容易在缺少注入时让缓存/去重语义失效且不易诊断；与“显式注入/可解释配置错误”的宪章倾向冲突。
 
 **Alternatives considered**:
@@ -24,7 +24,7 @@
 **Decision**: 调整 `@logixjs/query` 的 public barrel，使其与 `@logixjs/form` 同构：
 
 - 推荐使用：`import * as Query from "@logixjs/query"`
-- 以同名导出提供 `Query.make` / `Query.traits` / `Query.Engine`（Tag，含 `layer/middleware`）/ `Query.TanStack`（命名空间式组织），其中 `Query.make` 返回“模块资产”，并通过 ModuleHandle 扩展暴露默认 `controller`。
+- 以同名导出提供 `Query.make` / `Query.fields` / `Query.Engine`（Tag，含 `layer/middleware`）/ `Query.TanStack`（命名空间式组织），其中 `Query.make` 返回“模块资产”，并通过 ModuleHandle 扩展暴露默认 `controller`。
 
 **Rationale**:
 
@@ -57,12 +57,12 @@
 
 **Decision**:
 
-- 删除或迁移 `packages/logix-core/test/*` 中与 Query 专用入口相关的测试（如 `QuerySource.SyntaxSugar.*`、`ResourceQuery.Integration.*`、`StateTrait.SourceRuntime.*` 中的 Query middleware 部分）。
-- 在 `packages/logix-query/test/*` 内补齐等价覆盖：以 `StateTrait.source` / `EffectOp meta(resourceId/keyHash)` 为底座，验证 Query 领域的 TanStack 集成、自动触发、失效事件化与配置错误语义。
+- 删除或迁移 `packages/logix-core/test/*` 中与 Query 专用入口相关的测试（如 `QuerySource.SyntaxSugar.*`、`ResourceQuery.Integration.*`、`FieldKernel.SourceRuntime.*` 中的 Query middleware 部分）。
+- 在 `packages/logix-query/test/*` 内补齐等价覆盖：以 `FieldKernel.source` / `EffectOp meta(resourceId/keyHash)` 为底座，验证 Query 领域的 TanStack 集成、自动触发、失效事件化与配置错误语义。
 
 **Rationale**:
 
-- core 的职责是提供通用内核（StateTrait/Resource/EffectOp/Debug），不应绑定 Query 领域入口或其 DI Tag。
+- core 的职责是提供通用内核（FieldKernel/Resource/EffectOp/Debug），不应绑定 Query 领域入口或其 DI Tag。
 - 将测试落到 `@logixjs/query` 可避免循环依赖，也更贴合“领域包应能降解到同一条 kernel 主线”的验收方式。
 
 **Alternatives considered**:
@@ -111,7 +111,7 @@
 - `Query.make` 对外返回 `Logix.Module.Module`（与 Form 一致），而不是独立的 Blueprint；调用方不需要知道 `Module.make → implement` 两步，但 Query 内部仍会使用这两步生成可运行模块。
 - `Query` 的 controller 通过 handle 扩展挂到模块 Tag 上（`Symbol.for("logix.module.handle.extend")`），确保 `useModule(QueryModule)` / `$.self` / `$.use(QueryModule)` 都能拿到 `controller.*` 且保持强类型。
 - `refresh(target?)` 的 target 必须收窄为 `keyof queries`（不再是 `string`）。
-- `deps` 应尽可能使用 `StateTrait.StateFieldPath<{ params; ui }>` 做类型约束（深度上限 4），让 `"params.*" / "ui.*"` 的路径拼写在编译期尽量暴露问题。
+- `deps` 应尽可能使用 `FieldKernel.StateFieldPath<{ params; ui }>` 做类型约束（深度上限 4），让 `"params.*" / "ui.*"` 的路径拼写在编译期尽量暴露问题。
 
 **Rationale**:
 

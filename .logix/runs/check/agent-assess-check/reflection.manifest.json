@@ -1,0 +1,116 @@
+{
+  "actions": [
+    {
+      "actionTag": "noop",
+      "authority": "runtime-reflection",
+      "payload": {
+        "kind": "nonVoid",
+        "schemaDigest": "schema:38bc1280",
+        "summary": "Schema.Void",
+        "validatorAvailable": true
+      },
+      "primaryReducer": {
+        "kind": "declared"
+      }
+    }
+  ],
+  "budget": {
+    "originalActionCount": 1,
+    "truncated": false
+  },
+  "capabilities": {
+    "check": "available",
+    "run": "available",
+    "trial": "available"
+  },
+  "digest": "runtime-manifest:598dd1d8",
+  "effects": [],
+  "imports": [],
+  "initialState": {
+    "digest": "schema:8c7efaec",
+    "jsonShape": {
+      "properties": {
+        "count": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "count"
+      ],
+      "type": "object"
+    },
+    "kind": "struct",
+    "label": "Schema.Struct({ count: Schema.Number })"
+  },
+  "logicUnits": [
+    {
+      "id": "noop",
+      "kind": "user",
+      "name": "noop"
+    }
+  ],
+  "manifestVersion": "runtime-reflection-manifest@167B",
+  "modules": [
+    {
+      "actionKeys": [
+        "noop"
+      ],
+      "actions": [
+        {
+          "actionTag": "noop",
+          "payload": {
+            "kind": "nonVoid",
+            "schemaDigest": "schema:38bc1280",
+            "summary": "Schema.Void"
+          },
+          "primaryReducer": {
+            "kind": "declared"
+          }
+        }
+      ],
+      "digest": "manifest:067:17c5fe57",
+      "logicUnits": [
+        {
+          "id": "noop",
+          "kind": "user",
+          "name": "noop"
+        }
+      ],
+      "manifestVersion": "067",
+      "moduleId": "CliBasicProgram"
+    }
+  ],
+  "processes": [],
+  "programId": "CliBasicProgram::program:1",
+  "rootModule": {
+    "actionKeys": [
+      "noop"
+    ],
+    "actions": [
+      {
+        "actionTag": "noop",
+        "payload": {
+          "kind": "nonVoid",
+          "schemaDigest": "schema:38bc1280",
+          "summary": "Schema.Void"
+        },
+        "primaryReducer": {
+          "kind": "declared"
+        }
+      }
+    ],
+    "digest": "manifest:067:17c5fe57",
+    "logicUnits": [
+      {
+        "id": "noop",
+        "kind": "user",
+        "name": "noop"
+      }
+    ],
+    "manifestVersion": "067",
+    "moduleId": "CliBasicProgram"
+  },
+  "rootModuleId": "CliBasicProgram",
+  "services": [],
+  "sourceRefs": []
+}

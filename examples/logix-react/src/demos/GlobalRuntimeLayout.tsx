@@ -1,22 +1,33 @@
+import * as CoreDebug from '@logixjs/core/repo-internal/debug-api'
 import React from 'react'
 import { RuntimeProvider } from '@logixjs/react'
-import { Layer, ManagedRuntime } from 'effect'
+import { Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
-import { CounterImpl } from '../modules/counter'
-import { CounterAllImpl } from '../modules/counterAll'
-import { CounterMultiImpl } from '../modules/counterMulti'
-import { CounterRunFork, CounterAllDemo, TagSharedCounter, ImplLocalCounter } from '../sections/GlobalRuntimeSections'
+import { CounterProgram } from '../modules/counter'
+import { CounterAllProgram } from '../modules/counterAll'
+import { CounterMultiProgram } from '../modules/counterMulti'
+import { CounterRunFork, CounterAllDemo, TagSharedCounter } from '../sections/GlobalRuntimeSections'
 
-// 应用级 Runtime：基于多个 ModuleImpl 的 Layer 构建，所有使用 Tag 的组件共享这棵 Runtime。
-const globalRuntime = ManagedRuntime.make(
-  Layer.mergeAll(
-    Logix.Debug.runtimeLabel('GlobalRuntime'),
-    Logix.Debug.devtoolsHubLayer(),
-    CounterImpl.layer,
-    CounterAllImpl.layer,
-    CounterMultiImpl.layer,
+const GlobalRuntimeHost = Logix.Module.make('GlobalRuntimeHost', {
+  state: Schema.Void,
+  actions: {},
+})
+
+const GlobalRuntimeProgram = Logix.Program.make(GlobalRuntimeHost, {
+  initial: undefined,
+  capabilities: {
+    imports: [CounterProgram, CounterAllProgram, CounterMultiProgram],
+  },
+})
+
+// 应用级 Runtime：基于多个 Program 的底层 layer 构建，所有使用 Tag 的组件共享这棵 Runtime。
+const globalRuntime = Logix.Runtime.make(GlobalRuntimeProgram, {
+  label: 'GlobalRuntime',
+  devtools: true,
+  layer: Layer.mergeAll(
+    CoreDebug.runtimeLabel('GlobalRuntime'),
   ),
-)
+})
 
 export const GlobalRuntimeLayout: React.FC = () => {
   return (
@@ -48,7 +59,7 @@ export const GlobalRuntimeLayout: React.FC = () => {
           </div>
         </section>
 
-        {/* 实例维度：Tag（全局实例共享） vs ModuleImpl（组件局部实例） */}
+        {/* 实例维度：Tag 全局实例共享。局部 Program 多实例由 /local-program 与 /session-program 独立承载。 */}
         <section>
           <div className="flex items-center gap-3 mb-6">
             <div className="h-px flex-1 bg-gray-200 dark:bg-gray-800"></div>
@@ -67,33 +78,13 @@ export const GlobalRuntimeLayout: React.FC = () => {
                   </span>
                 </h4>
                 <p className="text-sm text-gray-500 mt-1">
-                  下方两个区域都通过 <code>useModule(CounterMultiDef)</code> 访问同一个 Counter 实例，
+                  下方两个区域都通过 <code>useModule(CounterMulti.tag)</code> 访问同一个 Counter 实例，
                   在其中一个区域进行的修改会在另一个区域中同步体现。
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <TagSharedCounter />
                 <TagSharedCounter />
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="mb-2">
-                <h4 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-                  ModuleImpl 模式
-                  <span className="text-xs font-normal text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
-                    组件局部实例
-                  </span>
-                </h4>
-                <p className="text-sm text-gray-500 mt-1">
-                  下方两个区域通过 <code>useModule(CounterMultiImpl)</code> 在组件内部构造局部实例，
-                  各自维护独立的计数状态。
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <ImplLocalCounter />
-                <ImplLocalCounter />
               </div>
             </div>
           </div>

@@ -4,7 +4,7 @@
 
 ## Hard Conclusion（profile=default）
 
-- Matrix SSoT：`.codex/skills/logix-perf-evidence/assets/matrix.json`（`id=logix-browser-perf-matrix-v1`）
+- Matrix SSoT：`packages/logix-perf-evidence/assets/matrix.json`（`id=logix-browser-perf-matrix-v1`）
 - Browser：`diff.browser.legacy__selectorGraph.darwin-arm64.default.json`（`comparability.comparable=true` 且 `summary.regressions==0`）
 - Node（worktree+GC）：`diff.node.legacy__selectorGraph.darwin-arm64.default.worktree.gc.json`（`comparability.comparable=true` 且 `summary.regressions==0`）
 

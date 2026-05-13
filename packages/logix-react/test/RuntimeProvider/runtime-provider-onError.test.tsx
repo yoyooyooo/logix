@@ -14,7 +14,7 @@ describe('RuntimeProvider onError (observer bridge)', () => {
       state: Schema.Void,
       actions: {},
     })
-    const runtime = Logix.Runtime.make(Root.implement({ initial: undefined }), {
+    const runtime = Logix.Runtime.make(Logix.Program.make(Root, { initial: undefined }), {
       layer: Layer.empty as Layer.Layer<any, never, never>,
     })
 
@@ -55,8 +55,8 @@ const failingLayer = Layer.effectDiscard(Effect.die(new Error('layer build faile
       state: Schema.Void,
       actions: {},
     })
-    const brokenLogic = Broken.logic(() => Effect.die(new Error('boom')))
-    const BrokenImpl = Broken.implement({
+    const brokenLogic = Broken.logic('broken-logic', () => Effect.die(new Error('boom')))
+    const BrokenProgram = Logix.Program.make(Broken, {
       initial: undefined,
       logics: [brokenLogic],
     })
@@ -65,12 +65,14 @@ const failingLayer = Layer.effectDiscard(Effect.die(new Error('layer build faile
       state: Schema.Void,
       actions: {},
     })
-    const RootImpl = Root.implement({
+    const RootProgram = Logix.Program.make(Root, {
       initial: undefined,
-      imports: [BrokenImpl.impl],
+      capabilities: {
+        imports: [BrokenProgram],
+      },
     })
 
-    const runtime = Logix.Runtime.make(RootImpl, {
+    const runtime = Logix.Runtime.make(RootProgram, {
       layer: Layer.empty as Layer.Layer<any, never, never>,
     })
 
@@ -91,7 +93,7 @@ const failingLayer = Layer.effectDiscard(Effect.die(new Error('layer build faile
       </RuntimeProvider>
     )
 
-    renderHook(() => useModule(BrokenImpl), { wrapper })
+    renderHook(() => useModule(BrokenProgram), { wrapper })
 
     await waitFor(() => expect(seen).not.toBeNull())
     expect(seen!.context.source).toBe('provider')
@@ -105,8 +107,8 @@ const failingLayer = Layer.effectDiscard(Effect.die(new Error('layer build faile
       state: Schema.Void,
       actions: {},
     })
-    const brokenLogic = Broken.logic(() => Effect.die(new Error('nested boom')))
-    const BrokenImpl = Broken.implement({
+    const brokenLogic = Broken.logic('broken-logic-2', () => Effect.die(new Error('nested boom')))
+    const BrokenProgram = Logix.Program.make(Broken, {
       initial: undefined,
       logics: [brokenLogic],
     })
@@ -115,12 +117,14 @@ const failingLayer = Layer.effectDiscard(Effect.die(new Error('layer build faile
       state: Schema.Void,
       actions: {},
     })
-    const RootImpl = Root.implement({
+    const RootProgram = Logix.Program.make(Root, {
       initial: undefined,
-      imports: [BrokenImpl.impl],
+      capabilities: {
+        imports: [BrokenProgram],
+      },
     })
 
-    const runtime = Logix.Runtime.make(RootImpl, {
+    const runtime = Logix.Runtime.make(RootProgram, {
       layer: Layer.empty as Layer.Layer<any, never, never>,
     })
 
@@ -147,7 +151,7 @@ const failingLayer = Layer.effectDiscard(Effect.die(new Error('layer build faile
       </RuntimeProvider>
     )
 
-    renderHook(() => useModule(BrokenImpl), { wrapper })
+    renderHook(() => useModule(BrokenProgram), { wrapper })
 
     await waitFor(() => expect(order.length).toBeGreaterThanOrEqual(2))
     expect(order[0]).toBe('inner')

@@ -1,6 +1,6 @@
 # Implementation Plan: 078 Module↔Service 关系纳入 Manifest IR（平台可诊断/可回放）
 
-**Branch**: `078-module-service-manifest` | **Date**: 2026-01-09 | **Spec**: `specs/078-module-service-manifest/spec.md`  
+**Branch**: `078-module-service-manifest` | **Date**: 2026-01-09 | **Spec**: `specs/078-module-service-manifest/spec.md`
 **Input**: Feature specification from `specs/078-module-service-manifest/spec.md`
 
 ## Summary
@@ -35,14 +35,14 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript（ESM；以仓库 `package.json` 为准）  
-**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（Devtools）`@logixjs/devtools-react`  
-**Storage**: N/A（IR/报告以 JSON 结构导出；必要时落盘到 `specs/078-module-service-manifest/*`）  
-**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）  
-**Target Platform**: Node.js 20+ + modern browsers  
-**Project Type**: pnpm workspace（`packages/*` + `examples/*`）  
-**Performance Goals**: 默认档无常驻反射/索引成本；显式导出 Manifest/对齐检查时在预算内完成（见 `contracts/` 的 budgets）  
-**Constraints**: IR 必须 Slim 且可序列化；稳定锚点去随机化；避免引入并行真相源；forward-only evolution  
+**Language/Version**: TypeScript（ESM；以仓库 `package.json` 为准）
+**Primary Dependencies**: pnpm workspace、`effect` v3、`@logixjs/core`、（Devtools）`@logixjs/devtools-react`
+**Storage**: N/A（IR/报告以 JSON 结构导出；必要时落盘到 `specs/078-module-service-manifest/*`）
+**Testing**: Vitest（Effect-heavy 优先 `@effect/vitest`）
+**Target Platform**: Node.js 20+ + modern browsers
+**Project Type**: pnpm workspace（`packages/*` + `examples/*`）
+**Performance Goals**: 默认档无常驻反射/索引成本；显式导出 Manifest/对齐检查时在预算内完成（见 `contracts/` 的 budgets）
+**Constraints**: IR 必须 Slim 且可序列化；稳定锚点去随机化；避免引入并行真相源；forward-only evolution
 **Scale/Scope**: 以“模块输入依赖端口”的可枚举关系为核心；试运行与 Devtools 仅做最小闭环
 
 ## Constitution Check
@@ -62,7 +62,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - **Performance budget**：不改调度/txn 热路径；默认档不付反射税；显式导出/对齐检查按 budgets 控制（Manifest `maxBytes`、试运行 `maxEvents`）。
 - **Diagnosability & explainability**：新增的诊断以结构化 report/manifest 字段承载；事件必须 Slim 且可序列化（避免把 Tag 实例写进证据）。
 - **Breaking changes (forward-only)**：Manifest schema 增量是 breaking for consumers（新字段+版本 bump）；通过 manifestVersion + migration note 交代，无兼容层。
-- **Public submodules**：核心实现下沉 `src/internal/**`；公共出口通过 `packages/logix-core/src/Reflection.ts`/`Debug.ts` 暴露必要 API，不暴露 internal。
+- **Public submodules**：核心实现下沉 `src/internal/**`；公共出口通过 `packages/logix-core/src/internal/reflection-api.ts`/`Debug.ts` 暴露必要 API，不暴露 internal。
 - **Large modules/files**：`manifest.ts`、`diff.ts` 已存在且可控；若新增逻辑导致文件逼近阈值，必须按 constitution 做互斥子模块拆解。
 - **Quality gates**：实现阶段至少通过 `pnpm typecheck`、`pnpm lint`、`pnpm test:turbo`；并补充针对 `extractManifest/diff/trialRun` 的单测覆盖。
 
@@ -77,7 +77,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 ## Perf Evidence Plan（MUST）
 
 > 若本特性触及 Logix Runtime 核心路径 / 渲染关键路径 / 对外性能边界：此节必须填写；否则标注 `N/A`。
-> 详细口径见：`.codex/skills/logix-perf-evidence/references/perf-evidence.md`
+> 详细口径见：`packages/logix-perf-evidence/references/perf-evidence.md`
 
 - N/A（计划不改 runtime 调度/txn 热路径；变更集中在反射/试运行/Devtools 的显式调用路径）
 

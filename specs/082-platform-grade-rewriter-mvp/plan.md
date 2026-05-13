@@ -1,6 +1,6 @@
 # Implementation Plan: Platform-Grade Rewriter MVP（082）
 
-**Branch**: `082-platform-grade-rewriter-mvp` | **Date**: 2026-01-09 | **Spec**: [spec.md](./spec.md)  
+**Branch**: `082-platform-grade-rewriter-mvp` | **Date**: 2026-01-09 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `specs/082-platform-grade-rewriter-mvp/spec.md`
 
 ## Summary
@@ -31,13 +31,13 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript（workspace：5.8.2；以 `package.json` 为准）  
-**Primary Dependencies**: `effect` v3、Node-only：`ts-morph`（AST 编辑/写回）、（可选）`swc`（print/辅助分析）  
-**Storage**: 文件写回（源码锚点字段）；其余输出为 JSON 工件  
-**Testing**: Vitest（以“幂等/最小 diff/失败语义”作为核心用例）；集成测试由 085 CLI 承担  
-**Target Platform**: Node.js 20+  
-**Project Type**: pnpm workspace（packages）  
-**Performance Goals**: N/A（不触及 runtime 热路径）  
+**Language/Version**: TypeScript（workspace：5.8.2；以 `package.json` 为准）
+**Primary Dependencies**: `effect` v3、Node-only：`ts-morph`（AST 编辑/写回）、（可选）`swc`（print/辅助分析）
+**Storage**: 文件写回（源码锚点字段）；其余输出为 JSON 工件
+**Testing**: Vitest（以“幂等/最小 diff/失败语义”作为核心用例）；集成测试由 085 CLI 承担
+**Target Platform**: Node.js 20+
+**Project Type**: pnpm workspace（packages）
+**Performance Goals**: N/A（不触及 runtime 热路径）
 **Constraints**: 单一真相源（必须写回源码）、宁可漏不乱补、确定性/可序列化/可 diff、禁止 silent corruption
 
 ## Constitution Check

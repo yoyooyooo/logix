@@ -45,6 +45,13 @@
 - [ ] CHK0XX Diagnostic payloads are Slim/serializable and stored in bounded ring buffers
 - [ ] CHK0XX Breaking change declared and migration note linked (forward-only: no compatibility layer / no deprecation period)
 
+## Planning Granularity _(if applicable)_
+
+- [ ] CHK0XX Owner, boundary, non-goals and closure gate are explicit
+- [ ] CHK0XX Quality gates, proof obligations, performance / memory / diagnostics constraints and writeback targets are explicit
+- [ ] CHK0XX Plan/tasks avoid pseudo-code or exact algorithms unless a narrow implementation contract requires them
+- [ ] CHK0XX Any `implementation-details/*contract*.md` content that changes owner law or quality gates is written back to `spec.md`, `plan.md`, `tasks.md` or docs SSoT
+
 ## Notes
 
 - Check items off as completed: `[x]`

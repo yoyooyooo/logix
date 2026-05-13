@@ -87,7 +87,7 @@ export const runUploadAndStartImportPattern = (input: UploadAndStartInput) =>
     const uploader = yield* Effect.service(FileUploadService).pipe(Effect.orDie)
     const importer = yield* Effect.service(ImportService).pipe(Effect.orDie)
 
-    // PoC：当文件名为 "fail" 时模拟上传阶段失败，映射为领域错误。
+    // 示例：当文件名为 "fail" 时模拟上传阶段失败，映射为领域错误。
     if (input.fileName === 'fail') {
       return yield* Effect.fail(
         new FileImportPatternError({
@@ -115,7 +115,7 @@ export const runPollImportStatusPattern = (input: PollImportStatusInput) =>
   Effect.gen(function* () {
     const importer = yield* Effect.service(ImportService).pipe(Effect.orDie)
 
-    // PoC：当 taskId 为 "fail" 时模拟轮询阶段失败。
+    // 示例：当 taskId 为 "fail" 时模拟轮询阶段失败。
     if (input.taskId === 'fail') {
       return yield* Effect.fail(
         new FileImportPatternError({
@@ -127,7 +127,7 @@ export const runPollImportStatusPattern = (input: PollImportStatusInput) =>
 
     let status = yield* importer.getImportStatus({ taskId: input.taskId })
 
-    // PoC 中简化轮询逻辑：成功即退出；真实项目中应增加重试/超时/取消等策略。
+    // 这里简化轮询逻辑：成功即退出；真实项目中应增加重试/超时/取消等策略。
     while (status.status === 'PENDING' || status.status === 'RUNNING') {
       yield* Effect.sleep(Duration.seconds(1))
       status = yield* importer.getImportStatus({ taskId: input.taskId })

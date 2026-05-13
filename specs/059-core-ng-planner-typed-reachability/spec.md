@@ -1,8 +1,8 @@
 # Feature Specification: Planner Typed Reachability（TypedArray 极致化）
 
-**Feature Branch**: `059-core-ng-planner-typed-reachability`  
-**Created**: 2025-12-31  
-**Status**: Done  
+**Feature Branch**: `059-core-ng-planner-typed-reachability`
+**Created**: 2025-12-31
+**Status**: Done
 **Input**: 046 registry 条目 `059`（`specs/046-core-ng-roadmap/spec-registry.json`）
 
 ## Summary
@@ -35,4 +35,4 @@
 
 - 046 总控：`specs/046-core-ng-roadmap/`
 - Planner baseline：`specs/013-auto-converge-planner/`
-- Guardrails：`specs/039-trait-converge-int-exec-evidence/`
+- Guardrails：`specs/039-field-converge-int-exec-evidence/`

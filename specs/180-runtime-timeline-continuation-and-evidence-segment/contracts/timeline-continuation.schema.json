@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logix.dev/contracts/runtime-timeline-continuation.schema.json",
+  "title": "Runtime Timeline Continuation Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "cursor": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "schemaVersion": { "type": "string" },
+        "targetKey": { "type": "string" },
+        "attachmentId": { "type": "string" },
+        "queryFingerprint": { "$ref": "#/$defs/queryFingerprint" },
+        "runtimeResumeWatermark": { "type": "object" },
+        "coverageEndWatermark": { "type": "object" },
+        "completenessAtIssue": { "type": "string" }
+      },
+      "required": [
+        "schemaVersion",
+        "targetKey",
+        "queryFingerprint",
+        "runtimeResumeWatermark",
+        "coverageEndWatermark",
+        "completenessAtIssue"
+      ]
+    },
+    "sourceSegments": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/sourceSegment" }
+    },
+    "safeResumeBoundary": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "queryFingerprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "targetKey": { "type": "string" },
+        "attachmentId": { "type": "string" },
+        "fieldFilter": { "type": "string" },
+        "projectionSchemaVersion": { "type": "string" },
+        "redactionPolicyDigest": { "type": "string" },
+        "projectionMode": {
+          "enum": ["timeline-default", "timeline-field-filtered"]
+        }
+      },
+      "required": ["targetKey", "projectionSchemaVersion", "redactionPolicyDigest", "projectionMode"]
+    },
+    "sourceSegment": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "sourceKind": {
+          "enum": ["runtime-head", "daemon-retained-segment"]
+        },
+        "startWatermark": { "type": "object" },
+        "endWatermark": { "type": "object" },
+        "completeness": { "type": "string" },
+        "gaps": { "type": "array" }
+      },
+      "required": ["sourceKind", "startWatermark", "endWatermark", "completeness", "gaps"]
+    }
+  }
+}

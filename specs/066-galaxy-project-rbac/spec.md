@@ -1,8 +1,8 @@
 # Feature Specification: logix-galaxy 项目管理与 RBAC（成员/角色/权限/成员组）
 
-**Feature Branch**: `[066-galaxy-project-rbac]`  
-**Created**: 2025-12-31  
-**Status**: Draft  
+**Feature Branch**: `[066-galaxy-project-rbac]`
+**Created**: 2025-12-31
+**Status**: Draft
 **Input**: User description: "分析下 docs/specs/sdd-platform/workbench/，平台侧现在还是想法阶段，但需要先做项目管理、成员管理、权限管理、成员组；继续推进后端 API + 表设计（用 $postgresql-table-design）；apps/logix-galaxy-fe 做对应页面并集成路由，和 API 联调跑通；前端必须 dogfooding Logix；样式只要轻量布局"
 
 ## Clarifications

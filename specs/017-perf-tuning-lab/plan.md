@@ -60,7 +60,7 @@
 ## Validation（最小验证）
 
 - `pnpm perf tuning:best` 能生成 `specs/014-browser-perf-boundaries/perf/tuning/recommendation.latest.md|json`
-- 单测覆盖控制面优先级：`packages/logix-core/test/StateTrait.ConvergeBudgetConfig.test.ts`
+- 单测覆盖控制面优先级：`packages/logix-core/test/FieldKernel.ConvergeBudgetConfig.test.ts`
 
 ## Next Actions（下一批收口）
 

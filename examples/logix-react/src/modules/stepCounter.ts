@@ -9,23 +9,20 @@ const StepCounterActions = {
   inc: Schema.Void,
 }
 
-export const StepCounterDef = Logix.Module.make('StepCounterModule', {
+export const StepCounter = Logix.Module.make('StepCounterModule', {
   state: StepCounterState,
   actions: StepCounterActions,
 })
 
-export const StepCounterLogic = StepCounterDef.logic(($) => ({
-  setup: Effect.void,
-  run: Effect.gen(function* () {
+export const StepCounterLogic = StepCounter.logic('step-counter-logic', ($) =>
+  Effect.gen(function* () {
     yield* $.onAction('inc').mutate((s) => {
       s.value += 1
     })
   }),
-}))
+)
 
-export const StepCounterModule = StepCounterDef.implement({
+export const StepCounterProgram = Logix.Program.make(StepCounter, {
   initial: { value: 0 },
   logics: [StepCounterLogic],
 })
-
-export const StepCounterImpl = StepCounterModule.impl
