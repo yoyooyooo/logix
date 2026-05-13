@@ -7,6 +7,7 @@
     "directory": "packages/logix-devtools-react"
   },
   "license": "Apache-2.0",
+  "description": "React Devtools UI for the current Logix runtime",
   "files": [
     "dist/**"
   ],

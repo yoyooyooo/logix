@@ -6,7 +6,6 @@
     [
       "@logixjs/cli",
       "@logixjs/core",
-      "@logixjs/core-ng",
       "@logixjs/devtools-react",
       "@logixjs/domain",
       "@logixjs/form",
@@ -19,7 +18,7 @@
   ],
   "linked": [],
   "access": "public",
-  "baseBranch": "effect-v4",
+  "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "privatePackages": {
     "version": false,

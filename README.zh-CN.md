@@ -5,8 +5,15 @@
 Logix 是一个 **Effect-native 的前端状态与业务逻辑运行时**。
 
 本仓库是 Logix 的孵化用 Monorepo：包含运行时内核、React 适配层、Devtools、浏览器 Sandbox，以及可运行的示例与文档站。
-仓库演进速度快，遵循 **forward-only**（不承诺向后兼容）。
+仓库演进速度快，遵循 **forward-only**（不承诺向后兼容）。当前线就是未来 Logix 主线，不是历史兼容分支。
 本 README 只聚焦 Logix；其它目录可能包含实验内容，随演进被替换或删除。
+
+## 项目状态
+
+- Logix 正在积极演进，公开 API 仍可能继续激进收口。
+- 新 runtime 工作只面向 Effect v4。本仓当前固定使用 `effect@4.0.0-beta.28` 及相关 Effect 配套包。
+- 在上游 Effect v4 仍处于 beta 依赖期间，npm 包仍按 prerelease 发布。
+- 目标稳定发布线是 `main`。npm `latest` 稳定版应在 release gate 后明确 cutover，而不是把当前 beta lane 直接改名。规则见 [Release Lane Standard](docs/standards/release-lane-standard.md)。
 
 ## Logix 用来解决什么？
 
