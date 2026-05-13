@@ -11,6 +11,8 @@ on:
       - "packages/logix-react/**"
       - "scripts/perf.ts"
   push:
+    branches:
+      - main
     paths:
       - ".github/scripts/logix-perf-*.cjs"
       - ".github/workflows/logix-perf-*.yml"

@@ -15,6 +15,8 @@ on:
       - "specs/234-p2-examples-playground-perf-isolation/**"
       - "specs/235-kernel-performance-convergence-final-gate/**"
   push:
+    branches:
+      - main
     paths:
       - ".github/scripts/logix-perf-*.cjs"
       - ".github/workflows/logix-perf-*.yml"

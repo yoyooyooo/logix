@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildPublishedManifest, distTagForVersion } from './release-publish.mjs'
+import { buildPublishedManifest, distTagForVersion, npmPackArgs } from './release-publish.mjs'
 
 describe('release-publish manifest helpers', () => {
   it('maps versions to npm dist-tags', () => {
@@ -41,5 +41,9 @@ describe('release-publish manifest helpers', () => {
     expect(manifest.types).toBe('./dist/index.d.ts')
     expect(manifest.publishConfig.main).toBe('./dist/index.cjs')
     expect(manifest.publishConfig.exports['.'].import).toBe('./dist/index.js')
+  })
+
+  it('packs release tarballs without rerunning package prepack scripts after manifest staging', () => {
+    expect(npmPackArgs('/tmp/logix-pack')).toEqual(['pack', '--ignore-scripts', '--pack-destination', '/tmp/logix-pack'])
   })
 })

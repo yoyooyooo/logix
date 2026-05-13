@@ -14,6 +14,8 @@ updated: 2026-05-13
 
 Release is tag-driven. A release is created by tagging a chosen main commit with `logix-v<semver>` and pushing that tag. The release workflow checks out the tag, stages package versions in the CI workspace, creates the GitHub Release, and publishes npm packages through Trusted Publishing.
 
+Only the Release workflow should run for `logix-v*` tag pushes. Normal push workflows are branch-scoped to `main` so release tags do not re-run PR/main CI lanes or create unrelated tag-only failures.
+
 `main` must not receive release-version commits or cleanup commits. Version changes for publishing are CI staging changes unless a future build target proves it must read a committed version.
 
 ## Release Scripts
@@ -53,6 +55,8 @@ The tag helper stores the generated notes in the annotated tag message. CI uses 
 Package `package.json` files may stay on the development version in main. During release, `pnpm release:publish` temporarily rewrites public `@logixjs/*` package versions to the tag semver and rewrites internal `workspace:*` dependencies to the same version before packing.
 
 The restore step must run after packing/publishing so CI workspace mutations do not become commits.
+
+Release packing must not rerun package lifecycle scripts after publish manifest staging. Build, typecheck, tests, and browser smoke belong to `pnpm ci:release`; `pnpm release:publish` packs the verified workspace artifacts with release-staged package manifests.
 
 ## Stable Release Gate
 

@@ -154,11 +154,15 @@ function run(command, args, options = {}) {
   if (result.status !== 0) process.exit(result.status ?? 1)
 }
 
+function npmPackArgs(outDir) {
+  return ['pack', '--ignore-scripts', '--pack-destination', outDir]
+}
+
 function packPackages(packages) {
   const outDir = mkdtempSync(join(tmpdir(), 'logix-release-pack-'))
   for (const { dir, pkg } of packages) {
     console.log(`Packing ${pkg.name}`)
-    run('npm', ['pack', '--pack-destination', outDir], { cwd: dir })
+    run('npm', npmPackArgs(outDir), { cwd: dir })
   }
   return outDir
 }
@@ -273,6 +277,7 @@ function main() {
 export {
   buildPublishedManifest,
   distTagForVersion,
+  npmPackArgs,
   publicPackages,
   stagePackageVersions,
 }
