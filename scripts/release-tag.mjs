@@ -318,24 +318,59 @@ function validateWorkspace(options) {
 }
 
 function previousMergedTag(currentTag) {
-  const output = git(['tag', '--merged', 'HEAD', '--list', 'logix-v*'])
-  if (!output) return null
-  const tags = output
-    .split('\n')
+  const unified = git(['tag', '--merged', 'HEAD', '--list', 'logix-v*'])
+  const historicalCore = git(['tag', '--list', '@logixjs/core@*'])
+  const tags = [unified, historicalCore]
+    .filter(Boolean)
+    .flatMap((output) => output.split('\n'))
+    .filter(Boolean)
+  return previousReleaseAnchorTag(tags, currentTag, currentTag.slice('logix-v'.length))
+}
+
+function previousReleaseAnchorTag(tags, currentTag, currentVersion) {
+  const current = parseSemver(currentVersion)
+  const entries = tags
     .filter((tag) => tag && tag !== currentTag)
     .map((tag) => {
       try {
-        return {
-          tag,
-          parsed: parseSemver(tag.slice('logix-v'.length)),
-        }
+        return releaseAnchorEntry(tag)
       } catch {
         return null
       }
     })
-    .filter(Boolean)
-  tags.sort((a, b) => compareSemver(a.parsed, b.parsed))
-  return tags.at(-1)?.tag ?? null
+    .filter((entry) => entry && compareSemver(entry.parsed, current) < 0)
+
+  const unified = entries.filter((entry) => entry.kind === 'unified')
+  if (unified.length > 0) return latestAnchor(unified)?.tag ?? null
+
+  const historical = entries.filter((entry) => {
+    if (entry.kind !== 'historical-core') return false
+    return current.prerelease === null ? entry.parsed.prerelease === null : true
+  })
+  return latestAnchor(historical)?.tag ?? null
+}
+
+function releaseAnchorEntry(tag) {
+  if (tag.startsWith('logix-v')) {
+    return {
+      kind: 'unified',
+      tag,
+      parsed: parseSemver(tag.slice('logix-v'.length)),
+    }
+  }
+  if (tag.startsWith('@logixjs/core@')) {
+    return {
+      kind: 'historical-core',
+      tag,
+      parsed: parseSemver(tag.slice('@logixjs/core@'.length)),
+    }
+  }
+  throw new Error(`Unsupported release anchor tag: ${tag}`)
+}
+
+function latestAnchor(entries) {
+  entries.sort((a, b) => compareSemver(a.parsed, b.parsed))
+  return entries.at(-1) ?? null
 }
 
 function releaseNotes(version, tag) {
@@ -409,6 +444,7 @@ export {
   compareSemver,
   latestStable,
   parseSemver,
+  previousReleaseAnchorTag,
   previousMergedTag,
   releaseNotes,
   releaseBranchName,

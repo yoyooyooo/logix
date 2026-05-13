@@ -4,6 +4,7 @@ import {
   bumpVersion,
   compareSemver,
   parseSemver,
+  previousReleaseAnchorTag,
   releaseBranchName,
   resolveReleaseBranchPlan,
   resolveVersion,
@@ -191,5 +192,25 @@ describe('release-tag version helpers', () => {
         'logix-v1.2.4',
       ),
     ).toThrow(/different commit/)
+  })
+
+  it('uses the previous unified tag as the release notes anchor when available', () => {
+    expect(
+      previousReleaseAnchorTag(
+        ['@logixjs/core@1.0.1', 'logix-v1.0.2', 'logix-v1.0.3'],
+        'logix-v1.0.4',
+        '1.0.4',
+      ),
+    ).toBe('logix-v1.0.3')
+  })
+
+  it('falls back to the historical stable core tag for the first unified stable release', () => {
+    expect(
+      previousReleaseAnchorTag(
+        ['@logixjs/core@1.0.0', '@logixjs/core@1.0.1', '@logixjs/core@1.0.2-beta.1'],
+        'logix-v1.0.2',
+        '1.0.2',
+      ),
+    ).toBe('@logixjs/core@1.0.1')
   })
 })

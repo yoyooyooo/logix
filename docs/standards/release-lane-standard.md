@@ -46,7 +46,9 @@ Prerelease tags must never publish without an explicit non-`latest` npm dist-tag
 
 ## Release Notes
 
-Changesets are no longer the release authority. Release notes are generated from commits between the previous merged `logix-v*` tag and the new tag.
+Changesets are no longer the release authority. Release notes are generated from commits between the previous merged release anchor and the new tag.
+
+For normal releases, the previous anchor is the latest merged `logix-v*` tag older than the new tag. During the first unified `logix-v*` release after the historical per-package release lane, the tag helper falls back to the latest merged stable `@logixjs/core@*` tag so the GitHub Release body is not widened to an arbitrary recent-commit window.
 
 The tag helper stores the generated notes in the annotated tag message. CI uses that tag message as the GitHub Release body.
 
