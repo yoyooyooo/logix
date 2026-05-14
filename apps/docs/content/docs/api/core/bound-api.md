@@ -1,88 +1,66 @@
 ---
 title: Bound API ($)
-description: Use the Bound API inside logic to read state, dispatch actions, resolve dependencies, and register lifecycle hooks.
+description: The API available inside Module.logic builders.
 ---
 
-`$` is the Bound API available inside `Module.logic(...)`.
+`$` is the Bound API passed to `Module.logic(id, ($) => ...)`. It is already bound to the module shape, runtime, services, imports, state, and action tokens.
 
-It provides access to:
+## Common members
 
-- state reads and writes
-- action dispatch and watchers
-- runtime service lookup
-- imported child resolution
-- lifecycle registration
-- field behavior declaration
+| Member | Use |
+| --- | --- |
+| `$.state.read` | Read the current state inside Effect code. |
+| `$.state.update(fn)` | Return an Effect that writes a new state value. |
+| `$.state.mutate(fn)` | Return an Effect that mutates a draft. |
+| `$.onAction(...)` | Build an intent stream from action tokens/tags/schemas. |
+| `$.dispatch(...)` / `$.dispatchers.*` | Dispatch actions. |
+| `$.use(...)` | Resolve imported modules or services from Env. |
+| `$.imports.get(Module.tag)` | Resolve a child Program from `Program.make(..., { capabilities: { imports } })`. |
+| `$.fields(...)` | Declare field behavior during the logic builder phase. |
+| `$.readyAfter(effect, options?)` | Add startup readiness work during the logic builder phase. |
+| `$.effect(token, handler)` | Register an action side-effect handler. |
 
-## State
+## Declaration phase versus run phase
 
-```ts
-const state = yield* $.state.read
-
-yield* $.state.mutate((draft) => {
-  draft.count += 1
-})
-```
-
-## Actions
+Declaration-only calls must happen synchronously in the builder body. Return the long-running effect as the logic's runtime work.
 
 ```ts
-yield* $.dispatch({ _tag: "increment", payload: undefined })
-yield* $.dispatchers.increment()
-```
-
-## Runtime service lookup
-
-```ts
-const service = yield* $.use(UserService)
-```
-
-`$.use(Tag)` reads services from the current runtime scope.
-
-## Imported children
-
-```ts
-const child = yield* $.imports.get(Child.tag)
-const value = yield* child.read((s) => s.value)
-```
-
-Imported children must be provided as Programs through `Program.make(..., { capabilities: { imports } })`.
-
-## Lifecycle
-
-```ts
-Module.logic(($) => {
-  $.lifecycle.onInitRequired(Effect.log("init"))
-  $.lifecycle.onDestroy(Effect.log("destroy"))
-
-  return Effect.void
-})
-```
-
-Lifecycle registration belongs to the declaration phase.
-
-## Field behavior
-
-```ts
-Module.logic(($) => {
+const Logic = Module.logic("logic-id", ($) => {
   $.fields({
-    normalized: $.fields.computed({
-      deps: ["query"],
-      get: (query) => String(query ?? "").trim().toLowerCase(),
+    total: $.fields.computed({
+      deps: ["items"],
+      get: (items) => items.reduce((sum, item) => sum + item.price, 0),
     }),
   })
 
-  return Effect.void
+  return Effect.gen(function* () {
+    yield* $.onAction("checkout").runParallelFork(/* ... */)
+  })
 })
 ```
 
-## Notes
+Do not return `{ setup, run }` from public code.
 
-- declaration and run phases are distinct
-- lifecycle and field declarations belong to the declaration phase
-- `$.onAction(...)`, `$.onState(...)`, `$.use(...)`, and `$.imports.get(...)` belong to the run phase
+## Imports
+
+Child Programs are provided at assembly time:
+
+```ts
+const HostProgram = Logix.Program.make(Host, {
+  initial,
+  capabilities: { imports: [ChildProgram] },
+})
+```
+
+Inside host logic:
+
+```ts
+const child = yield* $.imports.get(Child.tag)
+yield* child.actions.save()
+```
 
 ## See also
 
-- [Handle](./handle)
-- [Cross-module communication](../../guide/learn/cross-module-communication)
+- [Module](./module)
+- [Program](./program)
+- [useImportedModule](/docs/api/react/use-imported-module)

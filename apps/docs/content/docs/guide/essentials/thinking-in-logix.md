@@ -1,57 +1,40 @@
 ---
 title: Thinking in Logix
-description: Understand Logix through intent, logic, program, and runtime.
+description: Think in declarations, assembled programs, runtime ownership, and evidence.
 ---
 
-Logix can be read through four layers:
+Logix is easiest to understand as the logic half beside React.
 
-1. intent
-2. logic
-3. program
-4. runtime
+React owns UI and render. Logix owns declarations, composition, execution, state transactions, diagnostics, and evidence.
 
-## Intent
+## The main habit
 
-Intent describes what may happen.
+Do not start by asking “which hook should I write?” Start by placing the fact in the right owner:
 
-In practice, it appears as:
+| Fact or behavior | Owner |
+| --- | --- |
+| module state and actions | `Module.make(...)` |
+| behavior over actions/state | `Module.logic(id, ...)` |
+| services/imports/initial state | `Program.make(...)` |
+| runtime execution | `Runtime.make(...)` |
+| React reads | `useSelector(handle, selector)` |
+| React acquisition | `useModule(...)` |
+| editable input semantics | `Form.make(...)` |
+| verification report | `Runtime.check/trial/compare` |
 
-- state schema
-- action schema
+## One model, not many small frameworks
 
-```ts
-const Counter = Logix.Module.make("Counter", {
-  state: Schema.Struct({ count: Schema.Number }),
-  actions: { increment: Schema.Void },
-})
-```
+Domain packages should reduce to the same spine. Form is a Program. Query resources are services/resources. React is the host projection. Devtools and CLI consume runtime truth; they do not define it.
 
-## Logic
+## What to avoid
 
-Logic describes how a module responds.
+- A second React hook family for every domain package.
+- A second state truth in UI cache or logs.
+- A second runtime/control-plane object just for diagnostics.
+- Compatibility routes that keep old mental models alive.
 
-Pure synchronous transitions fit reducers.
-Side effects and state-driven reactions fit logic and effects.
+## Next
 
-## Program
-
-Program describes how a business unit is assembled.
-
-## Runtime
-
-Runtime executes assembled programs in a host environment.
-
-It provides:
-
-- lifecycle ownership
-- execution environment
-- runtime-scoped services
-
-## Summary
-
-Thinking in Logix means:
-
-- define intent with schemas
-- keep reactions in logic
-- assemble business units as programs
-- let Runtime own execution
+- [Canonical spine](./canonical-spine)
+- [Modules & State](./modules-and-state)
+- [React integration](./react-integration)

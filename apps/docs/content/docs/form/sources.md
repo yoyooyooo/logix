@@ -1,120 +1,48 @@
 ---
 title: Sources
-description: Connect remote facts to Form fields with `field(path).source(...)`.
+description: Connect Query-owned remote facts to fields with field(path).source(...).
 ---
 
-`field(path).source(...)` connects Query-owned remote facts to a Form field.
-It owns dependency reads, key generation, load scheduling, stale result drops, and submit impact.
-
-Remote data remains owned by the Query resource.
-Form consumes the source snapshot and feeds it into the same field, submit, and explanation flow.
-
-## Default route
+`field(path).source(...)` is the Form lane for remote facts.
 
 ```ts
 $.field("profileResource").source({
   resource: ProfileResource,
   deps: ["profileId"],
-  key: (profileId) => (profileId ? { userId: String(profileId) } : undefined),
+  key: (profileId) => (profileId ? { userId: profileId } : undefined),
   triggers: ["onMount", "onKeyChange"],
   concurrency: "switch",
   submitImpact: "block",
 })
 ```
 
-`deps` is the only dependency source.
-`key(...)` receives the current values for those deps; returning `undefined` makes the source inactive.
+## Resource owner
 
-## Define the resource
+The resource is Query-owned:
 
 ```ts
 const ProfileResource = Query.Engine.Resource.make({
   id: "profile",
-  keySchema: Schema.Struct({
-    userId: Schema.String,
-  }),
+  keySchema: Schema.Struct({ userId: Schema.String }),
   load: ({ userId }) => fetchProfile(userId),
 })
 ```
 
-The `resource` should come from the Query owner.
-Do not put remote requests directly inside companion lower functions, rules, or React effects.
+Install the resource and optional engine middleware through runtime services/layers, not through React effects or companion functions.
 
-## Read the snapshot
+## Inactive keys
 
-The source field is part of form state.
+`key(...)` may return `undefined`. That means the source is inactive for the current dependency state.
 
-```tsx
-const profile = useSelector(form, (s) => s.profileResource)
-const explain = useSelector(form, Form.Error.field("profileResource"))
-```
+## Submit impact
 
-Common snapshot states include idle, loading, success, and error.
-A source failure can be explained by `Form.Error.field(path)`, but it does not automatically become a canonical validation error leaf.
-
-## `submitImpact`
-
-`submitImpact` decides whether the source lifecycle can block submit.
-
-| Value | Semantics |
+| Value | Meaning |
 | --- | --- |
-| `"block"` | pending or stale source work contributes to submit blocking |
-| `"observe"` | source refreshes update facts without blocking submit |
+| `"block"` | Pending/stale source work can block submit. |
+| `"observe"` | Source refresh is visible but does not block submit. |
 
-Use `"block"` when submit requires fresh remote facts.
-Use `"observe"` when the source only affects support UI or candidate lists.
+A source failure can be explained by `Form.Error.field(path)`, but final validation truth still belongs to rules, root/list rules, and submit decode.
 
-## Row-scoped source
+## Not an options API
 
-Sources inside list items still attach to field paths.
-
-```ts
-$.list("items", {
-  identity: { mode: "trackBy", trackBy: "id" },
-})
-
-$.field("items.profileResource").source({
-  resource: ProfileResource,
-  deps: ["items.profileId"],
-  key: (profileId) => (profileId ? { userId: String(profileId) } : undefined),
-  triggers: ["onMount", "onKeyChange"],
-  concurrency: "switch",
-  submitImpact: "observe",
-})
-```
-
-The runtime resolves a source per row through row identity.
-User code does not need to declare row receipts, task ids, or public owner tokens.
-
-## Scheduling options
-
-| Option | Role |
-| --- | --- |
-| `triggers` | currently `"onMount"` and `"onKeyChange"` |
-| `debounceMs` | delays loading after key changes |
-| `concurrency` | `"switch"` means latest key wins; `"exhaust-trailing"` keeps the final trigger while busy |
-| `submitImpact` | decides whether pending/stale source work affects submit |
-
-Manual refresh is not the default public route for Form source.
-When a user-triggered refresh is required, model refresh in Query or application logic and let Form source observe stable dependencies.
-
-## Boundary
-
-Source is the remote-fact ingress into Form.
-It does not own:
-
-- final field validity
-- cross-row exclusivity
-- local candidate shaping
-- React read routes
-
-Final validity stays in field, list, root, or submit rules.
-Local candidate shaping belongs in `field(path).companion(...)`.
-Reads still go through `useSelector(...)`.
-
-## See also
-
-- [Companion](/docs/form/companion)
-- [Selectors and support facts](/docs/form/selectors)
-- [Validation](/docs/form/validation)
-- [Performance](/docs/form/performance)
+Source does not create `Form.Source`, `useFieldSource`, public refresh hooks, or an options/candidates API. Use companion for local availability/candidates, and rules/submit for final truth.

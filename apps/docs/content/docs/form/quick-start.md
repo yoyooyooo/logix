@@ -1,184 +1,97 @@
 ---
-title: Quick start
-description: Build a form program, mount it through the core React host, and submit it through the form handle.
+title: Form quick start
+description: Declare a form program, mount it, read with selectors, and write through the form handle.
 ---
 
-## 1) Define values and submit payload
+## 1. Declare values and rules
 
 ```ts
-import { Schema } from "effect"
-
-export const Values = Schema.Struct({
-  name: Schema.String,
-  email: Schema.String,
-})
-
-export const SubmitPayload = Schema.Struct({
-  name: Schema.String,
-  email: Schema.String,
-})
-```
-
-`values` describes the state shape edited by the UI.
-`submit.decode` describes the payload shape that may leave the form boundary.
-
-## 2) Create a Form program
-
-```ts
+import { Effect, Schema } from "effect"
 import * as Form from "@logixjs/form"
 
-export const UserForm = Form.make(
-  "UserForm",
+const ContactValues = Schema.Struct({
+  name: Schema.String,
+  email: Schema.String,
+})
+
+type ContactValues = Schema.Schema.Type<typeof ContactValues>
+
+export const ContactForm = Form.make(
+  "ContactForm",
   {
-    values: Values,
-    initialValues: {
-      name: "",
-      email: "",
-    },
+    values: ContactValues,
+    initialValues: { name: "", email: "" } satisfies ContactValues,
     validateOn: ["onSubmit"],
-    reValidateOn: ["onChange"],
+    reValidateOn: ["onChange", "onBlur"],
   },
-  (form) => {
-    form.field("name").rule(
-      Form.Rule.make({
-        required: "user.name.required",
-      }),
-    )
-
-    form.field("email").rule(
-      Form.Rule.make({
-        required: "user.email.required",
-      }),
-    )
-
-    form.submit({
-      decode: SubmitPayload,
-    })
+  ($) => {
+    $.field("name").rule(Form.Rule.make({ required: true }))
+    $.field("email").rule(Form.Rule.make({ required: true, email: true }))
+    $.submit({ decode: ContactValues })
   },
 )
 ```
 
-## 3) Build a Runtime
+`Form.make(...)` returns a Program-compatible `FormProgram`.
 
-```ts
-import * as Logix from "@logixjs/core"
-
-export const runtime = Logix.Runtime.make(UserForm)
-```
-
-This is the shortest route when one shared form instance is enough.
-
-## 4) Mount it through the core React host
+## 2. Mount the runtime
 
 ```tsx
-import React from "react"
-import { RuntimeProvider, useModule, useSelector } from "@logixjs/react"
-import { Effect } from "effect"
-import { runtime, UserForm } from "./UserForm"
+import * as Logix from "@logixjs/core"
+import { RuntimeProvider } from "@logixjs/react"
+import { ContactForm } from "./ContactForm"
 
-function Page() {
-  const form = useModule(UserForm.tag)
-  const name = useSelector(form, (s) => s.name)
-  const email = useSelector(form, (s) => s.email)
-  const nameError = useSelector(form, (s) => s.errors?.name)
-  const canSubmit = useSelector(
-    form,
-    (s) => s.$form.errorCount === 0 && !s.$form.isSubmitting,
-  )
+const runtime = Logix.Runtime.make(ContactForm)
 
+export function Root() {
   return (
-    <div>
-      <input
-        value={String(name ?? "")}
-        onChange={(e) => void Effect.runPromise(form.field("name").set(e.target.value))}
-        onBlur={() => void Effect.runPromise(form.field("name").blur())}
-      />
-
-      <input
-        value={String(email ?? "")}
-        onChange={(e) => void Effect.runPromise(form.field("email").set(e.target.value))}
-        onBlur={() => void Effect.runPromise(form.field("email").blur())}
-      />
-
-      {nameError ? <div>{String(nameError)}</div> : null}
-
-      <button
-        type="button"
-        disabled={!canSubmit}
-        onClick={() =>
-          void Effect.runPromise(
-            form.submit({
-              onValid: (payload) => Effect.log(payload),
-              onInvalid: (currentErrors) => Effect.log(currentErrors),
-            }),
-          )
-        }
-      >
-        Submit
-      </button>
-    </div>
+    <RuntimeProvider runtime={runtime}>
+      <ContactFormView />
+    </RuntimeProvider>
   )
 }
-
-export const App = () => (
-  <RuntimeProvider runtime={runtime}>
-    <Page />
-  </RuntimeProvider>
-)
 ```
 
-## 5) Read and write boundaries
-
-Reads stay on:
-
-- `useSelector(form, selector)`
-
-Writes stay on:
-
-- `form.field(path).set(...)`
-- `form.field(path).blur()`
-- `form.fieldArray(path).append(...)`
-- `form.submit(...)`
-
-Form-specific support reads also go through `useSelector(...)`:
-
-- `fieldValue(path)` for typed value reads
-- `Form.Error.field(path)` for field explanations
-- `Form.Companion.field(path)` and `Form.Companion.byRowId(...)` for companion bundles
-
-See [Selectors and support facts](/docs/form/selectors) for the selector table, returned-carrier typing route, and the boundary between companion soft facts and final rule / submit truth.
-
-## 6) Multiple instances
-
-When one page needs multiple independent copies of the same form, switch to the program route:
+## 3. Read and write in React
 
 ```tsx
-const form = useModule(UserForm, { key: "user-form:42" })
+import { Effect } from "effect"
+import * as Form from "@logixjs/form"
+import { fieldValue, rawFormMeta, useModule, useSelector } from "@logixjs/react"
+
+function ContactFormView() {
+  const form = useModule(ContactForm.tag)
+  const name = useSelector(form, fieldValue("name"))
+  const email = useSelector(form, fieldValue("email"))
+  const meta = useSelector(form, rawFormMeta())
+  const emailError = useSelector(form, Form.Error.field("email"))
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        void Effect.runPromise(form.submit())
+      }}
+    >
+      <input
+        value={name}
+        onChange={(event) => void Effect.runPromise(form.field("name").set(event.target.value))}
+        onBlur={() => void Effect.runPromise(form.field("name").blur())}
+      />
+      <input
+        value={email}
+        onChange={(event) => void Effect.runPromise(form.field("email").set(event.target.value))}
+        onBlur={() => void Effect.runPromise(form.field("email").blur())}
+      />
+      <pre>{JSON.stringify({ meta, emailError }, null, 2)}</pre>
+      <button type="submit">Submit</button>
+    </form>
+  )
+}
 ```
 
-Use `useModule(UserForm.tag)` for a shared instance already hosted by the Runtime.
-Use `useModule(UserForm, { key })` for an independent instance.
-Use `useModule(UserForm)` for a component-private instance.
-Use `useModule(UserForm, { key, gcTime })` to restore shortly after route changes.
+## Rules
 
-See [Instances](/docs/form/instances) for the full lifetime model.
-
-## Canonical route
-
-The current canonical route is:
-
-- `Form.make(...)`
-- `form.field(path).rule(...)`
-- `form.submit({ decode })`
-- `RuntimeProvider`
-- `useModule(...)`
-- `useSelector(...)`
-
-Wrapper families that recreate `useForm / useField / useFieldArray / useFormState` are outside the current canonical surface.
-
-## See also
-
-- [Instances](/docs/form/instances)
-- [Sources](/docs/form/sources)
-- [Companion](/docs/form/companion)
-- [Selectors and support facts](/docs/form/selectors)
+- Reads use `useSelector(...)`.
+- Writes use the form handle: `field`, `fieldArray`, `validate`, `submit`, `reset`, `setError`, `clearErrors`.
+- Form does not expose `useForm`, `useField`, or `useFieldArray` as canonical APIs.

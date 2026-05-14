@@ -1,95 +1,44 @@
 ---
 title: Modules & State
-description: Define module state, actions, reducers, logic, and programs.
+description: Define state and actions, then assemble them into Programs.
 ---
 
-`Module` is the definition unit of Logix.
-
-It describes:
-
-- state
-- actions
-- logic attachment points
-
-`Program` is the assembly unit built from a module.
-
-## State
-
-```ts
-import { Schema } from "effect"
-
-const State = Schema.Struct({
-  count: Schema.Number,
-  isLoading: Schema.Boolean,
-})
-```
-
-State is defined with `Schema`.
-
-## Actions
-
-```ts
-const Actions = {
-  increment: Schema.Void,
-  decrement: Schema.Void,
-  setValue: Schema.Number,
-}
-```
-
-Actions define the operations that may occur on module state.
-
-## Module definition
-
-```ts
-import * as Logix from "@logixjs/core"
-
-export const Counter = Logix.Module.make("Counter", {
-  state: State,
-  actions: Actions,
-})
-```
-
-## Reducers and logic
-
-Pure synchronous state transitions belong in reducers:
+A Module declares state and actions. A Program chooses initial state, mounted logic, services, imports, and transaction options.
 
 ```ts
 const Counter = Logix.Module.make("Counter", {
-  state: State,
-  actions: Actions,
-  reducers: {
-    increment: (state) => ({ ...state, count: state.count + 1 }),
-  },
+  state: Schema.Struct({ value: Schema.Number }),
+  actions: { inc: Schema.Void },
 })
-```
 
-Side effects, linkage, and watchers belong in logic:
-
-```ts
-import { Effect } from "effect"
-
-const CounterLogic = Counter.logic("counter-logic", ($) => {
-  $.reducer("decrement", (state) => ({ ...state, count: state.count - 1 }))
-
-  return $.onState((s) => s.count).runFork((count) =>
-    count === 0 ? Effect.log("count is zero") : Effect.void,
-  )
-})
-```
-
-## Program assembly
-
-```ts
 const CounterProgram = Logix.Program.make(Counter, {
-  initial: { count: 0, isLoading: false },
-  logics: [CounterLogic],
+  initial: { value: 0 },
 })
 ```
 
-Programs are the reusable assembly units consumed by Runtime and the React host.
+## State writes
 
-## See also
+In logic, use the Bound API:
 
-- [Thinking in Logix](./thinking-in-logix)
-- [Flows & Effects](./flows-and-effects)
-- [Runtime](../../api/core/runtime)
+```ts
+const Logic = Counter.logic("counter-logic", ($) =>
+  Effect.gen(function* () {
+    yield* $.onAction("inc").mutate((state) => {
+      state.value += 1
+    })
+  }),
+)
+```
+
+In React, writes usually go through `useDispatch(...)` or a domain handle such as a Form handle.
+
+## Reads
+
+In React:
+
+```tsx
+const counter = useModule(Counter.tag)
+const value = useSelector(counter, (state) => state.value)
+```
+
+Do not use raw Module objects in React acquisition. Use `Module.tag` for hosted instances or `Program` for local/keyed instances.

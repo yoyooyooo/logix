@@ -1,70 +1,39 @@
 ---
-title: Reactions & Effects
-description: 通过 Effect 和显式运行策略响应 action 与状态变化。
+title: Flows & Effects
+description: 把 Effect-based behavior 挂到 actions、state changes 与 services 上。
 ---
 
-状态和 action 的反应负责把模块事件连接到 effects。
-
-常见 source 有：
-
-- `$.onAction(...)`
-- `$.onState(...)`
-
-Effect 负责描述 source 命中后要执行的工作。
-
-## Action 到 effect
+Logic 是挂载到 Module 上的 Effect-based behavior。
 
 ```ts
-const UserLogic = UserModule.logic("user-logic", ($) =>
-  $.onAction("fetchUser").run(({ payload: userId }) =>
-    Effect.gen(function* () {
-      const api = yield* $.use(UserApi)
-      const user = yield* api.getUser(userId)
-
-      yield* $.state.mutate((draft) => {
-        draft.user = user
-      })
-    }),
-  ),
-)
-```
-
-## State 到 effect
-
-```ts
-const SearchLogic = SearchModule.logic("search", ($) =>
-  $.onState((s) => s.keyword)
-    .debounce(300)
-    .runLatest((keyword) =>
+const SearchLogic = Search.logic("search-logic", ($) =>
+  Effect.gen(function* () {
+    yield* $.onAction("keywordChanged").runLatest(
       Effect.gen(function* () {
-        const api = yield* $.use(SearchApi)
-        const results = yield* api.search(keyword)
-
-        yield* $.state.mutate((draft) => {
-          draft.results = results
-        })
+        const state = yield* $.state.read
+        // run service work, then write state
       }),
-    ),
+    )
+  }),
 )
 ```
 
-## 运行策略
+## Declaration work
 
-最常见的策略包括：
+有些工作需要在 builder root 同步声明：
 
-- `run`，串行执行
-- `runLatest`，最新优先
-- `runExhaust`，执行中忽略后续
-- `runParallel`，无界并行
+```ts
+const Logic = Search.logic("logic", ($) => {
+  $.readyAfter(loadInitialConfig, { id: "initial-config" })
 
-## 说明
+  return Effect.gen(function* () {
+    // run phase
+  })
+})
+```
 
-- Effect 描述做什么
-- 反应逻辑继续停在 `Logic`
-- 状态写回继续通过 reducer 或 `$.state.*` 显式完成
+公开路线不是 `{ setup, run }`。声明放在 builder root，并返回 run effect。
 
-## 相关页面
+## Services
 
-- [Effect basics](./effect-basics)
-- [Lifecycle](./lifecycle)
-- [Bound API ($)](../../api/core/bound-api)
+在 logic 内用 `$.use(ServiceTag)` 解析服务。根据 ownership，通过 `Program.make(..., { capabilities: { services } })` 或 `Runtime.make(..., { layer })` 安装 service layers。

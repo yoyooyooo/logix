@@ -31,7 +31,7 @@ When the instance scope closes, those flows stop with it.
 
 - shared instances resolved through `useModule(ModuleTag)` follow the hosting runtime
 - local instances resolved through `useModule(Program, options?)` follow the owning subtree
-- advanced local routes such as `useLocalModule(...)` remain component-local
+- advanced local routes such as `useModule(Program, options)` remain component-local
 
 ## Notes
 

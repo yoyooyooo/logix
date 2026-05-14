@@ -1,125 +1,64 @@
 ---
 title: Runtime
-description: Construct a Logix runtime, mount it in React, and execute programs in host environments.
+description: Create runtime containers and run verification control-plane commands.
 ---
 
-`Runtime` is the execution container of Logix.
+`Runtime` is the execution-time surface. It consumes a `Program`, owns module runtimes and services, and exposes distinct result and verification faces.
 
-It hosts:
-
-- module state
-- logic execution
-- process and link installation
-- runtime-scoped services
-
-## Construction
-
-The canonical construction route is:
+## Create a runtime
 
 ```ts
-import * as Logix from "@logixjs/core"
-import { Layer } from "effect"
-
-const RootProgram = Logix.Program.make(RootModule, {
-  initial: { /* ... */ },
-  capabilities: {
-    services: [/* ... */],
-    imports: [/* ... */],
-  },
-  logics: [/* ... */],
-})
-
 const runtime = Logix.Runtime.make(RootProgram, {
-  layer: Layer.empty,
+  layer: AppLayer,
+  devtools: { diagnosticsLevel: "light" },
 })
 ```
 
-## React mounting
+Pass that runtime to React:
 
 ```tsx
-import { RuntimeProvider } from "@logixjs/react"
-
-export function App() {
-  return (
-    <RuntimeProvider runtime={runtime}>
-      <Router />
-    </RuntimeProvider>
-  )
-}
-```
-
-`RuntimeProvider` makes the runtime visible to the React subtree.
-
-## Node and tests
-
-A runtime can also execute effects directly:
-
-```ts
-void runtime.runPromise(program)
-```
-
-## One-shot program run
-
-`Runtime.run(Program, main, options)` is the result face. It boots the Program, passes a program run context into `main`, disposes the runtime scope, and returns the value produced by `main`.
-
-```ts
-import { Effect, Layer } from "effect"
-import * as Logix from "@logixjs/core"
-
-const result = await Logix.Runtime.run(
-  RootProgram,
-  ({ module }) =>
-    Effect.gen(function* () {
-      const state = yield* module.getState
-      return { count: state.count }
-    }),
-  {
-    layer: Layer.empty,
-    handleSignals: false,
-  },
-)
-```
-
-`Runtime.run` returns the application result. It does not return a `VerificationControlPlaneReport`.
-
-## Local overrides
-
-`RuntimeProvider` may stack an additional `layer` for a subtree:
-
-```tsx
-<RuntimeProvider runtime={runtime} layer={FeatureLayer}>
-  <Feature />
+<RuntimeProvider runtime={runtime}>
+  <App />
 </RuntimeProvider>
 ```
 
-## Notes
+`RuntimeProvider` projects the runtime into React. It does not create a second control plane.
 
-- `Runtime.make(Program)` is the canonical runtime entry
-- `Runtime.run(Program, main, options)` is the one-shot result entry
-- `RuntimeProvider` mounts a runtime into React; it does not define a second control plane
-- runtime disposal belongs to the host that created the runtime
+## One-shot run
 
-## Verification control plane
-
-The runtime control plane is separate from authoring.
+`Runtime.run(Program, main, options?)` is the result face. It starts the Program, runs `main` with a program run context, closes the scope, and returns the application result.
 
 ```ts
-Logix.Runtime.run(program, main, options)
-Logix.Runtime.check(program)
-Logix.Runtime.trial(program, options)
+const result = await Logix.Runtime.run(RootProgram, (ctx) =>
+  ctx.runtime.runPromise(/* Effect work */),
+)
 ```
 
-`Runtime.run` is the result face. `Runtime.trial` is the diagnostic run face. `Runtime.check` is the static diagnostic face.
+It does not return a verification report.
 
-`Runtime.check(Program, options?)` is the cheap static verification gate. It returns a `VerificationControlPlaneReport` with `stage="check"` and `mode="static"`. It does not boot the program or execute behavior.
+## Verification faces
 
-`Runtime.trial(Program, options)` executes a verification run, including scenario runs based on `fixtures / env / steps / expect`.
+```ts
+const checkReport = Logix.Runtime.check(RootProgram)
+const trialReport = await Logix.Runtime.trial(RootProgram, options)
+```
 
-These routes do not enter the Form authoring surface.
+- `Runtime.check(...)` is the static diagnostic face.
+- `Runtime.trial(...)` is the startup/scenario diagnostic face.
+- `Runtime.compare(...)` belongs to the verification control plane and is used for report comparison/admissibility.
 
-`runtime.compare` is frozen only as a control-plane stage. Root `Runtime.compare` productization remains deferred until explicit runtime authority intake, and it does not own a second correctness truth or benchmark truth.
+## Local instance route in React
+
+A Program can also be used directly by React for a local or keyed module instance:
+
+```tsx
+const editor = useModule(EditorProgram, { key: `editor:${id}` })
+```
+
+That route still uses the current runtime scope and does not replace `Runtime.make(...)` for application roots.
 
 ## See also
 
-- [Module](./module)
-- [RuntimeProvider](../react/provider)
+- [Program](./program)
+- [RuntimeProvider](/docs/api/react/provider)
+- [useModule](/docs/api/react/use-module)

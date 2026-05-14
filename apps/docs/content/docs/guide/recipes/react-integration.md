@@ -1,38 +1,17 @@
 ---
 title: React integration recipe
-description: Mount a runtime, resolve module instances, and keep reads and writes on the canonical host route.
+description: Build a runtime, mount it, acquire instances, read precisely, and write safely.
 ---
-
-The canonical React recipe is:
-
-1. build a runtime
-2. mount it with `RuntimeProvider`
-3. resolve instances with `useModule(...)`
-4. read with `useSelector(...)`
-5. write with `useDispatch(...)` or the handle
 
 ## Runtime
 
 ```ts
 const CounterProgram = Logix.Program.make(Counter, {
-  initial: { count: 0 },
+  initial: { value: 0 },
   logics: [CounterLogic],
 })
 
 const runtime = Logix.Runtime.make(CounterProgram)
-```
-
-In development HMR, create this runtime through the application boundary that can own lifecycle replacement. That boundary should use the same first-wave decisions everywhere: `reset` when a successor runtime exists, `dispose` when it does not.
-
-Enable the host carrier once in development tooling:
-
-```ts
-// vite.config.ts
-import { logixReactDevLifecycle } from "@logixjs/react/dev/vite"
-
-export default defineConfig({
-  plugins: [logixReactDevLifecycle(), react()],
-})
 ```
 
 ## Provider
@@ -43,60 +22,37 @@ export default defineConfig({
 </RuntimeProvider>
 ```
 
-`RuntimeProvider` projects the runtime. It does not choose the program and does not own hot lifecycle truth.
-
 ## Shared instance
 
 ```tsx
 const counter = useModule(Counter.tag)
 ```
 
-## Keyed instance
+## Keyed local instance
 
 ```tsx
-const form = useModule(FormProgram, { key: "form:checkout" })
+const form = useModule(ContactForm, { key: `contact:${id}` })
 ```
 
-## Reads
+## Read and write
 
 ```tsx
-const count = useSelector(counter, (s) => s.count)
-```
-
-## Writes
-
-```tsx
+const value = useSelector(counter, (state) => state.value)
 const dispatch = useDispatch(counter)
-dispatch({ _tag: "increment", payload: undefined })
+dispatch({ _tag: "inc", payload: undefined })
 ```
 
-## Imported children
+## Imported child
 
 ```tsx
 const host = useModule(HostProgram, { key: "session-a" })
-const child = host.imports.get(ChildModule.tag)
+const child = useImportedModule(host, Child.tag)
 ```
 
-## Advanced routes
+The child must be supplied through `Program.make(..., { capabilities: { imports: [ChildProgram] } })`.
 
-Advanced routes remain available:
+## Do not use
 
-- `useLocalModule(...)`
-- `useImportedModule(...)`
-- `ModuleScope`
-
-They do not replace the canonical host route.
-
-## Development HMR
-
-- Keep one owner at the runtime creation boundary.
-- Enable the host dev lifecycle carrier once; ordinary modules and components should not import it.
-- Do not scatter per-component or per-demo HMR cleanup.
-- Keep state survival out of this wave; the recoverable path is reset-first.
-- Hot lifecycle diagnostics use the existing evidence event `runtime.hot-lifecycle`.
-
-## See also
-
-- [RuntimeProvider](../../api/react/provider)
-- [useModule](../../api/react/use-module)
-- [useSelector](../../api/react/use-selector)
+- raw module objects in `useModule(...)`;
+- no-argument `useSelector(handle)`;
+- removed APIs such as `useLocalModule`, `useModuleList`, or `ModuleScope`.

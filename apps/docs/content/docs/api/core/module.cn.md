@@ -1,78 +1,78 @@
 ---
 title: Module
-description: 定义模块、附加 logic、装配 program，并通过 Runtime 或 React 消费它。
+description: 定义 Logix 单元的 state、actions、reducers 与 logic authoring。
 ---
 
-`Module` 是 Logix 的定义期单元。
-
-它定义：
-
-- state schema
-- action schema
-- logic 的挂载点
-
-`Program` 是从 `Module` 装配出来的装配期单元。
-
-## 定义模块
+`Logix.Module.make(id, def)` 创建 definition object。Module 不是 runtime instance；它是传给 `Program.make(...)` 的稳定声明对象。
 
 ```ts
+import { Effect, Schema } from "effect"
 import * as Logix from "@logixjs/core"
-import { Schema } from "effect"
 
-const CounterState = Schema.Struct({
-  count: Schema.Number,
-})
+const CounterState = Schema.Struct({ value: Schema.Number })
+const CounterActions = { inc: Schema.Void }
 
-const Counter = Logix.Module.make("Counter", {
+export const Counter = Logix.Module.make("Counter", {
   state: CounterState,
-  actions: {
-    increment: Schema.Void,
-  },
+  actions: CounterActions,
+})
+
+export const CounterLogic = Counter.logic("counter-logic", ($) =>
+  Effect.gen(function* () {
+    yield* $.onAction("inc").mutate((state) => {
+      state.value += 1
+    })
+  }),
+)
+```
+
+## Definition fields
+
+| 字段 | 作用 |
+| --- | --- |
+| `state` | 模块 state 的 Effect Schema。 |
+| `actions` | Action map。每个 key 会成为 action token。 |
+| `reducers` / `immerReducers` | 可选 primary state transform。 |
+| `effects` | 可选 action side-effect 声明。 |
+| `schemas`、`meta`、`services`、`dev` | reflection 与 diagnostics metadata。 |
+
+## Logic authoring
+
+使用 `Module.logic(id, ($) => runEffect)`。`id` 必须显式提供，因为 diagnostics、override 与 evidence 需要稳定 logic-unit identity。
+
+`$.fields(...)`、`$.readyAfter(...)` 这类 declaration-only 调用应写在 builder root，并且位于返回的 run effect 之前：
+
+```ts
+export const SearchLogic = Search.logic("search-logic", ($) => {
+  $.fields({
+    results: $.fields.source({
+      resource: "customer.search",
+      deps: ["keyword"],
+      key: (keyword) => (keyword ? { keyword } : undefined),
+    }),
+  })
+
+  $.readyAfter(bootstrapSearchIndex, { id: "search-index" })
+
+  return Effect.gen(function* () {
+    yield* $.onAction("keywordChanged").runLatest(/* ... */)
+  })
 })
 ```
 
-## 附加 logic
+旧的公开 `{ setup, run }` 返回形态不再是当前用户路线。
+
+## Assembly
 
 ```ts
-const CounterLogic = Counter.logic("counter-logic", ($) => {
-  $.reducer("increment", (state) => ({
-    ...state,
-    count: state.count + 1,
-  }))
-
-  return Effect.void
-})
-```
-
-## 装配 program
-
-```ts
-const CounterProgram = Logix.Program.make(Counter, {
-  initial: { count: 0 },
+export const CounterProgram = Logix.Program.make(Counter, {
+  initial: { value: 0 },
   logics: [CounterLogic],
 })
 ```
 
-## 在 React 中消费
+## See also
 
-```tsx
-const counter = useModule(CounterProgram, { key: "counter:1" })
-```
-
-如果共享实例已经由 Runtime 托管：
-
-```tsx
-const counter = useModule(Counter.tag)
-```
-
-## 说明
-
-- `Module` 负责定义
-- `Program` 负责装配
-- `Runtime` 负责执行
-
-## 相关页面
-
+- [Program](./program)
+- [Bound API](./bound-api)
 - [Runtime](./runtime)
-- [Bound API ($)](./bound-api)
-- [useModule](../react/use-module)

@@ -1,57 +1,52 @@
 ---
 title: useSelector
-description: Subscribe to full module state or a selected slice.
+description: Subscribe to a precise state selector or selector descriptor.
 ---
 
-`useSelector` is the canonical read API for Logix state in React.
-
-## Full state
+`useSelector(handle, selector, equalityFn?)` is the canonical React read API.
 
 ```tsx
-const state = useSelector(handle)
+const counter = useModule(Counter.tag)
+const value = useSelector(counter, (state) => state.value)
 ```
 
-## Slice subscription
+No-argument full-state reads are not part of the current public route. Pass an explicit selector.
+
+## Equality
 
 ```tsx
-const count = useSelector(handle, (s) => s.count)
+const summary = useSelector(
+  counter,
+  (state) => ({ value: state.value, doubled: state.value * 2 }),
+  (a, b) => a.value === b.value && a.doubled === b.doubled,
+)
 ```
 
-An optional equality function may be provided:
+If you do not pass an equality function, Logix uses the selector descriptor's equality when available, otherwise `Object.is`.
+
+## Form selectors
+
+Form-specific reads still go through this hook:
 
 ```tsx
-const slice = useSelector(handle, selector, equalityFn)
-```
-
-## Notes
-
-- `useSelector(handle)` reads full state
-- `useSelector(handle, selector, equalityFn?)` subscribes to a slice
-- eligible selectors may use a more optimized subscription path internally
-
-## Form selector descriptors
-
-Form-specific support reads still use this hook.
-
-```tsx
-const value = useSelector(form, fieldValue("items.0.warehouseId"))
-const explain = useSelector(form, Form.Error.field("items.0.warehouseId"))
-const support = useSelector(form, Form.Companion.field("items.warehouseId"))
-const rowSupport = useSelector(
+const name = useSelector(form, fieldValue("name"))
+const values = useSelector(form, fieldValues(["name", "email"]))
+const meta = useSelector(form, rawFormMeta())
+const error = useSelector(form, Form.Error.field("name"))
+const companion = useSelector(form, Form.Companion.field("warehouseId"))
+const rowCompanion = useSelector(
   form,
   Form.Companion.byRowId("items", rowId, "warehouseId"),
 )
 ```
 
-`Form.Companion.*` descriptors are consumed through `useSelector`.
-They do not create `useCompanion`, a Form-owned hook family, a carrier-bound selector route, or a second host read route.
+Form does not add `useForm`, `useField`, `useFieldValue`, or `useCompanion` as canonical read routes.
 
-`Form.Error.field(path)` is a field explanation selector.
-Its result may represent `error`, `pending`, `stale`, `cleanup`, or no current explanation.
-It is not just the canonical `FormErrorLeaf`, and it does not become a second validation truth.
+## Selector precision
+
+Prefer exact selectors and descriptor helpers. Broad function selectors are allowed only when you really need them, but exact reads give the runtime more room to route notifications precisely.
 
 ## See also
 
 - [useModule](./use-module)
-- [useDispatch](./use-dispatch)
-- [Form selectors and support facts](/docs/form/selectors)
+- [Form selectors](/docs/form/selectors)

@@ -26,7 +26,7 @@ const Counter = Logix.Module.make('Counter', {
   actions: { inc: Schema.Void },
 })
 
-const CounterLogic = Counter.logic(($) =>
+const CounterLogic = Counter.logic("logic", ($) =>
   Effect.gen(function* () {
     yield* $.onAction('inc').run(() => $.state.update((s) => ({ ...s, count: s.count + 1 })))
   }),

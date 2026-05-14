@@ -1,45 +1,40 @@
 ---
 title: Introduction
-description: Logix is an Effect-native runtime for state, logic, and host integration.
+description: What Logix is and where it fits.
 ---
 
-Logix is an Effect-native runtime for state and business logic.
+Logix is a runtime for application logic. It gives you a small object model for state, effects, services, React projection, and evidence.
 
-It is designed for applications that need:
+```text
+React handles UI / host / render.
+Logix handles declaration / composition / execution / evidence.
+```
 
-- structured state
-- explicit asynchronous orchestration
-- stable host integration
-- diagnosable execution
+The default route is:
 
-## Typical problems it addresses
+1. Define a `Module`.
+2. Add behavior with `Module.logic(id, ...)`.
+3. Assemble a `Program`.
+4. Create a `Runtime`.
+5. Project it into React with `RuntimeProvider`.
+6. Read with `useSelector(...)` and write with dispatch or domain handles.
 
-- request races caused by rapid UI changes
-- business logic scattered across components
-- state linkage that becomes hard to trace
-- weak visibility into why async work started, stopped, or was replaced
+## Why use it
 
-## Core ideas
+Use Logix when a feature has business state and effects that need stable execution, testability, and diagnostics. Use React state directly for short-lived view-only UI state.
 
-Logix can be read through four layers:
+## First concepts
 
-- intent
-- flow
-- logic
-- runtime
+| Concept | Meaning |
+| --- | --- |
+| Module | Definition object: state schema, action map, reducers, logic builder. |
+| Logic | Effect-based behavior attached to a Module. |
+| Program | Assembled business unit with initial state, logics, services, and imports. |
+| Runtime | Execution container. |
+| React host | Provider + hooks that expose runtime instances to components. |
+| Evidence | Structured reports from check/trial/compare. |
 
-These layers are introduced gradually through the guide.
+## Next
 
-## Recommended next steps
-
-1. [Quick Start](/docs/guide/get-started/quick-start)
-2. [Cancelable search tutorial](/docs/guide/get-started/tutorial-first-app)
-3. [Complex list tutorial](/docs/guide/get-started/tutorial-complex-list)
-4. [Modules & State](/docs/guide/essentials/modules-and-state)
-
-## Form note
-
-When the problem is already a real form boundary, move directly to:
-
-- [Form](/docs/form)
-- [Form Quick Start](/docs/form/quick-start)
+- [Quick Start](./quick-start)
+- [Canonical spine](/docs/guide/essentials/canonical-spine)

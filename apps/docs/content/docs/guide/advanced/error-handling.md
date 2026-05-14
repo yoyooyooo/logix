@@ -19,7 +19,7 @@ Two additional rules are worth keeping explicit:
 Expected errors are part of business logic, such as “user not found” or “network timeout”. Handle them via Effect’s error channel (`E`).
 
 ```ts
-const LoginLogic = LoginModule.logic(($) =>
+const LoginLogic = LoginModule.logic("logic", ($) =>
   Effect.gen(function* () {
     yield* $.onAction('login').run(({ payload: credentials }) =>
       Effect.gen(function* () {
@@ -45,7 +45,7 @@ Defects are code bugs or unrecoverable system failures. Logix catches defects in
 You can handle unhandled errors uniformly via `$.lifecycle.onError` (declaration-only registration):
 
 ```ts
-const AppLogic = AppModule.logic(($) => {
+const AppLogic = AppModule.logic("logic", ($) => {
   $.lifecycle.onError((cause, context) =>
     Effect.logError({
       message: "Unhandled module error",

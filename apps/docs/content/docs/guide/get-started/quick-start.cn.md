@@ -1,77 +1,58 @@
 ---
-title: Quick Start
-description: 定义模块、装配 program、挂载 runtime，并在 React 中读取状态。
+title: 快速开始
+description: 创建一个 Counter Program，并在 React 中挂载。
 ---
 
-下面用一个最小计数器切片串起模块定义、program 装配、runtime 挂载与 React 读取。
-
-## 安装
-
-```bash
-npm install @logixjs/core @logixjs/react effect
-```
-
-## 定义模块
+## 1. 定义 Module 与 Logic
 
 ```ts
+import { Effect, Schema } from "effect"
 import * as Logix from "@logixjs/core"
-import { Schema } from "effect"
+
+const CounterState = Schema.Struct({ value: Schema.Number })
+const CounterActions = { inc: Schema.Void }
 
 export const Counter = Logix.Module.make("Counter", {
-  state: Schema.Struct({
-    count: Schema.Number,
-  }),
-  actions: {
-    inc: Schema.Void,
-  },
+  state: CounterState,
+  actions: CounterActions,
 })
-```
-
-## 附加 logic
-
-```ts
-import { Effect } from "effect"
 
 export const CounterLogic = Counter.logic("counter-logic", ($) =>
-  $.onAction("inc").run(() =>
-    $.state.mutate((draft) => {
-      draft.count += 1
-    }),
-  ),
+  Effect.gen(function* () {
+    yield* $.onAction("inc").mutate((state) => {
+      state.value += 1
+    })
+  }),
 )
 ```
 
-## 装配 program
+## 2. 装配 Program
 
 ```ts
 export const CounterProgram = Logix.Program.make(Counter, {
-  initial: { count: 0 },
+  initial: { value: 0 },
   logics: [CounterLogic],
 })
 ```
 
-## 创建 runtime
+## 3. 创建 Runtime
 
 ```ts
-import * as Logix from "@logixjs/core"
-import { Layer } from "effect"
-
-export const runtime = Logix.Runtime.make(CounterProgram, {
-  layer: Layer.empty,
-})
+export const runtime = Logix.Runtime.make(CounterProgram)
 ```
 
-## 在 React 中挂载
+## 4. 在 React 中挂载并使用
 
 ```tsx
 import { RuntimeProvider, useDispatch, useModule, useSelector } from "@logixjs/react"
+import { Counter, runtime } from "./counter"
 
 function CounterView() {
   const counter = useModule(Counter.tag)
-  const count = useSelector(counter, (s) => s.count)
+  const value = useSelector(counter, (state) => state.value)
   const dispatch = useDispatch(counter)
 
-  return <button onClick={() => dispatch({ _tag: "inc", payload: undefined })}>{count}</button>
+  return <button onClick={() => dispatch({ _tag: "inc", payload: undefined })}>{value}</button>
 }
 
 export function App() {
@@ -83,8 +64,10 @@ export function App() {
 }
 ```
 
-## 下一步
+## 发生了什么
 
-- [可取消搜索教程](./tutorial-first-app)
-- [Modules & State](../essentials/modules-and-state)
-- [Flows & Effects](../essentials/flows-and-effects)
+- `Module` 声明 state 与 actions。
+- `Logic` 响应 `inc` action。
+- `Program` 装配 runnable unit。
+- `Runtime` 创建 execution container。
+- React 通过 `useModule(Counter.tag)` 消费托管实例，并通过 `useSelector(...)` 做精确读取。

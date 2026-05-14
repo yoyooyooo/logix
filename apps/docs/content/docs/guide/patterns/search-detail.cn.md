@@ -45,7 +45,7 @@ const DetailDef = Logix.Module.make('Detail', {
 ## 搜索逻辑（防抖 + 取消旧请求）
 
 ```ts
-const SearchLogic = SearchDef.logic(($) =>
+const SearchLogic = SearchDef.logic("logic", ($) =>
   Effect.gen(function* () {
     const api = yield* $.use(SearchApi)
 
@@ -80,7 +80,7 @@ const SearchLogic = SearchDef.logic(($) =>
 ### 方式一：在 SearchLogic 中驱动
 
 ```ts
-const SearchLogic = SearchDef.logic(($) =>
+const SearchLogic = SearchDef.logic("logic", ($) =>
   Effect.gen(function* () {
     const Detail = yield* $.imports.get(DetailDef.tag)
 

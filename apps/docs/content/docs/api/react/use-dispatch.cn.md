@@ -1,33 +1,30 @@
 ---
 title: useDispatch
-description: 为模块句柄返回类型安全的 dispatch 函数。
+description: 为 module handle 获取 typed dispatch function。
 ---
 
-`useDispatch` 会为模块句柄返回一个类型安全的 dispatch 函数。
-
-## 用法
+`useDispatch(handle)` 为已获取的 module instance 返回 dispatch function。
 
 ```tsx
-import { useDispatch, useModule, useSelector } from "@logixjs/react"
-import { Counter } from "./modules/counter"
-
-function CounterView() {
+function CounterButton() {
   const counter = useModule(Counter.tag)
-  const count = useSelector(counter, (s) => s.count)
+  const value = useSelector(counter, (state) => state.value)
   const dispatch = useDispatch(counter)
 
-  return <button onClick={() => dispatch({ _tag: "increment" })}>{count}</button>
+  return <button onClick={() => dispatch({ _tag: "inc", payload: undefined })}>{value}</button>
 }
 ```
 
-## Helpers
+返回的函数还提供：
 
-返回的函数同时暴露：
+```ts
+dispatch.batch(actions)
+dispatch.lowPriority(action)
+```
 
-- `dispatch.batch(actions)`
-- `dispatch.lowPriority(action)`
+对于 Form，优先使用 form handle methods，例如 `form.field(path).set(...)`、`form.fieldArray(path).append(...)`、`form.submit()`，因为它们能直接表达领域操作。
 
-## 相关页面
+## See also
 
 - [useModule](./use-module)
 - [useSelector](./use-selector)

@@ -1,193 +1,37 @@
 ---
 title: Introduction
-description: Form defines input-state semantics. React acquisition and projection remain on the core host route.
+description: The current Form mental model and owner boundaries.
 ---
 
-`@logixjs/form` defines input-state semantics on top of the Logix runtime.
+Form is for editable input state: values, validation, errors, submit, remote facts, local support facts, and list row identity.
 
-Its user surface is organized around three layers:
+The important point is that Form is a Logix Program, not a separate React runtime.
 
-1. `Form.make(...)` defines form semantics
-2. the returned `FormProgram` enters Runtime like any other program
-3. the form handle performs validation, submit, field edits, and list edits
-
-## Public surface
-
-Root exports are:
-
-- `Form.make`
-- `Form.Rule`
-- `Form.Error`
-- `Form.Companion`
-
-Optional public subpath:
-
-- `@logixjs/form/locales`
-
-React consumption remains on the core host route:
-
-- mount through `RuntimeProvider`
-- acquire through `useModule(...)`
-- read through `useSelector(...)`
-- write through the form handle
-
-## Default reading order
-
-- start with the default authoring path plus submit/validation
-- then inspect shared, local, and keyed instance lifetimes
-- then inspect source scheduling and remote fact flow
-- then inspect companion local support facts
-- then inspect row identity, cleanup receipts, and row-heavy edits
-
-## Authoring
-
-```ts
-import * as Form from "@logixjs/form"
-import { Schema } from "effect"
-
-const Values = Schema.Struct({
-  name: Schema.String,
-  email: Schema.String,
-})
-
-const SubmitPayload = Schema.Struct({
-  name: Schema.String,
-  email: Schema.String,
-})
-
-export const ProfileForm = Form.make(
-  "ProfileForm",
-  {
-    values: Values,
-    initialValues: {
-      name: "",
-      email: "",
-    },
-    validateOn: ["onSubmit"],
-    reValidateOn: ["onChange"],
-  },
-  (form) => {
-    form.field("name").rule(
-      Form.Rule.make({
-        required: "profile.name.required",
-        minLength: {
-          min: 2,
-          message: "profile.name.minLength",
-        },
-      }),
-    )
-
-    form.field("email").rule(
-      Form.Rule.make({
-        required: "profile.email.required",
-      }),
-    )
-
-    form.submit({
-      decode: SubmitPayload,
-    })
-  },
-)
+```text
+Form declaration   Form.make(...)
+Runtime mounting   Runtime.make(FormProgram) + RuntimeProvider
+React reads        useModule + useSelector
+Writes             FormHandle methods
+Evidence           Runtime.check / Runtime.trial / Runtime.compare
 ```
 
-## Runtime consumption
+## Owner map
 
-```tsx
-import React from "react"
-import * as Logix from "@logixjs/core"
-import { Effect } from "effect"
-import { RuntimeProvider, useModule, useSelector } from "@logixjs/react"
-import { ProfileForm } from "./ProfileForm"
+| Concept | Owner | Public spelling |
+| --- | --- | --- |
+| declaration | Form | `Form.make(id, config, define)` |
+| field value | Form state | `fieldValue(path)` |
+| form metadata | Form state | `rawFormMeta()` |
+| final validation truth | rule/root/list/submit | `field.rule`, `root`, `list`, `submit` |
+| remote fact ingress | source lane + Query resource | `field(path).source(...)` |
+| local soft fact | companion lane | `field(path).companion(...)` |
+| runtime mutation | Form handle | `form.field`, `form.fieldArray`, `form.submit` |
+| host read | React host law | `useModule + useSelector` |
+| verification | runtime control plane | `Runtime.check/trial/compare` |
 
-const runtime = Logix.Runtime.make(ProfileForm)
+## Hard boundaries
 
-function ProfilePage() {
-  const form = useModule(ProfileForm.tag)
-  const name = useSelector(form, (s) => s.name)
-  const email = useSelector(form, (s) => s.email)
-  const nameError = useSelector(form, (s) => s.errors?.name)
-  const canSubmit = useSelector(
-    form,
-    (s) => s.$form.errorCount === 0 && !s.$form.isSubmitting,
-  )
-
-  return (
-    <form>
-      <input
-        value={String(name ?? "")}
-        onChange={(e) => void Effect.runPromise(form.field("name").set(e.target.value))}
-        onBlur={() => void Effect.runPromise(form.field("name").blur())}
-      />
-
-      <input
-        value={String(email ?? "")}
-        onChange={(e) => void Effect.runPromise(form.field("email").set(e.target.value))}
-        onBlur={() => void Effect.runPromise(form.field("email").blur())}
-      />
-
-      {nameError ? <p>{String(nameError)}</p> : null}
-
-      <button
-        type="button"
-        disabled={!canSubmit}
-        onClick={() =>
-          void Effect.runPromise(
-            form.submit({
-              onValid: (payload) => Effect.log(payload),
-            }),
-          )
-        }
-      >
-        Submit
-      </button>
-    </form>
-  )
-}
-
-export const App = () => (
-  <RuntimeProvider runtime={runtime}>
-    <ProfilePage />
-  </RuntimeProvider>
-)
-```
-
-## Instance selection
-
-Use `useModule(ProfileForm.tag)` when the Runtime already hosts one shared form instance.
-
-Use `useModule(ProfileForm, { key })` when a page needs an independent instance:
-
-```tsx
-const form = useModule(ProfileForm, { key: "profile:42" })
-```
-
-If each component needs its own copy, omit the key:
-
-```tsx
-const form = useModule(ProfileForm)
-```
-
-If route changes should restore the form shortly after unmount, add `gcTime` to a keyed instance:
-
-```tsx
-const form = useModule(ProfileForm, {
-  key: "profile:42",
-  gcTime: 60_000,
-})
-```
-
-## Exclusions
-
-The current surface does not include:
-
-- a second form-owned React hook family
-- package-local React wrappers as public truth
-- render-ready strings emitted directly from rule declarations
-- helper families that replace the core host route
-
-## See also
-
-- [Instances](/docs/form/instances)
-- [Sources](/docs/form/sources)
-- [Companion](/docs/form/companion)
-- [Field arrays](/docs/form/field-arrays)
+- Companion is synchronous and local; it cannot perform IO or emit final validation truth.
+- Source owns remote fact ingress; it is not an options API and not a manual React fetch helper.
+- Row identity is handled through Form internals and handle methods such as `byRowId(...)`; it is not a public row token family.
+- Form does not own a separate React hook family.

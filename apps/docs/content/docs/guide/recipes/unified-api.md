@@ -1,67 +1,73 @@
 ---
 title: Pattern examples
-description: Compare store-agnostic functional patterns with state-aware Bound API patterns.
+description: Compose reusable Logix behavior without creating a second runtime or host API.
 ---
 
-Pattern code in Logix usually falls into two shapes:
+Reusable Logix patterns should stay small and mechanically reducible to the canonical spine.
 
-- functional patterns
-- Bound API patterns
+Use two shapes:
 
-## Functional pattern
+- pure Effect helpers for work that does not need module state
+- Logic helpers that accept `$` when they need state, actions, or module-local scheduling
 
-A functional pattern is store-agnostic and returns an `Effect`:
+## Pure Effect helper
 
 ```ts
-export const runBulkOperation = (config: { operation: string }) =>
+import { Effect } from "effect"
+
+export const runBulkOperation = (operation: string) =>
   Effect.gen(function* () {
     const bulk = yield* BulkOperationService
     const ids = ["1", "2", "3"]
-
-    yield* bulk.applyToMany({ ids, operation: config.operation })
+    yield* bulk.applyToMany({ ids, operation })
     return ids.length
   })
 ```
 
-Use this shape when the pattern should stay independent of a specific module.
+This shape is reusable because it does not know about a Module, Program, Runtime, or React host.
 
-## Bound API pattern
-
-A Bound API pattern is state-aware and accepts `$` explicitly:
+## Logic helper
 
 ```ts
-export const runCascadePattern = <Sh extends Logix.AnyModuleShape, R, T, Data>(
-  $: Logix.Module.BoundApi<Sh, R>,
-  config: {
-    source: (s: Logix.Module.StateOf<Sh>) => T | undefined | null
-    loader: (val: T) => Effect.Effect<Data, never, any>
-    onReset: (draft: unknown) => void
-    onSuccess: (draft: unknown, data: Data) => void
-  },
-) =>
-  $.onState(config.source).runLatest((val) =>
-    Effect.gen(function* () {
-      yield* $.state.mutate((draft) => {
-        config.onReset(draft)
-      })
-      if (val == null) return
+import { Effect } from "effect"
 
-      const data = yield* config.loader(val)
-      yield* $.state.mutate((draft) => {
-        config.onSuccess(draft, data)
+export const installDebouncedSearch = ($: any) =>
+  $.onAction("keywordChanged").runLatest((action: { readonly payload: string }) =>
+    Effect.gen(function* () {
+      yield* $.state.mutate((draft: any) => {
+        draft.keyword = action.payload
+        draft.status = action.payload ? "loading" : "idle"
+      })
+
+      if (!action.payload) return
+      const results = yield* SearchService.search(action.payload)
+
+      yield* $.state.mutate((draft: any) => {
+        draft.results = results
+        draft.status = "ready"
       })
     }),
   )
 ```
 
-Use this shape when the pattern depends on module state, watchers, or local mutation.
+Use this shape inside `Module.logic(...)` when the pattern needs Bound API capabilities. Keep the helper narrow: it should not allocate a Runtime, read from React, or invent a different state owner.
 
 ## Selection
 
-- use a functional pattern when store ownership should stay outside the pattern
-- use a Bound API pattern when the pattern must consume state, watchers, or module-local mutations
+| Need | Use |
+| --- | --- |
+| no module state | pure Effect helper |
+| module state, actions, watchers, local mutation | Logic helper that accepts `$` |
+| UI bindings | React component or toolkit helper reducible to `useModule + useSelector + handle methods` |
+
+## Rules
+
+- Do not create a second action protocol.
+- Do not hide writes behind untraceable callbacks.
+- Do not make helpers own caches, runtime instances, or React subscriptions.
+- Prefer explicit arguments over hidden global state.
 
 ## See also
 
 - [Bound API ($)](../../api/core/bound-api)
-- [Common recipes](./common-patterns)
+- [Canonical spine](../essentials/canonical-spine)

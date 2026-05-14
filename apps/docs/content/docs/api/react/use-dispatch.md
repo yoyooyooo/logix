@@ -3,29 +3,26 @@ title: useDispatch
 description: Get a typed dispatch function for a module handle.
 ---
 
-`useDispatch` returns a typed dispatch function for a module handle.
-
-## Usage
+`useDispatch(handle)` returns a dispatch function for an acquired module instance.
 
 ```tsx
-import { useDispatch, useModule, useSelector } from "@logixjs/react"
-import { Counter } from "./modules/counter"
-
-function CounterView() {
+function CounterButton() {
   const counter = useModule(Counter.tag)
-  const count = useSelector(counter, (s) => s.count)
+  const value = useSelector(counter, (state) => state.value)
   const dispatch = useDispatch(counter)
 
-  return <button onClick={() => dispatch({ _tag: "increment" })}>{count}</button>
+  return <button onClick={() => dispatch({ _tag: "inc", payload: undefined })}>{value}</button>
 }
 ```
 
-## Helpers
-
 The returned function also exposes:
 
-- `dispatch.batch(actions)`
-- `dispatch.lowPriority(action)`
+```ts
+dispatch.batch(actions)
+dispatch.lowPriority(action)
+```
+
+For Form, prefer the form handle methods such as `form.field(path).set(...)`, `form.fieldArray(path).append(...)`, and `form.submit()` when they express the domain operation directly.
 
 ## See also
 

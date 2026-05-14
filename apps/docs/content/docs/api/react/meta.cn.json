@@ -5,8 +5,6 @@
     "use-module",
     "use-selector",
     "use-dispatch",
-    "use-local-module",
-    "use-imported-module",
-    "module-scope"
+    "use-imported-module"
   ]
 }

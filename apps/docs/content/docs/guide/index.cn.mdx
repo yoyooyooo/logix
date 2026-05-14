@@ -1,49 +1,43 @@
 ---
-title: Guide Overview
-description: 按阶段从第一条可运行切片进入核心概念，再进入更深的 runtime 与 recipe 材料。
+title: Guide 总览
+description: 按当前公开主链学习 Logix，再进入 React、Form 与高级运行时主题。
 ---
 
-Guide 按阶段组织为一条阅读路径。
+Guide 按阶段组织。新用户按顺序读；熟悉对象角色之后，把 API 文档当字典查。
 
-## Get Started
+## 1. Get Started
 
-这一组页面用于拿到第一条可运行切片：
-
-1. [Introduction](/cn/docs/guide/get-started/introduction)
-2. [Quick Start](/cn/docs/guide/get-started/quick-start)
-3. [可取消搜索教程](/cn/docs/guide/get-started/tutorial-first-app)
+1. [介绍](/cn/docs/guide/get-started/introduction)
+2. [快速开始](/cn/docs/guide/get-started/quick-start)
+3. [第一个应用教程](/cn/docs/guide/get-started/tutorial-first-app)
 4. [复杂列表教程](/cn/docs/guide/get-started/tutorial-complex-list)
 
-## Essentials
-
-这一组页面用于稳定核心模型：
+## 2. Essentials
 
 1. [Thinking in Logix](/cn/docs/guide/essentials/thinking-in-logix)
-2. [Modules & State](/cn/docs/guide/essentials/modules-and-state)
-3. [Flows & Effects](/cn/docs/guide/essentials/flows-and-effects)
-4. [Field behaviors](/cn/docs/guide/essentials/field-behaviors)
-5. [Effect basics](/cn/docs/guide/essentials/effect-basics)
+2. [Canonical spine](/cn/docs/guide/essentials/canonical-spine)
+3. [Modules & State](/cn/docs/guide/essentials/modules-and-state)
+4. [Flows & Effects](/cn/docs/guide/essentials/flows-and-effects)
+5. [React 集成](/cn/docs/guide/essentials/react-integration)
 6. [Lifecycle](/cn/docs/guide/essentials/lifecycle)
-7. [React integration](/cn/docs/guide/essentials/react-integration)
-8. [Tick / Flush](/cn/docs/guide/essentials/tick-and-flush)
+7. [Tick / Flush](/cn/docs/guide/essentials/tick-and-flush)
+8. [Effect 基础](/cn/docs/guide/essentials/effect-basics)
 
-## Learn
-
-这一组页面用于处理更深的 runtime 问题：
-
-- [Describing modules](/cn/docs/guide/learn/describing-modules)
-- [Managing state](/cn/docs/guide/learn/managing-state)
-- [Lifecycle and watchers](/cn/docs/guide/learn/lifecycle-and-watchers)
-- [Cross-module communication](/cn/docs/guide/learn/cross-module-communication)
-- [Deep dive](/cn/docs/guide/learn/deep-dive)
-
-## Recipes 与 Advanced
-
-- [Recipes](/cn/docs/guide/recipes/react-integration)
-- [Advanced](/cn/docs/guide/advanced/composability)
-
-## 领域主线
-
-对输入状态密集的应用，直接进入：
+## 3. 领域包
 
 - [Form](/cn/docs/form)
+
+## 4. 高级主题与 recipes
+
+- [性能与优化](/cn/docs/guide/advanced/performance-and-optimization)
+- [测试](/cn/docs/guide/advanced/testing)
+- [故障排查](/cn/docs/guide/advanced/troubleshooting)
+- [React 集成 recipe](/cn/docs/guide/recipes/react-integration)
+- [可运行示例](/cn/docs/guide/recipes/runnable-examples)
+
+## 这份 Guide 有意不教授的内容
+
+- `useLocalModule`、`useModuleList` 和 `ModuleScope` 不是当前公开 React API 路线。
+- Module 对象通过 `Program.make(...)` 装配；React 局部实例使用 `useModule(Program, options)`。
+- Form 不定义包内 hook family；读取仍然使用 `useSelector(...)`。
+- 验证报告来自 `Runtime.check(...)`、`Runtime.trial(...)`、`Runtime.compare(...)`，不是用户自定义 Form 或 React report 对象。

@@ -1,66 +1,30 @@
 ---
-title: Composability Map
-description: A default-path guide to composing @logixjs/core + @logixjs/react (Module / Logic / Runtime / React).
+title: Composability
+description: "Compose by owner boundary: Program imports, services, React projection, and domain packages."
 ---
 
-Logix exposes a small set of composition points across `@logixjs/core` and `@logixjs/react`. Most application authoring decisions reduce to a few repeatable questions:
+Logix composition is not a bag of helper hooks. Choose the owner first.
 
-- Should this be a **singleton** or **multi-instance**?
-- If a module composes child modules, how does the UI get the child **within the parent instance scope**?
-- When do you need subtree overrides like `RuntimeProvider.layer`?
+```mermaid
+flowchart LR
+  Module[Module] --> Program[Program.make]
+  Program --> Runtime[Runtime.make]
+  Runtime --> React[RuntimeProvider]
+  React --> Hooks[useModule + useSelector]
+  Program --> Imports[capabilities.imports]
+  Program --> Services[capabilities.services]
+```
 
-## One-sentence rules (prefer the default path)
+## Composition routes
 
-1. **Make singleton vs multi-instance explicit**: `useModule(ModuleTag)` is a Provider-scoped singleton; `useModule(Program, { key })` is multi-instance.
-2. **For parent-child composition, prefer imports (strict scope)**: children follow the parent instance; Logic uses `$.imports.get(Child.tag)`, UI uses `host.imports.get(Child.tag)`.
-3. **Cross-module coordination should stay with the owner logic**: when collaboration belongs to a page or parent module, keep it in `Logic` and resolve children via imports.
-4. **UI should bind to a Host by default**: don’t “climb the imports tree” everywhere; resolve once at the boundary and pass `ModuleRef` down.
+| Need | Route |
+| --- | --- |
+| child module inside parent scope | `Program.make(..., { capabilities: { imports: [ChildProgram] } })` |
+| service dependency | `capabilities.services` or `Runtime.make(..., { layer })` |
+| local React instance | `useModule(Program, { key? })` |
+| domain package | return a Program or reduce to the same spine |
+| Form field support facts | `field(...).source(...)` / `field(...).companion(...)` plus `useSelector(...)` |
 
-## Decision tree (Mermaid)
+## Deleted routes
 
-<Mermaid
-  colorize
-  look="handDrawn"
-  handDrawnSeed={7}
-  chart={`flowchart TD
-Q0{Where does this state live?}
-Q0 -->|Component-local| L0["useLocalModule"]
-Q0 -->|Route/page| Q1{Need multiple instances?}
-Q0 -->|App singleton| G0["Runtime.make(Program)<br/>useModule(ModuleTag)"]
-
-Q1 -->|Yes| I0["useModule(Program, { key, gcTime })"]
-Q1 -->|No| I1["useModule(Program)"]
-
-I0 --> Q2{Should children follow parent instance?}
-I1 --> Q2
-
-Q2 -->|Yes| C0["imports + $.imports.get(Child.tag)<br/>UI: host.imports.get(Child.tag)"]
-Q2 -->|No| E0["Keep it in module/page logic"]
-`}
-/>
-
-## Composition cheat sheet (what should I use?)
-
-| What you’re solving | Recommended entry | Scope intuition | Where it lives | Read more |
-| --- | --- | --- | --- | --- |
-| Local UI state (replace `useState/useReducer`) | `useLocalModule` | component lifetime | React component | [React integration](../recipes/react-integration) |
-| Page/session multi-instance (tabs/sessions) | `useModule(Program, { key })` | one instance per `(Program, key)` | React component | [React integration](../recipes/react-integration) |
-| Parent-child composition (children follow parent) | `imports` + `$.imports.get(Child.tag)` | strict imports scope | Program-mounted Logic | [Cross-module communication](../learn/cross-module-communication) |
-| UI reads child within parent instance scope | `host.imports.get(Child.tag)` / `useImportedModule` | parent instance scope | React component | [useImportedModule](../../api/react/use-imported-module), [Route-scope modals](../recipes/route-scope-modals) |
-| Runtime-scope service read | `$.use(Tag)` | current runtime scope | Logic | [Cross-module communication](../learn/cross-module-communication) |
-| Subtree env override (light config) | `RuntimeProvider layer={...}` | subtree env override | React tree | [Runtime](../../api/core/runtime) |
-| Caller DX (author-side) | handle extensions | extra handle fields | module author code | [Module handle extensions](./module-handle-extensions) |
-| Reuse “logic snippets / flow templates” | Pattern functions | `(config) => Effect` or `($, config) => ...` | `guide/patterns` / helpers | [Pattern example](../patterns/optimistic-update) |
-
-## Common footguns (avoid these)
-
-1. **Treating an imports child as a global singleton**: writing `useModule(Child.tag)` when you actually need `host.imports.get(Child.tag)`.
-2. **Using root reads to “pick an instance”**: multi-instance collaboration should stay in the owner module or parent page logic via `$.imports.get(...)` and imports scope.
-3. **Climbing the imports tree everywhere**: `host.imports.get(A).imports.get(B)...` scatters dependencies; resolve once at the boundary and pass `ModuleRef` down.
-4. **Expecting local overrides to affect provider singletons**: `useModule(ModuleTag)` reads from the current `RuntimeProvider` scope; if you need override semantics, use imports or `RuntimeProvider.layer`.
-
-## See also
-
-- To understand the semantics of `imports / $.imports.get / useModule(ModuleTag)`: read [Cross-module communication](../learn/cross-module-communication).
-- To apply composition in React code: read [React integration](../recipes/react-integration) and [Route-scope modals keepalive](../recipes/route-scope-modals).
-- To package high-frequency operations into ergonomic call sites: read [Module handle extensions](./module-handle-extensions).
+Do not compose through removed React surfaces such as `useLocalModule`, `useModuleList`, or `ModuleScope`. Use Program ownership and ordinary React component composition instead.

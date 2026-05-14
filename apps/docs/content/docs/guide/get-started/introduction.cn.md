@@ -1,45 +1,40 @@
 ---
-title: Introduction
-description: Logix 是一个面向状态、逻辑和宿主集成的 Effect-native runtime。
+title: 介绍
+description: Logix 是什么，以及它适合放在哪里。
 ---
 
-Logix 是一个面向状态与业务逻辑的 Effect-native runtime。
+Logix 是应用逻辑运行时。它用一个小对象模型组织 state、effects、services、React projection 与 evidence。
 
-它适合处理这些问题：
+```text
+React 负责 UI / host / render。
+Logix 负责 declaration / composition / execution / evidence。
+```
 
-- 结构化状态
-- 显式的异步编排
-- 稳定的宿主集成
-- 可诊断的执行过程
+默认路线是：
 
-## 典型问题
+1. 定义 `Module`。
+2. 用 `Module.logic(id, ...)` 添加行为。
+3. 装配 `Program`。
+4. 创建 `Runtime`。
+5. 用 `RuntimeProvider` 投影到 React。
+6. 用 `useSelector(...)` 读取，用 dispatch 或领域 handle 写入。
 
-- 快速 UI 变化带来的请求竞态
-- 散落在组件里的业务逻辑
-- 难以追踪的状态联动
-- 不清楚异步工作为什么开始、停止或被替换
+## 为什么使用它
 
-## 核心层次
+当一个功能有业务状态和副作用，并且需要稳定执行、可测试性与诊断时，使用 Logix。短生命周期、纯 UI 的 view state 仍可直接使用 React state。
 
-Logix 可以先按 4 层理解：
+## 第一组概念
 
-- intent
-- flow
-- logic
-- runtime
+| 概念 | 含义 |
+| --- | --- |
+| Module | Definition object：state schema、action map、reducers、logic builder。 |
+| Logic | 挂在 Module 上的 Effect-based behavior。 |
+| Program | 带 initial state、logics、services、imports 的装配后业务单元。 |
+| Runtime | 执行容器。 |
+| React host | 把 runtime 实例暴露给组件的 Provider + hooks。 |
+| Evidence | check/trial/compare 产生的结构化报告。 |
 
-Guide 会按这个顺序逐步展开。
+## 下一步
 
-## 推荐下一步
-
-1. [Quick Start](/cn/docs/guide/get-started/quick-start)
-2. [可取消搜索教程](/cn/docs/guide/get-started/tutorial-first-app)
-3. [复杂列表教程](/cn/docs/guide/get-started/tutorial-complex-list)
-4. [Modules & State](/cn/docs/guide/essentials/modules-and-state)
-
-## Form 说明
-
-当问题本身已经是完整的表单边界时，直接进入：
-
-- [Form](/cn/docs/form)
-- [Form Quick Start](/cn/docs/form/quick-start)
+- [快速开始](./quick-start)
+- [Canonical spine](/cn/docs/guide/essentials/canonical-spine)

@@ -1,53 +1,38 @@
 ---
 title: Form
-description: Form is the Logix domain package for editable input state, validation, submit gating, and list identity.
+description: The Logix domain package for editable values, validation, source facts, companion facts, submit, and list identity.
 ---
 
-`@logixjs/form` is the Logix domain package for editable input state.
+`@logixjs/form` is a domain package built on the same Logix spine.
 
-It defines the semantics of:
+```text
+Form.make(id, config, define)
+  -> FormProgram
+  -> Runtime / Program law
+  -> FormHandle
+  -> useModule + useSelector
+```
 
-- editable values
-- validation and error placement
-- submit gating and decode
-- list structure editing and row ownership
+## Public route
 
-React consumption continues to follow the core host law through `RuntimeProvider`, `useModule(...)`, and `useSelector(...)`.
+- Author with `Form.make(...)`.
+- Mount with the core runtime and React host.
+- Mutate with the returned form handle.
+- Read with `useSelector(...)`, `fieldValue(...)`, `fieldValues(...)`, `rawFormMeta()`, `Form.Error.field(...)`, and `Form.Companion.*` descriptors.
 
-## Contents
+Form does not add a Form-owned React hook family, public path-object API, public row-token API, or a second runtime/control-plane truth source.
+
+## Read next
 
 1. [Introduction](/docs/form/introduction)
 2. [Quick start](/docs/form/quick-start)
 3. [Instances](/docs/form/instances)
-4. [Sources](/docs/form/sources)
-5. [Companion](/docs/form/companion)
-6. [Rules](/docs/form/rules)
-7. [Validation](/docs/form/validation)
+4. [Rules](/docs/form/rules)
+5. [Validation](/docs/form/validation)
+6. [Sources](/docs/form/sources)
+7. [Companion](/docs/form/companion)
 8. [Selectors and support facts](/docs/form/selectors)
 9. [Field arrays](/docs/form/field-arrays)
-10. [Derived](/docs/form/derived)
-11. [Schema](/docs/form/schema)
-12. [Performance](/docs/form/performance)
-13. [When to use](/docs/form/when-to-use)
-
-## Scope
-
-The current public route is intentionally small:
-
-- author with `Form.make(...)`
-- mount through the core React host
-- read with `useSelector(...)`
-- write through the form handle
-
-Selector support facts, field explanations, and row-owned companion reads stay on the same `useSelector(...)` host route.
-Form does not add Form-owned React hooks, public path objects, public row owner tokens, or generic fact namespaces for these reads.
-
-The default narrative order remains:
-
-- quick start
-- instance lifecycle
-- source / remote fact
-- companion / local support fact
-- field arrays / row identity
-
-Additional wrapper families, package-local React helpers, and alternative form-specific hook families are outside the current canonical surface.
+10. [Schema](/docs/form/schema)
+11. [Performance](/docs/form/performance)
+12. [When to use](/docs/form/when-to-use)

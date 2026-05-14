@@ -1,51 +1,25 @@
 ---
-title: Derived
-description: Form does not keep a separate public derived family.
+title: Derived values
+description: Keep derivation in selectors, submit decode, rules, or runtime logic.
 ---
 
-Form does not define a separate public `derived` family.
+Form does not expose a separate public `derived` family.
 
-Derivations stay in one of three places:
+Use the right owner:
 
-- view derivation in React through `useSelector(form, selector)`
-- payload derivation in `submit.decode`
-- reusable validation derivation in `Form.Rule.make(...)`
-
-## View derivation
+| Need | Route |
+| --- | --- |
+| view-only derivation | `useSelector(form, selector)` |
+| typed payload derivation | `submit({ decode })` |
+| final validation derivation | `Form.Rule.make(...)` |
+| local UX support fact | `field(path).companion(...)` |
+| remote fact | `field(path).source(...)` |
 
 ```tsx
 const canSubmit = useSelector(
   form,
-  (s) => s.$form.errorCount === 0 && !s.$form.isSubmitting,
+  (state) => state.$form.errorCount === 0 && !state.$form.isSubmitting,
 )
 ```
 
-## Payload derivation
-
-```ts
-form.submit({
-  decode: SubmitPayload,
-})
-```
-
-## Validation derivation
-
-```ts
-form.field("confirmPassword").rule(
-  Form.Rule.make({
-    deps: ["password"],
-    validate: (confirm, ctx) =>
-      confirm === ctx.values.password
-        ? undefined
-        : "profile.confirmPassword.mismatch",
-  }),
-)
-```
-
-If a helper becomes a public candidate later, it must justify why it belongs in Form instead of core selectors, schema transforms, or runtime logic.
-
-## See also
-
-- [Selectors and support facts](/docs/form/selectors)
-- [Schema](/docs/form/schema)
-- [Rules](/docs/form/rules)
+Do not add a Form-specific derived hook or public derived namespace unless it can reduce to the existing owners without creating a second read law.

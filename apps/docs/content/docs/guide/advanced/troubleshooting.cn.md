@@ -55,7 +55,7 @@ description: Logix 诊断代码解释与常见错误修复指南。
 **错误写法**：
 
 ```ts
-const Logic = Module.logic(($) =>
+const Logic = Module.logic("logic", ($) =>
   Effect.gen(function* () {
     // ❌ 这里是 run 段，不能注册生命周期
     $.lifecycle.onInitRequired(Effect.log('init'))
@@ -68,7 +68,7 @@ const Logic = Module.logic(($) =>
 **正确写法**：
 
 ```ts
-const Logic = Module.logic(($) => {
+const Logic = Module.logic("logic", ($) => {
   // ✅ 声明区：return 之前
   $.lifecycle.onInitRequired(Effect.log('init'))
 
@@ -96,7 +96,7 @@ const Logic = Module.logic(($) => {
 **错误写法**：
 
 ```ts
-const Logic = Module.logic(($) => {
+const Logic = Module.logic("logic", ($) => {
   // ❌ setup 段不能访问 Env
   const api = $.use(ApiService)
 
@@ -109,7 +109,7 @@ const Logic = Module.logic(($) => {
 **正确写法**：
 
 ```ts
-const Logic = Module.logic(($) =>
+const Logic = Module.logic("logic", ($) =>
   Effect.gen(function* () {
     // ✅ run 段：可以 yield* $.use
     const api = yield* $.use(ApiService)
@@ -157,7 +157,7 @@ const HostProgram = Logix.Program.make(HostDef, {
 ```
 
 ```ts
-const HostLogic = HostDef.logic(($) =>
+const HostLogic = HostDef.logic("logic", ($) =>
   Effect.gen(function* () {
     const child = yield* $.imports.get(Child.tag)
     const value = yield* child.read((s) => s.value)
@@ -182,7 +182,7 @@ const HostLogic = HostDef.logic(($) =>
 **错误写法**：
 
 ```ts
-const Logic = Module.logic(($) =>
+const Logic = Module.logic("logic", ($) =>
   Effect.gen(function* () {
     // ❌ run 段注册 reducer，不会生效
     $.reducer('increment', (s) => ({ ...s, count: s.count + 1 }))
@@ -193,7 +193,7 @@ const Logic = Module.logic(($) =>
 **正确写法**：
 
 ```ts
-const Logic = Module.logic(($) => {
+const Logic = Module.logic("logic", ($) => {
   // ✅ setup 段注册 reducer
   $.reducer('increment', (s) => ({ ...s, count: s.count + 1 }))
 
@@ -222,7 +222,7 @@ const Logic = Module.logic(($) => {
 **正确写法**：
 
 ```ts
-const Logic = Module.logic(($) => {
+const Logic = Module.logic("logic", ($) => {
   // ✅ 在同步声明区声明 fields
   $.fields({
     /* ... */

@@ -1,41 +1,37 @@
 ---
 title: Logix Docs
-description: Logix is an Effect-native runtime for state, logic, and host integration.
+description: Current user documentation for the Module → Program → Runtime spine.
 ---
 
-Logix is an Effect-native runtime for state and business logic.
+Logix is an Effect-native runtime for application logic. Its current public model is intentionally small:
 
-The documentation is organized into four entry lines:
+```text
+Module.logic(...)     definition-time logic and declarations
+Program.make(...)     assembly-time business unit
+Runtime.make(...)     execution-time runtime container
+RuntimeProvider       React host projection
+useModule + useSelector  React instance acquisition and reads
+```
 
-- [Get Started](/docs/guide/get-started/introduction)
-- [Guide](/docs/guide)
-- [Form](/docs/form)
-- [API Reference](/docs/api)
+Use this site as the user-facing manual. For exhaustive exported signatures, use the generated [API Reference](/api-reference).
 
-## Common reading paths
+## Start here
 
-### First runnable slice
+1. [Introduction](/docs/guide/get-started/introduction) — what Logix is for.
+2. [Quick Start](/docs/guide/get-started/quick-start) — build a small Program and mount it in React.
+3. [Canonical spine](/docs/guide/essentials/canonical-spine) — the object roles to keep in your head.
+4. [React integration](/docs/guide/essentials/react-integration) — provider, instance acquisition, reads, and writes.
 
-1. [Introduction](/docs/guide/get-started/introduction)
-2. [Quick Start](/docs/guide/get-started/quick-start)
-3. [Cancelable search tutorial](/docs/guide/get-started/tutorial-first-app)
+## Domain docs
 
-### Core concepts
+- [Form](/docs/form) — editable value state, validation, sources, companion facts, submit, and list identity.
 
-1. [Thinking in Logix](/docs/guide/essentials/thinking-in-logix)
-2. [Modules & State](/docs/guide/essentials/modules-and-state)
-3. [Flows & Effects](/docs/guide/essentials/flows-and-effects)
-4. [React integration](/docs/guide/essentials/react-integration)
+## API docs
 
-### Form
+- [Core API](/docs/api) — Module, Program, Runtime, and Bound API.
+- [React API](/docs/api/react/provider) — RuntimeProvider, useModule, useSelector, useDispatch, and useImportedModule.
+- [Generated API Reference](/api-reference) — signature-first export index.
 
-1. [Form overview](/docs/form)
-2. [Quick start](/docs/form/quick-start)
-3. [Validation](/docs/form/validation)
-4. [Field arrays](/docs/form/field-arrays)
+## Current public surface policy
 
-### API reference
-
-- [Core APIs](/docs/api/core/runtime)
-- [React APIs](/docs/api/react/provider)
-- [Generated API index](/api-reference)
+The current docs do not teach removed or internal routes such as `useLocalModule`, `useModuleList`, `ModuleScope`, public FieldKernel namespaces, Form-owned React hook families, public Form path objects, or separate runtime/control-plane facades. Local React ownership is expressed with `useModule(Program, options)`. Form reads still use `useSelector(...)`.

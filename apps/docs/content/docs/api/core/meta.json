@@ -1,8 +1,9 @@
 {
   "title": "Core Concepts",
   "pages": [
-    "runtime",
     "module",
+    "program",
+    "runtime",
     "handle",
     "bound-api",
     "match-builder"

@@ -1,66 +1,30 @@
 ---
-title: 可组合性地图
-description: 把 @logixjs/core + @logixjs/react 的组合方式收敛成默认路径与选型指南（Module / Logic / Runtime / React）。
+title: Composability
+description: 按 owner boundary 组合：Program imports、services、React projection 与 domain packages。
 ---
 
-Logix 在 `@logixjs/core` 与 `@logixjs/react` 之间提供的组合点并不多，业务开发里通常只需要先回答几类稳定的问题：
+Logix composition 不是 helper hooks 的集合。先选择 owner。
 
-- 我应该用 **单例** 还是 **多实例**？
-- 子模块应该跟随谁的生命周期？UI 应该怎么拿到“属于这个父实例”的子模块？
-- 什么时候需要 `RuntimeProvider.layer` 这样的“局部差异化配置”？
+```mermaid
+flowchart LR
+  Module[Module] --> Program[Program.make]
+  Program --> Runtime[Runtime.make]
+  Runtime --> React[RuntimeProvider]
+  React --> Hooks[useModule + useSelector]
+  Program --> Imports[capabilities.imports]
+  Program --> Services[capabilities.services]
+```
 
-## 一句话原则（默认路径优先）
+## Composition routes
 
-1. **单例/多实例要显式表达**：`useModule(ModuleTag)` 是 Provider 环境里的单例；`useModule(Program, { key })` 才是多实例。
-2. **父子组合优先用 imports（strict scope）**：子模块跟随父实例；Logic 用 `$.imports.get(Child.tag)`，UI 用 `host.imports.get(Child.tag)`。
-3. **跨模块协作优先放在 owner logic 里**：当协作属于页面或父模块时，把它留在 `Logic`，通过 imports scope 解析子模块。
-4. **UI 默认只绑定 Host，一跳即可**：深层组件不要到处“爬 imports 树”；在边界 resolve 一次，把 `ModuleRef` 往下传。
+| 需求 | 路线 |
+| --- | --- |
+| parent scope 内的 child module | `Program.make(..., { capabilities: { imports: [ChildProgram] } })` |
+| service dependency | `capabilities.services` 或 `Runtime.make(..., { layer })` |
+| React local instance | `useModule(Program, { key? })` |
+| domain package | 返回 Program，或降解到同一条主链 |
+| Form field support facts | `field(...).source(...)` / `field(...).companion(...)` 加 `useSelector(...)` |
 
-## 组合选型决策树（Mermaid）
+## 已删除路线
 
-<Mermaid
-  colorize
-  look="handDrawn"
-  handDrawnSeed={7}
-  chart={`flowchart TD
-Q0{状态属于哪里？}
-Q0 -->|组件内| L0["useLocalModule"]
-Q0 -->|页面/路由| Q1{需要多实例吗？}
-Q0 -->|全局单例| G0["Runtime.make(Program)<br/>useModule(ModuleTag)"]
-
-Q1 -->|是| I0["useModule(Program, { key, gcTime })"]
-Q1 -->|否| I1["useModule(Program)"]
-
-I0 --> Q2{子模块跟随父实例吗？}
-I1 --> Q2
-
-Q2 -->|是| C0["imports + $.imports.get(Child.tag)<br/>UI: host.imports.get(Child.tag)"]
-Q2 -->|否| E0["模块内或页面级 logic"]
-`}
-/>
-
-## 组合点总表（你应该用哪一个？）
-
-| 你要解决的事                                 | 推荐入口                                            | 作用域语义（直觉）                           | 典型落点                  | 深入阅读                                                                                                      |
-| -------------------------------------------- | --------------------------------------------------- | -------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| 组件内局部状态（替代 `useState/useReducer`） | `useLocalModule`                                    | 组件生命周期                                 | React 组件                | [React 集成](../recipes/react-integration)                                                                    |
-| 页面/会话级多实例（Tab/Session）             | `useModule(Program, { key })`                       | `(Program, key)` 一份实例                    | React 组件                | [React 集成](../recipes/react-integration)                                                                    |
-| 父子模块组合（子模块跟随父实例）             | `imports` + `$.imports.get(Child.tag)`              | strict imports scope                         | Program 装配的 Logic      | [跨模块协作](../learn/cross-module-communication)                                                             |
-| UI 访问“属于这个父实例”的子模块              | `host.imports.get(Child.tag)` / `useImportedModule` | 父实例 scope                                 | React 组件                | [useImportedModule](../../api/react/use-imported-module)、[路由弹框 keepalive](../recipes/route-scope-modals) |
-| runtime scope 内的服务读取                   | `$.use(Tag)`                                        | 当前 runtime scope                           | Logic                     | [跨模块协作](../learn/cross-module-communication)                                                             |
-| 子树局部依赖覆盖（轻配置）                   | `RuntimeProvider layer={...}`                       | 子树 Env override                            | React 组件树              | [Runtime](../../api/core/runtime)                                                                             |
-| 调用方 DX（作者侧增强）                      | handle extensions                                   | 扩展 handle 字段                             | 模块作者代码              | [模块手柄扩展](./module-handle-extensions)                                                                    |
-| 复用“逻辑片段/流程模板”                      | Pattern 函数                                        | `(config) => Effect` 或 `($, config) => ...` | `guide/patterns` / 工具库 | [Pattern 示例](../patterns/optimistic-update)                                                                 |
-
-## 常见误用（直接避开）
-
-1. **把 imports 子模块当成全局单例去用**：在 UI 写 `useModule(Child.tag)`，但你其实要的是 `host.imports.get(Child.tag)`。
-2. **用 root 读取去“挑一个实例”**：多实例协作优先由拥有者模块在其 scope 内 `$.imports.get(...)` 驱动，不要把 root 读取当作实例选择器。
-3. **深层组件到处爬树**：`host.imports.get(A).imports.get(B)...` 让依赖关系分散且难调试；在边界 resolve 一次往下传。
-4. **希望局部覆盖影响 Provider 单例**：`useModule(ModuleTag)` 读取的是当前 `RuntimeProvider` scope；需要可覆盖语义时，改用 imports 或 `RuntimeProvider.layer`。
-
-## 延伸阅读
-
-- 想系统理解“imports / $.imports.get / useModule(ModuleTag)”的语义差异：读 [跨模块协作](../learn/cross-module-communication)。
-- 想把“组合”落到 React 代码里：读 [在 React 中使用 Logix](../recipes/react-integration) 与 [路由 Scope 下的弹框 Keepalive](../recipes/route-scope-modals)。
-- 想把高频操作封装成更好用的调用入口：读 [模块手柄扩展](./module-handle-extensions)。
+不要通过 `useLocalModule`、`useModuleList` 或 `ModuleScope` 等已移除 React surfaces 做组合。使用 Program ownership 与普通 React component composition。

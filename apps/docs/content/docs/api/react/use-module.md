@@ -1,48 +1,29 @@
 ---
 title: useModule
-description: Resolve shared or local module instances in React.
+description: Resolve a hosted module instance or create a local/keyed Program instance in React.
 ---
 
-`useModule` resolves a module handle inside React.
+`useModule(...)` is the React instance-acquisition hook.
 
-The canonical routes are:
+## Shared hosted instance
 
-- `useModule(ModuleTag)` for a shared instance already hosted by the current runtime scope
-- `useModule(Program, options?)` for a local or keyed instance
-
-## Shared instance
+Use a Module tag when the current runtime already hosts that instance:
 
 ```tsx
 const counter = useModule(Counter.tag)
 ```
 
-This resolves an already hosted shared instance from the current runtime scope.
+This reads the instance from the current `RuntimeProvider` scope.
 
-## Local or keyed instance
+## Local or keyed Program instance
 
-```tsx
-const editor = useModule(EditorProgram, { key: "editor:42" })
-```
-
-This creates or reuses a local instance for the current runtime scope.
-
-Without a `key`, instance identity is bound to the current component call:
+Use a Program when a component or route needs its own instance:
 
 ```tsx
 const editor = useModule(EditorProgram)
 ```
 
-Use this for multiple independent copies on the same screen.
-
-With the same `key`, reuse only happens under the same provider runtime scope and the same `Program`:
-
-```tsx
-const editor = useModule(EditorProgram, { key: `editor:${id}` })
-```
-
-Different provider runtime scopes, subtree layer scopes, or `Program` values produce different instances even if the key string matches.
-
-Set `gcTime` when the instance should stay alive briefly after the last holder unmounts:
+Add a key when multiple components should share the same local instance inside the same runtime scope:
 
 ```tsx
 const editor = useModule(EditorProgram, {
@@ -51,45 +32,37 @@ const editor = useModule(EditorProgram, {
 })
 ```
 
-Remounting within the window reuses the existing instance; remounting after the window creates a new one.
+`gcTime` keeps the instance alive after the last holder unmounts. Remounting inside the window reuses it.
 
-## State reads
+## Suspense mode
 
-State reads stay on `useSelector(...)`:
+When using explicit suspense, provide a stable key:
+
+```tsx
+const editor = useModule(EditorProgram, {
+  key: `editor:${id}`,
+  suspend: true,
+  initTimeoutMs: 5_000,
+})
+```
+
+## Reads and writes
+
+`useModule(...)` does not read state by itself.
 
 ```tsx
 const counter = useModule(Counter.tag)
-const count = useSelector(counter, (s) => s.count)
+const value = useSelector(counter, (state) => state.value)
+const dispatch = useDispatch(counter)
 ```
 
-`useModule` does not subscribe by itself.
+## Removed routes
 
-## Options
-
-When the first argument is a `Program`, `useModule` accepts:
-
-- `key`
-- `gcTime`
-- `deps`
-- `suspend`
-- `initTimeoutMs`
-
-These options belong to local-instance construction and reuse.
-`key` determines explicit reuse identity, and `gcTime` controls the keep-alive window after the last holder unmounts.
-
-## Existing handles
-
-`useModule(ref)` and `useModule(runtime)` connect to an existing instance.
-They do not create a new `ModuleRuntime`.
-
-## Notes
-
-- `useLocalModule(...)`, `useLayerModule(...)`, and `ModuleScope.make(...)` are advanced routes.
-- `useModule(Module)` is no longer part of the canonical public route.
+Do not use `useModule(Module)` for raw module objects. Do not use the removed `useLocalModule`, `useModuleList`, or `ModuleScope` routes. Use `useModule(Program, options)` and ordinary component composition instead.
 
 ## See also
 
 - [RuntimeProvider](./provider)
 - [useSelector](./use-selector)
+- [useDispatch](./use-dispatch)
 - [useImportedModule](./use-imported-module)
-- [ModuleScope](./module-scope)

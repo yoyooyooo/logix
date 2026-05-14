@@ -20,7 +20,7 @@ description: Handling asynchronous data with React Suspense.
 推荐写法是：先渲染初始态，用 `onStart` 或 Watcher 发起异步加载，并用 state（如 `isLoading/error`）驱动 UI。
 
 ```ts
-const UserLogic = UserModule.logic(($) => {
+const UserLogic = UserModule.logic("logic", ($) => {
   // onStart：此时 Watcher 已经挂载，可以触发一次加载
   $.lifecycle.onStart($.dispatchers.refresh())
 
@@ -49,7 +49,7 @@ const UserLogic = UserModule.logic(($) => {
 当你希望“初始化完成前不渲染 UI”，请配合下一节的 `suspend:true` 使用；这时 `onInitRequired/onInit` 可以安全地包含异步等待。
 
 ```ts
-const UserLogic = UserModule.logic(($) => {
+const UserLogic = UserModule.logic("logic", ($) => {
   // declaration-only：注册初始化逻辑（Runtime 统一调度；与 Suspense/ErrorBoundary 配合）
   $.lifecycle.onInitRequired(
     Effect.gen(function* () {

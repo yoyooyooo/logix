@@ -1,57 +1,52 @@
 ---
 title: useSelector
-description: 订阅完整状态或状态切片。
+description: 订阅精确 state selector 或 selector descriptor。
 ---
 
-`useSelector` 是 React 中读取 Logix 状态的 canonical API。
-
-## 完整状态
+`useSelector(handle, selector, equalityFn?)` 是 canonical React read API。
 
 ```tsx
-const state = useSelector(handle)
+const counter = useModule(Counter.tag)
+const value = useSelector(counter, (state) => state.value)
 ```
 
-## 切片订阅
+无参数 full-state 读取不是当前公开路线。必须传入显式 selector。
+
+## Equality
 
 ```tsx
-const count = useSelector(handle, (s) => s.count)
+const summary = useSelector(
+  counter,
+  (state) => ({ value: state.value, doubled: state.value * 2 }),
+  (a, b) => a.value === b.value && a.doubled === b.doubled,
+)
 ```
 
-也可以提供可选的 equality function：
+如果不传 equality function，Logix 会优先使用 selector descriptor 自带 equality，否则使用 `Object.is`。
+
+## Form selectors
+
+Form-specific reads 仍然走这个 hook：
 
 ```tsx
-const slice = useSelector(handle, selector, equalityFn)
-```
-
-## 说明
-
-- `useSelector(handle)` 读取完整状态
-- `useSelector(handle, selector, equalityFn?)` 订阅状态切片
-- 符合条件的 selector，在内部可能走更优化的订阅路径
-
-## Form selector descriptors
-
-Form-specific support reads 仍然使用这个 hook。
-
-```tsx
-const value = useSelector(form, fieldValue("items.0.warehouseId"))
-const explain = useSelector(form, Form.Error.field("items.0.warehouseId"))
-const support = useSelector(form, Form.Companion.field("items.warehouseId"))
-const rowSupport = useSelector(
+const name = useSelector(form, fieldValue("name"))
+const values = useSelector(form, fieldValues(["name", "email"]))
+const meta = useSelector(form, rawFormMeta())
+const error = useSelector(form, Form.Error.field("name"))
+const companion = useSelector(form, Form.Companion.field("warehouseId"))
+const rowCompanion = useSelector(
   form,
   Form.Companion.byRowId("items", rowId, "warehouseId"),
 )
 ```
 
-`Form.Companion.*` descriptors 只通过 `useSelector` 消费。
-它们不创建 `useCompanion`、Form-owned hook family、carrier-bound selector route 或第二条 host read route。
+Form 不新增 `useForm`、`useField`、`useFieldValue` 或 `useCompanion` 作为 canonical read routes。
 
-`Form.Error.field(path)` 是 field explanation selector。
-它的结果可能表示 `error`、`pending`、`stale`、`cleanup`，也可能表示当前没有 explanation。
-它不只等于 canonical `FormErrorLeaf`，也不会变成第二套 validation truth。
+## Selector precision
 
-## 相关页面
+优先使用 exact selectors 与 descriptor helpers。宽函数 selector 只在确有需要时使用；精确读取能让 runtime 更精准地路由通知。
+
+## See also
 
 - [useModule](./use-module)
-- [useDispatch](./use-dispatch)
-- [Form selectors and support facts](/cn/docs/form/selectors)
+- [Form selectors](/cn/docs/form/selectors)

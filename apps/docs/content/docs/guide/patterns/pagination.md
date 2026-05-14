@@ -30,7 +30,7 @@ const ListDef = Logix.Module.make('List', {
   },
 })
 
-const ListLogic = ListDef.logic(($) =>
+const ListLogic = ListDef.logic("logic", ($) =>
   Effect.gen(function* () {
     const api = yield* $.use(ListApi)
 

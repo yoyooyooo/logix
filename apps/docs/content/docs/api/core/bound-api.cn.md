@@ -1,88 +1,66 @@
 ---
 title: Bound API ($)
-description: 在 logic 中使用 Bound API 读取状态、派发动作、解析依赖并注册生命周期。
+description: Module.logic builder 内可用的 API。
 ---
 
-`$` 是 `Module.logic(...)` 内可用的 Bound API。
+`$` 是传给 `Module.logic(id, ($) => ...)` 的 Bound API。它已经绑定到当前 module shape、runtime、services、imports、state 与 action tokens。
 
-它提供这些能力：
+## 常用成员
 
-- 状态读取与写入
-- action 派发与 watcher
-- runtime service lookup
-- imported child resolution
-- 生命周期注册
-- 字段行为声明
+| 成员 | 用途 |
+| --- | --- |
+| `$.state.read` | 在 Effect 代码中读取当前 state。 |
+| `$.state.update(fn)` | 返回写入新 state 的 Effect。 |
+| `$.state.mutate(fn)` | 返回修改 draft 的 Effect。 |
+| `$.onAction(...)` | 从 action token/tag/schema 构造 intent stream。 |
+| `$.dispatch(...)` / `$.dispatchers.*` | 派发 actions。 |
+| `$.use(...)` | 从 Env 中解析 imported module 或 service。 |
+| `$.imports.get(Module.tag)` | 从 `Program.make(..., { capabilities: { imports } })` 解析子 Program。 |
+| `$.fields(...)` | 在 logic builder 阶段声明 field behavior。 |
+| `$.readyAfter(effect, options?)` | 在 logic builder 阶段声明 startup readiness work。 |
+| `$.effect(token, handler)` | 注册 action side-effect handler。 |
 
-## State
+## Declaration phase 与 run phase
 
-```ts
-const state = yield* $.state.read
-
-yield* $.state.mutate((draft) => {
-  draft.count += 1
-})
-```
-
-## Actions
+Declaration-only 调用必须同步发生在 builder body 中。logic 的 runtime work 通过返回的 long-running effect 表达。
 
 ```ts
-yield* $.dispatch({ _tag: "increment", payload: undefined })
-yield* $.dispatchers.increment()
-```
-
-## runtime service lookup
-
-```ts
-const service = yield* $.use(UserService)
-```
-
-`$.use(Tag)` 从当前 runtime scope 读取服务。
-
-## imported children
-
-```ts
-const child = yield* $.imports.get(Child.tag)
-const value = yield* child.read((s) => s.value)
-```
-
-Imported child 必须通过 `Program.make(..., { capabilities: { imports } })` 以 Program 形式提供。
-
-## 生命周期
-
-```ts
-Module.logic(($) => {
-  $.lifecycle.onInitRequired(Effect.log("init"))
-  $.lifecycle.onDestroy(Effect.log("destroy"))
-
-  return Effect.void
-})
-```
-
-生命周期注册属于 declaration phase。
-
-## 字段行为
-
-```ts
-Module.logic(($) => {
+const Logic = Module.logic("logic-id", ($) => {
   $.fields({
-    normalized: $.fields.computed({
-      deps: ["query"],
-      get: (query) => String(query ?? "").trim().toLowerCase(),
+    total: $.fields.computed({
+      deps: ["items"],
+      get: (items) => items.reduce((sum, item) => sum + item.price, 0),
     }),
   })
 
-  return Effect.void
+  return Effect.gen(function* () {
+    yield* $.onAction("checkout").runParallelFork(/* ... */)
+  })
 })
 ```
 
-## 说明
+公开代码不要返回 `{ setup, run }`。
 
-- declaration phase 和 run phase 是分开的
-- 生命周期和字段声明属于 declaration phase
-- `$.onAction(...)`、`$.onState(...)`、`$.use(...)`、`$.imports.get(...)` 属于 run phase
+## Imports
 
-## 相关页面
+子 Program 在 assembly 阶段提供：
 
-- [Handle](./handle)
-- [跨模块协作](../../guide/learn/cross-module-communication)
+```ts
+const HostProgram = Logix.Program.make(Host, {
+  initial,
+  capabilities: { imports: [ChildProgram] },
+})
+```
+
+在 host logic 内部：
+
+```ts
+const child = yield* $.imports.get(Child.tag)
+yield* child.actions.save()
+```
+
+## See also
+
+- [Module](./module)
+- [Program](./program)
+- [useImportedModule](/cn/docs/api/react/use-imported-module)

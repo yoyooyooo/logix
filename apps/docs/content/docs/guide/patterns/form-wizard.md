@@ -51,7 +51,7 @@ const WizardDef = Logix.Module.make('Wizard', {
 ## Navigation logic
 
 ```ts
-const WizardLogic = WizardDef.logic(($) =>
+const WizardLogic = WizardDef.logic("logic", ($) =>
   Effect.gen(function* () {
     // Next: validate current step first
     yield* $.onAction('next').run(() =>

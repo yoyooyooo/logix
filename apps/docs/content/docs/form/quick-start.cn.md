@@ -1,184 +1,97 @@
 ---
-title: Quick start
-description: 用 `Form.make(...)` 创建 Form program，通过 core React host 挂载，再通过 form handle 提交。
+title: Form 快速开始
+description: 声明 form program，挂载 runtime，用 selector 读取，通过 form handle 写入。
 ---
 
-## 1）定义 values 和 submit payload
+## 1. 声明 values 与 rules
 
 ```ts
-import { Schema } from "effect"
-
-export const Values = Schema.Struct({
-  name: Schema.String,
-  email: Schema.String,
-})
-
-export const SubmitPayload = Schema.Struct({
-  name: Schema.String,
-  email: Schema.String,
-})
-```
-
-`values` 描述 UI 正在编辑的状态形状。
-`submit.decode` 描述可以越过表单边界的 payload 形状。
-
-## 2）创建 Form program
-
-```ts
+import { Effect, Schema } from "effect"
 import * as Form from "@logixjs/form"
 
-export const UserForm = Form.make(
-  "UserForm",
+const ContactValues = Schema.Struct({
+  name: Schema.String,
+  email: Schema.String,
+})
+
+type ContactValues = Schema.Schema.Type<typeof ContactValues>
+
+export const ContactForm = Form.make(
+  "ContactForm",
   {
-    values: Values,
-    initialValues: {
-      name: "",
-      email: "",
-    },
+    values: ContactValues,
+    initialValues: { name: "", email: "" } satisfies ContactValues,
     validateOn: ["onSubmit"],
-    reValidateOn: ["onChange"],
+    reValidateOn: ["onChange", "onBlur"],
   },
-  (form) => {
-    form.field("name").rule(
-      Form.Rule.make({
-        required: "user.name.required",
-      }),
-    )
-
-    form.field("email").rule(
-      Form.Rule.make({
-        required: "user.email.required",
-      }),
-    )
-
-    form.submit({
-      decode: SubmitPayload,
-    })
+  ($) => {
+    $.field("name").rule(Form.Rule.make({ required: true }))
+    $.field("email").rule(Form.Rule.make({ required: true, email: true }))
+    $.submit({ decode: ContactValues })
   },
 )
 ```
 
-## 3）创建 Runtime
+`Form.make(...)` 返回 Program-compatible 的 `FormProgram`。
 
-```ts
-import * as Logix from "@logixjs/core"
-
-export const runtime = Logix.Runtime.make(UserForm)
-```
-
-当一个共享表单实例已经足够时，这是最直接的方式。
-
-## 4）通过 core React host 挂载
+## 2. 挂载 runtime
 
 ```tsx
-import React from "react"
-import { RuntimeProvider, useModule, useSelector } from "@logixjs/react"
-import { Effect } from "effect"
-import { runtime, UserForm } from "./UserForm"
+import * as Logix from "@logixjs/core"
+import { RuntimeProvider } from "@logixjs/react"
+import { ContactForm } from "./ContactForm"
 
-function Page() {
-  const form = useModule(UserForm.tag)
-  const name = useSelector(form, (s) => s.name)
-  const email = useSelector(form, (s) => s.email)
-  const nameError = useSelector(form, (s) => s.errors?.name)
-  const canSubmit = useSelector(
-    form,
-    (s) => s.$form.errorCount === 0 && !s.$form.isSubmitting,
-  )
+const runtime = Logix.Runtime.make(ContactForm)
 
+export function Root() {
   return (
-    <div>
-      <input
-        value={String(name ?? "")}
-        onChange={(e) => void Effect.runPromise(form.field("name").set(e.target.value))}
-        onBlur={() => void Effect.runPromise(form.field("name").blur())}
-      />
-
-      <input
-        value={String(email ?? "")}
-        onChange={(e) => void Effect.runPromise(form.field("email").set(e.target.value))}
-        onBlur={() => void Effect.runPromise(form.field("email").blur())}
-      />
-
-      {nameError ? <div>{String(nameError)}</div> : null}
-
-      <button
-        type="button"
-        disabled={!canSubmit}
-        onClick={() =>
-          void Effect.runPromise(
-            form.submit({
-              onValid: (payload) => Effect.log(payload),
-              onInvalid: (currentErrors) => Effect.log(currentErrors),
-            }),
-          )
-        }
-      >
-        提交
-      </button>
-    </div>
+    <RuntimeProvider runtime={runtime}>
+      <ContactFormView />
+    </RuntimeProvider>
   )
 }
-
-export const App = () => (
-  <RuntimeProvider runtime={runtime}>
-    <Page />
-  </RuntimeProvider>
-)
 ```
 
-## 5）读取和写入边界
-
-读取统一留在：
-
-- `useSelector(form, selector)`
-
-写入统一留在：
-
-- `form.field(path).set(...)`
-- `form.field(path).blur()`
-- `form.fieldArray(path).append(...)`
-- `form.submit(...)`
-
-Form-specific support reads 也继续走 `useSelector(...)`：
-
-- `fieldValue(path)` 读取 typed value
-- `Form.Error.field(path)` 读取 field explanation
-- `Form.Companion.field(path)` 与 `Form.Companion.byRowId(...)` 读取 companion bundle
-
-selector 表、returned-carrier 类型路线，以及 companion soft fact 与 final rule / submit truth 的边界，见 [Selectors and support facts](/cn/docs/form/selectors)。
-
-## 6）多实例场景
-
-当同一页面需要多个独立副本时，改用 program route：
+## 3. 在 React 中读取和写入
 
 ```tsx
-const form = useModule(UserForm, { key: "user-form:42" })
+import { Effect } from "effect"
+import * as Form from "@logixjs/form"
+import { fieldValue, rawFormMeta, useModule, useSelector } from "@logixjs/react"
+
+function ContactFormView() {
+  const form = useModule(ContactForm.tag)
+  const name = useSelector(form, fieldValue("name"))
+  const email = useSelector(form, fieldValue("email"))
+  const meta = useSelector(form, rawFormMeta())
+  const emailError = useSelector(form, Form.Error.field("email"))
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        void Effect.runPromise(form.submit())
+      }}
+    >
+      <input
+        value={name}
+        onChange={(event) => void Effect.runPromise(form.field("name").set(event.target.value))}
+        onBlur={() => void Effect.runPromise(form.field("name").blur())}
+      />
+      <input
+        value={email}
+        onChange={(event) => void Effect.runPromise(form.field("email").set(event.target.value))}
+        onBlur={() => void Effect.runPromise(form.field("email").blur())}
+      />
+      <pre>{JSON.stringify({ meta, emailError }, null, 2)}</pre>
+      <button type="submit">Submit</button>
+    </form>
+  )
+}
 ```
 
-`useModule(UserForm.tag)` 适合 Runtime 已托管的共享实例。
-`useModule(UserForm, { key })` 适合独立实例。
-`useModule(UserForm)` 适合组件私有实例。
-`useModule(UserForm, { key, gcTime })` 适合路由切换后短时间恢复。
+## Rules
 
-更完整的生命周期选择见 [Instances](/cn/docs/form/instances)。
-
-## Canonical route
-
-当前 canonical route 是：
-
-- `Form.make(...)`
-- `form.field(path).rule(...)`
-- `form.submit({ decode })`
-- `RuntimeProvider`
-- `useModule(...)`
-- `useSelector(...)`
-
-把 `useForm / useField / useFieldArray / useFormState` 重新抬成 wrapper family，不属于当前 canonical surface。
-
-## 延伸阅读
-
-- [Instances](/cn/docs/form/instances)
-- [Sources](/cn/docs/form/sources)
-- [Companion](/cn/docs/form/companion)
-- [Selectors and support facts](/cn/docs/form/selectors)
+- 读取使用 `useSelector(...)`。
+- 写入使用 form handle：`field`、`fieldArray`、`validate`、`submit`、`reset`、`setError`、`clearErrors`。
+- Form 不公开 `useForm`、`useField` 或 `useFieldArray` 作为 canonical API。

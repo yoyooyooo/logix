@@ -20,7 +20,7 @@ By default, `useModule(Program)` returns the handle synchronously without waitin
 The recommended style is: render an initial state first; start async loading via `onStart` or a watcher; drive UI via state (e.g. `isLoading/error`).
 
 ```ts
-const UserLogic = UserModule.logic(($) => {
+const UserLogic = UserModule.logic("logic", ($) => {
   // onStart: watchers are mounted; kick off one load
   $.lifecycle.onStart($.actions.refresh())
 
@@ -43,7 +43,7 @@ const UserLogic = UserModule.logic(($) => {
 When you want “do not render UI before initialization completes”, use `suspend: true` from the next section. In this mode, `onInitRequired/onInit` can safely include async waiting.
 
 ```ts
-const UserLogic = UserModule.logic(($) => {
+const UserLogic = UserModule.logic("logic", ($) => {
   // declaration-only: register init logic (scheduled by the Runtime; works with Suspense/ErrorBoundary)
   $.lifecycle.onInitRequired(
     Effect.gen(function* () {

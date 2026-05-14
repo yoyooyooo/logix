@@ -1,26 +1,25 @@
 ---
-title: When to use
-description: Choose Form when you need structured input state plus a submit gate.
+title: When to use Form
+description: Decide whether a feature needs the Form domain package or a plain Logix Program.
 ---
 
-Use Form when all of these matter:
+Use `@logixjs/form` when the feature is primarily editable input state.
 
-- user-editable input state
-- path-addressable mutations
-- validation that must explain itself
-- a blocking submit gate
-- array locality and cleanup semantics
+## Use Form when you need
 
-Reach for simpler core modules when you only need:
+- field-level values and blur/change semantics
+- validation timing and submit gating
+- decode-on-submit
+- source-backed remote facts tied to fields
+- local companion facts such as availability and candidates
+- list row identity and reorder-safe operations
 
-- local UI state without submit semantics
-- read-only projections
-- background state that has no form boundary
+## Use plain Logix when you need
 
-Form is strongest when the problem is an input domain, not a generic state container.
+- non-editable business workflow state
+- long-running processes
+- cross-module orchestration
+- domain state that is not a form
+- UI state better owned directly by React
 
-## See also
-
-- [Introduction](/docs/form/introduction)
-- [Quick start](/docs/form/quick-start)
-- [Instances](/docs/form/instances)
+Form should not become a generic state manager. It is a domain package for editable input semantics.

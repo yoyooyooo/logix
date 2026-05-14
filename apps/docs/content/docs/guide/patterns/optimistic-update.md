@@ -32,7 +32,7 @@ const TodoDef = Logix.Module.make('Todo', {
   },
 })
 
-const TodoLogic = TodoDef.logic(($) =>
+const TodoLogic = TodoDef.logic("logic", ($) =>
   Effect.gen(function* () {
     const api = yield* $.use(TodoApi)
 

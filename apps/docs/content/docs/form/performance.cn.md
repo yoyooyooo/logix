@@ -1,78 +1,33 @@
 ---
 title: Performance
-description: 把读取面和校验面都压窄。
+description: 保持 Form 读取精确，大列表 identity 稳定。
 ---
 
-## 优先使用 core selector
+Form 性能遵循 core runtime hot-path 规则：精确读取、稳定 identity、不引入不必要的第二系统。
 
-用 `useSelector(form, selector)` 只订阅真正要渲染的最小切片。
+## Read narrowly
 
-```tsx
-const canSubmit = useSelector(
-  form,
-  (s) => s.$form.errorCount === 0 && !s.$form.isSubmitting,
-)
-
-const submitCount = useSelector(form, (s) => s.$form.submitCount)
-const lineItem = useSelector(form, (s) => s.items[index])
-```
-
-如果组件只关心一个 flag 或一行数据，就不要把整份表单状态都读出来。
-同一页面多个局部实例时，也不要用共享实例来减少订阅数量；实例隔离优先于表面上的少一次创建。
-
-## 优先做 scoped validation
-
-```ts
-yield* form.validatePaths(["shipping.address"])
-```
-
-当只有一个字段或一个子树变化时，用 `validatePaths(...)`，不要无差别跑整表单。
-
-## 把数组视为结构热路径
-
-列表编辑统一走 `form.fieldArray(path)`：
-
-- `insert`
-- `update`
-- `replace`
-- `remove`
-- `swap`
-- `move`
-- `byRowId(...)`
-
-这样结构编辑会和 row ownership、cleanup 语义保持一致。
-
-identity 配置上：
-
-- 行已经有稳定业务 id 时，优先 `trackBy`
-- 行是客户端临时创建但仍要稳定结构编辑时，用 `store`
-- 重排频繁的列表，避免使用 `index`
-
-## 恢复实例时控制成本
-
-keyed 实例加 `gcTime` 可以在路由切换后恢复已有状态。
-恢复本身不应重新跑整页订阅；成本主要来自重新挂载的组件会读取哪些切片。
+优先使用 exact field selectors：
 
 ```tsx
-const form = useModule(CheckoutForm, {
-  key: `checkout:${cartId}`,
-  gcTime: 60_000,
-})
+const name = useSelector(form, fieldValue("name"))
+const meta = useSelector(form, rawFormMeta())
 ```
 
-对于复杂 Form：
+避免让大量组件 re-render 的宽 selector。
 
-- route 级共享用 `useModule(Form.tag)`
-- 可恢复的页面编辑会话用 `useModule(Form, { key, gcTime })`
-- 同屏多个独立副本用 `useModule(Form)` 或不同 key
+## Lists
 
-## 错误渲染保持 data-first
+- reorder-heavy 列表使用 `identity: { mode: "trackBy", trackBy: "id" }`。
+- 写入必须跨 reorder/remove 保持稳定时使用 `byRowId(...)`。
+- 只读取实际渲染的 list slice 或 row companion fact。
 
-渲染应该由 canonical error leaf 和当前 i18n snapshot 共同驱动。
-不要在校验深处提前把错误结果压成临时显示字符串。
+## Sources and companion
 
-## 延伸阅读
+- Source 处理 async remote work，并通过 explicit deps 生成 key。
+- Companion 必须保持同步、本地。
+- 不要在 React render/effects 里重复 source lane 的 fetch。
 
-- [Instances](/cn/docs/form/instances)
-- [Field arrays](/cn/docs/form/field-arrays)
-- [Selectors and support facts](/cn/docs/form/selectors)
+## Evidence
+
+硬性能结论需要 comparable before/after evidence。Quick runs 只能当诊断线索，不是 release claims。

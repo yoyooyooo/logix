@@ -1,77 +1,58 @@
 ---
 title: Quick Start
-description: Define a module, assemble a program, mount a runtime, and read state in React.
+description: Build a counter Program and mount it in React.
 ---
 
-This quick start builds one minimal counter slice.
-
-## Install
-
-```bash
-npm install @logixjs/core @logixjs/react effect
-```
-
-## Define a module
+## 1. Define a Module and Logic
 
 ```ts
+import { Effect, Schema } from "effect"
 import * as Logix from "@logixjs/core"
-import { Schema } from "effect"
+
+const CounterState = Schema.Struct({ value: Schema.Number })
+const CounterActions = { inc: Schema.Void }
 
 export const Counter = Logix.Module.make("Counter", {
-  state: Schema.Struct({
-    count: Schema.Number,
-  }),
-  actions: {
-    inc: Schema.Void,
-  },
+  state: CounterState,
+  actions: CounterActions,
 })
-```
-
-## Attach logic
-
-```ts
-import { Effect } from "effect"
 
 export const CounterLogic = Counter.logic("counter-logic", ($) =>
-  $.onAction("inc").run(() =>
-    $.state.mutate((draft) => {
-      draft.count += 1
-    }),
-  ),
+  Effect.gen(function* () {
+    yield* $.onAction("inc").mutate((state) => {
+      state.value += 1
+    })
+  }),
 )
 ```
 
-## Assemble a program
+## 2. Assemble a Program
 
 ```ts
 export const CounterProgram = Logix.Program.make(Counter, {
-  initial: { count: 0 },
+  initial: { value: 0 },
   logics: [CounterLogic],
 })
 ```
 
-## Create a runtime
+## 3. Create a Runtime
 
 ```ts
-import * as Logix from "@logixjs/core"
-import { Layer } from "effect"
-
-export const runtime = Logix.Runtime.make(CounterProgram, {
-  layer: Layer.empty,
-})
+export const runtime = Logix.Runtime.make(CounterProgram)
 ```
 
-## Mount it in React
+## 4. Mount and use in React
 
 ```tsx
 import { RuntimeProvider, useDispatch, useModule, useSelector } from "@logixjs/react"
+import { Counter, runtime } from "./counter"
 
 function CounterView() {
   const counter = useModule(Counter.tag)
-  const count = useSelector(counter, (s) => s.count)
+  const value = useSelector(counter, (state) => state.value)
   const dispatch = useDispatch(counter)
 
-  return <button onClick={() => dispatch({ _tag: "inc", payload: undefined })}>{count}</button>
+  return <button onClick={() => dispatch({ _tag: "inc", payload: undefined })}>{value}</button>
 }
 
 export function App() {
@@ -83,8 +64,10 @@ export function App() {
 }
 ```
 
-## Next
+## What happened
 
-- [Cancelable search tutorial](./tutorial-first-app)
-- [Modules & State](../essentials/modules-and-state)
-- [Flows & Effects](../essentials/flows-and-effects)
+- `Module` declared state and actions.
+- `Logic` reacted to the `inc` action.
+- `Program` assembled the runnable unit.
+- `Runtime` created the execution container.
+- React consumed a hosted instance through `useModule(Counter.tag)` and exact state reads through `useSelector(...)`.

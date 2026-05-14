@@ -1,78 +1,78 @@
 ---
 title: Module
-description: Define a module, attach logic, assemble a program, and consume it through Runtime or React.
+description: Define state, actions, reducers, and logic authoring for a Logix unit.
 ---
 
-`Module` is the definition-time unit of Logix.
-
-It defines:
-
-- state schema
-- action schema
-- logic attachment points
-
-`Program` is the assembly-time unit built from a module.
-
-## Define a module
+`Logix.Module.make(id, def)` creates the definition object. A Module is not the runtime instance. It is the stable declaration object used by `Program.make(...)`.
 
 ```ts
+import { Effect, Schema } from "effect"
 import * as Logix from "@logixjs/core"
-import { Schema } from "effect"
 
-const CounterState = Schema.Struct({
-  count: Schema.Number,
-})
+const CounterState = Schema.Struct({ value: Schema.Number })
+const CounterActions = { inc: Schema.Void }
 
-const Counter = Logix.Module.make("Counter", {
+export const Counter = Logix.Module.make("Counter", {
   state: CounterState,
-  actions: {
-    increment: Schema.Void,
-  },
+  actions: CounterActions,
+})
+
+export const CounterLogic = Counter.logic("counter-logic", ($) =>
+  Effect.gen(function* () {
+    yield* $.onAction("inc").mutate((state) => {
+      state.value += 1
+    })
+  }),
+)
+```
+
+## Definition fields
+
+| Field | Purpose |
+| --- | --- |
+| `state` | Effect Schema for module state. |
+| `actions` | Action map. Each key becomes an action token. |
+| `reducers` / `immerReducers` | Optional primary state transforms. |
+| `effects` | Optional action side-effect declarations. |
+| `schemas`, `meta`, `services`, `dev` | Reflection and diagnostics metadata. |
+
+## Logic authoring
+
+Use `Module.logic(id, ($) => runEffect)`. The `id` is required because diagnostics, overrides, and evidence need stable logic-unit identity.
+
+Declaration-only calls, such as `$.fields(...)` and `$.readyAfter(...)`, belong at the builder root before the returned run effect:
+
+```ts
+export const SearchLogic = Search.logic("search-logic", ($) => {
+  $.fields({
+    results: $.fields.source({
+      resource: "customer.search",
+      deps: ["keyword"],
+      key: (keyword) => (keyword ? { keyword } : undefined),
+    }),
+  })
+
+  $.readyAfter(bootstrapSearchIndex, { id: "search-index" })
+
+  return Effect.gen(function* () {
+    yield* $.onAction("keywordChanged").runLatest(/* ... */)
+  })
 })
 ```
 
-## Attach logic
+The old public `{ setup, run }` return shape is not the current user route.
+
+## Assembly
 
 ```ts
-const CounterLogic = Counter.logic("counter-logic", ($) => {
-  $.reducer("increment", (state) => ({
-    ...state,
-    count: state.count + 1,
-  }))
-
-  return Effect.void
-})
-```
-
-## Assemble a program
-
-```ts
-const CounterProgram = Logix.Program.make(Counter, {
-  initial: { count: 0 },
+export const CounterProgram = Logix.Program.make(Counter, {
+  initial: { value: 0 },
   logics: [CounterLogic],
 })
 ```
 
-## Consume in React
-
-```tsx
-const counter = useModule(CounterProgram, { key: "counter:1" })
-```
-
-or, when a shared instance is already hosted:
-
-```tsx
-const counter = useModule(Counter.tag)
-```
-
-## Notes
-
-- `Module` defines
-- `Program` assembles
-- `Runtime` executes
-
 ## See also
 
+- [Program](./program)
+- [Bound API](./bound-api)
 - [Runtime](./runtime)
-- [Bound API ($)](./bound-api)
-- [useModule](../react/use-module)

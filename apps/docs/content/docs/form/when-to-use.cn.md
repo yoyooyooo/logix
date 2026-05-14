@@ -1,26 +1,25 @@
 ---
-title: When to use
-description: 当你需要结构化输入状态和 submit gate 时，再用 Form。
+title: When to use Form
+description: 判断功能需要 Form 领域包，还是普通 Logix Program。
 ---
 
-当下面这些点都重要时，用 Form：
+当功能主要是 editable input state 时使用 `@logixjs/form`。
 
-- 用户可编辑的输入状态
-- 按 path 寻址的变更
-- 可解释的校验
-- 会阻塞的 submit gate
-- 数组 locality 与 cleanup 语义
+## 适合使用 Form
 
-如果你只需要下面这些，优先回到更简单的 core module：
+- field-level values 与 blur/change 语义
+- validation timing 与 submit gating
+- submit 时 decode
+- 绑定字段的 source-backed remote facts
+- availability/candidates 等 local companion facts
+- list row identity 与 reorder-safe operations
 
-- 没有 submit 语义的局部 UI state
-- 只读 projection
-- 没有表单边界的工作流状态
+## 适合使用普通 Logix
 
-Form 最适合解决 input domain 问题，不适合作为泛用状态容器。
+- 非编辑型业务 workflow state
+- long-running processes
+- cross-module orchestration
+- 不是 form 的领域状态
+- 更适合直接由 React 持有的 UI state
 
-## 延伸阅读
-
-- [Introduction](/cn/docs/form/introduction)
-- [Quick start](/cn/docs/form/quick-start)
-- [Instances](/cn/docs/form/instances)
+Form 不应变成通用状态管理器。它是 editable input semantics 的领域包。

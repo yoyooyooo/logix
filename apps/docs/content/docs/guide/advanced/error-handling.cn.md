@@ -19,7 +19,7 @@ Logix 的错误处理建议分成三层：
 预期错误是业务逻辑的一部分，例如"用户未找到"、"网络超时"。这些错误应该在 Effect 的错误通道（`E`）中处理。
 
 ```ts
-const LoginLogic = LoginModule.logic(($) =>
+const LoginLogic = LoginModule.logic("logic", ($) =>
   Effect.gen(function* () {
     yield* $.onAction('login').run(({ payload: credentials }) =>
       Effect.gen(function* () {
@@ -53,7 +53,7 @@ const LoginLogic = LoginModule.logic(($) =>
 你可以通过 `$.lifecycle.onError` 统一处理未捕获的错误（declaration-only 注册）：
 
 ```ts
-const AppLogic = AppModule.logic(($) => {
+const AppLogic = AppModule.logic("logic", ($) => {
   $.lifecycle.onError((cause, context) =>
     Effect.logError({
       message: "Unhandled module error",

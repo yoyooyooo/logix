@@ -31,7 +31,7 @@ watcher 和 lifecycle hook 都跟随拥有它们的实例 scope。
 
 - 通过 `useModule(ModuleTag)` 获取的共享实例，跟随托管它的 runtime
 - 通过 `useModule(Program, options?)` 获取的局部实例，跟随拥有它的子树
-- `useLocalModule(...)` 这类高级局部路线继续跟随组件局部 owner
+- `useModule(Program, options)` 这类高级局部路线继续跟随组件局部 owner
 
 ## 说明
 

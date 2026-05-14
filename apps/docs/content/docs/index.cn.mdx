@@ -1,41 +1,37 @@
 ---
 title: Logix 文档
-description: Logix 是一个面向状态、逻辑和宿主集成的 Effect-native runtime。
+description: 面向当前 Module → Program → Runtime 主链的用户文档。
 ---
 
-Logix 是一个面向状态与业务逻辑的 Effect-native runtime。
+Logix 是 Effect-native 的应用逻辑运行时。当前公开模型刻意保持很小：
 
-整套文档分为四条入口线：
+```text
+Module.logic(...)     definition-time logic 与声明
+Program.make(...)     assembly-time business unit
+Runtime.make(...)     execution-time runtime container
+RuntimeProvider       React host projection
+useModule + useSelector  React 实例获取与读取
+```
 
-- [Get Started](/cn/docs/guide/get-started/introduction)
-- [Guide](/cn/docs/guide)
-- [Form](/cn/docs/form)
-- [API Reference](/cn/docs/api)
+本网站是用户手册。若要查看完整导出签名，使用生成的 [API Reference](/api-reference)。
 
-## 常见阅读路径
+## 从这里开始
 
-### 第一条可运行切片
+1. [介绍](/cn/docs/guide/get-started/introduction) — Logix 解决什么问题。
+2. [快速开始](/cn/docs/guide/get-started/quick-start) — 创建一个 Program 并在 React 中挂载。
+3. [Canonical spine](/cn/docs/guide/essentials/canonical-spine) — 必须稳定记住的对象角色。
+4. [React 集成](/cn/docs/guide/essentials/react-integration) — provider、实例获取、读取与写入。
 
-1. [Introduction](/cn/docs/guide/get-started/introduction)
-2. [Quick Start](/cn/docs/guide/get-started/quick-start)
-3. [可取消搜索教程](/cn/docs/guide/get-started/tutorial-first-app)
+## 领域文档
 
-### 核心概念
+- [Form](/cn/docs/form) — 可编辑值状态、校验、source、companion、submit 与列表身份。
 
-1. [Thinking in Logix](/cn/docs/guide/essentials/thinking-in-logix)
-2. [Modules & State](/cn/docs/guide/essentials/modules-and-state)
-3. [Flows & Effects](/cn/docs/guide/essentials/flows-and-effects)
-4. [React integration](/cn/docs/guide/essentials/react-integration)
+## API 文档
 
-### Form
+- [Core API](/cn/docs/api) — Module、Program、Runtime 与 Bound API。
+- [React API](/cn/docs/api/react/provider) — RuntimeProvider、useModule、useSelector、useDispatch、useImportedModule。
+- [生成的 API Reference](/api-reference) — 以导出签名为主的索引。
 
-1. [Form overview](/cn/docs/form)
-2. [Quick start](/cn/docs/form/quick-start)
-3. [Validation](/cn/docs/form/validation)
-4. [Field arrays](/cn/docs/form/field-arrays)
+## 当前公开面规则
 
-### API 参考
-
-- [Core APIs](/cn/docs/api/core/runtime)
-- [React APIs](/cn/docs/api/react/provider)
-- [Generated API index](/api-reference)
+当前文档不再教授已移除或内部路线，例如 `useLocalModule`、`useModuleList`、`ModuleScope`、公开 FieldKernel namespace、Form 自有 React hook family、公开 Form path 对象或第二套 runtime/control-plane facade。React 局部实例使用 `useModule(Program, options)` 表达；Form 读取仍然走 `useSelector(...)`。

@@ -1,70 +1,39 @@
 ---
-title: Reactions & Effects
-description: React to actions and state changes with Effects and explicit run policies.
+title: Flows & Effects
+description: Attach Effect-based behavior to actions, state changes, and services.
 ---
 
-State and action reactions connect module events to effects.
-
-Common sources are:
-
-- `$.onAction(...)`
-- `$.onState(...)`
-
-Effects describe the work executed when those sources emit.
-
-## Action to effect
+Logic is Effect-based behavior mounted onto a Module.
 
 ```ts
-const UserLogic = UserModule.logic("user-logic", ($) =>
-  $.onAction("fetchUser").run(({ payload: userId }) =>
-    Effect.gen(function* () {
-      const api = yield* $.use(UserApi)
-      const user = yield* api.getUser(userId)
-
-      yield* $.state.mutate((draft) => {
-        draft.user = user
-      })
-    }),
-  ),
-)
-```
-
-## State to effect
-
-```ts
-const SearchLogic = SearchModule.logic("search", ($) =>
-  $.onState((s) => s.keyword)
-    .debounce(300)
-    .runLatest((keyword) =>
+const SearchLogic = Search.logic("search-logic", ($) =>
+  Effect.gen(function* () {
+    yield* $.onAction("keywordChanged").runLatest(
       Effect.gen(function* () {
-        const api = yield* $.use(SearchApi)
-        const results = yield* api.search(keyword)
-
-        yield* $.state.mutate((draft) => {
-          draft.results = results
-        })
+        const state = yield* $.state.read
+        // run service work, then write state
       }),
-    ),
+    )
+  }),
 )
 ```
 
-## Run policies
+## Declaration work
 
-The most common policies are:
+Some work is declared synchronously at the builder root:
 
-- `run` for serial execution
-- `runLatest` for latest-wins reactions
-- `runExhaust` for drop-while-running reactions
-- `runParallel` for unbounded parallel execution
+```ts
+const Logic = Search.logic("logic", ($) => {
+  $.readyAfter(loadInitialConfig, { id: "initial-config" })
 
-## Notes
+  return Effect.gen(function* () {
+    // run phase
+  })
+})
+```
 
-- Effects describe the work
-- Reactions stay in `Logic`
-- state writes stay explicit through reducers or `$.state.*`
+The public route is not `{ setup, run }`. Keep declarations at the builder root and return the run effect.
 
-## See also
+## Services
 
-- [Effect basics](./effect-basics)
-- [Lifecycle](./lifecycle)
-- [Bound API ($)](../../api/core/bound-api)
+Resolve services with `$.use(ServiceTag)` inside logic. Install service layers through `Program.make(..., { capabilities: { services } })` or `Runtime.make(..., { layer })` depending on ownership.

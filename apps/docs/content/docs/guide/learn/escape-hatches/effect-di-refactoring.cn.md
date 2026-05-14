@@ -32,7 +32,7 @@ class Toast extends Context.Tag("Toast")<Toast, {
 ```ts
 import { Effect } from "effect"
 
-const loginLogic = Auth.logic(($) =>
+const loginLogic = Auth.logic("logic", ($) =>
   Effect.gen(function* () {
     const api = yield* $.use(Api)
     const nav = yield* $.use(Navigation)

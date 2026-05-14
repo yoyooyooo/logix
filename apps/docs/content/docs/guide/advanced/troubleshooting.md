@@ -55,7 +55,7 @@ Use diagnostic codes as the primary locator when Logix emits a warning or error.
 **Incorrect**:
 
 ```ts
-const Logic = Module.logic(($) =>
+const Logic = Module.logic("logic", ($) =>
   Effect.gen(function* () {
     // ❌ This is run phase: lifecycle registration is not allowed here
     $.lifecycle.onInitRequired(Effect.log('init'))
@@ -68,7 +68,7 @@ const Logic = Module.logic(($) =>
 **Correct**:
 
 ```ts
-const Logic = Module.logic(($) => {
+const Logic = Module.logic("logic", ($) => {
   // ✅ declaration part: before return
   $.lifecycle.onInitRequired(Effect.log('init'))
 
@@ -96,7 +96,7 @@ const Logic = Module.logic(($) => {
 **Incorrect**:
 
 ```ts
-const Logic = Module.logic(($) => {
+const Logic = Module.logic("logic", ($) => {
   // ❌ Setup phase can't access Env
   const api = $.use(ApiService)
 
@@ -109,7 +109,7 @@ const Logic = Module.logic(($) => {
 **Correct**:
 
 ```ts
-const Logic = Module.logic(($) =>
+const Logic = Module.logic("logic", ($) =>
   Effect.gen(function* () {
     // ✅ Run phase: yield* $.use is allowed
     const api = yield* $.use(ApiService)
@@ -157,7 +157,7 @@ const HostProgram = Logix.Program.make(HostDef, {
 ```
 
 ```ts
-const HostLogic = HostDef.logic(($) =>
+const HostLogic = HostDef.logic("logic", ($) =>
   Effect.gen(function* () {
     const child = yield* $.imports.get(Child.tag)
     const value = yield* child.read((s) => s.value)
@@ -182,7 +182,7 @@ const HostLogic = HostDef.logic(($) =>
 **Incorrect**:
 
 ```ts
-const Logic = Module.logic(($) =>
+const Logic = Module.logic("logic", ($) =>
   Effect.gen(function* () {
     // ❌ Registering reducers in run phase won't work
     $.reducer('increment', (s) => ({ ...s, count: s.count + 1 }))
@@ -193,7 +193,7 @@ const Logic = Module.logic(($) =>
 **Correct**:
 
 ```ts
-const Logic = Module.logic(($) => {
+const Logic = Module.logic("logic", ($) => {
   // ✅ Register reducers in setup phase
   $.reducer('increment', (s) => ({ ...s, count: s.count + 1 }))
 
@@ -222,7 +222,7 @@ const Logic = Module.logic(($) => {
 **Correct**:
 
 ```ts
-const Logic = Module.logic(($) => {
+const Logic = Module.logic("logic", ($) => {
   // ✅ Declare fields in the synchronous declaration part
   $.fields({
     /* ... */

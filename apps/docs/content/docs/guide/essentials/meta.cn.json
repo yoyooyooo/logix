@@ -2,6 +2,7 @@
   "title": "必备概念",
   "pages": [
     "thinking-in-logix",
+    "canonical-spine",
     "modules-and-state",
     "flows-and-effects",
     "field-behaviors",

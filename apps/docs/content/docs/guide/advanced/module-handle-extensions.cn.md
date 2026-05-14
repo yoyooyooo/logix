@@ -1,127 +1,53 @@
 ---
-title: 模块手柄扩展（commands/services）
-description: 给自定义 Module 增加更好用的句柄扩展入口，默认收口到 commands/services。
+title: Module handle extensions
+description: 了解何时适合给 handle 增加自定义字段，以及何时 Action 才是更好的协议。
 ---
 
-自定义 Module 可以在标准句柄上增加 `commands`、`services` 等扩展字段。适合领域包或业务基础设施包作者在保留标准协议的前提下，给调用方提供更顺手的调用入口。
+Module handle 是 React 中 `useModule(...)` 返回的值，也是 Logic import resolution 得到的值。它暴露读取、actions、dispatch 等标准能力；Form 这类领域包也可以在同一 Program/Runtime truth 上增加领域方法。
 
-默认推荐把句柄扩展收口到 `commands/services`：`commands.*` 承担便利命令入口，`services.*` 暴露调用方需要注入的能力。它们都只是句柄层扩展，最终仍然通过模块的 `dispatch/read/changes` 等标准能力工作。
+Handle extension 是高级 package authoring 主题。它不是 Actions、reducers、services 或 selectors 的替代品。
 
-这类扩展的目标通常是：
+## 推荐公开路线
 
-- **减少样板**：把一串 `actions.*` + `read` + “小规则”封装成单个方法；
-- **统一 handle 形状**：Logic 中的 imported child resolution（`yield* $.imports.get(Module.tag)`）与 React（`useModule(ModuleTag)` / `useModule(Program)`）拿到同样的扩展字段；
-- **不改变协议**：重要状态变化仍通过 action 表达（可订阅/可诊断/可回放），`commands/services` 只做便利层，不新增第二语义面。
-
-## 适用场景
-
-- 你在编写一个模块工厂/领域模块（例如 `Form.make(...)`、`@logixjs/domain/Crud` 里的 `make(...)` 这类），希望调用方少写样板代码。
-- 你希望把一组“组合操作”封装为 `commands.*`，并且在 Logic 与 React 两侧都能用。
-- 你希望把需要调用方注入的能力（Tag）组织成 `services.*`，让业务侧更容易提供 `Layer`。
-
-## 何时该用 action，何时该用 commands
-
-- **action**：模块的“公开协议”（有 schema，可被 `$.onAction(...)` 订阅；诊断/回放链路更清晰）。适合对外暴露的命令、跨模块协作入口、需要追踪的业务意图。
-- **commands**：句柄层便利命令（本质是对 `dispatch/read` 的封装；本身不会成为“可订阅事件”）。适合把高频组合操作、常用参数默认值、轻量校验等封装起来。
-
-经验法则：**把系统“发生了什么”放进 action；把“怎么更方便地调用”收口到 `commands.*`。**
-
-## 核心机制：扩展 module handle/reference
-
-扩展点叫 `logix.module.handle.extend`：你把它挂在 **`module.tag`** 上，Logix 在构造“模块句柄/引用”时会调用它，并把返回对象合并到基础句柄上。
-
-> 直觉理解：`commands/services` 不会写进 state，也不会变成 action；它们只是“句柄/引用对象”上的额外字段。
-
-如果你在模块的 `tag` 上挂载一个约定的扩展函数，运行时会在构造“模块句柄/引用”时把扩展字段合并进去：
+应用代码优先使用普通路线：
 
 ```ts
-const EXTEND_HANDLE = Symbol.for("logix.module.handle.extend")
-;(MyModule.tag as any)[EXTEND_HANDLE] = (_runtime, base) => ({
-  ...base,
-  commands: { /* ... */ },
-  services: { /* ... */ },
-})
+const handle = useModule(SomeProgram)
+const value = useSelector(handle, someSelector)
+await Effect.runPromise(handle.actions.save(payload))
 ```
 
-这样：
+如果某个领域包返回了更丰富的 handle，应把新增字段文档化为薄 convenience layer，并说明它仍然建立在同一 Program 和 Runtime truth 上。
 
-- Logic 中 `yield* $.imports.get(MyModule.tag)` 拿到的 imported child handle 会带上 `commands/services`；
-- React 中 `useModule(MyModule.tag)`（或基于它组装出的 `Program`）返回的 ref 也会带上同样的扩展字段；
-- 你仍然保留 `base` 上的标准能力（`read/changes/dispatch/actions/...`）。
+## 什么时候可以扩展
 
-## 一个完整例子：自定义模块 + services + commands（作者侧）
+只有同时满足下面条件时才适合：
 
-```ts
-import * as Logix from "@logixjs/core"
-import { Context, Effect, Schema } from "effect"
+- 该 module 是可复用 package 或 domain factory；
+- 新增方法确实减少重复 call-site 代码；
+- 方法委托到仍可观测的 actions、dispatch、services 或 selectors；
+- extension 不拥有 state、cache、scheduler 或独立 lifecycle；
+- extension 类型与创建 Program 的 factory 一起文档化。
 
-class Api extends Context.Tag("Todo.Api")<Api, { readonly load: () => Effect.Effect<ReadonlyArray<string>> }>() {}
-const services = { api: Api } as const
+## Actions vs commands
 
-const StateSchema = Schema.Struct({ items: Schema.Array(Schema.String) })
-const Actions = { reload: Schema.Void }
+| Surface | 适用场景 |
+| --- | --- |
+| Action | public business intent、可回放 protocol、diagnostics、跨模块协作 |
+| command/helper | 对既有 actions、reads 或 services 的小型 convenience wrapper |
 
-type Ext = {
-  readonly services: typeof services
-  readonly commands: { readonly reload: () => Effect.Effect<void> }
-}
+如果用户需要知道“发生了什么”，把它建成 Action。如果用户只是需要更短的 call site，helper 才合适。
 
-const TodoDef = Logix.Module.make<"Todo", typeof StateSchema, typeof Actions, Ext>("Todo", {
-  state: StateSchema,
-  actions: Actions,
-})
+## 反模式
 
-const EXTEND_HANDLE = Symbol.for("logix.module.handle.extend")
-;(TodoDef.tag as any)[EXTEND_HANDLE] = (runtime: Logix.ModuleRuntime<any, any>, base: Logix.ModuleHandle<any>) => ({
-  ...base,
-  services,
-  commands: {
-    reload: () => runtime.dispatch({ _tag: "reload" } as any),
-  },
-})
+- 把业务写入藏进不 dispatch Action 的方法；
+- 把可变 service instance 存进 state；
+- 添加只能由 React owner 使用的方法；
+- 在 handle 背后创建第二套 EventEmitter、cache 或 runtime；
+- 把内部 extension hook 写成普通用户路线。
 
-export const TodoProgram = Logix.Program.make(TodoDef, {
-  initial: { items: [] },
-  logics: [
-    TodoDef.logic(($) =>
-      Effect.gen(function* () {
-        yield* $.onAction("reload").runFork(() =>
-          Effect.gen(function* () {
-            const api = yield* Effect.serviceOption(services.api)
-            if (api._tag === "None") return
-            const items = yield* api.value.load()
-            yield* $.state.mutate((d) => {
-              d.items = Array.from(items)
-            })
-          }),
-        )
-      }),
-    ),
-  ],
-})
-```
+## 相关页面
 
-上面的效果是：
-
-- 业务侧可以用 `TodoProgram`（或 `TodoDef.tag`）组合到 runtime / React 中；
-- Logic 中 parent Program import `TodoProgram` 后，可通过 `yield* $.imports.get(TodoDef.tag)` 拿到带 `todo.commands.reload()` 与 `todo.services.api` 的 child handle；
-- React 中 `useModule(TodoDef.tag)` 或 `useModule(TodoProgram)` 同样能拿到 `commands/services`。
-
-## 让 TypeScript 知道扩展字段存在（类型层）
-
-推荐把扩展字段的类型写到 `Logix.Module.make(...)` 的第 4 个泛型参数（`Ext`）里：
-
-```ts
-type Ext = { readonly commands: MyCommands; readonly services: MyServices }
-const MyModule = Logix.Module.make<"My", typeof StateSchema, typeof Actions, Ext>("My", def)
-```
-
-然后在扩展函数里返回 `{ ...base, commands, services }`，做到“类型承诺”和“运行时返回值”一致。
-
-## 注意事项（避免踩坑）
-
-- `commands` 尽量**不要绕过 action**直接做“隐形状态变更”；优先封装成 `dispatch({ _tag: ... })` 或 `actions.*(...)`。
-- 扩展函数必须返回一个对象；并且通常应当保留 `...base`，否则你会丢掉 `read/changes/dispatch/actions` 等基础能力。
-- `logix.module.handle.extend` 要挂在 `module.tag` 上，而不是挂在 `module` 对象上。
-- 不要把不可序列化的大对象（DOM、函数闭包、大实例）塞进 state/诊断事件；`commands`/服务 Tag 也应保持轻量。
-- `commands` 中做 IO 时，仍需遵守事务窗口与 Effect 并发/取消的约束（把 IO 放在 Effect 流程边界）。
+- [Module](../../api/core/module)
+- [Program](../../api/core/program)
+- [React integration](../essentials/react-integration)

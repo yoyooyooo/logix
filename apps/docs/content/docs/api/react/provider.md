@@ -1,28 +1,16 @@
 ---
 title: RuntimeProvider
-description: Provide a Logix runtime to a React subtree.
+description: Project a Logix runtime into a React subtree.
 ---
 
-`RuntimeProvider` makes a Logix runtime available to a React subtree.
-
-It is required by the canonical React host APIs:
-
-- `useModule(...)`
-- `useImportedModule(...)`
-- `useSelector(...)`
-- `useDispatch(...)`
-
-## Usage
+`RuntimeProvider` makes an existing Logix runtime visible to React hooks.
 
 ```tsx
 import { RuntimeProvider } from "@logixjs/react"
 import * as Logix from "@logixjs/core"
-import { Layer } from "effect"
 import { RootProgram } from "./root-program"
 
-const runtime = Logix.Runtime.make(RootProgram, {
-  layer: Layer.empty,
-})
+const runtime = Logix.Runtime.make(RootProgram)
 
 export function Root() {
   return (
@@ -35,40 +23,26 @@ export function Root() {
 
 ## Props
 
-### `runtime`
+| Prop | Role |
+| --- | --- |
+| `runtime` | Required. The runtime created by `Runtime.make(...)` or another owner boundary. |
+| `layer` | Optional subtree-local Effect Layer. |
+| `fallback` | Optional React fallback for gated startup paths. |
+| `policy` | Optional provider startup/read policy, such as sync/suspend/defer behavior. |
 
-Required.
+## What it owns
 
-Any `ManagedRuntime` may be provided here.
-In the common app or page route, it is typically the result of `Logix.Runtime.make(...)`.
+`RuntimeProvider` owns React visibility for a runtime scope. It does not choose the Program, create a second runtime, or define a second verification control plane.
 
-### `layer`
+All public hooks from `@logixjs/react` must run under a provider:
 
-Optional.
-
-Adds an additional closed `Layer` to the React subtree.
-
-### `fallback`
-
-Optional.
-
-Used while the provider is gating async startup paths.
-
-### `policy`
-
-Optional.
-
-Controls provider startup behavior such as `sync`, `suspend`, or `defer + preload`.
-
-## Notes
-
-- `RuntimeProvider` defines the visible runtime scope for the subtree.
-- It does not select programs.
-- It does not create a second control plane.
-- All React hooks from `@logixjs/react` must run inside a `RuntimeProvider` subtree.
+- `useModule(...)`
+- `useSelector(...)`
+- `useDispatch(...)`
+- `useImportedModule(...)`
 
 ## See also
 
+- [Runtime](/docs/api/core/runtime)
 - [useModule](./use-module)
 - [useSelector](./use-selector)
-- [useDispatch](./use-dispatch)

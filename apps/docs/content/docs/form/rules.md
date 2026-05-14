@@ -1,111 +1,44 @@
 ---
 title: Rules
-description: Declare field, root, and list rules through the Form DSL.
+description: Define field, root, and list validation truth.
 ---
 
-Rules are declared inside `Form.make(...)`.
-
-Three declaration sites are available:
-
-- `form.field(path).rule(...)` for field-local verdicts
-- `form.root(...)` for whole-form verdicts
-- `form.list(path, spec)` for list-level and item-level verdicts
+Rules are the canonical validation truth for Form.
 
 ## Field rules
 
 ```ts
-form.field("name").rule(
+$.field("email").rule(
   Form.Rule.make({
-    required: "profile.name.required",
-    minLength: {
-      min: 2,
-      message: "profile.name.minLength",
-    },
+    required: true,
+    email: true,
   }),
 )
 ```
 
-Field rules are appropriate when the verdict belongs to one value path.
-
-## Root rules
+`Form.Rule.make(...)` also accepts a function or named validation entries.
 
 ```ts
-form.root(
+$.field("confirmPassword").rule(
   Form.Rule.make({
-    validate: (values) =>
-      values.startDate <= values.endDate
-        ? undefined
-        : { dateRange: "profile.dateRange.invalid" },
+    deps: ["password"],
+    validate: (confirm, ctx) =>
+      confirm === ctx.deps.password ? undefined : "password.mismatch",
   }),
 )
 ```
 
-Root rules are appropriate when the verdict depends on the whole form and does not belong to one field or one list.
-
-## List rules
+## Root and list rules
 
 ```ts
-form.list("items", {
+$.root(Form.Rule.make((values) => values.enabled ? undefined : "disabled"))
+
+$.list("items", {
   identity: { mode: "trackBy", trackBy: "id" },
-  list: Form.Rule.make({
-    validate: (rows) => {
-      const seen = new Set<string>()
-      const rowErrors = rows.map((row) => {
-        const sku = String(row?.sku ?? "").trim()
-        if (!sku) return undefined
-        if (seen.has(sku)) {
-          return { sku: "items.sku.duplicate" }
-        }
-        seen.add(sku)
-        return undefined
-      })
-
-      return rowErrors.some(Boolean) ? { rows: rowErrors } : undefined
-    },
-  }),
+  list: Form.Rule.make((items) => (items.length ? undefined : "items.required")),
 })
 ```
 
-List rules are appropriate when the verdict depends on the roster as a whole, such as:
+## Boundary
 
-- duplicates across rows
-- row exclusivity
-- list cardinality
-
-## `Form.Rule.make(...)`
-
-`Form.Rule.make(...)` is the standard validator declaration surface.
-
-It accepts:
-
-- built-ins such as `required`, `email`, `minLength`, `maxLength`, `min`, `max`, `pattern`
-- a single `validate(value, ctx)` function
-- a named validation map
-- `deps`
-- `validateOn`
-
-```ts
-Form.Rule.make({
-  deps: ["password"],
-  validateOn: ["onChange"],
-  validate: {
-    sameAsPassword: (confirm, ctx) =>
-      confirm === ctx.values.password
-        ? undefined
-        : "profile.confirmPassword.mismatch",
-  },
-})
-```
-
-## Declaration properties
-
-- rule declarations remain locale-neutral
-- output remains data, not render-ready strings
-- rule failures converge on the same canonical error carrier
-- array-wide verdicts belong in list-scoped rules, not in UI helpers
-
-## See also
-
-- [Validation](/docs/form/validation)
-- [Companion](/docs/form/companion)
-- [Field arrays](/docs/form/field-arrays)
+Rules own final validation truth. Companion must not emit `errors` or submit verdicts. Source can influence submit gating through `submitImpact`, but it does not replace final rules.

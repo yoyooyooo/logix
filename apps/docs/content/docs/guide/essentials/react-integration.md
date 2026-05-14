@@ -1,18 +1,17 @@
 ---
 title: React integration
-description: Mount a runtime, resolve module instances, and choose between shared and local instance routes.
+description: Mount a runtime, acquire instances, read exactly, and write through dispatch or domain handles.
 ---
 
-React integration is built on one host route:
+React integration uses one host route:
 
-- mount a runtime with `RuntimeProvider`
-- resolve an instance with `useModule(...)`
-- read with `useSelector(...)`
-- write with `useDispatch(...)` or the handle itself
+- `RuntimeProvider` projects a runtime scope.
+- `useModule(...)` acquires an instance.
+- `useSelector(...)` reads with an explicit selector or descriptor.
+- `useDispatch(...)` dispatches actions.
+- Domain handles, such as Form handles, expose domain-specific writes.
 
-## RuntimeProvider
-
-Put `RuntimeProvider` at the subtree boundary:
+## Runtime provider
 
 ```tsx
 <RuntimeProvider runtime={runtime}>
@@ -20,70 +19,31 @@ Put `RuntimeProvider` at the subtree boundary:
 </RuntimeProvider>
 ```
 
-All hooks from `@logixjs/react` must run inside that subtree.
-
-`RuntimeProvider` projects an existing runtime. The boundary that creates the runtime owns its lifecycle. During development HMR, that owner applies `reset` for replacement and `dispose` for no-successor teardown.
-
-Development HMR is activated outside component code. Enable the dev lifecycle carrier once at the host boundary, for example `logixReactDevLifecycle()` in Vite or `installLogixDevLifecycleForVitest()` in tests. Normal React code keeps using `RuntimeProvider`.
-
-Hot lifecycle diagnostics use the existing `runtime.hot-lifecycle` evidence event.
-
-## Shared instance
-
-Use:
+## Shared hosted instance
 
 ```tsx
-const module = useModule(ModuleTag)
+const counter = useModule(Counter.tag)
 ```
 
-when the runtime already hosts one shared instance.
-
-## Local or keyed instance
-
-Use:
+## Local/keyed Program instance
 
 ```tsx
-const module = useModule(Program, { key: "session-a" })
+const editor = useModule(EditorProgram, { key: `editor:${id}` })
 ```
 
-when a subtree needs its own instance or a keyed session instance.
+This replaces removed local-module hook routes.
 
 ## Reads and writes
 
-Reads stay on:
+```tsx
+const value = useSelector(counter, (state) => state.value)
+const dispatch = useDispatch(counter)
+```
 
-- `useSelector(...)`
-
-Writes stay on:
-
-- `useDispatch(...)`
-- `handle.dispatch(...)`
-
-## Startup policy
-
-`RuntimeProvider` may control startup behavior through:
-
-- `fallback`
-- `policy`
-- `layer`
-
-These props affect startup and local environment wiring.
-They do not define a second host law.
-
-They also do not make `RuntimeProvider` the hot lifecycle owner. Host cleanup may be summarized for diagnostics, but the owner decision stays at the runtime creation boundary.
-
-## Advanced routes
-
-Advanced routes include:
-
-- `useLocalModule(...)`
-- `useImportedModule(...)`
-- `ModuleScope`
-
-They remain valid, but they are not the smallest default route.
+Do not use no-argument `useSelector(handle)`. Pass an exact selector.
 
 ## See also
 
-- [RuntimeProvider](../../api/react/provider)
-- [useModule](../../api/react/use-module)
-- [useSelector](../../api/react/use-selector)
+- [RuntimeProvider](/docs/api/react/provider)
+- [useModule](/docs/api/react/use-module)
+- [useSelector](/docs/api/react/use-selector)

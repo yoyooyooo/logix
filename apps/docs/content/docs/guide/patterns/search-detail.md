@@ -45,7 +45,7 @@ const DetailDef = Logix.Module.make('Detail', {
 ## Search logic (debounce + cancel old requests)
 
 ```ts
-const SearchLogic = SearchDef.logic(($) =>
+const SearchLogic = SearchDef.logic("logic", ($) =>
   Effect.gen(function* () {
     const api = yield* $.use(SearchApi)
 
@@ -80,7 +80,7 @@ const SearchLogic = SearchDef.logic(($) =>
 ### Option 1: drive it inside SearchLogic
 
 ```ts
-const SearchLogic = SearchDef.logic(($) =>
+const SearchLogic = SearchDef.logic("logic", ($) =>
   Effect.gen(function* () {
     const Detail = yield* $.imports.get(DetailDef.tag)
 

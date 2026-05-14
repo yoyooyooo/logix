@@ -1,57 +1,34 @@
 ---
-title: 路由 Scope 下的弹框 Keepalive
-description: 通过 host 实例拥有 imported child modules，把弹框状态限制在路由 scope 内。
+title: Route-scope modals
+description: 使用普通 Program keys 与 imports 共享 route-owned Logix instances。
 ---
 
-这份配方用一个 host 实例来建模路由范围内的弹框状态。
+一个 route 可以持有 host Program instance，并让 modal components 使用同一 runtime scope。
 
-路由 host 持有 scope。
-弹框模块作为 imported child，从这个 host scope 中解析。
+```tsx
+function RoutePage({ routeId }: { routeId: string }) {
+  const host = useModule(RouteHostProgram, { key: `route:${routeId}` })
 
-## Host program
+  return (
+    <>
+      <RouteMain host={host} />
+      <RouteModal host={host} />
+    </>
+  )
+}
+```
+
+如果 modal 需要 child module，通过 Program imports 提供 child，并用 `useImportedModule(...)` 解析。
 
 ```ts
-export const RouteHostProgram = Logix.Program.make(RouteHostDef, {
-  initial: {},
-  capabilities: {
-    imports: [ModalAProgram],
-  },
+const RouteHostProgram = Logix.Program.make(RouteHost, {
+  initial,
+  capabilities: { imports: [ModalProgram] },
 })
 ```
 
-## 路由边界
-
 ```tsx
-export function RoutePage() {
-  const host = useModule(RouteHostProgram, { gcTime: 0 })
-  return <ModalAView host={host} />
-}
+const modal = useImportedModule(host, Modal.tag)
 ```
 
-## 弹框解析
-
-```tsx
-function ModalAView({ host }: { host: any }) {
-  const modalA = host.imports.get(ModalA.tag)
-  const text = useSelector(modalA, (s) => s.text)
-  return <div>{text}</div>
-}
-```
-
-这种结构下：
-
-- 关闭弹框只会卸载 UI
-- 离开路由时，host 和它 imports 下的弹框模块会一起销毁
-
-## ModuleScope 变体
-
-当不希望透传 props 时，可以用 `ModuleScope` 打包同一模式：
-
-```ts
-export const RouteHostScope = ModuleScope.make(RouteHostProgram, { gcTime: 0 })
-```
-
-## 相关页面
-
-- [ModuleScope](../../api/react/module-scope)
-- [useImportedModule](../../api/react/use-imported-module)
+不要使用已移除的 scope helper APIs。优先使用 explicit Program keys、imports，以及合适的普通 React props/context。

@@ -51,7 +51,7 @@ const WizardDef = Logix.Module.make('Wizard', {
 ## 步骤导航逻辑
 
 ```ts
-const WizardLogic = WizardDef.logic(($) =>
+const WizardLogic = WizardDef.logic("logic", ($) =>
   Effect.gen(function* () {
     yield* Effect.all(
       [

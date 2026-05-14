@@ -1,68 +1,39 @@
 ---
 title: Lifecycle
-description: Understand lifecycle hooks through scopes, startup phases, and instance ownership.
+description: Keep startup readiness, runtime ownership, and React projection separate.
 ---
 
-Lifecycle in Logix is governed by `Scope`.
+Lifecycle has three distinct areas:
 
-When a scope closes:
+| Area | Owner |
+| --- | --- |
+| startup readiness | `$.readyAfter(...)` inside `Module.logic(...)` declaration phase |
+| runtime ownership/disposal | the boundary that calls `Runtime.make(...)` or `Runtime.run(...)` |
+| React visibility | `RuntimeProvider` and `useModule(...)` |
 
-- long-running fibers attached to that scope are interrupted
-- destroy or finalizer work runs
-
-## Common scope boundaries
-
-1. `Runtime` scope
-2. local module scope
-3. provider layer scope
-
-These boundaries decide when logic starts, stops, and cleans up.
-
-## Main hooks
-
-### `onInitRequired`
-
-Use `onInitRequired` for initialization that must complete before the instance becomes usable.
+## Readiness
 
 ```ts
-$.lifecycle.onInitRequired(
-  Effect.gen(function* () {
-    yield* $.state.mutate((draft) => {
-      draft.ready = true
-    })
-  }),
-)
+const Logic = Module.logic("startup", ($) => {
+  $.readyAfter(loadRequiredConfig, { id: "required-config" })
+
+  return Effect.gen(function* () {
+    // long-running run phase
+  })
+})
 ```
 
-### `onStart`
+`readyAfter` gates readiness. The returned run effect is not readiness work.
 
-Use `onStart` for background work that does not block readiness.
+## React local lifetime
 
-### `onDestroy`
+Use `useModule(Program, options)` for component/route-owned instances:
 
-Use `onDestroy` for teardown work bound to instance shutdown.
+```tsx
+const session = useModule(SessionProgram, {
+  key: `session:${id}`,
+  gcTime: 60_000,
+})
+```
 
-### `onError`
-
-Use `onError` to handle unhandled runtime defects from background logic.
-
-## Logic phases
-
-Logic has two phases:
-
-- declaration phase
-- run phase
-
-Register lifecycle hooks in the declaration phase.
-Run watchers, flows, and dependency reads in the run phase.
-
-## React mapping
-
-- shared instances resolved through `useModule(ModuleTag)` live as long as the hosting runtime
-- local instances resolved through `useModule(Program, options?)` live as long as their subtree owners
-- advanced local routes such as `useLocalModule(...)` follow component-local ownership
-
-## See also
-
-- [Flows & Effects](./flows-and-effects)
-- [React integration](./react-integration)
+`RuntimeProvider` makes a runtime visible. It does not automatically dispose shared runtimes.
