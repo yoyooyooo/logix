@@ -17,6 +17,8 @@ const runtime = Logix.Runtime.make(AppProgram)
 
 `RuntimeProvider` can also merge a local `layer` for a subtree. Transaction policy stays on `Program` or `Runtime`, not on React props.
 
+Development HMR is handled by one host dev lifecycle carrier, not by component-level cleanup snippets. Enable `logixReactDevLifecycle()` in Vite or `installLogixDevLifecycleForVitest()` in test setup once at the host boundary. The carrier owns hot boundaries and asks the runtime owner to `reset` or `dispose`; `RuntimeProvider` only projects the current runtime. Hot lifecycle evidence appears as `runtime.hot-lifecycle`.
+
 ## Shared runtime instance
 
 ```tsx

@@ -17,6 +17,8 @@ const runtime = Logix.Runtime.make(AppProgram)
 
 `RuntimeProvider` 也可以给某个 subtree 合并局部 `layer`。事务策略留在 `Program` 或 `Runtime`，不放在 React props 上。
 
+开发期 HMR 由一个 host dev lifecycle carrier 处理，不在组件里写零散 cleanup。Vite 中一次性启用 `logixReactDevLifecycle()`，测试 setup 中一次性启用 `installLogixDevLifecycleForVitest()`。dev lifecycle carrier 拥有 hot boundary，并让 runtime owner 选择 `reset` 或 `dispose`；`RuntimeProvider` 只投影当前 runtime。hot lifecycle evidence 统一记录为 `runtime.hot-lifecycle`。
+
 ## 共享 runtime 实例
 
 ```tsx

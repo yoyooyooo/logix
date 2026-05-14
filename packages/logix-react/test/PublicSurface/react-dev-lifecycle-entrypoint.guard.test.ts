@@ -131,13 +131,14 @@ describe('React dev lifecycle entrypoint boundary', () => {
 
   it('keeps docs examples on host-only dev lifecycle imports', () => {
     const docsWithDevCarrierImports = [
-      'apps/docs/content/docs/guide/recipes/react-integration.md',
-      'apps/docs/content/docs/guide/recipes/react-integration.cn.md',
+      'apps/docs/content/docs/api/react/provider.md',
+      'apps/docs/content/docs/api/react/provider.cn.md',
     ]
 
     for (const path of docsWithDevCarrierImports) {
       const source = readRepoFile(path)
       expect(source).toContain('@logixjs/react/dev/vite')
+      expect(source).toContain('@logixjs/react/dev/vitest')
       expect(source).not.toContain('@logixjs/react/dev/lifecycle')
       expect(source).not.toContain('createLogixDevLifecycleCarrier')
     }

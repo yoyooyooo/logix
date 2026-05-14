@@ -25,8 +25,8 @@ describe('hot lifecycle docs writeback', () => {
       'apps/docs/content/docs/guide/advanced/scope-and-resource-lifetime.cn.md',
       'apps/docs/content/docs/guide/essentials/react-integration.md',
       'apps/docs/content/docs/guide/essentials/react-integration.cn.md',
-      'apps/docs/content/docs/guide/recipes/react-integration.md',
-      'apps/docs/content/docs/guide/recipes/react-integration.cn.md',
+      'apps/docs/content/docs/api/react/provider.md',
+      'apps/docs/content/docs/api/react/provider.cn.md',
       'apps/docs/content/docs/guide/advanced/troubleshooting.md',
       'apps/docs/content/docs/guide/advanced/troubleshooting.cn.md',
     ]

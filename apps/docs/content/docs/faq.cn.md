@@ -39,11 +39,11 @@ Module.logic -> Program.make -> Runtime.make -> RuntimeProvider -> useModule -> 
 
 本站大多数页面都在展开这条链上的某一段。如果一个 helper 不能机械还原到这条链，它应当被看成应用本地代码或 toolkit sugar，而不是第二套模型。
 
-## traits 和 FieldKernel 去哪里了？
+## 为什么用户文档不再讲旧字段内部机制？
 
-它们不再是当前用户文档的正面概念。
+旧字段内部机制不再是当前用户文档的正面概念。
 
-字段声明仍然可以出现在 `Module.logic(($) => { ... })` 或 Form 这类领域 DSL 中，但字段编译器和运行时机制退到 `Program.make(...)` 与 `Runtime.make(...)` 后面。用户文档解释行为和 owner 边界，不再把内部 trait 系统当主叙事。
+字段声明仍然可以出现在 `Module.logic(($) => { ... })` 或 Form 这类领域 DSL 中，但编译器和运行时机制退到 `Program.make(...)` 与 `Runtime.make(...)` 后面。用户文档解释行为和 owner 边界，不把内部实现家族当主叙事。
 
 ## 为什么需要 `Program.make(...)`？
 

@@ -33,3 +33,5 @@ A selector that returns a new object on every commit can re-render often. Use `f
 ## Lifecycle failure
 
 If acquisition fails, inspect readiness effects registered through `$.readyAfter` and provider `onError` output.
+
+If an active demo stops after a source edit, inspect `runtime.hot-lifecycle` evidence. Development HMR should be enabled once through the host dev lifecycle carrier with `logixReactDevLifecycle()` or `installLogixDevLifecycleForVitest()`. Keep `RuntimeProvider` projection-only, and let the runtime owner choose `reset` when a successor runtime exists or `dispose` when none exists.

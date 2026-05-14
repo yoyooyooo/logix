@@ -39,11 +39,11 @@ Module.logic -> Program.make -> Runtime.make -> RuntimeProvider -> useModule -> 
 
 Most pages in this site expand one part of that chain. If a helper cannot be reduced back to the chain, treat it as local application code or toolkit sugar, not as a second model.
 
-## Where did traits and FieldKernel go?
+## Why are old field internals absent from user docs?
 
-They are not user-facing concepts in the current docs.
+Old field internals are not user-facing concepts in the current docs.
 
-Field declarations may still exist inside `Module.logic(($) => { ... })` or a domain DSL such as Form, but the field compiler and runtime machinery sit behind `Program.make(...)` and `Runtime.make(...)`. User docs explain the behavior and owner boundary, not the internal trait system.
+Field declarations may still exist inside `Module.logic(($) => { ... })` or a domain DSL such as Form, but compiler and runtime machinery sit behind `Program.make(...)` and `Runtime.make(...)`. User docs explain behavior and owner boundaries instead of internal implementation families.
 
 ## Why does `Program.make(...)` exist?
 

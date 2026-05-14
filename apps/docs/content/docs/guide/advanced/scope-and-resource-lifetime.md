@@ -17,6 +17,14 @@ const runtime = Logix.Runtime.make(AppProgram, { layer: AppLayer })
 
 A provider can add local layers for a subtree. Use this for route-specific services and test doubles.
 
+## Development hot lifecycle
+
+Development HMR has one owner: the host dev lifecycle carrier. Enable `logixReactDevLifecycle()` in Vite or `installLogixDevLifecycleForVitest()` in test setup once at the host boundary.
+
+Application code still creates the runtime normally and passes it to `RuntimeProvider`. `RuntimeProvider` projects the current runtime into React; it does not own lifecycle truth and must not `dispose` a borrowed runtime.
+
+The carrier delivers the hot boundary to the runtime owner. The owner chooses `reset` when a successor runtime exists and `dispose` when no successor exists. Evidence is exported as `runtime.hot-lifecycle`; that event is evidence, not an authoring API.
+
 ## Local program scope
 
 `useModule(Program, { key })` creates a local/keyed module instance. Use it for previews, route-local editors, and isolated widgets.
