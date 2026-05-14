@@ -1,9 +1,9 @@
 ---
 title: Form
-description: Logix 中用于 editable values、validation、source facts、companion facts、submit 与 list identity 的领域包。
+description: values、validation、sources、companion facts、submit 与 list identity 的 Form 领域指南。
 ---
 
-`@logixjs/form` 是建立在同一条 Logix 主链上的领域包。
+Form 是返回 Logix `Program` 的领域包。它拥有可编辑 values、validation、source receipts、companion facts、submit 和 list identity，同时保持 React 读取走 core host route。
 
 ```text
 Form.make(id, config, define)
@@ -13,26 +13,12 @@ Form.make(id, config, define)
   -> useModule + useSelector
 ```
 
-## 公开路线
+## 路线
 
-- 用 `Form.make(...)` author。
-- 通过 core runtime 与 React host 挂载。
-- 通过返回的 form handle 修改。
-- 通过 `useSelector(...)`、`fieldValue(...)`、`fieldValues(...)`、`rawFormMeta()`、`Form.Error.field(...)`、`Form.Companion.*` descriptors 读取。
+1. [Introduction](/cn/docs/form/introduction) 固定 owner map。
+2. [Quick start](/cn/docs/form/quick-start) 构建一个小表单。
+3. [Schema](/cn/docs/form/schema)、[Rules](/cn/docs/form/rules)、[Validation](/cn/docs/form/validation) 说明 final truth。
+4. [Sources](/cn/docs/form/sources) 与 [Companion](/cn/docs/form/companion) 分离 remote facts 与 local soft facts。
+5. [Field arrays](/cn/docs/form/field-arrays)、[Selectors](/cn/docs/form/selectors)、[Performance](/cn/docs/form/performance) 覆盖大型表单。
 
-Form 不新增 Form-owned React hook family、公开 path-object API、公开 row-token API，也不制造第二套 runtime/control-plane truth source。
-
-## 阅读顺序
-
-1. [介绍](/cn/docs/form/introduction)
-2. [快速开始](/cn/docs/form/quick-start)
-3. [实例](/cn/docs/form/instances)
-4. [Rules](/cn/docs/form/rules)
-5. [Validation](/cn/docs/form/validation)
-6. [Sources](/cn/docs/form/sources)
-7. [Companion](/cn/docs/form/companion)
-8. [Selectors 与 support facts](/cn/docs/form/selectors)
-9. [Field arrays](/cn/docs/form/field-arrays)
-10. [Schema](/cn/docs/form/schema)
-11. [Performance](/cn/docs/form/performance)
-12. [When to use](/cn/docs/form/when-to-use)
+Form 不拥有 React hook family。React 集成仍然是 `useModule` 与 `useSelector`。

@@ -1,48 +1,33 @@
 ---
 title: Sources
-description: 用 field(path).source(...) 把 Query-owned remote facts 接到字段。
+description: 表单字段的 remote facts，resource owner 留在 Form 外部。
 ---
 
-`field(path).source(...)` 是 Form 的 remote fact lane。
+source 把字段连接到 remote fact。Form 拥有 field receipt 与 submit impact；resource owner 留在 Form 外部。
+
+## Declaration
 
 ```ts
-$.field("profileResource").source({
-  resource: ProfileResource,
-  deps: ["profileId"],
-  key: (profileId) => (profileId ? { userId: profileId } : undefined),
+$.field("provinceId").source({
+  resource: ProvincesByCountry,
+  deps: ["countryId"],
+  key: (countryId) => countryId ? { countryId } : undefined,
   triggers: ["onMount", "onKeyChange"],
+  debounceMs: 150,
   concurrency: "switch",
-  submitImpact: "block",
+  submitImpact: "observe",
 })
 ```
 
-## Resource owner
+## Inactive key
 
-resource 由 Query 持有：
-
-```ts
-const ProfileResource = Query.Engine.Resource.make({
-  id: "profile",
-  keySchema: Schema.Struct({ userId: Schema.String }),
-  load: ({ userId }) => fetchProfile(userId),
-})
-```
-
-通过 runtime services/layers 安装 resource 与可选 engine middleware，不要放进 React effects 或 companion functions。
-
-## Inactive keys
-
-`key(...)` 可以返回 `undefined`。这表示当前 dependency state 下 source inactive。
+`key` 返回 `undefined` 时，source inactive。dependent fields 使用这条路线。
 
 ## Submit impact
 
-| 值 | 含义 |
-| --- | --- |
-| `"block"` | pending/stale source work 可以阻塞 submit。 |
-| `"observe"` | source refresh 可被观察，但不阻塞 submit。 |
+- `block`: pending/stale source work 可以阻塞 submit。
+- `observe`: source state 可见，但本身不阻塞 submit。
 
-source failure 可由 `Form.Error.field(path)` 解释，但 final validation truth 仍属于 rules、root/list rules 与 submit decode。
+## 边界
 
-## 不是 options API
-
-Source 不创建 `Form.Source`、`useFieldSource`、公开 refresh hooks 或 options/candidates API。local availability/candidates 用 companion；final truth 用 rules/submit。
+source 不是 options API。它不拥有 final errors、candidates 或 UI availability。errors 用 rules，local soft facts 用 companion。

@@ -1,49 +1,37 @@
 ---
-title: Tick / Flush
-description: 理解事务提交与外部可观察快照之间的边界。
+title: Tick and flush
+description: runtime commit、selector notification 与 React render 的关系。
 ---
 
-Tick 和 flush 描述的是这样一条边界：
+一次用户交互以 action 或 state write 进入 runtime。runtime 把工作合并进 transaction window，提交 state，然后通知精确读取者。
 
-- 模块内部事务工作
-- 外部可观察快照的发布
-
-## 最小时间线
+## 时间线
 
 ```text
-input -> state:update -> trace:tick -> subscriber notification -> render
+dispatch action
+  -> reducer / logic write
+  -> state transaction
+  -> field/source convergence
+  -> commit
+  -> selector notification
+  -> React render
 ```
 
-## 为什么存在
+内部 phase 可能因性能优化而变化，但公开契约稳定：写入是事务化的，React 通过 selector 订阅读取。
 
-这条边界提供：
+## Selector precision
 
-- batching
-- 多次读取之间的一致性
-- 当预算超限时可解释的降级证据
+`fieldValue(path)` 与 `fieldValues(paths)` 给 runtime 稳定的字段级读取。selector function 也允许，但宽 selector 可能需要更多工作才能证明 precision。
 
-## DevTools 读取
+## Batch 路线
 
-最重要的 `trace:tick` phase 有：
+需要组合同步 host work 时使用 `Runtime.batch`。
 
-- `start`
-- `settled`
-- `budgetExceeded`
+```ts
+Logix.Runtime.batch(() => {
+  dispatch({ _tag: "a", payload: undefined })
+  dispatch({ _tag: "b", payload: undefined })
+})
+```
 
-关键字段包括：
-
-- `tickSeq`
-- `result.stable`
-- `result.degradeReason`
-- `backlog.deferredPrimary`
-
-## 常见建议
-
-- 多次 dispatch 属于同一用户意图时，优先 batching
-- `Runtime.batch(...)` 只作为同步边界使用
-- 看到 `budgetExceeded` 时，先看证据，再调旋钮
-
-## 相关页面
-
-- [Performance & optimization](../advanced/performance-and-optimization)
-- [Troubleshooting](../advanced/troubleshooting)
+runtime batching 不应滥用。持久状态变化优先建模为 action 与 reducer。

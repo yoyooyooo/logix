@@ -1,30 +1,49 @@
 ---
 title: Composability
-description: "Compose by owner boundary: Program imports, services, React projection, and domain packages."
+description: Compose Logix by program imports, service layers, and ordinary React composition.
 ---
 
-Logix composition is not a bag of helper hooks. Choose the owner first.
+Composition is explicit. A Logix program can import another program, a runtime can provide services, and React can compose views around acquired instances.
 
-```mermaid
-flowchart LR
-  Module[Module] --> Program[Program.make]
-  Program --> Runtime[Runtime.make]
-  Runtime --> React[RuntimeProvider]
-  React --> Hooks[useModule + useSelector]
-  Program --> Imports[capabilities.imports]
-  Program --> Services[capabilities.services]
+## Program imports
+
+```ts
+const ChildProgram = Logix.Program.make(Child, { initial: childInitial })
+
+const ParentProgram = Logix.Program.make(Parent, {
+  initial: parentInitial,
+  capabilities: { imports: [ChildProgram] },
+})
 ```
 
-## Composition routes
+Inside parent logic, use the child module tag.
 
-| Need | Route |
-| --- | --- |
-| child module inside parent scope | `Program.make(..., { capabilities: { imports: [ChildProgram] } })` |
-| service dependency | `capabilities.services` or `Runtime.make(..., { layer })` |
-| local React instance | `useModule(Program, { key? })` |
-| domain package | return a Program or reduce to the same spine |
-| Form field support facts | `field(...).source(...)` / `field(...).companion(...)` plus `useSelector(...)` |
+```ts
+const child = yield* $.use(Child.tag)
+yield* child.actions.refresh()
+```
 
-## Deleted routes
+## Service layers
 
-Do not compose through removed React surfaces such as `useLocalModule`, `useModuleList`, or `ModuleScope`. Use Program ownership and ordinary React component composition instead.
+Use layers for infrastructure. Layers do not become module state.
+
+```ts
+const runtime = Logix.Runtime.make(AppProgram, {
+  layer: Layer.mergeAll(ApiLive, LoggerLive),
+})
+```
+
+## React composition
+
+Render components normally. Acquire only the instance each component needs.
+
+```tsx
+function ChildPanel() {
+  const child = useModule(Child.tag)
+  return <Panel value={useSelector(child, fieldValue("value"))} />
+}
+```
+
+## Boundary
+
+Do not create wrapper APIs that hide whether they use a tag, a program, or a service. Helpers should be mechanically reducible to program imports, layers, or React components.

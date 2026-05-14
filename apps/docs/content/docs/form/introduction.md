@@ -1,37 +1,31 @@
 ---
 title: Introduction
-description: The current Form mental model and owner boundaries.
+description: The owner map and public route for Logix Form.
 ---
 
-Form is for editable input state: values, validation, errors, submit, remote facts, local support facts, and list row identity.
-
-The important point is that Form is a Logix Program, not a separate React runtime.
-
-```text
-Form declaration   Form.make(...)
-Runtime mounting   Runtime.make(FormProgram) + RuntimeProvider
-React reads        useModule + useSelector
-Writes             FormHandle methods
-Evidence           Runtime.check / Runtime.trial / Runtime.compare
-```
+Form is a program-first domain package. `Form.make` produces a program that can be mounted by `Runtime.make`, imported by another program, or acquired locally in React.
 
 ## Owner map
 
-| Concept | Owner | Public spelling |
-| --- | --- | --- |
-| declaration | Form | `Form.make(id, config, define)` |
-| field value | Form state | `fieldValue(path)` |
-| form metadata | Form state | `rawFormMeta()` |
-| final validation truth | rule/root/list/submit | `field.rule`, `root`, `list`, `submit` |
-| remote fact ingress | source lane + Query resource | `field(path).source(...)` |
-| local soft fact | companion lane | `field(path).companion(...)` |
-| runtime mutation | Form handle | `form.field`, `form.fieldArray`, `form.submit` |
-| host read | React host law | `useModule + useSelector` |
-| verification | runtime control plane | `Runtime.check/trial/compare` |
+| Concern | Owner |
+| --- | --- |
+| editable values | Form state |
+| final validation truth | field/root/list/submit rules |
+| remote facts | `field(path).source(...)` |
+| local soft facts | `field(path).companion(...)` |
+| list identity | Form list policy and row-id handle routes |
+| React reads | `useSelector` with core/Form selector descriptors |
+| runtime execution | Program/Runtime |
 
-## Hard boundaries
+## Public route
 
-- Companion is synchronous and local; it cannot perform IO or emit final validation truth.
-- Source owns remote fact ingress; it is not an options API and not a manual React fetch helper.
-- Row identity is handled through Form internals and handle methods such as `byRowId(...)`; it is not a public row token family.
-- Form does not own a separate React hook family.
+```ts
+const ContactForm = Form.make("ContactForm", config, ($) => {
+  $.field("email").rule(Form.Rule.make({ required: "Email required", email: "Invalid email" }))
+  $.submit({ decode: SubmitSchema })
+})
+```
+
+## Boundary
+
+A form is not a React controller object. The handle is a domain extension over the same module handle route. UI components read with selectors and call handle commands.

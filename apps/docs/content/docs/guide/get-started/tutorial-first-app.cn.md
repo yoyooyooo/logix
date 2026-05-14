@@ -1,127 +1,105 @@
 ---
-title: 教程：可取消搜索
-description: 构建一个带防抖和 latest-only 请求处理的搜索流。
+title: 可取消搜索
+description: 包含状态、服务、取消语义和 React 读取的完整搜索 flow。
 ---
 
-这个教程构建一个最小搜索切片，包含：
+搜索适合作为第一个真实 flow：用户输入变化快，请求会重叠，UI 需要稳定的 loading 与结果状态。
 
-- 一个输入字段
-- 一个异步服务
-- debounce
-- latest-only 请求处理
-
-## Module
+## 状态和动作
 
 ```ts
-export const SearchDef = Logix.Module.make("Search", {
-  state: SearchState,
+const Search = Logix.Module.make("Search", {
+  state: Schema.Struct({
+    query: Schema.String,
+    loading: Schema.Boolean,
+    results: Schema.Array(Schema.String),
+    error: Schema.NullOr(Schema.String),
+  }),
   actions: {
-    setKeyword: Schema.String,
+    queryChanged: Schema.String,
   },
-  immerReducers: {
-    setKeyword: (draft, keyword) => {
-      draft.keyword = keyword
-    },
+  reducers: {
+    queryChanged: Logix.Module.Reducer.mutate((draft, action) => {
+      draft.query = action.payload
+    }),
   },
 })
 ```
 
-## Service
+把可见 query 放进 state。异步请求由 logic 驱动，不由组件实现。
+
+## 服务
 
 ```ts
-export class SearchApiTag extends Context.Tag("@svc/SearchApi")<SearchApiTag, SearchApi>() {}
-
-export const SearchApiLive = Layer.succeed(SearchApiTag, {
-  search: (keyword) =>
-    Effect.gen(function* () {
-      yield* Effect.sleep("200 millis")
-      return [`${keyword} 结果 A`, `${keyword} 结果 B`]
-    }),
-})
+class SearchService extends Effect.Service<SearchService>()("SearchService", {
+  effect: Effect.succeed({
+    run: (query: string) => Effect.succeed([`Result for ${query}`]),
+  }),
+}) {}
 ```
+
+生产代码通常通过 `Runtime.make` 或 `Program.make` 的 `Layer` 提供这个服务。
 
 ## Logic
 
 ```ts
-export const SearchLogic = SearchDef.logic<SearchApiTag>("search-logic", ($) =>
-  $.onState((s) => s.keyword).debounce(300).runLatestTask({
-    pending: (keyword) =>
-      $.state.mutate((draft) => {
-        const trimmed = keyword.trim()
-        draft.errorMessage = undefined
-        draft.isSearching = trimmed.length > 0
-        if (trimmed.length === 0) {
-          draft.results = []
-        }
-      }),
+const SearchLogic = Search.logic("run-search", ($) =>
+  Effect.gen(function* () {
+    yield* $.onAction("queryChanged")
+      .debounce(200)
+      .runLatest((action) =>
+        Effect.gen(function* () {
+          const service = yield* $.use(SearchService)
+          yield* $.state.mutate((draft) => {
+            draft.loading = true
+            draft.error = null
+          })
 
-    effect: (keyword) =>
-      Effect.gen(function* () {
-        const trimmed = keyword.trim()
-        if (trimmed.length === 0) return [] as ReadonlyArray<string>
-        const api = yield* $.use(SearchApiTag)
-        return yield* api.search(trimmed)
-      }),
+          const results = yield* service.run(action.payload).pipe(
+            Effect.catchAll((error) =>
+              Effect.gen(function* () {
+                yield* $.state.mutate((draft) => {
+                  draft.error = String(error)
+                })
+                return [] as string[]
+              }),
+            ),
+          )
 
-    success: (results) =>
-      $.state.mutate((draft) => {
-        draft.isSearching = false
-        draft.results = Array.from(results)
-      }),
-
-    failure: () =>
-      $.state.mutate((draft) => {
-        draft.isSearching = false
-        draft.errorMessage = "搜索失败"
-      }),
+          yield* $.state.mutate((draft) => {
+            draft.loading = false
+            draft.results = results
+          })
+        }),
+      )
   }),
 )
 ```
 
-## Runtime
+`runLatest` 只保留这个触发器下最新的请求。组件不实现取消逻辑。
+
+## Program 与 React
 
 ```ts
-export const SearchProgram = Logix.Program.make(SearchDef, {
-  initial: {
-    keyword: "",
-    results: [],
-    isSearching: false,
-    errorMessage: undefined,
-  },
+const SearchProgram = Logix.Program.make(Search, {
+  initial: { query: "", loading: false, results: [], error: null },
   logics: [SearchLogic],
 })
 
-export const runtime = Logix.Runtime.make(SearchProgram, {
-  layer: SearchApiLive,
-})
-```
-
-## React
-
-```tsx
-function SearchView() {
-  const search = useModule(SearchDef.tag)
-  const keyword = useSelector(search, (s) => s.keyword)
-  const results = useSelector(search, (s) => s.results)
-  const isSearching = useSelector(search, (s) => s.isSearching)
+function SearchBox() {
+  const search = useModule(SearchProgram, { key: "search-page" })
+  const query = useSelector(search, fieldValue("query"))
+  const loading = useSelector(search, fieldValue("loading"))
+  const results = useSelector(search, fieldValue("results"))
+  const dispatch = useDispatch(search)
 
   return (
-    <div>
-      <input value={keyword} onChange={(e) => search.actions.setKeyword(e.target.value)} />
-      {isSearching && <div>搜索中...</div>}
-      <ul>{results.map((r) => <li key={r}>{r}</li>)}</ul>
-    </div>
+    <>
+      <input value={query} onChange={(event) => dispatch({ _tag: "queryChanged", payload: event.target.value })} />
+      {loading ? <span>Loading</span> : <pre>{JSON.stringify(results)}</pre>}
+    </>
   )
 }
 ```
 
-## 说明
-
-- `debounce(300)` 用于降低输入过程中的 churn
-- `runLatestTask(...)` 只保留最新请求
-- 组件继续只负责渲染和派发意图
-
-## 下一步
-
-- [复杂列表教程](./tutorial-complex-list)
-- [Flows & Effects](../essentials/flows-and-effects)
+这里使用带 key 的局部 program 实例。如果实例由 root runtime 提供，使用 module tag 路线。

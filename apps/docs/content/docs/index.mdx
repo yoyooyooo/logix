@@ -1,37 +1,29 @@
 ---
 title: Logix Docs
-description: Current user documentation for the Module → Program → Runtime spine.
+description: User documentation for the Module → Program → Runtime spine.
 ---
 
-Logix is an Effect-native runtime for application logic. Its current public model is intentionally small:
+Logix is an Effect-native runtime for application logic. React keeps rendering and component composition; Logix owns declaration, assembly, execution, and runtime evidence.
 
 ```text
-Module.logic(...)     definition-time logic and declarations
-Program.make(...)     assembly-time business unit
-Runtime.make(...)     execution-time runtime container
-RuntimeProvider       React host projection
-useModule + useSelector  React instance acquisition and reads
+Module.logic(...)        define logic and local declarations
+Program.make(...)        assemble the business unit
+Runtime.make(...)        create the execution container
+RuntimeProvider          project the runtime into React
+useModule + useSelector  acquire an instance and read it precisely
 ```
 
-Use this site as the user-facing manual. For exhaustive exported signatures, use the generated [API Reference](/api-reference).
+## Docs map
 
-## Start here
+| Section | Use it for |
+| --- | --- |
+| [Guide](/docs/guide) | The canonical route, runtime model, React integration, and patterns. |
+| [Form](/docs/form) | Editable value state, validation, sources, companion facts, submit, and list identity. |
+| [API](/docs/api) | Contract pages for public exports. |
+| [Generated Reference](/api-reference) | Export signatures generated from TypeScript. |
 
-1. [Introduction](/docs/guide/get-started/introduction) — what Logix is for.
-2. [Quick Start](/docs/guide/get-started/quick-start) — build a small Program and mount it in React.
-3. [Canonical spine](/docs/guide/essentials/canonical-spine) — the object roles to keep in your head.
-4. [React integration](/docs/guide/essentials/react-integration) — provider, instance acquisition, reads, and writes.
+## Stable route
 
-## Domain docs
+Start with [Quick Start](/docs/guide/get-started/quick-start), then read [Canonical spine](/docs/guide/essentials/canonical-spine) and [React integration](/docs/guide/essentials/react-integration). The rest of the guide expands those same objects instead of introducing a second model.
 
-- [Form](/docs/form) — editable value state, validation, sources, companion facts, submit, and list identity.
-
-## API docs
-
-- [Core API](/docs/api) — Module, Program, Runtime, and Bound API.
-- [React API](/docs/api/react/provider) — RuntimeProvider, useModule, useSelector, useDispatch, and useImportedModule.
-- [Generated API Reference](/api-reference) — signature-first export index.
-
-## Current public surface policy
-
-The current docs do not teach removed or internal routes such as `useLocalModule`, `useModuleList`, `ModuleScope`, public FieldKernel namespaces, Form-owned React hook families, public Form path objects, or separate runtime/control-plane facades. Local React ownership is expressed with `useModule(Program, options)`. Form reads still use `useSelector(...)`.
+Logix deliberately keeps internal compiler names out of the user route. Field declarations are authored through the logic builder or through domain DSLs such as Form; runtime control-plane reports stay under `Runtime.check` and `Runtime.trial`.

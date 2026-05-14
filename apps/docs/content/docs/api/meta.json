@@ -1,5 +1,9 @@
 {
-  "title": "API Reference",
-  "root": true,
-  "pages": ["reference", "core", "react"]
+  "title": "API",
+  "pages": [
+    "index",
+    "core",
+    "react",
+    "reference"
+  ]
 }

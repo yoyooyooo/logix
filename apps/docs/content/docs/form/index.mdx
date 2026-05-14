@@ -1,9 +1,9 @@
 ---
 title: Form
-description: The Logix domain package for editable values, validation, source facts, companion facts, submit, and list identity.
+description: Form domain guide for values, validation, sources, companion facts, submit, and list identity.
 ---
 
-`@logixjs/form` is a domain package built on the same Logix spine.
+Form is a domain package that returns a Logix `Program`. It owns editable values, validation, source receipts, companion facts, submit, and list identity while keeping React reads on the core host route.
 
 ```text
 Form.make(id, config, define)
@@ -13,26 +13,12 @@ Form.make(id, config, define)
   -> useModule + useSelector
 ```
 
-## Public route
+## Route
 
-- Author with `Form.make(...)`.
-- Mount with the core runtime and React host.
-- Mutate with the returned form handle.
-- Read with `useSelector(...)`, `fieldValue(...)`, `fieldValues(...)`, `rawFormMeta()`, `Form.Error.field(...)`, and `Form.Companion.*` descriptors.
+1. [Introduction](/docs/form/introduction) fixes the owner map.
+2. [Quick start](/docs/form/quick-start) builds a small form.
+3. [Schema](/docs/form/schema), [Rules](/docs/form/rules), and [Validation](/docs/form/validation) cover final truth.
+4. [Sources](/docs/form/sources) and [Companion](/docs/form/companion) separate remote facts from local soft facts.
+5. [Field arrays](/docs/form/field-arrays), [Selectors](/docs/form/selectors), and [Performance](/docs/form/performance) cover larger forms.
 
-Form does not add a Form-owned React hook family, public path-object API, public row-token API, or a second runtime/control-plane truth source.
-
-## Read next
-
-1. [Introduction](/docs/form/introduction)
-2. [Quick start](/docs/form/quick-start)
-3. [Instances](/docs/form/instances)
-4. [Rules](/docs/form/rules)
-5. [Validation](/docs/form/validation)
-6. [Sources](/docs/form/sources)
-7. [Companion](/docs/form/companion)
-8. [Selectors and support facts](/docs/form/selectors)
-9. [Field arrays](/docs/form/field-arrays)
-10. [Schema](/docs/form/schema)
-11. [Performance](/docs/form/performance)
-12. [When to use](/docs/form/when-to-use)
+Form does not own a React hook family. React integration remains `useModule` and `useSelector`.

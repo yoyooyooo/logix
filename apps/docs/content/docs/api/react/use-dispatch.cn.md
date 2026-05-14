@@ -1,30 +1,26 @@
 ---
 title: useDispatch
-description: 为 module handle 获取 typed dispatch function。
+description: 从 React 向 module instance 派发 actions。
 ---
 
-`useDispatch(handle)` 为已获取的 module instance 返回 dispatch function。
+`useDispatch(handle)` 返回 module dispatch function。
 
 ```tsx
-function CounterButton() {
-  const counter = useModule(Counter.tag)
-  const value = useSelector(counter, (state) => state.value)
-  const dispatch = useDispatch(counter)
+const dispatch = useDispatch(counter)
 
-  return <button onClick={() => dispatch({ _tag: "inc", payload: undefined })}>{value}</button>
-}
+dispatch({ _tag: "increment", payload: undefined })
+dispatch({ _tag: "rename", payload: { id, name } })
 ```
 
-返回的函数还提供：
+Dispatch 把 action 送入 runtime。state 如何变化由 reducer 和 logic 决定。
 
-```ts
-dispatch.batch(actions)
-dispatch.lowPriority(action)
+## Domain commands
+
+领域 handle 可能暴露比 raw dispatch 更清晰的 command。
+
+```tsx
+await Effect.runPromise(form.field("email").set(value))
+await Effect.runPromise(form.submit())
 ```
 
-对于 Form，优先使用 form handle methods，例如 `form.field(path).set(...)`、`form.fieldArray(path).append(...)`、`form.submit()`，因为它们能直接表达领域操作。
-
-## See also
-
-- [useModule](./use-module)
-- [useSelector](./use-selector)
+当这些 command 属于领域契约时，优先使用它们。

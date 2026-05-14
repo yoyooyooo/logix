@@ -1,34 +1,27 @@
 ---
 title: Field arrays
-description: Mutate list fields through the Form handle while preserving row identity.
+description: List identity, row-scoped rules, row handles, and row companion reads.
 ---
 
-Declare list identity in `define(...)`:
+Lists need a stable identity policy. The default production route is `trackBy` when rows have durable ids.
+
+## Declaration
 
 ```ts
 $.list("items", {
   identity: { mode: "trackBy", trackBy: "id" },
-  item: Form.Rule.make({ required: true }),
-  list: Form.Rule.make((items) => (items.length > 0 ? undefined : "items.required")),
+  item: Form.Rule.make({ required: "Item required" }),
+  list: (rows) => (rows.length > 0 ? undefined : { $list: "Add an item" }),
 })
 ```
 
-Write through `fieldArray(path)`:
+## Mutations
 
 ```ts
-yield* form.fieldArray("items").append({ id: "r1", warehouseId: "" })
-yield* form.fieldArray("items").move(0, 2)
-yield* form.fieldArray("items").byRowId("r1").update({ id: "r1", warehouseId: "WH-001" })
+await Effect.runPromise(form.fieldArray("items").append({ id: "r1", name: "" }))
+await Effect.runPromise(form.fieldArray("items").byRowId("r1").update({ id: "r1", name: "Ada" }))
 ```
 
-Read values and row-scoped companion facts through `useSelector(...)`:
+## Reads
 
-```tsx
-const items = useSelector(form, fieldValue("items"))
-const rowSupport = useSelector(
-  form,
-  Form.Companion.byRowId("items", rowId, "warehouseId"),
-)
-```
-
-Row identity is not a public row token family. Use `byRowId(...)` when the operation must survive reorder or removal.
+Use row ids for row-scoped companion/error reads. Array index is a rendering position, not durable identity.

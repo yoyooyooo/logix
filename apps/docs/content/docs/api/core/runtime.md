@@ -1,64 +1,44 @@
 ---
 title: Runtime
-description: Create runtime containers and run verification control-plane commands.
+description: Execution container, one-shot runner, batch helper, and verification control plane.
 ---
 
-`Runtime` is the execution-time surface. It consumes a `Program`, owns module runtimes and services, and exposes distinct result and verification faces.
+`Runtime` owns execution. It creates runtime containers, runs programs, batches host work, and produces control-plane reports.
 
-## Create a runtime
+## `Runtime.make`
 
 ```ts
-const runtime = Logix.Runtime.make(RootProgram, {
+const runtime = Logix.Runtime.make(Program, {
+  label: "AppRuntime",
   layer: AppLayer,
-  devtools: { diagnosticsLevel: "light" },
+  devtools: true,
 })
 ```
 
-Pass that runtime to React:
+Use this for React applications and long-lived runtimes.
 
-```tsx
-<RuntimeProvider runtime={runtime}>
-  <App />
-</RuntimeProvider>
-```
-
-`RuntimeProvider` projects the runtime into React. It does not create a second control plane.
-
-## One-shot run
-
-`Runtime.run(Program, main, options?)` is the result face. It starts the Program, runs `main` with a program run context, closes the scope, and returns the application result.
+## `Runtime.run`
 
 ```ts
-const result = await Logix.Runtime.run(RootProgram, (ctx) =>
-  ctx.runtime.runPromise(/* Effect work */),
+await Logix.Runtime.run(Program, ({ module }) =>
+  Effect.gen(function* () {
+    yield* module.dispatch({ _tag: "increment", payload: undefined })
+    return yield* module.getState
+  }),
 )
 ```
 
-It does not return a verification report.
+Use this for tests, CLI tasks, and one-shot execution. It boots the program, runs `main`, then disposes the runtime.
 
-## Verification faces
+## Control plane
 
 ```ts
-const checkReport = Logix.Runtime.check(RootProgram)
-const trialReport = await Logix.Runtime.trial(RootProgram, options)
+const check = yield* Logix.Runtime.check(Program)
+const trial = yield* Logix.Runtime.trial(Program, trialOptions)
 ```
 
-- `Runtime.check(...)` is the static diagnostic face.
-- `Runtime.trial(...)` is the startup/scenario diagnostic face.
-- `Runtime.compare(...)` belongs to the verification control plane and is used for report comparison/admissibility.
+`check` is static. `trial` runs a diagnostic scenario. Both return `VerificationControlPlaneReport`.
 
-## Local instance route in React
+## Batch
 
-A Program can also be used directly by React for a local or keyed module instance:
-
-```tsx
-const editor = useModule(EditorProgram, { key: `editor:${id}` })
-```
-
-That route still uses the current runtime scope and does not replace `Runtime.make(...)` for application roots.
-
-## See also
-
-- [Program](./program)
-- [RuntimeProvider](/docs/api/react/provider)
-- [useModule](/docs/api/react/use-module)
+`Runtime.batch(fn)` groups synchronous host work in the current host tick. It is an advanced helper, not a replacement for actions.

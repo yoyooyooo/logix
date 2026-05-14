@@ -1,30 +1,26 @@
 ---
 title: useDispatch
-description: Get a typed dispatch function for a module handle.
+description: Dispatch actions from React into a module instance.
 ---
 
-`useDispatch(handle)` returns a dispatch function for an acquired module instance.
+`useDispatch(handle)` returns the module dispatch function.
 
 ```tsx
-function CounterButton() {
-  const counter = useModule(Counter.tag)
-  const value = useSelector(counter, (state) => state.value)
-  const dispatch = useDispatch(counter)
+const dispatch = useDispatch(counter)
 
-  return <button onClick={() => dispatch({ _tag: "inc", payload: undefined })}>{value}</button>
-}
+dispatch({ _tag: "increment", payload: undefined })
+dispatch({ _tag: "rename", payload: { id, name } })
 ```
 
-The returned function also exposes:
+Dispatch sends an action into the runtime. Reducers and logic decide how state changes.
 
-```ts
-dispatch.batch(actions)
-dispatch.lowPriority(action)
+## Domain commands
+
+Domain handles may expose commands that are clearer than raw dispatch.
+
+```tsx
+await Effect.runPromise(form.field("email").set(value))
+await Effect.runPromise(form.submit())
 ```
 
-For Form, prefer the form handle methods such as `form.field(path).set(...)`, `form.fieldArray(path).append(...)`, and `form.submit()` when they express the domain operation directly.
-
-## See also
-
-- [useModule](./use-module)
-- [useSelector](./use-selector)
+Use those commands when they are part of the domain contract.

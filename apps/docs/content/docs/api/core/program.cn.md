@@ -1,44 +1,40 @@
 ---
 title: Program
-description: Module 的 canonical assembly boundary。
+description: 装配期业务单元：module、logic、imports、services 与 state policy。
 ---
 
-`Program.make(Module, config)` 是公开装配路线。它把 definition object 变成 Runtime 与 React 消费的业务单元。
+`Program.make(Module, config)` 是公开装配边界。它把定义对象变成可运行业务单元。
+
+## `Program.make`
 
 ```ts
-const CounterProgram = Logix.Program.make(Counter, {
-  initial: { value: 0 },
-  logics: [CounterLogic],
+const Program = Logix.Program.make(Module, {
+  initial,
+  logics: [LogicA, LogicB],
   capabilities: {
-    services: AppLayer,
     imports: [ChildProgram],
+    services: [ApiLive, LoggerLive],
+  },
+  stateTransaction: {
+    fieldConvergeMode: "auto",
   },
 })
 ```
 
 ## Config
 
-| 字段 | 作用 |
+| 字段 | 含义 |
 | --- | --- |
-| `initial` | 模块初始状态。 |
-| `logics` | 挂载进 Program 的 logic units。 |
-| `capabilities.services` | Service `Layer` 或 layer 数组。 |
-| `capabilities.imports` | 可通过 `$.imports.get(...)` / `useImportedModule(...)` 访问的子 Program。 |
-| `stateTransaction` | transaction instrumentation 与调优选项。 |
+| `initial` | module 的 initial state。 |
+| `logics` | `Module.logic` 产出的 logic units。 |
+| `capabilities.imports` | 可通过 module tag 读取的 child programs。 |
+| `capabilities.services` | program 的 service layers。 |
+| `stateTransaction` | module-level transaction policy。 |
 
-## 为什么 Program 是边界
+## 为什么需要 Program
 
-- 它把 authoring (`Module`) 与 assembly (`Program`) 分开。
-- 它集中 initial state、services、imports 与 transaction policy。
-- 它是 `Runtime.make(...)`、`Runtime.run(...)`、`Runtime.check(...)`、`Runtime.trial(...)` 的输入。
-- 它也是 React 局部实例 `useModule(Program, options)` 的输入。
+`Program` 是声明和 runtime assets 在执行前收敛的地方。React 局部 ownership 也使用 program：`useModule(Program, { key })`。
 
-## Non-goals
+## 边界
 
-`Program.make(...)` 不是旧 module implementation 的兼容壳。不要为领域包再加第二套装配 helper；领域包应返回 Program，或返回能机械降解到这条路线的值。
-
-## See also
-
-- [Module](./module)
-- [Runtime](./runtime)
-- [useModule](/cn/docs/api/react/use-module)
+不要绕过 `Program.make` 使用 module implementation helper。`Runtime.make` 期望接收 program。

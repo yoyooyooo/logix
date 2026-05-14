@@ -1,64 +1,44 @@
 ---
 title: Runtime
-description: 创建 runtime container，并运行 verification control-plane 命令。
+description: 执行容器、一次性 runner、batch helper 与验证控制面。
 ---
 
-`Runtime` 是 execution-time surface。它消费 `Program`，持有 module runtimes 与 services，并区分 result face 与 verification face。
+`Runtime` 拥有执行。它创建 runtime container，运行 program，批处理 host work，并产出 control-plane reports。
 
-## 创建 runtime
+## `Runtime.make`
 
 ```ts
-const runtime = Logix.Runtime.make(RootProgram, {
+const runtime = Logix.Runtime.make(Program, {
+  label: "AppRuntime",
   layer: AppLayer,
-  devtools: { diagnosticsLevel: "light" },
+  devtools: true,
 })
 ```
 
-传给 React：
+React 应用和长生命周期 runtime 使用这条路线。
 
-```tsx
-<RuntimeProvider runtime={runtime}>
-  <App />
-</RuntimeProvider>
-```
-
-`RuntimeProvider` 只是把 runtime 投影到 React；它不创建第二套 control plane。
-
-## One-shot run
-
-`Runtime.run(Program, main, options?)` 是 result face。它启动 Program，用 program run context 运行 `main`，关闭 scope，并返回应用结果。
+## `Runtime.run`
 
 ```ts
-const result = await Logix.Runtime.run(RootProgram, (ctx) =>
-  ctx.runtime.runPromise(/* Effect work */),
+await Logix.Runtime.run(Program, ({ module }) =>
+  Effect.gen(function* () {
+    yield* module.dispatch({ _tag: "increment", payload: undefined })
+    return yield* module.getState
+  }),
 )
 ```
 
-它不返回 verification report。
+测试、CLI task 和一次性执行使用这条路线。它 boot program，运行 `main`，然后 dispose runtime。
 
-## Verification faces
+## Control plane
 
 ```ts
-const checkReport = Logix.Runtime.check(RootProgram)
-const trialReport = await Logix.Runtime.trial(RootProgram, options)
+const check = yield* Logix.Runtime.check(Program)
+const trial = yield* Logix.Runtime.trial(Program, trialOptions)
 ```
 
-- `Runtime.check(...)` 是 static diagnostic face。
-- `Runtime.trial(...)` 是 startup/scenario diagnostic face。
-- `Runtime.compare(...)` 属于 verification control plane，用于 report comparison/admissibility。
+`check` 是 static。`trial` 运行 diagnostic scenario。二者都返回 `VerificationControlPlaneReport`。
 
-## React 中的局部实例路线
+## Batch
 
-Program 也可以直接被 React 用于 local/keyed module instance：
-
-```tsx
-const editor = useModule(EditorProgram, { key: `editor:${id}` })
-```
-
-这条路线仍使用当前 runtime scope，不替代应用根部的 `Runtime.make(...)`。
-
-## See also
-
-- [Program](./program)
-- [RuntimeProvider](/cn/docs/api/react/provider)
-- [useModule](/cn/docs/api/react/use-module)
+`Runtime.batch(fn)` 在当前 host tick 内组合同步 host work。它是 advanced helper，不替代 actions。

@@ -1,44 +1,57 @@
 ---
-title: Modules & State
-description: 定义 state 与 actions，然后装配成 Programs。
+title: Modules and state
+description: State schema、actions、reducers 与运行时写入。
 ---
 
-Module 声明 state 与 actions。Program 选择 initial state、mounted logic、services、imports 与 transaction options。
+Module 是持久 state 边界。它用 Effect Schema 声明 state，用 payload schema 声明 actions，也可以挂同步 reducer。
+
+## State schema
 
 ```ts
-const Counter = Logix.Module.make("Counter", {
-  state: Schema.Struct({ value: Schema.Number }),
-  actions: { inc: Schema.Void },
-})
-
-const CounterProgram = Logix.Program.make(Counter, {
-  initial: { value: 0 },
+const TodoState = Schema.Struct({
+  items: Schema.Array(Schema.Struct({ id: Schema.String, title: Schema.String, done: Schema.Boolean })),
+  filter: Schema.Literal("all", "open", "done"),
 })
 ```
 
-## State writes
+schema 是公开 state 形状。只要 TypeScript 能保留字面量，React selector 和 logic field path 都会围绕这个形状检查。
 
-在 logic 内使用 Bound API：
+## Actions
 
 ```ts
-const Logic = Counter.logic("counter-logic", ($) =>
-  Effect.gen(function* () {
-    yield* $.onAction("inc").mutate((state) => {
-      state.value += 1
-    })
+const Todo = Logix.Module.make("Todo", {
+  state: TodoState,
+  actions: {
+    added: Schema.Struct({ id: Schema.String, title: Schema.String }),
+    toggled: Schema.String,
+  },
+})
+```
+
+Action 是进入 runtime 的输入，不是带隐藏 IO 的 command。IO 放进 logic 或 service。
+
+## Reducers
+
+```ts
+reducers: {
+  toggled: Logix.Module.Reducer.mutate((draft, action) => {
+    const item = draft.items.find((row) => row.id === action.payload)
+    if (item) item.done = !item.done
   }),
-)
+}
 ```
 
-在 React 中，写入通常走 `useDispatch(...)` 或 Form handle 这样的领域 handle。
+Reducer 是同步且纯的状态变换，运行在 transaction path 内。不要在 reducer 里做网络请求、timer 或 service 读取。
 
-## Reads
+## Logic 写入
 
-在 React 中：
-
-```tsx
-const counter = useModule(Counter.tag)
-const value = useSelector(counter, (state) => state.value)
+```ts
+yield* $.state.update((prev) => ({ ...prev, filter: "open" }))
+yield* $.state.mutate((draft) => { draft.filter = "done" })
 ```
 
-React acquisition 不要使用裸 Module object。托管实例用 `Module.tag`；local/keyed 实例用 `Program`。
+当状态变化来自 watcher、service、source refresh 或长链路 workflow 时，用 logic 写入。
+
+## 读取
+
+logic 内通过 `$.state.read` 或只读 ref 读取。React 内通过 `useSelector(handle, selector)` 读取。

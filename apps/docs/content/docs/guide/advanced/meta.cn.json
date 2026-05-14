@@ -1,16 +1,16 @@
 {
-  "title": "进阶专题",
+  "title": "Advanced",
   "pages": [
-    "module-handle-extensions",
     "composability",
-    "field-convergence-policy",
-    "txn-lanes",
     "concurrency-policy",
-    "scope-and-resource-lifetime",
     "suspense-and-async",
     "error-handling",
-    "performance-and-optimization",
     "testing",
+    "performance-and-optimization",
+    "scope-and-resource-lifetime",
+    "field-convergence-policy",
+    "txn-lanes",
+    "module-handle-extensions",
     "troubleshooting"
   ]
 }

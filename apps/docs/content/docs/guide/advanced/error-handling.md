@@ -1,118 +1,30 @@
 ---
 title: Error handling
-description: Error-handling strategy in Logix.
+description: Expected failures, defects, provider reporting, and state writeback.
 ---
 
-Use a three-level error model in Logix:
+Errors should stay in the lane that owns them.
 
-- **Local**: expected, recoverable errors stay in Effect’s error channel `E`; catch them close to where they happen and convert them into state/return values.
-- **Module**: unhandled defects go through `$.lifecycle.onError` as a “last report” (logging/monitoring/fallback cleanup).
-- **Global (App/React)**: in React integration, use `RuntimeProvider.onError` as the single entry into your reporting system, instead of implementing one per module.
+## Expected failures
 
-Two additional rules are worth keeping explicit:
-
-- **Wiring failures** (missing provider/imports) are configuration errors; fix the wiring per the error message instead of swallowing them in business logic.
-- **Cancellation/interrupt** is not an error; it should not enter error fallback chains or alerting systems.
-
-## 1. Expected errors
-
-Expected errors are part of business logic, such as “user not found” or “network timeout”. Handle them via Effect’s error channel (`E`).
+Service failures that affect UI should be caught in logic and written to state or a domain error carrier.
 
 ```ts
-const LoginLogic = LoginModule.logic("logic", ($) =>
-  Effect.gen(function* () {
-    yield* $.onAction('login').run(({ payload: credentials }) =>
-      Effect.gen(function* () {
-        // Attempt login
-        yield* loginApi(credentials).pipe(
-          // Catch a specific error
-          Effect.catchTag('InvalidPassword', () => $.state.update((s) => ({ ...s, error: 'Invalid password' }))),
-          // Catch other errors
-          Effect.catchAll(() => $.state.update((s) => ({ ...s, error: 'Login failed' }))),
-        )
-      }),
-    )
-  }),
+yield* api.save(input).pipe(
+  Effect.catchAll((error) =>
+    $.state.mutate((draft) => { draft.error = String(error) }),
+  ),
 )
 ```
 
-## 2. Defects
+## Defects
 
-Defects are code bugs or unrecoverable system failures. Logix catches defects inside Logic automatically to prevent the whole app from crashing.
+Unexpected defects should reach the runtime/provider reporting path. In React, use `RuntimeProvider.onError` and an Error Boundary for host-level display.
 
-### The `onError` hook
+## Form errors
 
-You can handle unhandled errors uniformly via `$.lifecycle.onError` (declaration-only registration):
+Form validation and submit errors belong to Form rules, submit decode, or Form error selectors. Do not mirror them into a separate React-local error store.
 
-```ts
-const AppLogic = AppModule.logic("logic", ($) => {
-  $.lifecycle.onError((cause, context) =>
-    Effect.logError({
-      message: "Unhandled module error",
-      cause,
-      context, // includes moduleId/instanceId/phase/hook, etc.
-    }),
-  )
+## Control-plane errors
 
-  return Effect.void
-})
-```
-
-## 3. Global reporting in React (`RuntimeProvider.onError`)
-
-In React apps, use `RuntimeProvider.onError` as the single entry for “Layer build failures / unhandled module failures / error-level diagnostics” into your reporting system:
-
-```tsx
-<RuntimeProvider
-  runtime={runtime}
-  onError={(cause, context) =>
-    Effect.logError({
-      message: "Runtime error",
-      cause,
-      context,
-    })
-  }
->
-  {children}
-</RuntimeProvider>
-```
-
-## 4. Error Boundary integration
-
-In Suspense mode (`useModule(..., { suspend: true, key })`), if initialization fails, the error is thrown into the React tree and can be caught by an Error Boundary.
-
-```tsx
-import { ErrorBoundary } from 'react-error-boundary'
-
-function App() {
-  return (
-    <ErrorBoundary fallback={<ErrorPage />}>
-      <Suspense fallback={<Loading />}>
-        <MainContent />
-      </Suspense>
-    </ErrorBoundary>
-  )
-}
-```
-
-## 5. Recovery strategy (retry)
-
-Effect provides powerful retry mechanisms:
-
-```ts
-// Retry up to 3 times
-yield* fetchApi().pipe(Effect.retry({ times: 3 }))
-
-// Exponential-backoff retry
-yield*
-  fetchApi().pipe(
-    Effect.retry({
-      schedule: Schedule.exponential('100 millis'),
-    }),
-  )
-```
-
-## See also
-
-- Testing your modules: [Testing](./testing)
-- Common patterns and best practices: [Common patterns](../recipes/common-patterns)
+`Runtime.check` and `Runtime.trial` return reports. Use those reports for CI, CLI, and agent verification.

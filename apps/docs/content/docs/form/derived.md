@@ -1,25 +1,26 @@
 ---
 title: Derived values
-description: Keep derivation in selectors, submit decode, rules, or runtime logic.
+description: Where derived form state belongs.
 ---
 
-Form does not expose a separate public `derived` family.
+Derived form values fall into three lanes.
 
-Use the right owner:
-
-| Need | Route |
+| Lane | Use for |
 | --- | --- |
-| view-only derivation | `useSelector(form, selector)` |
-| typed payload derivation | `submit({ decode })` |
-| final validation derivation | `Form.Rule.make(...)` |
-| local UX support fact | `field(path).companion(...)` |
-| remote fact | `field(path).source(...)` |
+| React selector | cheap view-only derivation. |
+| Companion | local soft facts such as availability and candidates. |
+| Rule/source/Form state | business truth that affects validation, submit, or persistence. |
+
+## View-only derivation
 
 ```tsx
-const canSubmit = useSelector(
-  form,
-  (state) => state.$form.errorCount === 0 && !state.$form.isSubmitting,
-)
+const displayName = useSelector(form, (state) => `${state.firstName} ${state.lastName}`.trim())
 ```
 
-Do not add a Form-specific derived hook or public derived namespace unless it can reduce to the existing owners without creating a second read law.
+## Companion derivation
+
+Use companion when the derived value should be reusable, row-scoped, or consumed as a domain fact.
+
+## Boundary
+
+Do not store every derived UI value in form state. Store durable truth; derive presentation at the read edge.

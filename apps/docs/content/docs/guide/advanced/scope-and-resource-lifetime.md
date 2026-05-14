@@ -1,38 +1,26 @@
 ---
 title: Scope and resource lifetime
-description: Understand runtime, provider, local Program, and service layer lifetimes.
+description: Where runtime, provider, local program, and service lifetimes begin and end.
 ---
 
-Resource lifetime follows the owner that created the resource.
+A resource should live at the smallest scope that matches its ownership.
 
 ## Runtime scope
 
-A runtime created by `Runtime.make(Program, options?)` owns the module runtime graph and root service layer until it is disposed.
+The runtime owns the root program, global services, scheduling, diagnostics, and control-plane access.
+
+```ts
+const runtime = Logix.Runtime.make(AppProgram, { layer: AppLayer })
+```
 
 ## Provider scope
 
-`RuntimeProvider` exposes a runtime to React. A provider may add a subtree `layer`, but it does not automatically dispose a shared runtime passed from outside.
+A provider can add local layers for a subtree. Use this for route-specific services and test doubles.
 
-## Local Program scope
+## Local program scope
 
-`useModule(Program, options)` creates or reuses a Program instance inside the current provider runtime scope.
+`useModule(Program, { key })` creates a local/keyed module instance. Use it for previews, route-local editors, and isolated widgets.
 
-```tsx
-const editor = useModule(EditorProgram, {
-  key: `editor:${id}`,
-  gcTime: 60_000,
-})
-```
+## Cleanup
 
-`gcTime` controls the keep-alive window after the last holder unmounts.
-
-## Service layers
-
-Install application-wide services near `Runtime.make(...)`. Install route/subtree-only services through `RuntimeProvider layer` when they should follow React subtree lifetime.
-
-## Avoid
-
-- creating a new Layer object every render;
-- duplicating resource truth in React local state;
-- adding lifecycle helpers that bypass Runtime ownership;
-- relying on removed local-module or scope helper APIs.
+Use Effect scopes and finalizers. Avoid custom public destroy protocols unless the resource is outside the runtime entirely.

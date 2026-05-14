@@ -1,78 +1,43 @@
 ---
 title: Module
-description: 定义 Logix 单元的 state、actions、reducers 与 logic authoring。
+description: 定义期 state、actions、reducers 与 logic builder。
 ---
 
-`Logix.Module.make(id, def)` 创建 definition object。Module 不是 runtime instance；它是传给 `Program.make(...)` 的稳定声明对象。
+`Module` 是定义对象。它拥有 state schema、action schema、可选同步 reducers，以及 `logic` builder。
+
+## `Module.make`
 
 ```ts
-import { Effect, Schema } from "effect"
-import * as Logix from "@logixjs/core"
-
-const CounterState = Schema.Struct({ value: Schema.Number })
-const CounterActions = { inc: Schema.Void }
-
-export const Counter = Logix.Module.make("Counter", {
-  state: CounterState,
-  actions: CounterActions,
-})
-
-export const CounterLogic = Counter.logic("counter-logic", ($) =>
-  Effect.gen(function* () {
-    yield* $.onAction("inc").mutate((state) => {
-      state.value += 1
-    })
-  }),
-)
-```
-
-## Definition fields
-
-| 字段 | 作用 |
-| --- | --- |
-| `state` | 模块 state 的 Effect Schema。 |
-| `actions` | Action map。每个 key 会成为 action token。 |
-| `reducers` / `immerReducers` | 可选 primary state transform。 |
-| `effects` | 可选 action side-effect 声明。 |
-| `schemas`、`meta`、`services`、`dev` | reflection 与 diagnostics metadata。 |
-
-## Logic authoring
-
-使用 `Module.logic(id, ($) => runEffect)`。`id` 必须显式提供，因为 diagnostics、override 与 evidence 需要稳定 logic-unit identity。
-
-`$.fields(...)`、`$.readyAfter(...)` 这类 declaration-only 调用应写在 builder root，并且位于返回的 run effect 之前：
-
-```ts
-export const SearchLogic = Search.logic("search-logic", ($) => {
-  $.fields({
-    results: $.fields.source({
-      resource: "customer.search",
-      deps: ["keyword"],
-      key: (keyword) => (keyword ? { keyword } : undefined),
+const Counter = Logix.Module.make("Counter", {
+  state: Schema.Struct({ count: Schema.Number }),
+  actions: { increment: Schema.Void },
+  reducers: {
+    increment: Logix.Module.Reducer.mutate((draft) => {
+      draft.count += 1
     }),
-  })
-
-  $.readyAfter(bootstrapSearchIndex, { id: "search-index" })
-
-  return Effect.gen(function* () {
-    yield* $.onAction("keywordChanged").runLatest(/* ... */)
-  })
+  },
 })
 ```
 
-旧的公开 `{ setup, run }` 返回形态不再是当前用户路线。
+| 字段 | 含义 |
+| --- | --- |
+| `state` | module state 的 Effect Schema。 |
+| `actions` | action tag 到 payload schema 的 map。 |
+| `reducers` | 同步 action reducers。 |
+| `services`, `schemas`, `meta`, `dev` | 元数据和集成支持。 |
 
-## Assembly
+## `module.logic(id, build, options?)`
 
 ```ts
-export const CounterProgram = Logix.Program.make(Counter, {
-  initial: { value: 0 },
-  logics: [CounterLogic],
-})
+const logic = Counter.logic("counter-logic", ($) => Effect.void)
 ```
 
-## See also
+`id` 必填。builder 收到 Bound API `$`，并返回 module instance 的 runtime effect。
 
-- [Program](./program)
-- [Bound API](./bound-api)
-- [Runtime](./runtime)
+## Reducer helper
+
+`Module.Reducer.mutate(fn)` 允许 reducer 通过 draft 写入，同时保持 transaction 语义。
+
+## 边界
+
+`Module` 不是装配单元。initial state、logic units、imports 和 services 通过 `Program.make(Module, config)` 提供。

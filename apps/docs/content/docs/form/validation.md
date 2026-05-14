@@ -1,39 +1,35 @@
 ---
 title: Validation
-description: How validateOn, reValidateOn, manual validation, and submit decode work.
+description: Validate on submit, on change, on blur, and manual validation.
 ---
 
-Form validation is configured at authoring time and executed by the Form runtime.
+Validation policy is declared in `Form.make` config and rule declarations.
+
+## Config
 
 ```ts
-Form.make("ContactForm", {
-  values: ContactValues,
+Form.make("Contact", {
+  values,
   initialValues,
   validateOn: ["onSubmit"],
   reValidateOn: ["onChange", "onBlur"],
-}, ($) => {
-  $.field("email").rule(Form.Rule.make({ required: true, email: true }))
-  $.submit({ decode: SubmitSchema })
-})
+}, define)
 ```
 
-## Runtime methods
+`validateOn` controls the first validation pass. `reValidateOn` controls follow-up validation after a field has already produced feedback.
+
+## Manual validation
 
 ```ts
-yield* form.validate()
-yield* form.validatePaths(["email", "name"])
-const verdict = yield* form.submit({
-  onValid: (decoded) => save(decoded),
-  onInvalid: (errors) => log(errors),
-})
+await Effect.runPromise(form.validate())
+await Effect.runPromise(form.validate(["email"]))
 ```
-
-`submit(...)` validates, flushes blocking submit sources, decodes the payload, and returns a verdict.
 
 ## Error reads
 
 ```tsx
 const emailError = useSelector(form, Form.Error.field("email"))
+const meta = useSelector(form, rawFormMeta())
 ```
 
-The field explanation may represent error, pending, stale, cleanup, or no current explanation.
+Errors are domain-owned. Do not mirror them into React local state.

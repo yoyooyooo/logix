@@ -1,39 +1,38 @@
 ---
 title: Instances
-description: Choose shared, local, and keyed Form instances without introducing a second host route.
+description: Shared, imported, and local Form program instances.
 ---
 
-`Form.make(...)` returns a Program-compatible form definition. Instance ownership is decided by Runtime and React.
+A Form program follows the same instance rules as any Logix program.
 
-## Shared route
-
-If the runtime root is the form Program, read the hosted instance through its tag:
+## Root form
 
 ```ts
 const runtime = Logix.Runtime.make(ContactForm)
 ```
 
 ```tsx
-const form = useModule(ContactForm.tag)
+const form = useModule(ContactForm)
 ```
 
-## Local/keyed route
+## Imported form
 
-If a route or component needs its own form instance, pass the Program to `useModule`:
-
-```tsx
-const form = useModule(ContactForm, { key: `contact:${contactId}` })
-```
-
-Use `gcTime` to keep the instance alive briefly after unmount:
-
-```tsx
-const form = useModule(ContactForm, {
-  key: `contact:${contactId}`,
-  gcTime: 60_000,
+```ts
+const HostProgram = Logix.Program.make(Host, {
+  initial,
+  capabilities: { imports: [ContactForm] },
 })
 ```
 
-## Do not add another hook family
+```tsx
+const host = useModule(HostProgram, { key: "page" })
+const form = useImportedModule(host, ContactForm.tag)
+```
 
-Do not reintroduce `useForm`, `useField`, `useFieldArray`, or any Form-owned instance hook as the canonical route. Instance acquisition is `useModule(...)`; reads are `useSelector(...)`; writes are the Form handle.
+## Local form
+
+```tsx
+const form = useModule(ContactForm, { key: userId })
+```
+
+Use a stable key when multiple components should share the same local form instance.

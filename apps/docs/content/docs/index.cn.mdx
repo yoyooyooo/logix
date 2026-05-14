@@ -1,37 +1,29 @@
 ---
 title: Logix 文档
-description: 面向当前 Module → Program → Runtime 主链的用户文档。
+description: 围绕 Module → Program → Runtime 主链组织的用户文档。
 ---
 
-Logix 是 Effect-native 的应用逻辑运行时。当前公开模型刻意保持很小：
+Logix 是 Effect-native 的应用逻辑运行时。React 继续负责渲染和组件组合；Logix 负责声明、装配、执行和运行时证据。
 
 ```text
-Module.logic(...)     definition-time logic 与声明
-Program.make(...)     assembly-time business unit
-Runtime.make(...)     execution-time runtime container
-RuntimeProvider       React host projection
-useModule + useSelector  React 实例获取与读取
+Module.logic(...)        定义逻辑与局部声明
+Program.make(...)        装配业务单元
+Runtime.make(...)        创建执行容器
+RuntimeProvider          把 runtime 投影到 React
+useModule + useSelector  获取实例并精确读取
 ```
 
-本网站是用户手册。若要查看完整导出签名，使用生成的 [API Reference](/api-reference)。
+## 文档地图
 
-## 从这里开始
+| 区域 | 内容 |
+| --- | --- |
+| [Guide](/cn/docs/guide) | canonical route、运行时模型、React 集成和常见模式。 |
+| [Form](/cn/docs/form) | 可编辑值状态、校验、source、companion、submit 和列表身份。 |
+| [API](/cn/docs/api) | 公开导出的契约页。 |
+| [生成的 Reference](/api-reference) | 由 TypeScript 导出生成的签名索引。 |
 
-1. [介绍](/cn/docs/guide/get-started/introduction) — Logix 解决什么问题。
-2. [快速开始](/cn/docs/guide/get-started/quick-start) — 创建一个 Program 并在 React 中挂载。
-3. [Canonical spine](/cn/docs/guide/essentials/canonical-spine) — 必须稳定记住的对象角色。
-4. [React 集成](/cn/docs/guide/essentials/react-integration) — provider、实例获取、读取与写入。
+## 稳定路线
 
-## 领域文档
+先读 [快速开始](/cn/docs/guide/get-started/quick-start)，再读 [Canonical spine](/cn/docs/guide/essentials/canonical-spine) 和 [React 集成](/cn/docs/guide/essentials/react-integration)。后续页面都沿着同一组对象展开，不引入第二套模型。
 
-- [Form](/cn/docs/form) — 可编辑值状态、校验、source、companion、submit 与列表身份。
-
-## API 文档
-
-- [Core API](/cn/docs/api) — Module、Program、Runtime 与 Bound API。
-- [React API](/cn/docs/api/react/provider) — RuntimeProvider、useModule、useSelector、useDispatch、useImportedModule。
-- [生成的 API Reference](/api-reference) — 以导出签名为主的索引。
-
-## 当前公开面规则
-
-当前文档不再教授已移除或内部路线，例如 `useLocalModule`、`useModuleList`、`ModuleScope`、公开 FieldKernel namespace、Form 自有 React hook family、公开 Form path 对象或第二套 runtime/control-plane facade。React 局部实例使用 `useModule(Program, options)` 表达；Form 读取仍然走 `useSelector(...)`。
+用户文档不把内部编译器名词放到主路线。字段声明通过 logic builder 或 Form 这类领域 DSL 编写；运行时控制面统一停在 `Runtime.check` 与 `Runtime.trial`。

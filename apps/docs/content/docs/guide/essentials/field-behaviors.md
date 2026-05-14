@@ -1,21 +1,18 @@
 ---
-title: Field behaviors
-description: Declare computed, source, and external field behaviors through `$.fields(...)` or domain DSLs.
+title: Field declarations
+description: Field-level behavior as a local logic-builder declaration, not a public namespace.
 ---
 
-Field behavior is declared in one of two places:
+Field declarations describe derived fields, external stores, and resource-backed source fields. They are authored locally through the logic builder and compiled during `Program.make`.
 
-- core logic-local field declarations through `$.fields(...)`
-- domain DSLs such as `Form.make(...)`
-
-## Core field declarations
+## Core route
 
 ```ts
-const Fields = Counter.logic("fields", ($) => {
+const logic = Module.logic("fields", ($) => {
   $.fields({
-    total: $.fields.computed({
-      deps: ["count"],
-      get: (count) => Number(count ?? 0) + 1,
+    fullName: $.fields.computed({
+      deps: ["firstName", "lastName"],
+      get: (first, last) => `${first} ${last}`,
     }),
   })
 
@@ -23,18 +20,21 @@ const Fields = Counter.logic("fields", ($) => {
 })
 ```
 
-The core field surface currently carries:
+`$.fields` is a declaration collector. The standalone compiler machinery is internal. User code should not import or depend on an independent field system.
 
-- `computed`
-- `source`
-- `external`
+## Domain route
 
-## Domain field behavior
+Form, Query, and future domain packages use the same compiler substrate but expose their own domain language.
 
-Domain packages may project the same idea through their own DSLs.
-For example, Form keeps validation and form-specific linkage in `Form.make(...)`.
+```ts
+Form.make("Contact", config, ($) => {
+  $.field("email").rule(Form.Rule.make({ required: "Email required", email: "Invalid email" }))
+  $.field("countryId").source({ resource, deps: ["regionId"], key: (regionId) => ({ regionId }) })
+})
+```
 
-## Historical note
+The domain owns its public spelling. The compiled asset still belongs to the program assembly path.
 
-Older materials may use the word `trait`.
-In current public writing, read it as field behavior declaration.
+## Boundary
+
+Use field declarations for deterministic derivation or source wiring. Use ordinary logic for workflows. Use Form rules for validation and final form truth.

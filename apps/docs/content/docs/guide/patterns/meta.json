@@ -1,4 +1,11 @@
 {
   "title": "Patterns",
-  "pages": ["pagination", "optimistic-update", "search-detail", "form-wizard", "i18n"]
+  "pages": [
+    "index",
+    "search-detail",
+    "pagination",
+    "optimistic-update",
+    "i18n",
+    "form-wizard"
+  ]
 }

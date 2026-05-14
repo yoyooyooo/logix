@@ -1,49 +1,37 @@
 ---
-title: Tick / Flush
-description: Understand the boundary between transaction commits and externally observable snapshots.
+title: Tick and flush
+description: How runtime commits, selector notifications, and React rendering relate.
 ---
 
-Tick and flush describe the boundary between:
+A user interaction enters the runtime as an action or state write. The runtime batches work into a transaction window, commits the state, then notifies precise readers.
 
-- in-module transaction work
-- externally observable snapshot publication
-
-## Minimal timeline
+## Timeline
 
 ```text
-input -> state:update -> trace:tick -> subscriber notification -> render
+dispatch action
+  -> reducer / logic write
+  -> state transaction
+  -> field/source convergence
+  -> commit
+  -> selector notification
+  -> React render
 ```
 
-## Why it exists
+The exact internal phases can change for performance, but the public contract is stable: writes are transactional and React reads subscribe through selectors.
 
-This boundary provides:
+## Selector precision
 
-- batching
-- consistency across reads
-- explainable degradation when budgets are exceeded
+`fieldValue(path)` and `fieldValues(paths)` give the runtime a stable field-level read. Selector functions are allowed, but broad selectors may need more work to prove precision.
 
-## DevTools reading
+## Batch route
 
-The most important `trace:tick` phases are:
+Use `Runtime.batch` to group synchronous host work when needed.
 
-- `start`
-- `settled`
-- `budgetExceeded`
+```ts
+Logix.Runtime.batch(() => {
+  dispatch({ _tag: "a", payload: undefined })
+  dispatch({ _tag: "b", payload: undefined })
+})
+```
 
-Key fields include:
-
-- `tickSeq`
-- `result.stable`
-- `result.degradeReason`
-- `backlog.deferredPrimary`
-
-## Common guidance
-
-- batch multiple dispatches when they belong to one user intent
-- use `Runtime.batch(...)` only as a synchronous boundary
-- investigate `budgetExceeded` through evidence before tuning knobs
-
-## See also
-
-- [Performance & optimization](../advanced/performance-and-optimization)
-- [Troubleshooting](../advanced/troubleshooting)
+Use runtime batching sparingly. Prefer modeling durable transitions as actions and reducers.

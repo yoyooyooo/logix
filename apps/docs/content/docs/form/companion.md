@@ -1,42 +1,32 @@
 ---
 title: Companion
-description: Derive synchronous local support facts for a field.
+description: Synchronous local soft facts such as availability and candidate lists.
 ---
 
-`field(path).companion(...)` derives local soft facts such as availability and candidates.
+Companion facts are local, synchronous, and derived from form state/source receipts. They are not validators and not remote loaders.
+
+## Declaration
 
 ```ts
 const warehouse = $.field("items.warehouseId").companion({
   deps: ["countryId", "items.warehouseId"],
-  lower(ctx) {
-    return {
-      availability: { kind: ctx.deps.countryId ? "interactive" : "hidden" },
-      candidates: {
-        items: computeWarehouseCandidates(ctx.deps, ctx.value),
-        keepCurrent: true,
-      },
-    }
-  },
+  lower: (ctx) => ({
+    availability: { kind: ctx.deps.countryId ? "interactive" : "hidden" },
+    candidates: { items: computeCandidates(ctx.deps, ctx.value), keepCurrent: true },
+  }),
 })
+
+return [warehouse] as const
 ```
 
-## Rules
+Returning the carrier preserves exact selector typing.
 
-- `lower` must be synchronous and local.
-- It must not return an Effect, Promise, or perform IO.
-- It may return support facts such as `availability` and `candidates`.
-- It must not write final truth keys such as `errors`, `$form`, `verdict`, `submitAttempt`, or `reasonSlotId`.
-
-## Reading companion facts
+## Read
 
 ```tsx
-const support = useSelector(form, Form.Companion.field("items.warehouseId"))
-const rowSupport = useSelector(
-  form,
-  Form.Companion.byRowId("items", rowId, "warehouseId"),
-)
+const companion = useSelector(form, Form.Companion.byRowId("items", rowId, "warehouseId"))
 ```
 
 ## Boundary
 
-Use source for remote facts. Use rules/root/list/submit for final validation truth. Companion is for local UX support facts only.
+`lower` must be synchronous. It must not return final truth keys such as errors, verdicts, submit attempts, or blocking reasons.

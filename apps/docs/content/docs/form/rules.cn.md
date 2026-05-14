@@ -1,44 +1,34 @@
 ---
 title: Rules
-description: 定义 field、root 与 list validation truth。
+description: Field、root、list 与 submit validation rules。
 ---
 
-Rules 是 Form 的 canonical validation truth。
+Rules 拥有 final form truth。Companion 和 source declaration 可以影响交互，但不写 canonical errors。
 
-## Field rules
+## Field rule
 
 ```ts
-$.field("email").rule(
-  Form.Rule.make({
-    required: true,
-    email: true,
-  }),
-)
+$.field("email").rule(Form.Rule.make({
+  required: "Email required",
+  email: "Invalid email",
+}))
 ```
 
-`Form.Rule.make(...)` 也接受函数或命名 validation entries。
+## Root rule
 
 ```ts
-$.field("confirmPassword").rule(
-  Form.Rule.make({
-    deps: ["password"],
-    validate: (confirm, ctx) =>
-      confirm === ctx.deps.password ? undefined : "password.mismatch",
-  }),
-)
+$.root((values) => values.password === values.confirm ? undefined : { confirm: "Passwords differ" })
 ```
 
-## Root and list rules
+## List rule
 
 ```ts
-$.root(Form.Rule.make((values) => values.enabled ? undefined : "disabled"))
-
 $.list("items", {
   identity: { mode: "trackBy", trackBy: "id" },
-  list: Form.Rule.make((items) => (items.length ? undefined : "items.required")),
+  list: (rows) => (rows.length > 0 ? undefined : { $list: "Add at least one item" }),
 })
 ```
 
-## Boundary
+## Builtins
 
-Rules 持有 final validation truth。Companion 不得产出 `errors` 或 submit verdicts。Source 可以通过 `submitImpact` 影响 submit gating，但不能替代 final rules。
+`Form.Rule.make` 支持 `required`、`email`、`minLength`、`maxLength`、`min`、`max`、`pattern` 等 builtin，也支持自定义 `validate` 函数。

@@ -1,43 +1,17 @@
 ---
-title: Guide Overview
-description: Learn Logix through the current public spine, then move into React, Form, and advanced runtime topics.
+title: Guide
+description: The Logix guide, organized from first program to production control planes.
 ---
 
-The guide is organized as a staged path. Read it in order when you are new; use the API docs as a dictionary once you know the object roles.
+The guide follows the same shape as a Logix application: define a module, assemble a program, run it, project it into React, then add patterns and control planes only where the application needs them.
 
-## 1. Get Started
+## Route
 
-1. [Introduction](/docs/guide/get-started/introduction)
-2. [Quick Start](/docs/guide/get-started/quick-start)
-3. [First app tutorial](/docs/guide/get-started/tutorial-first-app)
-4. [Complex list tutorial](/docs/guide/get-started/tutorial-complex-list)
+| Area | Pages |
+| --- | --- |
+| Get Started | [Introduction](/docs/guide/get-started/introduction), [Quick Start](/docs/guide/get-started/quick-start), search tutorials. |
+| Essentials | [Canonical spine](/docs/guide/essentials/canonical-spine), state, effects, React, lifecycle, tick/flush. |
+| Patterns | Search/detail, pagination, optimistic updates, i18n, form wizards. |
+| Advanced | Concurrency, Suspense, testing, performance, scope, troubleshooting. |
 
-## 2. Essentials
-
-1. [Thinking in Logix](/docs/guide/essentials/thinking-in-logix)
-2. [Canonical spine](/docs/guide/essentials/canonical-spine)
-3. [Modules & State](/docs/guide/essentials/modules-and-state)
-4. [Flows & Effects](/docs/guide/essentials/flows-and-effects)
-5. [React integration](/docs/guide/essentials/react-integration)
-6. [Lifecycle](/docs/guide/essentials/lifecycle)
-7. [Tick / Flush](/docs/guide/essentials/tick-and-flush)
-8. [Effect basics](/docs/guide/essentials/effect-basics)
-
-## 3. Domain package
-
-- [Form](/docs/form)
-
-## 4. Advanced and recipes
-
-- [Performance and optimization](/docs/guide/advanced/performance-and-optimization)
-- [Testing](/docs/guide/advanced/testing)
-- [Troubleshooting](/docs/guide/advanced/troubleshooting)
-- [React integration recipe](/docs/guide/recipes/react-integration)
-- [Runnable examples](/docs/guide/recipes/runnable-examples)
-
-## What this guide deliberately does not teach
-
-- `useLocalModule`, `useModuleList`, and `ModuleScope` are not current public React API routes.
-- Module objects are assembled through `Program.make(...)`; React local instances use `useModule(Program, options)`.
-- Form does not define a package-local hook family. Reads remain `useSelector(...)`.
-- Verification reports come from `Runtime.check(...)`, `Runtime.trial(...)`, and `Runtime.compare(...)`, not from user-authored Form or React report objects.
+Each section keeps the same object roles. `Module` defines, `Program` assembles, `Runtime` executes, React reads through `useModule` and `useSelector`.

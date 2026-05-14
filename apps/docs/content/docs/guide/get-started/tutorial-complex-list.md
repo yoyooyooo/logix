@@ -1,116 +1,60 @@
 ---
-title: "Tutorial: Complex list query"
-description: Build a list slice with filter changes, pagination, refresh, and latest-only loading.
+title: Search + detail
+description: Coordinate a list query and a selected detail without moving ownership into React.
 ---
 
-This tutorial builds a list query slice with:
+A search/detail page has two pieces of durable logic: the list query and the selected item. Keep both in a program so navigation, retries, and diagnostics remain outside the component tree.
 
-- filter changes
-- pagination
-- manual refresh
-- auto-reset of the page index
-- latest-only loading
-
-## State and actions
+## State
 
 ```ts
-export const UserListState = Schema.Struct({
-  filters: Schema.Struct({
-    keyword: Schema.String,
-    role: Schema.optional(Schema.String),
-  }),
-  pagination: Schema.Struct({
+const Browser = Logix.Module.make("Browser", {
+  state: Schema.Struct({
+    q: Schema.String,
     page: Schema.Number,
-    pageSize: Schema.Number,
-    total: Schema.Number,
+    selectedId: Schema.NullOr(Schema.String),
+    results: Schema.Array(Schema.Struct({ id: Schema.String, title: Schema.String })),
+    detail: Schema.NullOr(Schema.Struct({ id: Schema.String, title: Schema.String })),
   }),
-  list: Schema.Array(User),
-  meta: Schema.Struct({
-    isLoading: Schema.Boolean,
-    error: Schema.optional(Schema.String),
-  }),
+  actions: {
+    qChanged: Schema.String,
+    pageChanged: Schema.Number,
+    selected: Schema.NullOr(Schema.String),
+  },
 })
-
-export const UserListActions = {
-  setFilter: Schema.Struct({ key: Schema.String, value: Schema.Any }),
-  setPage: Schema.Number,
-  refresh: Schema.Void,
-}
 ```
 
-## Logic
+`selectedId` is the durable authority. React keys and list indexes are view concerns.
 
-The list logic usually contains two flows:
-
-1. reset page index when filters change
-2. merge multiple load triggers and execute the latest load
+## Coordination
 
 ```ts
-export const UserListLogic = UserListDef.logic("user-list-logic", ($) =>
+const BrowserLogic = Browser.logic("browser", ($) =>
   Effect.gen(function* () {
-    const loadEffect = Effect.gen(function* () {
-      const { filters, pagination } = yield* $.state.read
+    yield* $.onAction("qChanged").runLatest((action) =>
+      $.state.mutate((draft) => {
+        draft.q = action.payload
+        draft.page = 1
+        draft.selectedId = null
+      }),
+    )
 
-      yield* $.state.mutate((draft) => {
-        draft.meta.isLoading = true
-        draft.meta.error = undefined
-      })
-
-      const api = yield* $.use(UserApi)
-      const result = yield* Effect.tryPromise(() =>
-        api.fetchUsers({ ...filters, page: pagination.page, size: pagination.pageSize }),
-      ).pipe(Effect.either)
-
-      yield* $.state.mutate((draft) => {
-        draft.meta.isLoading = false
-        if (result._tag === "Left") {
-          draft.meta.error = "Failed to load"
-        } else {
-          draft.list = result.right.items
-          draft.pagination.total = result.right.total
-        }
-      })
-    })
-
-    $.lifecycle.onInitRequired(loadEffect)
-
-    const filters$ = $.onState((s) => s.filters).toStream()
-    const pagination$ = $.onState((s) => s.pagination).toStream()
-    const refresh$ = $.onAction("refresh").toStream()
-
-    const loadTrigger$ = Stream.mergeAll([filters$, pagination$, refresh$], { concurrency: "unbounded" })
-
-    yield* Effect.all(
-      [
-        $.onState((s) => s.filters).run(() =>
-          $.state.mutate((draft) => {
-            draft.pagination.page = 1
-          }),
-        ),
-        $.on(loadTrigger$).debounce(50).runLatest(loadEffect),
-      ],
-      { concurrency: "unbounded" },
+    yield* $.onAction("selected").runLatest((action) =>
+      $.state.mutate((draft) => {
+        draft.selectedId = action.payload
+      }),
     )
   }),
 )
 ```
 
+The selected detail can be fetched through a service, a Query domain program, or a Form source. The same owner rule applies: React reads the result; it does not own the request lifecycle.
+
 ## React
 
-The React side remains simple:
+```tsx
+const browser = useModule(BrowserProgram, { key: "browser" })
+const [q, page, selectedId] = useSelector(browser, fieldValues(["q", "page", "selectedId"]))
+```
 
-- read filter, pagination, list, and loading state
-- dispatch filter changes and page changes
-- avoid moving orchestration back into the component
-
-## Notes
-
-- filter changes and refresh do not need separate components to own loading orchestration
-- page reset remains part of logic, not UI glue
-- the load flow stays explicit and latest-only
-
-## Next
-
-- [Modules & State](../essentials/modules-and-state)
-- [Flows & Effects](../essentials/flows-and-effects)
-- [React integration recipe](../recipes/react-integration)
+Use `fieldValues` for small UI atoms that are read together. Prefer separate selectors when different components consume different fields.

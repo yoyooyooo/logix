@@ -1,49 +1,53 @@
 ---
 title: React integration
-description: Mount a runtime, acquire instances, read exactly, and write through dispatch or domain handles.
+description: RuntimeProvider, useModule, useSelector, dispatch, and local ownership.
 ---
 
-React integration uses one host route:
+React integration has one provider and three common hooks. The provider supplies a runtime. Components acquire a module instance, read narrow slices, and dispatch actions.
 
-- `RuntimeProvider` projects a runtime scope.
-- `useModule(...)` acquires an instance.
-- `useSelector(...)` reads with an explicit selector or descriptor.
-- `useDispatch(...)` dispatches actions.
-- Domain handles, such as Form handles, expose domain-specific writes.
-
-## Runtime provider
+## Provider
 
 ```tsx
+const runtime = Logix.Runtime.make(AppProgram)
+
 <RuntimeProvider runtime={runtime}>
   <App />
 </RuntimeProvider>
 ```
 
-## Shared hosted instance
+`RuntimeProvider` can also merge a local `layer` for a subtree. Transaction policy stays on `Program` or `Runtime`, not on React props.
+
+## Shared runtime instance
 
 ```tsx
 const counter = useModule(Counter.tag)
 ```
 
-## Local/keyed Program instance
+Use a module tag when the instance is already provided by the root program or one of its imports.
+
+## Local program instance
 
 ```tsx
-const editor = useModule(EditorProgram, { key: `editor:${id}` })
+const preview = useModule(PreviewProgram, { key: productId })
 ```
 
-This replaces removed local-module hook routes.
+Use a program when React should own a local/keyed instance. The `key` partitions the instance. Without a key, the instance is component-scoped.
 
-## Reads and writes
+## Reads
 
 ```tsx
-const value = useSelector(counter, (state) => state.value)
+const count = useSelector(counter, fieldValue("count"))
+const [count, label] = useSelector(counter, fieldValues(["count", "label"]))
+const isEmpty = useSelector(counter, (state) => state.count === 0)
+```
+
+Prefer `fieldValue` and `fieldValues` for state fields. Use selector functions for derived UI reads. Use `equalityFn` when the selected value is an object that should not re-render on equivalent structure.
+
+## Dispatch
+
+```tsx
 const dispatch = useDispatch(counter)
+dispatch({ _tag: "increment", payload: undefined })
 ```
 
-Do not use no-argument `useSelector(handle)`. Pass an exact selector.
-
-## See also
-
-- [RuntimeProvider](/docs/api/react/provider)
-- [useModule](/docs/api/react/use-module)
-- [useSelector](/docs/api/react/use-selector)
+Dispatch is an input into the runtime. Effects and writebacks stay in logic.

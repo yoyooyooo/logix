@@ -1,40 +1,43 @@
 ---
-title: Thinking in Logix
-description: Think in declarations, assembled programs, runtime ownership, and evidence.
+title: Runtime model
+description: The small set of habits that keep Logix applications consistent.
 ---
 
-Logix is easiest to understand as the logic half beside React.
+Logix code stays readable when every file answers one question: definition, assembly, execution, or projection.
 
-React owns UI and render. Logix owns declarations, composition, execution, state transactions, diagnostics, and evidence.
+## Definition
 
-## The main habit
+State shape, action shape, reducers, and logic builders live near the feature.
 
-Do not start by asking “which hook should I write?” Start by placing the fact in the right owner:
+```ts
+const Feature = Logix.Module.make("Feature", { state, actions, reducers })
+const logic = Feature.logic("logic", ($) => Effect.void)
+```
 
-| Fact or behavior | Owner |
-| --- | --- |
-| module state and actions | `Module.make(...)` |
-| behavior over actions/state | `Module.logic(id, ...)` |
-| services/imports/initial state | `Program.make(...)` |
-| runtime execution | `Runtime.make(...)` |
-| React reads | `useSelector(handle, selector)` |
-| React acquisition | `useModule(...)` |
-| editable input semantics | `Form.make(...)` |
-| verification report | `Runtime.check/trial/compare` |
+## Assembly
 
-## One model, not many small frameworks
+Programs collect initial state, logic units, imports, and service layers.
 
-Domain packages should reduce to the same spine. Form is a Program. Query resources are services/resources. React is the host projection. Devtools and CLI consume runtime truth; they do not define it.
+```ts
+const FeatureProgram = Logix.Program.make(Feature, { initial, logics: [logic] })
+```
 
-## What to avoid
+## Execution
 
-- A second React hook family for every domain package.
-- A second state truth in UI cache or logs.
-- A second runtime/control-plane object just for diagnostics.
-- Compatibility routes that keep old mental models alive.
+Runtime owns execution, scheduling, diagnostics, and control-plane reports.
 
-## Next
+```ts
+const runtime = Logix.Runtime.make(FeatureProgram)
+const report = await Effect.runPromise(Logix.Runtime.check(FeatureProgram))
+```
 
-- [Canonical spine](./canonical-spine)
-- [Modules & State](./modules-and-state)
-- [React integration](./react-integration)
+## Projection
+
+React does not re-create the runtime model. It projects it.
+
+```tsx
+const feature = useModule(Feature.tag)
+const value = useSelector(feature, fieldValue("value"))
+```
+
+Keep custom helpers mechanically reducible to these routes.

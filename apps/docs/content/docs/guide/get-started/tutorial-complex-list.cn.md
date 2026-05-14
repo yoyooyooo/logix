@@ -1,116 +1,60 @@
 ---
-title: 教程：复杂列表查询
-description: 构建一个包含筛选、分页、刷新和 latest-only 加载的列表切片。
+title: 搜索 + 详情
+description: 在不把 owner 挪到 React 的前提下协调列表查询和选中详情。
 ---
 
-这个教程构建一个列表查询切片，包含：
+搜索详情页有两块持久逻辑：列表查询和选中项。把它们保留在 program 中，导航、重试和诊断就不会散落到组件树里。
 
-- 筛选条件变化
-- 分页
-- 手动刷新
-- 页码自动重置
-- latest-only 加载
-
-## 状态与动作
+## 状态
 
 ```ts
-export const UserListState = Schema.Struct({
-  filters: Schema.Struct({
-    keyword: Schema.String,
-    role: Schema.optional(Schema.String),
-  }),
-  pagination: Schema.Struct({
+const Browser = Logix.Module.make("Browser", {
+  state: Schema.Struct({
+    q: Schema.String,
     page: Schema.Number,
-    pageSize: Schema.Number,
-    total: Schema.Number,
+    selectedId: Schema.NullOr(Schema.String),
+    results: Schema.Array(Schema.Struct({ id: Schema.String, title: Schema.String })),
+    detail: Schema.NullOr(Schema.Struct({ id: Schema.String, title: Schema.String })),
   }),
-  list: Schema.Array(User),
-  meta: Schema.Struct({
-    isLoading: Schema.Boolean,
-    error: Schema.optional(Schema.String),
-  }),
+  actions: {
+    qChanged: Schema.String,
+    pageChanged: Schema.Number,
+    selected: Schema.NullOr(Schema.String),
+  },
 })
-
-export const UserListActions = {
-  setFilter: Schema.Struct({ key: Schema.String, value: Schema.Any }),
-  setPage: Schema.Number,
-  refresh: Schema.Void,
-}
 ```
 
-## Logic
+`selectedId` 是持久 authority。React key 和列表 index 只是视图层细节。
 
-列表 logic 通常包含两条 flow：
-
-1. 筛选变化时重置页码
-2. 汇聚多个加载触发源，只执行最新一次加载
+## 协调
 
 ```ts
-export const UserListLogic = UserListDef.logic("user-list-logic", ($) =>
+const BrowserLogic = Browser.logic("browser", ($) =>
   Effect.gen(function* () {
-    const loadEffect = Effect.gen(function* () {
-      const { filters, pagination } = yield* $.state.read
+    yield* $.onAction("qChanged").runLatest((action) =>
+      $.state.mutate((draft) => {
+        draft.q = action.payload
+        draft.page = 1
+        draft.selectedId = null
+      }),
+    )
 
-      yield* $.state.mutate((draft) => {
-        draft.meta.isLoading = true
-        draft.meta.error = undefined
-      })
-
-      const api = yield* $.use(UserApi)
-      const result = yield* Effect.tryPromise(() =>
-        api.fetchUsers({ ...filters, page: pagination.page, size: pagination.pageSize }),
-      ).pipe(Effect.either)
-
-      yield* $.state.mutate((draft) => {
-        draft.meta.isLoading = false
-        if (result._tag === "Left") {
-          draft.meta.error = "加载失败"
-        } else {
-          draft.list = result.right.items
-          draft.pagination.total = result.right.total
-        }
-      })
-    })
-
-    $.lifecycle.onInitRequired(loadEffect)
-
-    const filters$ = $.onState((s) => s.filters).toStream()
-    const pagination$ = $.onState((s) => s.pagination).toStream()
-    const refresh$ = $.onAction("refresh").toStream()
-
-    const loadTrigger$ = Stream.mergeAll([filters$, pagination$, refresh$], { concurrency: "unbounded" })
-
-    yield* Effect.all(
-      [
-        $.onState((s) => s.filters).run(() =>
-          $.state.mutate((draft) => {
-            draft.pagination.page = 1
-          }),
-        ),
-        $.on(loadTrigger$).debounce(50).runLatest(loadEffect),
-      ],
-      { concurrency: "unbounded" },
+    yield* $.onAction("selected").runLatest((action) =>
+      $.state.mutate((draft) => {
+        draft.selectedId = action.payload
+      }),
     )
   }),
 )
 ```
 
+选中详情可以由 service、Query domain program 或 Form source 拉取。owner 规则不变：React 读取结果，不拥有请求生命周期。
+
 ## React
 
-React 侧继续保持简单：
+```tsx
+const browser = useModule(BrowserProgram, { key: "browser" })
+const [q, page, selectedId] = useSelector(browser, fieldValues(["q", "page", "selectedId"]))
+```
 
-- 读取 filters、pagination、list 和 loading state
-- 派发筛选和分页动作
-- 不把编排逻辑搬回组件
-
-## 说明
-
-- 筛选变化与刷新不需要由组件分别持有加载编排
-- 页码重置继续留在 logic 中，而不是 UI 胶水
-- 加载 flow 继续保持显式、latest-only
-
-## 下一步
-
-- [Modules & State](../essentials/modules-and-state)
-- [Flows & Effects](../essentials/flows-and-effects)
-- [React integration recipe](../recipes/react-integration)
+少量一起消费的 UI 原子字段可以用 `fieldValues`。不同组件消费不同字段时，优先使用独立 selector。

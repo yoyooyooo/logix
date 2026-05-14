@@ -1,33 +1,26 @@
 ---
 title: Performance
-description: 保持 Form 读取精确，大列表 identity 稳定。
+description: 保持 form 读取窄、list identity 稳定、source work 有 scope。
 ---
 
-Form 性能遵循 core runtime hot-path 规则：精确读取、稳定 identity、不引入不必要的第二系统。
+Form performance 遵循与 core modules 相同的 runtime 规则：窄读取、稀疏写入、稳定 identity、有界 diagnostics。
 
-## Read narrowly
+## Values
 
-优先使用 exact field selectors：
+优先使用 field selectors，不要宽读整个 state。
 
 ```tsx
-const name = useSelector(form, fieldValue("name"))
-const meta = useSelector(form, rawFormMeta())
+const email = useSelector(form, fieldValue("email"))
 ```
-
-避免让大量组件 re-render 的宽 selector。
 
 ## Lists
 
-- reorder-heavy 列表使用 `identity: { mode: "trackBy", trackBy: "id" }`。
-- 写入必须跨 reorder/remove 保持稳定时使用 `byRowId(...)`。
-- 只读取实际渲染的 list slice 或 row companion fact。
+使用稳定 row identity。大型列表优先使用 row-id commands 与 row-scoped selectors。
 
-## Sources and companion
+## Sources
 
-- Source 处理 async remote work，并通过 explicit deps 生成 key。
-- Companion 必须保持同步、本地。
-- 不要在 React render/effects 里重复 source lane 的 fetch。
+`deps` 保持最小。source inactive 时从 `key` 返回 `undefined`。用户输入变化快时使用 `debounceMs` 与 `concurrency`。
 
-## Evidence
+## Companion
 
-硬性能结论需要 comparable before/after evidence。Quick runs 只能当诊断线索，不是 release claims。
+Companion `lower` 必须同步且便宜。重型派生应放进 services 或显式 logic。

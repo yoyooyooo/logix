@@ -1,39 +1,46 @@
 ---
-title: Flows & Effects
-description: 把 Effect-based behavior 挂到 actions、state changes 与 services 上。
+title: Logic and effects
+description: Logix logic 如何使用 Effect、service、watcher 与运行策略。
 ---
 
-Logic 是挂载到 Module 上的 Effect-based behavior。
+`Module.logic` 是绑定到一个 module 的 Effect 程序。它注册声明，并返回随 module instance 生命周期运行的工作。
+
+## Builder 形状
 
 ```ts
-const SearchLogic = Search.logic("search-logic", ($) =>
+const logic = Module.logic("logic-id", ($) =>
   Effect.gen(function* () {
-    yield* $.onAction("keywordChanged").runLatest(
+    yield* $.readyAfter(loadInitialConfig, { id: "initial-config" })
+
+    yield* $.onAction("submitted").runLatest((action) =>
       Effect.gen(function* () {
-        const state = yield* $.state.read
-        // run service work, then write state
+        const api = yield* $.use(ApiService)
+        const saved = yield* api.save(action.payload)
+        yield* $.state.mutate((draft) => { draft.saved = saved })
       }),
     )
   }),
 )
 ```
 
-## Declaration work
+builder 是单一 authoring surface。公开路线里没有第二个 setup object。
 
-有些工作需要在 builder root 同步声明：
+## Watchers
 
-```ts
-const Logic = Search.logic("logic", ($) => {
-  $.readyAfter(loadInitialConfig, { id: "initial-config" })
+`$.onAction(tag)` 与 `$.onState(selector)` 创建事件流。builder 方法决定每个事件怎样执行。
 
-  return Effect.gen(function* () {
-    // run phase
-  })
-})
-```
-
-公开路线不是 `{ setup, run }`。声明放在 builder root，并返回 run effect。
+| 方法 | 语义 |
+| --- | --- |
+| `run` | 按顺序处理每个事件。 |
+| `runLatest` | 这个触发器只保留最新事件。 |
+| `runExhaust` | 当前事件运行期间忽略新事件。 |
+| `runParallel` | 允许并发执行。 |
+| `runTask` 系列 | 带 pending/error/writeback 结构的长任务路线。 |
 
 ## Services
 
-在 logic 内用 `$.use(ServiceTag)` 解析服务。根据 ownership，通过 `Program.make(..., { capabilities: { services } })` 或 `Runtime.make(..., { layer })` 安装 service layers。
+用 `$.use(ServiceTag)` 从 runtime 环境读取服务。实现通过 `Layer` 提供，可以放在 `Program.make`、`Runtime.make` 或 `RuntimeProvider` 边界。
+
+## Readiness
+
+`$.readyAfter(effect, { id })` 会让 module readiness 等到该 effect 成功。返回的 run effect 可以在 ready 后继续运行；除非显式注册为 readiness requirement，否则不会阻塞实例获取。

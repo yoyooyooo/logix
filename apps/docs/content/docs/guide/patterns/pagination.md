@@ -1,121 +1,32 @@
 ---
-title: Pagination loading
-description: Implement pagination and infinite scrolling with Logix.
+title: Pagination
+description: Model page or cursor state as runtime state, not component-local bookkeeping.
 ---
 
-Pagination in Logix usually lands in one of two shapes: cursor-based and offset-based loading.
+Pagination has durable behavior: current page, query key, loading window, and stale response handling. Put those in a module when they affect business behavior.
 
-## Core idea
-
-1. **State shape**: `items[]` + `cursor/page` + `hasMore` + `isLoading`
-2. **Action**: `loadMore` triggers loading
-3. **Reaction policies**: prevent duplicate requests (`runExhaust`), append data after the request finishes
-
-## Cursor-based pagination
+## Page state
 
 ```ts
-import * as Logix from '@logixjs/core'
-import { Effect, Schema } from 'effect'
-
-const ListDef = Logix.Module.make('List', {
-  state: Schema.Struct({
-    items: Schema.Array(Schema.Unknown),
-    cursor: Schema.NullOr(Schema.String),
-    hasMore: Schema.Boolean,
-    isLoading: Schema.Boolean,
-  }),
-  actions: {
-    loadMore: Schema.Void,
-    reset: Schema.Void,
-  },
-})
-
-const ListLogic = ListDef.logic("logic", ($) =>
-  Effect.gen(function* () {
-    const api = yield* $.use(ListApi)
-
-    // Use runExhaust to prevent duplicate requests
-    yield* $.onAction('loadMore').runExhaust(() =>
-      Effect.gen(function* () {
-        const state = yield* $.state.read
-        if (!state.hasMore || state.isLoading) return
-
-        yield* $.state.mutate((d) => {
-          d.isLoading = true
-        })
-
-        const { items, nextCursor } = yield* api.fetch(state.cursor)
-
-        yield* $.state.mutate((d) => {
-          d.items = [...d.items, ...items]
-          d.cursor = nextCursor
-          d.hasMore = nextCursor !== null
-          d.isLoading = false
-        })
-      }),
-    )
-
-    // Reset list
-    yield* $.onAction('reset').run(() =>
-      $.state.update(() => ({
-        items: [],
-        cursor: null,
-        hasMore: true,
-        isLoading: false,
-      })),
-    )
-  }),
-)
-```
-
-## Offset-based variant
-
-```ts
-const state = Schema.Struct({
-  items: Schema.Array(Schema.Unknown),
-  page: Schema.Number, // current page index
-  pageSize: Schema.Number, // page size
-  total: Schema.Number, // total items
-  isLoading: Schema.Boolean,
+state: Schema.Struct({
+  q: Schema.String,
+  page: Schema.Number,
+  pageSize: Schema.Number,
+  total: Schema.Number,
+  rows: Schema.Array(Row),
+  loading: Schema.Boolean,
 })
 ```
 
-## React integration
+Use cursor fields instead of `page` when the backend is cursor-based.
 
-```tsx
-function ItemList() {
-  const list = useModule(ListDef.tag)
-  const { items, hasMore, isLoading } = useSelector(list, (s) => s)
-  const dispatch = useDispatch(list)
+## Transitions
 
-  return (
-    <div>
-      {items.map((item) => (
-        <Item key={item.id} data={item} />
-      ))}
+- `queryChanged` resets `page` to `1`.
+- `pageChanged` keeps the current query.
+- `pageSizeChanged` usually resets the cursor/page.
+- request completion writes rows only if it still matches the active key.
 
-      {hasMore && (
-        <button onClick={() => dispatch({ _tag: 'loadMore' })} disabled={isLoading}>
-          {isLoading ? 'Loading...' : 'Load more'}
-        </button>
-      )}
-    </div>
-  )
-}
-```
+## React
 
-## Common variants
-
-- **Pull to refresh**: `reset` then immediately `loadMore`
-- **Infinite scroll**: listen to scroll events and trigger `loadMore` automatically
-- **Prefetch**: load earlier when close to bottom
-
-## Related patterns
-
-- [Optimistic update](./optimistic-update)
-- [Search + detail linkage](./search-detail)
-
-## Example code
-
-- Tutorial: [Complex list tutorial](../get-started/tutorial-complex-list)
-- `examples/logix-react/src/modules/querySearchDemo.ts`
+Components dispatch page intents and read page state. They do not own request cancellation.

@@ -1,38 +1,26 @@
 ---
-title: Scope 与 resource lifetime
-description: 理解 runtime、provider、local Program 与 service layer 的生命周期。
+title: Scope and resource lifetime
+description: runtime、provider、local program 与 service 生命周期从哪里开始、在哪里结束。
 ---
 
-Resource lifetime 跟随创建它的 owner。
+资源应放在能匹配 owner 的最小 scope。
 
 ## Runtime scope
 
-`Runtime.make(Program, options?)` 创建的 runtime 持有 module runtime graph 与 root service layer，直到被 dispose。
+runtime 拥有 root program、全局 services、调度、诊断和 control-plane access。
+
+```ts
+const runtime = Logix.Runtime.make(AppProgram, { layer: AppLayer })
+```
 
 ## Provider scope
 
-`RuntimeProvider` 把 runtime 暴露给 React。provider 可以增加 subtree `layer`，但不会自动 dispose 从外部传入的 shared runtime。
+provider 可以给 subtree 添加局部 layer。route-specific services 和测试替身适合放这里。
 
-## Local Program scope
+## Local program scope
 
-`useModule(Program, options)` 在当前 provider runtime scope 内创建或复用 Program instance。
+`useModule(Program, { key })` 创建局部/keyed module instance。preview、route-local editor、isolated widget 适合使用这条路线。
 
-```tsx
-const editor = useModule(EditorProgram, {
-  key: `editor:${id}`,
-  gcTime: 60_000,
-})
-```
+## Cleanup
 
-`gcTime` 控制最后一个 holder 卸载后的 keep-alive 窗口。
-
-## Service layers
-
-应用级 services 放在 `Runtime.make(...)` 附近安装。只属于 route/subtree 的 services 可以通过 `RuntimeProvider layer` 安装，让它们跟随 React subtree lifetime。
-
-## Avoid
-
-- 每次 render 创建新的 Layer object；
-- 在 React local state 中复制 resource truth；
-- 添加绕过 Runtime ownership 的 lifecycle helper；
-- 依赖已移除的 local-module 或 scope helper APIs。
+使用 Effect scopes 与 finalizers。除非资源完全在 runtime 之外，否则不要创建自定义公开 destroy protocol。

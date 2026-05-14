@@ -1,14 +1,13 @@
 {
   "title": "Essentials",
   "pages": [
-    "thinking-in-logix",
     "canonical-spine",
     "modules-and-state",
     "flows-and-effects",
-    "field-behaviors",
-    "effect-basics",
-    "lifecycle",
     "react-integration",
+    "effect-basics",
+    "field-behaviors",
+    "lifecycle",
     "tick-and-flush"
   ]
 }

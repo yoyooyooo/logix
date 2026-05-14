@@ -1,5 +1,10 @@
 {
   "title": "Guide",
-  "root": true,
-  "pages": ["get-started", "essentials", "learn", "advanced", "patterns", "recipes"]
+  "pages": [
+    "index",
+    "get-started",
+    "essentials",
+    "patterns",
+    "advanced"
+  ]
 }

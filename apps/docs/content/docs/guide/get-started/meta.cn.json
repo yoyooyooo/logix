@@ -1,4 +1,9 @@
 {
-  "title": "快速上手",
-  "pages": ["introduction", "quick-start", "tutorial-first-app", "tutorial-complex-list"]
+  "title": "快速开始",
+  "pages": [
+    "introduction",
+    "quick-start",
+    "tutorial-first-app",
+    "tutorial-complex-list"
+  ]
 }

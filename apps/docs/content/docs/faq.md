@@ -1,75 +1,83 @@
 ---
 title: FAQ
-description: Common questions about choosing, using, and operating Logix.
+description: Answers for the current Module → Program → Runtime model.
 ---
 
-## Choosing Logix
+## How is Logix different from Redux or Zustand?
 
-### How is Logix different from Redux or Zustand?
+Redux and Zustand are mainly state containers. You can build async work, dependency wiring, and diagnostics around them, but those pieces are usually project conventions.
 
-| Dimension | Redux / Zustand | Logix |
-| --- | --- | --- |
-| async | external middleware or conventions | built into Logic and Effect |
-| concurrency | managed manually | explicit run policies such as `runLatest` and `runExhaust` |
-| type safety | maintained by hand | derived from schema |
-| observability | external tooling | built-in event pipeline |
+Logix treats a module as an executable unit: state, logic, services, readiness, diagnostics, and verification all run through the same Program and Runtime boundary.
 
-### How is Logix different from XState?
+```text
+Module.logic(...)  declares what can run
+Program.make(...)  assembles a business unit
+Runtime.make(...)  owns execution, services, lifecycle, and evidence
+```
 
-XState is strongest when the problem is a strict state machine.
-Logix is strongest when the problem is data-driven state plus explicit reactions.
+React still renders UI. Logix owns the logic side.
 
-### When should Form be used instead of a plain Module?
+## How is Logix different from XState?
 
-Use a plain module when:
+XState is the right shape when the main problem is a finite state machine.
 
-- one or two inputs are enough
-- submit semantics are not needed
-- validation is simple
+Logix is a better fit when the main problem is application logic: data state, async work, service dependencies, runtime lifecycle, and precise React reads. You can still encode state-machine-like decisions inside logic, but the public model is not built around a machine chart.
 
-Use `@logixjs/form` when:
+## How is Logix different from TanStack Query?
 
-- multiple fields are involved
-- validation and error placement matter
-- dynamic arrays are involved
-- submit gating matters
+TanStack Query owns server-state caching and request coordination.
 
-## Using Logix
+Logix owns executable application logic. Query-style resources can participate through source/resource boundaries, but Logix is not a query cache. A typical app can use both: Query for remote data behavior, Logix for module execution and cross-feature logic.
 
-### Why did a watcher not trigger?
+## What should I remember first?
 
-Common causes:
+Keep this spine stable:
 
-1. the selected value did not change
-2. the watcher was placed in the wrong phase
-3. the logic was not assembled into the program
+```text
+Module.logic -> Program.make -> Runtime.make -> RuntimeProvider -> useModule -> useSelector
+```
 
-### How should an in-flight request be cancelled?
+Most pages in this site expand one part of that chain. If a helper cannot be reduced back to the chain, treat it as local application code or toolkit sugar, not as a second model.
 
-Use `runLatest` when only the newest request should survive.
+## Where did traits and FieldKernel go?
 
-### How can Action history be inspected?
+They are not user-facing concepts in the current docs.
 
-Enable DevTools on the runtime and mount the DevTools component in the React app.
+Field declarations may still exist inside `Module.logic(($) => { ... })` or a domain DSL such as Form, but the field compiler and runtime machinery sit behind `Program.make(...)` and `Runtime.make(...)`. User docs explain the behavior and owner boundary, not the internal trait system.
 
-## Production and hosting
+## Why does `Program.make(...)` exist?
 
-### What is the runtime overhead?
+A module definition is reusable. A program is an assembled business unit.
 
-In most application scenarios the overhead is negligible.
-For performance-sensitive paths, use the advanced performance and diagnostics guides.
+`Program.make(...)` chooses initial state, imports child programs, installs logic declarations, and produces the unit a runtime can execute. Keeping assembly there prevents React, Form, Query, and verification docs from growing separate assembly rules.
 
-### How is debug output reduced in production?
+## How do I read state in React?
 
-Use production-oriented runtime debug settings and disable DevTools in production builds.
+Acquire the module instance, then select from it.
 
-### What about SSR or RSC?
+```tsx
+const counter = useModule(CounterProgram)
+const count = useSelector(counter, fieldValue("count"))
+```
 
-- SSR can run through Runtime execution on the server
-- RSC is not currently the primary execution route for modules; prefer client boundaries
+Use selectors for reads. Use the handle returned by `useModule(...)` for writes and commands.
 
-## Further reading
+## When should I use Form?
 
-- [Guide Overview](/docs/guide)
-- [API Reference](/docs/api)
-- [Form](/docs/form)
+Use plain Logix when the page has ordinary module state and a small number of commands.
+
+Use Form when the data is editable user input: field values, validation, errors, source-backed choices, companion facts, submit gating, or row identity. Form keeps those concerns in a domain DSL and still reads through the same React host route.
+
+## How do I test a module?
+
+For execution, use a runtime and run the effect you care about.
+
+For diagnostics and dependency checks, use `Runtime.check(...)` or `Runtime.trial(...)`. Those APIs return structured reports and are better than inspecting incidental console output.
+
+## How should production diagnostics be configured?
+
+Keep diagnostics explicit. Use `off` or `light` for hot paths, enable heavier evidence only when you are investigating a problem, and keep Devtools out of production UI unless the application deliberately exposes an operator surface.
+
+## What about SSR and RSC?
+
+Server execution is possible through Runtime APIs, but the primary documented React route is client-side host projection: `RuntimeProvider`, `useModule`, and `useSelector`.

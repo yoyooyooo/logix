@@ -1,25 +1,26 @@
 ---
 title: Derived values
-description: 把 derivation 保持在 selectors、submit decode、rules 或 runtime logic 中。
+description: 派生 form state 应放在哪条 lane。
 ---
 
-Form 不公开单独的 `derived` family。
+Form 派生值分三条 lane。
 
-按 owner 选择路线：
-
-| 需求 | 路线 |
+| Lane | 用途 |
 | --- | --- |
-| view-only derivation | `useSelector(form, selector)` |
-| typed payload derivation | `submit({ decode })` |
-| final validation derivation | `Form.Rule.make(...)` |
-| local UX support fact | `field(path).companion(...)` |
-| remote fact | `field(path).source(...)` |
+| React selector | 便宜的 view-only derivation。 |
+| Companion | availability、candidates 这类 local soft facts。 |
+| Rule/source/Form state | 影响 validation、submit 或 persistence 的 business truth。 |
+
+## View-only derivation
 
 ```tsx
-const canSubmit = useSelector(
-  form,
-  (state) => state.$form.errorCount === 0 && !state.$form.isSubmitting,
-)
+const displayName = useSelector(form, (state) => `${state.firstName} ${state.lastName}`.trim())
 ```
 
-不要添加 Form-specific derived hook 或公开 derived namespace，除非它能机械降解到现有 owners 且不创建第二条 read law。
+## Companion derivation
+
+当派生值需要复用、row-scoped 或作为领域 fact 消费时，用 companion。
+
+## 边界
+
+不要把每个派生 UI 值都存进 form state。存 durable truth；presentation 在 read edge 派生。

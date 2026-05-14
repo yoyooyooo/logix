@@ -1,97 +1,61 @@
 ---
 title: Form quick start
-description: Declare a form program, mount it, read with selectors, and write through the form handle.
+description: Build a form program, mount it, and read/write it from React.
 ---
 
-## 1. Declare values and rules
+## Declare the form
 
 ```ts
-import { Effect, Schema } from "effect"
+import { Schema } from "effect"
 import * as Form from "@logixjs/form"
 
-const ContactValues = Schema.Struct({
+const Values = Schema.Struct({
   name: Schema.String,
   email: Schema.String,
 })
 
-type ContactValues = Schema.Schema.Type<typeof ContactValues>
+const Submit = Values
 
 export const ContactForm = Form.make(
   "ContactForm",
   {
-    values: ContactValues,
-    initialValues: { name: "", email: "" } satisfies ContactValues,
+    values: Values,
+    initialValues: { name: "", email: "" },
     validateOn: ["onSubmit"],
     reValidateOn: ["onChange", "onBlur"],
   },
   ($) => {
-    $.field("name").rule(Form.Rule.make({ required: true }))
-    $.field("email").rule(Form.Rule.make({ required: true, email: true }))
-    $.submit({ decode: ContactValues })
+    $.field("name").rule(Form.Rule.make({ required: "Name required" }))
+    $.field("email").rule(Form.Rule.make({ required: "Email required", email: "Invalid email" }))
+    $.submit({ decode: Submit })
   },
 )
 ```
 
-`Form.make(...)` returns a Program-compatible `FormProgram`.
+## Mount
 
-## 2. Mount the runtime
-
-```tsx
-import * as Logix from "@logixjs/core"
-import { RuntimeProvider } from "@logixjs/react"
-import { ContactForm } from "./ContactForm"
-
+```ts
 const runtime = Logix.Runtime.make(ContactForm)
-
-export function Root() {
-  return (
-    <RuntimeProvider runtime={runtime}>
-      <ContactFormView />
-    </RuntimeProvider>
-  )
-}
 ```
 
-## 3. Read and write in React
+`ContactForm` is a program. It can be used as the root program or imported into a host program.
+
+## React
 
 ```tsx
-import { Effect } from "effect"
-import * as Form from "@logixjs/form"
-import { fieldValue, rawFormMeta, useModule, useSelector } from "@logixjs/react"
-
-function ContactFormView() {
-  const form = useModule(ContactForm.tag)
+function ContactView() {
+  const form = useModule(ContactForm)
   const name = useSelector(form, fieldValue("name"))
-  const email = useSelector(form, fieldValue("email"))
-  const meta = useSelector(form, rawFormMeta())
-  const emailError = useSelector(form, Form.Error.field("email"))
+  const nameError = useSelector(form, Form.Error.field("name"))
 
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault()
-        void Effect.runPromise(form.submit())
-      }}
-    >
-      <input
-        value={name}
-        onChange={(event) => void Effect.runPromise(form.field("name").set(event.target.value))}
-        onBlur={() => void Effect.runPromise(form.field("name").blur())}
-      />
-      <input
-        value={email}
-        onChange={(event) => void Effect.runPromise(form.field("email").set(event.target.value))}
-        onBlur={() => void Effect.runPromise(form.field("email").blur())}
-      />
-      <pre>{JSON.stringify({ meta, emailError }, null, 2)}</pre>
-      <button type="submit">Submit</button>
-    </form>
+    <input
+      value={name}
+      onChange={(event) => void Effect.runPromise(form.field("name").set(event.target.value))}
+      onBlur={() => void Effect.runPromise(form.field("name").blur())}
+    />
   )
 }
 ```
 
-## Rules
-
-- Reads use `useSelector(...)`.
-- Writes use the form handle: `field`, `fieldArray`, `validate`, `submit`, `reset`, `setError`, `clearErrors`.
-- Form does not expose `useForm`, `useField`, or `useFieldArray` as canonical APIs.
+Reads go through `useSelector`. Writes go through the form handle.

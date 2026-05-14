@@ -1,129 +1,35 @@
 ---
 title: 测试
-description: 如何使用 @effect/vitest 测试 Logix 模块。
+description: 在正确边界测试 module、program、runtime run 与 React projection。
 ---
 
-Logix 模块本质上是 Effect 程序。默认测试栈是 `@effect/vitest` 覆盖 runtime 与 logic 行为，在断言范围包含 React 绑定时，再配合 `@testing-library/react`。
+谁拥有行为，就测试哪个边界。
 
-## 1. 安装 @effect/vitest
+## Reducers 和 pure helpers
 
-```bash
-npm install @effect/vitest --save-dev
-```
+同步变换直接测试。
 
-## 2. 使用 it.effect / it.scoped
+## Runtime behavior
 
-`@effect/vitest` 提供了与 Effect 深度集成的测试 API。推荐使用 `it.scoped` 测试需要资源管理的场景：
+module logic、services、imports 和 transaction behavior 使用 `Runtime.run`。
 
 ```ts
-import { describe } from 'vitest'
-import { it, expect } from '@effect/vitest'
-import { Effect, Layer, TestClock, Schema } from 'effect'
-import * as Logix from '@logixjs/core'
-
-const Counter = Logix.Module.make('Counter', {
-  state: Schema.Struct({ count: Schema.Number }),
-  actions: { inc: Schema.Void },
-})
-
-const CounterLogic = Counter.logic("logic", ($) =>
+await Logix.Runtime.run(Program, ({ module }) =>
   Effect.gen(function* () {
-    yield* $.onAction('inc').run(() =>
-      $.state.mutate((draft) => {
-        draft.count += 1
-      }),
-    )
-  }),
-)
-
-describe('Counter', () => {
-  it.scoped('should increment count', () =>
-    Effect.gen(function* () {
-      // 构建测试用的 Layer
-      const layer = Counter.live({ count: 0 }, CounterLogic)
-
-      // 在测试上下文中运行
-      const runtime = yield* Effect.provide(Counter, layer)
-
-      yield* runtime.dispatch({ _tag: 'inc', payload: undefined })
-
-      const state = yield* runtime.getState
-      expect(state.count).toBe(1)
-    }),
-  )
-})
-```
-
-### 区分 it.effect 与 it.scoped
-
-| API         | 用途                                                        |
-| ----------- | ----------------------------------------------------------- |
-| `it.effect` | 运行普通 Effect 测试                                        |
-| `it.scoped` | 运行需要 Scope 资源管理的测试（推荐用于 Logix Module 测试） |
-
-## 3. 使用 TestClock 控制时间
-
-测试涉及时间的逻辑（如防抖、延迟）时，使用 `TestClock` 精确控制：
-
-```ts
-it.scoped('should debounce state changes', () =>
-  Effect.gen(function* () {
-    // 前进 500ms（不会真正等待，而是虚拟推进）
-    yield* TestClock.adjust('500 millis')
-
-    // 此时依赖 debounce 500ms 的逻辑已经触发
-    // ...
+    yield* module.dispatch({ _tag: "increment", payload: undefined })
+    const state = yield* module.getState
+    expect(state.count).toBe(1)
   }),
 )
 ```
 
-## 4. 模拟依赖 (Mocking Services)
-
-使用 `Layer.succeed` 替换真实服务：
+## Static checks
 
 ```ts
-class UserApi extends Context.Tag('@app/UserApi')<
-  UserApi,
-  { readonly fetchUser: (id: string) => Effect.Effect<User> }
->() {}
-
-const MockUserApi = Layer.succeed(UserApi, {
-  fetchUser: (id) => Effect.succeed({ id, name: 'Mock User' }),
-})
-
-it.scoped('should fetch user with mock', () =>
-  Effect.gen(function* () {
-    const layer = Layer.merge(UserModule.live({ user: null }, UserLogic), MockUserApi)
-
-    const runtime = yield* Effect.provide(UserModule, layer)
-    yield* runtime.dispatch({ _tag: 'fetchUser', payload: '1' })
-
-    const state = yield* runtime.getState
-    expect(state.user?.name).toBe('Mock User')
-  }),
-)
+const report = await Effect.runPromise(Logix.Runtime.check(Program))
+expect(report.verdict).toBe("PASS")
 ```
 
+## React tests
 
-## 6. 集成测试 (React)
-
-使用 `@testing-library/react` 测试组件集成：
-
-```tsx
-import { render, screen, fireEvent } from '@testing-library/react'
-import { Counter } from './Counter'
-
-it('renders counter', () => {
-  render(<Counter />)
-
-  fireEvent.click(screen.getByText('Increment'))
-
-  expect(screen.getByText('Count: 1')).toBeInTheDocument()
-})
-```
-
-## 延伸阅读
-
-- 查看 React 集成的完整指南：[React 集成](../recipes/react-integration)
-- 了解更多常用模式与最佳实践：[常用模式](../recipes/common-patterns)
-- 回到首页探索更多：[文档首页](../../)
+React 测试断言 projection：provider wiring、instance ownership、selector updates 和 UI 行为。不要通过 DOM 重新测试 runtime internals。

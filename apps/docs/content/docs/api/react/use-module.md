@@ -1,68 +1,38 @@
 ---
 title: useModule
-description: Resolve a hosted module instance or create a local/keyed Program instance in React.
+description: Acquire a shared module instance or a local/keyed program instance.
 ---
 
-`useModule(...)` is the React instance-acquisition hook.
+`useModule` has two public routes.
 
 ## Shared hosted instance
 
-Use a Module tag when the current runtime already hosts that instance:
-
 ```tsx
 const counter = useModule(Counter.tag)
 ```
 
-This reads the instance from the current `RuntimeProvider` scope.
+Use a tag when the current runtime already hosts the module through the root program or imports.
 
-## Local or keyed Program instance
-
-Use a Program when a component or route needs its own instance:
+## Local/keyed program instance
 
 ```tsx
-const editor = useModule(EditorProgram)
+const preview = useModule(PreviewProgram, { key: productId })
 ```
 
-Add a key when multiple components should share the same local instance inside the same runtime scope:
+Use a program when the component or route should own an instance. `key` enables reuse across components under the same provider.
+
+## Suspense
 
 ```tsx
-const editor = useModule(EditorProgram, {
-  key: `editor:${id}`,
-  gcTime: 60_000,
-})
-```
-
-`gcTime` keeps the instance alive after the last holder unmounts. Remounting inside the window reuses it.
-
-## Suspense mode
-
-When using explicit suspense, provide a stable key:
-
-```tsx
-const editor = useModule(EditorProgram, {
-  key: `editor:${id}`,
+const preview = useModule(PreviewProgram, {
+  key: productId,
   suspend: true,
-  initTimeoutMs: 5_000,
+  initTimeoutMs: 3000,
 })
 ```
+
+Suspense affects acquisition fallback only; it does not change runtime semantics.
 
 ## Reads and writes
 
-`useModule(...)` does not read state by itself.
-
-```tsx
-const counter = useModule(Counter.tag)
-const value = useSelector(counter, (state) => state.value)
-const dispatch = useDispatch(counter)
-```
-
-## Removed routes
-
-Do not use `useModule(Module)` for raw module objects. Do not use the removed `useLocalModule`, `useModuleList`, or `ModuleScope` routes. Use `useModule(Program, options)` and ordinary component composition instead.
-
-## See also
-
-- [RuntimeProvider](./provider)
-- [useSelector](./use-selector)
-- [useDispatch](./use-dispatch)
-- [useImportedModule](./use-imported-module)
+Use `useSelector(handle, selector)` for reads and `useDispatch(handle)` or domain handle commands for writes.

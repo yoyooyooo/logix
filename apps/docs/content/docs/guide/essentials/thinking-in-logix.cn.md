@@ -1,40 +1,43 @@
 ---
-title: Thinking in Logix
-description: 用 declarations、assembled programs、runtime ownership 与 evidence 来思考。
+title: Runtime model
+description: 让 Logix 应用保持一致的一组小习惯。
 ---
 
-把 Logix 理解成 React 旁边的逻辑半边最容易。
+当每个文件都只回答一个问题时，Logix 代码会保持清晰：定义、装配、执行或投影。
 
-React 持有 UI 与 render。Logix 持有 declarations、composition、execution、state transactions、diagnostics 与 evidence。
+## Definition
 
-## 主习惯
+state shape、action shape、reducers 和 logic builders 放在 feature 附近。
 
-不要先问“我该写哪个 hook？”先判断事实应该归哪个 owner：
+```ts
+const Feature = Logix.Module.make("Feature", { state, actions, reducers })
+const logic = Feature.logic("logic", ($) => Effect.void)
+```
 
-| 事实或行为 | Owner |
-| --- | --- |
-| module state and actions | `Module.make(...)` |
-| actions/state 上的行为 | `Module.logic(id, ...)` |
-| services/imports/initial state | `Program.make(...)` |
-| runtime execution | `Runtime.make(...)` |
-| React reads | `useSelector(handle, selector)` |
-| React acquisition | `useModule(...)` |
-| editable input semantics | `Form.make(...)` |
-| verification report | `Runtime.check/trial/compare` |
+## Assembly
 
-## 一个模型，不是很多小框架
+Program 收集 initial state、logic units、imports 和 service layers。
 
-领域包必须能降到同一条主链。Form 是 Program。Query resources 是 services/resources。React 是 host projection。Devtools 与 CLI 消费 runtime truth；它们不定义 runtime truth。
+```ts
+const FeatureProgram = Logix.Program.make(Feature, { initial, logics: [logic] })
+```
 
-## 避免什么
+## Execution
 
-- 为每个领域包创建第二套 React hook family。
-- 在 UI cache 或 logs 里制造第二套 state truth。
-- 为 diagnostics 创建第二套 runtime/control-plane object。
-- 保留旧心智模型的 compatibility routes。
+Runtime 拥有执行、调度、诊断和控制面报告。
 
-## 下一步
+```ts
+const runtime = Logix.Runtime.make(FeatureProgram)
+const report = await Effect.runPromise(Logix.Runtime.check(FeatureProgram))
+```
 
-- [Canonical spine](./canonical-spine)
-- [Modules & State](./modules-and-state)
-- [React 集成](./react-integration)
+## Projection
+
+React 不重新创建 runtime 模型，只投影 runtime。
+
+```tsx
+const feature = useModule(Feature.tag)
+const value = useSelector(feature, fieldValue("value"))
+```
+
+自定义 helper 应该可以机械还原到这些路线。

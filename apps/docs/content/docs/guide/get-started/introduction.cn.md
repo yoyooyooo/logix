@@ -1,40 +1,26 @@
 ---
 title: 介绍
-description: Logix 是什么，以及它适合放在哪里。
+description: 在 React 应用中使用 Logix 的最小模型。
 ---
 
-Logix 是应用逻辑运行时。它用一个小对象模型组织 state、effects、services、React projection 与 evidence。
+Logix 把应用逻辑移到 Effect-native runtime。UI 组件不再承载长链路 workflow、依赖注入、重试和运行时诊断；组件只负责获取实例、读取窄切片、派发动作。
+
+## 运行时形状
 
 ```text
-React 负责 UI / host / render。
-Logix 负责 declaration / composition / execution / evidence。
+Module       state schema、action schema、reducer、logic builder
+Logic        绑定到一个 module 的 Effect 程序
+Program      module 加 initial state、logics、imports、services 后的装配单元
+Runtime      执行容器与控制面
+React host   provider、实例获取、selector、dispatch
 ```
 
-默认路线是：
+一个 Logix 应用通常有一个 root `Program`。React 挂载这个 program 的 `Runtime`。组件用 module tag 或 program 获取实例。
 
-1. 定义 `Module`。
-2. 用 `Module.logic(id, ...)` 添加行为。
-3. 装配 `Program`。
-4. 创建 `Runtime`。
-5. 用 `RuntimeProvider` 投影到 React。
-6. 用 `useSelector(...)` 读取，用 dispatch 或领域 handle 写入。
+## 第一条边界
 
-## 为什么使用它
-
-当一个功能有业务状态和副作用，并且需要稳定执行、可测试性与诊断时，使用 Logix。短生命周期、纯 UI 的 view state 仍可直接使用 React state。
-
-## 第一组概念
-
-| 概念 | 含义 |
-| --- | --- |
-| Module | Definition object：state schema、action map、reducers、logic builder。 |
-| Logic | 挂在 Module 上的 Effect-based behavior。 |
-| Program | 带 initial state、logics、services、imports 的装配后业务单元。 |
-| Runtime | 执行容器。 |
-| React host | 把 runtime 实例暴露给组件的 Provider + hooks。 |
-| Evidence | check/trial/compare 产生的结构化报告。 |
+当逻辑包含持久状态、Effect、依赖注入、并发或诊断时，放进 Logix。只影响局部 UI 的状态，例如折叠开关、焦点、临时布局状态，继续留在 React。
 
 ## 下一步
 
-- [快速开始](./quick-start)
-- [Canonical spine](/cn/docs/guide/essentials/canonical-spine)
+读 [快速开始](/cn/docs/guide/get-started/quick-start)，再读 [Canonical spine](/cn/docs/guide/essentials/canonical-spine)。

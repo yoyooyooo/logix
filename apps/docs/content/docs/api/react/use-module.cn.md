@@ -1,68 +1,38 @@
 ---
 title: useModule
-description: 在 React 中解析已托管实例，或创建 local/keyed Program 实例。
+description: 获取共享 module instance 或局部/keyed program instance。
 ---
 
-`useModule(...)` 是 React 的实例获取 hook。
+`useModule` 有两条公开路线。
 
 ## 共享托管实例
 
-当前 runtime 已经托管该实例时，使用 Module tag：
-
 ```tsx
 const counter = useModule(Counter.tag)
 ```
 
-这会从当前 `RuntimeProvider` scope 读取实例。
+当前 runtime 已经通过 root program 或 imports 托管该 module 时，使用 tag。
 
-## Local 或 keyed Program 实例
-
-当组件或路由需要自己的实例时，使用 Program：
+## 局部/keyed program 实例
 
 ```tsx
-const editor = useModule(EditorProgram)
+const preview = useModule(PreviewProgram, { key: productId })
 ```
 
-如果多个组件要在同一 runtime scope 内共享同一个局部实例，添加 key：
+组件或路由需要拥有实例时，使用 program。`key` 允许同一 provider 下跨组件复用。
+
+## Suspense
 
 ```tsx
-const editor = useModule(EditorProgram, {
-  key: `editor:${id}`,
-  gcTime: 60_000,
-})
-```
-
-`gcTime` 会在最后一个 holder 卸载后继续保留实例一段时间；窗口期内 remount 会复用它。
-
-## Suspense mode
-
-显式使用 suspense 时，提供稳定 key：
-
-```tsx
-const editor = useModule(EditorProgram, {
-  key: `editor:${id}`,
+const preview = useModule(PreviewProgram, {
+  key: productId,
   suspend: true,
-  initTimeoutMs: 5_000,
+  initTimeoutMs: 3000,
 })
 ```
+
+Suspense 只影响 acquisition fallback，不改变 runtime 语义。
 
 ## Reads and writes
 
-`useModule(...)` 本身不读取 state。
-
-```tsx
-const counter = useModule(Counter.tag)
-const value = useSelector(counter, (state) => state.value)
-const dispatch = useDispatch(counter)
-```
-
-## 已移除路线
-
-不要对裸 module object 使用 `useModule(Module)`。不要使用已移除的 `useLocalModule`、`useModuleList` 或 `ModuleScope` 路线。使用 `useModule(Program, options)` 和普通组件组合。
-
-## See also
-
-- [RuntimeProvider](./provider)
-- [useSelector](./use-selector)
-- [useDispatch](./use-dispatch)
-- [useImportedModule](./use-imported-module)
+读取使用 `useSelector(handle, selector)`。写入使用 `useDispatch(handle)` 或领域 handle commands。

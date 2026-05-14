@@ -1,19 +1,19 @@
 {
   "title": "Form（表单）",
-  "root": true,
   "pages": [
-    "when-to-use",
+    "index",
     "introduction",
     "quick-start",
-    "instances",
-    "sources",
-    "companion",
+    "schema",
     "rules",
     "validation",
-    "selectors",
+    "sources",
+    "companion",
     "field-arrays",
+    "selectors",
     "derived",
-    "schema",
-    "performance"
+    "instances",
+    "performance",
+    "when-to-use"
   ]
 }

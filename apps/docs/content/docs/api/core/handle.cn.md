@@ -1,48 +1,31 @@
 ---
 title: Handle
-description: 在 logic 内通过稳定的 handle 消费模块和服务。
+description: module instance 的只读与 dispatch-oriented view。
 ---
 
-在 logic 内，依赖消费最终会解析为一种 handle。
+Handle 是 module instance 的安全公开视图。它暴露 read、change streams、dispatch 和 typed action helpers。
 
-当前主要有两种：
-
-- imported child handle，用于消费当前 parent imports scope 内的 child Program
-- service handle，用于消费 runtime service tag
-
-## imported child handle
-
-当被消费的依赖是当前父 scope 拥有的 child Program 时，使用 imported child handle：
+## Shape
 
 ```ts
-const child = yield* $.imports.get(Child.tag)
-const value = yield* child.read((s) => s.value)
+handle.read((state) => state.value)
+handle.changes((state) => state.value)
+handle.dispatch({ _tag: "refresh", payload: undefined })
+handle.actions.refresh()
 ```
 
-典型能力包括：
-
-- 读取状态
-- 观察变化
-- 派发动作
-
-child Program 必须通过 `Program.make(..., { capabilities: { imports: [ChildProgram] } })` 提供。
-
-## service handle
-
-当被消费的依赖是注入进 runtime 的服务时，使用 service handle：
+## Imported child handle
 
 ```ts
-const api = yield* $.use(UserService)
+const child = yield* $.use(Child.tag)
+yield* child.actions.refresh()
+const value = yield* child.read((state) => state.value)
 ```
 
-这适合这样一类场景：外部系统仍然是真理源，Logix 只负责消费它，而不把它镜像成模块状态。
+## React handle
 
-## 说明
+`useModule(...)` 返回 handle shape，加上 program 携带的领域扩展。`useSelector` 消费这个 handle。
 
-- 当依赖应该成为 parent scope 内的 Logix 状态资产时，用 imported child Program
-- 当外部系统应该继续保留真理源角色时，用服务
+## 边界
 
-## 相关页面
-
-- [Bound API ($)](./bound-api)
-- [跨模块协作](../../guide/learn/cross-module-communication)
+handle 不是 raw runtime internals object。它不应在 action/domain command 路线之外暴露直接 state mutation。

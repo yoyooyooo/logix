@@ -1,43 +1,17 @@
 ---
-title: Guide 总览
-description: 按当前公开主链学习 Logix，再进入 React、Form 与高级运行时主题。
+title: Guide
+description: 从第一个 Program 到生产控制面的 Logix 指南。
 ---
 
-Guide 按阶段组织。新用户按顺序读；熟悉对象角色之后，把 API 文档当字典查。
+Guide 按 Logix 应用的真实结构展开：定义 module，装配 program，运行 runtime，投影到 React，再按需要加入模式和控制面。
 
-## 1. Get Started
+## 路线
 
-1. [介绍](/cn/docs/guide/get-started/introduction)
-2. [快速开始](/cn/docs/guide/get-started/quick-start)
-3. [第一个应用教程](/cn/docs/guide/get-started/tutorial-first-app)
-4. [复杂列表教程](/cn/docs/guide/get-started/tutorial-complex-list)
+| 区域 | 页面 |
+| --- | --- |
+| Get Started | [介绍](/cn/docs/guide/get-started/introduction)、[快速开始](/cn/docs/guide/get-started/quick-start)、搜索教程。 |
+| Essentials | [Canonical spine](/cn/docs/guide/essentials/canonical-spine)、状态、Effect、React、生命周期、tick/flush。 |
+| Patterns | 搜索详情、分页、乐观更新、i18n、表单向导。 |
+| Advanced | 并发、Suspense、测试、性能、scope、排障。 |
 
-## 2. Essentials
-
-1. [Thinking in Logix](/cn/docs/guide/essentials/thinking-in-logix)
-2. [Canonical spine](/cn/docs/guide/essentials/canonical-spine)
-3. [Modules & State](/cn/docs/guide/essentials/modules-and-state)
-4. [Flows & Effects](/cn/docs/guide/essentials/flows-and-effects)
-5. [React 集成](/cn/docs/guide/essentials/react-integration)
-6. [Lifecycle](/cn/docs/guide/essentials/lifecycle)
-7. [Tick / Flush](/cn/docs/guide/essentials/tick-and-flush)
-8. [Effect 基础](/cn/docs/guide/essentials/effect-basics)
-
-## 3. 领域包
-
-- [Form](/cn/docs/form)
-
-## 4. 高级主题与 recipes
-
-- [性能与优化](/cn/docs/guide/advanced/performance-and-optimization)
-- [测试](/cn/docs/guide/advanced/testing)
-- [故障排查](/cn/docs/guide/advanced/troubleshooting)
-- [React 集成 recipe](/cn/docs/guide/recipes/react-integration)
-- [可运行示例](/cn/docs/guide/recipes/runnable-examples)
-
-## 这份 Guide 有意不教授的内容
-
-- `useLocalModule`、`useModuleList` 和 `ModuleScope` 不是当前公开 React API 路线。
-- Module 对象通过 `Program.make(...)` 装配；React 局部实例使用 `useModule(Program, options)`。
-- Form 不定义包内 hook family；读取仍然使用 `useSelector(...)`。
-- 验证报告来自 `Runtime.check(...)`、`Runtime.trial(...)`、`Runtime.compare(...)`，不是用户自定义 Form 或 React report 对象。
+每个区域都使用同一组对象角色：`Module` 定义，`Program` 装配，`Runtime` 执行，React 通过 `useModule` 与 `useSelector` 读取。

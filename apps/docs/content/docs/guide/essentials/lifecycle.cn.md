@@ -1,39 +1,36 @@
 ---
 title: Lifecycle
-description: 区分 startup readiness、runtime ownership 与 React projection。
+description: 实例 readiness、运行中工作、dispose 与 React ownership。
 ---
 
-Lifecycle 有三个不同区域：
-
-| 区域 | Owner |
-| --- | --- |
-| startup readiness | `Module.logic(...)` declaration phase 中的 `$.readyAfter(...)` |
-| runtime ownership/disposal | 调用 `Runtime.make(...)` 或 `Runtime.run(...)` 的边界 |
-| React visibility | `RuntimeProvider` 与 `useModule(...)` |
+Logix module instance 有两条生命周期 lane：readiness 和 running work。
 
 ## Readiness
 
 ```ts
-const Logic = Module.logic("startup", ($) => {
-  $.readyAfter(loadRequiredConfig, { id: "required-config" })
-
-  return Effect.gen(function* () {
-    // long-running run phase
-  })
-})
+yield* $.readyAfter(loadConfig, { id: "config" })
 ```
 
-`readyAfter` 负责 gating readiness。返回的 run effect 不是 readiness work。
+readiness requirement 必须完成后，实例才算 ready。如果失败，实例获取失败，runtime 会报告失败。
 
-## React local lifetime
+## Running work
 
-组件/路由持有的实例使用 `useModule(Program, options)`：
+`Module.logic` 返回的 effect 可以在 ready 后继续运行。watcher、stream 和长任务都在这条 lane。
 
-```tsx
-const session = useModule(SessionProgram, {
-  key: `session:${id}`,
-  gcTime: 60_000,
-})
+```ts
+const logic = Module.logic("watch", ($) =>
+  Effect.gen(function* () {
+    yield* $.onAction("changed").runLatest(handleChange)
+  }),
+)
 ```
 
-`RuntimeProvider` 只让 runtime 可见。它不会自动 dispose shared runtime。
+## Disposal
+
+runtime dispose 会关闭 scope 和 finalizer。资源清理使用 Effect scope 与 service finalizer；不要创建第二套公开 destroy hook。
+
+## React ownership
+
+- `useModule(Module.tag)` 解析已经托管的实例。
+- `useModule(Program, { key })` 在当前 provider 下创建或复用局部/keyed 实例。
+- local owner 卸载后，会按 provider policy 释放 runtime cache entry。

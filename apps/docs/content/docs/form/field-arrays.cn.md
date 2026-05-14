@@ -1,34 +1,27 @@
 ---
 title: Field arrays
-description: 通过 Form handle 修改列表字段，同时保持 row identity。
+description: list identity、row-scoped rules、row handles 与 row companion reads。
 ---
 
-在 `define(...)` 中声明 list identity：
+列表需要稳定 identity policy。当 row 有 durable id 时，生产默认路线是 `trackBy`。
+
+## Declaration
 
 ```ts
 $.list("items", {
   identity: { mode: "trackBy", trackBy: "id" },
-  item: Form.Rule.make({ required: true }),
-  list: Form.Rule.make((items) => (items.length > 0 ? undefined : "items.required")),
+  item: Form.Rule.make({ required: "Item required" }),
+  list: (rows) => (rows.length > 0 ? undefined : { $list: "Add an item" }),
 })
 ```
 
-通过 `fieldArray(path)` 写入：
+## Mutations
 
 ```ts
-yield* form.fieldArray("items").append({ id: "r1", warehouseId: "" })
-yield* form.fieldArray("items").move(0, 2)
-yield* form.fieldArray("items").byRowId("r1").update({ id: "r1", warehouseId: "WH-001" })
+await Effect.runPromise(form.fieldArray("items").append({ id: "r1", name: "" }))
+await Effect.runPromise(form.fieldArray("items").byRowId("r1").update({ id: "r1", name: "Ada" }))
 ```
 
-通过 `useSelector(...)` 读取 values 与 row-scoped companion facts：
+## Reads
 
-```tsx
-const items = useSelector(form, fieldValue("items"))
-const rowSupport = useSelector(
-  form,
-  Form.Companion.byRowId("items", rowId, "warehouseId"),
-)
-```
-
-Row identity 不是公开 row token family。当操作必须跨 reorder/remove 保持稳定时使用 `byRowId(...)`。
+row-scoped companion/error reads 使用 row ids。array index 是渲染位置，不是 durable identity。

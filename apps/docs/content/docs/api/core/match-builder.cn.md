@@ -1,29 +1,27 @@
 ---
 title: Match builder
-description: 在 logic 中通过 fluent match DSL 处理值匹配和 tagged union 匹配。
+description: Bound API 中可用的 fluent matching helper。
 ---
 
-match builder 提供一套轻量的 fluent DSL，用于结构化匹配。
+`$.match(value)` 与 `$.matchTag(value)` 在 logic 内提供局部分支 helper。它们只是便利工具，不新增 runtime lane。
 
-常见入口有两条：
-
-- `$.match(value)`
-- `$.matchTag(value)`
-
-## 用法
+## Value matching
 
 ```ts
-yield* $.matchTag(action)
-  .with("increment", () => Effect.void)
-  .with("decrement", () => Effect.void)
-  .exhaustive()
+const result = $.match(input)
+  .when((value) => value === "ready", () => "ok")
+  .otherwise(() => "fallback")
 ```
 
-## 说明
+## Tagged matching
 
-- 对带 `_tag` 的联合类型，使用 `matchTag`
-- 对一般值匹配，使用 `match`
+```ts
+const result = $.matchTag(action)
+  .case("created", handleCreated)
+  .case("deleted", handleDeleted)
+  .otherwise(() => Effect.void)
+```
 
-## 相关页面
+## 边界
 
-- [Bound API ($)](./bound-api)
+match builder 用于局部分支。持久 workflow routing 仍放在 actions、reducers 和 logic watchers。

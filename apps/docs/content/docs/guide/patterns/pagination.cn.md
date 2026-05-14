@@ -1,126 +1,32 @@
 ---
-title: 分页加载
-description: 使用 Logix 实现分页/无限滚动加载模式。
+title: 分页
+description: 把 page 或 cursor 建模为 runtime state，而不是组件局部 bookkeeping。
 ---
 
-分页加载在 Logix 中通常分为两类实现：Cursor 形态与 Offset 形态。
+分页有持久行为：当前页、query key、loading window、过期响应处理。当这些影响业务行为时，放进 module。
 
-## 核心思路
-
-1. **状态结构**：`items[]` + `cursor/page` + `hasMore` + `isLoading`
-2. **Action**：`loadMore` 触发加载
-3. **反应策略**：防止重复请求（`runExhaust`），加载完成后追加数据
-
-## Cursor 分页实现
+## Page state
 
 ```ts
-import * as Logix from '@logixjs/core'
-import { Effect, Schema } from 'effect'
-
-const ListDef = Logix.Module.make('List', {
-  state: Schema.Struct({
-    items: Schema.Array(Schema.Unknown),
-    cursor: Schema.NullOr(Schema.String),
-    hasMore: Schema.Boolean,
-    isLoading: Schema.Boolean,
-  }),
-  actions: {
-    loadMore: Schema.Void,
-    reset: Schema.Void,
-  },
-})
-
-const ListLogic = ListDef.logic("logic", ($) =>
-  Effect.gen(function* () {
-    const api = yield* $.use(ListApi)
-
-    yield* Effect.all(
-      [
-        // 使用 runExhaust 防止重复请求
-        $.onAction('loadMore').runExhaust(() =>
-          Effect.gen(function* () {
-            const state = yield* $.state.read
-            if (!state.hasMore || state.isLoading) return
-
-            yield* $.state.mutate((d) => {
-              d.isLoading = true
-            })
-
-            const { items, nextCursor } = yield* api.fetch(state.cursor)
-
-            yield* $.state.mutate((d) => {
-              d.items = [...d.items, ...items]
-              d.cursor = nextCursor
-              d.hasMore = nextCursor !== null
-              d.isLoading = false
-            })
-          }),
-        ),
-
-	        // 重置列表
-	        $.onAction('reset').run(() =>
-	          $.state.mutate((d) => {
-	            d.items = []
-	            d.cursor = null
-	            d.hasMore = true
-	            d.isLoading = false
-	          }),
-	        ),
-	      ],
-	      { concurrency: 'unbounded' },
-	    )
-  }),
-)
-```
-
-## Offset 分页变体
-
-```ts
-const state = Schema.Struct({
-  items: Schema.Array(Schema.Unknown),
-  page: Schema.Number, // 当前页码
-  pageSize: Schema.Number, // 每页条数
-  total: Schema.Number, // 总条数
-  isLoading: Schema.Boolean,
+state: Schema.Struct({
+  q: Schema.String,
+  page: Schema.Number,
+  pageSize: Schema.Number,
+  total: Schema.Number,
+  rows: Schema.Array(Row),
+  loading: Schema.Boolean,
 })
 ```
 
-## React 集成
+后端是 cursor-based 时，用 cursor 字段替代 `page`。
 
-```tsx
-function ItemList() {
-  const list = useModule(ListDef.tag)
-  const { items, hasMore, isLoading } = useSelector(list, (s) => s)
-  const dispatch = useDispatch(list)
+## Transitions
 
-  return (
-    <div>
-      {items.map((item) => (
-        <Item key={item.id} data={item} />
-      ))}
+- `queryChanged` 把 `page` 重置为 `1`。
+- `pageChanged` 保留当前 query。
+- `pageSizeChanged` 通常重置 cursor/page。
+- request 完成时，只在结果仍匹配 active key 时写入 rows。
 
-      {hasMore && (
-        <button onClick={() => dispatch({ _tag: 'loadMore' })} disabled={isLoading}>
-          {isLoading ? '加载中...' : '加载更多'}
-        </button>
-      )}
-    </div>
-  )
-}
-```
+## React
 
-## 常见变体
-
-- **下拉刷新**：`reset` 后立即 `loadMore`
-- **无限滚动**：监听滚动事件自动触发 `loadMore`
-- **预加载**：在接近底部时提前触发加载
-
-## 相关模式
-
-- [乐观更新](./optimistic-update)
-- [搜索+详情联动](./search-detail)
-
-## 示例代码
-
-- 教程：[复杂列表教程](../get-started/tutorial-complex-list)
-- `examples/logix-react/src/modules/querySearchDemo.ts`
+组件派发 page intent，读取 page state。组件不拥有请求取消。

@@ -1,0 +1,14 @@
+---
+title: Patterns
+description: 由 canonical Logix route 组合出的常见应用形态。
+---
+
+Pattern 不是新 API。每页都保持同一条路线：module state、actions、logic、program、runtime、React selectors。
+
+| Pattern | Runtime owner |
+| --- | --- |
+| [搜索 + 详情](/cn/docs/guide/patterns/search-detail) | selected id、query state、请求生命周期 |
+| [分页](/cn/docs/guide/patterns/pagination) | cursor/page state 与 loading window |
+| [乐观更新](/cn/docs/guide/patterns/optimistic-update) | rollback state 与 effect result |
+| [国际化](/cn/docs/guide/patterns/i18n) | service-first i18n 与 message token |
+| [表单向导](/cn/docs/guide/patterns/form-wizard) | step state、submit boundary、form program |

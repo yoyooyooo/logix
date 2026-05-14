@@ -1,71 +1,51 @@
 ---
 title: Canonical spine
-description: The stable object model for authoring, assembly, execution, React projection, and evidence.
+description: The object roles that stay stable across core, React, and domain packages.
 ---
 
-Most Logix code should follow one spine:
+The Logix public route is a small spine. Keep these roles separate and most API decisions become mechanical.
 
-```text
-Module      definition object
-Logic       behavior declared on a Module
-Program     assembled business unit
-Runtime     execution container
-React host  provider + hooks that project runtime instances
-Evidence    check / trial / compare reports
-```
+## Objects
 
-## Object roles
-
-| Object | Created by | Role |
+| Object | Role | Typical owner |
 | --- | --- | --- |
-| `Module` | `Logix.Module.make(id, def)` | Declares state schema, actions, reducers, metadata, and logic builder. |
-| `Logic` | `Module.logic(id, ($) => runEffect)` | Adds behavior. Do declaration work at the builder root; return the run effect. |
-| `Program` | `Logix.Program.make(Module, config)` | Freezes initial state, logics, imports, services, and transaction options. |
-| `Runtime` | `Logix.Runtime.make(Program, options?)` | Owns execution, module runtimes, scheduling, services, diagnostics, and disposal. |
-| React host | `RuntimeProvider`, `useModule`, `useSelector`, `useDispatch` | Projects runtime instances into React without creating a second truth source. |
-| Verification | `Runtime.check`, `Runtime.trial`, `Runtime.compare` | Produces structured control-plane reports. |
+| `Module` | Definition-time state and action contract. | package or feature file |
+| `Module.logic` | Logic authoring bound to one module. | feature logic file |
+| `Program` | Assembly-time business unit. | app, route, domain factory |
+| `Runtime` | Execution container and control plane. | app shell, test, CLI |
+| `RuntimeProvider` | React projection of a runtime. | React root or subtree |
+| `useModule` | Instance acquisition. | component boundary |
+| `useSelector` | Narrow state/read projection. | component read site |
 
 ## Default application shape
 
-```ts
-import { Effect, Schema } from "effect"
-import * as Logix from "@logixjs/core"
+```text
+feature.ts
+  Module.make(...)
+  Module.logic(...)
+  Program.make(...)
 
-const CounterState = Schema.Struct({ value: Schema.Number })
-const CounterActions = { inc: Schema.Void }
+runtime.ts
+  Runtime.make(Program, { layer, devtools, middleware })
 
-const Counter = Logix.Module.make("Counter", {
-  state: CounterState,
-  actions: CounterActions,
-})
-
-const CounterLogic = Counter.logic("counter-logic", ($) =>
-  Effect.gen(function* () {
-    yield* $.onAction("inc").mutate((state) => {
-      state.value += 1
-    })
-  }),
-)
-
-export const CounterProgram = Logix.Program.make(Counter, {
-  initial: { value: 0 },
-  logics: [CounterLogic],
-})
-
-export const runtime = Logix.Runtime.make(CounterProgram)
+view.tsx
+  <RuntimeProvider runtime={runtime}>
+  const feature = useModule(Feature.tag)
+  const value = useSelector(feature, fieldValue("value"))
 ```
 
-## Rules of thumb
+`Program` is the reusable unit. A root application can import child programs through `Program.capabilities.imports`. React can instantiate a program locally with `useModule(Program, { key })` when the instance should be owned by a component or route.
 
-- Do not pass raw module objects to `useModule(...)`; use a hosted `Module.tag` or a `Program`.
-- Do not use no-argument `useSelector(handle)`; pass an exact selector or descriptor.
-- Do not create package-local React hook families for Form, Query, or domain packages.
-- Do not treat Devtools, CLI, or docs examples as a second runtime truth source.
-- Put remote resource ownership in service/query layers; keep companion/local facts synchronous.
+## Boundary rules
+
+- `Module` defines shape; it does not run the app.
+- `Program` assembles declarations, initial state, imports, and services.
+- `Runtime` executes and reports; it is not an authoring surface.
+- React reads through selector descriptors or selector functions; whole-state no-arg reads are not part of the public route.
+- Domain packages such as Form compile back into the same `Program` and React host law.
 
 ## See also
 
-- [Modules & State](./modules-and-state)
-- [React integration](./react-integration)
-- [Runtime API](/docs/api/core/runtime)
+- [Modules and state](/docs/guide/essentials/modules-and-state)
+- [React integration](/docs/guide/essentials/react-integration)
 - [Program API](/docs/api/core/program)

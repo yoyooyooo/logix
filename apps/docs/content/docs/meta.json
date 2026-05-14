@@ -1,5 +1,10 @@
 {
   "title": "Docs",
-  "root": true,
-  "pages": ["guide", "form", "api", "faq"]
+  "pages": [
+    "index",
+    "guide",
+    "form",
+    "api",
+    "faq"
+  ]
 }

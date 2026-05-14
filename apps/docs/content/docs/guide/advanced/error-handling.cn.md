@@ -1,126 +1,30 @@
 ---
 title: 错误处理
-description: Logix 中的错误处理策略。
+description: 预期失败、defect、provider reporting 与 state writeback。
 ---
 
-Logix 的错误处理建议分成三层：
+错误应留在拥有它的 lane。
 
-- **局部（Local）**：预期错误（业务可恢复）留在 Effect 的错误通道 `E`，就地捕获并转换为状态/返回值。
-- **模块（Module）**：未处理缺陷（Defect）走 `$.lifecycle.onError` 做“最后上报”（日志/监控/兜底清理）。
-- **全局（App/React）**：在 React 集成中用 `RuntimeProvider.onError` 统一接入上报系统，避免每个模块各写一套。
+## 预期失败
 
-另外两条规则也需要单独记住：
-
-- **装配失败**（缺少 provider/imports）属于配置错误，应按错误提示修复装配，而不是在业务逻辑里吞掉。
-- **取消/中断**（interrupt）不是错误，不应进入错误兜底链路或告警系统。
-
-## 1. 预期错误 (Expected Errors)
-
-预期错误是业务逻辑的一部分，例如"用户未找到"、"网络超时"。这些错误应该在 Effect 的错误通道（`E`）中处理。
+会影响 UI 的 service failure 应在 logic 中捕获，并写入 state 或领域 error carrier。
 
 ```ts
-const LoginLogic = LoginModule.logic("logic", ($) =>
-  Effect.gen(function* () {
-    yield* $.onAction('login').run(({ payload: credentials }) =>
-      Effect.gen(function* () {
-        // 尝试登录
-        yield* loginApi(credentials).pipe(
-          // 捕获特定错误
-          Effect.catchTag('InvalidPassword', () =>
-            $.state.mutate((draft) => {
-              draft.error = '密码错误'
-            }),
-          ),
-          // 捕获其他错误
-          Effect.catchAll(() =>
-            $.state.mutate((draft) => {
-              draft.error = '登录失败'
-            }),
-          ),
-        )
-      }),
-    )
-  }),
+yield* api.save(input).pipe(
+  Effect.catchAll((error) =>
+    $.state.mutate((draft) => { draft.error = String(error) }),
+  ),
 )
 ```
 
-## 2. 意外错误 (Defects)
+## Defects
 
-意外错误是代码 bug 或不可恢复的系统错误。Logix 会自动捕获 Logic 中的 Defect，防止整个应用崩溃。
+非预期 defect 应进入 runtime/provider reporting 路线。React 中使用 `RuntimeProvider.onError`，并用 Error Boundary 做 host-level 展示。
 
-### `onError` 钩子
+## Form errors
 
-你可以通过 `$.lifecycle.onError` 统一处理未捕获的错误（declaration-only 注册）：
+Form validation 与 submit errors 属于 Form rules、submit decode 或 Form error selectors。不要把它们镜像进另一套 React-local error store。
 
-```ts
-const AppLogic = AppModule.logic("logic", ($) => {
-  $.lifecycle.onError((cause, context) =>
-    Effect.logError({
-      message: "Unhandled module error",
-      cause,
-      context, // 含 moduleId/instanceId/phase/hook 等上下文
-    }),
-  )
+## Control-plane errors
 
-  return Effect.void
-})
-```
-
-## 3. React 全局上报（RuntimeProvider.onError）
-
-在 React 应用里，推荐用 `RuntimeProvider.onError` 把“Layer 构建失败 / 模块未处理失败 / 错误级诊断”统一接入你的上报系统：
-
-```tsx
-<RuntimeProvider
-  runtime={runtime}
-  onError={(cause, context) =>
-    Effect.logError({
-      message: "Runtime error",
-      cause,
-      context,
-    })
-  }
->
-  {children}
-</RuntimeProvider>
-```
-
-## 4. Error Boundary 集成
-
-在 `useModule(..., { suspend: true, key })` 的 Suspense 模式下，如果初始化失败，错误会被抛出到 React 组件树，由 Error Boundary 捕获。
-
-```tsx
-import { ErrorBoundary } from 'react-error-boundary'
-
-function App() {
-  return (
-    <ErrorBoundary fallback={<ErrorPage />}>
-      <Suspense fallback={<Loading />}>
-        <MainContent />
-      </Suspense>
-    </ErrorBoundary>
-  )
-}
-```
-
-## 5. 恢复策略 (Retry)
-
-Effect 提供了强大的重试机制：
-
-```ts
-// 自动重试 3 次
-yield* fetchApi().pipe(Effect.retry({ times: 3 }))
-
-// 指数退避重试
-yield*
-  fetchApi().pipe(
-    Effect.retry({
-      schedule: Schedule.exponential('100 millis'),
-    }),
-  )
-```
-
-## 延伸阅读
-
-- 学习如何测试你的模块：[测试](./testing)
-- 查看常用模式与最佳实践：[常用模式](../recipes/common-patterns)
+`Runtime.check` 与 `Runtime.trial` 返回报告。CI、CLI 和 agent verification 使用这些报告。

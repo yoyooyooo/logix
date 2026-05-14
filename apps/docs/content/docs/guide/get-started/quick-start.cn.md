@@ -1,58 +1,88 @@
 ---
 title: 快速开始
-description: 创建一个 Counter Program，并在 React 中挂载。
+description: 定义 module、装配 program、创建 runtime，并在 React 中读取。
 ---
 
-## 1. 定义 Module 与 Logic
+这是 React 中最小的完整 Logix 路线。
+
+## 定义 module
 
 ```ts
-import { Effect, Schema } from "effect"
+import { Schema } from "effect"
 import * as Logix from "@logixjs/core"
 
-const CounterState = Schema.Struct({ value: Schema.Number })
-const CounterActions = { inc: Schema.Void }
-
-export const Counter = Logix.Module.make("Counter", {
-  state: CounterState,
-  actions: CounterActions,
+const Counter = Logix.Module.make("Counter", {
+  state: Schema.Struct({ count: Schema.Number }),
+  actions: {
+    increment: Schema.Void,
+    decrement: Schema.Void,
+  },
+  reducers: {
+    increment: Logix.Module.Reducer.mutate((draft) => {
+      draft.count += 1
+    }),
+    decrement: Logix.Module.Reducer.mutate((draft) => {
+      draft.count -= 1
+    }),
+  },
 })
+```
 
-export const CounterLogic = Counter.logic("counter-logic", ($) =>
+Reducer 是同步状态变换。Effect、订阅、服务和长链路任务放进 logic。
+
+## 添加 logic
+
+```ts
+import { Effect } from "effect"
+
+const CounterLogic = Counter.logic("counter-logic", ($) =>
   Effect.gen(function* () {
-    yield* $.onAction("inc").mutate((state) => {
-      state.value += 1
-    })
+    yield* $.readyAfter(Effect.log("Counter ready"), { id: "counter-ready" })
+
+    yield* $.onAction("increment").run(() =>
+      Effect.log("increment dispatched"),
+    )
   }),
 )
 ```
 
-## 2. 装配 Program
+builder 收到 `$`，也就是绑定到当前 module 的 API。同步声明直接在 builder 内完成；返回的 `Effect` 是运行时程序。
+
+## 装配 program
 
 ```ts
 export const CounterProgram = Logix.Program.make(Counter, {
-  initial: { value: 0 },
+  initial: { count: 0 },
   logics: [CounterLogic],
 })
 ```
 
-## 3. 创建 Runtime
+`Program.make` 是公开装配边界。imports、service layers、事务策略和声明都会在这里收敛。
 
-```ts
-export const runtime = Logix.Runtime.make(CounterProgram)
-```
-
-## 4. 在 React 中挂载并使用
+## 挂载 React
 
 ```tsx
-import { RuntimeProvider, useDispatch, useModule, useSelector } from "@logixjs/react"
-import { Counter, runtime } from "./counter"
+import * as Logix from "@logixjs/core"
+import {
+  RuntimeProvider,
+  fieldValue,
+  useDispatch,
+  useModule,
+  useSelector,
+} from "@logixjs/react"
+
+const runtime = Logix.Runtime.make(CounterProgram)
 
 function CounterView() {
   const counter = useModule(Counter.tag)
-  const value = useSelector(counter, (state) => state.value)
+  const count = useSelector(counter, fieldValue("count"))
   const dispatch = useDispatch(counter)
 
-  return <button onClick={() => dispatch({ _tag: "inc", payload: undefined })}>{value}</button>
+  return (
+    <button onClick={() => dispatch({ _tag: "increment", payload: undefined })}>
+      {count}
+    </button>
+  )
 }
 
 export function App() {
@@ -64,10 +94,17 @@ export function App() {
 }
 ```
 
-## 发生了什么
+`RuntimeProvider` 持有 runtime 投影。`useModule(Counter.tag)` 从 runtime 中解析共享实例。`useSelector` 订阅精确读取；无参数读取整个 state 不是公开路线。
 
-- `Module` 声明 state 与 actions。
-- `Logic` 响应 `inc` action。
-- `Program` 装配 runnable unit。
-- `Runtime` 创建 execution container。
-- React 通过 `useModule(Counter.tag)` 消费托管实例，并通过 `useSelector(...)` 做精确读取。
+## Node 运行
+
+```ts
+await Logix.Runtime.run(CounterProgram, ({ module }) =>
+  Effect.gen(function* () {
+    yield* module.dispatch({ _tag: "increment", payload: undefined })
+    return yield* module.getState
+  }),
+)
+```
+
+CLI 任务、smoke test 和一次性服务端执行使用 `Runtime.run`。

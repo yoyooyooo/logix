@@ -1,52 +1,27 @@
 ---
 title: useSelector
-description: Subscribe to a precise state selector or selector descriptor.
+description: Precise React reads from a Logix module handle.
 ---
 
-`useSelector(handle, selector, equalityFn?)` is the canonical React read API.
+`useSelector(handle, selector, equalityFn?)` subscribes to a selected value.
+
+## Field selectors
 
 ```tsx
-const counter = useModule(Counter.tag)
-const value = useSelector(counter, (state) => state.value)
+const value = useSelector(handle, fieldValue("value"))
+const [value, label] = useSelector(handle, fieldValues(["value", "label"]))
 ```
 
-No-argument full-state reads are not part of the current public route. Pass an explicit selector.
+`fieldValue` and `fieldValues` preserve field-level intent and type inference for literal paths.
 
-## Equality
+## Function selector
 
 ```tsx
-const summary = useSelector(
-  counter,
-  (state) => ({ value: state.value, doubled: state.value * 2 }),
-  (a, b) => a.value === b.value && a.doubled === b.doubled,
-)
+const isEmpty = useSelector(handle, (state) => state.items.length === 0)
 ```
 
-If you do not pass an equality function, Logix uses the selector descriptor's equality when available, otherwise `Object.is`.
+Function selectors are useful for derived UI reads. Provide `equalityFn` for object results that should be compared structurally.
 
-## Form selectors
+## Domain selectors
 
-Form-specific reads still go through this hook:
-
-```tsx
-const name = useSelector(form, fieldValue("name"))
-const values = useSelector(form, fieldValues(["name", "email"]))
-const meta = useSelector(form, rawFormMeta())
-const error = useSelector(form, Form.Error.field("name"))
-const companion = useSelector(form, Form.Companion.field("warehouseId"))
-const rowCompanion = useSelector(
-  form,
-  Form.Companion.byRowId("items", rowId, "warehouseId"),
-)
-```
-
-Form does not add `useForm`, `useField`, `useFieldValue`, or `useCompanion` as canonical read routes.
-
-## Selector precision
-
-Prefer exact selectors and descriptor helpers. Broad function selectors are allowed only when you really need them, but exact reads give the runtime more room to route notifications precisely.
-
-## See also
-
-- [useModule](./use-module)
-- [Form selectors](/docs/form/selectors)
+Form exposes selector descriptors such as `Form.Error.field(path)` and `Form.Companion.byRowId(...)`. They still go through `useSelector`.

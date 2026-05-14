@@ -1,42 +1,32 @@
 ---
 title: Companion
-description: 为字段派生同步 local support facts。
+description: availability 与 candidate lists 这类同步 local soft facts。
 ---
 
-`field(path).companion(...)` 派生 availability、candidates 等 local soft facts。
+Companion facts 是 local、synchronous，并由 form state/source receipts 派生。它不是 validator，也不是 remote loader。
+
+## Declaration
 
 ```ts
 const warehouse = $.field("items.warehouseId").companion({
   deps: ["countryId", "items.warehouseId"],
-  lower(ctx) {
-    return {
-      availability: { kind: ctx.deps.countryId ? "interactive" : "hidden" },
-      candidates: {
-        items: computeWarehouseCandidates(ctx.deps, ctx.value),
-        keepCurrent: true,
-      },
-    }
-  },
+  lower: (ctx) => ({
+    availability: { kind: ctx.deps.countryId ? "interactive" : "hidden" },
+    candidates: { items: computeCandidates(ctx.deps, ctx.value), keepCurrent: true },
+  }),
 })
+
+return [warehouse] as const
 ```
 
-## Rules
+返回 carrier 可以保留精确 selector typing。
 
-- `lower` 必须同步且本地。
-- 它不能返回 Effect、Promise，也不能做 IO。
-- 它可以返回 `availability`、`candidates` 等 support facts。
-- 它不能写 `errors`、`$form`、`verdict`、`submitAttempt`、`reasonSlotId` 等 final truth keys。
-
-## 读取 companion facts
+## Read
 
 ```tsx
-const support = useSelector(form, Form.Companion.field("items.warehouseId"))
-const rowSupport = useSelector(
-  form,
-  Form.Companion.byRowId("items", rowId, "warehouseId"),
-)
+const companion = useSelector(form, Form.Companion.byRowId("items", rowId, "warehouseId"))
 ```
 
-## Boundary
+## 边界
 
-remote facts 用 source。final validation truth 用 rules/root/list/submit。Companion 只用于 local UX support facts。
+`lower` 必须同步。它不能返回 errors、verdicts、submit attempts、blocking reasons 等 final truth keys。

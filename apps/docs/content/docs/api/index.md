@@ -1,27 +1,31 @@
 ---
-title: API Reference
-description: Hand-written API docs for the current public surface, plus the generated signature index.
+title: API
+description: Contract pages for the public Logix packages.
 ---
 
-Use these pages to confirm object roles and canonical usage. Use the generated [API Reference](/api-reference) when you need exact signatures.
+Use these pages as public contract notes. For full signatures and exported types, use the generated [API Reference](/api-reference).
 
 ## Core
 
-1. [Module](/docs/api/core/module)
-2. [Program](/docs/api/core/program)
-3. [Runtime](/docs/api/core/runtime)
-4. [Bound API ($)](/docs/api/core/bound-api)
-5. [Handle](/docs/api/core/handle)
-6. [Match builder](/docs/api/core/match-builder)
+| Page | Export |
+| --- | --- |
+| [Module](/docs/api/core/module) | `@logixjs/core/Module` and `Logix.Module` |
+| [Program](/docs/api/core/program) | `@logixjs/core/Program` and `Logix.Program` |
+| [Runtime](/docs/api/core/runtime) | `@logixjs/core/Runtime` and `Logix.Runtime` |
+| [Bound API](/docs/api/core/bound-api) | `$` inside `Module.logic` |
+| [Handle](/docs/api/core/handle) | module handle read/dispatch view |
+| [Match builder](/docs/api/core/match-builder) | fluent matching helper |
 
 ## React
 
-1. [RuntimeProvider](/docs/api/react/provider)
-2. [useModule](/docs/api/react/use-module)
-3. [useSelector](/docs/api/react/use-selector)
-4. [useDispatch](/docs/api/react/use-dispatch)
-5. [useImportedModule](/docs/api/react/use-imported-module)
+| Page | Export |
+| --- | --- |
+| [RuntimeProvider](/docs/api/react/provider) | `RuntimeProvider` |
+| [useModule](/docs/api/react/use-module) | shared and local instance acquisition |
+| [useSelector](/docs/api/react/use-selector) | precise reads |
+| [useDispatch](/docs/api/react/use-dispatch) | dispatch helper |
+| [useImportedModule](/docs/api/react/use-imported-module) | child program handle lookup |
 
-## Removed from the user docs
+## Domain packages
 
-The current public React docs do not include `useLocalModule`, `useModuleList`, or `ModuleScope`. Use `useModule(Program, options)` for local/keyed ownership and normal component composition for list mapping.
+Form has its own guide under [Form](/docs/form). It still compiles back to the same `Program` and React host law.

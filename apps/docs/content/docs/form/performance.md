@@ -1,33 +1,26 @@
 ---
 title: Performance
-description: Keep Form reads precise and large lists stable.
+description: Keep form reads narrow, list identity stable, and source work scoped.
 ---
 
-Form performance follows the core runtime hot-path rules: precise reads, stable identity, and no unnecessary second systems.
+Form performance follows the same runtime rules as core modules: narrow reads, sparse writes, stable identity, and bounded diagnostics.
 
-## Read narrowly
+## Values
 
-Prefer exact field selectors:
+Prefer field selectors over broad state reads.
 
 ```tsx
-const name = useSelector(form, fieldValue("name"))
-const meta = useSelector(form, rawFormMeta())
+const email = useSelector(form, fieldValue("email"))
 ```
-
-Avoid broad selectors that force many components to re-render.
 
 ## Lists
 
-- Use `identity: { mode: "trackBy", trackBy: "id" }` for reorder-heavy lists.
-- Use `byRowId(...)` when a write must survive reorder or remove.
-- Read only the list slice or row companion fact you render.
+Use stable row identity. Prefer row-id commands and row-scoped selectors for large lists.
 
-## Sources and companion
+## Sources
 
-- Source handles async remote work and should be keyed by explicit deps.
-- Companion must stay synchronous and local.
-- Do not fetch inside React render/effects to duplicate the source lane.
+Keep `deps` minimal. Return `undefined` from `key` while a source is inactive. Use `debounceMs` and `concurrency` where user input can change quickly.
 
-## Evidence
+## Companion
 
-Hard performance claims require comparable before/after evidence. Quick runs are diagnostic clues, not release claims.
+Companion `lower` functions must stay synchronous and cheap. Heavy derivation belongs in services or explicit logic.

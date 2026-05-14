@@ -1,48 +1,31 @@
 ---
 title: Handle
-description: Consume modules and services through stable handles inside logic.
+description: Read-only and dispatch-oriented view of a module instance.
 ---
 
-Inside logic, dependency consumption resolves to a handle.
+A handle is the safe public view of a module instance. It exposes reads, change streams, dispatch, and typed action helpers.
 
-Two handle shapes matter:
+## Shape
 
-- imported child handle, when consuming a child Program from the parent imports scope
-- service handle, when consuming a runtime service tag
+```ts
+handle.read((state) => state.value)
+handle.changes((state) => state.value)
+handle.dispatch({ _tag: "refresh", payload: undefined })
+handle.actions.refresh()
+```
 
 ## Imported child handle
 
-Use an imported child handle when the consumed dependency is a child Program owned by the current parent scope.
-
 ```ts
-const child = yield* $.imports.get(Child.tag)
-const value = yield* child.read((s) => s.value)
+const child = yield* $.use(Child.tag)
+yield* child.actions.refresh()
+const value = yield* child.read((state) => state.value)
 ```
 
-Typical capabilities:
+## React handle
 
-- read state
-- observe changes
-- dispatch actions
+`useModule(...)` returns the handle shape plus domain extensions carried by the program. `useSelector` consumes that handle.
 
-The child Program must be provided through `Program.make(..., { capabilities: { imports: [ChildProgram] } })`.
+## Boundary
 
-## Service handle
-
-Use a service handle when the consumed dependency is an injected runtime service.
-
-```ts
-const api = yield* $.use(UserService)
-```
-
-This is appropriate when the external system remains the source of truth and Logix should consume it without mirroring it as module state.
-
-## Notes
-
-- use imported child Programs when the dependency should become a Logix state asset inside the parent scope
-- use services when the external system should remain the source of truth
-
-## See also
-
-- [Bound API ($)](./bound-api)
-- [Cross-module communication](../../guide/learn/cross-module-communication)
+A handle is not a raw runtime internals object. It should not expose direct state mutation outside the sanctioned action/domain command routes.

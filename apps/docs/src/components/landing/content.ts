@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { BookOpen, Brain, Code2, GitGraph, History, Puzzle, Rocket, ShieldCheck, Sparkles, TimerReset } from 'lucide-react'
+import { BookOpen, Brain, Code2, GitGraph, History, Puzzle, Rocket, ShieldCheck, TimerReset } from 'lucide-react'
 
 export type LandingLang = 'cn' | 'en'
 
@@ -75,78 +75,79 @@ export type LandingContent = {
 export const landingCopy: Record<LandingLang, LandingContent> = {
   cn: {
     hero: {
-      badge: '公开预览',
+      badge: '当前文档路线',
       title: 'Logix',
-      slogan: 'React 心智模型，确定性可观测运行时',
-      description: '用组件的方式组织规则与状态。执行顺序稳定、标识稳定，运行过程可观测、可追踪、可回放。',
+      slogan: 'React 的逻辑半边',
+      description:
+        '用 Module 声明逻辑，用 Program 装配业务单元，用 Runtime 执行，再通过 React host 精确读取。文档从这条主链展开，不要求用户学习内部 trait 或 field-kernel 体系。',
       docsCta: '阅读文档',
       sourceCta: '查看源码',
     },
     nextSteps: {
-      title: '从这里开始',
-      description: '三个入口：快速开始、核心心智与 API。',
+      title: '先跑通主链',
+      description: '从一个 Program 开始，再进入核心概念和 API 参考。',
       items: [
         {
           icon: Rocket,
           title: '快速开始',
-          description: '跑通第一个应用：Modules、State 与 Flows。',
+          description: '创建 Program，在 React 中挂载并读写状态。',
           href: '/guide/get-started/quick-start',
         },
         {
           icon: Brain,
-          title: 'Thinking in Logix',
-          description: '用 React 心智模型理解规则与状态。',
-          href: '/guide/essentials/thinking-in-logix',
+          title: 'Canonical spine',
+          description: '固定 Module、Program、Runtime 和 React host 的角色。',
+          href: '/guide/essentials/canonical-spine',
         },
         {
           icon: BookOpen,
-          title: 'API 参考',
-          description: '@logixjs/core 与 @logixjs/react。',
+          title: 'API',
+          description: 'Core、React 和生成的签名参考。',
           href: '/api',
         },
       ] satisfies ReadonlyArray<NextStepItem>,
     },
     timeTravel: {
-      title: '时间旅行调试',
+      title: '运行证据',
       description:
-        '不只是 Redux DevTools：记录完整执行 Trace，回滚状态，并在未来时间线中分叉与 Mock。',
-      highlight: 'Trace → 回放 → 分叉',
-      mockTitle: 'Trace（示意）',
-      mockHint: '只展示结构：真实 Trace 可序列化、可解释、可回放。',
+        'Logix 的 diagnostics 和 verification 面向真实执行：run、check、trial 和 report 描述同一个 runtime 边界下发生的事。',
+      highlight: 'run → check → trial',
+      mockTitle: 'Report（示意）',
+      mockHint: '结构优先：报告用于解释装配、依赖、执行和诊断结果。',
     },
     features: {
-      title: '核心能力',
-      description: '确定性运行 + 可观测 Trace，让规则与状态可组合、可调试。',
+      title: '公开模型',
+      description: '小公开面、明确 owner、Effect-native 执行和 React 精确读取。',
       items: [
         {
           icon: Code2,
-          title: 'React 心智模型',
-          description: '像写组件一样组织规则与状态，把行为组合成 Flow。',
-        },
-        {
-          icon: History,
-          title: '确定性执行',
-          description: '稳定的执行顺序与标识，让问题可复现。',
+          title: 'Module.logic',
+          description: '在定义阶段声明逻辑、ready gate、字段行为和运行入口。',
         },
         {
           icon: GitGraph,
-          title: '统一最小 IR',
-          description: '声明降解为 Static IR 与 Dynamic Trace，驱动工具链。',
+          title: 'Program.make',
+          description: '在装配阶段确定初始状态、imports 和 declaration assets。',
+        },
+        {
+          icon: History,
+          title: 'Runtime.make',
+          description: '执行、服务、生命周期、事务和 diagnostics 都在 runtime 内闭合。',
         },
         {
           icon: TimerReset,
-          title: '可回放调试',
-          description: '回放 Trace 定位问题，必要时分叉与 Mock 做 what-if。',
+          title: 'Runtime.check / trial',
+          description: '验证和试运行返回结构化报告，而不是临时日志。',
         },
         {
           icon: Puzzle,
-          title: '模块隔离',
-          description: '显式边界与事务窗口，避免脏读与隐式耦合。',
+          title: 'React host',
+          description: 'RuntimeProvider 提供宿主边界，useModule 与 useSelector 负责实例和读取。',
         },
         {
           icon: ShieldCheck,
-          title: 'Effect 原生',
-          description: '基于 Effect：错误、并发、上下文注入与资源管理。',
+          title: 'Form DSL',
+          description: 'Form 处理字段、规则、source、companion、submit 与列表身份。',
         },
       ] satisfies ReadonlyArray<FeatureItem>,
     },
@@ -154,24 +155,24 @@ export const landingCopy: Record<LandingLang, LandingContent> = {
       title: '常见问题',
       items: [
         {
-          q: '它解决什么问题？',
-          a: '把“规则/状态/副作用”组织成可组合的 Flow，并把运行过程收敛为可观测 Trace，使问题可解释、可复现、可回放。',
+          q: 'traits 还需要用户理解吗？',
+          a: '不需要。当前用户路线讲行为和 owner 边界；内部 trait、field-kernel、compiler asset 不再作为正面教学概念。',
         },
         {
-          q: '为什么强调确定性？',
-          a: '同样输入得到同样输出与同样 Trace；这样诊断与回放才有可靠锚点，工具链才能建立稳定引用。',
+          q: '为什么一定要 Program？',
+          a: 'Program 是装配边界。它把 Module 定义、初始状态、imports 和 declarations 收成 runtime 可执行的业务单元。',
         },
         {
-          q: '和 Redux / XState 的关系？',
-          a: 'Logix 更关注“Flow + 运行时契约 + Trace/回放”，并把并发/错误/资源管理交给 Effect，减少隐式约定。',
+          q: 'React 文档为什么这么少？',
+          a: 'React 只持有宿主投影：Provider、实例获取、selector 读取和 dispatch。更多业务语义留在 core 或领域 DSL。',
         },
       ],
     },
     finalCta: {
-      title: '开始构建你的第一个 Flow',
-      description: '从 Quick Start 跑通最小闭环，再逐步引入 Trace/回放与模块协作。',
+      title: '从第一个 Program 开始',
+      description: '先跑通 Module → Program → Runtime → React，再按需要进入 Form、patterns 和 advanced。',
       primaryCta: '进入文档',
-      badge: '可回放 · 可解释 · 可组合',
+      badge: 'Module · Program · Runtime · React',
     },
     footer: {
       brand: 'Logix Runtime',
@@ -180,79 +181,79 @@ export const landingCopy: Record<LandingLang, LandingContent> = {
   },
   en: {
     hero: {
-      badge: 'Public Preview',
+      badge: 'Current docs route',
       title: 'Logix',
-      slogan: 'React mental model for a deterministic, observable runtime',
+      slogan: 'The logic half of React',
       description:
-        'Organize rules and state like components. Stable ordering, stable identities, observable runs with trace + replay.',
+        'Declare logic with Module, assemble a business unit with Program, execute it with Runtime, and project precise reads into React. The docs expand from that spine; users do not need the internal trait or field-kernel system.',
       docsCta: 'Read the Docs',
       sourceCta: 'View Source',
     },
     nextSteps: {
-      title: 'Start here',
-      description: 'Three quick entries to build a working mental model.',
+      title: 'Run the spine first',
+      description: 'Start with one Program, then move into the core model and API reference.',
       items: [
         {
           icon: Rocket,
           title: 'Quick Start',
-          description: 'Build your first app with Modules, State, and Flows.',
+          description: 'Create a Program, mount it in React, and read/write state.',
           href: '/guide/get-started/quick-start',
         },
         {
           icon: Brain,
-          title: 'Thinking in Logix',
-          description: 'Understand rules and state with a React mental model.',
-          href: '/guide/essentials/thinking-in-logix',
+          title: 'Canonical spine',
+          description: 'Fix the roles of Module, Program, Runtime, and the React host.',
+          href: '/guide/essentials/canonical-spine',
         },
         {
           icon: BookOpen,
-          title: 'API Reference',
-          description: '@logixjs/core and @logixjs/react.',
+          title: 'API',
+          description: 'Core, React, and generated signature reference.',
           href: '/api',
         },
       ] satisfies ReadonlyArray<NextStepItem>,
     },
     timeTravel: {
-      title: 'Time-travel debugging',
+      title: 'Runtime evidence',
       description:
-        'Not just Redux DevTools: record full traces, roll back state, and fork + mock future timelines.',
-      highlight: 'Trace → Replay → Fork',
-      mockTitle: 'Trace (sketch)',
-      mockHint: 'Structure only: real traces are serializable, explainable, and replayable.',
+        'Logix diagnostics and verification describe real execution: run, check, trial, and report all stay on the same runtime boundary.',
+      highlight: 'run → check → trial',
+      mockTitle: 'Report (sketch)',
+      mockHint: 'Structure first: reports explain assembly, dependencies, execution, and diagnostics.',
     },
     features: {
-      title: 'Core capabilities',
-      description: 'Deterministic execution with observable traces for composable rules and state.',
+      title: 'Public model',
+      description: 'A small public surface with explicit owners, Effect-native execution, and precise React reads.',
       items: [
         {
           icon: Code2,
-          title: 'React mental model',
-          description: 'Organize rules and state like components; compose behavior as flows.',
-        },
-        {
-          icon: History,
-          title: 'Deterministic execution',
-          description: 'Stable ordering and stable identities make issues reproducible.',
+          title: 'Module.logic',
+          description: 'Declare logic, ready gates, field behavior, and run entries at definition time.',
         },
         {
           icon: GitGraph,
-          title: 'Minimal IR',
-          description: 'Declarations compile to Static IR + Dynamic Trace for tooling.',
+          title: 'Program.make',
+          description: 'Assemble initial state, imports, and declaration assets into a business unit.',
+        },
+        {
+          icon: History,
+          title: 'Runtime.make',
+          description: 'Execution, services, lifecycle, transactions, and diagnostics close inside runtime.',
         },
         {
           icon: TimerReset,
-          title: 'Replay debugging',
-          description: 'Replay traces, fork timelines, and mock what-if scenarios.',
+          title: 'Runtime.check / trial',
+          description: 'Verification and trials return structured reports instead of incidental logs.',
         },
         {
           icon: Puzzle,
-          title: 'Module scoping',
-          description: 'Explicit boundaries prevent dirty reads and hidden coupling.',
+          title: 'React host',
+          description: 'RuntimeProvider provides the host boundary; useModule and useSelector handle instances and reads.',
         },
         {
           icon: ShieldCheck,
-          title: 'Effect-native',
-          description: 'Built on Effect: errors, concurrency, context, and resources.',
+          title: 'Form DSL',
+          description: 'Form owns fields, rules, sources, companion facts, submit, and list identity.',
         },
       ] satisfies ReadonlyArray<FeatureItem>,
     },
@@ -260,24 +261,24 @@ export const landingCopy: Record<LandingLang, LandingContent> = {
       title: 'FAQ',
       items: [
         {
-          q: 'What does it solve?',
-          a: 'Compose “rules/state/effects” as flows and converge runs into observable traces, so issues become explainable, reproducible, and replayable.',
+          q: 'Do users need traits?',
+          a: 'No. The current user route explains behavior and owner boundaries; internal traits, field-kernel, and compiler assets are not front-door concepts.',
         },
         {
-          q: 'Why deterministic?',
-          a: 'Same input, same output, same trace. Diagnostics and replay need stable anchors; tooling needs stable references.',
+          q: 'Why does Program exist?',
+          a: 'Program is the assembly boundary. It turns Module definitions, initial state, imports, and declarations into a runtime-executable business unit.',
         },
         {
-          q: 'How is it different from Redux / XState?',
-          a: 'Logix focuses on flow contracts + trace/replay, and delegates concurrency/errors/resources to Effect to reduce implicit conventions.',
+          q: 'Why is the React API small?',
+          a: 'React only owns host projection: provider, instance acquisition, selector reads, and dispatch. Business semantics stay in core or domain DSLs.',
         },
       ],
     },
     finalCta: {
-      title: 'Ship your first flow',
-      description: 'Start with Quick Start, then add trace/replay and module collaboration step by step.',
+      title: 'Start with the first Program',
+      description: 'Run Module → Program → Runtime → React, then add Form, patterns, and advanced topics as needed.',
       primaryCta: 'Open Docs',
-      badge: 'Replayable · Explainable · Composable',
+      badge: 'Module · Program · Runtime · React',
     },
     footer: {
       brand: 'Logix Runtime',

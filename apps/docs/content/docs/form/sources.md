@@ -1,48 +1,33 @@
 ---
 title: Sources
-description: Connect Query-owned remote facts to fields with field(path).source(...).
+description: Remote facts for form fields, with resource ownership outside Form.
 ---
 
-`field(path).source(...)` is the Form lane for remote facts.
+A source connects a field to a remote fact. Form owns the field receipt and submit impact; the resource owner stays outside Form.
+
+## Declaration
 
 ```ts
-$.field("profileResource").source({
-  resource: ProfileResource,
-  deps: ["profileId"],
-  key: (profileId) => (profileId ? { userId: profileId } : undefined),
+$.field("provinceId").source({
+  resource: ProvincesByCountry,
+  deps: ["countryId"],
+  key: (countryId) => countryId ? { countryId } : undefined,
   triggers: ["onMount", "onKeyChange"],
+  debounceMs: 150,
   concurrency: "switch",
-  submitImpact: "block",
+  submitImpact: "observe",
 })
 ```
 
-## Resource owner
+## Inactive key
 
-The resource is Query-owned:
-
-```ts
-const ProfileResource = Query.Engine.Resource.make({
-  id: "profile",
-  keySchema: Schema.Struct({ userId: Schema.String }),
-  load: ({ userId }) => fetchProfile(userId),
-})
-```
-
-Install the resource and optional engine middleware through runtime services/layers, not through React effects or companion functions.
-
-## Inactive keys
-
-`key(...)` may return `undefined`. That means the source is inactive for the current dependency state.
+Returning `undefined` from `key` makes the source inactive. Use this for dependent fields.
 
 ## Submit impact
 
-| Value | Meaning |
-| --- | --- |
-| `"block"` | Pending/stale source work can block submit. |
-| `"observe"` | Source refresh is visible but does not block submit. |
+- `block`: pending/stale source work can block submit.
+- `observe`: source state is visible but does not block submit by itself.
 
-A source failure can be explained by `Form.Error.field(path)`, but final validation truth still belongs to rules, root/list rules, and submit decode.
+## Boundary
 
-## Not an options API
-
-Source does not create `Form.Source`, `useFieldSource`, public refresh hooks, or an options/candidates API. Use companion for local availability/candidates, and rules/submit for final truth.
+A source is not an options API. It does not own final errors, candidates, or UI availability. Use rules for errors and companion for local soft facts.

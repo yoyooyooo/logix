@@ -1,38 +1,22 @@
 ---
 title: useImportedModule
-description: 从父实例 import scope 中解析子 Program。
+description: 从 parent handle 读取 child program handle。
 ---
 
-`useImportedModule(parent, childTag)` 从父实例的 import scope 中解析子 module。
+`useImportedModule(parentHandle, childTag)` 是 program imports 的 React helper。
 
-子模块必须在 assembly 阶段以 Program 形式提供：
+```tsx
+const parent = useModule(ParentProgram, { key: "page" })
+const child = useImportedModule(parent, Child.tag)
+```
+
+child 必须存在于 parent program 的 `Program.capabilities.imports` 中。
 
 ```ts
-const HostProgram = Logix.Program.make(Host, {
+const ParentProgram = Logix.Program.make(Parent, {
   initial,
-  capabilities: {
-    imports: [ChildProgram],
-  },
+  capabilities: { imports: [ChildProgram] },
 })
 ```
 
-React 使用：
-
-```tsx
-const host = useModule(HostProgram, { key: "session-a" })
-const child = useImportedModule(host, Child.tag)
-const childValue = useSelector(child, (state) => state.value)
-```
-
-当 UI 必须读取或派发隶属于父实例 scope 的子实例时，使用这条路线。
-
-## Boundaries
-
-- 它不会跨不相关 runtime scopes 搜索。
-- 它不会自己创建子 Program。
-- 它不替代 `Program.make(..., { capabilities: { imports } })`。
-
-## See also
-
-- [Program](/cn/docs/api/core/program)
-- [useModule](./use-module)
+当 child instance 属于 parent 装配出的业务单元时使用这条路线。当 React 应拥有一个独立 local child instance 时，使用 `useModule(ChildProgram, { key })`。

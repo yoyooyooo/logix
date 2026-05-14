@@ -1,58 +1,46 @@
 ---
 title: Effect basics
-description: The minimal Effect mental model needed to read and write Logix logic.
+description: The Effect concepts used by Logix examples.
 ---
 
-Most Logix business logic is written inside `Effect.gen(...)`.
+Logix does not wrap Effect into a different mental model. Logic functions return `Effect` values, services are provided through `Layer`, and failures stay typed until the runtime boundary handles them.
 
-For day-to-day Logix usage, three ideas are enough:
-
-- `Effect` describes work that has not run yet
-- `yield*` sequences the next step
-- the runtime or `$` decides when the program is executed
-
-## Basic shape
+## Effect value
 
 ```ts
-Effect.Effect<A, E, R>
-```
-
-- `A`: success value
-- `E`: typed error
-- `R`: required environment
-
-## Common form
-
-```ts
-const fx = Effect.gen(function* () {
-  const user = yield* UserApi.getUser("id-123")
-  yield* Effect.log(`Loaded user ${user.name}`)
-  return user
+const program = Effect.gen(function* () {
+  const user = yield* UserService.get("u1")
+  return user.name
 })
 ```
+
+An `Effect<A, E, R>` describes work that returns `A`, may fail with `E`, and requires environment `R`.
+
+## Service and layer
+
+```ts
+class Api extends Effect.Service<Api>()("Api", {
+  effect: Effect.succeed({ save: (value: string) => Effect.succeed(value) }),
+}) {}
+
+const layer = Api.Default
+```
+
+Provide layers at assembly/runtime boundaries. Logic reads services with `$.use(Api)`.
 
 ## In Logix logic
 
 ```ts
-yield* $.onAction("submit").run(() =>
+const logic = Module.logic("save", ($) =>
   Effect.gen(function* () {
-    const api = yield* $.use(UserApi)
-    const result = yield* api.submit()
-
-    yield* $.state.mutate((draft) => {
-      draft.lastResult = result
-    })
+    yield* $.onAction("save").runLatest((action) =>
+      Effect.gen(function* () {
+        const api = yield* $.use(Api)
+        yield* api.save(action.payload)
+      }),
+    )
   }),
 )
 ```
 
-## Minimal guidance
-
-- treat `yield*` as the next step in a program
-- keep orchestration on `$`
-- drop down to Effect details only when concurrency, retries, timeouts, or custom abstractions matter
-
-## See also
-
-- [Flows & Effects](./flows-and-effects)
-- [Bound API ($)](../../api/core/bound-api)
+Keep Effect composition in logic. Keep component code focused on input and rendering.

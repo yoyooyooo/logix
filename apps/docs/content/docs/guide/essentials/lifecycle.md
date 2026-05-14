@@ -1,39 +1,36 @@
 ---
 title: Lifecycle
-description: Keep startup readiness, runtime ownership, and React projection separate.
+description: Instance readiness, running work, disposal, and React ownership.
 ---
 
-Lifecycle has three distinct areas:
-
-| Area | Owner |
-| --- | --- |
-| startup readiness | `$.readyAfter(...)` inside `Module.logic(...)` declaration phase |
-| runtime ownership/disposal | the boundary that calls `Runtime.make(...)` or `Runtime.run(...)` |
-| React visibility | `RuntimeProvider` and `useModule(...)` |
+A Logix module instance has two lifecycle lanes: readiness and running work.
 
 ## Readiness
 
 ```ts
-const Logic = Module.logic("startup", ($) => {
-  $.readyAfter(loadRequiredConfig, { id: "required-config" })
-
-  return Effect.gen(function* () {
-    // long-running run phase
-  })
-})
+yield* $.readyAfter(loadConfig, { id: "config" })
 ```
 
-`readyAfter` gates readiness. The returned run effect is not readiness work.
+A readiness requirement must finish before the instance is considered ready. If it fails, acquisition fails and the runtime reports the failure.
 
-## React local lifetime
+## Running work
 
-Use `useModule(Program, options)` for component/route-owned instances:
+The effect returned from `Module.logic` may keep running after readiness. Watchers, streams, and long-running tasks live in this lane.
 
-```tsx
-const session = useModule(SessionProgram, {
-  key: `session:${id}`,
-  gcTime: 60_000,
-})
+```ts
+const logic = Module.logic("watch", ($) =>
+  Effect.gen(function* () {
+    yield* $.onAction("changed").runLatest(handleChange)
+  }),
+)
 ```
 
-`RuntimeProvider` makes a runtime visible. It does not automatically dispose shared runtimes.
+## Disposal
+
+Runtime disposal closes the scope and finalizers. Use Effect scopes and service finalizers for resources; do not create a second public destroy hook.
+
+## React ownership
+
+- `useModule(Module.tag)` resolves an already hosted instance.
+- `useModule(Program, { key })` creates or reuses a local/keyed instance under the current provider.
+- Unmounting a local owner releases its runtime cache entry according to provider policy.

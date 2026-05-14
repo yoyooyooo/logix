@@ -1,156 +1,46 @@
 ---
-title: 搜索+详情联动
-description: 使用 Logix 实现列表搜索与详情面板的联动模式。
+title: 搜索 + 详情
+description: 把搜索状态、选择和详情拉取保留在 runtime 中。
 ---
 
-典型的 Master-Detail 场景：左侧搜索列表，右侧详情面板，选中项变化时自动加载详情。
+搜索详情页通常由三个状态原子组成：查询参数、结果行、选中身份。
 
-## 核心思路
-
-1. **两个 Module**：`SearchModule`（列表）+ `DetailModule`（详情）
-2. **联动方式**：通过 `Program.capabilities.imports` 与 `$.imports.get(...)` 实现跨模块通信
-3. **竞态处理**：使用 `runLatest` 确保详情始终对应最新选中项
-
-## 状态设计
+## State
 
 ```ts
-// Search Module
-const SearchDef = Logix.Module.make('Search', {
-  state: Schema.Struct({
-    keyword: Schema.String,
-    results: Schema.Array(ItemSchema),
-    selectedId: Schema.NullOr(Schema.String),
-    isSearching: Schema.Boolean,
-  }),
-  actions: {
-    setKeyword: Schema.String,
-    select: Schema.String,
-  },
-})
-
-// Detail Module
-const DetailDef = Logix.Module.make('Detail', {
-  state: Schema.Struct({
-    data: Schema.NullOr(DetailSchema),
-    isLoading: Schema.Boolean,
-    error: Schema.NullOr(Schema.String),
-  }),
-  actions: {
-    load: Schema.String, // itemId
-    clear: Schema.Void,
-  },
+state: Schema.Struct({
+  q: Schema.String,
+  page: Schema.Number,
+  selectedId: Schema.NullOr(Schema.String),
+  rows: Schema.Array(Row),
+  detail: Schema.NullOr(Detail),
 })
 ```
 
-## 搜索逻辑（防抖 + 取消旧请求）
+`selectedId` 是稳定 authority。不要用数组 index 作为详情身份。
+
+## Actions
 
 ```ts
-const SearchLogic = SearchDef.logic("logic", ($) =>
-  Effect.gen(function* () {
-    const api = yield* $.use(SearchApi)
-
-    // 搜索：防抖 300ms + 取消旧请求
-    yield* $.onState((s) => s.keyword)
-      .debounce(300)
-      .runLatest((keyword) =>
-        Effect.gen(function* () {
-          if (!keyword.trim()) {
-            yield* $.state.mutate((d) => {
-              d.results = []
-            })
-            return
-          }
-
-          yield* $.state.mutate((d) => {
-            d.isSearching = true
-          })
-          const results = yield* api.search(keyword)
-          yield* $.state.mutate((d) => {
-            d.results = results
-            d.isSearching = false
-          })
-        }),
-      )
-  }),
-)
+actions: {
+  queryChanged: Schema.String,
+  pageChanged: Schema.Number,
+  rowSelected: Schema.NullOr(Schema.String),
+}
 ```
 
-## 详情联动（跨模块）
+query 改变通常重置 page 和 selection。选中一行不应该重写列表。
 
-### 方式一：在 SearchLogic 中驱动
+## Runtime work
 
-```ts
-const SearchLogic = SearchDef.logic("logic", ($) =>
-  Effect.gen(function* () {
-    const Detail = yield* $.imports.get(DetailDef.tag)
+查询和详情拉取使用 `runLatest`。最新查询获胜；过期响应不应覆盖新状态。
 
-    // 选中项变化时，驱动详情加载
-    yield* $.onState((s) => s.selectedId)
-      .filter((id): id is string => id !== null)
-      .runLatest((id) => Detail.dispatch({ _tag: 'load', payload: id }))
-  }),
-)
-```
-
-Host Program 必须 import detail Program：
-
-```ts
-const SearchProgram = Logix.Program.make(SearchDef, {
-  initial: {
-    keyword: "",
-    results: [],
-    selectedId: null,
-    isSearching: false,
-  },
-  capabilities: {
-    imports: [DetailProgram],
-  },
-  logics: [SearchLogic],
-})
-```
-
-## React 组件
+## React 读取
 
 ```tsx
-function MasterDetail() {
-  return (
-    <div className="master-detail">
-      <SearchPanel />
-      <DetailPanel />
-    </div>
-  )
-}
-
-function SearchPanel() {
-  const search = useModule(SearchDef.tag)
-  const { keyword, results, selectedId } = useSelector(search, (s) => s)
-  const dispatch = useDispatch(search)
-
-  return (
-    <div>
-      <input value={keyword} onChange={(e) => dispatch({ _tag: 'setKeyword', payload: e.target.value })} />
-      <ul>
-        {results.map((item) => (
-          <li
-            key={item.id}
-            className={item.id === selectedId ? 'selected' : ''}
-            onClick={() => dispatch({ _tag: 'select', payload: item.id })}
-          >
-            {item.title}
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
+const [q, page, selectedId] = useSelector(browser, fieldValues(["q", "page", "selectedId"]))
+const rows = useSelector(browser, fieldValue("rows"))
+const detail = useSelector(browser, fieldValue("detail"))
 ```
 
-## 相关模式
-
-- [分页加载](./pagination)
-- [跨模块通信](../learn/cross-module-communication)
-
-## 示例代码
-
-- `examples/logix/src/scenarios/search-with-debounce-latest.ts`
-- `examples/logix-react/src/modules/querySearchDemo.ts`
+只有 UI 同时消费这些字段时才组合读取。

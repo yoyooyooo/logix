@@ -1,127 +1,105 @@
 ---
-title: "Tutorial: Cancelable search"
-description: Build a debounced search flow that keeps only the latest request.
+title: Cancelable search
+description: A complete search flow with state, services, cancellation, and React reads.
 ---
 
-This tutorial builds a minimal search slice with:
+Search is a good first real flow: user input changes quickly, requests can overlap, and the UI needs stable loading and result state.
 
-- one input field
-- one async service
-- debounce
-- latest-only request handling
-
-## Module
+## State and actions
 
 ```ts
-export const SearchDef = Logix.Module.make("Search", {
-  state: SearchState,
+const Search = Logix.Module.make("Search", {
+  state: Schema.Struct({
+    query: Schema.String,
+    loading: Schema.Boolean,
+    results: Schema.Array(Schema.String),
+    error: Schema.NullOr(Schema.String),
+  }),
   actions: {
-    setKeyword: Schema.String,
+    queryChanged: Schema.String,
   },
-  immerReducers: {
-    setKeyword: (draft, keyword) => {
-      draft.keyword = keyword
-    },
+  reducers: {
+    queryChanged: Logix.Module.Reducer.mutate((draft, action) => {
+      draft.query = action.payload
+    }),
   },
 })
 ```
+
+Keep the visible query in state. The async request is driven by logic, not by the component.
 
 ## Service
 
 ```ts
-export class SearchApiTag extends Context.Tag("@svc/SearchApi")<SearchApiTag, SearchApi>() {}
-
-export const SearchApiLive = Layer.succeed(SearchApiTag, {
-  search: (keyword) =>
-    Effect.gen(function* () {
-      yield* Effect.sleep("200 millis")
-      return [`${keyword} Result A`, `${keyword} Result B`]
-    }),
-})
+class SearchService extends Effect.Service<SearchService>()("SearchService", {
+  effect: Effect.succeed({
+    run: (query: string) => Effect.succeed([`Result for ${query}`]),
+  }),
+}) {}
 ```
+
+Production code normally provides this service through a `Layer` in `Runtime.make` or `Program.make`.
 
 ## Logic
 
 ```ts
-export const SearchLogic = SearchDef.logic<SearchApiTag>("search-logic", ($) =>
-  $.onState((s) => s.keyword).debounce(300).runLatestTask({
-    pending: (keyword) =>
-      $.state.mutate((draft) => {
-        const trimmed = keyword.trim()
-        draft.errorMessage = undefined
-        draft.isSearching = trimmed.length > 0
-        if (trimmed.length === 0) {
-          draft.results = []
-        }
-      }),
+const SearchLogic = Search.logic("run-search", ($) =>
+  Effect.gen(function* () {
+    yield* $.onAction("queryChanged")
+      .debounce(200)
+      .runLatest((action) =>
+        Effect.gen(function* () {
+          const service = yield* $.use(SearchService)
+          yield* $.state.mutate((draft) => {
+            draft.loading = true
+            draft.error = null
+          })
 
-    effect: (keyword) =>
-      Effect.gen(function* () {
-        const trimmed = keyword.trim()
-        if (trimmed.length === 0) return [] as ReadonlyArray<string>
-        const api = yield* $.use(SearchApiTag)
-        return yield* api.search(trimmed)
-      }),
+          const results = yield* service.run(action.payload).pipe(
+            Effect.catchAll((error) =>
+              Effect.gen(function* () {
+                yield* $.state.mutate((draft) => {
+                  draft.error = String(error)
+                })
+                return [] as string[]
+              }),
+            ),
+          )
 
-    success: (results) =>
-      $.state.mutate((draft) => {
-        draft.isSearching = false
-        draft.results = Array.from(results)
-      }),
-
-    failure: () =>
-      $.state.mutate((draft) => {
-        draft.isSearching = false
-        draft.errorMessage = "Search failed"
-      }),
+          yield* $.state.mutate((draft) => {
+            draft.loading = false
+            draft.results = results
+          })
+        }),
+      )
   }),
 )
 ```
 
-## Runtime
+`runLatest` keeps only the newest request active for this trigger. The component does not implement cancellation.
+
+## Program and React
 
 ```ts
-export const SearchProgram = Logix.Program.make(SearchDef, {
-  initial: {
-    keyword: "",
-    results: [],
-    isSearching: false,
-    errorMessage: undefined,
-  },
+const SearchProgram = Logix.Program.make(Search, {
+  initial: { query: "", loading: false, results: [], error: null },
   logics: [SearchLogic],
 })
 
-export const runtime = Logix.Runtime.make(SearchProgram, {
-  layer: SearchApiLive,
-})
-```
-
-## React
-
-```tsx
-function SearchView() {
-  const search = useModule(SearchDef.tag)
-  const keyword = useSelector(search, (s) => s.keyword)
-  const results = useSelector(search, (s) => s.results)
-  const isSearching = useSelector(search, (s) => s.isSearching)
+function SearchBox() {
+  const search = useModule(SearchProgram, { key: "search-page" })
+  const query = useSelector(search, fieldValue("query"))
+  const loading = useSelector(search, fieldValue("loading"))
+  const results = useSelector(search, fieldValue("results"))
+  const dispatch = useDispatch(search)
 
   return (
-    <div>
-      <input value={keyword} onChange={(e) => search.actions.setKeyword(e.target.value)} />
-      {isSearching && <div>Searching...</div>}
-      <ul>{results.map((r) => <li key={r}>{r}</li>)}</ul>
-    </div>
+    <>
+      <input value={query} onChange={(event) => dispatch({ _tag: "queryChanged", payload: event.target.value })} />
+      {loading ? <span>Loading</span> : <pre>{JSON.stringify(results)}</pre>}
+    </>
   )
 }
 ```
 
-## Notes
-
-- `debounce(300)` reduces churn during typing
-- `runLatestTask(...)` keeps only the latest request alive
-- the component remains responsible only for rendering and dispatching intent
-
-## Next
-
-- [Complex list tutorial](./tutorial-complex-list)
-- [Flows & Effects](../essentials/flows-and-effects)
+This uses a keyed local program instance. Use the module tag route when the search instance is provided by the root runtime.

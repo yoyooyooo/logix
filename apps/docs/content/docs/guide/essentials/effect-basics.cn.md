@@ -1,58 +1,46 @@
 ---
 title: Effect basics
-description: 读写 Logix logic 所需的最小 Effect 心智模型。
+description: Logix 示例中会用到的 Effect 概念。
 ---
 
-大多数 Logix 业务逻辑都写在 `Effect.gen(...)` 里。
+Logix 不把 Effect 包装成另一套心智。Logic 函数返回 `Effect`，service 通过 `Layer` 提供，失败在 runtime 边界处理前保持类型化。
 
-日常使用时，先记住 3 件事：
-
-- `Effect` 描述的是“尚未执行的工作”
-- `yield*` 表示流程里的下一步
-- 程序何时执行，由 runtime 或 `$` 决定
-
-## 基本形状
+## Effect value
 
 ```ts
-Effect.Effect<A, E, R>
-```
-
-- `A`：成功值
-- `E`：类型化错误
-- `R`：依赖环境
-
-## 常见写法
-
-```ts
-const fx = Effect.gen(function* () {
-  const user = yield* UserApi.getUser("id-123")
-  yield* Effect.log(`Loaded user ${user.name}`)
-  return user
+const program = Effect.gen(function* () {
+  const user = yield* UserService.get("u1")
+  return user.name
 })
 ```
+
+`Effect<A, E, R>` 描述一段工作：返回 `A`，可能以 `E` 失败，需要环境 `R`。
+
+## Service 和 layer
+
+```ts
+class Api extends Effect.Service<Api>()("Api", {
+  effect: Effect.succeed({ save: (value: string) => Effect.succeed(value) }),
+}) {}
+
+const layer = Api.Default
+```
+
+在装配或 runtime 边界提供 layer。logic 通过 `$.use(Api)` 读取服务。
 
 ## 在 Logix logic 中
 
 ```ts
-yield* $.onAction("submit").run(() =>
+const logic = Module.logic("save", ($) =>
   Effect.gen(function* () {
-    const api = yield* $.use(UserApi)
-    const result = yield* api.submit()
-
-    yield* $.state.mutate((draft) => {
-      draft.lastResult = result
-    })
+    yield* $.onAction("save").runLatest((action) =>
+      Effect.gen(function* () {
+        const api = yield* $.use(Api)
+        yield* api.save(action.payload)
+      }),
+    )
   }),
 )
 ```
 
-## 最小使用建议
-
-- 把 `yield*` 理解成程序里的下一步
-- 编排继续留在 `$`
-- 只有在并发、重试、超时或自定义抽象真的重要时，再下钻到更底层的 Effect 细节
-
-## 相关页面
-
-- [Flows & Effects](./flows-and-effects)
-- [Bound API ($)](../../api/core/bound-api)
+Effect 组合留在 logic。组件只处理输入与渲染。

@@ -1,39 +1,35 @@
 ---
 title: Validation
-description: validateOn、reValidateOn、manual validation 与 submit decode 的工作方式。
+description: on submit、on change、on blur 与 manual validation。
 ---
 
-Form validation 在 authoring 阶段配置，由 Form runtime 执行。
+validation policy 在 `Form.make` config 和 rule declarations 中声明。
+
+## Config
 
 ```ts
-Form.make("ContactForm", {
-  values: ContactValues,
+Form.make("Contact", {
+  values,
   initialValues,
   validateOn: ["onSubmit"],
   reValidateOn: ["onChange", "onBlur"],
-}, ($) => {
-  $.field("email").rule(Form.Rule.make({ required: true, email: true }))
-  $.submit({ decode: SubmitSchema })
-})
+}, define)
 ```
 
-## Runtime methods
+`validateOn` 控制第一次校验。`reValidateOn` 控制字段已经产生反馈后的后续校验。
+
+## Manual validation
 
 ```ts
-yield* form.validate()
-yield* form.validatePaths(["email", "name"])
-const verdict = yield* form.submit({
-  onValid: (decoded) => save(decoded),
-  onInvalid: (errors) => log(errors),
-})
+await Effect.runPromise(form.validate())
+await Effect.runPromise(form.validate(["email"]))
 ```
-
-`submit(...)` 会校验、flush blocking submit sources、decode payload，并返回 verdict。
 
 ## Error reads
 
 ```tsx
 const emailError = useSelector(form, Form.Error.field("email"))
+const meta = useSelector(form, rawFormMeta())
 ```
 
-field explanation 可以表示 error、pending、stale、cleanup 或当前没有 explanation。
+errors 属于领域 owner。不要镜像进 React local state。

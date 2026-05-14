@@ -1,55 +1,36 @@
 ---
-title: Selectors 与 support facts
-description: 用同一条 React host read route 读取 values、metadata、errors 与 companion facts。
+title: Selectors
+description: Form 通过 core field selectors 与 Form selector descriptors 读取。
 ---
 
-Form 读取使用 `useSelector(handle, selector)`。
+Form 使用与 core modules 相同的 React host route。
+
+## Values
 
 ```tsx
-const form = useModule(InventoryForm)
+const name = useSelector(form, fieldValue("name"))
+const [name, email] = useSelector(form, fieldValues(["name", "email"]))
+```
 
-const warehouseId = useSelector(form, fieldValue("items.0.warehouseId"))
-const values = useSelector(form, fieldValues(["countryId", "items"]))
+## Meta
+
+```tsx
 const meta = useSelector(form, rawFormMeta())
-const error = useSelector(form, Form.Error.field("items.0.warehouseId"))
-const companion = useSelector(form, Form.Companion.field("items.warehouseId"))
-const rowCompanion = useSelector(
-  form,
-  Form.Companion.byRowId("items", rowId, "warehouseId"),
-)
 ```
 
-## Selector table
+## Errors
 
-| 读取目标 | Selector |
-| --- | --- |
-| 单个 value | `fieldValue(path)` |
-| 多个 values | `fieldValues(paths)` |
-| form meta | `rawFormMeta()` |
-| field explanation | `Form.Error.field(path)` |
-| field companion | `Form.Companion.field(path)` |
-| row companion | `Form.Companion.byRowId(listPath, rowId, fieldPath)` |
-
-`Form.Error.field(path)` 是 explanation selector。它可以表示 error、pending、stale、cleanup 或当前没有 explanation。它不是第二套 validation truth。
-
-## Exact typing
-
-Companion declaration 可以从 `define(...)` 返回 carrier，让 companion selector result 保持精确类型：
-
-```ts
-export const InventoryForm = Form.make("InventoryForm", config, ($) => {
-  const warehouse = $.field("items.warehouseId").companion({
-    deps: ["countryId", "items.warehouseId"],
-    lower: (ctx) => ({
-      availability: { kind: "interactive" as const },
-      candidates: { items: [{ id: "w1", label: "Warehouse A" }] },
-    }),
-  })
-
-  return [warehouse] as const
-})
+```tsx
+const emailError = useSelector(form, Form.Error.field("email"))
 ```
 
-## 非公开路线
+## Companion
 
-当前公开面不包含 public `Form.Path`、schema path mapping API、`useCompanion`、`useFieldValue`、returned-carrier selector route 或 row owner token。
+```tsx
+const fieldCompanion = useSelector(form, Form.Companion.field("countryId"))
+const rowCompanion = useSelector(form, Form.Companion.byRowId("items", rowId, "warehouseId"))
+```
+
+## 边界
+
+不要添加 Form-specific React read family。Form selectors 是由 `useSelector` 消费的 descriptor。

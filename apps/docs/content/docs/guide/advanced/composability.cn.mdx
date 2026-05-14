@@ -1,30 +1,49 @@
 ---
 title: Composability
-description: 按 owner boundary 组合：Program imports、services、React projection 与 domain packages。
+description: 通过 program imports、service layers 与普通 React 组合来组合 Logix。
 ---
 
-Logix composition 不是 helper hooks 的集合。先选择 owner。
+组合是显式的。Logix program 可以 import 另一个 program，runtime 可以提供 service，React 可以围绕获取到的实例组合视图。
 
-```mermaid
-flowchart LR
-  Module[Module] --> Program[Program.make]
-  Program --> Runtime[Runtime.make]
-  Runtime --> React[RuntimeProvider]
-  React --> Hooks[useModule + useSelector]
-  Program --> Imports[capabilities.imports]
-  Program --> Services[capabilities.services]
+## Program imports
+
+```ts
+const ChildProgram = Logix.Program.make(Child, { initial: childInitial })
+
+const ParentProgram = Logix.Program.make(Parent, {
+  initial: parentInitial,
+  capabilities: { imports: [ChildProgram] },
+})
 ```
 
-## Composition routes
+在 parent logic 中使用 child module tag。
 
-| 需求 | 路线 |
-| --- | --- |
-| parent scope 内的 child module | `Program.make(..., { capabilities: { imports: [ChildProgram] } })` |
-| service dependency | `capabilities.services` 或 `Runtime.make(..., { layer })` |
-| React local instance | `useModule(Program, { key? })` |
-| domain package | 返回 Program，或降解到同一条主链 |
-| Form field support facts | `field(...).source(...)` / `field(...).companion(...)` 加 `useSelector(...)` |
+```ts
+const child = yield* $.use(Child.tag)
+yield* child.actions.refresh()
+```
 
-## 已删除路线
+## Service layers
 
-不要通过 `useLocalModule`、`useModuleList` 或 `ModuleScope` 等已移除 React surfaces 做组合。使用 Program ownership 与普通 React component composition。
+基础设施用 layer。layer 不成为 module state。
+
+```ts
+const runtime = Logix.Runtime.make(AppProgram, {
+  layer: Layer.mergeAll(ApiLive, LoggerLive),
+})
+```
+
+## React composition
+
+视图照常用 React 组合。每个组件只获取自己需要的实例。
+
+```tsx
+function ChildPanel() {
+  const child = useModule(Child.tag)
+  return <Panel value={useSelector(child, fieldValue("value"))} />
+}
+```
+
+## 边界
+
+不要写隐藏 tag、program 或 service 路线的 wrapper。helper 应该能机械还原到 program imports、layers 或 React components。

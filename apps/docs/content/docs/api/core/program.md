@@ -1,44 +1,40 @@
 ---
 title: Program
-description: The canonical assembly boundary for a Module.
+description: Assembly-time business unit for modules, logic, imports, services, and state policy.
 ---
 
-`Program.make(Module, config)` is the public assembly route. It turns a definition object into the business unit that Runtime and React consume.
+`Program.make(Module, config)` is the public assembly boundary. It turns a definition object into a runnable business unit.
+
+## `Program.make`
 
 ```ts
-const CounterProgram = Logix.Program.make(Counter, {
-  initial: { value: 0 },
-  logics: [CounterLogic],
+const Program = Logix.Program.make(Module, {
+  initial,
+  logics: [LogicA, LogicB],
   capabilities: {
-    services: AppLayer,
     imports: [ChildProgram],
+    services: [ApiLive, LoggerLive],
+  },
+  stateTransaction: {
+    fieldConvergeMode: "auto",
   },
 })
 ```
 
 ## Config
 
-| Field | Purpose |
+| Field | Meaning |
 | --- | --- |
-| `initial` | Initial state for the module. |
-| `logics` | Logic units mounted into this Program. |
-| `capabilities.services` | Service `Layer` or array of layers. |
-| `capabilities.imports` | Child Programs available through `$.imports.get(...)` / `useImportedModule(...)`. |
-| `stateTransaction` | Transaction instrumentation and tuning options. |
+| `initial` | initial state for the module. |
+| `logics` | logic units produced by `Module.logic`. |
+| `capabilities.imports` | child programs available by module tag. |
+| `capabilities.services` | service layers for the program. |
+| `stateTransaction` | module-level transaction policy. |
 
-## Why Program is the boundary
+## Why it exists
 
-- It keeps authoring (`Module`) separate from assembly (`Program`).
-- It centralizes initial state, services, imports, and transaction policy.
-- It is the input for `Runtime.make(...)`, `Runtime.run(...)`, `Runtime.check(...)`, and `Runtime.trial(...)`.
-- It is also the local-instance input for `useModule(Program, options)`.
+`Program` is where declarations and runtime assets converge before execution. React local ownership also uses programs: `useModule(Program, { key })`.
 
-## Non-goals
+## Boundary
 
-`Program.make(...)` is not a compatibility wrapper around old module implementations. Do not add a second assembly helper for a domain package; domain packages should return a Program or a value that reduces to this route.
-
-## See also
-
-- [Module](./module)
-- [Runtime](./runtime)
-- [useModule](/docs/api/react/use-module)
+Do not bypass `Program.make` with module implementation helpers. `Runtime.make` expects a program.

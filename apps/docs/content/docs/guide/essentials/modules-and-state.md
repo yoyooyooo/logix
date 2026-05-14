@@ -1,44 +1,57 @@
 ---
-title: Modules & State
-description: Define state and actions, then assemble them into Programs.
+title: Modules and state
+description: State schemas, actions, reducers, and runtime writes.
 ---
 
-A Module declares state and actions. A Program chooses initial state, mounted logic, services, imports, and transaction options.
+A module is the durable state boundary. It declares state with Effect Schema, declares actions with payload schemas, and can attach synchronous reducers.
+
+## State schema
 
 ```ts
-const Counter = Logix.Module.make("Counter", {
-  state: Schema.Struct({ value: Schema.Number }),
-  actions: { inc: Schema.Void },
-})
-
-const CounterProgram = Logix.Program.make(Counter, {
-  initial: { value: 0 },
+const TodoState = Schema.Struct({
+  items: Schema.Array(Schema.Struct({ id: Schema.String, title: Schema.String, done: Schema.Boolean })),
+  filter: Schema.Literal("all", "open", "done"),
 })
 ```
 
-## State writes
+The schema is the public state shape. React selectors and logic field paths are checked against this shape where TypeScript can preserve literals.
 
-In logic, use the Bound API:
+## Actions
 
 ```ts
-const Logic = Counter.logic("counter-logic", ($) =>
-  Effect.gen(function* () {
-    yield* $.onAction("inc").mutate((state) => {
-      state.value += 1
-    })
+const Todo = Logix.Module.make("Todo", {
+  state: TodoState,
+  actions: {
+    added: Schema.Struct({ id: Schema.String, title: Schema.String }),
+    toggled: Schema.String,
+  },
+})
+```
+
+Actions are inputs into the runtime. They are not commands with hidden IO. IO belongs in logic or services.
+
+## Reducers
+
+```ts
+reducers: {
+  toggled: Logix.Module.Reducer.mutate((draft, action) => {
+    const item = draft.items.find((row) => row.id === action.payload)
+    if (item) item.done = !item.done
   }),
-)
+}
 ```
 
-In React, writes usually go through `useDispatch(...)` or a domain handle such as a Form handle.
+Reducers are synchronous and pure. They run inside the transaction path. Avoid network calls, timers, and service reads inside reducers.
+
+## Logic writes
+
+```ts
+yield* $.state.update((prev) => ({ ...prev, filter: "open" }))
+yield* $.state.mutate((draft) => { draft.filter = "done" })
+```
+
+Use logic writes when the state transition is tied to a watcher, service, source refresh, or long-running workflow.
 
 ## Reads
 
-In React:
-
-```tsx
-const counter = useModule(Counter.tag)
-const value = useSelector(counter, (state) => state.value)
-```
-
-Do not use raw Module objects in React acquisition. Use `Module.tag` for hosted instances or `Program` for local/keyed instances.
+Inside logic, read through `$.state.read` or a read-only ref. In React, read through `useSelector(handle, selector)`.

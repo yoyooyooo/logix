@@ -1,21 +1,18 @@
 ---
-title: 字段行为
-description: 通过 `$.fields(...)` 或领域 DSL 声明 computed、source 和 external 字段行为。
+title: Field declarations
+description: 字段级行为是 logic builder 的局部声明，不是独立公开 namespace。
 ---
 
-字段行为当前在两个位置声明：
+字段声明描述派生字段、external store 和 resource-backed source field。它们通过 logic builder 局部编写，并在 `Program.make` 阶段编译。
 
-- core 里的 `$.fields(...)`
-- 领域包自己的 DSL，例如 `Form.make(...)`
-
-## Core 字段声明
+## Core 路线
 
 ```ts
-const Fields = Counter.logic("fields", ($) => {
+const logic = Module.logic("fields", ($) => {
   $.fields({
-    total: $.fields.computed({
-      deps: ["count"],
-      get: (count) => Number(count ?? 0) + 1,
+    fullName: $.fields.computed({
+      deps: ["firstName", "lastName"],
+      get: (first, last) => `${first} ${last}`,
     }),
   })
 
@@ -23,17 +20,21 @@ const Fields = Counter.logic("fields", ($) => {
 })
 ```
 
-当前 core 字段面承接：
+`$.fields` 是声明收集器。独立编译器机制属于内部实现。用户代码不要 import 或依赖一套独立字段系统。
 
-- `computed`
-- `source`
-- `external`
+## 领域路线
 
-## 领域字段行为
+Form、Query 和未来领域包使用同一编译底座，但对外暴露自己的领域语言。
 
-领域包也可以通过自己的 DSL 投影同一类能力。
-例如 Form 把校验和表单特有联动留在 `Form.make(...)` 里。
+```ts
+Form.make("Contact", config, ($) => {
+  $.field("email").rule(Form.Rule.make({ required: "Email required", email: "Invalid email" }))
+  $.field("countryId").source({ resource, deps: ["regionId"], key: (regionId) => ({ regionId }) })
+})
+```
 
-## 历史说明
+领域包拥有自己的公开拼写。编译后的 asset 仍属于 program 装配路径。
 
-旧材料里如果出现 `trait`，当前统一把它理解成字段行为声明。
+## 边界
+
+确定性派生或 source wiring 用字段声明。workflow 用普通 logic。最终表单真相和校验用 Form rules。

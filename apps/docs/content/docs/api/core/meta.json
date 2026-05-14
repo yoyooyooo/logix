@@ -1,11 +1,11 @@
 {
-  "title": "Core Concepts",
+  "title": "Core",
   "pages": [
     "module",
     "program",
     "runtime",
-    "handle",
     "bound-api",
+    "handle",
     "match-builder"
   ]
 }

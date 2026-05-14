@@ -1,66 +1,53 @@
 ---
 title: Bound API ($)
-description: Module.logic builder 内可用的 API。
+description: Module.logic 内可用的 module-bound API。
 ---
 
-`$` 是传给 `Module.logic(id, ($) => ...)` 的 Bound API。它已经绑定到当前 module shape、runtime、services、imports、state 与 action tokens。
+Bound API 是传给 `Module.logic` 的 `$`。它绑定到一个 module instance 和它的 runtime environment。
 
-## 常用成员
-
-| 成员 | 用途 |
-| --- | --- |
-| `$.state.read` | 在 Effect 代码中读取当前 state。 |
-| `$.state.update(fn)` | 返回写入新 state 的 Effect。 |
-| `$.state.mutate(fn)` | 返回修改 draft 的 Effect。 |
-| `$.onAction(...)` | 从 action token/tag/schema 构造 intent stream。 |
-| `$.dispatch(...)` / `$.dispatchers.*` | 派发 actions。 |
-| `$.use(...)` | 从 Env 中解析 imported module 或 service。 |
-| `$.imports.get(Module.tag)` | 从 `Program.make(..., { capabilities: { imports } })` 解析子 Program。 |
-| `$.fields(...)` | 在 logic builder 阶段声明 field behavior。 |
-| `$.readyAfter(effect, options?)` | 在 logic builder 阶段声明 startup readiness work。 |
-| `$.effect(token, handler)` | 注册 action side-effect handler。 |
-
-## Declaration phase 与 run phase
-
-Declaration-only 调用必须同步发生在 builder body 中。logic 的 runtime work 通过返回的 long-running effect 表达。
+## State
 
 ```ts
-const Logic = Module.logic("logic-id", ($) => {
-  $.fields({
-    total: $.fields.computed({
-      deps: ["items"],
-      get: (items) => items.reduce((sum, item) => sum + item.price, 0),
-    }),
-  })
+yield* $.state.update((prev) => ({ ...prev, count: prev.count + 1 }))
+yield* $.state.mutate((draft) => { draft.count += 1 })
+const state = yield* $.state.read
+```
 
-  return Effect.gen(function* () {
-    yield* $.onAction("checkout").runParallelFork(/* ... */)
-  })
+## Actions and watchers
+
+```ts
+yield* $.onAction("submitted").runLatest(handleSubmit)
+yield* $.onState((state) => state.query).debounce(200).runLatest(handleQuery)
+```
+
+## Dispatch
+
+```ts
+yield* $.dispatch("increment")
+yield* $.dispatch({ _tag: "increment", payload: undefined })
+yield* $.dispatchers.increment()
+```
+
+## Services and imports
+
+```ts
+const api = yield* $.use(ApiService)
+const child = yield* $.use(Child.tag)
+const imported = yield* $.imports.get(Child.tag)
+```
+
+## Readiness
+
+```ts
+yield* $.readyAfter(loadConfig, { id: "config" })
+```
+
+## Field declarations
+
+```ts
+$.fields({
+  fullName: $.fields.computed({ deps: ["first", "last"], get: (first, last) => `${first} ${last}` }),
 })
 ```
 
-公开代码不要返回 `{ setup, run }`。
-
-## Imports
-
-子 Program 在 assembly 阶段提供：
-
-```ts
-const HostProgram = Logix.Program.make(Host, {
-  initial,
-  capabilities: { imports: [ChildProgram] },
-})
-```
-
-在 host logic 内部：
-
-```ts
-const child = yield* $.imports.get(Child.tag)
-yield* child.actions.save()
-```
-
-## See also
-
-- [Module](./module)
-- [Program](./program)
-- [useImportedModule](/cn/docs/api/react/use-imported-module)
+字段声明是局部 builder grammar，会在 program 装配时编译。

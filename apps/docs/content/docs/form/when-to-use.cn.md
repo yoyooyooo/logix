@@ -1,25 +1,25 @@
 ---
-title: When to use Form
-description: 判断功能需要 Form 领域包，还是普通 Logix Program。
+title: Form or plain Logix
+description: 为需要的状态选择更小的 owner。
 ---
 
-当功能主要是 editable input state 时使用 `@logixjs/form`。
+选择能表达行为且不发明第二套模型的最小 owner。
 
-## 适合使用 Form
+## Plain Logix
 
-- field-level values 与 blur/change 语义
-- validation timing 与 submit gating
-- submit 时 decode
-- 绑定字段的 source-backed remote facts
-- availability/candidates 等 local companion facts
-- list row identity 与 reorder-safe operations
+普通 module 足以表达 durable UI state、workflow、搜索、过滤、乐观更新、后台刷新，以及不是可编辑表单的领域 state。
 
-## 适合使用普通 Logix
+## Form
 
-- 非编辑型业务 workflow state
-- long-running processes
-- cross-module orchestration
-- 不是 form 的领域状态
-- 更适合直接由 React 持有的 UI state
+当状态包含 editable values 加 validation、submit decode、source receipts、companion facts、field arrays 或 dirty/submitting/error counts 这类 form-specific meta 时，使用 Form。
 
-Form 不应变成通用状态管理器。它是 editable input semantics 的领域包。
+## Split route
+
+一个 route 可以同时使用二者。host module 拥有 navigation 和 page state；Form program 拥有 values 与 submit。
+
+```ts
+const PageProgram = Logix.Program.make(Page, {
+  initial,
+  capabilities: { imports: [CheckoutForm] },
+})
+```

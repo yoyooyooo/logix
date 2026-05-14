@@ -1,25 +1,25 @@
 ---
-title: When to use Form
-description: Decide whether a feature needs the Form domain package or a plain Logix Program.
+title: Form or plain Logix
+description: Choose the smaller owner for the state you need.
 ---
 
-Use `@logixjs/form` when the feature is primarily editable input state.
+Use the smaller owner that can express the behavior without inventing a second model.
 
-## Use Form when you need
+## Plain Logix
 
-- field-level values and blur/change semantics
-- validation timing and submit gating
-- decode-on-submit
-- source-backed remote facts tied to fields
-- local companion facts such as availability and candidates
-- list row identity and reorder-safe operations
+Plain modules are enough for durable UI state, workflows, search, filters, optimistic updates, background refresh, and domain state that is not an editable form.
 
-## Use plain Logix when you need
+## Form
 
-- non-editable business workflow state
-- long-running processes
-- cross-module orchestration
-- domain state that is not a form
-- UI state better owned directly by React
+Use Form when state has editable values plus validation, submit decode, source receipts, companion facts, field arrays, or form-specific meta such as dirty/submitting/error counts.
 
-Form should not become a generic state manager. It is a domain package for editable input semantics.
+## Split route
+
+A route can use both. The host module owns navigation and page state; the Form program owns values and submit.
+
+```ts
+const PageProgram = Logix.Program.make(Page, {
+  initial,
+  capabilities: { imports: [CheckoutForm] },
+})
+```

@@ -1,37 +1,31 @@
 ---
-title: 介绍
-description: 当前 Form 心智模型与 owner boundaries。
+title: Introduction
+description: Logix Form 的 owner map 与公开路线。
 ---
 
-Form 用于 editable input state：values、validation、errors、submit、remote facts、local support facts 与 list row identity。
-
-关键点：Form 是 Logix Program，不是另一套 React runtime。
-
-```text
-Form declaration   Form.make(...)
-Runtime mounting   Runtime.make(FormProgram) + RuntimeProvider
-React reads        useModule + useSelector
-Writes             FormHandle methods
-Evidence           Runtime.check / Runtime.trial / Runtime.compare
-```
+Form 是 program-first 的领域包。`Form.make` 产出 program，可以被 `Runtime.make` 挂载，可以被另一个 program import，也可以在 React 中局部获取。
 
 ## Owner map
 
-| 概念 | Owner | 公开写法 |
-| --- | --- | --- |
-| declaration | Form | `Form.make(id, config, define)` |
-| field value | Form state | `fieldValue(path)` |
-| form metadata | Form state | `rawFormMeta()` |
-| final validation truth | rule/root/list/submit | `field.rule`、`root`、`list`、`submit` |
-| remote fact ingress | source lane + Query resource | `field(path).source(...)` |
-| local soft fact | companion lane | `field(path).companion(...)` |
-| runtime mutation | Form handle | `form.field`、`form.fieldArray`、`form.submit` |
-| host read | React host law | `useModule + useSelector` |
-| verification | runtime control plane | `Runtime.check/trial/compare` |
+| 关注点 | Owner |
+| --- | --- |
+| editable values | Form state |
+| final validation truth | field/root/list/submit rules |
+| remote facts | `field(path).source(...)` |
+| local soft facts | `field(path).companion(...)` |
+| list identity | Form list policy 与 row-id handle routes |
+| React reads | `useSelector` 加 core/Form selector descriptors |
+| runtime execution | Program/Runtime |
 
-## 硬边界
+## Public route
 
-- Companion 是同步 local fact；不能做 IO，也不能产出 final validation truth。
-- Source 持有 remote fact ingress；它不是 options API，也不是 React 手动 fetch helper。
-- Row identity 通过 Form internals 与 `byRowId(...)` 等 handle methods 管理；不是公开 row token family。
-- Form 不持有单独 React hook family。
+```ts
+const ContactForm = Form.make("ContactForm", config, ($) => {
+  $.field("email").rule(Form.Rule.make({ required: "Email required", email: "Invalid email" }))
+  $.submit({ decode: SubmitSchema })
+})
+```
+
+## 边界
+
+form 不是 React controller object。handle 是同一 module handle 路线上的领域扩展。UI 组件通过 selectors 读取，并调用 handle commands。

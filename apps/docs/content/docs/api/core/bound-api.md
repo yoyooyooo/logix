@@ -1,66 +1,53 @@
 ---
 title: Bound API ($)
-description: The API available inside Module.logic builders.
+description: The module-bound API available inside Module.logic.
 ---
 
-`$` is the Bound API passed to `Module.logic(id, ($) => ...)`. It is already bound to the module shape, runtime, services, imports, state, and action tokens.
+The Bound API is the `$` value passed to `Module.logic`. It is bound to one module instance and its runtime environment.
 
-## Common members
-
-| Member | Use |
-| --- | --- |
-| `$.state.read` | Read the current state inside Effect code. |
-| `$.state.update(fn)` | Return an Effect that writes a new state value. |
-| `$.state.mutate(fn)` | Return an Effect that mutates a draft. |
-| `$.onAction(...)` | Build an intent stream from action tokens/tags/schemas. |
-| `$.dispatch(...)` / `$.dispatchers.*` | Dispatch actions. |
-| `$.use(...)` | Resolve imported modules or services from Env. |
-| `$.imports.get(Module.tag)` | Resolve a child Program from `Program.make(..., { capabilities: { imports } })`. |
-| `$.fields(...)` | Declare field behavior during the logic builder phase. |
-| `$.readyAfter(effect, options?)` | Add startup readiness work during the logic builder phase. |
-| `$.effect(token, handler)` | Register an action side-effect handler. |
-
-## Declaration phase versus run phase
-
-Declaration-only calls must happen synchronously in the builder body. Return the long-running effect as the logic's runtime work.
+## State
 
 ```ts
-const Logic = Module.logic("logic-id", ($) => {
-  $.fields({
-    total: $.fields.computed({
-      deps: ["items"],
-      get: (items) => items.reduce((sum, item) => sum + item.price, 0),
-    }),
-  })
+yield* $.state.update((prev) => ({ ...prev, count: prev.count + 1 }))
+yield* $.state.mutate((draft) => { draft.count += 1 })
+const state = yield* $.state.read
+```
 
-  return Effect.gen(function* () {
-    yield* $.onAction("checkout").runParallelFork(/* ... */)
-  })
+## Actions and watchers
+
+```ts
+yield* $.onAction("submitted").runLatest(handleSubmit)
+yield* $.onState((state) => state.query).debounce(200).runLatest(handleQuery)
+```
+
+## Dispatch
+
+```ts
+yield* $.dispatch("increment")
+yield* $.dispatch({ _tag: "increment", payload: undefined })
+yield* $.dispatchers.increment()
+```
+
+## Services and imports
+
+```ts
+const api = yield* $.use(ApiService)
+const child = yield* $.use(Child.tag)
+const imported = yield* $.imports.get(Child.tag)
+```
+
+## Readiness
+
+```ts
+yield* $.readyAfter(loadConfig, { id: "config" })
+```
+
+## Field declarations
+
+```ts
+$.fields({
+  fullName: $.fields.computed({ deps: ["first", "last"], get: (first, last) => `${first} ${last}` }),
 })
 ```
 
-Do not return `{ setup, run }` from public code.
-
-## Imports
-
-Child Programs are provided at assembly time:
-
-```ts
-const HostProgram = Logix.Program.make(Host, {
-  initial,
-  capabilities: { imports: [ChildProgram] },
-})
-```
-
-Inside host logic:
-
-```ts
-const child = yield* $.imports.get(Child.tag)
-yield* child.actions.save()
-```
-
-## See also
-
-- [Module](./module)
-- [Program](./program)
-- [useImportedModule](/docs/api/react/use-imported-module)
+Field declarations are local builder grammar. They compile at program assembly.

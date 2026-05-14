@@ -1,78 +1,43 @@
 ---
 title: Module
-description: Define state, actions, reducers, and logic authoring for a Logix unit.
+description: Definition-time state, actions, reducers, and logic builder.
 ---
 
-`Logix.Module.make(id, def)` creates the definition object. A Module is not the runtime instance. It is the stable declaration object used by `Program.make(...)`.
+`Module` is the definition object. It owns the state schema, action schema, optional synchronous reducers, and the `logic` builder.
+
+## `Module.make`
 
 ```ts
-import { Effect, Schema } from "effect"
-import * as Logix from "@logixjs/core"
-
-const CounterState = Schema.Struct({ value: Schema.Number })
-const CounterActions = { inc: Schema.Void }
-
-export const Counter = Logix.Module.make("Counter", {
-  state: CounterState,
-  actions: CounterActions,
-})
-
-export const CounterLogic = Counter.logic("counter-logic", ($) =>
-  Effect.gen(function* () {
-    yield* $.onAction("inc").mutate((state) => {
-      state.value += 1
-    })
-  }),
-)
-```
-
-## Definition fields
-
-| Field | Purpose |
-| --- | --- |
-| `state` | Effect Schema for module state. |
-| `actions` | Action map. Each key becomes an action token. |
-| `reducers` / `immerReducers` | Optional primary state transforms. |
-| `effects` | Optional action side-effect declarations. |
-| `schemas`, `meta`, `services`, `dev` | Reflection and diagnostics metadata. |
-
-## Logic authoring
-
-Use `Module.logic(id, ($) => runEffect)`. The `id` is required because diagnostics, overrides, and evidence need stable logic-unit identity.
-
-Declaration-only calls, such as `$.fields(...)` and `$.readyAfter(...)`, belong at the builder root before the returned run effect:
-
-```ts
-export const SearchLogic = Search.logic("search-logic", ($) => {
-  $.fields({
-    results: $.fields.source({
-      resource: "customer.search",
-      deps: ["keyword"],
-      key: (keyword) => (keyword ? { keyword } : undefined),
+const Counter = Logix.Module.make("Counter", {
+  state: Schema.Struct({ count: Schema.Number }),
+  actions: { increment: Schema.Void },
+  reducers: {
+    increment: Logix.Module.Reducer.mutate((draft) => {
+      draft.count += 1
     }),
-  })
-
-  $.readyAfter(bootstrapSearchIndex, { id: "search-index" })
-
-  return Effect.gen(function* () {
-    yield* $.onAction("keywordChanged").runLatest(/* ... */)
-  })
+  },
 })
 ```
 
-The old public `{ setup, run }` return shape is not the current user route.
+| Field | Meaning |
+| --- | --- |
+| `state` | Effect Schema for the module state. |
+| `actions` | action tag to payload schema map. |
+| `reducers` | synchronous action reducers. |
+| `services`, `schemas`, `meta`, `dev` | metadata and integration support. |
 
-## Assembly
+## `module.logic(id, build, options?)`
 
 ```ts
-export const CounterProgram = Logix.Program.make(Counter, {
-  initial: { value: 0 },
-  logics: [CounterLogic],
-})
+const logic = Counter.logic("counter-logic", ($) => Effect.void)
 ```
 
-## See also
+`id` is required. The builder receives the Bound API `$`. It returns the runtime effect for the module instance.
 
-- [Program](./program)
-- [Bound API](./bound-api)
-- [Runtime](./runtime)
+## Reducer helper
+
+`Module.Reducer.mutate(fn)` lets reducers write through a draft while preserving transaction semantics.
+
+## Boundary
+
+`Module` is not the assembly unit. Use `Program.make(Module, config)` to provide initial state, logic units, imports, and services.

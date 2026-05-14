@@ -1,40 +1,26 @@
 ---
 title: Introduction
-description: What Logix is and where it fits.
+description: The minimal model for using Logix in a React application.
 ---
 
-Logix is a runtime for application logic. It gives you a small object model for state, effects, services, React projection, and evidence.
+Logix moves application logic into an Effect-native runtime. UI components stop owning long-running workflows, dependency injection, retries, and runtime diagnostics. They acquire a module instance, read a narrow slice, and dispatch actions.
+
+## Runtime shape
 
 ```text
-React handles UI / host / render.
-Logix handles declaration / composition / execution / evidence.
+Module       state schema, action schema, reducers, logic builder
+Logic        Effect program bound to one module
+Program      assembled module plus initial state, logics, imports, services
+Runtime      execution container and control plane
+React host   provider, instance acquisition, selectors, dispatch
 ```
 
-The default route is:
+A Logix app normally has one root `Program`. React mounts a `Runtime` for that program. Components use module tags or programs to acquire instances.
 
-1. Define a `Module`.
-2. Add behavior with `Module.logic(id, ...)`.
-3. Assemble a `Program`.
-4. Create a `Runtime`.
-5. Project it into React with `RuntimeProvider`.
-6. Read with `useSelector(...)` and write with dispatch or domain handles.
+## First decision
 
-## Why use it
-
-Use Logix when a feature has business state and effects that need stable execution, testability, and diagnostics. Use React state directly for short-lived view-only UI state.
-
-## First concepts
-
-| Concept | Meaning |
-| --- | --- |
-| Module | Definition object: state schema, action map, reducers, logic builder. |
-| Logic | Effect-based behavior attached to a Module. |
-| Program | Assembled business unit with initial state, logics, services, and imports. |
-| Runtime | Execution container. |
-| React host | Provider + hooks that expose runtime instances to components. |
-| Evidence | Structured reports from check/trial/compare. |
+Use Logix when logic has durable state, effects, dependency injection, concurrency, or diagnostics that should not live inside React components. Keep plain React state for local UI affordances such as open/closed toggles, input focus, and uncontrolled layout state.
 
 ## Next
 
-- [Quick Start](./quick-start)
-- [Canonical spine](/docs/guide/essentials/canonical-spine)
+Read [Quick Start](/docs/guide/get-started/quick-start), then [Canonical spine](/docs/guide/essentials/canonical-spine).

@@ -1,48 +1,26 @@
 ---
 title: RuntimeProvider
-description: Project a Logix runtime into a React subtree.
+description: React provider for a Logix runtime and optional subtree layer.
 ---
 
-`RuntimeProvider` makes an existing Logix runtime visible to React hooks.
+`RuntimeProvider` projects a Logix runtime into React.
 
 ```tsx
-import { RuntimeProvider } from "@logixjs/react"
-import * as Logix from "@logixjs/core"
-import { RootProgram } from "./root-program"
-
-const runtime = Logix.Runtime.make(RootProgram)
-
-export function Root() {
-  return (
-    <RuntimeProvider runtime={runtime}>
-      <App />
-    </RuntimeProvider>
-  )
-}
+<RuntimeProvider runtime={runtime}>
+  <App />
+</RuntimeProvider>
 ```
 
 ## Props
 
-| Prop | Role |
+| Prop | Meaning |
 | --- | --- |
-| `runtime` | Required. The runtime created by `Runtime.make(...)` or another owner boundary. |
-| `layer` | Optional subtree-local Effect Layer. |
-| `fallback` | Optional React fallback for gated startup paths. |
-| `policy` | Optional provider startup/read policy, such as sync/suspend/defer behavior. |
+| `runtime` | Managed runtime created by `Runtime.make`. |
+| `layer` | optional subtree layer merged into the current runtime context. |
+| `fallback` | provider fallback while async provider setup completes. |
+| `policy` | provider policy for preload, sync budget, and local cache behavior. |
+| `onError` | host error sink for provider and diagnostic failures. |
 
-## What it owns
+## Boundary
 
-`RuntimeProvider` owns React visibility for a runtime scope. It does not choose the Program, create a second runtime, or define a second verification control plane.
-
-All public hooks from `@logixjs/react` must run under a provider:
-
-- `useModule(...)`
-- `useSelector(...)`
-- `useDispatch(...)`
-- `useImportedModule(...)`
-
-## See also
-
-- [Runtime](/docs/api/core/runtime)
-- [useModule](./use-module)
-- [useSelector](./use-selector)
+State transaction policy is configured at program/runtime boundaries. The provider projects a runtime; it does not create another transaction mode.

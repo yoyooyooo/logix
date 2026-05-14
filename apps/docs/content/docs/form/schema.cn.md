@@ -1,62 +1,34 @@
 ---
 title: Schema
-description: Form 在两处使用 schema：可编辑 values 和 submit decode；decode issue 最终仍回到同一套错误模型。
+description: Values schema、submit decode schema 与 form state shape。
 ---
 
-Form 在两个位置使用 schema：
-
-- `values`，定义可编辑状态形状
-- `submit.decode`，定义可以越过表单边界的 payload
+Form 在两处使用 Effect Schema：editable values 和 submit decode。
 
 ## Values schema
 
 ```ts
-Form.make(
-  "InvoiceForm",
-  {
-    values: InvoiceDraft,
-    initialValues,
-  },
-  (form) => {
-    // ...
-  },
-)
+const Values = Schema.Struct({
+  name: Schema.String,
+  email: Schema.String,
+})
 ```
 
-`values` 应与 UI 正在编辑的状态形状一致。
+`values` 定义可编辑字段和它们的类型级 paths。
 
 ## Submit decode
 
 ```ts
-Form.make(
-  "InvoiceForm",
-  {
-    values: InvoiceDraft,
-    initialValues,
-  },
-  (form) => {
-    form.submit({
-      decode: InvoicePayload,
-    })
-  },
-)
+const Submit = Schema.Struct({
+  name: Schema.String,
+  email: Schema.String,
+})
+
+$.submit({ decode: Submit })
 ```
 
-`submit.decode` 应与表单边界之外接受的 payload 形状一致。
+submit decode 是 final boundary validation。field rules 用于引导交互；decode 决定什么可以离开 form。
 
-## decode issue 映射
+## State shape
 
-当 decode issue 需要稳定落点时，继续在仓内 glue 层使用更低层的 schema bridge helper。
-
-这些 helper 用来决定：
-
-- 哪个 value path 接收 decode issue
-- 应写入哪个 canonical error leaf
-
-如果某个 decode issue 无法映射到字段路径，它会回落到 submit slot，而不会停留在未映射的 schema payload 中。
-
-## 延伸阅读
-
-- [Quick start](/cn/docs/form/quick-start)
-- [Validation](/cn/docs/form/validation)
-- [Rules](/cn/docs/form/rules)
+Form state 包含 values，以及领域拥有的 support state：`errors`、`ui`、`$form`。读取它们应通过 Form/core selectors，不要依赖 raw object contract。

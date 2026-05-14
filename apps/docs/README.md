@@ -1,50 +1,85 @@
-# Logix 文档应用（apps/docs）
+# Logix docs app (`apps/docs`)
 
-`apps/docs` 是 Logix 仓库的用户文档站点，基于 **Next.js + Fumadocs** 搭建，主要面向：
+`apps/docs` is the user-facing Logix documentation site. It is built with Next.js and Fumadocs.
 
-- 使用 Logix 的前端/全栈开发者；
-- 在团队内推广 Intent/Flow/Effect 模式的架构师。
+The site teaches the current public route:
 
-文档内容包括：
+```text
+Module.logic(...) -> Program.make(...) -> Runtime.make(...)
+RuntimeProvider -> useModule(...) -> useSelector(...)
+```
 
-- **Guide**：从入门到进阶的使用指南（快速上手、Essentials、Learn、Advanced、Recipes）；
-- **API**：`@logixjs/core` / `@logixjs/react` 的 API 参考；
-- **示例与教程**：表单、复杂列表、跨模块协作等典型场景。
+Internal implementation language such as traits, field-kernel, compiler assets, runtime stores, and verification internals should not become the main user narrative. Those terms may appear only when a page explicitly explains why users do not normally need them.
 
-## 本地开发
+## Content structure
+
+```text
+content/docs/
+  index.mdx                 site-level docs entry
+  guide/
+    get-started/            introduction, quick start, tutorials
+    essentials/             canonical concepts every user should keep stable
+    patterns/               concrete application patterns
+    advanced/               runtime policies and expert topics
+  api/
+    core/                   Module, Program, Runtime, Bound API, Handle
+    react/                  RuntimeProvider, useModule, useSelector, dispatch/imports
+    reference.md            generated signature reference entry
+  form/                     Form domain DSL and React read route
+  faq.md
+```
+
+`guide/learn` and `guide/recipes` are intentionally absent from the current IA. Tutorial material belongs in `guide/get-started`; reusable application shapes belong in `guide/patterns`; runtime policy material belongs in `guide/advanced`.
+
+## Local development
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-默认端口为 `http://localhost:3000`，Fumadocs 会根据 `content/docs` 下的 MDX 文件生成文档站点。
+Default local route: `http://localhost:3000`.
 
-## 国际化（i18n）
+## Internationalization
 
-- 路由前缀：默认语言为英文（无前缀），中文为 `/cn/*`（Fumadocs Middleware 会把无前缀请求 rewrite 到默认语言）。
-- 内容组织：使用 Fumadocs `parser: "dot"`，中文内容通过同名文件加 `.cn` 后缀区分，例如：
-  - `content/docs/index.mdx`（英文默认）
-  - `content/docs/index.cn.mdx`（中文）
-  - `content/docs/meta.json`（英文默认）
-  - `content/docs/meta.cn.json`（中文）
+The default language is English. Chinese pages use the `.cn` suffix:
 
-## 主要目录
+```text
+content/docs/index.mdx
+content/docs/index.cn.mdx
+content/docs/guide/get-started/quick-start.md
+content/docs/guide/get-started/quick-start.cn.md
+```
 
-- `content/docs`：文档内容（Guide / API 等），是对外的用户文档 SSoT；
-- `source.config.ts`：Fumadocs Source 配置；
-- `src/app`：Next.js App 路由与布局（文档入口为 `/docs`（英文）与 `/cn/docs`（中文））。
-- `src/components/ui`：shadcn/ui 基础组件（唯一基元来源）。
-- `src/components/landing`：docs 首页 Landing 的 Section 组件与文案配置。
+Fumadocs `meta.json` files define navigation order. Keep English and Chinese page pairs aligned.
 
-在修改 Logix 行为或 API 形状时，建议同步更新：
+## Writing rules
 
-- 规范文档：`docs/ssot/runtime` / `docs/specs/intent-driven-ai-coding`；
-- 用户文档：本目录下的相关 MDX 页面。
+User pages should read like product documentation, not a training outline.
 
-## 首页 Landing 约束（硬约束）
+Prefer:
 
-- 颜色：只使用 tokens（CSS variables）及其派生；禁止硬编码颜色值。
-- 组件：基础 UI 只使用 shadcn/ui（`src/components/ui/*`），业务层只做组合。
-- 禁止：backdrop blur / backdrop filter、`0 0 Npx` glow 阴影。
-- 动效：只用 Framer Motion，并尊重 reduced-motion。
+- direct concepts;
+- code before commentary;
+- current public API names;
+- one canonical route before alternatives;
+- explicit owner boundaries.
+
+Avoid generic headings such as “Who this is for”, “Prerequisites”, “You will learn”, “适合谁”, “前置知识”, or “读完你将获得”. If a requirement matters, put it in the prose where the reader needs it.
+
+## Source alignment
+
+When Logix API shape changes, update these docs from the current source and SSoT:
+
+- `@logixjs/core`: Module, Program, Runtime, Bound API, verification reports;
+- `@logixjs/react`: RuntimeProvider, useModule, useSelector, useDispatch, useImportedModule;
+- `@logixjs/form`: Form.make, Rule, Error, Companion, source, field arrays, submit.
+
+Generated API reference remains the signature dictionary. Hand-written pages should explain usage, boundaries, and stable mental model.
+
+## Landing page constraints
+
+- Use design tokens; do not hard-code colors.
+- Use `src/components/ui/*` for base UI pieces.
+- Avoid backdrop blur/filter and glow-style shadows.
+- Use Framer Motion only where it preserves reduced-motion behavior.
