@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@effect/vitest'
-import { Duration, Effect, Layer, Schema } from 'effect'
+import { Deferred, Duration, Effect, Layer, Schema } from 'effect'
 import * as Logix from '@logixjs/core'
 import * as Form from '../../src/index.js'
 import * as Resource from '../../../logix-core/src/Resource.js'
@@ -9,27 +9,6 @@ const waitForLoading = Effect.promise(
   () =>
     new Promise<void>((resolve) => {
       setTimeout(resolve, 5)
-    }),
-)
-
-const waitForSettled = Effect.promise(
-  () =>
-    new Promise<void>((resolve) => {
-      setTimeout(resolve, 70)
-    }),
-)
-
-const waitForOldLoadSettled = Effect.promise(
-  () =>
-    new Promise<void>((resolve) => {
-      setTimeout(resolve, 45)
-    }),
-)
-
-const waitForTrailingSettled = Effect.promise(
-  () =>
-    new Promise<void>((resolve) => {
-      setTimeout(resolve, 100)
     }),
 )
 
@@ -274,13 +253,26 @@ describe('Form source stale submit snapshot', () => {
         profileResource: Schema.Unknown,
       })
 
+      const u1Started = yield* Deferred.make<void>()
+      const u1Release = yield* Deferred.make<void>()
+      const u2Started = yield* Deferred.make<void>()
+      const u2Release = yield* Deferred.make<void>()
+
       const profileResource = Resource.make({
         id: 'user/profile.stale-key-isolation',
         keySchema: KeySchema,
         load: ({ userId }) =>
-          Effect.sleep(Duration.millis(userId === 'u1' ? 30 : 40)).pipe(
-            Effect.as({ name: `resource:${userId}`, userId }),
-          ),
+          Effect.gen(function* () {
+            if (userId === 'u1') {
+              yield* Deferred.succeed(u1Started, undefined)
+              yield* Deferred.await(u1Release)
+            } else {
+              yield* Deferred.succeed(u2Started, undefined)
+              yield* Deferred.await(u2Release)
+            }
+
+            return { name: `resource:${userId}`, userId }
+          }),
       })
 
       const form = Form.make(
@@ -313,7 +305,8 @@ describe('Form source stale submit snapshot', () => {
         const rt = yield* Effect.service(form.tag).pipe(Effect.orDie)
         const handle = materializeExtendedHandle(form.tag, rt) as any
 
-        yield* waitForLoading
+        yield* Deferred.await(u1Started)
+        yield* Effect.yieldNow
 
         const firstLoadingState: any = yield* handle.getState
         const oldKeyHash = firstLoadingState.profileResource?.keyHash
@@ -358,7 +351,8 @@ describe('Form source stale submit snapshot', () => {
         expect(blockedState.$form.submitAttempt.blockingBasis).toBe('pending')
         expect(blockedState.$form.submitAttempt.pendingCount).toBeGreaterThan(0)
 
-        yield* waitForOldLoadSettled
+        yield* Deferred.succeed(u1Release, undefined)
+        yield* Deferred.await(u2Started)
 
         const afterOldLoadState: any = yield* handle.getState
         expect(afterOldLoadState.profileResource?.status).toBe('loading')
@@ -367,6 +361,8 @@ describe('Form source stale submit snapshot', () => {
         expect(afterOldLoadState.$form.submitAttempt.seq).toBe(1)
         expect(afterOldLoadState.$form.submitAttempt.blockingBasis).toBe('pending')
         expect(afterOldLoadState.$form.submitAttempt.pendingCount).toBeGreaterThan(0)
+
+        yield* Deferred.succeed(u2Release, undefined)
 
         const settledState: any = yield* waitForState(
           handle.getState,
