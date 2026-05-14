@@ -3,7 +3,7 @@ title: Release Lane Standard
 status: living
 version: 2
 created: 2026-05-13
-updated: 2026-05-13
+updated: 2026-05-14
 ---
 
 # Release Lane Standard
@@ -56,7 +56,24 @@ The tag helper stores the generated notes in the annotated tag message. CI uses 
 
 Package `package.json` files may stay on the development version in main. During release, `pnpm release:publish` temporarily rewrites public `@logixjs/*` package versions to the tag semver and rewrites internal `workspace:*` dependencies to the same version before packing.
 
-Packages must enter the release publish set only after their npm package and Trusted Publishing permissions are configured. `@logixjs/playground` is currently built and uploaded through repo artifacts, but is not published to npm until its npm package is configured.
+Packages must enter the release publish set only after their npm package and Trusted Publishing permissions are configured. npm Trusted Publishing can only be configured after the package already exists on the npm registry, so a new package may need one manual bootstrap publish first.
+
+For `@logixjs/playground`, the bootstrap path is:
+
+```bash
+pnpm release:publish --version 1.0.2 --tag-name logix-v1.0.2 --package @logixjs/playground
+```
+
+The first command stages publish manifests, rewrites `workspace:*` dependencies, and publishes only `@logixjs/playground`.
+
+After that first publish, open the package on npmjs.com and add a Trusted Publisher in package settings:
+
+1. Provider: GitHub Actions
+2. Organization or user: `yoyooyooo`
+3. Repository: `logix`
+4. Workflow filename: `release.yml`
+
+After trust is configured, subsequent `logix-v*` tag releases publish `@logixjs/playground` through the normal release workflow.
 
 The restore step must run after packing/publishing so CI workspace mutations do not become commits.
 

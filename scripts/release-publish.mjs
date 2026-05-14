@@ -7,7 +7,7 @@ import { join } from 'node:path'
 
 const TAG_RE = /^logix-v(\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?)$/
 const PUBLIC_SCOPE = '@logixjs/'
-const IGNORED_PUBLIC_PACKAGES = new Set(['@logixjs/perf-evidence', '@logixjs/playground'])
+const IGNORED_PUBLIC_PACKAGES = new Set(['@logixjs/perf-evidence'])
 
 function git(args) {
   return execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
@@ -17,6 +17,8 @@ function parseArgs(argv) {
   const options = {
     version: null,
     tagName: process.env.GITHUB_REF_NAME ?? null,
+    packageNames: [],
+    interactive2fa: false,
     dryRun: false,
     otp: null,
   }
@@ -33,6 +35,12 @@ function parseArgs(argv) {
       options.tagName = requireValue(argv, (i += 1), arg)
     } else if (arg.startsWith('--tag-name=')) {
       options.tagName = arg.slice('--tag-name='.length)
+    } else if (arg === '--package') {
+      options.packageNames.push(requireValue(argv, (i += 1), arg))
+    } else if (arg.startsWith('--package=')) {
+      options.packageNames.push(arg.slice('--package='.length))
+    } else if (arg === '--interactive-2fa') {
+      options.interactive2fa = true
     } else if (arg === '--otp') {
       options.otp = requireValue(argv, (i += 1), arg)
     } else if (arg.startsWith('--otp=')) {
@@ -116,8 +124,31 @@ function publicPackages() {
     .sort((a, b) => a.pkg.name.localeCompare(b.pkg.name))
 }
 
-function stagePackageVersions(version, packages) {
-  const names = new Set(packages.map(({ pkg }) => pkg.name))
+function selectPackages(packages, packageNames) {
+  if (packageNames.length === 0) return packages
+  const requested = new Set(packageNames)
+  const selected = packages.filter(({ pkg }) => requested.has(pkg.name))
+  const selectedNames = new Set(selected.map(({ pkg }) => pkg.name))
+  const unknown = [...requested].filter((name) => !selectedNames.has(name)).sort()
+  if (unknown.length > 0) {
+    throw new Error(`Unknown or unpublished package filter: ${unknown.join(',')}`)
+  }
+  return selected
+}
+
+function rewriteWorkspaceDependencies(manifest, dependencyNames, version) {
+  for (const section of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
+    const deps = manifest[section]
+    if (!deps || typeof deps !== 'object') continue
+    for (const name of dependencyNames) {
+      if (deps[name]?.startsWith?.('workspace:')) deps[name] = version
+    }
+  }
+  return manifest
+}
+
+function stagePackageVersions(version, packages, dependencyPackages = packages) {
+  const names = new Set(dependencyPackages.map(({ pkg }) => pkg.name))
   const backups = []
 
   for (const { dir, pkg } of packages) {
@@ -126,14 +157,7 @@ function stagePackageVersions(version, packages) {
     copyFileSync(path, backup)
     backups.push({ path, backup })
 
-    const publishedManifest = buildPublishedManifest(pkg, version)
-    for (const section of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
-      const deps = publishedManifest[section]
-      if (!deps || typeof deps !== 'object') continue
-      for (const name of names) {
-        if (deps[name]?.startsWith?.('workspace:')) deps[name] = version
-      }
-    }
+    const publishedManifest = rewriteWorkspaceDependencies(buildPublishedManifest(pkg, version), names, version)
     writeJson(path, publishedManifest)
   }
 
@@ -151,11 +175,19 @@ function run(command, args, options = {}) {
     shell: process.platform === 'win32',
     ...options,
   })
-  if (result.status !== 0) process.exit(result.status ?? 1)
+  if (result.status !== 0) {
+    throw new Error(`Command failed with exit code ${result.status ?? 1}: ${command} ${args.join(' ')}`)
+  }
 }
 
 function npmPackArgs(outDir) {
   return ['pack', '--ignore-scripts', '--pack-destination', outDir]
+}
+
+function npmPublishArgs(tarball, distTag, otp) {
+  const args = ['publish', tarball, '--access', 'public', '--tag', distTag, '--registry', 'https://registry.npmjs.org']
+  if (otp) args.push('--otp', otp)
+  return args
 }
 
 function packPackages(packages) {
@@ -167,7 +199,7 @@ function packPackages(packages) {
   return outDir
 }
 
-function publishTarballs(packDir, distTag, otp) {
+function publishTarballs(packDir, distTag, otp, interactive2fa = false) {
   const tarballs = readdirSync(packDir)
     .filter((name) => name.endsWith('.tgz'))
     .sort()
@@ -175,9 +207,12 @@ function publishTarballs(packDir, distTag, otp) {
   if (tarballs.length === 0) throw new Error('No tarballs were produced.')
 
   for (const tarball of tarballs) {
-    const args = ['publish', tarball, '--access', 'public', '--tag', distTag]
-    if (otp) args.push('--otp', otp)
+    const args = npmPublishArgs(tarball, distTag, otp)
     console.log(`+ npm ${args.join(' ')}`)
+    if (interactive2fa) {
+      run('npm', args)
+      continue
+    }
     const result = spawnSync('npm', args, {
       encoding: 'utf8',
       shell: process.platform === 'win32',
@@ -189,7 +224,7 @@ function publishTarballs(packDir, distTag, otp) {
       console.log(`Skipping already-published tarball: ${tarball}`)
       continue
     }
-    process.exit(result.status ?? 1)
+    throw new Error(`npm publish failed with exit code ${result.status ?? 1}: ${tarball}`)
   }
 }
 
@@ -236,6 +271,8 @@ function printHelp() {
   pnpm release:publish
   pnpm release:publish --dry-run
   pnpm release:publish --version 1.2.3 --tag-name logix-v1.2.3
+  pnpm release:publish --version 1.2.3 --tag-name logix-v1.2.3 --package @logixjs/playground
+  pnpm release:publish --version 1.2.3 --tag-name logix-v1.2.3 --package @logixjs/playground --interactive-2fa
 
 The version normally comes from GITHUB_REF_NAME=logix-v* in CI.
 `)
@@ -245,7 +282,8 @@ function main() {
   const options = parseArgs(process.argv.slice(2))
   const version = resolveVersion(options)
   const distTag = distTagForVersion(version)
-  const packages = publicPackages()
+  const allPackages = publicPackages()
+  const packages = selectPackages(allPackages, options.packageNames)
 
   console.log(`release.version=${version}`)
   console.log(`release.npmTag=${distTag}`)
@@ -258,7 +296,7 @@ function main() {
     console.warn('Publishing stable channel with npm dist-tag "latest".')
   }
 
-  const restore = stagePackageVersions(version, packages)
+  const restore = stagePackageVersions(version, packages, allPackages)
   let packDir = null
   try {
     if (options.dryRun) {
@@ -266,7 +304,7 @@ function main() {
       return
     }
     packDir = packPackages(packages)
-    publishTarballs(packDir, distTag, options.otp)
+    publishTarballs(packDir, distTag, options.otp, options.interactive2fa)
     createGithubRelease(options.tagName, version, distTag, packDir, releaseNotesFromTag(options.tagName))
   } finally {
     restore()
@@ -278,7 +316,10 @@ export {
   buildPublishedManifest,
   distTagForVersion,
   npmPackArgs,
+  npmPublishArgs,
   publicPackages,
+  rewriteWorkspaceDependencies,
+  selectPackages,
   stagePackageVersions,
 }
 

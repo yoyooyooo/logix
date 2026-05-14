@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildPublishedManifest, distTagForVersion, npmPackArgs, publicPackages } from './release-publish.mjs'
+import {
+  buildPublishedManifest,
+  distTagForVersion,
+  npmPackArgs,
+  npmPublishArgs,
+  publicPackages,
+  rewriteWorkspaceDependencies,
+  selectPackages,
+} from './release-publish.mjs'
 
 describe('release-publish manifest helpers', () => {
   it('maps versions to npm dist-tags', () => {
@@ -47,7 +55,47 @@ describe('release-publish manifest helpers', () => {
     expect(npmPackArgs('/tmp/logix-pack')).toEqual(['pack', '--ignore-scripts', '--pack-destination', '/tmp/logix-pack'])
   })
 
-  it('does not publish package entries that are not configured on npm yet', () => {
-    expect(publicPackages().map(({ pkg }) => pkg.name)).not.toContain('@logixjs/playground')
+  it('publishes tarballs against the npmjs registry explicitly', () => {
+    expect(npmPublishArgs('/tmp/logixjs-playground-1.0.2.tgz', 'latest')).toEqual([
+      'publish',
+      '/tmp/logixjs-playground-1.0.2.tgz',
+      '--access',
+      'public',
+      '--tag',
+      'latest',
+      '--registry',
+      'https://registry.npmjs.org',
+    ])
+  })
+
+  it('includes playground after npm Trusted Publishing is configured', () => {
+    expect(publicPackages().map(({ pkg }) => pkg.name)).toContain('@logixjs/playground')
+  })
+
+  it('filters a targeted bootstrap publish by package name', () => {
+    const selected = selectPackages(publicPackages(), ['@logixjs/playground'])
+
+    expect(selected.map(({ pkg }) => pkg.name)).toEqual(['@logixjs/playground'])
+  })
+
+  it('still rewrites workspace dependencies against the full publish set for targeted packages', () => {
+    const manifest = rewriteWorkspaceDependencies(
+      {
+        name: '@logixjs/playground',
+        dependencies: {
+          '@logixjs/core': 'workspace:*',
+          '@logixjs/react': 'workspace:*',
+          '@logixjs/sandbox': 'workspace:*',
+        },
+      },
+      ['@logixjs/core', '@logixjs/playground', '@logixjs/react', '@logixjs/sandbox'],
+      '1.0.2',
+    )
+
+    expect(manifest.dependencies).toEqual({
+      '@logixjs/core': '1.0.2',
+      '@logixjs/react': '1.0.2',
+      '@logixjs/sandbox': '1.0.2',
+    })
   })
 })
