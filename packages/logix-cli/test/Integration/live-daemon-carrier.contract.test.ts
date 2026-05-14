@@ -31,6 +31,7 @@ const must = <T>(value: T | undefined): T => {
 const previousPort = process.env.LOGIX_LIVE_PORT
 const previousLaunchCommand = process.env.LOGIX_INTERNAL_LIVE_DAEMON_COMMAND
 const previousLaunchArgs = process.env.LOGIX_INTERNAL_LIVE_DAEMON_ARGS_JSON
+const previousStartTimeout = process.env.LOGIX_INTERNAL_LIVE_DAEMON_START_TIMEOUT_MS
 
 afterEach(() => {
   if (previousStateDir === undefined) delete process.env.LOGIX_LIVE_STATE_DIR
@@ -41,6 +42,8 @@ afterEach(() => {
   else process.env.LOGIX_INTERNAL_LIVE_DAEMON_COMMAND = previousLaunchCommand
   if (previousLaunchArgs === undefined) delete process.env.LOGIX_INTERNAL_LIVE_DAEMON_ARGS_JSON
   else process.env.LOGIX_INTERNAL_LIVE_DAEMON_ARGS_JSON = previousLaunchArgs
+  if (previousStartTimeout === undefined) delete process.env.LOGIX_INTERNAL_LIVE_DAEMON_START_TIMEOUT_MS
+  else process.env.LOGIX_INTERNAL_LIVE_DAEMON_START_TIMEOUT_MS = previousStartTimeout
 })
 
 const withTempStateDir = async <A>(fn: (stateDir: string) => Promise<A>): Promise<A> => {
@@ -50,6 +53,7 @@ const withTempStateDir = async <A>(fn: (stateDir: string) => Promise<A>): Promis
   const launch = makeTestLiveDaemonLaunchOverride(path.resolve(__dirname, '../../src/bin/logix.ts'))
   process.env.LOGIX_INTERNAL_LIVE_DAEMON_COMMAND = launch.command
   process.env.LOGIX_INTERNAL_LIVE_DAEMON_ARGS_JSON = JSON.stringify(launch.args)
+  process.env.LOGIX_INTERNAL_LIVE_DAEMON_START_TIMEOUT_MS = '15000'
   try {
     return await fn(stateDir)
   } finally {
