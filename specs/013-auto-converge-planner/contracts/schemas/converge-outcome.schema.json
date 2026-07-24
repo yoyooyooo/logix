@@ -1,8 +1,0 @@
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://logix.local/specs/013-auto-converge-planner/schemas/converge-outcome.schema.json",
-  "title": "ConvergeOutcome",
-  "type": "string",
-  "enum": ["Converged", "Noop", "Degraded"],
-  "description": "Converge outcome for this operation window."
-}

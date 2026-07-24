@@ -1,0 +1,65 @@
+{
+  "skill_name": "docs-governance",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I am starting a small library. Design its docs tree for long-term AI coding.",
+      "expected_output": "Creates only the thinnest useful semantic layers, keeps layer internals flat, and does not pre-create product, roadmap, protocol, or nested taxonomies without evidence of need."
+    },
+    {
+      "id": 2,
+      "prompt": "Our ssot directory has three files: glossary.md, runtime.md, and security.md. Should we create glossary/, domain/, states/, rules/, and permissions/ folders now?",
+      "expected_output": "Keeps the layer flat; explains that file count and maturity do not earn a taxonomy; names durable signals that would justify a later partition."
+    },
+    {
+      "id": 3,
+      "prompt": "Only the audit domain has grown to six tightly linked docs; investigation still fits in one file. Reorganize ssot.",
+      "expected_output": "Uses an asymmetric mixed shape: partitions only audit, keeps shared files and investigation at the root, adds a local router if useful, and updates links."
+    },
+    {
+      "id": 4,
+      "prompt": "A child folder under docs/security has two files but a separate access and retention policy. Is a two-file folder over-structured?",
+      "expected_output": "Accepts the partition because a strong security/retention boundary can earn it regardless of volume."
+    },
+    {
+      "id": 5,
+      "prompt": "Every ordinary Product, SSoT, and Architecture file currently has a project prefix, document type, domain code, and sequence number. Simplify the scheme.",
+      "expected_output": "Defaults ordinary docs to semantic paths, preserves sequence IDs only for append-only collections, and admits stable keys or atomic IDs only where real traceability requires them."
+    },
+    {
+      "id": 6,
+      "prompt": "We use node_id in our goal graph. Should every PRD and SSoT document receive a node_id too?",
+      "expected_output": "Keeps node_id opt-in for graph participants and separates graph identity from document paths, requirement IDs, and runtime business numbers."
+    },
+    {
+      "id": 7,
+      "prompt": "A baselined target architecture is approved but only partly implemented. Classify it without claiming current availability.",
+      "expected_output": "Uses accepted-target for the adopted outcome, current-fact/current-binding only for proved present portions, and links active proof without copying progress into authority docs."
+    },
+    {
+      "id": 8,
+      "prompt": "We want docs/roadmap/future/ssot, future/standards, future/adr, and future/architecture so future design can be rigorous.",
+      "expected_output": "Rejects shadow authority layers and uses capability-oriented future routes or capsules whose internal shape is itself earned."
+    },
+    {
+      "id": 9,
+      "prompt": "A dense folder has repeated prefixes. Automatically move the files into subdirectories.",
+      "expected_output": "Treats counts and prefixes as review signals, performs semantic judgment first, and avoids automatic file moves."
+    },
+    {
+      "id": 10,
+      "prompt": "A former domain subdirectory now contains one ordinary file and no distinct owner or policy. What should cleanup do?",
+      "expected_output": "Flattens the partition, repairs links and indexes, and removes redundant local authority prose."
+    },
+    {
+      "id": 11,
+      "prompt": "Inherited code conflicts with an accepted feature contract. Which one defines what the system should do, and which one proves what it currently does?",
+      "expected_output": "Uses the accepted contract for target behavior and code/tests/runtime evidence for current behavior; records an implementation gap rather than silently rewriting intent."
+    },
+    {
+      "id": 12,
+      "prompt": "Audit a docs tree with a duplicate explicit key, a broken README route, an empty taxonomy, and a single-file child directory.",
+      "expected_output": "Treats duplicate identity and broken current routing as blocking or high-severity, while empty/single-file structural issues remain review signals unless a real boundary exists."
+    }
+  ]
+}

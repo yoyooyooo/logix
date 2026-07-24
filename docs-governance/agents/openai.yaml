@@ -1,0 +1,4 @@
+interface:
+  display_name: "Docs Governance"
+  short_description: "Converge authority, earned docs shape, lifecycle, and source alignment"
+  default_prompt: "Use $docs-governance to classify current facts, accepted targets, and future candidates; converge docs/* authority layers; keep layer internals flat until durable pressure earns partitions; admit identifiers only when traceability needs them; preserve Roadmap value without shadow authority; and audit links, indexes, lifecycle, evidence retention, and source-code alignment."

@@ -1,7 +1,0 @@
-{
-  "extends": "../tsconfig.json",
-  "compilerOptions": {
-    "noEmit": true
-  },
-  "include": ["./canonical-hooks.surface.ts", "./public-subpaths.surface.ts"]
-}

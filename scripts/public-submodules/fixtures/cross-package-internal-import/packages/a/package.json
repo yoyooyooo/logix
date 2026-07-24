@@ -1,9 +1,0 @@
-{
-  "name": "@logixjs/fixture-cross-import-a",
-  "type": "module",
-  "exports": {
-    ".": "./src/index.ts",
-    "./*": "./src/*.ts",
-    "./internal/*": null
-  }
-}

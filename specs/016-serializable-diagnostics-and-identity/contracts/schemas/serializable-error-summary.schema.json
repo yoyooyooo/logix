@@ -1,6 +1,0 @@
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://logix.local/specs/016-serializable-diagnostics-and-identity/schemas/serializable-error-summary.schema.json",
-  "title": "SerializableErrorSummary",
-  "$ref": "../../../011-upgrade-lifecycle/contracts/schemas/error-summary.schema.json"
-}

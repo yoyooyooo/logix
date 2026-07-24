@@ -1,0 +1,26 @@
+name: package-docs-governance-skill
+
+on:
+  push:
+    branches:
+      - chatgpt/docs-governance-skill-v2-20260724
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Self-check
+        run: python3 docs-governance/scripts/self_check.py
+      - name: Package
+        run: zip -r docs-governance-v2.zip docs-governance -x '*/__pycache__/*' '*.pyc'
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-governance-v2
+          path: docs-governance-v2.zip
+          if-no-files-found: error
+          retention-days: 7
